@@ -25,6 +25,7 @@ import com.google.common.collect.ImmutableList
 import com.linagora.tmail.mailets.TmailMailRateLimiter.createRateLimiter
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition
+import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.EMPTY_RATE_LIMIT
 import jakarta.inject.Inject
 import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.lifecycle.api.LifecycleUtil
@@ -138,21 +139,34 @@ class ReceivedRateLimiting @Inject()(val rateLimitingRepository: RateLimitingRep
 
   private def applyRecipientRateLimit(recipient: Username): SMono[RateLimitingResult] =
     SMono.fromPublisher(rateLimitingRepository.getRateLimiting(recipient))
-      .map(createRecipientRateLimiters)
-      .flatMapMany(SFlux.fromIterable)
-      .flatMap(_.rateLimit(recipient))
-      .fold[RateLimitingResult](AcceptableRate)((a, b) => a.merge(b))
+      .flatMap(userRateLimitingDefinition => getDomainRateLimiting(recipient)
+        .map(domainRateLimitingDefinition => createRecipientRateLimiters(userRateLimitingDefinition, domainRateLimitingDefinition))
+        .flatMapMany(SFlux.fromIterable)
+        .flatMap(_.rateLimit(recipient))
+        .fold[RateLimitingResult](AcceptableRate)((a, b) => a.merge(b)))
 
-  private def createRecipientRateLimiters(rateLimitingDefinition: RateLimitingDefinition): Seq[TmailMailRateLimiter] = {
-    val mailsReceivedPerMinuteLimit: Option[Long] = rateLimitingDefinition.mailsReceivedPerMinute().toScala
+  private def getDomainRateLimiting(recipient: Username): SMono[RateLimitingDefinition] =
+    recipient.getDomainPart.toScala match {
+      case None => SMono.just(EMPTY_RATE_LIMIT)
+      case Some(domain) => SMono.fromPublisher(rateLimitingRepository.getRateLimiting(domain))
+    }
+
+  private def createRecipientRateLimiters(userRateLimitingDefinition: RateLimitingDefinition, domainRateLimitingDefinition: RateLimitingDefinition): Seq[TmailMailRateLimiter] = {
+    val mailsReceivedPerMinuteLimit: Option[Long] = userRateLimitingDefinition.mailsReceivedPerMinute().toScala
       .map(Long2long)
-      .orElse(mailsPerMinuteDefault)
-    val mailsReceivedPerHourLimit: Option[Long] = rateLimitingDefinition.mailsReceivedPerHours().toScala
+      .orElse(domainRateLimitingDefinition.mailsReceivedPerMinute().toScala
+        .map(Long2long)
+        .orElse(mailsPerMinuteDefault))
+    val mailsReceivedPerHourLimit: Option[Long] = userRateLimitingDefinition.mailsReceivedPerHours().toScala
       .map(Long2long)
-      .orElse(mailsPerHourDefault)
-    val mailsReceivedPerDayLimit: Option[Long] = rateLimitingDefinition.mailsReceivedPerDays().toScala
+      .orElse(domainRateLimitingDefinition.mailsReceivedPerHours().toScala
+        .map(Long2long)
+        .orElse(mailsPerHourDefault))
+    val mailsReceivedPerDayLimit: Option[Long] = userRateLimitingDefinition.mailsReceivedPerDays().toScala
       .map(Long2long)
-      .orElse(mailsPerDayDefault)
+      .orElse(domainRateLimitingDefinition.mailsReceivedPerDays().toScala
+        .map(Long2long)
+        .orElse(mailsPerDayDefault))
 
     Seq(
       createRateLimiter(rateLimiterFactory, MailsReceivedPerMinuteType, mailsReceivedPerMinuteLimit, precision, keyPrefix),

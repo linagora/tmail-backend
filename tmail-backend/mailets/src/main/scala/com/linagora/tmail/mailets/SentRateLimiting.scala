@@ -24,6 +24,7 @@ import java.time.temporal.ChronoUnit
 import com.linagora.tmail.mailets.TmailMailRateLimiter.createRateLimiter
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition
+import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.EMPTY_RATE_LIMIT
 import jakarta.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.rate.limiter.api.{AcceptableRate, RateExceeded, RateLimiterFactory, RateLimitingResult}
@@ -118,21 +119,34 @@ class SentRateLimiting @Inject()(rateLimitingRepository: RateLimitingRepository,
 
   private def applySenderRateLimit(sender: Username): SMono[RateLimitingResult] =
     SMono.fromPublisher(rateLimitingRepository.getRateLimiting(sender))
-      .map(createSenderRateLimiters)
-      .flatMapMany(SFlux.fromIterable)
-      .flatMap(rateLimiter => SMono.fromPublisher(rateLimiter.rateLimit(sender)))
-      .fold[RateLimitingResult](AcceptableRate)((a, b) => a.merge(b))
+      .flatMap(userRateLimitingDefinition => getDomainRateLimiting(sender)
+        .map(domainRateLimitingDefinition => createSenderRateLimiters(userRateLimitingDefinition, domainRateLimitingDefinition))
+        .flatMapMany(SFlux.fromIterable)
+        .flatMap(rateLimiter => SMono.fromPublisher(rateLimiter.rateLimit(sender)))
+        .fold[RateLimitingResult](AcceptableRate)((a, b) => a.merge(b)))
 
-  private def createSenderRateLimiters(rateLimitingDefinition: RateLimitingDefinition): Seq[TmailMailRateLimiter] = {
-    val mailsSentPerMinuteLimit: Option[Long] = rateLimitingDefinition.mailsSentPerMinute().toScala
+  private def getDomainRateLimiting(recipient: Username): SMono[RateLimitingDefinition] =
+    recipient.getDomainPart.toScala match {
+      case None => SMono.just(EMPTY_RATE_LIMIT)
+      case Some(domain) => SMono.fromPublisher(rateLimitingRepository.getRateLimiting(domain))
+    }
+
+  private def createSenderRateLimiters(userRateLimitingDefinition: RateLimitingDefinition, domainRateLimitingDefinition: RateLimitingDefinition): Seq[TmailMailRateLimiter] = {
+    val mailsSentPerMinuteLimit: Option[Long] = userRateLimitingDefinition.mailsSentPerMinute().toScala
       .map(Long2long)
-      .orElse(mailsPerMinuteDefault)
-    val mailsSentPerHourLimit: Option[Long] = rateLimitingDefinition.mailsSentPerHours().toScala
+      .orElse(domainRateLimitingDefinition.mailsSentPerMinute().toScala
+        .map(Long2long)
+        .orElse(mailsPerMinuteDefault))
+    val mailsSentPerHourLimit: Option[Long] = userRateLimitingDefinition.mailsSentPerHours().toScala
       .map(Long2long)
-      .orElse(mailsPerHourDefault)
-    val mailsSentPerDayLimit: Option[Long] = rateLimitingDefinition.mailsSentPerDays().toScala
+      .orElse(domainRateLimitingDefinition.mailsSentPerHours().toScala
+        .map(Long2long)
+        .orElse(mailsPerHourDefault))
+    val mailsSentPerDayLimit: Option[Long] = userRateLimitingDefinition.mailsSentPerDays().toScala
       .map(Long2long)
-      .orElse(mailsPerDayDefault)
+      .orElse(domainRateLimitingDefinition.mailsSentPerDays().toScala
+        .map(Long2long)
+        .orElse(mailsPerDayDefault))
 
     Seq(
       createRateLimiter(rateLimiterFactory, MailsSentPerMinuteType, mailsSentPerMinuteLimit, precision, keyPrefix),

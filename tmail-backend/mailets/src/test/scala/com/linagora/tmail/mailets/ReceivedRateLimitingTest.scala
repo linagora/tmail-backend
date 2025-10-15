@@ -18,13 +18,13 @@
 
 package com.linagora.tmail.mailets
 
-import com.linagora.tmail.mailets.ReceivedRateLimitingTest.{BOB, RCPT1, RCPT2}
+import com.linagora.tmail.mailets.ReceivedRateLimitingTest.{BOB, DOMAIN, RCPT1, RCPT2}
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository
 import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingRepository
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.{MAILS_RECEIVED_PER_DAYS_UNLIMITED, MAILS_RECEIVED_PER_HOURS_UNLIMITED, MAILS_RECEIVED_PER_MINUTE_UNLIMITED}
 import org.apache.james.backends.redis.{DockerRedis, RedisClientFactory, RedisExtension, StandaloneRedisConfiguration}
-import org.apache.james.core.Username
+import org.apache.james.core.{Domain, Username}
 import org.apache.james.rate.limiter.redis.RedisRateLimiterFactory
 import org.apache.james.server.core.filesystem.FileSystemImpl
 import org.apache.mailet.Mail
@@ -36,6 +36,7 @@ import org.junit.jupiter.api.{BeforeEach, Test}
 import reactor.core.scala.publisher.SMono
 
 object ReceivedRateLimitingTest {
+  val DOMAIN: Domain = Domain.of("domain.tld")
   val BOB: Username = Username.of("bob@domain.tld")
   val ALICE: Username = Username.of("alice@domain.tld")
   val RCPT1: Username = Username.of("recipient1@domain.tld")
@@ -102,6 +103,88 @@ class ReceivedRateLimitingTest {
       .mailsReceivedPerMinute(1)
       .mailsReceivedPerHours(10)
       .mailsReceivedPerDays(100)
+      .build())).block()
+
+    val mail1: Mail = FakeMail.builder()
+      .name("mail1")
+      .sender(BOB.asString())
+      .recipients(RCPT1.asString)
+      .state("transport")
+      .build()
+
+    val shouldExceedConfiguredLimit: Mail = FakeMail.builder()
+      .name("mail2")
+      .sender(BOB.asString())
+      .recipients(RCPT1.asString)
+      .state("transport")
+      .build()
+
+    receivedRateLimiting.service(mail1)
+    receivedRateLimiting.service(shouldExceedConfiguredLimit)
+
+    assertSoftly(softly => {
+      softly.assertThat(mail1.getState).isEqualTo("transport")
+      softly.assertThat(shouldExceedConfiguredLimit.getState).isEqualTo("error")
+    })
+  }
+
+  @Test
+  def shouldApplyConfiguredDomainRateLimitsWhenRecipientHasNoLimit(): Unit = {
+    receivedRateLimiting.init(FakeMailetConfig.builder()
+      .setProperty("precision", "1s")
+      .setProperty("mailsPerMinuteDefault", "1000")
+      .setProperty("mailsPerHourDefault", "1000")
+      .setProperty("mailsPerDayDefault", "1000")
+      .build())
+
+    SMono(rateLimitingRepository.setRateLimiting(DOMAIN, new RateLimitingDefinition.Builder()
+      .mailsReceivedPerMinute(1)
+      .mailsReceivedPerHours(10)
+      .mailsReceivedPerDays(100)
+      .build())).block()
+
+    val mail1: Mail = FakeMail.builder()
+      .name("mail1")
+      .sender(BOB.asString())
+      .recipients(RCPT1.asString)
+      .state("transport")
+      .build()
+
+    val shouldExceedConfiguredLimit: Mail = FakeMail.builder()
+      .name("mail2")
+      .sender(BOB.asString())
+      .recipients(RCPT1.asString)
+      .state("transport")
+      .build()
+
+    receivedRateLimiting.service(mail1)
+    receivedRateLimiting.service(shouldExceedConfiguredLimit)
+
+    assertSoftly(softly => {
+      softly.assertThat(mail1.getState).isEqualTo("transport")
+      softly.assertThat(shouldExceedConfiguredLimit.getState).isEqualTo("error")
+    })
+  }
+
+  @Test
+  def shouldApplyConfiguredUserRateLimitsWhenRecipientHasDomainAndUserLimit(): Unit = {
+    receivedRateLimiting.init(FakeMailetConfig.builder()
+      .setProperty("precision", "1s")
+      .setProperty("mailsPerMinuteDefault", "1000")
+      .setProperty("mailsPerHourDefault", "1000")
+      .setProperty("mailsPerDayDefault", "1000")
+      .build())
+
+    SMono(rateLimitingRepository.setRateLimiting(DOMAIN, new RateLimitingDefinition.Builder()
+      .mailsReceivedPerMinute(10)
+      .mailsReceivedPerHours(20)
+      .mailsReceivedPerDays(30)
+      .build())).block()
+
+    SMono(rateLimitingRepository.setRateLimiting(RCPT1, new RateLimitingDefinition.Builder()
+      .mailsReceivedPerMinute(1)
+      .mailsReceivedPerHours(10)
+      .mailsReceivedPerDays(20)
       .build())).block()
 
     val mail1: Mail = FakeMail.builder()
