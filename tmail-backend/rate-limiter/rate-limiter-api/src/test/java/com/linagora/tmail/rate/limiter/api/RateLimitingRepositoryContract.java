@@ -22,6 +22,7 @@ import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.E
 import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.MAILS_RECEIVED_PER_DAYS_UNLIMITED;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.junit.jupiter.api.Test;
 
@@ -32,6 +33,7 @@ import reactor.core.publisher.Mono;
 public interface RateLimitingRepositoryContract {
     Username BOB = Username.of("bob@domain.tld");
     Username ALICE = Username.of("alice@domain.tld");
+    Domain DOMAIN_1 = Domain.of("domain1.tld");
     RateLimitingDefinition RATE_LIMITING_1 = RateLimitingDefinition.builder()
         .mailsSentPerMinute(10L)
         .mailsSentPerHours(100L)
@@ -54,10 +56,24 @@ public interface RateLimitingRepositoryContract {
     }
 
     @Test
+    default void getDomainRateLimitingDefinitionShouldReturnEmptyRateLimitByDefault() {
+        assertThat(Mono.from(testee().getRateLimiting(DOMAIN_1)).block())
+            .isEqualTo(EMPTY_RATE_LIMIT);
+    }
+
+    @Test
     default void setRateLimitingDefinitionShouldSucceed() {
         Mono.from(testee().setRateLimiting(BOB, RATE_LIMITING_1)).block();
 
         assertThat(Mono.from(testee().getRateLimiting(BOB)).block())
+            .isEqualTo(RATE_LIMITING_1);
+    }
+
+    @Test
+    default void setDomainRateLimitingDefinitionShouldSucceed() {
+        Mono.from(testee().setRateLimiting(DOMAIN_1, RATE_LIMITING_1)).block();
+
+        assertThat(Mono.from(testee().getRateLimiting(DOMAIN_1)).block())
             .isEqualTo(RATE_LIMITING_1);
     }
 
@@ -67,6 +83,26 @@ public interface RateLimitingRepositoryContract {
         Mono.from(testee().setRateLimiting(BOB, RATE_LIMITING_2)).block();
 
         assertThat(Mono.from(testee().getRateLimiting(BOB)).block())
+            .isEqualTo(RATE_LIMITING_2);
+    }
+
+    @Test
+    default void setDomainRateLimitingDefinitionShouldOverridePreviousRateLimit() {
+        Mono.from(testee().setRateLimiting(DOMAIN_1, RATE_LIMITING_1)).block();
+        Mono.from(testee().setRateLimiting(DOMAIN_1, RATE_LIMITING_2)).block();
+
+        assertThat(Mono.from(testee().getRateLimiting(DOMAIN_1)).block())
+            .isEqualTo(RATE_LIMITING_2);
+    }
+
+    @Test
+    default void setRateLimitingShouldNotMixUserAndDomainLimits() {
+        Mono.from(testee().setRateLimiting(BOB, RATE_LIMITING_1)).block();
+        Mono.from(testee().setRateLimiting(DOMAIN_1, RATE_LIMITING_2)).block();
+
+        assertThat(Mono.from(testee().getRateLimiting(BOB)).block())
+            .isEqualTo(RATE_LIMITING_1);
+        assertThat(Mono.from(testee().getRateLimiting(DOMAIN_1)).block())
             .isEqualTo(RATE_LIMITING_2);
     }
 

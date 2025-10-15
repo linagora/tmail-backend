@@ -26,6 +26,13 @@
 
 package com.linagora.tmail.domainlist.postgres;
 
+import static com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.PostgresUserTable.MAILS_RECEIVED_PER_DAYS;
+import static com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.PostgresUserTable.MAILS_RECEIVED_PER_HOURS;
+import static com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.PostgresUserTable.MAILS_RECEIVED_PER_MINUTE;
+import static com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.PostgresUserTable.MAILS_SENT_PER_DAYS;
+import static com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.PostgresUserTable.MAILS_SENT_PER_HOURS;
+import static com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.PostgresUserTable.MAILS_SENT_PER_MINUTE;
+
 import org.apache.james.backends.postgres.PostgresDataDefinition;
 import org.apache.james.backends.postgres.PostgresTable;
 import org.apache.james.domainlist.postgres.PostgresDomainDataDefinition;
@@ -42,6 +49,12 @@ public interface TMailPostgresDomainDataDefinition {
         PostgresTable TABLE = PostgresTable.name(TABLE_NAME.getName())
             .createTableStep(((dsl, tableName) -> dsl.createTableIfNotExists(tableName)
                 .column(DOMAIN)
+                .column(MAILS_SENT_PER_MINUTE)
+                .column(MAILS_SENT_PER_HOURS)
+                .column(MAILS_SENT_PER_DAYS)
+                .column(MAILS_RECEIVED_PER_MINUTE)
+                .column(MAILS_RECEIVED_PER_HOURS)
+                .column(MAILS_RECEIVED_PER_DAYS)
                 .primaryKey(DOMAIN)))
             .disableRowLevelSecurity()
             .build();

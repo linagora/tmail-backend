@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.rate.limiter.api.postgres;
 
+import static com.linagora.tmail.domainlist.postgres.TMailPostgresDomainDataDefinition.PostgresDomainTable.DOMAIN;
 import static com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.PostgresUserTable.MAILS_RECEIVED_PER_DAYS;
 import static com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.PostgresUserTable.MAILS_RECEIVED_PER_HOURS;
 import static com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.PostgresUserTable.MAILS_RECEIVED_PER_MINUTE;
@@ -30,10 +31,12 @@ import static com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.P
 import jakarta.inject.Inject;
 
 import org.apache.james.backends.postgres.utils.PostgresExecutor;
+import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.jooq.Record;
 import org.reactivestreams.Publisher;
 
+import com.linagora.tmail.domainlist.postgres.TMailPostgresDomainDataDefinition;
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition;
 
@@ -68,12 +71,43 @@ public class PostgresRateLimitingRepository implements RateLimitingRepository {
     }
 
     @Override
+    public Publisher<Void> setRateLimiting(Domain domain, RateLimitingDefinition rateLimiting) {
+        return executor.executeVoid(dsl -> Mono.from(dsl.insertInto(TMailPostgresDomainDataDefinition.PostgresDomainTable.TABLE_NAME)
+            .set(DOMAIN, domain.asString())
+            .set(MAILS_SENT_PER_MINUTE, rateLimiting.mailsSentPerMinute().orElse(null))
+            .set(MAILS_SENT_PER_HOURS, rateLimiting.mailsSentPerHours().orElse(null))
+            .set(MAILS_SENT_PER_DAYS, rateLimiting.mailsSentPerDays().orElse(null))
+            .set(MAILS_RECEIVED_PER_MINUTE, rateLimiting.mailsReceivedPerMinute().orElse(null))
+            .set(MAILS_RECEIVED_PER_HOURS, rateLimiting.mailsReceivedPerHours().orElse(null))
+            .set(MAILS_RECEIVED_PER_DAYS, rateLimiting.mailsReceivedPerDays().orElse(null))
+            .onConflict(DOMAIN)
+            .doUpdate()
+            .set(MAILS_SENT_PER_MINUTE, rateLimiting.mailsSentPerMinute().orElse(null))
+            .set(MAILS_SENT_PER_HOURS, rateLimiting.mailsSentPerHours().orElse(null))
+            .set(MAILS_SENT_PER_DAYS, rateLimiting.mailsSentPerDays().orElse(null))
+            .set(MAILS_RECEIVED_PER_MINUTE, rateLimiting.mailsReceivedPerMinute().orElse(null))
+            .set(MAILS_RECEIVED_PER_HOURS, rateLimiting.mailsReceivedPerHours().orElse(null))
+            .set(MAILS_RECEIVED_PER_DAYS, rateLimiting.mailsReceivedPerDays().orElse(null))));
+    }
+
+    @Override
     public Publisher<RateLimitingDefinition> getRateLimiting(Username username) {
         return Mono.from(executor.executeRow(dsl -> Mono.from(
                 dsl.select(MAILS_SENT_PER_MINUTE, MAILS_SENT_PER_HOURS, MAILS_SENT_PER_DAYS,
                         MAILS_RECEIVED_PER_MINUTE, MAILS_RECEIVED_PER_HOURS, MAILS_RECEIVED_PER_DAYS)
                     .from(TABLE_NAME)
                     .where(USERNAME.eq(username.asString())))))
+            .map(this::toRateLimitingDefinition)
+            .defaultIfEmpty(RateLimitingDefinition.EMPTY_RATE_LIMIT);
+    }
+
+    @Override
+    public Publisher<RateLimitingDefinition> getRateLimiting(Domain domain) {
+        return Mono.from(executor.executeRow(dsl -> Mono.from(
+                dsl.select(MAILS_SENT_PER_MINUTE, MAILS_SENT_PER_HOURS, MAILS_SENT_PER_DAYS,
+                        MAILS_RECEIVED_PER_MINUTE, MAILS_RECEIVED_PER_HOURS, MAILS_RECEIVED_PER_DAYS)
+                    .from(TMailPostgresDomainDataDefinition.PostgresDomainTable.TABLE_NAME)
+                    .where(DOMAIN.eq(domain.asString())))))
             .map(this::toRateLimitingDefinition)
             .defaultIfEmpty(RateLimitingDefinition.EMPTY_RATE_LIMIT);
     }

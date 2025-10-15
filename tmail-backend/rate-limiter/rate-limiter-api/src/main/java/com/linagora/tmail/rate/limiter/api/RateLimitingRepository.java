@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.rate.limiter.api;
 
+import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.reactivestreams.Publisher;
 
@@ -26,7 +27,11 @@ import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition;
 public interface RateLimitingRepository {
     Publisher<Void> setRateLimiting(Username username, RateLimitingDefinition rateLimiting);
 
+    Publisher<Void> setRateLimiting(Domain domain, RateLimitingDefinition rateLimiting);
+
     Publisher<RateLimitingDefinition> getRateLimiting(Username username);
+
+    Publisher<RateLimitingDefinition> getRateLimiting(Domain domain);
 
     Publisher<Void> revokeRateLimiting(Username username);
 }

@@ -23,6 +23,7 @@ import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.E
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
+import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.reactivestreams.Publisher;
 
@@ -32,21 +33,33 @@ import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition;
 import reactor.core.publisher.Mono;
 
 public class MemoryRateLimitingRepository implements RateLimitingRepository {
-    private final ConcurrentMap<Username, RateLimitingDefinition> table = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Username, RateLimitingDefinition> userTable = new ConcurrentHashMap<>();
+    private final ConcurrentMap<Domain, RateLimitingDefinition> domainTable = new ConcurrentHashMap<>();
 
     @Override
     public Publisher<Void> setRateLimiting(Username username, RateLimitingDefinition rateLimiting) {
-        return Mono.fromRunnable(() -> table.put(username, rateLimiting));
+        return Mono.fromRunnable(() -> userTable.put(username, rateLimiting));
+    }
+
+    @Override
+    public Publisher<Void> setRateLimiting(Domain domain, RateLimitingDefinition rateLimiting) {
+        return Mono.fromRunnable(() -> domainTable.put(domain, rateLimiting));
     }
 
     @Override
     public Publisher<RateLimitingDefinition> getRateLimiting(Username username) {
-        return Mono.justOrEmpty(table.get(username))
+        return Mono.justOrEmpty(userTable.get(username))
+            .defaultIfEmpty(EMPTY_RATE_LIMIT);
+    }
+
+    @Override
+    public Publisher<RateLimitingDefinition> getRateLimiting(Domain domain) {
+        return Mono.justOrEmpty(domainTable.get(domain))
             .defaultIfEmpty(EMPTY_RATE_LIMIT);
     }
 
     @Override
     public Publisher<Void> revokeRateLimiting(Username username) {
-        return Mono.fromRunnable(() -> table.remove(username));
+        return Mono.fromRunnable(() -> userTable.remove(username));
     }
 }
