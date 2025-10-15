@@ -12,6 +12,59 @@ software documentation. Do not follow this guide blindly!
 
 Note: this section is in progress. It will be updated during all the development process until the release.
 
+## 1.0.11
+### Adding rate limiting columns to Cassandra domains table
+
+Date: 15/10/2025
+
+Issue: https://github.com/linagora/tmail-backend/issues/1927
+
+Concerned product: Distributed TMail
+
+Add the following columns to the `domains` table to store per-domain mail rate limiting:
+- `mails_sent_per_minute` (BIGINT)
+- `mails_sent_per_hour` (BIGINT)
+- `mails_sent_per_day` (BIGINT)
+- `mails_received_per_minute` (BIGINT)
+- `mails_received_per_hour` (BIGINT)
+- `mails_received_per_day` (BIGINT)
+
+To add these columns, run the following CQL commands:
+```
+ALTER TABLE tmail_keyspace.domains ADD mails_sent_per_minute bigint;
+ALTER TABLE tmail_keyspace.domains ADD mails_sent_per_hour bigint;
+ALTER TABLE tmail_keyspace.domains ADD mails_sent_per_day bigint;
+ALTER TABLE tmail_keyspace.domains ADD mails_received_per_minute bigint;
+ALTER TABLE tmail_keyspace.domains ADD mails_received_per_hour bigint;
+ALTER TABLE tmail_keyspace.domains ADD mails_received_per_day bigint;
+```
+
+### Adding rate limiting columns to Postgres users table
+
+Date: 15/10/2025
+
+Issue: https://github.com/linagora/tmail-backend/issues/1927
+
+Concerned product: Postgres TMail
+
+Add the following columns to the `domains` table to store per-domain mail rate limiting:
+- `mails_sent_per_minute` (BIGINT)
+- `mails_sent_per_hour` (BIGINT)
+- `mails_sent_per_day` (BIGINT)
+- `mails_received_per_minute` (BIGINT)
+- `mails_received_per_hour` (BIGINT)
+- `mails_received_per_day` (BIGINT)
+
+To add these columns, run the following SQL commands:
+```
+ALTER TABLE tmail_schema.domains ADD COLUMN mails_sent_per_minute BIGINT;
+ALTER TABLE tmail_schema.domains ADD COLUMN mails_sent_per_hour BIGINT;
+ALTER TABLE tmail_schema.domains ADD COLUMN mails_sent_per_day BIGINT;
+ALTER TABLE tmail_schema.domains ADD COLUMN mails_received_per_minute BIGINT;
+ALTER TABLE tmail_schema.domains ADD COLUMN mails_received_per_hour BIGINT;
+ALTER TABLE tmail_schema.domains ADD COLUMN mails_received_per_day BIGINT;
+```
+
 ## 1.0.10
 
 ### Adding settings and rate limiting plan id columns to Cassandra user table
