@@ -22,7 +22,9 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.linagora.tmail.saas.rabbitmq.subscription.SaaSDomainSubscriptionMessage.SaaSDomainCancelSubscriptionMessage;
 import com.linagora.tmail.saas.rabbitmq.subscription.SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage;
 
 public class SaaSSubscriptionDeserializer {
@@ -58,6 +60,8 @@ public class SaaSSubscriptionDeserializer {
         }
     }
 
+    private static final String ENABLED_FIELD = "enabled";
+
     private final ObjectMapper objectMapper;
 
     public SaaSSubscriptionDeserializer() {
@@ -69,7 +73,20 @@ public class SaaSSubscriptionDeserializer {
         return objectMapper.readValue(jsonBytes, SaaSSubscriptionMessage.class);
     }
 
-    public SaaSDomainValidSubscriptionMessage deserializeDomainMessage(byte[] jsonBytes) throws IOException {
+    public SaaSDomainSubscriptionMessage deserializeDomainMessage(byte[] jsonBytes) throws IOException {
+        JsonNode root = objectMapper.readTree(jsonBytes);
+
+        if (root.has(ENABLED_FIELD)) {
+            return deserializeCancelDomainMessage(jsonBytes);
+        }
+        return deserializeValidDomainMessage(jsonBytes);
+    }
+
+    public SaaSDomainCancelSubscriptionMessage deserializeCancelDomainMessage(byte[] jsonBytes) throws IOException {
+        return objectMapper.readValue(jsonBytes, SaaSDomainCancelSubscriptionMessage.class);
+    }
+
+    public SaaSDomainValidSubscriptionMessage deserializeValidDomainMessage(byte[] jsonBytes) throws IOException {
         return objectMapper.readValue(jsonBytes, SaaSDomainValidSubscriptionMessage.class);
     }
 }
