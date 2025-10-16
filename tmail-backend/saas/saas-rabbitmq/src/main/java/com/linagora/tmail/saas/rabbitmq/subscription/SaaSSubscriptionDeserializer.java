@@ -23,6 +23,7 @@ import java.nio.charset.StandardCharsets;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.linagora.tmail.saas.rabbitmq.subscription.SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage;
 
 public class SaaSSubscriptionDeserializer {
     public static class SaaSSubscriptionMessageParseException extends RuntimeException {
@@ -68,7 +69,7 @@ public class SaaSSubscriptionDeserializer {
         return objectMapper.readValue(jsonBytes, SaaSSubscriptionMessage.class);
     }
 
-    public SaaSDomainSubscriptionMessage deserializeDomainMessage(byte[] jsonBytes) throws IOException {
-        return objectMapper.readValue(jsonBytes, SaaSDomainSubscriptionMessage.class);
+    public SaaSDomainValidSubscriptionMessage deserializeDomainMessage(byte[] jsonBytes) throws IOException {
+        return objectMapper.readValue(jsonBytes, SaaSDomainValidSubscriptionMessage.class);
     }
 }

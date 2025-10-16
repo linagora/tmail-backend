@@ -44,6 +44,7 @@ import org.slf4j.LoggerFactory;
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
+import com.linagora.tmail.saas.rabbitmq.subscription.SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.ShutdownSignalException;
@@ -166,7 +167,7 @@ public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
     }
 
     private Mono<Void> consumeDomainSubscriptionUpdate(AcknowledgableDelivery ackDelivery, byte[] messagePayload) {
-        return Mono.fromCallable(() -> SaaSSubscriptionDeserializer.parseAMQPDomainMessage(messagePayload))
+        return Mono.fromCallable(() -> (SaaSDomainValidSubscriptionMessage) SaaSSubscriptionDeserializer.parseAMQPDomainMessage(messagePayload))
             .flatMap(this::handleDomainSubscriptionMessage)
             .doOnSuccess(result -> ackDelivery.ack())
             .onErrorResume(error -> {
@@ -176,7 +177,7 @@ public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
             });
     }
 
-    private Mono<Void> handleDomainSubscriptionMessage(SaaSDomainSubscriptionMessage domainSubscriptionMessage) {
+    private Mono<Void> handleDomainSubscriptionMessage(SaaSDomainValidSubscriptionMessage domainSubscriptionMessage) {
         if (domainSubscriptionMessage.validated()) {
             Domain domain = Domain.of(domainSubscriptionMessage.domain());
             return addDomainIfNotExist(domain)
