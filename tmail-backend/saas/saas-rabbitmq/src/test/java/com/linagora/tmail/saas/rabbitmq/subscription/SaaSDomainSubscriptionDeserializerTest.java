@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition;
+import com.linagora.tmail.saas.rabbitmq.subscription.SaaSDomainSubscriptionMessage.SaaSDomainCancelSubscriptionMessage;
 import com.linagora.tmail.saas.rabbitmq.subscription.SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage;
 
 public class SaaSDomainSubscriptionDeserializerTest {
@@ -212,6 +213,79 @@ public class SaaSDomainSubscriptionDeserializerTest {
             SaaSDomainValidSubscriptionMessage parsed = (SaaSDomainValidSubscriptionMessage) SaaSSubscriptionDeserializer.parseAMQPDomainMessage(message);
 
             assertThat(parsed.features().mail().storageQuota()).isEqualTo(-1L);
+        }
+    }
+
+    @Nested
+    class SaaSDomainCancelSubscriptionDeserializerTest {
+        @Test
+        void parseInvalidAmqpMessageShouldThrowException() {
+            String invalidMessage = "{ invalid json }";
+
+            assertThatThrownBy(() -> SaaSSubscriptionDeserializer.parseAMQPDomainMessage(invalidMessage))
+                .isInstanceOf(SaaSSubscriptionDeserializer.SaaSSubscriptionMessageParseException.class)
+                .hasMessageContaining("Failed to parse SaaS subscription domain message");
+        }
+
+        @Test
+        void parseValidAmqpMessageShouldSucceed() {
+            String validMessage = """
+            {
+                "domain": "twake.app",
+                "enabled": false
+            }
+            """;
+
+            SaaSDomainCancelSubscriptionMessage message = (SaaSDomainCancelSubscriptionMessage) SaaSSubscriptionDeserializer.parseAMQPDomainMessage(validMessage);
+
+            SoftAssertions.assertSoftly(softly -> {
+                softly.assertThat(message.domain()).isEqualTo("twake.app");
+                softly.assertThat(message.enabled()).isFalse();
+            });
+        }
+
+        @Test
+        void parseMissingRequiredDomainShouldThrowException() {
+            String message = """
+            {
+                "enabled": false
+            }
+            """;
+
+            assertThatThrownBy(() -> SaaSSubscriptionDeserializer.parseAMQPDomainMessage(message))
+                .isInstanceOf(SaaSSubscriptionDeserializer.SaaSSubscriptionMessageParseException.class)
+                .hasMessageContaining("Failed to parse SaaS subscription domain message");
+        }
+
+        @Test
+        void parseMissingRequiredEnabledShouldThrowException() {
+            String message = """
+            {
+                "domain": "twake.app"
+            }
+            """;
+
+            assertThatThrownBy(() -> SaaSSubscriptionDeserializer.parseAMQPDomainMessage(message))
+                .isInstanceOf(SaaSSubscriptionDeserializer.SaaSSubscriptionMessageParseException.class)
+                .hasMessageContaining("Failed to parse SaaS subscription domain message");
+        }
+
+        @Test
+        void parseMessageWithExtraFieldsShouldNotFail() {
+            String validMessage = """
+            {
+                "domain": "twake.app",
+                "enabled": true,
+                "extraField": "ignored"
+            }
+            """;
+
+            SaaSDomainCancelSubscriptionMessage message = (SaaSDomainCancelSubscriptionMessage) SaaSSubscriptionDeserializer.parseAMQPDomainMessage(validMessage);
+
+            SoftAssertions.assertSoftly(softly -> {
+                softly.assertThat(message.domain()).isEqualTo("twake.app");
+                softly.assertThat(message.enabled()).isTrue();
+            });
         }
     }
 }
