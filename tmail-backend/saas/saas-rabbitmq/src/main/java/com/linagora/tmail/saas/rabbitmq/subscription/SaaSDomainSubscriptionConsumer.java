@@ -41,9 +41,11 @@ import org.apache.james.util.ReactorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
+import com.linagora.tmail.saas.rabbitmq.subscription.SaaSDomainSubscriptionMessage.SaaSDomainCancelSubscriptionMessage;
 import com.linagora.tmail.saas.rabbitmq.subscription.SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
@@ -167,7 +169,7 @@ public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
     }
 
     private Mono<Void> consumeDomainSubscriptionUpdate(AcknowledgableDelivery ackDelivery, byte[] messagePayload) {
-        return Mono.fromCallable(() -> (SaaSDomainValidSubscriptionMessage) SaaSSubscriptionDeserializer.parseAMQPDomainMessage(messagePayload))
+        return Mono.fromCallable(() -> SaaSSubscriptionDeserializer.parseAMQPDomainMessage(messagePayload))
             .flatMap(this::handleDomainSubscriptionMessage)
             .doOnSuccess(result -> ackDelivery.ack())
             .onErrorResume(error -> {
@@ -177,28 +179,50 @@ public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
             });
     }
 
-    private Mono<Void> handleDomainSubscriptionMessage(SaaSDomainValidSubscriptionMessage domainSubscriptionMessage) {
-        if (domainSubscriptionMessage.validated()) {
-            Domain domain = Domain.of(domainSubscriptionMessage.domain());
-            return addDomainIfNotExist(domain)
-                .then(updateStorageDomainQuota(domain, domainSubscriptionMessage.features().mail().storageQuota())
-                    .then(updateRateLimiting(domain, domainSubscriptionMessage.features().mail().rateLimitingDefinition()))
-                    .doOnSuccess(success -> LOGGER.info("Updated SaaS subscription for domain: {}, storageQuota: {}, rateLimiting: {}",
-                        domain, domainSubscriptionMessage.features().mail().storageQuota(), domainSubscriptionMessage.features().mail().rateLimitingDefinition())));
+    private Mono<Void> handleDomainSubscriptionMessage(SaaSDomainSubscriptionMessage domainSubscriptionMessage) {
+        return switch (domainSubscriptionMessage) {
+            case SaaSDomainValidSubscriptionMessage message  -> handleDomainValidSubscriptionMessage(message);
+            case SaaSDomainCancelSubscriptionMessage message -> handleDomainCancelSubscriptionMessage(message);
+            default                                          -> throw new IllegalArgumentException("Unrecognized SaaS domain subscription message");
+        };
+    }
+
+    private Mono<Void> handleDomainCancelSubscriptionMessage(SaaSDomainCancelSubscriptionMessage domainCancelSubscriptionMessage) {
+        if (!domainCancelSubscriptionMessage.enabled()) {
+            Domain domain = Domain.of(domainCancelSubscriptionMessage.domain());
+            return removeDomainIfExists(domain)
+                .doOnSuccess(success -> LOGGER.info("Cancelled SaaS subscription for domain: {}", domain));
         }
         return Mono.empty();
     }
 
-    private Mono<Domain> addDomainIfNotExist(Domain domain) {
+    private Mono<Void> removeDomainIfExists(Domain domain) {
+        return Mono.fromRunnable(Throwing.runnable(() -> domainList.removeDomain(domain)))
+            .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
+            .then();
+    }
+
+    private Mono<Void> handleDomainValidSubscriptionMessage(SaaSDomainValidSubscriptionMessage domainValidSubscriptionMessage) {
+        if (domainValidSubscriptionMessage.validated()) {
+            Domain domain = Domain.of(domainValidSubscriptionMessage.domain());
+            return addDomainIfNotExist(domain)
+                .then(updateStorageDomainQuota(domain, domainValidSubscriptionMessage.features().mail().storageQuota())
+                    .then(updateRateLimiting(domain, domainValidSubscriptionMessage.features().mail().rateLimitingDefinition()))
+                    .doOnSuccess(success -> LOGGER.info("Updated SaaS subscription for domain: {}, storageQuota: {}, rateLimiting: {}",
+                        domain, domainValidSubscriptionMessage.features().mail().storageQuota(), domainValidSubscriptionMessage.features().mail().rateLimitingDefinition())));
+        }
+        return Mono.empty();
+    }
+
+    private Mono<Void> addDomainIfNotExist(Domain domain) {
         return Mono.from(domainList.containsDomainReactive(domain))
             .flatMap(alreadyExists -> {
                 if (alreadyExists) {
-                    return Mono.just(domain);
+                    return Mono.empty();
                 }
-                return Mono.fromCallable(() -> {
-                    domainList.addDomain(domain);
-                    return domain;
-                }).subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER);
+                return Mono.fromRunnable(Throwing.runnable(() -> domainList.addDomain(domain)))
+                    .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
+                    .then();
             });
     }
 

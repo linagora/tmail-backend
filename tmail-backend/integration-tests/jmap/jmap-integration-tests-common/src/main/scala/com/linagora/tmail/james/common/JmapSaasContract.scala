@@ -220,6 +220,7 @@ trait JmapSaasContract {
   }
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
   def domainShouldBeCreatedWhenDomainSubscriptionValidated(): Unit = {
     val server = setUpJmapServer(saasSupport = true)
     val domain: Domain = Domain.of("twake.app")
@@ -317,5 +318,21 @@ trait JmapSaasContract {
 
     awaitAtMostTenSeconds.untilAsserted(() => assertThat(server.getProbe(classOf[QuotaProbesImpl]).getMaxStorage(QUOTA_ROOT))
       .isEqualTo(Optional.of(QuotaSizeLimit.size(20000))))
+  }
+
+  @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
+  def domainShouldBeRemovedWhenDomainSubscriptionDisabled(): Unit = {
+    val server = setUpJmapServer(saasSupport = true)
+
+    publishAmqpSettingsMessage(
+      s"""{
+         |    "domain": "%s",
+         |    "enabled": false
+         |}""".format(DOMAIN.asString())
+        .stripMargin,
+      DOMAIN_SUBSCRIPTION_ROUTING_KEY)
+
+    awaitAtMostTenSeconds.untilAsserted(() => assertThat(server.getProbe(classOf[DomainProbe]).containsDomain(DOMAIN)).isFalse)
   }
 }
