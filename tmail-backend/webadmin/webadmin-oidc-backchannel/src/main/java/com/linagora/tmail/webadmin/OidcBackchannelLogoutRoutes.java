@@ -106,6 +106,7 @@ public class OidcBackchannelLogoutRoutes implements Routes {
 
             return Optional.ofNullable(payloadMap.getOrDefault(SID_PROPERTY, null))
                 .map(s -> (String) s)
+                .filter(sid -> !sid.isEmpty())
                 .map(Sid::new)
                 .orElseThrow(() -> new IllegalArgumentException("Unable to extract Sid from logout token: " + token));
         } catch (Exception exception) {
