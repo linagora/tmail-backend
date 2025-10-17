@@ -1,0 +1,30 @@
+== Domain contact provisioner listener
+:navtitle: Domain contact provisioner listener
+
+This listener will index a contact for the domain every time a user is created,
+or will remove it everytime a user is deleted.
+
+This can be used to avoid waiting for a synchronisation with a ldap job and that users can have that
+new user in their contacts when belonging to the same organization and when composing an email.
+
+It is possible to configure LDAP lookup parameters such as attribute names used to retrieve the user’s first and last names:
+- `firstnameAttribute`: attribute to get firstname of user from LDAP. Default to `givenName`.
+- `surnameAttribute`: attribute to get surname of user from LDAP. Default to `sn`.
+
+It is also possible to configure a list of domains that will be ignored by this listener with `ignoredDomains`, useful for example
+not indexing users part of a saas b2c offer.
+
+Sample configuration: `listeners.xml`
+
+....xml
+<listeners>
+  <listener>
+    <class>com.linagora.tmail.james.jmap.contact.DomainContactProvisionerListener</class>
+    <configuration>
+      <ignoredDomains>lin-saas.com,stg.lin-saas.com</ignoredDomains>
+      <firstnameAttribute>givenName</firstnameAttribute>
+      <surnameAttribute>sn</surnameAttribute>
+    </configuration>
+  </listener>
+</listeners>
+....
