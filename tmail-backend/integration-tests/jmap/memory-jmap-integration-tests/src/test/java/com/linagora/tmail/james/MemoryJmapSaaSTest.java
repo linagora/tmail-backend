@@ -114,4 +114,10 @@ public class MemoryJmapSaaSTest implements JmapSaasContract {
     public void quotaForUserShouldBeUserByDefaultWhenDomainAndUserQuotaDefined() {
 
     }
+
+    @Disabled("Memory app does not support RabbitMQ consumer")
+    @Test
+    public void domainShouldBeRemovedWhenDomainSubscriptionDisabled() {
+
+    }
 }

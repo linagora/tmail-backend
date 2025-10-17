@@ -47,6 +47,7 @@ import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionFactory;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -134,9 +135,11 @@ public class SaaSDomainSubscriptionConsumerTest {
         testee.close();
     }
 
-    @Test
-    void shouldRegisterSaasValidatedDomain() {
-        String validMessage = String.format("""
+    @Nested
+    class SaaSDomainValidSubscriptionConsumerTest {
+        @Test
+        void shouldRegisterSaasValidatedDomain() {
+            String validMessage = String.format("""
             {
                 "domain": "%s",
                 "validated": true,
@@ -154,15 +157,15 @@ public class SaaSDomainSubscriptionConsumerTest {
             }
             """, DOMAIN.asString());
 
-        publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+            publishAmqpSaaSDomainSubscriptionMessage(validMessage);
 
-        await.untilAsserted(() -> assertThat(domainList.containsDomain(DOMAIN)).isTrue());
-    }
+            await.untilAsserted(() -> assertThat(domainList.containsDomain(DOMAIN)).isTrue());
+        }
 
-    @Test
-    void shouldIgnoreSaasUnvalidatedDomain() {
-        Domain unvalidatedDomain = Domain.of("unvalidated.org");
-        String unvalidatedMessage = String.format("""
+        @Test
+        void shouldIgnoreSaasUnvalidatedDomain() {
+            Domain unvalidatedDomain = Domain.of("unvalidated.org");
+            String unvalidatedMessage = String.format("""
             {
                 "domain": "%s",
                 "validated": false,
@@ -180,9 +183,9 @@ public class SaaSDomainSubscriptionConsumerTest {
             }
             """, unvalidatedDomain.asString());
 
-        publishAmqpSaaSDomainSubscriptionMessage(unvalidatedMessage);
+            publishAmqpSaaSDomainSubscriptionMessage(unvalidatedMessage);
 
-        String validMessage = String.format("""
+            String validMessage = String.format("""
             {
                 "domain": "%s",
                 "validated": true,
@@ -200,17 +203,17 @@ public class SaaSDomainSubscriptionConsumerTest {
             }
             """, DOMAIN.asString());
 
-        publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+            publishAmqpSaaSDomainSubscriptionMessage(validMessage);
 
-        await.untilAsserted(() -> {
-            assertThat(domainList.containsDomain(DOMAIN)).isTrue();
-            assertThat(domainList.containsDomain(unvalidatedDomain)).isFalse();
-        });
-    }
+            await.untilAsserted(() -> {
+                assertThat(domainList.containsDomain(DOMAIN)).isTrue();
+                assertThat(domainList.containsDomain(unvalidatedDomain)).isFalse();
+            });
+        }
 
-    @Test
-    void shouldSetStorageQuotaWhenDomainHasNoQuotaYet() {
-        String validMessage = String.format("""
+        @Test
+        void shouldSetStorageQuotaWhenDomainHasNoQuotaYet() {
+            String validMessage = String.format("""
             {
                 "domain": "%s",
                 "validated": true,
@@ -228,15 +231,15 @@ public class SaaSDomainSubscriptionConsumerTest {
             }
             """, DOMAIN.asString());
 
-        publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+            publishAmqpSaaSDomainSubscriptionMessage(validMessage);
 
-        await.untilAsserted(() -> assertThat(maxQuotaManager.getDomainMaxStorage(DOMAIN))
-            .isEqualTo(Optional.of(QuotaSizeLimit.size(1234))));
-    }
+            await.untilAsserted(() -> assertThat(maxQuotaManager.getDomainMaxStorage(DOMAIN))
+                .isEqualTo(Optional.of(QuotaSizeLimit.size(1234))));
+        }
 
-    @Test
-    void shouldSetRateLimitingWhenDomainHasNoRateLimitingYet() {
-        String validMessage = String.format("""
+        @Test
+        void shouldSetRateLimitingWhenDomainHasNoRateLimitingYet() {
+            String validMessage = String.format("""
             {
                 "domain": "%s",
                 "validated": true,
@@ -254,17 +257,17 @@ public class SaaSDomainSubscriptionConsumerTest {
             }
             """, DOMAIN.asString());
 
-        publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+            publishAmqpSaaSDomainSubscriptionMessage(validMessage);
 
-        await.untilAsserted(() -> {
-            RateLimitingDefinition rateLimitingDefinition = Mono.from(rateLimitingRepository.getRateLimiting(DOMAIN)).block();
-            assertThat(rateLimitingDefinition).isEqualTo(RATE_LIMITING_1);
-        });
-    }
+            await.untilAsserted(() -> {
+                RateLimitingDefinition rateLimitingDefinition = Mono.from(rateLimitingRepository.getRateLimiting(DOMAIN)).block();
+                assertThat(rateLimitingDefinition).isEqualTo(RATE_LIMITING_1);
+            });
+        }
 
-    @Test
-    void shouldSupportSetUnlimitedStorageQuotaForDomain() {
-        String validMessage = String.format("""
+        @Test
+        void shouldSupportSetUnlimitedStorageQuotaForDomain() {
+            String validMessage = String.format("""
             {
                 "domain": "%s",
                 "validated": true,
@@ -282,15 +285,15 @@ public class SaaSDomainSubscriptionConsumerTest {
             }
             """, DOMAIN.asString());
 
-        publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+            publishAmqpSaaSDomainSubscriptionMessage(validMessage);
 
-        await.untilAsserted(() -> assertThat(maxQuotaManager.getDomainMaxStorage(DOMAIN))
-            .isEqualTo(Optional.of(QuotaSizeLimit.unlimited())));
-    }
+            await.untilAsserted(() -> assertThat(maxQuotaManager.getDomainMaxStorage(DOMAIN))
+                .isEqualTo(Optional.of(QuotaSizeLimit.unlimited())));
+        }
 
-    @Test
-    void shouldSupportSetUnlimitedRateLimitingForDomain() {
-        String validMessage = String.format("""
+        @Test
+        void shouldSupportSetUnlimitedRateLimitingForDomain() {
+            String validMessage = String.format("""
             {
                 "domain": "%s",
                 "validated": true,
@@ -308,20 +311,20 @@ public class SaaSDomainSubscriptionConsumerTest {
             }
             """, DOMAIN.asString());
 
-        publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+            publishAmqpSaaSDomainSubscriptionMessage(validMessage);
 
-        await.untilAsserted(() -> {
-            RateLimitingDefinition rateLimitingDefinition = Mono.from(rateLimitingRepository.getRateLimiting(DOMAIN)).block();
-            assertThat(rateLimitingDefinition).isEqualTo(UNLIMITED);
-        });
-    }
+            await.untilAsserted(() -> {
+                RateLimitingDefinition rateLimitingDefinition = Mono.from(rateLimitingRepository.getRateLimiting(DOMAIN)).block();
+                assertThat(rateLimitingDefinition).isEqualTo(UNLIMITED);
+            });
+        }
 
-    @Test
-    void shouldUpdateStorageQuotaWhenNewSubscriptionUpdate() throws MailboxException, DomainListException {
-        domainList.addDomain(DOMAIN);
-        maxQuotaManager.setDomainMaxStorage(DOMAIN, QuotaSizeLimit.size(1234));
+        @Test
+        void shouldUpdateStorageQuotaWhenNewSubscriptionUpdate() throws MailboxException, DomainListException {
+            domainList.addDomain(DOMAIN);
+            maxQuotaManager.setDomainMaxStorage(DOMAIN, QuotaSizeLimit.size(1234));
 
-        String validMessage = String.format("""
+            String validMessage = String.format("""
             {
                 "domain": "%s",
                 "validated": true,
@@ -339,15 +342,15 @@ public class SaaSDomainSubscriptionConsumerTest {
             }
             """, DOMAIN.asString());
 
-        publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+            publishAmqpSaaSDomainSubscriptionMessage(validMessage);
 
-        await.untilAsserted(() -> assertThat(maxQuotaManager.getDomainMaxStorage(DOMAIN))
-            .isEqualTo(Optional.of(QuotaSizeLimit.size(12334534))));
-    }
+            await.untilAsserted(() -> assertThat(maxQuotaManager.getDomainMaxStorage(DOMAIN))
+                .isEqualTo(Optional.of(QuotaSizeLimit.size(12334534))));
+        }
 
-    @Test
-    void shouldUpdateRateLimitingWhenNewSubscriptionUpdate() {
-        String validMessage = String.format("""
+        @Test
+        void shouldUpdateRateLimitingWhenNewSubscriptionUpdate() {
+            String validMessage = String.format("""
             {
                 "domain": "%s",
                 "validated": true,
@@ -365,9 +368,9 @@ public class SaaSDomainSubscriptionConsumerTest {
             }
             """, DOMAIN.asString());
 
-        publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+            publishAmqpSaaSDomainSubscriptionMessage(validMessage);
 
-        String validUpdateMessage = String.format("""
+            String validUpdateMessage = String.format("""
             {
                 "domain": "%s",
                 "validated": true,
@@ -385,31 +388,31 @@ public class SaaSDomainSubscriptionConsumerTest {
             }
             """, DOMAIN.asString());
 
-        publishAmqpSaaSDomainSubscriptionMessage(validUpdateMessage);
+            publishAmqpSaaSDomainSubscriptionMessage(validUpdateMessage);
 
-        await.untilAsserted(() -> {
-            RateLimitingDefinition rateLimitingDefinition = Mono.from(rateLimitingRepository.getRateLimiting(DOMAIN)).block();
-            assertThat(rateLimitingDefinition).isEqualTo(RATE_LIMITING_1);
-        });
-    }
+            await.untilAsserted(() -> {
+                RateLimitingDefinition rateLimitingDefinition = Mono.from(rateLimitingRepository.getRateLimiting(DOMAIN)).block();
+                assertThat(rateLimitingDefinition).isEqualTo(RATE_LIMITING_1);
+            });
+        }
 
-    @Test
-    void shouldNotEffectOtherDomainSubscription() throws MailboxException, DomainListException {
-        Domain otherDomain = Domain.of("otherDomain.org");
-        domainList.addDomain(otherDomain);
-        maxQuotaManager.setDomainMaxStorage(otherDomain, QuotaSizeLimit.size(1234));
+        @Test
+        void shouldNotEffectOtherDomainSubscription() throws MailboxException, DomainListException {
+            Domain otherDomain = Domain.of("otherDomain.org");
+            domainList.addDomain(otherDomain);
+            maxQuotaManager.setDomainMaxStorage(otherDomain, QuotaSizeLimit.size(1234));
 
-        RateLimitingDefinition otherRateLimiting = RateLimitingDefinition.builder()
-            .mailsSentPerMinute(15L)
-            .mailsSentPerHours(150L)
-            .mailsSentPerDays(1500L)
-            .mailsReceivedPerMinute(25L)
-            .mailsReceivedPerHours(250L)
-            .mailsReceivedPerDays(2500L)
-            .build();
-        Mono.from(rateLimitingRepository.setRateLimiting(otherDomain, otherRateLimiting)).block();
+            RateLimitingDefinition otherRateLimiting = RateLimitingDefinition.builder()
+                .mailsSentPerMinute(15L)
+                .mailsSentPerHours(150L)
+                .mailsSentPerDays(1500L)
+                .mailsReceivedPerMinute(25L)
+                .mailsReceivedPerHours(250L)
+                .mailsReceivedPerDays(2500L)
+                .build();
+            Mono.from(rateLimitingRepository.setRateLimiting(otherDomain, otherRateLimiting)).block();
 
-        String validMessage = String.format("""
+            String validMessage = String.format("""
             {
                 "domain": "%s",
                 "validated": true,
@@ -427,19 +430,173 @@ public class SaaSDomainSubscriptionConsumerTest {
             }
             """, DOMAIN.asString());
 
-        publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+            publishAmqpSaaSDomainSubscriptionMessage(validMessage);
 
-        await.untilAsserted(() -> {
-            assertThat(domainList.containsDomain(otherDomain)).isTrue();
-            assertThat(maxQuotaManager.getDomainMaxStorage(otherDomain))
-                .isEqualTo(Optional.of(QuotaSizeLimit.size(1234)));
-            RateLimitingDefinition rateLimitingDefinition = Mono.from(rateLimitingRepository.getRateLimiting(otherDomain)).block();
-            assertThat(rateLimitingDefinition).isEqualTo(otherRateLimiting);
-        });
+            await.untilAsserted(() -> {
+                assertThat(domainList.containsDomain(otherDomain)).isTrue();
+                assertThat(maxQuotaManager.getDomainMaxStorage(otherDomain))
+                    .isEqualTo(Optional.of(QuotaSizeLimit.size(1234)));
+                RateLimitingDefinition rateLimitingDefinition = Mono.from(rateLimitingRepository.getRateLimiting(otherDomain)).block();
+                assertThat(rateLimitingDefinition).isEqualTo(otherRateLimiting);
+            });
+        }
+
+        @Test
+        void shouldBeIdempotent() {
+            String validMessage = String.format("""
+            {
+                "domain": "%s",
+                "validated": true,
+                "features": {
+                    "mail": {
+                        "storageQuota": 1234,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
+            }
+            """, DOMAIN.asString());
+
+            publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+            publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+
+            await.untilAsserted(() -> {
+                assertThat(domainList.containsDomain(DOMAIN)).isTrue();
+                assertThat(maxQuotaManager.getDomainMaxStorage(DOMAIN))
+                    .isEqualTo(Optional.of(QuotaSizeLimit.size(1234)));
+                RateLimitingDefinition rateLimitingDefinition = Mono.from(rateLimitingRepository.getRateLimiting(DOMAIN)).block();
+                assertThat(rateLimitingDefinition).isEqualTo(RATE_LIMITING_1);
+            });
+        }
+
+        @Test
+        void invalidAmqpMessageShouldNotCrashConsumer() {
+            String invalidMessage = "{ invalid json }";
+            publishAmqpSaaSDomainSubscriptionMessage(invalidMessage);
+
+            // Publish a valid message after invalid one to ensure consumer is still alive
+            String validMessage = String.format("""
+            {
+                "domain": "%s",
+                "validated": true,
+                "features": {
+                    "mail": {
+                        "storageQuota": 1234,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
+            }
+            """, DOMAIN.asString());
+            publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+
+            await.untilAsserted(() -> assertThat(domainList.containsDomain(DOMAIN)).isTrue());
+        }
+    }
+
+    @Nested
+    class SaaSDomainCancelSubscriptionConsumerTest {
+        @Test
+        void shouldRemoveDisabledDomain() throws DomainListException {
+            domainList.addDomain(DOMAIN);
+
+            String validMessage = String.format("""
+            {
+                "domain": "%s",
+                "enabled": false
+            }
+            """, DOMAIN.asString());
+
+            publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+
+            await.untilAsserted(() -> assertThat(domainList.containsDomain(DOMAIN)).isFalse());
+        }
+
+        @Test
+        void shouldNotRemoveEnabledDomain() throws DomainListException {
+            domainList.addDomain(DOMAIN);
+
+            String validMessage = String.format("""
+            {
+                "domain": "%s",
+                "enabled": true
+            }
+            """, DOMAIN.asString());
+
+            publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+
+            await.untilAsserted(() -> assertThat(domainList.containsDomain(DOMAIN)).isTrue());
+        }
+
+        @Test
+        void shouldNotAffectOtherDomainWhenRemovingDomain() throws DomainListException {
+            Domain otherDomain = Domain.of("otherDomain.org");
+            domainList.addDomain(DOMAIN);
+            domainList.addDomain(otherDomain);
+
+            String validMessage = String.format("""
+            {
+                "domain": "%s",
+                "enabled": false
+            }
+            """, DOMAIN.asString());
+
+            publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+
+            await.untilAsserted(() -> {
+                assertThat(domainList.containsDomain(DOMAIN)).isFalse();
+                assertThat(domainList.containsDomain(otherDomain)).isTrue();
+            });
+        }
+
+        @Test
+        void shouldBeIdempotent() throws DomainListException {
+            domainList.addDomain(DOMAIN);
+
+            String validMessage = String.format("""
+            {
+                "domain": "%s",
+                "enabled": false
+            }
+            """, DOMAIN.asString());
+
+            publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+            publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+
+            await.untilAsserted(() -> assertThat(domainList.containsDomain(DOMAIN)).isFalse());
+        }
+
+        @Test
+        void invalidAmqpMessageShouldNotCrashConsumer() throws DomainListException {
+            domainList.addDomain(DOMAIN);
+
+            String invalidMessage = "{ invalid json }";
+            publishAmqpSaaSDomainSubscriptionMessage(invalidMessage);
+
+            // Publish a valid message after invalid one to ensure consumer is still alive
+            String validMessage = String.format("""
+            {
+                "domain": "%s",
+                "enabled": false
+            }
+            """, DOMAIN.asString());
+
+            publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+
+            await.untilAsserted(() -> assertThat(domainList.containsDomain(DOMAIN)).isFalse());
+        }
     }
 
     @Test
-    void shouldBeIdempotent() {
+    void verifyChainSaasDomainSubscriptionMessage() {
         String validMessage = String.format("""
             {
                 "domain": "%s",
@@ -458,44 +615,20 @@ public class SaaSDomainSubscriptionConsumerTest {
             }
             """, DOMAIN.asString());
 
-        publishAmqpSaaSDomainSubscriptionMessage(validMessage);
-        publishAmqpSaaSDomainSubscriptionMessage(validMessage);
-
-        await.untilAsserted(() -> {
-            assertThat(domainList.containsDomain(DOMAIN)).isTrue();
-            assertThat(maxQuotaManager.getDomainMaxStorage(DOMAIN))
-                .isEqualTo(Optional.of(QuotaSizeLimit.size(1234)));
-            RateLimitingDefinition rateLimitingDefinition = Mono.from(rateLimitingRepository.getRateLimiting(DOMAIN)).block();
-            assertThat(rateLimitingDefinition).isEqualTo(RATE_LIMITING_1);
-        });
-    }
-
-    @Test
-    void invalidAmqpMessageShouldNotCrashConsumer() {
-        String invalidMessage = "{ invalid json }";
-        publishAmqpSaaSDomainSubscriptionMessage(invalidMessage);
-
-        // Publish a valid message after invalid one to ensure consumer is still alive
-        String validMessage = String.format("""
-            {
-                "domain": "%s",
-                "validated": true,
-                "features": {
-                    "mail": {
-                        "storageQuota": 1234,
-                        "mailsSentPerMinute": 10,
-                        "mailsSentPerHour": 100,
-                        "mailsSentPerDay": 1000,
-                        "mailsReceivedPerMinute": 20,
-                        "mailsReceivedPerHour": 200,
-                        "mailsReceivedPerDay": 2000
-                    }
-                }
-            }
-            """, DOMAIN.asString());
         publishAmqpSaaSDomainSubscriptionMessage(validMessage);
 
         await.untilAsserted(() -> assertThat(domainList.containsDomain(DOMAIN)).isTrue());
+
+        String cancelMessage = String.format("""
+            {
+                "domain": "%s",
+                "enabled": false
+            }
+            """, DOMAIN.asString());
+
+        publishAmqpSaaSDomainSubscriptionMessage(cancelMessage);
+
+        await.untilAsserted(() -> assertThat(domainList.containsDomain(DOMAIN)).isFalse());
     }
 
     private void publishAmqpSaaSDomainSubscriptionMessage(String message) {
