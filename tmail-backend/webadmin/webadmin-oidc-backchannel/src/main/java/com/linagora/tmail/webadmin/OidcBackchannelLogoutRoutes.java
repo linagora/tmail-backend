@@ -28,7 +28,6 @@ import jakarta.inject.Inject;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.james.webadmin.Constants;
 import org.apache.james.webadmin.Routes;
-import org.apache.james.webadmin.utils.ErrorResponder;
 import org.apache.james.webadmin.utils.JsonTransformer;
 import org.eclipse.jetty.http.HttpStatus;
 import org.slf4j.Logger;
@@ -84,44 +83,34 @@ public class OidcBackchannelLogoutRoutes implements Routes {
             String token = request.queryParams(TOKEN_PARAM);
             Preconditions.checkArgument(StringUtils.isNotEmpty(token), "Missing logout token");
 
-            try {
-                extractSidFromLogoutToken(token)
-                    .ifPresentOrElse(sid -> {
-                        LOGGER.debug("Add new revoked token has sid: " + sid);
-                        oidcTokenCache.invalidate(sid).block();
-                    }, () -> LOGGER.warn("Cannot extract sid from logout token: {}", token));
-                response.status(HttpStatus.OK_200);
-                return Constants.EMPTY_BODY;
-            } catch (Exception e) {
-                throw ErrorResponder.builder()
-                    .statusCode(HttpStatus.INTERNAL_SERVER_ERROR_500)
-                    .type(ErrorResponder.ErrorType.SERVER_ERROR)
-                    .message(String.format("Error while adding revoked token '%s'", token))
-                    .cause(e)
-                    .haltError();
-            }
+            Sid sid = extractSidFromLogoutToken(token);
+            LOGGER.debug("Add new revoked token has sid: {}", sid);
+            oidcTokenCache.invalidate(sid).block();
+            return Constants.EMPTY_BODY;
         };
     }
 
-    private Optional<Sid> extractSidFromLogoutToken(String token) {
+    private Sid extractSidFromLogoutToken(String token) {
         try {
             List<String> parts = Splitter.on('.')
                 .trimResults()
                 .omitEmptyStrings()
                 .splitToList(token);
             if (parts.size() < 2) {
-                return Optional.empty();
+                throw new IllegalArgumentException("JWT do not contaim mandatory 2 parts: " + token);
             }
 
             String payloadJson = new String(BaseEncoding.base64Url().decode(parts.get(1)), StandardCharsets.UTF_8);
             Map<String, Object> payloadMap = objectMapper.readValue(payloadJson, new TypeReference<>() {
             });
 
-            return Optional.ofNullable((String) payloadMap.getOrDefault(SID_PROPERTY, null))
-                .map(Sid::new);
+            return Optional.ofNullable(payloadMap.getOrDefault(SID_PROPERTY, null))
+                .map(s -> (String) s)
+                .filter(sid -> !sid.isEmpty())
+                .map(Sid::new)
+                .orElseThrow(() -> new IllegalArgumentException("Unable to extract Sid from logout token: " + token));
         } catch (Exception exception) {
-            LOGGER.warn("Unable to extract Sid from logout token: '{}'", token, exception);
-            return Optional.empty();
+            throw new IllegalArgumentException("Unable to extract Sid from logout token: " + token, exception);
         }
     }
 }

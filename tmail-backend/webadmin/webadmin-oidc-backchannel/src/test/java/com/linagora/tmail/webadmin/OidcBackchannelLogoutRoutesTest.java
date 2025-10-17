@@ -44,7 +44,7 @@ import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 import reactor.core.publisher.Mono;
 
-public class OidcBackchannelLogoutRoutesTest {
+class OidcBackchannelLogoutRoutesTest {
     private WebAdminServer webAdminServer;
     private OidcTokenCache oidcTokenCache;
 
@@ -122,9 +122,8 @@ public class OidcBackchannelLogoutRoutesTest {
     @ValueSource(strings = {
         "invalidtoken123456",
         "eyJblablabla",
-        "eyJ12345.eyJzaWQiOiJzaWQxIn0."
     })
-    void postShouldReturn200WhenCanNotExtractSidFromToken(String invalidToken) {
+    void postShouldReturn400WhenCanNotExtractSidFromToken(String invalidToken) {
         given().log().ifValidationFails()
             .contentType(ContentType.URLENC)
             .formParam("logout_token", invalidToken)
@@ -132,11 +131,11 @@ public class OidcBackchannelLogoutRoutesTest {
             .post()
         .then()
             .log().ifValidationFails()
-            .statusCode(200);
+            .statusCode(400);
     }
 
     @Test
-    void postShouldReturn200WhenJwtHasNoSidClaim() {
+    void postShouldReturn400WhenJwtHasNoSidClaim() {
         String payload = Base64.getUrlEncoder().withoutPadding()
             .encodeToString(("{\"notSid\":\"abc\"}").getBytes(StandardCharsets.UTF_8));
         String tokenWithoutSid = "eyJblablabla." + payload + ".signature";
@@ -148,11 +147,11 @@ public class OidcBackchannelLogoutRoutesTest {
         .when()
             .post()
         .then()
-            .statusCode(200);
+            .statusCode(400);
     }
 
     @Test
-    void postShouldReturn200WhenSidIsEmpty() {
+    void postShouldReturn400WhenSidIsEmpty() {
         String payload = Base64.getUrlEncoder().withoutPadding()
             .encodeToString("{\"sid\":\"\"}".getBytes(StandardCharsets.UTF_8));
         String tokenWithEmptySid = "header." + payload + ".signature";
@@ -163,7 +162,7 @@ public class OidcBackchannelLogoutRoutesTest {
         .when()
             .post()
         .then()
-            .statusCode(200);
+            .statusCode(400);
     }
 
     @Test
@@ -183,7 +182,6 @@ public class OidcBackchannelLogoutRoutesTest {
 
         verify(oidcTokenCache, times(3)).invalidate(new Sid(sidValue));
     }
-
 
     private String generateJwtLikeTokenWithSid(String sid) {
         String header = "eyJblablabla";
