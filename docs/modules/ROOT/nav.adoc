@@ -20,6 +20,7 @@
 *** xref:tmail-backend/configure/structured-logging.adoc[]
 *** xref:tmail-backend/configure/team-mailboxes.adoc[]
 *** xref:tmail-backend/configure/users-repository.adoc[]
+*** xref:tmail-backend/configure/jmap-identity-provisioner.adoc[]
 *** xref:tmail-backend/configure/welcome-message.adoc[]
 ** xref:tmail-backend/features/index.adoc[]
 *** xref:tmail-backend/features/encrypted-mailbox.adoc[]
