@@ -24,4 +24,11 @@
             <surnameAttribute>sn</surnameAttribute>
         </configuration>
     </listener>
+    <listener>
+        <class>com.linagora.tmail.james.jmap.contact.DomainContactProvisionerListener</class>
+        <configuration>
+            <firstnameAttribute>givenName</firstnameAttribute>
+            <surnameAttribute>sn</surnameAttribute>
+        </configuration>
+    </listener>
 </listeners>
