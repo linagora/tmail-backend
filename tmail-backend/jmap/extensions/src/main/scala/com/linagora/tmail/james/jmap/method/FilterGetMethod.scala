@@ -42,7 +42,9 @@ import reactor.core.scala.publisher.SMono
 import scala.jdk.CollectionConverters._
 
 case object FilterCapabilityProperties extends CapabilityProperties {
-  override def jsonify(): JsObject = Json.obj()
+  private val VERSION = 2
+
+  override def jsonify(): JsObject = Json.obj("version" -> VERSION)
 }
 
 case object FilterCapability extends Capability {
