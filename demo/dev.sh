@@ -19,11 +19,6 @@ start_services() {
     docker compose up -d
     retvar=$?
     if [[ retvar -eq 0 ]]; then
-        echo Provisioning domain contacts using LSC...
-        docker run --network=demo_tmail -v ${PWD}/lsc/domain-contact-sync/logback.xml:/opt/lsc/conf/domain-contact-sync/logback.xml \
-            -v ${PWD}/lsc/domain-contact-sync/lsc.xml:/opt/lsc/conf/domain-contact-sync/lsc.xml linagora/tmail-lsc:latest ./lsc \
-            JAVA_OPTS="-DLSC.PLUGINS.PACKAGEPATH=org.lsc.plugins.connectors.james.generated" --config /opt/lsc/conf/domain-contact-sync/ --synchronize all --threads 1
-        echo Done provisioning domain contacts.
         echo
         echo "Please add the following line to your '/etc/hosts' file"
         echo
