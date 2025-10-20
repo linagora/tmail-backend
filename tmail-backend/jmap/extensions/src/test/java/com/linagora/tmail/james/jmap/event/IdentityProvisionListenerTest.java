@@ -25,6 +25,7 @@ import static org.mockito.Mockito.mock;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import jakarta.mail.internet.AddressException;
 
@@ -32,6 +33,7 @@ import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.plist.PropertyListConfiguration;
 import org.apache.commons.configuration2.tree.ImmutableNode;
 import org.apache.james.core.Domain;
+import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
 import org.apache.james.dnsservice.api.DNSService;
 import org.apache.james.domainlist.lib.DomainListConfiguration;
@@ -41,14 +43,15 @@ import org.apache.james.jmap.api.identity.IdentityCreationRequest;
 import org.apache.james.jmap.api.identity.IdentityRepository;
 import org.apache.james.jmap.api.model.Identity;
 import org.apache.james.jmap.memory.identity.MemoryCustomIdentityDAO;
+import org.apache.james.mailbox.SubscriptionManager;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
 import org.apache.james.mailbox.model.MailboxPath;
+import org.apache.james.mailbox.store.StoreSubscriptionManager;
 import org.apache.james.metrics.api.NoopGaugeRegistry;
 import org.apache.james.rrt.api.CanSendFrom;
 import org.apache.james.rrt.api.RecipientRewriteTableConfiguration;
 import org.apache.james.rrt.lib.AliasReverseResolverImpl;
-import org.apache.james.rrt.lib.CanSendFromImpl;
 import org.apache.james.rrt.memory.MemoryRecipientRewriteTable;
 import org.apache.james.user.ldap.DockerLdapSingleton;
 import org.apache.james.user.ldap.LdapGenericContainer;
@@ -59,6 +62,11 @@ import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import com.linagora.tmail.team.TMailCanSendFrom;
+import com.linagora.tmail.team.TeamMailbox;
+import com.linagora.tmail.team.TeamMailboxRepository;
+import com.linagora.tmail.team.TeamMailboxRepositoryImpl;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -72,6 +80,7 @@ public class IdentityProvisionListenerTest {
     private InMemoryMailboxManager mailboxManager;
     private IdentityRepository identityRepository;
     private IdentityProvisionListener testee;
+    private TeamMailboxRepository teamMailboxRepository;
 
     @BeforeAll
     static void setUpAll() {
@@ -87,6 +96,9 @@ public class IdentityProvisionListenerTest {
     void setUp() throws Exception {
         InMemoryIntegrationResources resources = InMemoryIntegrationResources.defaultResources();
         mailboxManager = resources.getMailboxManager();
+        SubscriptionManager subscriptionManager = new StoreSubscriptionManager(mailboxManager.getMapperFactory(),
+            mailboxManager.getMapperFactory(), mailboxManager.getEventBus());
+        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager, mailboxManager.getMapperFactory(), Set.of());
         LdapRepositoryConfiguration ldapRepositoryConfiguration = LdapRepositoryConfiguration.from(ldapRepositoryConfigurationWithVirtualHosting(ldapContainer));
         identityRepository = new IdentityRepository(new MemoryCustomIdentityDAO(), createDefaultIdentitySupplier(ldapRepositoryConfiguration));
         testee = new IdentityProvisionListener(ldapRepositoryConfiguration, identityRepository);
@@ -120,6 +132,19 @@ public class IdentityProvisionListenerTest {
             .block();
 
         List<Identity> userSetIdentities = Flux.from(identityRepository.list(USER1))
+            .filter(Identity::mayDelete)
+            .collectList()
+            .block();
+
+        assertThat(userSetIdentities).hasSize(0);
+    }
+
+    @Test
+    void shouldNotProvisionDefaultIdentityWhenTeamMailboxCreated() throws AddressException {
+        TeamMailbox teamMailbox = TeamMailbox.asTeamMailbox(new MailAddress("teamMailbox@james.org")).get();
+        Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox)).block();
+
+        List<Identity> userSetIdentities = Flux.from(identityRepository.list(teamMailbox.owner()))
             .filter(Identity::mayDelete)
             .collectList()
             .block();
@@ -205,7 +230,7 @@ public class IdentityProvisionListenerTest {
         rrt.setUsersRepository(ldapUserRepository);
         rrt.setDomainList(domainList);
         rrt.setConfiguration(RecipientRewriteTableConfiguration.DEFAULT_ENABLED);
-        CanSendFrom canSendFrom = new CanSendFromImpl(new AliasReverseResolverImpl(rrt));
+        CanSendFrom canSendFrom = new TMailCanSendFrom(new AliasReverseResolverImpl(rrt), teamMailboxRepository);
 
         return new DefaultIdentitySupplier(canSendFrom, ldapUserRepository);
     }

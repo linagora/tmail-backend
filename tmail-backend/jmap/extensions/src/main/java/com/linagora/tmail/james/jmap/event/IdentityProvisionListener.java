@@ -130,7 +130,7 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
         }
 
         Username username = event.getUsername();
-        return Mono.fromCallable(() -> searchLdap(event, username))
+        return Mono.fromCallable(() -> searchLdap(username))
             .map(Throwing.function(this::asIdentityCreationRequest))
             .flatMap(identityCreationRequest -> hasNoDefaultIdentity(username)
                 .flatMap(noDefaultIdentity -> Mono.from(identityRepository.save(username, identityCreationRequest))
@@ -143,16 +143,16 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
             .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER);
     }
 
-    private SearchResultEntry searchLdap(Event event, Username username) throws LDAPSearchException {
+    private SearchResultEntry searchLdap(Username username) throws LDAPSearchException {
         Filter filter = createFilter(username.asString(), evaluateLdapUserRetrievalAttribute(username));
-        SearchResult searchResult = ldapConnectionPool.search(userBase(event.getUsername()), SearchScope.SUB, filter,
+        SearchResult searchResult = ldapConnectionPool.search(userBase(username), SearchScope.SUB, filter,
             firstnameAttribute, surnameAttribute, usernameAttribute);
         SearchResultEntry searchResultEntry = searchResult.getSearchEntries()
             .stream()
             .findFirst()
             .orElse(null);
         if (searchResultEntry == null) {
-            LOGGER.warn("No LDAP entry found for user {}. Cannot provision identity.", event.getUsername());
+            LOGGER.warn("No LDAP entry found for user {}. Cannot provision identity.", username.asString());
         }
 
         return searchResultEntry;
