@@ -19,11 +19,6 @@ start_services() {
     docker compose up -d
     retvar=$?
     if [[ retvar -eq 0 ]]; then
-        echo Provisioning users default identity using LSC...
-        docker run --network=demo_tmail -v ${PWD}/lsc/identity-sync/logback.xml:/opt/lsc/conf/identity-sync/logback.xml \
-            -v ${PWD}/lsc/identity-sync/lsc.xml:/opt/lsc/conf/identity-sync/lsc.xml linagora/tmail-lsc:latest ./lsc \
-            JAVA_OPTS="-DLSC.PLUGINS.PACKAGEPATH=org.lsc.plugins.connectors.james.generated" --config /opt/lsc/conf/identity-sync/ --synchronize all --threads 1
-        echo Done provisioning users default identity.
         echo Provisioning domain contacts using LSC...
         docker run --network=demo_tmail -v ${PWD}/lsc/domain-contact-sync/logback.xml:/opt/lsc/conf/domain-contact-sync/logback.xml \
             -v ${PWD}/lsc/domain-contact-sync/lsc.xml:/opt/lsc/conf/domain-contact-sync/lsc.xml linagora/tmail-lsc:latest ./lsc \

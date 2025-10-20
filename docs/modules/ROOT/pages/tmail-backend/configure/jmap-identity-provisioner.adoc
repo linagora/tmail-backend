@@ -1,0 +1,29 @@
+== JMAP Identity Provision Listener
+:navtitle: JMAP identity provision listener
+
+This listener will automatically provision a default JMAP identity for a user when their mailbox is first created.
+It avoids the need to rely on the external LSC synchronisation job to populate user JMAP identities.
+
+When a new user’s mailbox (INBOX) is created, this listener will:
+- Look up the user’s personal information (first name, surname) directly from LDAP.
+- Create a default JMAP identity for the user, using these attributes.
+
+This ensures that users can immediately send emails with their proper display name without waiting for any background synchronisation.
+
+It is possible to configure LDAP lookup parameters such as attribute names used to retrieve the user’s first and last names:
+- `firstnameAttribute`: attribute to get firstname of user from LDAP. Default to `givenName`.
+- `surnameAttribute`: attribute to get surname of user from LDAP. Default to `sn`.
+
+Sample configuration: `listeners.xml`
+
+....xml
+<listeners>
+  <listener>
+    <class>com.linagora.tmail.james.jmap.event.IdentityProvisionListener</class>
+    <configuration>
+      <firstnameAttribute>givenName</firstnameAttribute>
+      <surnameAttribute>sn</surnameAttribute>
+    </configuration>
+  </listener>
+</listeners>
+....
