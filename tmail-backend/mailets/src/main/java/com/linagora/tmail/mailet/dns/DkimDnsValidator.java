@@ -92,8 +92,8 @@ public class DkimDnsValidator {
 
     @VisibleForTesting
     boolean isValidDkimRecord(String txtRecord) {
-        // Remove spaces and check if it starts with v=DKIM1
-        String normalized = txtRecord.replaceAll("\\s+", "");
-        return normalized.startsWith(DKIM_RECORD_PREFIX);
+        // Use regex to allow flexible whitespace around version tag
+        // Matches: "v=DKIM1", "v = DKIM1", " v=DKIM1 ", etc.
+        return txtRecord.trim().matches("(?i)^v\\s*=\\s*DKIM1.*");
     }
 }

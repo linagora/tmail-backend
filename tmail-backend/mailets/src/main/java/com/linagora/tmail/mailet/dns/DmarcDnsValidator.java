@@ -140,8 +140,9 @@ public class DmarcDnsValidator {
 
     @VisibleForTesting
     boolean isDmarcRecord(String txtRecord) {
-        String normalized = txtRecord.replaceAll("\\s+", "");
-        return normalized.startsWith(DMARC_PREFIX);
+        // Use regex to allow flexible whitespace around version tag
+        // Matches: "v=DMARC1", "v = DMARC1", " v=DMARC1 ", etc.
+        return txtRecord.trim().matches("(?i)^v\\s*=\\s*DMARC1.*");
     }
 
     @VisibleForTesting

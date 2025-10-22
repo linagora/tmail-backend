@@ -56,6 +56,12 @@ class DmarcDnsValidatorTest {
         assertThat(validator.isDmarcRecord("v=DMARC1; p=quarantine; rua=mailto:dmarc@example.com")).isTrue();
         assertThat(validator.isDmarcRecord("v=DMARC1;p=reject")).isTrue();
         assertThat(validator.isDmarcRecord("  v=DMARC1 ; p=none")).isTrue();
+        // Test with spaces around version tag
+        assertThat(validator.isDmarcRecord("v = DMARC1; p=quarantine")).isTrue();
+        assertThat(validator.isDmarcRecord(" v =DMARC1 ")).isTrue();
+        // Test case insensitive
+        assertThat(validator.isDmarcRecord("V=DMARC1; p=none")).isTrue();
+        // Invalid records
         assertThat(validator.isDmarcRecord("v=spf1 include:example.com")).isFalse();
         assertThat(validator.isDmarcRecord("p=quarantine")).isFalse();
     }

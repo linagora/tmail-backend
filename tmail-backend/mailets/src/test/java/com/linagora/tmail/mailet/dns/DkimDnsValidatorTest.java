@@ -52,6 +52,11 @@ class DkimDnsValidatorTest {
         assertThat(validator.isValidDkimRecord("v=DKIM1; k=rsa; p=MIGfMA0GCS...")).isTrue();
         assertThat(validator.isValidDkimRecord("v=DKIM1;k=rsa;p=key")).isTrue();
         assertThat(validator.isValidDkimRecord("v=DKIM1 ; k=rsa ; p=key")).isTrue();
+        // Test with spaces around version tag
+        assertThat(validator.isValidDkimRecord("v = DKIM1; k=rsa; p=key")).isTrue();
+        assertThat(validator.isValidDkimRecord(" v=DKIM1; k=rsa")).isTrue();
+        // Test case insensitive
+        assertThat(validator.isValidDkimRecord("V=DKIM1; k=rsa")).isTrue();
     }
 
     @Test
