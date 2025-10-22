@@ -22,8 +22,6 @@ import java.util.Collection;
 import java.util.Optional;
 
 import org.apache.james.dnsservice.api.DNSService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -36,9 +34,6 @@ import com.google.common.annotations.VisibleForTesting;
  * </p>
  */
 public class DkimDnsValidator {
-    private static final Logger LOGGER = LoggerFactory.getLogger(DkimDnsValidator.class);
-    private static final String DKIM_RECORD_PREFIX = "v=DKIM1";
-
     private final DNSService dnsService;
 
     public DkimDnsValidator(DNSService dnsService) {
@@ -50,18 +45,17 @@ public class DkimDnsValidator {
      *
      * @param domain the domain to validate
      * @param selector the DKIM selector
-     * @return Optional error message if validation fails, empty if validation succeeds
+     * @return Optional validation failure if validation fails, empty if validation succeeds
      */
-    public Optional<String> validate(String domain, String selector) {
+    public Optional<DnsValidationFailure.DkimValidationFailure> validate(String domain, String selector) {
         String dkimRecordName = buildDkimRecordName(selector, domain);
 
         try {
             Collection<String> txtRecords = dnsService.findTXTRecords(dkimRecordName);
 
             if (txtRecords == null || txtRecords.isEmpty()) {
-                String error = String.format("No DKIM record found at %s", dkimRecordName);
-                LOGGER.warn(error);
-                return Optional.of(error);
+                return Optional.of(new DnsValidationFailure.DkimValidationFailure(
+                    String.format("No DKIM record found at %s", dkimRecordName)));
             }
 
             // Check if at least one record is a valid DKIM record
@@ -69,19 +63,16 @@ public class DkimDnsValidator {
                 .anyMatch(this::isValidDkimRecord);
 
             if (!hasValidDkimRecord) {
-                String error = String.format("DKIM record at %s does not contain valid DKIM signature (must start with v=DKIM1)",
-                    dkimRecordName);
-                LOGGER.warn(error);
-                return Optional.of(error);
+                return Optional.of(new DnsValidationFailure.DkimValidationFailure(
+                    String.format("DKIM record at %s does not contain valid DKIM signature (must start with v=DKIM1)",
+                        dkimRecordName)));
             }
 
-            LOGGER.debug("DKIM validation passed for {}", dkimRecordName);
             return Optional.empty();
 
         } catch (Exception e) {
-            String error = String.format("Failed to query DKIM record at %s: %s", dkimRecordName, e.getMessage());
-            LOGGER.error(error, e);
-            return Optional.of(error);
+            return Optional.of(new DnsValidationFailure.DkimValidationFailure(
+                String.format("Failed to query DKIM record at %s: %s", dkimRecordName, e.getMessage())));
         }
     }
 

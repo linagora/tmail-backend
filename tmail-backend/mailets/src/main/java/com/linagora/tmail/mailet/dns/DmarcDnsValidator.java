@@ -24,8 +24,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.james.dnsservice.api.DNSService;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
 
@@ -38,7 +36,6 @@ import com.google.common.annotations.VisibleForTesting;
  * </p>
  */
 public class DmarcDnsValidator {
-    private static final Logger LOGGER = LoggerFactory.getLogger(DmarcDnsValidator.class);
     private static final String DMARC_PREFIX = "v=DMARC1";
     private static final String DMARC_SUBDOMAIN = "_dmarc.";
     private static final Pattern DMARC_POLICY_PATTERN = Pattern.compile("p=([^;\\s]+)");
@@ -81,18 +78,17 @@ public class DmarcDnsValidator {
      * Validates the DMARC DNS record for the given domain.
      *
      * @param domain the domain to validate
-     * @return Optional error message if validation fails, empty if validation succeeds
+     * @return Optional validation failure if validation fails, empty if validation succeeds
      */
-    public Optional<String> validate(String domain) {
+    public Optional<DnsValidationFailure.DmarcValidationFailure> validate(String domain) {
         String dmarcRecordName = buildDmarcRecordName(domain);
 
         try {
             Collection<String> txtRecords = dnsService.findTXTRecords(dmarcRecordName);
 
             if (txtRecords == null || txtRecords.isEmpty()) {
-                String error = String.format("No DMARC record found at %s", dmarcRecordName);
-                LOGGER.warn(error);
-                return Optional.of(error);
+                return Optional.of(new DnsValidationFailure.DmarcValidationFailure(
+                    String.format("No DMARC record found at %s", dmarcRecordName)));
             }
 
             // Find DMARC record
@@ -101,35 +97,30 @@ public class DmarcDnsValidator {
                 .findFirst();
 
             if (!dmarcRecord.isPresent()) {
-                String error = String.format("No valid DMARC record found at %s (must start with v=DMARC1)", dmarcRecordName);
-                LOGGER.warn(error);
-                return Optional.of(error);
+                return Optional.of(new DnsValidationFailure.DmarcValidationFailure(
+                    String.format("No valid DMARC record found at %s (must start with v=DMARC1)", dmarcRecordName)));
             }
 
             // Extract and validate policy
             Optional<DmarcPolicy> policy = extractPolicy(dmarcRecord.get());
 
             if (!policy.isPresent()) {
-                String error = String.format("DMARC record at %s does not contain a valid policy (p=). Record: %s",
-                    dmarcRecordName, dmarcRecord.get());
-                LOGGER.warn(error);
-                return Optional.of(error);
+                return Optional.of(new DnsValidationFailure.DmarcValidationFailure(
+                    String.format("DMARC record at %s does not contain a valid policy (p=). Record: %s",
+                        dmarcRecordName, dmarcRecord.get())));
             }
 
             if (!policy.get().isStricterOrEqualTo(minimumPolicy)) {
-                String error = String.format("DMARC policy for domain %s is too lenient. Required: %s, Found: %s. Record: %s",
-                    domain, minimumPolicy.name().toLowerCase(), policy.get().name().toLowerCase(), dmarcRecord.get());
-                LOGGER.warn(error);
-                return Optional.of(error);
+                return Optional.of(new DnsValidationFailure.DmarcValidationFailure(
+                    String.format("DMARC policy for domain %s is too lenient. Required: %s, Found: %s. Record: %s",
+                        domain, minimumPolicy.name().toLowerCase(), policy.get().name().toLowerCase(), dmarcRecord.get())));
             }
 
-            LOGGER.debug("DMARC validation passed for domain {} with policy {}", domain, policy.get());
             return Optional.empty();
 
         } catch (Exception e) {
-            String error = String.format("Failed to query DMARC record at %s: %s", dmarcRecordName, e.getMessage());
-            LOGGER.error(error, e);
-            return Optional.of(error);
+            return Optional.of(new DnsValidationFailure.DmarcValidationFailure(
+                String.format("Failed to query DMARC record at %s: %s", dmarcRecordName, e.getMessage())));
         }
     }
 

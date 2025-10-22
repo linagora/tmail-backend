@@ -49,7 +49,7 @@ import com.linagora.tmail.mailet.dns.SpfDnsValidator;
  * The validation occurs after DKIM signing and checks:
  * <ul>
  *   <li><b>DKIM</b>: Verifies that the selector used in DKIM-Signature header has a valid DNS record</li>
- *   <li><b>SPF</b>: Ensures the domain's SPF record authorizes the configured server IPs</li>
+ *   <li><b>SPF</b>: Ensures the domain's SPF record includes TMail's SPF configuration via include mechanism</li>
  *   <li><b>DMARC</b>: Validates that a DMARC policy exists with minimum quarantine level</li>
  * </ul>
  * </p>
@@ -60,7 +60,7 @@ import com.linagora.tmail.mailet.dns.SpfDnsValidator;
  *   <li><b>validateDkim</b>: Enable DKIM validation (default: true)</li>
  *   <li><b>validateSpf</b>: Enable SPF validation (default: true)</li>
  *   <li><b>validateDmarc</b>: Enable DMARC validation (default: true)</li>
- *   <li><b>spfAuthorizedIps</b>: Comma-separated list of IPs that must be authorized in SPF (e.g., "192.0.2.10,198.51.100.5")</li>
+ *   <li><b>spfInclude</b>: SPF include domain that must be present in customer's SPF (e.g., "_spf.tmail.com")</li>
  *   <li><b>dmarcMinPolicy</b>: Minimum DMARC policy required (quarantine or reject, default: quarantine)</li>
  * </ul>
  * </p>
@@ -74,7 +74,7 @@ import com.linagora.tmail.mailet.dns.SpfDnsValidator;
  *   <validateDkim>true</validateDkim>
  *   <validateSpf>true</validateSpf>
  *   <validateDmarc>true</validateDmarc>
- *   <spfAuthorizedIps>192.0.2.10,198.51.100.5</spfAuthorizedIps>
+ *   <spfInclude>_spf.tmail.com</spfInclude>
  *   <dmarcMinPolicy>quarantine</dmarcMinPolicy>
  * </mailet>
  * }
@@ -91,7 +91,7 @@ public class DomainDnsValidator extends GenericMailet {
     private static final String VALIDATE_DKIM_PARAM = "validateDkim";
     private static final String VALIDATE_SPF_PARAM = "validateSpf";
     private static final String VALIDATE_DMARC_PARAM = "validateDmarc";
-    private static final String SPF_AUTHORIZED_IPS_PARAM = "spfAuthorizedIps";
+    private static final String SPF_INCLUDE_PARAM = "spfInclude";
     private static final String DMARC_MIN_POLICY_PARAM = "dmarcMinPolicy";
 
     private static final String DKIM_SIGNATURE_HEADER = "DKIM-Signature";
@@ -118,11 +118,11 @@ public class DomainDnsValidator extends GenericMailet {
         validateDmarc = Boolean.parseBoolean(getInitParameter(VALIDATE_DMARC_PARAM, "true"));
 
         if (validateSpf) {
-            String spfAuthorizedIps = getInitParameter(SPF_AUTHORIZED_IPS_PARAM);
-            if (Strings.isNullOrEmpty(spfAuthorizedIps)) {
-                throw new MessagingException("spfAuthorizedIps parameter is required when validateSpf is enabled");
+            String spfInclude = getInitParameter(SPF_INCLUDE_PARAM);
+            if (Strings.isNullOrEmpty(spfInclude)) {
+                throw new MessagingException("spfInclude parameter is required when validateSpf is enabled");
             }
-            spfValidator = new SpfDnsValidator(dnsService, spfAuthorizedIps);
+            spfValidator = new SpfDnsValidator(dnsService, spfInclude);
         }
 
         if (validateDkim) {
@@ -145,59 +145,52 @@ public class DomainDnsValidator extends GenericMailet {
 
     @Override
     public void service(Mail mail) throws MessagingException {
-        try {
-            MimeMessage message = mail.getMessage();
+        MimeMessage message = mail.getMessage();
 
-            // Extract DKIM signature information
-            Optional<DkimSignatureInfo> dkimInfo = extractDkimSignatureInfo(message);
+        // Extract DKIM signature information
+        Optional<DkimSignatureInfo> dkimInfo = extractDkimSignatureInfo(message);
 
-            if (!dkimInfo.isPresent()) {
-                String errorMsg = "No DKIM-Signature header found. Email must be DKIM signed before validation.";
-                LOGGER.warn("Mail {} rejected: {}", mail.getName(), errorMsg);
-                mail.setErrorMessage(errorMsg);
-                mail.setState(Mail.ERROR);
+        if (!dkimInfo.isPresent()) {
+            String errorMsg = "No DKIM-Signature header found. Email must be DKIM signed before validation.";
+            LOGGER.warn("Mail {} rejected: {}", mail.getName(), errorMsg);
+            mail.setErrorMessage(errorMsg);
+            mail.setState(Mail.ERROR);
+            return;
+        }
+
+        String domain = dkimInfo.get().domain;
+        String selector = dkimInfo.get().selector;
+
+        LOGGER.debug("Validating DNS records for domain: {}, selector: {}", domain, selector);
+
+        // Validate DKIM DNS record
+        if (validateDkim) {
+            Optional<DnsValidationFailure.DkimValidationFailure> dkimError = dkimValidator.validate(domain, selector);
+            if (dkimError.isPresent()) {
+                handleValidationFailure(mail, "DKIM", dkimError.get().message());
                 return;
             }
-
-            String domain = dkimInfo.get().domain;
-            String selector = dkimInfo.get().selector;
-
-            LOGGER.debug("Validating DNS records for domain: {}, selector: {}", domain, selector);
-
-            // Validate DKIM DNS record
-            if (validateDkim) {
-                Optional<String> dkimError = dkimValidator.validate(domain, selector);
-                if (dkimError.isPresent()) {
-                    handleValidationFailure(mail, "DKIM", dkimError.get());
-                    return;
-                }
-            }
-
-            // Validate SPF record
-            if (validateSpf) {
-                Optional<String> spfError = spfValidator.validate(domain);
-                if (spfError.isPresent()) {
-                    handleValidationFailure(mail, "SPF", spfError.get());
-                    return;
-                }
-            }
-
-            // Validate DMARC record
-            if (validateDmarc) {
-                Optional<String> dmarcError = dmarcValidator.validate(domain);
-                if (dmarcError.isPresent()) {
-                    handleValidationFailure(mail, "DMARC", dmarcError.get());
-                    return;
-                }
-            }
-
-            LOGGER.info("DNS validation passed for domain: {}", domain);
-
-        } catch (Exception e) {
-            LOGGER.error("Error during DNS validation for mail {}", mail.getName(), e);
-            mail.setErrorMessage("DNS validation failed: " + e.getMessage());
-            mail.setState(Mail.ERROR);
         }
+
+        // Validate SPF record
+        if (validateSpf) {
+            Optional<DnsValidationFailure.SpfValidationFailure> spfError = spfValidator.validate(domain);
+            if (spfError.isPresent()) {
+                handleValidationFailure(mail, "SPF", spfError.get().message());
+                return;
+            }
+        }
+
+        // Validate DMARC record
+        if (validateDmarc) {
+            Optional<DnsValidationFailure.DmarcValidationFailure> dmarcError = dmarcValidator.validate(domain);
+            if (dmarcError.isPresent()) {
+                handleValidationFailure(mail, "DMARC", dmarcError.get().message());
+                return;
+            }
+        }
+
+        LOGGER.info("DNS validation passed for domain: {}", domain);
     }
 
     @VisibleForTesting
