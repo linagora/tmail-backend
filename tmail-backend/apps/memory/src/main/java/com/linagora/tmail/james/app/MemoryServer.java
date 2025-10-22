@@ -95,6 +95,7 @@ import com.linagora.tmail.james.jmap.method.EmailRecoveryActionMethodModule;
 import com.linagora.tmail.james.jmap.method.EmailSendMethodModule;
 import com.linagora.tmail.james.jmap.method.FilterGetMethodModule;
 import com.linagora.tmail.james.jmap.method.FilterSetMethodModule;
+import com.linagora.tmail.james.jmap.method.FolderFilteringActionMethodModule;
 import com.linagora.tmail.james.jmap.method.ForwardGetMethodModule;
 import com.linagora.tmail.james.jmap.method.ForwardSetMethodModule;
 import com.linagora.tmail.james.jmap.method.JmapSettingsMethodModule;
@@ -165,7 +166,8 @@ public class MemoryServer {
         new InboxArchivalTaskModule(),
         new ContactSupportCapabilitiesModule(),
         new DownloadAllRoutesModule(),
-        new MailboxClearMethodModule())
+        new MailboxClearMethodModule(),
+        new FolderFilteringActionMethodModule())
         .with(new TeamMailboxJmapModule());
 
     public static final Module MODULES = Modules.override(
