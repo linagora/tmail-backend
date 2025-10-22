@@ -154,7 +154,7 @@ public class DomainDnsValidator extends GenericMailet {
             if (!dkimInfo.isPresent()) {
                 String errorMsg = "No DKIM-Signature header found. Email must be DKIM signed before validation.";
                 LOGGER.warn("Mail {} rejected: {}", mail.getName(), errorMsg);
-                mail.setError(errorMsg);
+                mail.setErrorMessage(errorMsg);
                 mail.setState(Mail.ERROR);
                 return;
             }
@@ -195,7 +195,7 @@ public class DomainDnsValidator extends GenericMailet {
 
         } catch (Exception e) {
             LOGGER.error("Error during DNS validation for mail {}", mail.getName(), e);
-            mail.setError("DNS validation failed: " + e.getMessage());
+            mail.setErrorMessage("DNS validation failed: " + e.getMessage());
             mail.setState(Mail.ERROR);
         }
     }
@@ -232,7 +232,7 @@ public class DomainDnsValidator extends GenericMailet {
     private void handleValidationFailure(Mail mail, String recordType, String errorMessage) {
         String fullError = String.format("%s validation failed: %s", recordType, errorMessage);
         LOGGER.warn("Mail {} rejected: {}", mail.getName(), fullError);
-        mail.setError(fullError);
+        mail.setErrorMessage(fullError);
         mail.setState(Mail.ERROR);
     }
 
