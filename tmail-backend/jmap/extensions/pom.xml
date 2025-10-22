@@ -120,6 +120,10 @@
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-webadmin-jmap</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
             <artifactId>james-server-webadmin-mailbox-deleted-message-vault</artifactId>
         </dependency>
         <dependency>
