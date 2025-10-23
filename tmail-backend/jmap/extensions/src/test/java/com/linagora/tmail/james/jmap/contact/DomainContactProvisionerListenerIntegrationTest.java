@@ -49,6 +49,7 @@ import org.apache.james.user.ldap.LdapRepositoryConfiguration;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import com.linagora.tmail.team.TeamMailbox;
@@ -83,13 +84,7 @@ public class DomainContactProvisionerListenerIntegrationTest {
         ldapContainer.stop();
     }
 
-    @BeforeEach
-    void setUp() throws Exception {
-        HierarchicalConfiguration<ImmutableNode> configuration = new BaseHierarchicalConfiguration();
-        configuration.addProperty("ignoredDomains", IGNORED_DOMAINS);
-        configuration.addProperty("firstnameAttribute", "givenName");
-        configuration.addProperty("surnameAttribute", "sn");
-
+    private void setup(HierarchicalConfiguration<ImmutableNode> configuration) throws Exception {
         InMemoryIntegrationResources resources = InMemoryIntegrationResources.defaultResources();
         mailboxManager = resources.getMailboxManager();
         SubscriptionManager subscriptionManager = new StoreSubscriptionManager(mailboxManager.getMapperFactory(),
@@ -102,122 +97,180 @@ public class DomainContactProvisionerListenerIntegrationTest {
         mailboxManager.getEventBus().register(testee);
     }
 
-    @Test
-    void shouldIndexDomainContactWhenInboxAdded() throws AddressException, MailboxException {
-        mailboxManager.createMailbox(INBOX_PATH, mailboxManager.createSystemSession(USER1));
+    @Nested
+    class EmptyConfiguration {
+        @BeforeEach
+        void setUp() throws Exception {
+            HierarchicalConfiguration<ImmutableNode> configuration = new BaseHierarchicalConfiguration();
 
-        assertThat(Flux.from(contactSearchEngine.list(DOMAIN))
+            setup(configuration);
+        }
+
+        @Test
+        void shouldIndexDomainContactWhenListenerHasNoConfiguration() throws MailboxException, AddressException {
+            mailboxManager.createMailbox(INBOX_PATH, mailboxManager.createSystemSession(USER1));
+
+            assertThat(Flux.from(contactSearchEngine.list(DOMAIN))
                 .map(EmailAddressContact::fields)
                 .collectList()
                 .block())
-            .containsExactlyInAnyOrder(new ContactFields(new MailAddress(USER1.asString()), "firstname1", "surname1"));
+                .containsExactlyInAnyOrder(new ContactFields(new MailAddress(USER1.asString()), "firstname1", "surname1"));
+        }
     }
 
-    @Test
-    void shouldNotIndexDomainContactWhenMailboxAddedNotInbox() throws MailboxException {
-        mailboxManager.createMailbox(MailboxPath.forUser(USER1, "otherMailbox"), mailboxManager.createSystemSession(USER1));
+    @Nested
+    class WrongLdapConfiguration {
+        @BeforeEach
+        void setUp() throws Exception {
+            HierarchicalConfiguration<ImmutableNode> configuration = new BaseHierarchicalConfiguration();
+            configuration.addProperty("firstnameAttribute", "firstname");
+            configuration.addProperty("surnameAttribute", "surname");
 
-        assertThat(Flux.from(contactSearchEngine.list(DOMAIN))
+            setup(configuration);
+        }
+
+        @Test
+        void shouldIndexDomainContactWithEmptyNameWhenListenerHasWrongLdapConfiguration() throws MailboxException, AddressException {
+            mailboxManager.createMailbox(INBOX_PATH, mailboxManager.createSystemSession(USER1));
+
+            assertThat(Flux.from(contactSearchEngine.list(DOMAIN))
                 .map(EmailAddressContact::fields)
                 .collectList()
                 .block())
-            .isEmpty();
+                .containsExactlyInAnyOrder(new ContactFields(new MailAddress(USER1.asString()), "", ""));
+        }
     }
 
-    @Test
-    void shouldNotIndexDomainContactWhenDomainIsBlacklisted() throws MailboxException {
-        mailboxManager.createMailbox(MailboxPath.inbox(ALICE), mailboxManager.createSystemSession(ALICE));
+    @Nested
+    class NormalIndexation {
+        @BeforeEach
+        void setUp() throws Exception {
+            HierarchicalConfiguration<ImmutableNode> configuration = new BaseHierarchicalConfiguration();
+            configuration.addProperty("ignoredDomains", IGNORED_DOMAINS);
+            configuration.addProperty("firstnameAttribute", "givenName");
+            configuration.addProperty("surnameAttribute", "sn");
 
-        assertThat(Flux.from(contactSearchEngine.list(Domain.of("ignored.org")))
+            setup(configuration);
+        }
+
+        @Test
+        void shouldIndexDomainContactWhenInboxAdded() throws AddressException, MailboxException {
+            mailboxManager.createMailbox(INBOX_PATH, mailboxManager.createSystemSession(USER1));
+
+            assertThat(Flux.from(contactSearchEngine.list(DOMAIN))
                 .map(EmailAddressContact::fields)
                 .collectList()
                 .block())
-            .isEmpty();
-    }
+                .containsExactlyInAnyOrder(new ContactFields(new MailAddress(USER1.asString()), "firstname1", "surname1"));
+        }
 
-    @Test
-    void indexShouldBeIdempotent() throws AddressException, MailboxException {
-        Mono.from(contactSearchEngine.index(DOMAIN, new ContactFields(new MailAddress(USER1.asString()), "firstname1", "surname1"))).block();
-        mailboxManager.createMailbox(INBOX_PATH, mailboxManager.createSystemSession(USER1));
+        @Test
+        void shouldNotIndexDomainContactWhenMailboxAddedNotInbox() throws MailboxException {
+            mailboxManager.createMailbox(MailboxPath.forUser(USER1, "otherMailbox"), mailboxManager.createSystemSession(USER1));
 
-        assertThat(Flux.from(contactSearchEngine.list(DOMAIN))
-            .map(EmailAddressContact::fields)
-            .collectList()
-            .block())
-            .containsExactlyInAnyOrder(new ContactFields(new MailAddress(USER1.asString()), "firstname1", "surname1"));
-    }
-
-    @Test
-    void shouldIndexDomainContactWithDefaultValuesWhenNoLdapEntryFound() throws AddressException, MailboxException {
-        Username bob = Username.of("bob@james.org");
-        MailboxPath mailboxPath  = MailboxPath.inbox(bob);
-        mailboxManager.createMailbox(mailboxPath, mailboxManager.createSystemSession(bob));
-
-        assertThat(Flux.from(contactSearchEngine.list(DOMAIN))
-            .map(EmailAddressContact::fields)
-            .collectList()
-            .block())
-            .containsExactlyInAnyOrder(new ContactFields(new MailAddress(bob.asString()), "", ""));
-    }
-
-    @Test
-    void shouldNotProvisionDomainContactWhenTeamMailboxCreated() throws AddressException {
-        TeamMailbox teamMailbox = TeamMailbox.asTeamMailbox(new MailAddress("teamMailbox@james.org")).get();
-        Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox)).block();
-
-        assertThat(Flux.from(contactSearchEngine.list(DOMAIN))
-            .map(EmailAddressContact::fields)
-            .collectList()
-            .block())
-            .isEmpty();
-    }
-
-    @Test
-    void shouldRemoveDomainContactWhenInboxDeleted() throws MailboxException {
-        MailboxSession session = mailboxManager.createSystemSession(USER1);
-        mailboxManager.createMailbox(INBOX_PATH, session);
-        mailboxManager.deleteMailbox(INBOX_PATH, session);
-
-        assertThat(Flux.from(contactSearchEngine.list(DOMAIN))
+            assertThat(Flux.from(contactSearchEngine.list(DOMAIN))
                 .map(EmailAddressContact::fields)
                 .collectList()
                 .block())
-            .isEmpty();
-    }
+                .isEmpty();
+        }
 
-    @Test
-    void shouldNotRemoveDomainContactWhenMailboxDeletedNotInbox() throws AddressException, MailboxException {
-        MailboxSession session = mailboxManager.createSystemSession(USER1);
-        MailboxPath otherPath = MailboxPath.forUser(USER1, "otherMailbox");
-        mailboxManager.createMailbox(INBOX_PATH, session);
-        mailboxManager.createMailbox(otherPath, session);
-        mailboxManager.deleteMailbox(otherPath, session);
+        @Test
+        void shouldNotIndexDomainContactWhenDomainIsBlacklisted() throws MailboxException {
+            mailboxManager.createMailbox(MailboxPath.inbox(ALICE), mailboxManager.createSystemSession(ALICE));
 
-        assertThat(Flux.from(contactSearchEngine.list(DOMAIN))
+            assertThat(Flux.from(contactSearchEngine.list(Domain.of("ignored.org")))
                 .map(EmailAddressContact::fields)
                 .collectList()
                 .block())
-            .containsExactlyInAnyOrder(new ContactFields(new MailAddress(USER1.asString()), "firstname1", "surname1"));
+                .isEmpty();
+        }
+
+        @Test
+        void indexShouldBeIdempotent() throws AddressException, MailboxException {
+            Mono.from(contactSearchEngine.index(DOMAIN, new ContactFields(new MailAddress(USER1.asString()), "firstname1", "surname1"))).block();
+            mailboxManager.createMailbox(INBOX_PATH, mailboxManager.createSystemSession(USER1));
+
+            assertThat(Flux.from(contactSearchEngine.list(DOMAIN))
+                .map(EmailAddressContact::fields)
+                .collectList()
+                .block())
+                .containsExactlyInAnyOrder(new ContactFields(new MailAddress(USER1.asString()), "firstname1", "surname1"));
+        }
+
+        @Test
+        void shouldIndexDomainContactWithDefaultValuesWhenNoLdapEntryFound() throws AddressException, MailboxException {
+            Username bob = Username.of("bob@james.org");
+            MailboxPath mailboxPath  = MailboxPath.inbox(bob);
+            mailboxManager.createMailbox(mailboxPath, mailboxManager.createSystemSession(bob));
+
+            assertThat(Flux.from(contactSearchEngine.list(DOMAIN))
+                .map(EmailAddressContact::fields)
+                .collectList()
+                .block())
+                .containsExactlyInAnyOrder(new ContactFields(new MailAddress(bob.asString()), "", ""));
+        }
+
+        @Test
+        void shouldNotProvisionDomainContactWhenTeamMailboxCreated() throws AddressException {
+            TeamMailbox teamMailbox = TeamMailbox.asTeamMailbox(new MailAddress("teamMailbox@james.org")).get();
+            Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox)).block();
+
+            assertThat(Flux.from(contactSearchEngine.list(DOMAIN))
+                .map(EmailAddressContact::fields)
+                .collectList()
+                .block())
+                .isEmpty();
+        }
+
+        @Test
+        void shouldRemoveDomainContactWhenInboxDeleted() throws MailboxException {
+            MailboxSession session = mailboxManager.createSystemSession(USER1);
+            mailboxManager.createMailbox(INBOX_PATH, session);
+            mailboxManager.deleteMailbox(INBOX_PATH, session);
+
+            assertThat(Flux.from(contactSearchEngine.list(DOMAIN))
+                .map(EmailAddressContact::fields)
+                .collectList()
+                .block())
+                .isEmpty();
+        }
+
+        @Test
+        void shouldNotRemoveDomainContactWhenMailboxDeletedNotInbox() throws AddressException, MailboxException {
+            MailboxSession session = mailboxManager.createSystemSession(USER1);
+            MailboxPath otherPath = MailboxPath.forUser(USER1, "otherMailbox");
+            mailboxManager.createMailbox(INBOX_PATH, session);
+            mailboxManager.createMailbox(otherPath, session);
+            mailboxManager.deleteMailbox(otherPath, session);
+
+            assertThat(Flux.from(contactSearchEngine.list(DOMAIN))
+                .map(EmailAddressContact::fields)
+                .collectList()
+                .block())
+                .containsExactlyInAnyOrder(new ContactFields(new MailAddress(USER1.asString()), "firstname1", "surname1"));
+        }
+
+
+        @Test
+        void shouldNotRemoveDomainContactWhenDomainIsBlacklisted() throws AddressException, MailboxException {
+            Domain blacklistedDomain = Domain.of("blacklist.org");
+            ContactFields contact = new ContactFields(new MailAddress(CEDRIC.asString()), "cedric", "blacklist");
+            Mono.from(contactSearchEngine.index(blacklistedDomain, contact)).block();
+
+            MailboxSession session = mailboxManager.createSystemSession(CEDRIC);
+            MailboxPath cedricInboxPath = MailboxPath.inbox(CEDRIC);
+            mailboxManager.createMailbox(cedricInboxPath, session);
+            mailboxManager.deleteMailbox(cedricInboxPath, session);
+
+            assertThat(Flux.from(contactSearchEngine.list(blacklistedDomain))
+                .map(EmailAddressContact::fields)
+                .collectList()
+                .block())
+                .containsExactlyInAnyOrder(contact);
+        }
     }
 
-
-    @Test
-    void shouldNotRemoveDomainContactWhenDomainIsBlacklisted() throws AddressException, MailboxException {
-        Domain blacklistedDomain = Domain.of("blacklist.org");
-        ContactFields contact = new ContactFields(new MailAddress(CEDRIC.asString()), "cedric", "blacklist");
-        Mono.from(contactSearchEngine.index(blacklistedDomain, contact)).block();
-
-        MailboxSession session = mailboxManager.createSystemSession(CEDRIC);
-        MailboxPath cedricInboxPath = MailboxPath.inbox(CEDRIC);
-        mailboxManager.createMailbox(cedricInboxPath, session);
-        mailboxManager.deleteMailbox(cedricInboxPath, session);
-
-        assertThat(Flux.from(contactSearchEngine.list(blacklistedDomain))
-            .map(EmailAddressContact::fields)
-            .collectList()
-            .block())
-            .containsExactlyInAnyOrder(contact);
-    }
 
     private HierarchicalConfiguration<ImmutableNode> ldapRepositoryConfigurationWithVirtualHosting(LdapGenericContainer ldapContainer) {
         return ldapRepositoryConfigurationWithVirtualHosting(ldapContainer, Optional.of(ADMIN));
