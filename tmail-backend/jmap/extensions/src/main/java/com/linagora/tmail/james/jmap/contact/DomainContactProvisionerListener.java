@@ -41,6 +41,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.github.fge.lambdas.Throwing;
+import com.google.common.collect.ImmutableList;
 import com.unboundid.ldap.sdk.Filter;
 import com.unboundid.ldap.sdk.LDAPConnectionPool;
 import com.unboundid.ldap.sdk.LDAPSearchException;
@@ -90,6 +91,9 @@ public class DomainContactProvisionerListener implements EventListener.ReactiveG
     }
 
     private List<Domain> extractIgnoredDomains(String domains) {
+        if (domains.trim().isEmpty()) {
+            return ImmutableList.of();
+        }
         return Arrays.stream(domains.split(","))
             .map(Domain::of)
             .toList();
