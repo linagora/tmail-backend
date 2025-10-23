@@ -267,7 +267,7 @@ trait FolderFilteringActionGetMethodContract {
   @Test
   @Tag(CategoryTags.BASIC_FEATURE)
   def shouldReturnAllPropertiesByDefault(server: GuiceJamesServer): Unit = {
-    val mailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
     val message: Message = Message.Builder
       .of
       .setSubject("matchedRules")
@@ -314,8 +314,7 @@ trait FolderFilteringActionGetMethodContract {
            |      "processedMessageCount": 1,
            |      "successfulActions": 1,
            |      "failedActions": 0,
-           |      "maximumAppliedActionReached": false,
-           |      "mailboxId": "${mailboxId.serialize}"
+           |      "maximumAppliedActionReached": false
            |    }]
            |  },
            |  "#0"
@@ -360,7 +359,7 @@ trait FolderFilteringActionGetMethodContract {
 
   @Test
   def mixedFoundAndNotFoundCase(server: GuiceJamesServer): Unit = {
-    val mailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
 
     val taskId: String = createAndRunRulesTask(server, UserCredential(BOB, BOB_PASSWORD), MailboxPath.inbox(BOB).getName, "Processed")
 
@@ -399,8 +398,7 @@ trait FolderFilteringActionGetMethodContract {
            |      "processedMessageCount": 0,
            |      "successfulActions": 0,
            |      "failedActions": 0,
-           |      "maximumAppliedActionReached": false,
-           |      "mailboxId": "${mailboxId.serialize}"
+           |      "maximumAppliedActionReached": false
            |    }]
            |  },
            |  "#0"

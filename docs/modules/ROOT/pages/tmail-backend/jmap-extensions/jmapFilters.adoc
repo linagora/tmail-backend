@@ -347,7 +347,7 @@ This method returns the underlying folder filtering tasks.
 Standard `/get` semantics. The `ids` property cannot be null.
 
 This method supports the following properties of the `FolderFilteringAction` object:
-`id`, `mailboxId`, `status`, `processedMessageCount`, `successfulActions`, `failedActions`, `maximumAppliedActionReached`.
+`id`, `status`, `processedMessageCount`, `successfulActions`, `failedActions`, `maximumAppliedActionReached`.
 
 Servers MUST ensure only the authenticated user's filtering tasks are returned.
 
@@ -479,7 +479,6 @@ Server returns:
     "list": [
       {
         "id": "flt-task-001",
-        "mailboxId": "mailboxId123",
         "status": "inProgress",
         "processedMessageCount": 200,
         "successfulActions": 180,

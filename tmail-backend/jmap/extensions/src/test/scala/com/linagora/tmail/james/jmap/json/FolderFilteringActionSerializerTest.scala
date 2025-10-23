@@ -21,7 +21,6 @@ package com.linagora.tmail.james.jmap.json
 import com.linagora.tmail.james.jmap.model._
 import eu.timepit.refined.auto._
 import org.apache.james.jmap.core.{Id, Properties}
-import org.apache.james.mailbox.model.TestId
 import org.apache.james.task.TaskId
 import org.apache.james.task.TaskManager.Status
 import org.assertj.core.api.Assertions.assertThat
@@ -49,7 +48,6 @@ class FolderFilteringActionSerializerTest {
   def serializeGetResponseShouldSucceed(): Unit = {
     val list: Seq[FolderFilteringAction] = Seq(FolderFilteringAction(
       id = TaskId.fromString("77731634-ea82-4a1a-bd4c-9f8ece4f66c7"),
-      mailboxId = TestId.of(1L),
       status = Status.IN_PROGRESS,
       processedMessageCount = ProcessedMessageCount(99L),
       successfulActions = SuccessfulActions(12L),
@@ -64,7 +62,6 @@ class FolderFilteringActionSerializerTest {
         """{
           |  "list": [{
           |    "id": "77731634-ea82-4a1a-bd4c-9f8ece4f66c7",
-          |    "mailboxId": "1",
           |    "status": "inProgress",
           |    "processedMessageCount": 99,
           |    "successfulActions": 12,
@@ -79,7 +76,6 @@ class FolderFilteringActionSerializerTest {
   def serializeGetResponseShouldFilterByProperties(): Unit = {
     val list: Seq[FolderFilteringAction] = Seq(FolderFilteringAction(
       id = TaskId.fromString("77731634-ea82-4a1a-bd4c-9f8ece4f66c7"),
-      mailboxId = TestId.of(1L),
       status = Status.IN_PROGRESS,
       processedMessageCount = ProcessedMessageCount(99L),
       successfulActions = SuccessfulActions(12L),

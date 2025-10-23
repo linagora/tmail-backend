@@ -42,8 +42,7 @@ object FolderFilteringActionSerializer {
       "processedMessageCount" -> ffa.processedMessageCount,
       "successfulActions" -> ffa.successfulActions,
       "failedActions" -> ffa.failedActions,
-      "maximumAppliedActionReached" -> ffa.maximumAppliedActionReached,
-      "mailboxId" -> ffa.mailboxId.serialize())
+      "maximumAppliedActionReached" -> ffa.maximumAppliedActionReached)
 
   private implicit val folderFilteringActionGetResponseWrites: Writes[FolderFilteringActionGetResponse] = Json.writes[FolderFilteringActionGetResponse]
 

@@ -30,7 +30,6 @@ import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{Invocation, UnsignedInt}
 import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodWithoutAccountId}
 import org.apache.james.jmap.routes.SessionSupplier
-import org.apache.james.mailbox.model.MailboxPath
 import org.apache.james.mailbox.{MailboxManager, MailboxSession}
 import org.apache.james.metrics.api.MetricFactory
 import org.apache.james.task.{TaskExecutionDetails, TaskId, TaskManager, TaskNotFoundException}
@@ -81,7 +80,7 @@ class FolderFilteringActionGetMethod @Inject()()(val taskManager: TaskManager,
         }
         .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER))
       .filter(taskDetail => isRunRulesOnMailboxTask(taskDetail) && belongsToUser(mailboxSession.getUser, taskDetail))
-      .flatMap(toFolderFilteringAction(_, mailboxSession))
+      .map(toFolderFilteringAction)
 
   private def filteringValidTaskIds(ids: FolderFilteringActionIds): List[TaskId] =
     ids.list.map(unparsedId => FolderFilteringTaskIdUtil.liftOrThrow(unparsedId).toOption)
@@ -97,7 +96,7 @@ class FolderFilteringActionGetMethod @Inject()()(val taskManager: TaskManager,
       .getUsername
       .equals(username)
 
-  private def toFolderFilteringAction(taskDetail: TaskExecutionDetails, mailboxSession: MailboxSession): SMono[FolderFilteringAction] = {
+  private def toFolderFilteringAction(taskDetail: TaskExecutionDetails): FolderFilteringAction = {
     val info: RunRulesOnMailboxTask.AdditionalInformation = taskDetail.getAdditionalInformation.get()
       .asInstanceOf[RunRulesOnMailboxTask.AdditionalInformation]
     val processedCount: Long = info.getProcessedMessagesCount
@@ -105,15 +104,12 @@ class FolderFilteringActionGetMethod @Inject()()(val taskManager: TaskManager,
     val failedCount: Long = info.getRulesOnMessagesApplyFailed
     val maximumReached: Boolean = info.maximumAppliedActionExceeded()
 
-    SMono(mailboxManager.getMailboxReactive(MailboxPath.forUser(info.getUsername, info.getMailboxName.asString()), mailboxSession))
-      .map(_.getId)
-      .map(mailboxId => FolderFilteringAction(
-        id = taskDetail.getTaskId,
-        mailboxId = mailboxId,
-        status = taskDetail.getStatus,
-        processedMessageCount = ProcessedMessageCount(UnsignedInt.liftOrThrow(processedCount)),
-        successfulActions = SuccessfulActions(UnsignedInt.liftOrThrow(successCount)),
-        failedActions = FailedActions(UnsignedInt.liftOrThrow(failedCount)),
-        maximumAppliedActionReached = maximumReached))
+    FolderFilteringAction(
+      id = taskDetail.getTaskId,
+      status = taskDetail.getStatus,
+      processedMessageCount = ProcessedMessageCount(UnsignedInt.liftOrThrow(processedCount)),
+      successfulActions = SuccessfulActions(UnsignedInt.liftOrThrow(successCount)),
+      failedActions = FailedActions(UnsignedInt.liftOrThrow(failedCount)),
+      maximumAppliedActionReached = maximumReached)
   }
 }

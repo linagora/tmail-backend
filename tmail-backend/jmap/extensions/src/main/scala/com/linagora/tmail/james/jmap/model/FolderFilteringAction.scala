@@ -23,7 +23,6 @@ import org.apache.james.jmap.core.Id.Id
 import org.apache.james.jmap.core.UnsignedInt.UnsignedInt
 import org.apache.james.jmap.core.{Id, Properties}
 import org.apache.james.jmap.method.WithoutAccountId
-import org.apache.james.mailbox.model.MailboxId
 import org.apache.james.task.TaskId
 import org.apache.james.task.TaskManager.Status
 
@@ -58,7 +57,7 @@ case class FailedActions(value: UnsignedInt)
 
 object FolderFilteringActionGetRequest {
   val allSupportedProperties: Properties = Properties(
-    "id", "mailboxId", "status", "processedMessageCount", "successfulActions", "failedActions", "maximumAppliedActionReached")
+    "id", "status", "processedMessageCount", "successfulActions", "failedActions", "maximumAppliedActionReached")
   val idProperty: Properties = Properties("id")
 }
 
@@ -86,7 +85,6 @@ case class FolderFilteringActionGetResponse(list: Seq[FolderFilteringAction],
                                             notFound: Set[UnparsedFolderFilteringActionId])
 
 case class FolderFilteringAction(id: TaskId,
-                                 mailboxId: MailboxId,
                                  status: Status,
                                  processedMessageCount: ProcessedMessageCount,
                                  successfulActions: SuccessfulActions,
