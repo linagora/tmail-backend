@@ -20,7 +20,8 @@ package com.linagora.tmail.james.jmap.json
 
 import com.linagora.tmail.james.jmap.model._
 import eu.timepit.refined.auto._
-import org.apache.james.jmap.core.{Id, Properties}
+import org.apache.james.jmap.core.{Id, Properties, SetError}
+import org.apache.james.jmap.mail.UnparsedMailboxId
 import org.apache.james.task.TaskId
 import org.apache.james.task.TaskManager.Status
 import org.assertj.core.api.Assertions.assertThat
@@ -42,6 +43,63 @@ class FolderFilteringActionSerializerTest {
       .isEqualTo(UnparsedFolderFilteringActionId("2034-495-05857-57abcd-0876664"))
     assertThat(deserializeResult.get.properties.get.contains("status"))
       .isTrue
+  }
+
+  @Test
+  def deserializeSetCreationRequestShouldSucceed(): Unit = {
+    val jsInput: JsValue = Json.parse(
+      """{
+        |  "mailboxId": "123"
+        |}""".stripMargin)
+
+    val result: JsResult[FolderFilteringActionCreationRequest] = FolderFilteringActionSerializer.deserializeSetCreationRequest(jsInput)
+
+    assertThat(result.isSuccess).isTrue
+    assertThat(result.get).isEqualTo(FolderFilteringActionCreationRequest(UnparsedMailboxId.apply("123")))
+  }
+
+  @Test
+  def deserializeSetRequestShouldSucceed(): Unit = {
+    val jsInput: JsValue = Json.parse(
+      """{
+        |  "create": {
+        |    "clientId1": { "mailboxId": "mb1" }
+        |  }
+        |}""".stripMargin)
+
+    val result: JsResult[FolderFilteringActionSetRequest] = FolderFilteringActionSerializer.deserializeSetRequest(jsInput)
+
+    assertThat(result.isSuccess).isTrue
+    assertThat(result.get.create.get.head._1).isEqualTo(FolderFilteringActionCreationId("clientId1"))
+  }
+
+  @Test
+  def serializeSetResponseShouldSucceed(): Unit = {
+    val notCreated: Map[FolderFilteringActionCreationId, SetError] = Map(
+      (FolderFilteringActionCreationId("K39"), SetError(
+        SetError.invalidArgumentValue,
+        SetError.SetErrorDescription("des1"), None)))
+
+    val created: Map[FolderFilteringActionCreationId, FolderFilteringActionCreationResponse] = Map(
+      FolderFilteringActionCreationId("K38") -> FolderFilteringActionCreationResponse(TaskId.fromString("4bf6d081-aa30-11e9-bf6c-2d3b9e84aafd")))
+
+    val response: FolderFilteringActionSetResponse = FolderFilteringActionSetResponse(created = Some(created), notCreated = Some(notCreated))
+
+    assertThat(FolderFilteringActionSerializer.serializeSetResponse(response))
+      .isEqualTo(Json.parse(
+        """{
+          |  "created": {
+          |    "K38": {
+          |      "id": "4bf6d081-aa30-11e9-bf6c-2d3b9e84aafd"
+          |    }
+          |  },
+          |  "notCreated": {
+          |    "K39": {
+          |      "type": "invalidArguments",
+          |      "description": "des1"
+          |    }
+          |  }
+          |}""".stripMargin))
   }
 
   @Test
