@@ -19,14 +19,14 @@
 package com.linagora.tmail.mailet.dns;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.spy;
 
-import java.util.Collections;
 import java.util.Optional;
 
 import org.apache.james.core.Domain;
-import org.apache.james.dnsservice.api.DNSService;
+import org.apache.james.dnsservice.api.InMemoryDNSService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -34,13 +34,12 @@ import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.mailet.dns.DnsValidationFailure.DkimValidationFailure;
 
 class DkimDnsValidatorTest {
-
-    private DNSService dnsService;
+    private InMemoryDNSService dnsService;
     private DkimDnsValidator validator;
 
     @BeforeEach
     void setUp() {
-        dnsService = mock(DNSService.class);
+        dnsService = spy(new InMemoryDNSService());
         validator = new DkimDnsValidator(dnsService, ImmutableList.of("key1", "key2"));
     }
 
@@ -71,8 +70,8 @@ class DkimDnsValidatorTest {
 
     @Test
     void shouldPassWhenDkimRecordExists() {
-        when(dnsService.findTXTRecords("s1._domainkey.example.com"))
-            .thenReturn(ImmutableList.of("v=DKIM1; k=rsa; p=key1"));
+        dnsService.registerRecord("s1._domainkey.example.com", ImmutableList.of(), ImmutableList.of(),
+            ImmutableList.of("v=DKIM1; k=rsa; p=key1"));
 
         Optional<DkimValidationFailure> result = validator.validate(Domain.of("example.com"), "s1");
 
@@ -81,8 +80,8 @@ class DkimDnsValidatorTest {
 
     @Test
     void shouldPassWhenSecondKeyUsed() {
-        when(dnsService.findTXTRecords("s1._domainkey.example.com"))
-            .thenReturn(ImmutableList.of("v=DKIM1; k=rsa; p=key2"));
+        dnsService.registerRecord("s1._domainkey.example.com", ImmutableList.of(), ImmutableList.of(),
+            ImmutableList.of("v=DKIM1; k=rsa; p=key2"));
 
         Optional<DkimValidationFailure> result = validator.validate(Domain.of("example.com"), "s1");
 
@@ -91,8 +90,8 @@ class DkimDnsValidatorTest {
 
     @Test
     void shouldFailWhenNotAcceptedKey() {
-        when(dnsService.findTXTRecords("s1._domainkey.example.com"))
-            .thenReturn(ImmutableList.of("v=DKIM1; k=rsa; p=key3"));
+        dnsService.registerRecord("s1._domainkey.example.com", ImmutableList.of(), ImmutableList.of(),
+            ImmutableList.of("v=DKIM1; k=rsa; p=key3"));
 
         Optional<DkimValidationFailure> result = validator.validate(Domain.of("example.com"), "s1");
 
@@ -102,8 +101,7 @@ class DkimDnsValidatorTest {
 
     @Test
     void shouldFailWhenNoDkimRecordFound() {
-        when(dnsService.findTXTRecords("s1._domainkey.example.com"))
-            .thenReturn(Collections.emptyList());
+        dnsService.registerRecord("s1._domainkey.example.com", ImmutableList.of(), ImmutableList.of(), ImmutableList.of());
 
         Optional<DkimValidationFailure> result = validator.validate(Domain.of("example.com"), "s1");
 
@@ -112,8 +110,8 @@ class DkimDnsValidatorTest {
 
     @Test
     void shouldFailWhenDkimRecordIsInvalid() {
-        when(dnsService.findTXTRecords("s1._domainkey.example.com"))
-            .thenReturn(ImmutableList.of("k=rsa; p=key"));
+        dnsService.registerRecord("s1._domainkey.example.com", ImmutableList.of(), ImmutableList.of(),
+            ImmutableList.of("k=rsa; p=key"));
 
         Optional<DkimValidationFailure> result = validator.validate(Domain.of("example.com"), "s1");
 
@@ -122,9 +120,10 @@ class DkimDnsValidatorTest {
     }
 
     @Test
-    void shouldHandleDnsQueryException() {
-        when(dnsService.findTXTRecords("s1._domainkey.example.com"))
-            .thenThrow(new RuntimeException("DNS query failed"));
+    void shouldHandleDnsQueryException() throws Exception {
+        doThrow(new RuntimeException("DNS query failed"))
+            .when(dnsService)
+            .findMXRecords(anyString());
 
         Optional<DkimValidationFailure> result = validator.validate(Domain.of("example.com"), "s1");
 

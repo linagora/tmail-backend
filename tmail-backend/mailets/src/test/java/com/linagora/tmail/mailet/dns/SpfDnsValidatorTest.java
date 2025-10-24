@@ -19,14 +19,11 @@
 package com.linagora.tmail.mailet.dns;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
-import java.util.Collections;
 import java.util.Optional;
 
 import org.apache.james.core.Domain;
-import org.apache.james.dnsservice.api.DNSService;
+import org.apache.james.dnsservice.api.InMemoryDNSService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -34,12 +31,11 @@ import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.mailet.dns.DnsValidationFailure.SpfValidationFailure;
 
 class SpfDnsValidatorTest {
-
-    private DNSService dnsService;
+    private InMemoryDNSService dnsService;
 
     @BeforeEach
     void setUp() {
-        dnsService = mock(DNSService.class);
+        dnsService = new InMemoryDNSService();
     }
 
     @Test
@@ -58,8 +54,8 @@ class SpfDnsValidatorTest {
     void shouldPassWhenSpfContainsRequiredInclude() {
         SpfDnsValidator validator = new SpfDnsValidator(dnsService, "_spf.twake.app");
 
-        when(dnsService.findTXTRecords("example.com"))
-            .thenReturn(ImmutableList.of("v=spf1 include:_spf.twake.app ~all"));
+        dnsService.registerRecord("example.com", ImmutableList.of(), ImmutableList.of(),
+            ImmutableList.of("v=spf1 include:_spf.twake.app ~all"));
 
         Optional<SpfValidationFailure> result = validator.validate(Domain.of("example.com"));
 
@@ -71,8 +67,8 @@ class SpfDnsValidatorTest {
     void shouldFailWhenSpfMissingRequiredInclude() {
         SpfDnsValidator validator = new SpfDnsValidator(dnsService, "_spf.twake.app");
 
-        when(dnsService.findTXTRecords("example.com"))
-            .thenReturn(ImmutableList.of("v=spf1 ip4:192.0.2.10 ~all"));
+        dnsService.registerRecord("example.com", ImmutableList.of(), ImmutableList.of(),
+            ImmutableList.of("v=spf1 ip4:192.0.2.10 ~all"));
 
         Optional<SpfValidationFailure> result = validator.validate(Domain.of("example.com"));
 
@@ -85,8 +81,7 @@ class SpfDnsValidatorTest {
     void shouldFailWhenNoSpfRecord() {
         SpfDnsValidator validator = new SpfDnsValidator(dnsService, "_spf.twake.app");
 
-        when(dnsService.findTXTRecords("example.com"))
-            .thenReturn(Collections.emptyList());
+        dnsService.registerRecord("example.com", ImmutableList.of(), ImmutableList.of(), ImmutableList.of());
 
         Optional<SpfValidationFailure> result = validator.validate(Domain.of("example.com"));
 
@@ -98,8 +93,8 @@ class SpfDnsValidatorTest {
     void shouldFailWhenNoValidSpfRecord() {
         SpfDnsValidator validator = new SpfDnsValidator(dnsService, "_spf.twake.app");
 
-        when(dnsService.findTXTRecords("example.com"))
-            .thenReturn(ImmutableList.of("v=DKIM1; k=rsa; p=key"));
+        dnsService.registerRecord("example.com", ImmutableList.of(), ImmutableList.of(),
+            ImmutableList.of("v=DKIM1; k=rsa; p=key"));
 
         Optional<SpfValidationFailure> result = validator.validate(Domain.of("example.com"));
 

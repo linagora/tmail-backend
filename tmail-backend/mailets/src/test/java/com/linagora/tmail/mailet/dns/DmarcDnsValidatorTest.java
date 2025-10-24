@@ -20,14 +20,11 @@ package com.linagora.tmail.mailet.dns;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
-import java.util.Collections;
 import java.util.Optional;
 
 import org.apache.james.core.Domain;
-import org.apache.james.dnsservice.api.DNSService;
+import org.apache.james.dnsservice.api.InMemoryDNSService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -36,12 +33,11 @@ import com.linagora.tmail.mailet.dns.DmarcDnsValidator.DmarcPolicy;
 import com.linagora.tmail.mailet.dns.DnsValidationFailure.DmarcValidationFailure;
 
 class DmarcDnsValidatorTest {
-
-    private DNSService dnsService;
+    private InMemoryDNSService dnsService;
 
     @BeforeEach
     void setUp() {
-        dnsService = mock(DNSService.class);
+        dnsService = new InMemoryDNSService();
     }
 
     @Test
@@ -102,8 +98,8 @@ class DmarcDnsValidatorTest {
     void shouldPassWhenDmarcPolicyIsQuarantine() {
         DmarcDnsValidator validator = new DmarcDnsValidator(dnsService, "quarantine");
 
-        when(dnsService.findTXTRecords("_dmarc.example.com"))
-            .thenReturn(ImmutableList.of("v=DMARC1; p=quarantine; rua=mailto:dmarc@example.com"));
+        dnsService.registerRecord("_dmarc.example.com", ImmutableList.of(), ImmutableList.of(),
+            ImmutableList.of("v=DMARC1; p=quarantine; rua=mailto:dmarc@example.com"));
 
         Optional<DmarcValidationFailure> result = validator.validate(Domain.of("example.com"));
 
@@ -114,8 +110,8 @@ class DmarcDnsValidatorTest {
     void shouldPassWhenDmarcPolicyIsReject() {
         DmarcDnsValidator validator = new DmarcDnsValidator(dnsService, "quarantine");
 
-        when(dnsService.findTXTRecords("_dmarc.example.com"))
-            .thenReturn(ImmutableList.of("v=DMARC1; p=reject"));
+        dnsService.registerRecord("_dmarc.example.com", ImmutableList.of(), ImmutableList.of(),
+            ImmutableList.of("v=DMARC1; p=reject; rua=mailto:dmarc@example.com"));
 
         Optional<DmarcValidationFailure> result = validator.validate(Domain.of("example.com"));
 
@@ -126,8 +122,8 @@ class DmarcDnsValidatorTest {
     void shouldFailWhenDmarcPolicyIsTooLenient() {
         DmarcDnsValidator validator = new DmarcDnsValidator(dnsService, "quarantine");
 
-        when(dnsService.findTXTRecords("_dmarc.example.com"))
-            .thenReturn(ImmutableList.of("v=DMARC1; p=none"));
+        dnsService.registerRecord("_dmarc.example.com", ImmutableList.of(), ImmutableList.of(),
+            ImmutableList.of("v=DMARC1; p=none; rua=mailto:dmarc@example.com"));
 
         Optional<DmarcValidationFailure> result = validator.validate(Domain.of("example.com"));
 
@@ -141,8 +137,7 @@ class DmarcDnsValidatorTest {
     void shouldFailWhenNoDmarcRecord() {
         DmarcDnsValidator validator = new DmarcDnsValidator(dnsService, "quarantine");
 
-        when(dnsService.findTXTRecords("_dmarc.example.com"))
-            .thenReturn(Collections.emptyList());
+        dnsService.registerRecord("_dmarc.example.com", ImmutableList.of(), ImmutableList.of(), ImmutableList.of());
 
         Optional<DmarcValidationFailure> result = validator.validate(Domain.of("example.com"));
 
@@ -154,8 +149,8 @@ class DmarcDnsValidatorTest {
     void shouldFailWhenDmarcRecordHasNoPolicy() {
         DmarcDnsValidator validator = new DmarcDnsValidator(dnsService, "quarantine");
 
-        when(dnsService.findTXTRecords("_dmarc.example.com"))
-            .thenReturn(ImmutableList.of("v=DMARC1; rua=mailto:dmarc@example.com"));
+        dnsService.registerRecord("_dmarc.example.com", ImmutableList.of(), ImmutableList.of(),
+            ImmutableList.of("v=DMARC1; rua=mailto:dmarc@example.com"));
 
         Optional<DmarcValidationFailure> result = validator.validate(Domain.of("example.com"));
 

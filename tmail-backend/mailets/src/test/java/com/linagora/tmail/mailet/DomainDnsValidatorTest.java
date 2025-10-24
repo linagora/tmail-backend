@@ -19,14 +19,13 @@
 package com.linagora.tmail.mailet;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.mock;
 
 import java.util.Optional;
 
 import jakarta.mail.internet.MimeMessage;
 
 import org.apache.james.core.builder.MimeMessageBuilder;
-import org.apache.james.dnsservice.api.DNSService;
+import org.apache.james.dnsservice.api.InMemoryDNSService;
 import org.apache.mailet.Mail;
 import org.apache.mailet.base.test.FakeMail;
 import org.apache.mailet.base.test.FakeMailetConfig;
@@ -34,12 +33,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class DomainDnsValidatorTest {
-    private DNSService dnsService;
+    private InMemoryDNSService dnsService;
     private DomainDnsValidator mailet;
 
     @BeforeEach
     void setUp() {
-        dnsService = mock(DNSService.class);
+        dnsService = new InMemoryDNSService();
         mailet = new DomainDnsValidator(dnsService);
     }
 
