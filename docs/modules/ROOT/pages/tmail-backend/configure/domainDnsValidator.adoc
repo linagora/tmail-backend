@@ -8,7 +8,7 @@ This is particularly useful in SaaS environments where customers send emails thr
 
 The mailet ensures that:
 
-* *DKIM*: The DKIM selector used in the email signature has a valid DNS record published
+* *DKIM*: The DKIM selector used in the email signature has a valid DNS record published and uses one of the allowed keys.
 * *SPF*: The domain's SPF record authorizes your server IPs to send emails on behalf of the domain
 * *DMARC*: The domain has a DMARC policy with at least the minimum required strictness level
 
@@ -36,25 +36,21 @@ This mailet should be placed in the *transport processor*, after `DKIMSign` and 
 |Default
 |Description
 
-|validateDkim
-|true
-|Enable DKIM DNS validation
+|acceptedDkimKeys
+| if unspecified disable DKIM checks
+|Coma separated list of DKIM public keys allowed.
 
-|validateSpf
-|true
-|Enable SPF DNS validation
-
-|validateDmarc
-|true
-|Enable DMARC DNS validation
-
-|spfAuthorizedIps
-|(required if validateSpf=true)
-|Comma-separated list of IP addresses that must be authorized in the domain's SPF record. These are typically your TMail server's public IP addresses. Supports both single IPs (192.0.2.10) and CIDR ranges (192.0.2.0/24).
+|spfInclude
+| if unspecified disable SPF checks
+| SPF include that must be specified in the record.
 
 |dmarcMinPolicy
-|quarantine
+| if unspecified disable DMARD checks
 |Minimum DMARC policy required. Valid values: `none`, `quarantine`, `reject`
+
+|validationFailureProcessor
+| error
+|Processor to send invalid emails to.
 |===
 
 === Example Configuration
@@ -73,11 +69,10 @@ This mailet should be placed in the *transport processor*, after `DKIMSign` and 
 
   <!-- Validate DNS records -->
   <mailet match="All" class="com.linagora.tmail.mailet.DomainDnsValidator">
-    <validateDkim>true</validateDkim>
-    <validateSpf>true</validateSpf>
-    <validateDmarc>true</validateDmarc>
-    <spfAuthorizedIps>192.0.2.10,198.51.100.5</spfAuthorizedIps>
+    <acceptedDkimKeys>MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwc8ksmQvN3Qk8rOehLdu4xTzBz5E9WjX3V8fK9zLutw4F5mvh0qFQeX1nVqYQ1oHXv8z9pHvh2cWqg8zP/0DPW8nG+9PRcZ8mDFeG9Oa2CE8vNQXGvG+y9bS5QIDAQAB</acceptedDkimKeys>
+    <spfInclude>_spf.twake.app</spfInclude>
     <dmarcMinPolicy>quarantine</dmarcMinPolicy>
+    <validationFailureProcessor>misscounfiguredDomainError</validationFailureProcessor>
   </mailet>
 
   <!-- Send emails -->
@@ -96,6 +91,7 @@ The mailet:
 1. Extracts the `s=` (selector) and `d=` (domain) parameters from the `DKIM-Signature` header
 2. Queries DNS for `<selector>._domainkey.<domain>` TXT record
 3. Verifies the record exists and starts with `v=DKIM1`
+4. Verifies that the domain uses a allowed DKIM key.
 
 *Example*: For `s=s1; d=example.com`, expects a TXT record at `s1._domainkey.example.com`:
 
@@ -110,22 +106,7 @@ The mailet:
 
 1. Queries DNS for the domain's TXT records
 2. Locates the SPF record (starts with `v=spf1`)
-3. Verifies all IPs listed in `spfAuthorizedIps` are present in the SPF record
-4. Additional IPs in the SPF record are tolerated (customers can authorize their own servers too)
-
-*Example*: For `spfAuthorizedIps=192.0.2.10,198.51.100.5`, expects:
-
-[source]
-----
-example.com. IN TXT "v=spf1 ip4:192.0.2.10 ip4:198.51.100.5 ~all"
-----
-
-Or with CIDR notation:
-
-[source]
-----
-example.com. IN TXT "v=spf1 ip4:192.0.2.0/24 ip4:198.51.100.0/24 ~all"
-----
+3. Ensure the SPF record include the configured value
 
 === DMARC Validation
 
@@ -161,9 +142,9 @@ _dmarc.example.com. IN TXT "v=DMARC1; p=none"
 
 When validation fails, the email is:
 
-* Set to `ERROR` state
+* Set to `validationFailureProcessor` state
 * Given an error message describing the failure
-* Typically bounced back to the sender with an explanation
+* Typically, bounced back to the sender with an explanation
 
 Error messages include:
 

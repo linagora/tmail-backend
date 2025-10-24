@@ -19,11 +19,8 @@
 package com.linagora.tmail.mailet;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
-import java.util.Arrays;
 import java.util.Optional;
 
 import jakarta.mail.internet.MimeMessage;
@@ -36,12 +33,7 @@ import org.apache.mailet.base.test.FakeMailetConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import com.linagora.tmail.mailet.dns.DkimDnsValidator;
-import com.linagora.tmail.mailet.dns.DmarcDnsValidator;
-import com.linagora.tmail.mailet.dns.SpfDnsValidator;
-
 class DomainDnsValidatorTest {
-
     private DNSService dnsService;
     private DomainDnsValidator mailet;
 
@@ -61,8 +53,8 @@ class DomainDnsValidatorTest {
         Optional<DomainDnsValidator.DkimSignatureInfo> info = mailet.extractDkimSignatureInfo(message);
 
         assertThat(info).isPresent();
-        assertThat(info.get().domain).isEqualTo("example.com");
-        assertThat(info.get().selector).isEqualTo("s1");
+        assertThat(info.get().domain()).isEqualTo("example.com");
+        assertThat(info.get().selector()).isEqualTo("s1");
     }
 
     @Test
@@ -87,17 +79,15 @@ class DomainDnsValidatorTest {
         Optional<DomainDnsValidator.DkimSignatureInfo> info = mailet.extractDkimSignatureInfo(message);
 
         assertThat(info).isPresent();
-        assertThat(info.get().domain).isEqualTo("example.com");
-        assertThat(info.get().selector).isEqualTo("selector2023");
+        assertThat(info.get().domain()).isEqualTo("example.com");
+        assertThat(info.get().selector()).isEqualTo("selector2023");
     }
 
     @Test
     void shouldRejectMailWithoutDkimSignature() throws Exception {
         mailet.init(FakeMailetConfig.builder()
             .mailetName("DomainDnsValidator")
-            .setProperty("validateDkim", "true")
-            .setProperty("validateSpf", "false")
-            .setProperty("validateDmarc", "false")
+            .setProperty("acceptedDkimKeys", "aKey")
             .build());
 
         MimeMessage message = MimeMessageBuilder.mimeMessageBuilder()
@@ -107,6 +97,7 @@ class DomainDnsValidatorTest {
         Mail mail = FakeMail.builder()
             .name("mail1")
             .mimeMessage(message)
+            .sender("btellier@linagora.com")
             .build();
 
         mailet.service(mail);
@@ -119,9 +110,6 @@ class DomainDnsValidatorTest {
     void shouldPassValidationWhenAllChecksDisabled() throws Exception {
         mailet.init(FakeMailetConfig.builder()
             .mailetName("DomainDnsValidator")
-            .setProperty("validateDkim", "false")
-            .setProperty("validateSpf", "false")
-            .setProperty("validateDmarc", "false")
             .build());
 
         MimeMessage message = MimeMessageBuilder.mimeMessageBuilder()
@@ -131,11 +119,11 @@ class DomainDnsValidatorTest {
         Mail mail = FakeMail.builder()
             .name("mail1")
             .mimeMessage(message)
+            .state("originalState")
             .build();
 
         mailet.service(mail);
 
-        // Should still fail because no DKIM signature is present
-        assertThat(mail.getState()).isEqualTo(Mail.ERROR);
+        assertThat(mail.getState()).isEqualTo("originalState");
     }
 }

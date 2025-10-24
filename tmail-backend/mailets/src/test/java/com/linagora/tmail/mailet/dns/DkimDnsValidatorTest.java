@@ -22,13 +22,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Optional;
 
+import org.apache.james.core.Domain;
 import org.apache.james.dnsservice.api.DNSService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import com.google.common.collect.ImmutableList;
+import com.linagora.tmail.mailet.dns.DnsValidationFailure.DkimValidationFailure;
 
 class DkimDnsValidatorTest {
 
@@ -38,12 +41,12 @@ class DkimDnsValidatorTest {
     @BeforeEach
     void setUp() {
         dnsService = mock(DNSService.class);
-        validator = new DkimDnsValidator(dnsService);
+        validator = new DkimDnsValidator(dnsService, ImmutableList.of("key1", "key2"));
     }
 
     @Test
     void shouldBuildCorrectDkimRecordName() {
-        String recordName = validator.buildDkimRecordName("s1", "example.com");
+        String recordName = validator.buildDkimRecordName("s1", Domain.of("example.com"));
         assertThat(recordName).isEqualTo("s1._domainkey.example.com");
     }
 
@@ -67,45 +70,65 @@ class DkimDnsValidatorTest {
     }
 
     @Test
-    void shouldPassWhenDkimRecordExists() throws Exception {
+    void shouldPassWhenDkimRecordExists() {
         when(dnsService.findTXTRecords("s1._domainkey.example.com"))
-            .thenReturn(Arrays.asList("v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBgQ..."));
+            .thenReturn(ImmutableList.of("v=DKIM1; k=rsa; p=key1"));
 
-        Optional<String> result = validator.validate("example.com", "s1");
+        Optional<DkimValidationFailure> result = validator.validate(Domain.of("example.com"), "s1");
 
         assertThat(result).isEmpty();
     }
 
     @Test
-    void shouldFailWhenNoDkimRecordFound() throws Exception {
+    void shouldPassWhenSecondKeyUsed() {
+        when(dnsService.findTXTRecords("s1._domainkey.example.com"))
+            .thenReturn(ImmutableList.of("v=DKIM1; k=rsa; p=key2"));
+
+        Optional<DkimValidationFailure> result = validator.validate(Domain.of("example.com"), "s1");
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void shouldFailWhenNotAcceptedKey() {
+        when(dnsService.findTXTRecords("s1._domainkey.example.com"))
+            .thenReturn(ImmutableList.of("v=DKIM1; k=rsa; p=key3"));
+
+        Optional<DkimValidationFailure> result = validator.validate(Domain.of("example.com"), "s1");
+
+        assertThat(result).isPresent();
+        assertThat(result.get().message()).isEqualTo("DKIM record at s1._domainkey.example.com does not contain valid DKIM signature (must start with v=DKIM1 and have a valid public key)");
+    }
+
+    @Test
+    void shouldFailWhenNoDkimRecordFound() {
         when(dnsService.findTXTRecords("s1._domainkey.example.com"))
             .thenReturn(Collections.emptyList());
 
-        Optional<String> result = validator.validate("example.com", "s1");
+        Optional<DkimValidationFailure> result = validator.validate(Domain.of("example.com"), "s1");
 
-        assertThat(result).isPresent();
-        assertThat(result.get()).contains("No DKIM record found");
+        assertThat(result.get().message()).contains("No DKIM record found");
     }
 
     @Test
-    void shouldFailWhenDkimRecordIsInvalid() throws Exception {
+    void shouldFailWhenDkimRecordIsInvalid() {
         when(dnsService.findTXTRecords("s1._domainkey.example.com"))
-            .thenReturn(Arrays.asList("k=rsa; p=key"));
+            .thenReturn(ImmutableList.of("k=rsa; p=key"));
 
-        Optional<String> result = validator.validate("example.com", "s1");
+        Optional<DkimValidationFailure> result = validator.validate(Domain.of("example.com"), "s1");
 
         assertThat(result).isPresent();
-        assertThat(result.get()).contains("does not contain valid DKIM signature");
+        assertThat(result.get().message()).contains("does not contain valid DKIM signature");
     }
 
     @Test
-    void shouldHandleDnsQueryException() throws Exception {
+    void shouldHandleDnsQueryException() {
         when(dnsService.findTXTRecords("s1._domainkey.example.com"))
             .thenThrow(new RuntimeException("DNS query failed"));
 
-        Optional<String> result = validator.validate("example.com", "s1");
+        Optional<DkimValidationFailure> result = validator.validate(Domain.of("example.com"), "s1");
 
         assertThat(result).isPresent();
-        assertThat(result.get()).contains("Failed to query DKIM record");
+        assertThat(result.get().message()).contains("Failed to query DKIM record");
     }
 }

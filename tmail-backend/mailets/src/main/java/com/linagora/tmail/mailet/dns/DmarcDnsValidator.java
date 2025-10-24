@@ -23,6 +23,7 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import org.apache.james.core.Domain;
 import org.apache.james.dnsservice.api.DNSService;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -36,7 +37,6 @@ import com.google.common.annotations.VisibleForTesting;
  * </p>
  */
 public class DmarcDnsValidator {
-    private static final String DMARC_PREFIX = "v=DMARC1";
     private static final String DMARC_SUBDOMAIN = "_dmarc.";
     private static final Pattern DMARC_POLICY_PATTERN = Pattern.compile("p=([^;\\s]+)");
 
@@ -80,7 +80,7 @@ public class DmarcDnsValidator {
      * @param domain the domain to validate
      * @return Optional validation failure if validation fails, empty if validation succeeds
      */
-    public Optional<DnsValidationFailure.DmarcValidationFailure> validate(String domain) {
+    public Optional<DnsValidationFailure.DmarcValidationFailure> validate(Domain domain) {
         String dmarcRecordName = buildDmarcRecordName(domain);
 
         try {
@@ -125,8 +125,8 @@ public class DmarcDnsValidator {
     }
 
     @VisibleForTesting
-    String buildDmarcRecordName(String domain) {
-        return DMARC_SUBDOMAIN + domain;
+    String buildDmarcRecordName(Domain domain) {
+        return DMARC_SUBDOMAIN + domain.asString();
     }
 
     @VisibleForTesting

@@ -22,6 +22,7 @@ import java.util.Collection;
 import java.util.Optional;
 import java.util.regex.Pattern;
 
+import org.apache.james.core.Domain;
 import org.apache.james.dnsservice.api.DNSService;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -54,9 +55,9 @@ public class SpfDnsValidator {
      * @param domain the domain to validate
      * @return Optional validation failure if validation fails, empty if validation succeeds
      */
-    public Optional<DnsValidationFailure.SpfValidationFailure> validate(String domain) {
+    public Optional<DnsValidationFailure.SpfValidationFailure> validate(Domain domain) {
         try {
-            Collection<String> txtRecords = dnsService.findTXTRecords(domain);
+            Collection<String> txtRecords = dnsService.findTXTRecords(domain.asString());
 
             if (txtRecords == null || txtRecords.isEmpty()) {
                 return Optional.of(new DnsValidationFailure.SpfValidationFailure(

@@ -18,16 +18,23 @@
 
 package com.linagora.tmail.mailet;
 
+import java.util.Collection;
 import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
+import com.google.common.base.Splitter;
+import com.google.common.collect.ImmutableList;
+import com.linagora.tmail.mailet.dns.DnsValidationFailure;
 import jakarta.inject.Inject;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
 
+import org.apache.james.core.Domain;
+import org.apache.james.core.MaybeSender;
 import org.apache.james.dnsservice.api.DNSService;
 import org.apache.mailet.Mail;
+import org.apache.mailet.ProcessingState;
 import org.apache.mailet.base.GenericMailet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -48,7 +55,7 @@ import com.linagora.tmail.mailet.dns.SpfDnsValidator;
  * <p>
  * The validation occurs after DKIM signing and checks:
  * <ul>
- *   <li><b>DKIM</b>: Verifies that the selector used in DKIM-Signature header has a valid DNS record</li>
+ *   <li><b>DKIM</b>: Verifies that the selector used in DKIM-Signature header has a valid DNS record with one of the accepted public key.</li>
  *   <li><b>SPF</b>: Ensures the domain's SPF record includes TMail's SPF configuration via include mechanism</li>
  *   <li><b>DMARC</b>: Validates that a DMARC policy exists with minimum quarantine level</li>
  * </ul>
@@ -57,11 +64,10 @@ import com.linagora.tmail.mailet.dns.SpfDnsValidator;
  * <p>
  * Configuration parameters:
  * <ul>
- *   <li><b>validateDkim</b>: Enable DKIM validation (default: true)</li>
- *   <li><b>validateSpf</b>: Enable SPF validation (default: true)</li>
- *   <li><b>validateDmarc</b>: Enable DMARC validation (default: true)</li>
+ *   <li><b>acceptedDkimKeys</b>: DKIM keys we consider as accepted for our service.</li>
  *   <li><b>spfInclude</b>: SPF include domain that must be present in customer's SPF (e.g., "_spf.tmail.com")</li>
  *   <li><b>dmarcMinPolicy</b>: Minimum DMARC policy required (quarantine or reject, default: quarantine)</li>
+ *   <li><b>validationFailureProcessor</b>: Processor to send invalid emails to.</li>
  * </ul>
  * </p>
  *
@@ -71,10 +77,8 @@ import com.linagora.tmail.mailet.dns.SpfDnsValidator;
  * <pre>
  * {@code
  * <mailet match="All" class="com.linagora.tmail.mailet.DomainDnsValidator">
- *   <validateDkim>true</validateDkim>
- *   <validateSpf>true</validateSpf>
- *   <validateDmarc>true</validateDmarc>
  *   <spfInclude>_spf.tmail.com</spfInclude>
+ *   <acceptedDkimKeys>MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwc8ksmQvN3Qk8rOehLdu4xTzBz5E9WjX3V8fK9zLutw4F5mvh0qFQeX1nVqYQ1oHXv8z9pHvh2cWqg8zP/0DPW8nG+9PRcZ8mDFeG9Oa2CE8vNQXGvG+y9bS5QIDAQAB</acceptedDkimKeys>
  *   <dmarcMinPolicy>quarantine</dmarcMinPolicy>
  * </mailet>
  * }
@@ -88,10 +92,13 @@ import com.linagora.tmail.mailet.dns.SpfDnsValidator;
 public class DomainDnsValidator extends GenericMailet {
     private static final Logger LOGGER = LoggerFactory.getLogger(DomainDnsValidator.class);
 
-    private static final String VALIDATE_DKIM_PARAM = "validateDkim";
-    private static final String VALIDATE_SPF_PARAM = "validateSpf";
-    private static final String VALIDATE_DMARC_PARAM = "validateDmarc";
+    @VisibleForTesting
+    record DkimSignatureInfo(String domain, String selector) {
+
+    }
+
     private static final String SPF_INCLUDE_PARAM = "spfInclude";
+    private static final String DKIM_KEY_PARAM = "acceptedDkimKeys";
     private static final String DMARC_MIN_POLICY_PARAM = "dmarcMinPolicy";
 
     private static final String DKIM_SIGNATURE_HEADER = "DKIM-Signature";
@@ -99,12 +106,10 @@ public class DomainDnsValidator extends GenericMailet {
     private static final Pattern DKIM_DOMAIN_PATTERN = Pattern.compile("d=([^;\\s]+)");
 
     private final DNSService dnsService;
-    private boolean validateDkim;
-    private boolean validateSpf;
-    private boolean validateDmarc;
     private SpfDnsValidator spfValidator;
     private DkimDnsValidator dkimValidator;
     private DmarcDnsValidator dmarcValidator;
+    private String validationFailureProcessor = Mail.ERROR;
 
     @Inject
     public DomainDnsValidator(DNSService dnsService) {
@@ -113,29 +118,24 @@ public class DomainDnsValidator extends GenericMailet {
 
     @Override
     public void init() throws MessagingException {
-        validateDkim = Boolean.parseBoolean(getInitParameter(VALIDATE_DKIM_PARAM, "true"));
-        validateSpf = Boolean.parseBoolean(getInitParameter(VALIDATE_SPF_PARAM, "true"));
-        validateDmarc = Boolean.parseBoolean(getInitParameter(VALIDATE_DMARC_PARAM, "true"));
-
-        if (validateSpf) {
-            String spfInclude = getInitParameter(SPF_INCLUDE_PARAM);
-            if (Strings.isNullOrEmpty(spfInclude)) {
-                throw new MessagingException("spfInclude parameter is required when validateSpf is enabled");
-            }
+        String spfInclude = getInitParameter(SPF_INCLUDE_PARAM);
+        if (!Strings.isNullOrEmpty(spfInclude)) {
             spfValidator = new SpfDnsValidator(dnsService, spfInclude);
         }
 
-        if (validateDkim) {
-            dkimValidator = new DkimDnsValidator(dnsService);
+        String dkimKeys = getInitParameter(DKIM_KEY_PARAM);
+        if (!Strings.isNullOrEmpty(dkimKeys)) {
+            dkimValidator = new DkimDnsValidator(dnsService,
+                Splitter.on(',')
+                    .splitToList(dkimKeys));
         }
 
-        if (validateDmarc) {
-            String dmarcMinPolicy = getInitParameter(DMARC_MIN_POLICY_PARAM, "quarantine");
+        String dmarcMinPolicy = getInitParameter(DMARC_MIN_POLICY_PARAM);
+        if (!Strings.isNullOrEmpty(dmarcMinPolicy)) {
             dmarcValidator = new DmarcDnsValidator(dnsService, dmarcMinPolicy);
         }
 
-        LOGGER.info("DomainDnsValidator initialized - validateDkim: {}, validateSpf: {}, validateDmarc: {}",
-            validateDkim, validateSpf, validateDmarc);
+        validationFailureProcessor = getInitParameter("validationFailureProcessor", Mail.ERROR);
     }
 
     @Override
@@ -146,26 +146,28 @@ public class DomainDnsValidator extends GenericMailet {
     @Override
     public void service(Mail mail) throws MessagingException {
         MimeMessage message = mail.getMessage();
+        MaybeSender maybeSender = mail.getMaybeSender();
 
-        // Extract DKIM signature information
-        Optional<DkimSignatureInfo> dkimInfo = extractDkimSignatureInfo(message);
-
-        if (!dkimInfo.isPresent()) {
-            String errorMsg = "No DKIM-Signature header found. Email must be DKIM signed before validation.";
-            LOGGER.warn("Mail {} rejected: {}", mail.getName(), errorMsg);
-            mail.setErrorMessage(errorMsg);
-            mail.setState(Mail.ERROR);
+        if (maybeSender.isNullSender()) {
+            LOGGER.debug("Skip DNS validation for {} has it is sent by <> sender", mail.getName());
             return;
         }
-
-        String domain = dkimInfo.get().domain;
-        String selector = dkimInfo.get().selector;
-
-        LOGGER.debug("Validating DNS records for domain: {}, selector: {}", domain, selector);
+        Domain domain = maybeSender.get().getDomain();
 
         // Validate DKIM DNS record
-        if (validateDkim) {
+        if (dkimValidator != null) {
+            // Extract DKIM signature information
+            Optional<DkimSignatureInfo> dkimInfo = extractDkimSignatureInfo(message);
+            if (dkimInfo.isEmpty()) {
+                String errorMsg = "No DKIM-Signature header found. Email must be DKIM signed before validation.";
+                LOGGER.warn("Mail {} rejected: {}", mail.getName(), errorMsg);
+                mail.setErrorMessage(errorMsg);
+                mail.setState(Mail.ERROR);
+                return;
+            }
+            String selector = dkimInfo.get().selector;
             Optional<DnsValidationFailure.DkimValidationFailure> dkimError = dkimValidator.validate(domain, selector);
+            LOGGER.debug("Validating DNS records for domain: {}, selector: {}", domain, selector);
             if (dkimError.isPresent()) {
                 handleValidationFailure(mail, "DKIM", dkimError.get().message());
                 return;
@@ -173,7 +175,7 @@ public class DomainDnsValidator extends GenericMailet {
         }
 
         // Validate SPF record
-        if (validateSpf) {
+        if (spfValidator != null) {
             Optional<DnsValidationFailure.SpfValidationFailure> spfError = spfValidator.validate(domain);
             if (spfError.isPresent()) {
                 handleValidationFailure(mail, "SPF", spfError.get().message());
@@ -182,7 +184,7 @@ public class DomainDnsValidator extends GenericMailet {
         }
 
         // Validate DMARC record
-        if (validateDmarc) {
+        if (dmarcValidator != null) {
             Optional<DnsValidationFailure.DmarcValidationFailure> dmarcError = dmarcValidator.validate(domain);
             if (dmarcError.isPresent()) {
                 handleValidationFailure(mail, "DMARC", dmarcError.get().message());
@@ -190,7 +192,7 @@ public class DomainDnsValidator extends GenericMailet {
             }
         }
 
-        LOGGER.info("DNS validation passed for domain: {}", domain);
+        LOGGER.debug("DNS validation passed for domain: {}", domain);
     }
 
     @VisibleForTesting
@@ -226,17 +228,11 @@ public class DomainDnsValidator extends GenericMailet {
         String fullError = String.format("%s validation failed: %s", recordType, errorMessage);
         LOGGER.warn("Mail {} rejected: {}", mail.getName(), fullError);
         mail.setErrorMessage(fullError);
-        mail.setState(Mail.ERROR);
+        mail.setState(validationFailureProcessor);
     }
 
-    @VisibleForTesting
-    static class DkimSignatureInfo {
-        final String domain;
-        final String selector;
-
-        DkimSignatureInfo(String domain, String selector) {
-            this.domain = domain;
-            this.selector = selector;
-        }
+    @Override
+    public Collection<ProcessingState> requiredProcessingState() {
+        return ImmutableList.of(new ProcessingState(validationFailureProcessor));
     }
 }

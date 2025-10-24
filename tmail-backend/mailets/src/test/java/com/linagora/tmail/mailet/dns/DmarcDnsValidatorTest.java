@@ -23,15 +23,17 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Optional;
 
+import org.apache.james.core.Domain;
 import org.apache.james.dnsservice.api.DNSService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.mailet.dns.DmarcDnsValidator.DmarcPolicy;
+import com.linagora.tmail.mailet.dns.DnsValidationFailure.DmarcValidationFailure;
 
 class DmarcDnsValidatorTest {
 
@@ -46,7 +48,7 @@ class DmarcDnsValidatorTest {
     void shouldBuildCorrectDmarcRecordName() {
         DmarcDnsValidator validator = new DmarcDnsValidator(dnsService, "quarantine");
 
-        assertThat(validator.buildDmarcRecordName("example.com")).isEqualTo("_dmarc.example.com");
+        assertThat(validator.buildDmarcRecordName(Domain.of("example.com"))).isEqualTo("_dmarc.example.com");
     }
 
     @Test
@@ -97,68 +99,68 @@ class DmarcDnsValidatorTest {
     }
 
     @Test
-    void shouldPassWhenDmarcPolicyIsQuarantine() throws Exception {
+    void shouldPassWhenDmarcPolicyIsQuarantine() {
         DmarcDnsValidator validator = new DmarcDnsValidator(dnsService, "quarantine");
 
         when(dnsService.findTXTRecords("_dmarc.example.com"))
-            .thenReturn(Arrays.asList("v=DMARC1; p=quarantine; rua=mailto:dmarc@example.com"));
+            .thenReturn(ImmutableList.of("v=DMARC1; p=quarantine; rua=mailto:dmarc@example.com"));
 
-        Optional<String> result = validator.validate("example.com");
+        Optional<DmarcValidationFailure> result = validator.validate(Domain.of("example.com"));
 
         assertThat(result).isEmpty();
     }
 
     @Test
-    void shouldPassWhenDmarcPolicyIsReject() throws Exception {
+    void shouldPassWhenDmarcPolicyIsReject() {
         DmarcDnsValidator validator = new DmarcDnsValidator(dnsService, "quarantine");
 
         when(dnsService.findTXTRecords("_dmarc.example.com"))
-            .thenReturn(Arrays.asList("v=DMARC1; p=reject"));
+            .thenReturn(ImmutableList.of("v=DMARC1; p=reject"));
 
-        Optional<String> result = validator.validate("example.com");
+        Optional<DmarcValidationFailure> result = validator.validate(Domain.of("example.com"));
 
         assertThat(result).isEmpty();
     }
 
     @Test
-    void shouldFailWhenDmarcPolicyIsTooLenient() throws Exception {
+    void shouldFailWhenDmarcPolicyIsTooLenient() {
         DmarcDnsValidator validator = new DmarcDnsValidator(dnsService, "quarantine");
 
         when(dnsService.findTXTRecords("_dmarc.example.com"))
-            .thenReturn(Arrays.asList("v=DMARC1; p=none"));
+            .thenReturn(ImmutableList.of("v=DMARC1; p=none"));
 
-        Optional<String> result = validator.validate("example.com");
+        Optional<DmarcValidationFailure> result = validator.validate(Domain.of("example.com"));
 
         assertThat(result).isPresent();
-        assertThat(result.get()).contains("too lenient");
-        assertThat(result.get()).contains("Required: quarantine");
-        assertThat(result.get()).contains("Found: none");
+        assertThat(result.get().message()).contains("too lenient");
+        assertThat(result.get().message()).contains("Required: quarantine");
+        assertThat(result.get().message()).contains("Found: none");
     }
 
     @Test
-    void shouldFailWhenNoDmarcRecord() throws Exception {
+    void shouldFailWhenNoDmarcRecord() {
         DmarcDnsValidator validator = new DmarcDnsValidator(dnsService, "quarantine");
 
         when(dnsService.findTXTRecords("_dmarc.example.com"))
             .thenReturn(Collections.emptyList());
 
-        Optional<String> result = validator.validate("example.com");
+        Optional<DmarcValidationFailure> result = validator.validate(Domain.of("example.com"));
 
         assertThat(result).isPresent();
-        assertThat(result.get()).contains("No DMARC record found");
+        assertThat(result.get().message()).contains("No DMARC record found");
     }
 
     @Test
-    void shouldFailWhenDmarcRecordHasNoPolicy() throws Exception {
+    void shouldFailWhenDmarcRecordHasNoPolicy() {
         DmarcDnsValidator validator = new DmarcDnsValidator(dnsService, "quarantine");
 
         when(dnsService.findTXTRecords("_dmarc.example.com"))
-            .thenReturn(Arrays.asList("v=DMARC1; rua=mailto:dmarc@example.com"));
+            .thenReturn(ImmutableList.of("v=DMARC1; rua=mailto:dmarc@example.com"));
 
-        Optional<String> result = validator.validate("example.com");
+        Optional<DmarcValidationFailure> result = validator.validate(Domain.of("example.com"));
 
         assertThat(result).isPresent();
-        assertThat(result.get()).contains("does not contain a valid policy");
+        assertThat(result.get().message()).contains("does not contain a valid policy");
     }
 
     @Test
