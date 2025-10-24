@@ -19,13 +19,12 @@
 package com.linagora.tmail.mailet.dns;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.spy;
 
+import java.util.Collection;
 import java.util.Optional;
 
 import org.apache.james.core.Domain;
+import org.apache.james.dnsservice.api.DNSService;
 import org.apache.james.dnsservice.api.InMemoryDNSService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -39,7 +38,7 @@ class DkimDnsValidatorTest {
 
     @BeforeEach
     void setUp() {
-        dnsService = spy(new InMemoryDNSService());
+        dnsService = new InMemoryDNSService();
         validator = new DkimDnsValidator(dnsService, ImmutableList.of("key1", "key2"));
     }
 
@@ -120,12 +119,16 @@ class DkimDnsValidatorTest {
     }
 
     @Test
-    void shouldHandleDnsQueryException() throws Exception {
-        doThrow(new RuntimeException("DNS query failed"))
-            .when(dnsService)
-            .findMXRecords(anyString());
+    void shouldHandleDnsQueryException() {
+        DNSService throwingDnsService = new InMemoryDNSService() {
+            @Override
+            public Collection<String> findTXTRecords(String hostname) {
+                throw new RuntimeException("DNS query failed");
+            }
+        };
+        DkimDnsValidator throwingValidator = new DkimDnsValidator(throwingDnsService, ImmutableList.of("key1", "key2"));
 
-        Optional<DkimValidationFailure> result = validator.validate(Domain.of("example.com"), "s1");
+        Optional<DkimValidationFailure> result = throwingValidator.validate(Domain.of("example.com"), "s1");
 
         assertThat(result).isPresent();
         assertThat(result.get().message()).contains("Failed to query DKIM record");
