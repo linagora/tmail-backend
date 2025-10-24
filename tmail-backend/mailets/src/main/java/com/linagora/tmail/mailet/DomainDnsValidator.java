@@ -23,9 +23,6 @@ import java.util.Optional;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-import com.google.common.base.Splitter;
-import com.google.common.collect.ImmutableList;
-import com.linagora.tmail.mailet.dns.DnsValidationFailure;
 import jakarta.inject.Inject;
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.MimeMessage;
@@ -40,9 +37,12 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.mailet.dns.DkimDnsValidator;
 import com.linagora.tmail.mailet.dns.DmarcDnsValidator;
+import com.linagora.tmail.mailet.dns.DnsValidationFailure;
 import com.linagora.tmail.mailet.dns.SpfDnsValidator;
 
 /**
