@@ -162,7 +162,7 @@ public class DomainDnsValidator extends GenericMailet {
                 String errorMsg = "No DKIM-Signature header found. Email must be DKIM signed before validation.";
                 LOGGER.warn("Mail {} rejected: {}", mail.getName(), errorMsg);
                 mail.setErrorMessage(errorMsg);
-                mail.setState(Mail.ERROR);
+                mail.setState(validationFailureProcessor);
                 return;
             }
             String selector = dkimInfo.get().selector;
