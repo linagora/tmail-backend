@@ -20,11 +20,14 @@ package com.linagora.tmail.james.jmap.model
 
 import eu.timepit.refined.auto._
 import org.apache.james.jmap.core.Id.Id
+import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.UnsignedInt.UnsignedInt
-import org.apache.james.jmap.core.{Id, Properties}
+import org.apache.james.jmap.core.{Id, Properties, SetError}
+import org.apache.james.jmap.mail.UnparsedMailboxId
 import org.apache.james.jmap.method.WithoutAccountId
 import org.apache.james.task.TaskId
 import org.apache.james.task.TaskManager.Status
+import play.api.libs.json.JsObject
 
 import scala.util.Try
 
@@ -84,9 +87,42 @@ object FolderFilteringActionGetResponse {
 case class FolderFilteringActionGetResponse(list: Seq[FolderFilteringAction],
                                             notFound: Set[UnparsedFolderFilteringActionId])
 
+object FolderFilteringActionCreation {
+  private val knownProperties: Set[String] = Set("mailboxId")
+
+  def validateProperties(jsObject: JsObject): Either[FolderFilteringActionCreationParseException, JsObject] = {
+    if (!jsObject.keys.toSet.contains("mailboxId")) {
+      return Left(FolderFilteringActionCreationParseException(SetError.invalidArguments(
+        SetErrorDescription(s"Missing 'mailboxId' property"))))
+    }
+
+    (jsObject.keys.toSet -- knownProperties) match {
+      case unknown if unknown.nonEmpty =>
+        Left(FolderFilteringActionCreationParseException(SetError.invalidArguments(
+          SetErrorDescription(s"Unsupported properties: ${unknown.mkString(", ")}"))))
+      case _ => Right(jsObject)
+    }
+  }
+}
+
+case class FolderFilteringActionCreationId(id: Id) {
+  def serialize: String = id.value
+}
+
+case class FolderFilteringActionCreationRequest(mailboxId: UnparsedMailboxId)
+
+case class FolderFilteringActionSetRequest(create: Option[Map[FolderFilteringActionCreationId, JsObject]]) extends WithoutAccountId
+
+case class FolderFilteringActionCreationResponse(id: TaskId)
+
+case class FolderFilteringActionSetResponse(created: Option[Map[FolderFilteringActionCreationId, FolderFilteringActionCreationResponse]] = None,
+                                            notCreated: Option[Map[FolderFilteringActionCreationId, SetError]] = None) extends WithoutAccountId
+
 case class FolderFilteringAction(id: TaskId,
                                  status: Status,
                                  processedMessageCount: ProcessedMessageCount,
                                  successfulActions: SuccessfulActions,
                                  failedActions: FailedActions,
                                  maximumAppliedActionReached: Boolean)
+
+case class FolderFilteringActionCreationParseException(setError: SetError) extends RuntimeException

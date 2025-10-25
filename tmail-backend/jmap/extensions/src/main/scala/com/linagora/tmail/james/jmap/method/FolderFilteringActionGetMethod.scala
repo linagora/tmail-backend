@@ -44,6 +44,9 @@ class FolderFilteringActionMethodModule extends AbstractModule {
     Multibinder.newSetBinder(binder(), classOf[Method])
       .addBinding()
       .to(classOf[FolderFilteringActionGetMethod])
+    Multibinder.newSetBinder(binder(), classOf[Method])
+      .addBinding()
+      .to(classOf[FolderFilteringActionSetMethod])
   }
 }
 
