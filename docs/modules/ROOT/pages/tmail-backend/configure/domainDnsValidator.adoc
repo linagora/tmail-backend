@@ -1,0 +1,226 @@
+= DomainDnsValidator
+:navtitle: DomainDnsValidator
+
+== Purpose
+
+The `DomainDnsValidator` mailet validates DNS records (SPF, DKIM, DMARC) for outbound emails before sending them.
+This is particularly useful in SaaS environments where customers send emails through your infrastructure using their own domains.
+
+The mailet ensures that:
+
+* *DKIM*: The DKIM selector used in the email signature has a valid DNS record published and uses one of the allowed keys.
+* *SPF*: The domain's SPF record authorizes your server IPs to send emails on behalf of the domain
+* *DMARC*: The domain has a DMARC policy with at least the minimum required strictness level
+
+If any validation fails, the email is rejected with an appropriate error message.
+
+== Workflow
+
+1. The email is DKIM-signed by the `DKIMSign` mailet
+2. `DomainDnsValidator` extracts the DKIM signature information (domain and selector)
+3. DNS records are validated according to configuration
+4. If all checks pass, the email proceeds to delivery
+5. If any check fails, the email is bounced with an error message
+
+== Configuration
+
+=== Placement
+
+This mailet should be placed in the *transport processor*, after `DKIMSign` and before `RemoteDelivery`.
+
+=== Parameters
+
+[cols="1,1,3", options="header"]
+|===
+|Parameter
+|Default
+|Description
+
+|acceptedDkimKeys
+| if unspecified disable DKIM checks
+|Coma separated list of DKIM public keys allowed.
+
+|spfInclude
+| if unspecified disable SPF checks
+| SPF include that must be specified in the record.
+
+|dmarcMinPolicy
+| if unspecified disable DMARD checks
+|Minimum DMARC policy required. Valid values: `none`, `quarantine`, `reject`
+
+|validationFailureProcessor
+| error
+|Processor to send invalid emails to.
+|===
+
+=== Example Configuration
+
+[source,xml]
+----
+<processor state="transport" enableJmx="true">
+  <!-- Other mailets... -->
+
+  <!-- Sign outbound emails with DKIM -->
+  <mailet match="All" class="DKIMSign">
+    <privateKey>file://conf/dkim.pem</privateKey>
+    <selector>s1</selector>
+    <signatureTemplate>v=1; s=s1; d=example.com; h=from:to:subject:date; bh=; b=;</signatureTemplate>
+  </mailet>
+
+  <!-- Validate DNS records -->
+  <mailet match="All" class="com.linagora.tmail.mailet.DomainDnsValidator">
+    <acceptedDkimKeys>MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwc8ksmQvN3Qk8rOehLdu4xTzBz5E9WjX3V8fK9zLutw4F5mvh0qFQeX1nVqYQ1oHXv8z9pHvh2cWqg8zP/0DPW8nG+9PRcZ8mDFeG9Oa2CE8vNQXGvG+y9bS5QIDAQAB</acceptedDkimKeys>
+    <spfInclude>_spf.twake.app</spfInclude>
+    <dmarcMinPolicy>quarantine</dmarcMinPolicy>
+    <validationFailureProcessor>misscounfiguredDomainError</validationFailureProcessor>
+  </mailet>
+
+  <!-- Send emails -->
+  <mailet match="All" class="RemoteDelivery">
+    <!-- RemoteDelivery configuration... -->
+  </mailet>
+</processor>
+----
+
+== Validation Details
+
+=== DKIM Validation
+
+The mailet:
+
+1. Extracts the `s=` (selector) and `d=` (domain) parameters from the `DKIM-Signature` header
+2. Queries DNS for `<selector>._domainkey.<domain>` TXT record
+3. Verifies the record exists and starts with `v=DKIM1`
+4. Verifies that the domain uses a allowed DKIM key.
+
+*Example*: For `s=s1; d=example.com`, expects a TXT record at `s1._domainkey.example.com`:
+
+[source]
+----
+s1._domainkey.example.com. IN TXT "v=DKIM1; k=rsa; p=MIGfMA0GCSqGSIb..."
+----
+
+=== SPF Validation
+
+The mailet:
+
+1. Queries DNS for the domain's TXT records
+2. Locates the SPF record (starts with `v=spf1`)
+3. Ensure the SPF record include the configured value
+
+=== DMARC Validation
+
+The mailet:
+
+1. Queries DNS for `_dmarc.<domain>` TXT record
+2. Verifies the record exists and starts with `v=DMARC1`
+3. Extracts the `p=` (policy) parameter
+4. Verifies the policy meets the minimum requirement set in `dmarcMinPolicy`
+
+*Policy hierarchy* (from lenient to strict):
+
+* `none` (0)
+* `quarantine` (1)
+* `reject` (2)
+
+*Example*: For `dmarcMinPolicy=quarantine`, both of these are valid:
+
+[source]
+----
+_dmarc.example.com. IN TXT "v=DMARC1; p=quarantine; rua=mailto:dmarc@example.com"
+_dmarc.example.com. IN TXT "v=DMARC1; p=reject; rua=mailto:dmarc@example.com"
+----
+
+But this would fail:
+
+[source]
+----
+_dmarc.example.com. IN TXT "v=DMARC1; p=none"
+----
+
+== Error Handling
+
+When validation fails, the email is:
+
+* Set to `validationFailureProcessor` state
+* Given an error message describing the failure
+* Typically, bounced back to the sender with an explanation
+
+Error messages include:
+
+* DKIM: "No DKIM record found at s1._domainkey.example.com"
+* SPF: "SPF record for domain example.com is missing required IPs: 192.0.2.10"
+* DMARC: "DMARC policy for domain example.com is too lenient. Required: quarantine, Found: none"
+
+== Use Cases
+
+=== SaaS Email Platform
+
+In a SaaS environment where multiple customers use your platform to send emails using their own domains:
+
+1. Customer adds their domain to your platform
+2. Customer configures DNS records (SPF, DKIM, DMARC) according to your documentation
+3. When customer sends email, `DomainDnsValidator` verifies their DNS is configured correctly
+4. If misconfigured, email is rejected with clear error message
+5. Customer fixes their DNS and retries
+
+This prevents:
+
+* Emails being sent from domains without proper authentication
+* Damage to your server's reputation
+* Emails being rejected/marked as spam by recipient servers
+
+=== Internal Compliance
+
+For organizations that require strict email authentication policies, this mailet ensures:
+
+* All outbound emails have proper DKIM signatures published in DNS
+* SPF records authorize the correct sending servers
+* DMARC policies meet minimum security requirements
+
+== Testing
+
+To test the configuration:
+
+1. Set up test DNS records
+2. Send a test email
+3. Check logs for validation results
+4. Intentionally misconfigure DNS to verify rejection works
+
+[source,bash]
+----
+# Check DKIM record
+dig TXT s1._domainkey.example.com
+
+# Check SPF record
+dig TXT example.com
+
+# Check DMARC record
+dig TXT _dmarc.example.com
+----
+
+== Troubleshooting
+
+=== Email rejected: "No DKIM-Signature header found"
+
+*Cause*: Email was not DKIM-signed before validation
+
+*Solution*: Ensure `DKIMSign` mailet is placed before `DomainDnsValidator` in mailetcontainer.xml
+
+=== Email rejected: "SPF record missing required IPs"
+
+*Cause*: Domain's SPF record doesn't include your server IPs
+
+*Solution*: Customer needs to update their SPF record to include the IPs listed in `spfAuthorizedIps`
+
+=== Email rejected: "DMARC policy too lenient"
+
+*Cause*: Domain has `p=none` but `dmarcMinPolicy=quarantine` is required
+
+*Solution*: Customer needs to update their DMARC record to `p=quarantine` or `p=reject`
+
+=== DNS query failures
+
+*Cause*: DNS server unreachable or domain doesn't exist
+
+*Solution*: Check network connectivity and verify domain is correctly configured
