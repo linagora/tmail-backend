@@ -39,11 +39,12 @@ import org.apache.james.core.Username
 import org.apache.james.jmap.api.filtering.Rule
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.{MailboxId, MailboxPath}
 import org.apache.james.mime4j.dom.Message
 import org.apache.james.modules.MailboxProbeImpl
+import org.apache.james.task.{MemoryReferenceTask, Task, TaskId}
 import org.apache.james.utils.{DataProbeImpl, WebAdminGuiceProbe}
 import org.apache.james.webadmin.WebAdminUtils
 import org.hamcrest.Matchers
@@ -64,6 +65,7 @@ trait FolderFilteringActionSetMethodContract {
       .fluent()
       .addDomain(DOMAIN.asString())
       .addUser(BOB.asString(), BOB_PASSWORD)
+      .addUser(ANDRE.asString(), ANDRE_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
       .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
@@ -82,6 +84,66 @@ trait FolderFilteringActionSetMethodContract {
       .get(taskId + "/await")
     .`then`()
       .body("status", Matchers.is("completed"))
+
+  def createFolderFilteringActionTaskId(server: GuiceJamesServer): String = {
+    val mailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+
+    `given`
+      .body(
+        s"""{
+           |	"using": [
+           |		"urn:ietf:params:jmap:core",
+           |		"com:linagora:params:jmap:filter"
+           |	],
+           |	"methodCalls": [
+           |		[
+           |			"FolderFilteringAction/set",
+           |			{
+           |				"create": {
+           |					"clientId1": {"mailboxId": "${mailboxId.serialize()}"}
+           |				}
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .extract()
+      .jsonPath()
+      .get("methodResponses[0][1].created.clientId1.id").toString
+  }
+
+  def createEmailRecoveryTaskId(): String = {
+    `given`
+      .body(
+        s"""{
+           |	"using": [
+           |		"urn:ietf:params:jmap:core",
+           |		"com:linagora:params:jmap:messages:vault"
+           |	],
+           |	"methodCalls": [
+           |		[
+           |			"EmailRecoveryAction/set",
+           |			{
+           |				"create": {
+           |					"clientId1": {
+           |						"subject": "subject contains"
+           |					}
+           |				}
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .extract()
+      .jsonPath()
+      .get("methodResponses[0][1].created.clientId1.id").toString
+  }
 
   @Test
   def shouldFailWhenOmittingFilterCapability(): Unit = {
@@ -522,4 +584,441 @@ trait FolderFilteringActionSetMethodContract {
       .body("methodResponses[0][1].notCreated.c1.description", Matchers.is(s"${errorInvalidMailboxIdMessage("invalidMailboxId")}"))
   }
 
+  @Test
+  def updateStatusCanceledShouldCancelTask(server: GuiceJamesServer): Unit = {
+    // This makes the run rules task will wait until the hanging task is completed
+    val hangingTask : Task = new MemoryReferenceTask(() => {
+      Thread.sleep(2000)
+      Task.Result.COMPLETED
+    })
+    server.getProbe(classOf[TaskManagerProbe])
+      .submitTask(hangingTask)
+
+    val taskId: String = createFolderFilteringActionTaskId(server)
+
+    val response: String = `given`
+      .body(
+        s"""{
+           |	"using": [
+           |		"urn:ietf:params:jmap:core",
+           |		"com:linagora:params:jmap:filter"
+           |	],
+           |	"methodCalls": [
+           |		[
+           |			"FolderFilteringAction/set",
+           |			{
+           |				"update": { "$taskId": { "status": "canceled" } }
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |	"FolderFilteringAction/set",
+           |	{
+           |		"updated": {
+           |			"$taskId": {}
+           |		}
+           |	},
+           |	"c1"
+           |]""".stripMargin)
+    `given`()
+      .spec(webAdminApi)
+      .get(taskId + "/await")
+    .`then`()
+      .body("status", Matchers.is("canceled"))
+  }
+
+  @Test
+  def cancelCompletedTaskShouldReturnInvalidStatusError(server: GuiceJamesServer): Unit = {
+    val taskId: String = createFolderFilteringActionTaskId(server)
+    awaitTaskCompletion(taskId)
+
+    val response: String = `given`
+      .body(
+        s"""{
+           |	"using": [
+           |		"urn:ietf:params:jmap:core",
+           |		"com:linagora:params:jmap:filter"
+           |	],
+           |	"methodCalls": [
+           |		[
+           |			"FolderFilteringAction/set",
+           |			{
+           |				"update": { "$taskId": { "status": "canceled" } }
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |    "FolderFilteringAction/set",
+           |    {
+           |        "notUpdated": {
+           |            "$taskId": {
+           |                "type": "invalidStatus",
+           |                "description": "The task was in status `completed` and cannot be canceled",
+           |                "properties": [
+           |                    "status"
+           |                ]
+           |            }
+           |        }
+           |    },
+           |    "c1"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def updateShouldReturnNotUpdatedWhenInvalidStatus(): Unit = {
+    val taskId: String = TaskId.generateTaskId().asString()
+
+    val response: String = `given`
+      .body(
+        s"""{
+           |	"using": [
+           |		"urn:ietf:params:jmap:core",
+           |		"com:linagora:params:jmap:filter"
+           |	],
+           |	"methodCalls": [
+           |		[
+           |			"FolderFilteringAction/set",
+           |			{
+           |				"update": { "$taskId": { "status": "invalid" } }
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |	"FolderFilteringAction/set",
+           |	{
+           |		"notUpdated": {
+           |			"$taskId": {
+           |				"type": "invalidArguments",
+           |				"description": "Unsupported status 'invalid'"
+           |			}
+           |		}
+           |	},
+           |	"c1"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def updateShouldReturnNotUpdatedWhenTaskIdNotFound(): Unit = {
+    val notFoundTaskId: String = TaskId.generateTaskId().asString()
+
+    val response: String = `given`
+      .body(
+        s"""{
+           |	"using": [
+           |		"urn:ietf:params:jmap:core",
+           |		"com:linagora:params:jmap:filter"
+           |	],
+           |	"methodCalls": [
+           |		[
+           |			"FolderFilteringAction/set",
+           |			{
+           |				"update": { "$notFoundTaskId": { "status": "canceled" } }
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |	"FolderFilteringAction/set",
+           |	{
+           |		"notUpdated": {
+           |			"$notFoundTaskId": {
+           |				"type": "notFound",
+           |				"description": "Task $notFoundTaskId not found"
+           |			}
+           |		}
+           |	},
+           |	"c1"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def updateShouldReturnNotUpdatedWhenMissingStatus(): Unit = {
+    val taskId: String = TaskId.generateTaskId().asString()
+
+    val response: String = `given`
+      .body(
+        s"""{
+           |	"using": [
+           |		"urn:ietf:params:jmap:core",
+           |		"com:linagora:params:jmap:filter"
+           |	],
+           |	"methodCalls": [
+           |		[
+           |			"FolderFilteringAction/set",
+           |			{
+           |				"update": { "$taskId": {  } }
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |	"FolderFilteringAction/set",
+           |	{
+           |		"notUpdated": {
+           |			"$taskId": {
+           |				"type": "invalidArguments",
+           |				"description": "Missing '/status' property"
+           |			}
+           |		}
+           |	},
+           |	"c1"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def updateShouldFailWhenInvalidTaskId(): Unit = {
+    val response: String = `given`
+      .body(
+        s"""{
+           |	"using": [
+           |		"urn:ietf:params:jmap:core",
+           |		"com:linagora:params:jmap:filter"
+           |	],
+           |	"methodCalls": [
+           |		[
+           |			"FolderFilteringAction/set",
+           |			{
+           |				"update": { "!123": { "status": "canceled" } }
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |	"error",
+           |	{
+           |		"type": "invalidArguments",
+           |		"description": "$${json-unit.ignore}"
+           |	},
+           |	"c1"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def updateShouldFailWhenCancelTaskOfOtherUser(server: GuiceJamesServer) : Unit = {
+    val taskIdOfBob: String = createFolderFilteringActionTaskId(server)
+
+    val responseOfAndre: String = `given`(baseRequestSpecBuilder(server)
+      .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+      .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .build)
+      .body(
+        s"""{
+           |	"using": [
+           |		"urn:ietf:params:jmap:core",
+           |		"com:linagora:params:jmap:filter"
+           |	],
+           |	"methodCalls": [
+           |		[
+           |			"FolderFilteringAction/set",
+           |			{
+           |				"update": { "$taskIdOfBob": { "status": "canceled" } }
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(responseOfAndre)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |	"FolderFilteringAction/set",
+           |	{
+           |		"notUpdated": {
+           |			"$taskIdOfBob": {
+           |				"type": "notFound",
+           |				"description": "Task $taskIdOfBob not found"
+           |			}
+           |		}
+           |	},
+           |	"c1"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def updateShouldFailWhenCancelOtherTaskType() : Unit = {
+    val emailRecoveryTaskId: String = createEmailRecoveryTaskId()
+
+    val response: String = `given`
+      .body(
+        s"""{
+           |	"using": [
+           |		"urn:ietf:params:jmap:core",
+           |		"com:linagora:params:jmap:filter"
+           |	],
+           |	"methodCalls": [
+           |		[
+           |			"FolderFilteringAction/set",
+           |			{
+           |				"update": { "$emailRecoveryTaskId": { "status": "canceled" } }
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |	"FolderFilteringAction/set",
+           |	{
+           |		"notUpdated": {
+           |			"$emailRecoveryTaskId": {
+           |				"type": "notFound",
+           |				"description": "Task $emailRecoveryTaskId not found"
+           |			}
+           |		}
+           |	},
+           |	"c1"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def updateShouldFailWhenUnknownProperty(): Unit = {
+    val taskId: String = TaskId.generateTaskId().asString()
+    val response: String = `given`
+      .body(
+        s"""{
+           |	"using": [
+           |		"urn:ietf:params:jmap:core",
+           |		"com:linagora:params:jmap:filter"
+           |	],
+           |	"methodCalls": [
+           |		[
+           |			"FolderFilteringAction/set",
+           |			{
+           |				"update": {
+           |					"$taskId": {
+           |						"status": "canceled",
+           |						"unknownProperty": "will get rejected"
+           |					}
+           |				}
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |	"FolderFilteringAction/set",
+           |	{
+           |		"notUpdated": {
+           |			"$taskId": {
+           |				"type": "invalidArguments",
+           |				"description": "Unsupported properties: unknownProperty"
+           |			}
+           |		}
+           |	},
+           |	"c1"
+           |]""".stripMargin)
+  }
 }

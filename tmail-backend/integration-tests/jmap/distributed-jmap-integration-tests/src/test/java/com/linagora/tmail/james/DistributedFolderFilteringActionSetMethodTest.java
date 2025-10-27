@@ -18,11 +18,13 @@
 
 package com.linagora.tmail.james;
 
+import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.utils.GuiceProbe;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.multibindings.Multibinder;
@@ -34,6 +36,7 @@ import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.FolderFilteringActionSetMethodContract;
+import com.linagora.tmail.james.common.TaskManagerProbe;
 import com.linagora.tmail.james.common.module.JmapGuiceCustomModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
@@ -65,11 +68,18 @@ public class DistributedFolderFilteringActionSetMethodTest implements FolderFilt
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new JmapGuiceCustomModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
-                .addBinding().to(TeamMailboxProbe.class)))
+                .addBinding().to(TeamMailboxProbe.class))
+            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
+                .addBinding().to(TaskManagerProbe.class)))
         .build();
 
     @Override
     public String errorInvalidMailboxIdMessage(String value) {
         return String.format("Invalid mailboxId: Invalid UUID string: %s", value);
+    }
+
+    @Disabled("No available serializer/deserializer for MemoryReferenceTask in distributed James server")
+    @Override
+    public void updateStatusCanceledShouldCancelTask(GuiceJamesServer server) {
     }
 }

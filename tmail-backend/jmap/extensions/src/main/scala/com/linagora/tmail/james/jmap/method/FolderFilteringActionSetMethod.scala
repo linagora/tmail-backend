@@ -23,11 +23,12 @@ import com.linagora.tmail.james.jmap.json.FolderFilteringActionSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FILTER
 import com.linagora.tmail.james.jmap.model._
 import eu.timepit.refined.auto._
+import org.apache.james.core.Username
 import org.apache.james.jmap.api.filtering.FilteringManagement
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.SetError.SetErrorDescription
-import org.apache.james.jmap.core.{ClientId, Id, Invocation, ServerId, SetError}
+import org.apache.james.jmap.core.{ClientId, Id, Invocation, Properties, ServerId, SetError}
 import org.apache.james.jmap.mail.MailboxGet
 import org.apache.james.jmap.method.MailboxSetMethod.assertCapabilityIfSharedMailbox
 import org.apache.james.jmap.method.{InvocationWithContext, MethodWithoutAccountId}
@@ -37,16 +38,18 @@ import org.apache.james.mailbox.exception.MailboxNotFoundException
 import org.apache.james.mailbox.model.MailboxId
 import org.apache.james.mailbox.{MailboxManager, MailboxSession}
 import org.apache.james.metrics.api.MetricFactory
-import org.apache.james.task.TaskManager
+import org.apache.james.task.{TaskExecutionDetails, TaskId, TaskManager, TaskNotFoundException}
 import org.apache.james.util.ReactorUtils
 import org.apache.james.webadmin.data.jmap.{RunRulesOnMailboxService, RunRulesOnMailboxTask}
 import org.apache.james.webadmin.validation.MailboxName
 import org.reactivestreams.Publisher
 import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.JsObject
+import reactor.core.publisher.SynchronousSink
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 class FolderFilteringActionSetMethod @Inject()(val createPerformer: FolderFilteringActionSetCreatePerformer,
+                                               val updatePerformer: FolderFilteringActionSetUpdatePerformer,
                                                val metricFactory: MetricFactory,
                                                val sessionSupplier: SessionSupplier) extends MethodWithoutAccountId[FolderFilteringActionSetRequest] with Startable {
   override val requiredCapabilities: Set[CapabilityIdentifier] = Set(JMAP_CORE, LINAGORA_FILTER)
@@ -55,17 +58,20 @@ class FolderFilteringActionSetMethod @Inject()(val createPerformer: FolderFilter
   override def getRequest(invocation: Invocation): Either[Exception, FolderFilteringActionSetRequest] =
     FolderFilteringActionSerializer.deserializeSetRequest(invocation.arguments.value).asEitherRequest
 
-  override def doProcess(invocation: InvocationWithContext, mailboxSession: MailboxSession, request: FolderFilteringActionSetRequest): Publisher[InvocationWithContext] = {
-    createPerformer.create(request, mailboxSession)
-      .map(results => InvocationWithContext(
-        invocation = Invocation(methodName, Arguments(
-          FolderFilteringActionSerializer.serializeSetResponse(
-            FolderFilteringActionSetResponse(
-              created = results.created.filter(_.nonEmpty),
-              notCreated = results.notCreated.filter(_.nonEmpty)))),
-          invocation.invocation.methodCallId),
-        processingContext = recordCreationIdInProcessingContext(results, invocation.processingContext)))
-  }
+  override def doProcess(invocation: InvocationWithContext, mailboxSession: MailboxSession, request: FolderFilteringActionSetRequest): Publisher[InvocationWithContext] =
+    for {
+      createdResult <- createPerformer.create(request, mailboxSession)
+      updatedResult <- updatePerformer.update(request, mailboxSession.getUser)
+    } yield InvocationWithContext(
+      invocation = Invocation(methodName, Arguments(
+        FolderFilteringActionSerializer.serializeSetResponse(
+          FolderFilteringActionSetResponse(
+            created = createdResult.created.filter(_.nonEmpty),
+            notCreated = createdResult.notCreated.filter(_.nonEmpty),
+            updated = updatedResult.updated.filter(_.nonEmpty),
+            notUpdated = updatedResult.notUpdated.filter(_.nonEmpty))
+        )), invocation.invocation.methodCallId),
+      processingContext = recordCreationIdInProcessingContext(createdResult, invocation.processingContext))
 
   private def recordCreationIdInProcessingContext(results: FolderFilteringActionSetCreatePerformer.CreationResults,
                                                   processingContext: ProcessingContext): ProcessingContext =
@@ -142,4 +148,98 @@ class FolderFilteringActionSetCreatePerformer @Inject()(taskManager: TaskManager
                 .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER))
               .map(taskId => CreationSuccess(clientId, FolderFilteringActionCreationResponse(taskId))))
             .onErrorResume(e => SMono.just[CreationResult](CreationFailure(clientId, e))))
+}
+
+object FolderFilteringActionSetUpdatePerformer {
+  private val STATUS_WHITE_LIST: Set[TaskManager.Status] = Set(TaskManager.Status.WAITING, TaskManager.Status.IN_PROGRESS)
+  private val LOGGER: Logger = LoggerFactory.getLogger(classOf[FolderFilteringActionSetUpdatePerformer])
+
+  sealed trait UpdateResult
+  private case class UpdateSuccess(taskId: TaskId, response: FolderFilteringActionUpdateResponse) extends UpdateResult
+  private case class UpdateFailure(clientId: UnparsedFolderFilteringActionId, exception: Throwable) extends UpdateResult {
+    def asSetError: SetError = exception match {
+      case e: IllegalArgumentException => SetError.invalidArguments(SetErrorDescription(e.getMessage), None)
+      case e: FolderFilteringActionNotFoundException => SetError.notFound(SetErrorDescription(e.getMessage))
+      case e: InvalidStatusUpdateException => SetError("invalidStatus", SetErrorDescription(e.getMessage), Some(Properties("status")))
+      case _ =>
+        LOGGER.error("Could not update folder filtering action", exception)
+        SetError.serverFail(SetErrorDescription(exception.getMessage))
+    }
+  }
+
+  case class UpdateResults(results: Seq[UpdateResult]) {
+    def updated: Option[Map[TaskId, FolderFilteringActionUpdateResponse]] =
+      Option(results.flatMap {
+        case result: UpdateSuccess => Some((result.taskId, result.response))
+        case _ => None
+      }.toMap).filter(_.nonEmpty)
+
+    def notUpdated: Option[Map[UnparsedFolderFilteringActionId, SetError]] =
+      Option(results.flatMap {
+        case failure: UpdateFailure => Some((failure.clientId, failure.asSetError))
+        case _ => None
+      }.toMap).filter(_.nonEmpty)
+  }
+}
+
+class FolderFilteringActionSetUpdatePerformer @Inject()(val taskManager: TaskManager) {
+  import FolderFilteringActionSetUpdatePerformer._
+
+  def update(request: FolderFilteringActionSetRequest, username: Username): SMono[UpdateResults] =
+    SFlux.fromIterable(request.update.getOrElse(Map()))
+      .flatMap({
+        case (unparsedId: UnparsedFolderFilteringActionId, patch: FolderFilteringActionUpdatePatchObject) =>
+          val either: Either[IllegalArgumentException, SMono[UpdateResult]] = for {
+            taskId <- unparsedId.asTaskId
+            validatedPatch <- patch.asUpdateRequest
+          } yield {
+            doUpdate(username, taskId, validatedPatch)
+          }
+          either.fold(e => SMono.just(UpdateFailure(unparsedId, e)),
+            updateMono => updateMono.onErrorResume(e => SMono.just(UpdateFailure(unparsedId, e))))
+      }, maxConcurrency = ReactorUtils.DEFAULT_CONCURRENCY)
+      .collectSeq()
+      .map(UpdateResults)
+
+  private def doUpdate(username: Username, taskId: TaskId, patch: FolderFilteringActionUpdateRequest): SMono[UpdateResult] =
+    getTaskDetail(username, taskId)
+      .handle(validateTargetTaskStatus)
+      .flatMap(_ => cancelTask(taskId, patch))
+      .`then`(SMono.just(UpdateSuccess(taskId, FolderFilteringActionUpdateResponse())))
+      .onErrorResume(e => SMono.just(UpdateFailure(UnparsedFolderFilteringActionId.from(taskId), e)))
+
+  private def getTaskDetail(username: Username, taskId: TaskId): SMono[TaskExecutionDetails] =
+    SMono.fromCallable(() => taskManager.getExecutionDetails(taskId))
+      .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
+      .onErrorResume {
+        case _: TaskNotFoundException => SMono.empty
+        case e => SMono.error(e)
+      }
+      .filter(taskDetail => isRunRulesOnMailboxTask(taskDetail) && belongsToUser(username, taskDetail))
+      .switchIfEmpty(SMono.error(FolderFilteringActionNotFoundException(message = s"Task ${taskId.asString()} not found")))
+
+  private def isRunRulesOnMailboxTask(taskDetail: TaskExecutionDetails): Boolean =
+    taskDetail.getType.equals(RunRulesOnMailboxTask.TASK_TYPE)
+
+  private def belongsToUser(username: Username, taskDetail: TaskExecutionDetails): Boolean =
+    taskDetail.getAdditionalInformation.get()
+      .asInstanceOf[RunRulesOnMailboxTask.AdditionalInformation]
+      .getUsername
+      .equals(username)
+
+  private def validateTargetTaskStatus: (TaskExecutionDetails, SynchronousSink[AnyRef]) => Unit =
+    (taskDetail: TaskExecutionDetails, sink: SynchronousSink[AnyRef]) => {
+      if (!STATUS_WHITE_LIST.contains(taskDetail.getStatus)) {
+        sink.error(InvalidStatusUpdateException(s"The task was in status `${taskDetail.getStatus.getValue}` and cannot be canceled"))
+      } else {
+        sink.next(taskDetail)
+      }
+    }
+
+  private def cancelTask(taskId: TaskId, patch: FolderFilteringActionUpdateRequest): SMono[Unit] =
+    patch.status.value match {
+      case FolderFilteringActionUpdateStatus.CANCELED => SMono.fromCallable(() => taskManager.cancel(taskId))
+        .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
+      case _ => SMono.empty
+    }
 }
