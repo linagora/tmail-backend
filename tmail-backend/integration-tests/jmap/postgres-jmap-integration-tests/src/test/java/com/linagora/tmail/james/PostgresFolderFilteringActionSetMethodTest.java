@@ -25,6 +25,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.james.common.FolderFilteringActionSetMethodContract;
+import com.linagora.tmail.james.common.TaskManagerProbe;
 import com.linagora.tmail.james.common.module.JmapGuiceCustomModule;
 import com.linagora.tmail.team.TeamMailboxProbe;
 
@@ -33,7 +34,9 @@ public class PostgresFolderFilteringActionSetMethodTest implements FolderFilteri
     static JamesServerExtension testExtension = TmailJmapBase.JAMES_SERVER_EXTENSION_FUNCTION
         .apply(Modules.combine(new JmapGuiceCustomModule(),
             binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
-                .addBinding().to(TeamMailboxProbe.class)))
+                .addBinding().to(TeamMailboxProbe.class),
+            binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
+                .addBinding().to(TaskManagerProbe.class)))
         .build();
 
     @Override

@@ -19,6 +19,8 @@
 package com.linagora.tmail.james.jmap.json
 
 import com.linagora.tmail.james.jmap.model._
+import eu.timepit.refined.refineV
+import org.apache.james.jmap.core.Id.IdConstraint
 import org.apache.james.jmap.core.{Properties, SetError}
 import org.apache.james.jmap.json.mapWrites
 import org.apache.james.jmap.mail.UnparsedMailboxId
@@ -37,6 +39,19 @@ object FolderFilteringActionSerializer {
     Reads.mapReads[FolderFilteringActionCreationId, JsObject](s => creationIdReads.reads(JsString(s)))
   private implicit val unparsedMailboxIdReads: Reads[UnparsedMailboxId] = Json.valueReads[UnparsedMailboxId]
   private implicit val folderFilteringActionCreationRequestReads: Reads[FolderFilteringActionCreationRequest] = Json.reads[FolderFilteringActionCreationRequest]
+  private implicit val folderFilteringActionUpdatePatchObjectReads: Reads[FolderFilteringActionUpdatePatchObject] = {
+    case jsObject: JsObject => JsSuccess(FolderFilteringActionUpdatePatchObject(jsObject))
+    case _ => JsError("FolderFilteringActionUpdatePatchObject needs to be represented by a JsObject")
+  }
+  private implicit val mapUpdateRequestReads: Reads[Map[UnparsedFolderFilteringActionId, FolderFilteringActionUpdatePatchObject]] =
+    Reads.mapReads[UnparsedFolderFilteringActionId, FolderFilteringActionUpdatePatchObject](
+      string => refineV[IdConstraint](string)
+        .fold(e => JsError(s"FolderFilteringAction Id needs to match id constraints: $e"),
+          id => JsSuccess(UnparsedFolderFilteringActionId(id)))) {
+      folderFilteringActionUpdatePatchObjectReads
+    }
+  private implicit val folderFilteringActionUpdateStatusReads: Reads[FolderFilteringActionUpdateStatus] = Json.valueReads[FolderFilteringActionUpdateStatus]
+  private implicit val folderFilteringActionUpdateRequestReads: Reads[FolderFilteringActionUpdateRequest] = Json.reads[FolderFilteringActionUpdateRequest]
   private implicit val folderFilteringActionSetRequestReads: Reads[FolderFilteringActionSetRequest] = Json.reads[FolderFilteringActionSetRequest]
 
   private implicit val taskIdWrites: Writes[TaskId] = value => JsString(value.asString())
@@ -61,12 +76,19 @@ object FolderFilteringActionSerializer {
     mapWrites[FolderFilteringActionCreationId, FolderFilteringActionCreationResponse](_.serialize, creationResponseWrites)
   private implicit val mapSetErrorForCreationWrites: Writes[Map[FolderFilteringActionCreationId, SetError]] =
     mapWrites[FolderFilteringActionCreationId, SetError](_.serialize, Json.writes[SetError])
+  private implicit val mapSetErrorForUpdateWrites: Writes[Map[UnparsedFolderFilteringActionId, SetError]] =
+    mapWrites[UnparsedFolderFilteringActionId, SetError](_.id.value, setErrorWrites)
+  private implicit val folderFilteringActionUpdateResponseWrites: Writes[FolderFilteringActionUpdateResponse] = Json.valueWrites[FolderFilteringActionUpdateResponse]
+  private implicit def folderFilteringActionUpdateResponseMapWrites: Writes[Map[TaskId, FolderFilteringActionUpdateResponse]] =
+    mapWrites[TaskId, FolderFilteringActionUpdateResponse](taskId => taskId.asString(), folderFilteringActionUpdateResponseWrites)
   private implicit val setResponseWrites: OWrites[FolderFilteringActionSetResponse] = Json.writes[FolderFilteringActionSetResponse]
 
   def deserializeGetRequest(input: JsValue): JsResult[FolderFilteringActionGetRequest] = Json.fromJson[FolderFilteringActionGetRequest](input)
 
   def deserializeSetCreationRequest(input: JsValue): JsResult[FolderFilteringActionCreationRequest] = Json.fromJson[FolderFilteringActionCreationRequest](input)
 
+  def deserializeSetUpdateRequest(input: JsValue): JsResult[FolderFilteringActionUpdateRequest] = Json.fromJson[FolderFilteringActionUpdateRequest](input)
+  
   def deserializeSetRequest(input: JsValue): JsResult[FolderFilteringActionSetRequest] = Json.fromJson[FolderFilteringActionSetRequest](input)
 
   def serializeGetResponse(response: FolderFilteringActionGetResponse, properties: Properties): JsValue =

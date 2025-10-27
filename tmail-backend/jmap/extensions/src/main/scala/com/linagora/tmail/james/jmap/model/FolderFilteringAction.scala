@@ -18,6 +18,8 @@
 
 package com.linagora.tmail.james.jmap.model
 
+import com.linagora.tmail.james.jmap.json.FolderFilteringActionSerializer
+import com.linagora.tmail.james.jmap.method.AsEitherRequest
 import eu.timepit.refined.auto._
 import org.apache.james.jmap.core.Id.Id
 import org.apache.james.jmap.core.SetError.SetErrorDescription
@@ -27,7 +29,7 @@ import org.apache.james.jmap.mail.UnparsedMailboxId
 import org.apache.james.jmap.method.WithoutAccountId
 import org.apache.james.task.TaskId
 import org.apache.james.task.TaskManager.Status
-import play.api.libs.json.JsObject
+import play.api.libs.json.{JsObject, Json}
 
 import scala.util.Try
 
@@ -109,14 +111,64 @@ case class FolderFilteringActionCreationId(id: Id) {
   def serialize: String = id.value
 }
 
+object FolderFilteringActionUpdateStatus {
+  val CANCELED: String = "canceled"
+}
+
+case class FolderFilteringActionUpdateStatus(value: String) extends AnyVal {
+  import FolderFilteringActionUpdateStatus._
+
+  def validate: Either[IllegalArgumentException, FolderFilteringActionUpdateStatus] =
+    value match {
+      case CANCELED => Right(this)
+      case _ => Left(new IllegalArgumentException(s"Unsupported status '$value'"))
+    }
+}
+
+case class FolderFilteringActionUpdateRequest(status: FolderFilteringActionUpdateStatus) {
+  def validate: Either[IllegalArgumentException, FolderFilteringActionUpdateRequest] = status.validate
+    .map(_ => this)
+}
+
+object FolderFilteringActionUpdatePatchObject {
+  private val knownProperties: Set[String] = Set("status")
+}
+
+case class FolderFilteringActionUpdatePatchObject(jsObject: JsObject) {
+  import FolderFilteringActionUpdatePatchObject._
+
+  def validateProperties: Either[IllegalArgumentException, JsObject] =
+    jsObject.keys.toSet -- knownProperties match {
+      case unknownProperties if unknownProperties.nonEmpty =>
+        Left(new IllegalArgumentException(s"Unsupported properties: ${unknownProperties.mkString(", ")}"))
+      case _ => Right(jsObject)
+    }
+
+  def asUpdateRequest: Either[IllegalArgumentException, FolderFilteringActionUpdateRequest] = {
+    for {
+      validatedJsObject <- validateProperties
+      deserializedUpdateRequest <- FolderFilteringActionSerializer.deserializeSetUpdateRequest(validatedJsObject)
+        .asEitherRequest
+      updateRequest <- deserializedUpdateRequest.validate
+    } yield updateRequest
+  }
+}
+
+case class FolderFilteringActionNotFoundException(message: String) extends RuntimeException(message: String)
+
 case class FolderFilteringActionCreationRequest(mailboxId: UnparsedMailboxId)
 
-case class FolderFilteringActionSetRequest(create: Option[Map[FolderFilteringActionCreationId, JsObject]]) extends WithoutAccountId
+case class FolderFilteringActionSetRequest(create: Option[Map[FolderFilteringActionCreationId, JsObject]],
+                                           update: Option[Map[UnparsedFolderFilteringActionId, FolderFilteringActionUpdatePatchObject]]) extends WithoutAccountId
 
 case class FolderFilteringActionCreationResponse(id: TaskId)
 
+case class FolderFilteringActionUpdateResponse(json: JsObject = Json.obj())
+
 case class FolderFilteringActionSetResponse(created: Option[Map[FolderFilteringActionCreationId, FolderFilteringActionCreationResponse]] = None,
-                                            notCreated: Option[Map[FolderFilteringActionCreationId, SetError]] = None) extends WithoutAccountId
+                                            notCreated: Option[Map[FolderFilteringActionCreationId, SetError]] = None,
+                                            updated: Option[Map[TaskId, FolderFilteringActionUpdateResponse]] = None,
+                                            notUpdated: Option[Map[UnparsedFolderFilteringActionId, SetError]] = None) extends WithoutAccountId
 
 case class FolderFilteringAction(id: TaskId,
                                  status: Status,
@@ -126,3 +178,4 @@ case class FolderFilteringAction(id: TaskId,
                                  maximumAppliedActionReached: Boolean)
 
 case class FolderFilteringActionCreationParseException(setError: SetError) extends RuntimeException
+case class InvalidStatusUpdateException(message: String) extends IllegalStateException(message: String)

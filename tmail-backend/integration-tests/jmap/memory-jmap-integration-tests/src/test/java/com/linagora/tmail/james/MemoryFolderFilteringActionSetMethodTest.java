@@ -29,6 +29,7 @@ import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.FolderFilteringActionSetMethodContract;
+import com.linagora.tmail.james.common.TaskManagerProbe;
 import com.linagora.tmail.james.common.module.JmapGuiceCustomModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
@@ -46,7 +47,9 @@ public class MemoryFolderFilteringActionSetMethodTest implements FolderFiltering
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule(), new JmapGuiceCustomModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
-                .addBinding().to(TeamMailboxProbe.class)))
+                .addBinding().to(TeamMailboxProbe.class))
+            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
+                .addBinding().to(TaskManagerProbe.class)))
         .build();
 
     @Override

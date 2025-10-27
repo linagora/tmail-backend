@@ -73,6 +73,27 @@ class FolderFilteringActionSerializerTest {
     assertThat(result.get.create.get.head._1).isEqualTo(FolderFilteringActionCreationId("clientId1"))
   }
 
+
+  @Test
+  def deserializeSetUpdateRequestShouldSucceed(): Unit = {
+    val jsInput: JsValue = Json.parse(
+      """{
+        |    "update": {
+        |        "4bf6d081-aa30-11e9-bf6c-2d3b9e84aafd": {
+        |            "status": "canceled"
+        |       }
+        |    }
+        |}""".stripMargin)
+
+    val deserializeResult: JsResult[FolderFilteringActionSetRequest] = FolderFilteringActionSerializer.deserializeSetRequest(jsInput)
+
+    assertThat(deserializeResult.isSuccess)
+      .isTrue
+    assertThat(deserializeResult.get.update.get.head._1)
+      .isEqualTo(UnparsedFolderFilteringActionId("4bf6d081-aa30-11e9-bf6c-2d3b9e84aafd"))
+  }
+
+
   @Test
   def serializeSetResponseShouldSucceed(): Unit = {
     val notCreated: Map[FolderFilteringActionCreationId, SetError] = Map(
