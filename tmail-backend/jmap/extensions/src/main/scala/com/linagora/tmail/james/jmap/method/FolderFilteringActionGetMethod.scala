@@ -62,7 +62,7 @@ class FolderFilteringActionGetMethod @Inject()()(val taskManager: TaskManager,
   override def getRequest(invocation: Invocation): Either[Exception, FolderFilteringActionGetRequest] =
     FolderFilteringActionSerializer.deserializeGetRequest(invocation.arguments.value).asEitherRequest
 
-  override def doProcess(invocation: InvocationWithContext, mailboxSession: MailboxSession, request: FolderFilteringActionGetRequest): Publisher[InvocationWithContext] =
+  override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession, request: FolderFilteringActionGetRequest): Publisher[InvocationWithContext] =
     request.validateProperties
       .fold(e => SMono.error(e),
         properties => retrieveFolderFilteringActions(mailboxSession, request.ids)

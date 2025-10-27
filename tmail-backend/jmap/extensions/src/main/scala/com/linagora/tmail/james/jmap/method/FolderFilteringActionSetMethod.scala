@@ -58,7 +58,7 @@ class FolderFilteringActionSetMethod @Inject()(val createPerformer: FolderFilter
   override def getRequest(invocation: Invocation): Either[Exception, FolderFilteringActionSetRequest] =
     FolderFilteringActionSerializer.deserializeSetRequest(invocation.arguments.value).asEitherRequest
 
-  override def doProcess(invocation: InvocationWithContext, mailboxSession: MailboxSession, request: FolderFilteringActionSetRequest): Publisher[InvocationWithContext] =
+  override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession, request: FolderFilteringActionSetRequest): Publisher[InvocationWithContext] =
     for {
       createdResult <- createPerformer.create(request, mailboxSession)
       updatedResult <- updatePerformer.update(request, mailboxSession.getUser)

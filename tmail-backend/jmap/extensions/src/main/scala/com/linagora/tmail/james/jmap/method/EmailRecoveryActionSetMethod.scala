@@ -115,7 +115,7 @@ class EmailRecoveryActionSetMethod @Inject()(val createPerformer: EmailRecoveryA
   override def getRequest(invocation: Invocation): Either[Exception, EmailRecoveryActionSetRequest] =
     EmailRecoveryActionSerializer.deserializeSetRequest(invocation.arguments.value).asEitherRequest
 
-  override def doProcess(invocation: InvocationWithContext, mailboxSession: MailboxSession, request: EmailRecoveryActionSetRequest): Publisher[InvocationWithContext] = {
+  override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession, request: EmailRecoveryActionSetRequest): Publisher[InvocationWithContext] = {
     for {
       createdResult <- createPerformer.create(request, mailboxSession.getUser)
       updatedResult <- updatePerformer.update(request, mailboxSession.getUser)
