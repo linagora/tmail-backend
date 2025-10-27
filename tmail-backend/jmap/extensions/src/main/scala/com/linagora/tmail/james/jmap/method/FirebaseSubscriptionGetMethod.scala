@@ -54,7 +54,7 @@ class FirebaseSubscriptionGetMethod @Inject()()(val serializer: FirebaseSubscrip
   override def getRequest(invocation: Invocation): Either[Exception, FirebaseSubscriptionGetRequest] =
     serializer.deserializeFirebaseSubscriptionGetRequest(invocation.arguments.value).asEitherRequest
 
-  override def doProcess(invocation: InvocationWithContext, mailboxSession: MailboxSession, request: FirebaseSubscriptionGetRequest): Publisher[InvocationWithContext] =
+  override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession, request: FirebaseSubscriptionGetRequest): Publisher[InvocationWithContext] =
     request.validateProperties
       .fold(e => SMono.error(e),
         properties => retrieveFirebaseSubscription(mailboxSession.getUser, request.ids)

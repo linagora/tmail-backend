@@ -49,7 +49,7 @@ class EmailRecoveryActionGetMethod @Inject()()(val taskManager: TaskManager,
   override def getRequest(invocation: Invocation): Either[Exception, EmailRecoveryActionGetRequest] =
     EmailRecoveryActionSerializer.deserializeGetRequest(invocation.arguments.value).asEitherRequest
 
-  override def doProcess(invocation: InvocationWithContext, mailboxSession: MailboxSession, request: EmailRecoveryActionGetRequest): Publisher[InvocationWithContext] =
+  override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession, request: EmailRecoveryActionGetRequest): Publisher[InvocationWithContext] =
     request.validateProperties
       .fold(e => SMono.error(e),
         properties => retrieveEmailRecoveryActions(mailboxSession.getUser, request.ids)

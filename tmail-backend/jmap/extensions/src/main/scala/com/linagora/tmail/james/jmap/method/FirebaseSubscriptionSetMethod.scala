@@ -47,7 +47,7 @@ class FirebaseSubscriptionSetMethod @Inject()(val serializer: FirebaseSubscripti
   override def getRequest(invocation: Invocation): Either[Exception, FirebaseSubscriptionSetRequest] =
     serializer.deserializeFirebaseSubscriptionSetRequest(invocation.arguments.value).asEitherRequest
 
-  override def doProcess(invocation: InvocationWithContext, mailboxSession: MailboxSession, request: FirebaseSubscriptionSetRequest): Publisher[InvocationWithContext] =
+  override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession, request: FirebaseSubscriptionSetRequest): Publisher[InvocationWithContext] =
     for {
       created <- createPerformer.create(request, mailboxSession.getUser)
       updated <- updatePerformer.update(request, mailboxSession.getUser)
