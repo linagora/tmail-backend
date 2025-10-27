@@ -1657,51 +1657,6 @@ trait EmailRecoveryActionSetMethodContract {
 
   @Test
   @Tag(CategoryTags.BASIC_FEATURE)
-  def updateShouldReturnUpdatedWhenValidRequest(server: GuiceJamesServer): Unit = {
-    val taskId: String = newCreationSetRequestAndGetTaskId()
-
-    val response: String = `given`
-      .body(
-        s"""{
-           |	"using": [
-           |		"urn:ietf:params:jmap:core",
-           |		"com:linagora:params:jmap:messages:vault"
-           |	],
-           |	"methodCalls": [
-           |		[
-           |			"EmailRecoveryAction/set",
-           |			{
-           |				"update": { "$taskId": { "status": "canceled" } }
-           |			},
-           |			"c1"
-           |		]
-           |	]
-           |}""".stripMargin)
-    .when
-      .post
-    .`then`
-      .log().ifValidationFails()
-      .statusCode(SC_OK)
-      .contentType(JSON)
-      .extract
-      .body
-      .asString
-
-    assertThatJson(response)
-      .inPath("methodResponses[0]")
-      .isEqualTo(
-        s"""[
-           |	"EmailRecoveryAction/set",
-           |	{
-           |		"updated": {
-           |			"$taskId": {}
-           |		}
-           |	},
-           |	"c1"
-           |]""".stripMargin)
-  }
-
-  @Test
   def updateStatusCanceledShouldCancelTask(server: GuiceJamesServer): Unit = {
     // It make the `deleted-messages-restore` task will waiting
     // when the hanging task to be completed
@@ -1807,6 +1762,62 @@ trait EmailRecoveryActionSetMethodContract {
            |		}
            |	},
            |	"c1"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def cancelCompletedTaskShouldReturnInvalidStatusError(): Unit = {
+    val taskId: String = newCreationSetRequestAndGetTaskId()
+
+    `given`()
+      .spec(webAdminApi)
+      .get(taskId + "/await")
+    .`then`()
+      .body("status", Matchers.is("completed"))
+
+    val response: String = `given`
+      .body(
+        s"""{
+           |	"using": [
+           |		"urn:ietf:params:jmap:core",
+           |		"com:linagora:params:jmap:messages:vault"
+           |	],
+           |	"methodCalls": [
+           |		[
+           |			"EmailRecoveryAction/set",
+           |			{
+           |				"update": { "$taskId": { "status": "canceled" } }
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |    "EmailRecoveryAction/set",
+           |    {
+           |        "notUpdated": {
+           |            "$taskId": {
+           |                "type": "invalidStatus",
+           |                "description": "The task was in status `completed` and cannot be canceled",
+           |                "properties": [
+           |                    "status"
+           |                ]
+           |            }
+           |        }
+           |    },
+           |    "c1"
            |]""".stripMargin)
   }
 
