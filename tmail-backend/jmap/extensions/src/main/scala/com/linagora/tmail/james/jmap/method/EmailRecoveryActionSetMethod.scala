@@ -28,14 +28,14 @@ import com.linagora.tmail.james.jmap.json.EmailRecoveryActionSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_MESSAGE_VAULT
 import com.linagora.tmail.james.jmap.method.EmailRecoveryActionConfiguration.{DEFAULT_MAX_EMAIL_RECOVERY_PER_REQUEST, DEFAULT_RESTORATION_HORIZON}
 import com.linagora.tmail.james.jmap.method.EmailRecoveryActionSetCreatePerformer.CreationResults
-import com.linagora.tmail.james.jmap.model.{EmailRecoveryActionCreation, EmailRecoveryActionCreationId, EmailRecoveryActionCreationParseException, EmailRecoveryActionCreationRequest, EmailRecoveryActionCreationResponse, EmailRecoveryActionSetRequest, EmailRecoveryActionSetResponse, EmailRecoveryActionUpdateException, EmailRecoveryActionUpdatePatchObject, EmailRecoveryActionUpdateRequest, EmailRecoveryActionUpdateResponse, EmailRecoveryActionUpdateStatus, UnparsedEmailRecoveryActionId}
+import com.linagora.tmail.james.jmap.model.{EmailRecoveryActionCreation, EmailRecoveryActionCreationId, EmailRecoveryActionCreationParseException, EmailRecoveryActionCreationRequest, EmailRecoveryActionCreationResponse, EmailRecoveryActionSetRequest, EmailRecoveryActionSetResponse, EmailRecoveryActionUpdateException, EmailRecoveryActionUpdatePatchObject, EmailRecoveryActionUpdateRequest, EmailRecoveryActionUpdateResponse, EmailRecoveryActionUpdateStatus, InvalidStatusUpdateException, UnparsedEmailRecoveryActionId}
 import eu.timepit.refined.auto._
 import jakarta.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.SetError.SetErrorDescription
-import org.apache.james.jmap.core.{ClientId, Id, Invocation, ServerId, SetError}
+import org.apache.james.jmap.core.{ClientId, Id, Invocation, Properties, ServerId, SetError}
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodWithoutAccountId}
 import org.apache.james.jmap.routes.{ProcessingContext, SessionSupplier}
@@ -51,6 +51,7 @@ import org.apache.james.webadmin.vault.routes.{DeletedMessagesVaultRestoreTask, 
 import org.reactivestreams.Publisher
 import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.{JsError, JsObject}
+import reactor.core.publisher.SynchronousSink
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.OptionConverters._
@@ -219,6 +220,7 @@ object EmailRecoveryActionSetUpdatePerformer {
     def asSetError: SetError = exception match {
       case e: IllegalArgumentException => SetError.invalidArguments(SetErrorDescription(e.getMessage), None)
       case e: EmailRecoveryActionUpdateException => e.setError.getOrElse(SetError.serverFail(SetErrorDescription(e.description.getOrElse(""))))
+      case e: InvalidStatusUpdateException => SetError("invalidStatus", SetErrorDescription(e.getMessage), Some(Properties("status")))
       case _ =>
         LOGGER.warn("Could not taskUpdate email recovery action set method", exception)
         SetError.serverFail(SetErrorDescription(exception.getMessage))
@@ -263,7 +265,7 @@ class EmailRecoveryActionSetUpdatePerformer @Inject()(val taskManager: TaskManag
 
   private def doUpdate(username: Username, taskId: TaskId, patch: EmailRecoveryActionUpdateRequest): SMono[UpdateResult] =
     getTaskDetail(username, taskId)
-      .filter(taskDetail => STATUS_WHITE_LIST.contains(taskDetail.getStatus))
+      .handle(validateTargetTaskStatus)
       .flatMap(_ => taskUpdate(taskId, patch))
       .`then`(SMono.just(UpdateSuccess(taskId, EmailRecoveryActionUpdateResponse())))
       .onErrorResume(e => SMono.just(UpdateFailure(UnparsedEmailRecoveryActionId.from(taskId), e)))
@@ -289,4 +291,13 @@ class EmailRecoveryActionSetUpdatePerformer @Inject()(val taskManager: TaskManag
         .map(_ => taskDetail))
       .flatMap(SMono.justOrEmpty)
       .switchIfEmpty(SMono.error(EmailRecoveryActionUpdateException(setError = Some(SetError.notFound(SetErrorDescription("Task not found"))))))
+
+  private def validateTargetTaskStatus: (TaskExecutionDetails, SynchronousSink[AnyRef]) => Unit =
+    (taskDetail: TaskExecutionDetails, sink: SynchronousSink[AnyRef]) => {
+      if (!STATUS_WHITE_LIST.contains(taskDetail.getStatus)) {
+        sink.error(InvalidStatusUpdateException(s"The task was in status `${taskDetail.getStatus.getValue}` and cannot be canceled"))
+      } else {
+        sink.next(taskDetail)
+      }
+    }
 }
