@@ -19,14 +19,22 @@
 package com.linagora.tmail.james;
 
 import org.apache.james.JamesServerExtension;
+import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.google.inject.multibindings.Multibinder;
+import com.google.inject.util.Modules;
 import com.linagora.tmail.james.common.FolderFilteringActionGetMethodContract;
 import com.linagora.tmail.james.common.RunRulesTaskProbeModule;
+import com.linagora.tmail.james.common.module.JmapGuiceCustomModule;
+import com.linagora.tmail.team.TeamMailboxProbe;
 
 public class PostgresFolderFilteringActionGetMethodTest implements FolderFilteringActionGetMethodContract {
     @RegisterExtension
     static JamesServerExtension testExtension = TmailJmapBase.JAMES_SERVER_EXTENSION_FUNCTION
-        .apply(new RunRulesTaskProbeModule())
+        .apply(Modules.combine(new RunRulesTaskProbeModule(),
+            binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
+                .addBinding().to(TeamMailboxProbe.class),
+            new JmapGuiceCustomModule()))
         .build();
 }
