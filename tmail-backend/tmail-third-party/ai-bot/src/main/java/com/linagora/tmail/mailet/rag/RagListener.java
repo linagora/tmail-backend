@@ -35,6 +35,7 @@ import org.apache.james.core.Username;
 import org.apache.james.events.Event;
 import org.apache.james.events.EventListener;
 import org.apache.james.events.Group;
+import org.apache.james.jmap.api.model.Preview;
 import org.apache.james.jmap.mime4j.AvoidBinaryBodyReadingBodyFactory;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
@@ -148,19 +149,27 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
 
     private Mono<String> addDocumentToRagContext(MailboxEvents.Added addedEvent, MessageResult messageResult) {
         return asRagLearnableContent(messageResult)
-            .doOnSuccess(text -> LOGGER.debug("RAG Listener successfully processed mailContent ***** \n{}\n *****", new DocumentId(messageResult.getThreadId())))
+            .doOnSuccess(text -> LOGGER.debug("RAG Listener successfully processed mailContent ***** \n{}\n *****", new DocumentId(messageResult.getMessageId())))
             .flatMap(content -> openRagHttpClient
                 .addDocument(
                     partitionFactory.forUsername(addedEvent.getUsername()),
-                    new DocumentId(messageResult.getThreadId()),
+                    new DocumentId(messageResult.getMessageId()),
                     content,
                     computeMetaData(addedEvent, messageResult)));
     }
 
     private Map<String, String> computeMetaData(MailboxEvents.Added addedEvent, MessageResult messageResult) {
         try {
-            return  Map.of("date", DateTimeFormatter.ISO_INSTANT.format(parseMessage(messageResult.getFullContent().getInputStream()).getDate().toInstant()),
-                "doctype", "com.linagora.email");
+            Message mimeMessage = parseMessage(messageResult.getFullContent().getInputStream());
+            String text = new MessageContentExtractor()
+                .extract(mimeMessage)
+                .getTextBody()
+                .orElse("");
+            return  Map.of("subject",mimeMessage.getSubject(),
+                "date", DateTimeFormatter.ISO_INSTANT.format(mimeMessage.getDate().toInstant()),
+                "threadId", messageResult.getThreadId().serialize(),
+                "doctype", "com.linagora.email",
+                "preview", Preview.compute(text).getValue());
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
