@@ -23,9 +23,14 @@ import java.util.Optional
 
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Inject}
+import com.linagora.tmail.james.common.probe.JmapGuiceCustomProbe
+import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
+import com.linagora.tmail.team.{TeamMailbox, TeamMailboxName, TeamMailboxProbe}
+import eu.timepit.refined.auto._
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
+import io.restassured.path.json.JsonPath
 import io.restassured.response.ValidatableResponse
 import io.restassured.specification.RequestSpecification
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
@@ -39,7 +44,7 @@ import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.mailbox.MessageManager.AppendCommand
-import org.apache.james.mailbox.model.MailboxPath
+import org.apache.james.mailbox.model.{MailboxId, MailboxPath}
 import org.apache.james.mime4j.dom.Message
 import org.apache.james.modules.MailboxProbeImpl
 import org.apache.james.task.{TaskId, TaskManager}
@@ -530,6 +535,101 @@ trait FolderFilteringActionGetMethodContract {
            |  {
            |    "notFound": ["$emailRecoveryActionTaskId"],
            |    "list": []
+           |  },
+           |  "#0"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def shouldReturnFilteringActionOnTeamMailbox(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+    val teamMailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
+      .getMailboxId(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", DOMAIN).asString(), "marketing")
+    val message: Message = Message.Builder
+      .of
+      .setSubject("matchedRules")
+      .setBody("testmail", StandardCharsets.UTF_8)
+      .build
+    server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessage(BOB.asString, teamMailbox.mailboxPath, AppendCommand.from(message))
+
+    // Assume user set rules via Filter/set
+    server.getProbe(classOf[JmapGuiceCustomProbe])
+      .setRulesForUser(BOB,
+        Rule.builder
+          .id(Rule.Id.of("1"))
+          .name("My first rule")
+          .conditionGroup(Rule.Condition.of(Rule.Condition.FixedField.SUBJECT, Rule.Condition.Comparator.CONTAINS, "matchedRules"))
+          .action(new Rule.Action.Builder().setMoveTo(Optional.of(new Rule.Action.MoveTo("Processed"))))
+          .build)
+
+    val setResponse: String = `given`
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:filter", "urn:apache:james:params:jmap:mail:shares"],
+           |  "methodCalls": [
+           |    ["FolderFilteringAction/set",
+           |      {
+           |        "create": {
+           |          "c1": {"mailboxId": "${teamMailboxId.serialize()}"}
+           |        }
+           |      },
+           |      "c1"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    val taskId: String = JsonPath.from(setResponse).getString("methodResponses[0][1].created.c1.id")
+    awaitTaskCompletion(taskId)
+
+    val getResponse: String = `given`
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:filter"],
+           |  "methodCalls": [
+           |    ["FolderFilteringAction/get",
+           |      {
+           |        "ids": ["$taskId"]
+           |      },
+           |      "#0"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(getResponse)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |  "FolderFilteringAction/get",
+           |  {
+           |    "notFound": [],
+           |    "list": [{
+           |      "id": "$taskId",
+           |      "status": "completed",
+           |      "processedMessageCount": 1,
+           |      "successfulActions": 1,
+           |      "failedActions": 0,
+           |      "maximumAppliedActionReached": false
+           |    }]
            |  },
            |  "#0"
            |]""".stripMargin)

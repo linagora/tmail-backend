@@ -25,7 +25,7 @@ import com.linagora.tmail.james.jmap.model._
 import eu.timepit.refined.auto._
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.filtering.FilteringManagement
-import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
+import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JAMES_SHARES, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.{ClientId, Id, Invocation, Properties, ServerId, SetError}
@@ -41,7 +41,6 @@ import org.apache.james.metrics.api.MetricFactory
 import org.apache.james.task.{TaskExecutionDetails, TaskId, TaskManager, TaskNotFoundException}
 import org.apache.james.util.ReactorUtils
 import org.apache.james.webadmin.data.jmap.{RunRulesOnMailboxService, RunRulesOnMailboxTask}
-import org.apache.james.webadmin.validation.MailboxName
 import org.reactivestreams.Publisher
 import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.JsObject
@@ -60,7 +59,7 @@ class FolderFilteringActionSetMethod @Inject()(val createPerformer: FolderFilter
 
   override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession, request: FolderFilteringActionSetRequest): Publisher[InvocationWithContext] =
     for {
-      createdResult <- createPerformer.create(request, mailboxSession)
+      createdResult <- createPerformer.create(request, mailboxSession, capabilities.contains(JAMES_SHARES))
       updatedResult <- updatePerformer.update(request, mailboxSession.getUser)
     } yield InvocationWithContext(
       invocation = Invocation(methodName, Arguments(
@@ -120,12 +119,12 @@ class FolderFilteringActionSetCreatePerformer @Inject()(taskManager: TaskManager
                                                         runRulesService: RunRulesOnMailboxService) {
   import FolderFilteringActionSetCreatePerformer._
 
-  def create(request: FolderFilteringActionSetRequest, mailboxSession: MailboxSession): SMono[CreationResults] =
+  def create(request: FolderFilteringActionSetRequest, mailboxSession: MailboxSession, supportSharedMailbox: Boolean): SMono[CreationResults] =
     SFlux.fromIterable(request.create.getOrElse(Map()))
       .concatMap {
         case (clientId, json) => parseCreateRequest(json)
           .fold(e => SMono.just[CreationResult](CreationFailure(clientId, e)),
-            creation => submitTask(clientId, mailboxSession, creation))
+            creation => submitTask(clientId, mailboxSession, creation, supportSharedMailbox))
       }
       .collectSeq()
       .map(CreationResults)
@@ -136,15 +135,15 @@ class FolderFilteringActionSetCreatePerformer @Inject()(taskManager: TaskManager
       parsed <- FolderFilteringActionSerializer.deserializeSetCreationRequest(validatedJsObject).asEitherRequest
     } yield parsed
 
-  private def submitTask(clientId: FolderFilteringActionCreationId, mailboxSession: MailboxSession, creation: FolderFilteringActionCreationRequest): SMono[CreationResult] =
+  private def submitTask(clientId: FolderFilteringActionCreationId, mailboxSession: MailboxSession, creation: FolderFilteringActionCreationRequest, supportSharedMailbox: Boolean): SMono[CreationResult] =
     MailboxGet.parse(mailboxIdFactory)(creation.mailboxId)
       .fold(
         (e: Throwable) => SMono.just[CreationResult](CreationFailure(clientId, e)),
         (parsedMailboxId: MailboxId) =>
           SMono(mailboxManager.getMailboxReactive(parsedMailboxId, mailboxSession))
-            .filterWhen(assertCapabilityIfSharedMailbox(mailboxSession, parsedMailboxId, supportSharedMailbox = false))
+            .filterWhen(assertCapabilityIfSharedMailbox(mailboxSession, parsedMailboxId, supportSharedMailbox))
             .flatMap(messageManager => SMono.fromPublisher(filteringManagement.listRulesForUser(mailboxSession.getUser))
-              .flatMap(rules => SMono.fromCallable(() => taskManager.submit(new RunRulesOnMailboxTask(mailboxSession.getUser, new MailboxName(messageManager.getMailboxPath.getName), rules, runRulesService)))
+              .flatMap(rules => SMono.fromCallable(() => taskManager.submit(new RunRulesOnMailboxTask(mailboxSession.getUser, messageManager.getMailboxPath, rules, runRulesService)))
                 .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER))
               .map(taskId => CreationSuccess(clientId, FolderFilteringActionCreationResponse(taskId))))
             .onErrorResume(e => SMono.just[CreationResult](CreationFailure(clientId, e))))

@@ -359,7 +359,7 @@ trait FolderFilteringActionSetMethodContract {
   }
 
   @Test
-  def createShouldFailOnTeamMailbox(server: GuiceJamesServer): Unit = {
+  def createShouldSucceedOnTeamMailboxWhenSharedCapability(server: GuiceJamesServer): Unit = {
     val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
@@ -388,6 +388,43 @@ trait FolderFilteringActionSetMethodContract {
       .body(
         s"""{
            |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:filter", "urn:apache:james:params:jmap:mail:shares"],
+           |  "methodCalls": [
+           |    ["FolderFilteringAction/set",
+           |      {
+           |        "create": {
+           |          "c1": {"mailboxId": "${teamMailboxId.serialize()}"}
+           |        }
+           |      },
+           |      "c1"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    val taskId: String = JsonPath.from(response).getString("methodResponses[0][1].created.c1.id")
+    awaitTaskCompletion(taskId)
+  }
+
+  @Test
+  def createShouldFailOnTeamMailboxWhenMissingSharedCapability(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+    val teamMailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
+      .getMailboxId(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", DOMAIN).asString(), "marketing")
+
+    val response: String = `given`
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:filter"],
            |  "methodCalls": [
            |    ["FolderFilteringAction/set",
            |      {
@@ -634,6 +671,94 @@ trait FolderFilteringActionSetMethodContract {
            |	},
            |	"c1"
            |]""".stripMargin)
+    `given`()
+      .spec(webAdminApi)
+      .get(taskId + "/await")
+    .`then`()
+      .body("status", Matchers.is("canceled"))
+  }
+
+  @Test
+  def updateFilteringActionOnTeamMailboxShouldSucceed(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+    val teamMailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
+      .getMailboxId(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", DOMAIN).asString(), "marketing")
+
+    // This makes the run rules task will wait until the hanging task is completed
+    val hangingTask : Task = new MemoryReferenceTask(() => {
+      Thread.sleep(2000)
+      Task.Result.COMPLETED
+    })
+    server.getProbe(classOf[TaskManagerProbe])
+      .submitTask(hangingTask)
+
+    val setCreateResponse: String = `given`
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:filter", "urn:apache:james:params:jmap:mail:shares"],
+           |  "methodCalls": [
+           |    ["FolderFilteringAction/set",
+           |      {
+           |        "create": {
+           |          "c1": {"mailboxId": "${teamMailboxId.serialize()}"}
+           |        }
+           |      },
+           |      "c1"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+    val taskId: String = JsonPath.from(setCreateResponse).getString("methodResponses[0][1].created.c1.id")
+
+    val setUpdateResponse: String = `given`
+      .body(
+        s"""{
+           |	"using": [
+           |		"urn:ietf:params:jmap:core",
+           |		"com:linagora:params:jmap:filter"
+           |	],
+           |	"methodCalls": [
+           |		[
+           |			"FolderFilteringAction/set",
+           |			{
+           |				"update": { "$taskId": { "status": "canceled" } }
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(setUpdateResponse)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |	"FolderFilteringAction/set",
+           |	{
+           |		"updated": {
+           |			"$taskId": {}
+           |		}
+           |	},
+           |	"c1"
+           |]""".stripMargin)
+
     `given`()
       .spec(webAdminApi)
       .get(taskId + "/await")
