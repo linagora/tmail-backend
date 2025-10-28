@@ -199,7 +199,13 @@ class RagListenerTest {
             .withHeader("Content-Type", containing("multipart/form-data"))
             .withRequestBodyPart(aMultipart()
                 .withName("metadata")
-                .withBody(equalToJson("{\"date\":\"2023-10-10T10:00:00Z\", \"doctype\":\"com.linagora.email\"}"))
+                .withBody(equalToJson("{"
+                    + "\"subject\":\"Test Subject\","
+                    + "\"date\":\"2023-10-10T10:00:00Z\","
+                    + "\"threadId\":\"1\","
+                    + "\"doctype\":\"com.linagora.email\","
+                    + "\"preview\":\"Body of the email\""
+                    + "}"))
                 .build())
             .withRequestBodyPart(aMultipart()
                 .withName("file")
@@ -244,8 +250,13 @@ class RagListenerTest {
             .withHeader("Content-Type", containing("multipart/form-data"))
             .withRequestBodyPart(aMultipart()
                 .withName("metadata")
-                .withBody(equalToJson("{\"date\":\"2023-10-10T10:00:00Z\", \"doctype\":\"com.linagora.email\"}"))
-                .build())
+                .withBody(equalToJson("{"
+                    + "\"subject\":\"Test Subject\","
+                    + "\"date\":\"2023-10-10T10:00:00Z\","
+                    + "\"threadId\":\"1\","
+                    + "\"doctype\":\"com.linagora.email\","
+                    + "\"preview\":\"Body of the email\""
+                    + "}"))                .build())
             .withRequestBodyPart(aMultipart()
                 .withName("file")
                 .withHeader("Content-Type", containing("text/plain"))
@@ -336,8 +347,13 @@ class RagListenerTest {
             .withHeader("Content-Type", containing("multipart/form-data"))
             .withRequestBodyPart(aMultipart()
                 .withName("metadata")
-                .withBody(equalToJson("{\"date\":\"2023-10-10T10:00:00Z\", \"doctype\":\"com.linagora.email\"}"))
-                .build())
+                .withBody(equalToJson("{"
+                    + "\"subject\":\"Test Subject\","
+                    + "\"date\":\"2023-10-10T10:00:00Z\","
+                    + "\"threadId\":\"1\","
+                    + "\"doctype\":\"com.linagora.email\","
+                    + "\"preview\":\"Body of the email\""
+                    + "}"))                .build())
             .withRequestBodyPart(aMultipart()
                 .withName("file")
                 .withHeader("Content-Type", containing("text/plain"))
@@ -359,8 +375,13 @@ class RagListenerTest {
             .withHeader("Content-Type", containing("multipart/form-data"))
             .withRequestBodyPart(aMultipart()
                 .withName("metadata")
-                .withBody(equalToJson("{\"date\":\"2023-10-10T10:00:00Z\", \"doctype\":\"com.linagora.email\"}"))
-                .build())
+                .withBody(equalToJson("{"
+                    + "\"subject\":\"Test Subject\","
+                    + "\"date\":\"2023-10-10T10:00:00Z\","
+                    + "\"threadId\":\"2\","
+                    + "\"doctype\":\"com.linagora.email\","
+                    + "\"preview\":\"Body of the email\""
+                    + "}"))                .build())
             .withRequestBodyPart(aMultipart()
                 .withName("file")
                 .withHeader("Content-Type", containing("text/plain"))
@@ -412,8 +433,13 @@ class RagListenerTest {
             .withHeader("Content-Type", containing("multipart/form-data"))
             .withRequestBodyPart(aMultipart()
                 .withName("metadata")
-                .withBody(equalToJson("{\"date\":\"2023-10-10T10:00:00Z\", \"doctype\":\"com.linagora.email\"}"))
-                .build())
+                .withBody(equalToJson("{"
+                    + "\"subject\":\"Test Email with Attachment\","
+                    + "\"date\":\"2023-10-10T10:00:00Z\","
+                    + "\"threadId\":\"1\","
+                    + "\"doctype\":\"com.linagora.email\","
+                    + "\"preview\":\"This is the body of the email.\""
+                    + "}"))                .build())
              .withRequestBodyPart(aMultipart()
                 .withName("file")
                 .withHeader("Content-Type", containing("text/plain"))
