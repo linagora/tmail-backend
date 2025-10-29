@@ -165,11 +165,11 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
                 .extract(mimeMessage)
                 .getTextBody()
                 .orElse("");
-            return  Map.of("subject",mimeMessage.getSubject(),
-                "date", DateTimeFormatter.ISO_INSTANT.format(mimeMessage.getDate().toInstant()),
-                "threadId", messageResult.getThreadId().serialize(),
-                "doctype", "com.linagora.email",
-                "preview", Preview.compute(text).getValue());
+            return  Map.of("email.subject", mimeMessage.getSubject(),
+                "email.date", DateTimeFormatter.ISO_INSTANT.format(mimeMessage.getDate().toInstant()),
+                "email.threadId", messageResult.getThreadId().serialize(),
+                "email.doctype", "com.linagora.email",
+                "email.preview", Preview.compute(text).getValue());
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
