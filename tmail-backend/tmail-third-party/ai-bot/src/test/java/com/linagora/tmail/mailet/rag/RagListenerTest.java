@@ -200,11 +200,11 @@ class RagListenerTest {
             .withRequestBodyPart(aMultipart()
                 .withName("metadata")
                 .withBody(equalToJson("{"
-                    + "\"subject\":\"Test Subject\","
-                    + "\"date\":\"2023-10-10T10:00:00Z\","
-                    + "\"threadId\":\"1\","
-                    + "\"doctype\":\"com.linagora.email\","
-                    + "\"preview\":\"Body of the email\""
+                    + "\"email.subject\":\"Test Subject\","
+                    + "\"email.date\":\"2023-10-10T10:00:00Z\","
+                    + "\"email.threadId\":\"1\","
+                    + "\"email.doctype\":\"com.linagora.email\","
+                    + "\"email.preview\":\"Body of the email\""
                     + "}"))
                 .build())
             .withRequestBodyPart(aMultipart()
@@ -251,11 +251,11 @@ class RagListenerTest {
             .withRequestBodyPart(aMultipart()
                 .withName("metadata")
                 .withBody(equalToJson("{"
-                    + "\"subject\":\"Test Subject\","
-                    + "\"date\":\"2023-10-10T10:00:00Z\","
-                    + "\"threadId\":\"1\","
-                    + "\"doctype\":\"com.linagora.email\","
-                    + "\"preview\":\"Body of the email\""
+                    + "\"email.subject\":\"Test Subject\","
+                    + "\"email.date\":\"2023-10-10T10:00:00Z\","
+                    + "\"email.threadId\":\"1\","
+                    + "\"email.doctype\":\"com.linagora.email\","
+                    + "\"email.preview\":\"Body of the email\""
                     + "}"))                .build())
             .withRequestBodyPart(aMultipart()
                 .withName("file")
@@ -348,11 +348,11 @@ class RagListenerTest {
             .withRequestBodyPart(aMultipart()
                 .withName("metadata")
                 .withBody(equalToJson("{"
-                    + "\"subject\":\"Test Subject\","
-                    + "\"date\":\"2023-10-10T10:00:00Z\","
-                    + "\"threadId\":\"1\","
-                    + "\"doctype\":\"com.linagora.email\","
-                    + "\"preview\":\"Body of the email\""
+                    + "\"email.subject\":\"Test Subject\","
+                    + "\"email.date\":\"2023-10-10T10:00:00Z\","
+                    + "\"email.threadId\":\"1\","
+                    + "\"email.doctype\":\"com.linagora.email\","
+                    + "\"email.preview\":\"Body of the email\""
                     + "}"))                .build())
             .withRequestBodyPart(aMultipart()
                 .withName("file")
@@ -376,11 +376,11 @@ class RagListenerTest {
             .withRequestBodyPart(aMultipart()
                 .withName("metadata")
                 .withBody(equalToJson("{"
-                    + "\"subject\":\"Test Subject\","
-                    + "\"date\":\"2023-10-10T10:00:00Z\","
-                    + "\"threadId\":\"2\","
-                    + "\"doctype\":\"com.linagora.email\","
-                    + "\"preview\":\"Body of the email\""
+                    + "\"email.subject\":\"Test Subject\","
+                    + "\"email.date\":\"2023-10-10T10:00:00Z\","
+                    + "\"email.threadId\":\"2\","
+                    + "\"email.doctype\":\"com.linagora.email\","
+                    + "\"email.preview\":\"Body of the email\""
                     + "}"))                .build())
             .withRequestBodyPart(aMultipart()
                 .withName("file")
@@ -434,11 +434,11 @@ class RagListenerTest {
             .withRequestBodyPart(aMultipart()
                 .withName("metadata")
                 .withBody(equalToJson("{"
-                    + "\"subject\":\"Test Email with Attachment\","
-                    + "\"date\":\"2023-10-10T10:00:00Z\","
-                    + "\"threadId\":\"1\","
-                    + "\"doctype\":\"com.linagora.email\","
-                    + "\"preview\":\"This is the body of the email.\""
+                    + "\"email.subject\":\"Test Email with Attachment\","
+                    + "\"email.date\":\"2023-10-10T10:00:00Z\","
+                    + "\"email.threadId\":\"1\","
+                    + "\"email.doctype\":\"com.linagora.email\","
+                    + "\"email.preview\":\"This is the body of the email.\""
                     + "}"))                .build())
              .withRequestBodyPart(aMultipart()
                 .withName("file")
