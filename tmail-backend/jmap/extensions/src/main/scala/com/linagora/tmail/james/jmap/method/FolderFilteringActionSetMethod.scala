@@ -34,9 +34,9 @@ import org.apache.james.jmap.method.MailboxSetMethod.assertCapabilityIfSharedMai
 import org.apache.james.jmap.method.{InvocationWithContext, MethodWithoutAccountId}
 import org.apache.james.jmap.routes.{ProcessingContext, SessionSupplier}
 import org.apache.james.lifecycle.api.Startable
-import org.apache.james.mailbox.exception.MailboxNotFoundException
-import org.apache.james.mailbox.model.MailboxId
-import org.apache.james.mailbox.{MailboxManager, MailboxSession}
+import org.apache.james.mailbox.exception.{InsufficientRightsException, MailboxNotFoundException}
+import org.apache.james.mailbox.model.{MailboxACL, MailboxId}
+import org.apache.james.mailbox.{MailboxManager, MailboxSession, MessageManager}
 import org.apache.james.metrics.api.MetricFactory
 import org.apache.james.task.{TaskExecutionDetails, TaskId, TaskManager, TaskNotFoundException}
 import org.apache.james.util.ReactorUtils
@@ -91,6 +91,7 @@ object FolderFilteringActionSetCreatePerformer {
       case e: FolderFilteringActionCreationParseException => e.setError
       case e: IllegalArgumentException => SetError.invalidArguments(SetErrorDescription(s"Invalid mailboxId: ${e.getMessage}"))
       case e: MailboxNotFoundException => SetError.notFound(SetErrorDescription(e.getMessage))
+      case e: InsufficientRightsException => SetError.forbidden(SetErrorDescription(e.getMessage))
       case _ =>
         LOGGER.error("Failed create folder filtering action", exception)
         SetError.serverFail(SetErrorDescription(exception.getMessage))
@@ -142,11 +143,30 @@ class FolderFilteringActionSetCreatePerformer @Inject()(taskManager: TaskManager
         (parsedMailboxId: MailboxId) =>
           SMono(mailboxManager.getMailboxReactive(parsedMailboxId, mailboxSession))
             .filterWhen(assertCapabilityIfSharedMailbox(mailboxSession, parsedMailboxId, supportSharedMailbox))
+            .filterWhen(validateRightsOnSharedMailbox(mailboxSession, _))
             .flatMap(messageManager => SMono.fromPublisher(filteringManagement.listRulesForUser(mailboxSession.getUser))
               .flatMap(rules => SMono.fromCallable(() => taskManager.submit(new RunRulesOnMailboxTask(mailboxSession.getUser, messageManager.getMailboxPath, rules, runRulesService)))
                 .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER))
               .map(taskId => CreationSuccess(clientId, FolderFilteringActionCreationResponse(taskId))))
             .onErrorResume(e => SMono.just[CreationResult](CreationFailure(clientId, e))))
+
+  private def validateRightsOnSharedMailbox(mailboxSession: MailboxSession, messageManager: MessageManager): SMono[Boolean] =
+    if (!messageManager.getMailboxPath.belongsTo(mailboxSession)) {
+      SFlux.merge(Seq(
+          SMono(mailboxManager.hasRightReactive(messageManager.getMailboxPath, MailboxACL.Right.Read, mailboxSession)),
+          SMono(mailboxManager.hasRightReactive(messageManager.getMailboxPath, MailboxACL.Right.DeleteMessages, mailboxSession))))
+        .map(javaBoolean => javaBoolean.booleanValue())
+        .reduce((hasReadRight: Boolean, hasDeleteRight: Boolean) => hasReadRight && hasDeleteRight)
+        .handle((hasSufficientRights: Boolean, sink: SynchronousSink[Boolean]) => {
+          if (!hasSufficientRights) {
+            sink.error(new InsufficientRightsException("Insufficient rights on the shared mailbox to perform a folder filtering action"))
+          } else {
+            sink.next(hasSufficientRights)
+          }
+        })
+    } else {
+      SMono.just(true)
+    }
 }
 
 object FolderFilteringActionSetUpdatePerformer {
