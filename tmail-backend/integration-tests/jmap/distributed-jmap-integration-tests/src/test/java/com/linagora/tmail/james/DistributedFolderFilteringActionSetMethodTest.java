@@ -87,4 +87,9 @@ public class DistributedFolderFilteringActionSetMethodTest implements FolderFilt
     @Override
     public void updateFilteringActionOnTeamMailboxShouldSucceed(GuiceJamesServer server) {
     }
+
+    @Disabled("No available serializer/deserializer for MemoryReferenceTask in distributed James server")
+    @Override
+    public void updateFilteringActionOnShareMailboxShouldSucceed(GuiceJamesServer server) {
+    }
 }

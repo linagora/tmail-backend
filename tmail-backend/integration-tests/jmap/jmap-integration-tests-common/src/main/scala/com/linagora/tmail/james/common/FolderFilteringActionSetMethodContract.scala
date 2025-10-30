@@ -41,9 +41,11 @@ import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.mailbox.MessageManager.AppendCommand
-import org.apache.james.mailbox.model.{MailboxId, MailboxPath}
+import org.apache.james.mailbox.model.MailboxACL.Right
+import org.apache.james.mailbox.model.MailboxPath.inbox
+import org.apache.james.mailbox.model.{MailboxACL, MailboxId, MailboxPath}
 import org.apache.james.mime4j.dom.Message
-import org.apache.james.modules.MailboxProbeImpl
+import org.apache.james.modules.{ACLProbeImpl, MailboxProbeImpl}
 import org.apache.james.task.{MemoryReferenceTask, Task, TaskId}
 import org.apache.james.utils.{DataProbeImpl, WebAdminGuiceProbe}
 import org.apache.james.webadmin.WebAdminUtils
@@ -463,6 +465,302 @@ trait FolderFilteringActionSetMethodContract {
   }
 
   @Test
+  def createShouldSucceedOnSharedMailbox(server: GuiceJamesServer): Unit = {
+    // Given: andres inbox with a message
+    val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
+    val andreInboxId = mailboxProbe.createMailbox(inbox(ANDRE))
+    val message: Message = Message.Builder
+      .of
+      .setSubject("matchedRules")
+      .setBody("testmail", StandardCharsets.UTF_8)
+      .build
+    mailboxProbe.appendMessage(ANDRE.asString, inbox(ANDRE), AppendCommand.from(message)).getMessageId
+
+    // Given: Andre shares rights for Bob to access the share mailbox
+    server.getProbe(classOf[ACLProbeImpl])
+      .replaceRights(inbox(ANDRE), BOB.asString, new MailboxACL.Rfc4314Rights(Right.Lookup, Right.Read, Right.DeleteMessages))
+
+    // Assume Bob set rules via Filter/set
+    server.getProbe(classOf[JmapGuiceCustomProbe])
+      .setRulesForUser(BOB,
+        Rule.builder
+          .id(Rule.Id.of("1"))
+          .name("My first rule")
+          .conditionGroup(Rule.Condition.of(Rule.Condition.FixedField.SUBJECT, Rule.Condition.Comparator.CONTAINS, "matchedRules"))
+          .action(new Rule.Action.Builder().setMoveTo(Optional.of(new Rule.Action.MoveTo("Processed"))))
+          .build)
+
+    val response: String = `given`
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:filter", "urn:apache:james:params:jmap:mail:shares"],
+           |  "methodCalls": [
+           |    ["FolderFilteringAction/set",
+           |      {
+           |        "create": {
+           |          "c1": {"mailboxId": "${andreInboxId.serialize()}"}
+           |        }
+           |      },
+           |      "c1"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    val taskId: String = JsonPath.from(response).getString("methodResponses[0][1].created.c1.id")
+    awaitTaskCompletion(taskId)
+
+    val getResponse: String = `given`
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:filter"],
+           |  "methodCalls": [
+           |    ["FolderFilteringAction/get",
+           |      {
+           |        "ids": ["$taskId"]
+           |      },
+           |      "#0"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(getResponse)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |  "FolderFilteringAction/get",
+           |  {
+           |    "notFound": [],
+           |    "list": [{
+           |      "id": "$taskId",
+           |      "status": "completed",
+           |      "processedMessageCount": 1,
+           |      "successfulActions": 1,
+           |      "failedActions": 0,
+           |      "maximumAppliedActionReached": false
+           |    }]
+           |  },
+           |  "#0"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def createShouldFailOnSharedMailboxWhenMissingShareCapability(server: GuiceJamesServer): Unit = {
+    // Given: andres inbox with a message
+    val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
+    val andreInboxId = mailboxProbe.createMailbox(inbox(ANDRE))
+    val message: Message = Message.Builder
+      .of
+      .setSubject("matchedRules")
+      .setBody("testmail", StandardCharsets.UTF_8)
+      .build
+    mailboxProbe.appendMessage(ANDRE.asString, inbox(ANDRE), AppendCommand.from(message)).getMessageId
+
+    // Given: Andre shares rights for Bob to access the share mailbox
+    server.getProbe(classOf[ACLProbeImpl])
+      .replaceRights(inbox(ANDRE), BOB.asString, new MailboxACL.Rfc4314Rights(Right.Lookup, Right.DeleteMessages))
+
+    // Assume Bob set rules via Filter/set
+    server.getProbe(classOf[JmapGuiceCustomProbe])
+      .setRulesForUser(BOB,
+        Rule.builder
+          .id(Rule.Id.of("1"))
+          .name("My first rule")
+          .conditionGroup(Rule.Condition.of(Rule.Condition.FixedField.SUBJECT, Rule.Condition.Comparator.CONTAINS, "matchedRules"))
+          .action(new Rule.Action.Builder().setMoveTo(Optional.of(new Rule.Action.MoveTo("Processed"))))
+          .build)
+
+    val response: String = `given`
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:filter"],
+           |  "methodCalls": [
+           |    ["FolderFilteringAction/set",
+           |      {
+           |        "create": {
+           |          "c1": {"mailboxId": "${andreInboxId.serialize()}"}
+           |        }
+           |      },
+           |      "c1"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |  "FolderFilteringAction/set",
+           |  {
+           |    "notCreated": {
+           |      "c1": {
+           |        "type": "notFound",
+           |        "description": "${andreInboxId.serialize()} can not be found"
+           |      }
+           |    }
+           |  },
+           |  "c1"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def createShouldFailOnSharedMailboxWhenMissingReadRight(server: GuiceJamesServer): Unit = {
+    // Given: andres inbox with a message
+    val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
+    val andreInboxId = mailboxProbe.createMailbox(inbox(ANDRE))
+    val message: Message = Message.Builder
+      .of
+      .setSubject("matchedRules")
+      .setBody("testmail", StandardCharsets.UTF_8)
+      .build
+    mailboxProbe.appendMessage(ANDRE.asString, inbox(ANDRE), AppendCommand.from(message)).getMessageId
+
+    // Given: Andre shares rights for Bob to access the share mailbox
+    server.getProbe(classOf[ACLProbeImpl])
+      .replaceRights(inbox(ANDRE), BOB.asString, new MailboxACL.Rfc4314Rights(Right.Lookup, Right.DeleteMessages))
+
+    // Assume Bob set rules via Filter/set
+    server.getProbe(classOf[JmapGuiceCustomProbe])
+      .setRulesForUser(BOB,
+        Rule.builder
+          .id(Rule.Id.of("1"))
+          .name("My first rule")
+          .conditionGroup(Rule.Condition.of(Rule.Condition.FixedField.SUBJECT, Rule.Condition.Comparator.CONTAINS, "matchedRules"))
+          .action(new Rule.Action.Builder().setMoveTo(Optional.of(new Rule.Action.MoveTo("Processed"))))
+          .build)
+
+    val response: String = `given`
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:filter", "urn:apache:james:params:jmap:mail:shares"],
+           |  "methodCalls": [
+           |    ["FolderFilteringAction/set",
+           |      {
+           |        "create": {
+           |          "c1": {"mailboxId": "${andreInboxId.serialize()}"}
+           |        }
+           |      },
+           |      "c1"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |    "FolderFilteringAction/set",
+           |    {
+           |        "notCreated": {
+           |            "c1": {
+           |                "type": "forbidden",
+           |                "description": "Insufficient rights on the shared mailbox to perform a folder filtering action"
+           |            }
+           |        }
+           |    },
+           |    "c1"
+           |]""".stripMargin)
+  }
+
+  @Test
+  def createShouldFailOnSharedMailboxWhenMissingDeleteMessageRight(server: GuiceJamesServer): Unit = {
+    // Given: andres inbox with a message
+    val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
+    val andreInboxId = mailboxProbe.createMailbox(inbox(ANDRE))
+    val message: Message = Message.Builder
+      .of
+      .setSubject("matchedRules")
+      .setBody("testmail", StandardCharsets.UTF_8)
+      .build
+    mailboxProbe.appendMessage(ANDRE.asString, inbox(ANDRE), AppendCommand.from(message)).getMessageId
+
+    // Given: Andre shares rights for Bob to access the share mailbox
+    server.getProbe(classOf[ACLProbeImpl])
+      .replaceRights(inbox(ANDRE), BOB.asString, new MailboxACL.Rfc4314Rights(Right.Lookup, Right.Read))
+
+    // Assume Bob set rules via Filter/set
+    server.getProbe(classOf[JmapGuiceCustomProbe])
+      .setRulesForUser(BOB,
+        Rule.builder
+          .id(Rule.Id.of("1"))
+          .name("My first rule")
+          .conditionGroup(Rule.Condition.of(Rule.Condition.FixedField.SUBJECT, Rule.Condition.Comparator.CONTAINS, "matchedRules"))
+          .action(new Rule.Action.Builder().setMoveTo(Optional.of(new Rule.Action.MoveTo("Processed"))))
+          .build)
+
+    val response: String = `given`
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:filter", "urn:apache:james:params:jmap:mail:shares"],
+           |  "methodCalls": [
+           |    ["FolderFilteringAction/set",
+           |      {
+           |        "create": {
+           |          "c1": {"mailboxId": "${andreInboxId.serialize()}"}
+           |        }
+           |      },
+           |      "c1"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |    "FolderFilteringAction/set",
+           |    {
+           |        "notCreated": {
+           |            "c1": {
+           |                "type": "forbidden",
+           |                "description": "Insufficient rights on the shared mailbox to perform a folder filtering action"
+           |            }
+           |        }
+           |    },
+           |    "c1"
+           |]""".stripMargin)
+  }
+
+  @Test
   def createShouldFailWhenTargetOtherUserMailbox(server: GuiceJamesServer): Unit = {
     val andreInboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(ANDRE))
 
@@ -718,6 +1016,112 @@ trait FolderFilteringActionSetMethodContract {
       .extract
       .body
       .asString
+    val taskId: String = JsonPath.from(setCreateResponse).getString("methodResponses[0][1].created.c1.id")
+
+    val setUpdateResponse: String = `given`
+      .body(
+        s"""{
+           |	"using": [
+           |		"urn:ietf:params:jmap:core",
+           |		"com:linagora:params:jmap:filter"
+           |	],
+           |	"methodCalls": [
+           |		[
+           |			"FolderFilteringAction/set",
+           |			{
+           |				"update": { "$taskId": { "status": "canceled" } }
+           |			},
+           |			"c1"
+           |		]
+           |	]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(setUpdateResponse)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |	"FolderFilteringAction/set",
+           |	{
+           |		"updated": {
+           |			"$taskId": {}
+           |		}
+           |	},
+           |	"c1"
+           |]""".stripMargin)
+
+    `given`()
+      .spec(webAdminApi)
+      .get(taskId + "/await")
+    .`then`()
+      .body("status", Matchers.is("canceled"))
+  }
+
+  @Test
+  def updateFilteringActionOnShareMailboxShouldSucceed(server: GuiceJamesServer): Unit = {
+    // This makes the run rules task will wait until the hanging task is completed
+    val hangingTask : Task = new MemoryReferenceTask(() => {
+      Thread.sleep(2000)
+      Task.Result.COMPLETED
+    })
+    server.getProbe(classOf[TaskManagerProbe])
+      .submitTask(hangingTask)
+
+    // Given: andres inbox with a message
+    val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
+    val andreInboxId = mailboxProbe.createMailbox(inbox(ANDRE))
+    val message: Message = Message.Builder
+      .of
+      .setSubject("matchedRules")
+      .setBody("testmail", StandardCharsets.UTF_8)
+      .build
+    mailboxProbe.appendMessage(ANDRE.asString, inbox(ANDRE), AppendCommand.from(message)).getMessageId
+
+    // Given: Andre shares rights for Bob to access the share mailbox
+    server.getProbe(classOf[ACLProbeImpl])
+      .replaceRights(inbox(ANDRE), BOB.asString, new MailboxACL.Rfc4314Rights(Right.Lookup, Right.Read, Right.DeleteMessages))
+
+    // Assume Bob set rules via Filter/set
+    server.getProbe(classOf[JmapGuiceCustomProbe])
+      .setRulesForUser(BOB,
+        Rule.builder
+          .id(Rule.Id.of("1"))
+          .name("My first rule")
+          .conditionGroup(Rule.Condition.of(Rule.Condition.FixedField.SUBJECT, Rule.Condition.Comparator.CONTAINS, "matchedRules"))
+          .action(new Rule.Action.Builder().setMoveTo(Optional.of(new Rule.Action.MoveTo("Processed"))))
+          .build)
+
+    val setCreateResponse: String = `given`
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:filter", "urn:apache:james:params:jmap:mail:shares"],
+           |  "methodCalls": [
+           |    ["FolderFilteringAction/set",
+           |      {
+           |        "create": {
+           |          "c1": {"mailboxId": "${andreInboxId.serialize()}"}
+           |        }
+           |      },
+           |      "c1"
+           |    ]
+           |  ]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
     val taskId: String = JsonPath.from(setCreateResponse).getString("methodResponses[0][1].created.c1.id")
 
     val setUpdateResponse: String = `given`
