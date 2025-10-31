@@ -201,9 +201,59 @@ class RagListenerTest {
                 .withName("metadata")
                 .withBody(equalToJson("{"
                     + "\"email.subject\":\"Test Subject\","
-                    + "\"email.date\":\"2023-10-10T10:00:00Z\","
-                    + "\"email.threadId\":\"1\","
-                    + "\"email.doctype\":\"com.linagora.email\","
+                    + "\"datetime\":\"2023-10-10T10:00:00Z\","
+                    + "\"parent_id\":\"\","
+                    + "\"relationship_id\":\"1\","
+                    + "\"doctype\":\"com.linagora.email\","
+                    + "\"email.preview\":\"Body of the email\""
+                    + "}"))
+                .build())
+            .withRequestBodyPart(aMultipart()
+                .withName("file")
+                .withHeader("Content-Type", containing("text/plain"))
+                .withBody(containing("# Email Headers\n" +
+                    "\n" +
+                    "Subject: Test Subject\n" +
+                    "From: sender@example.com\n" +
+                    "To: recipient@example.com\n" +
+                    "Cc: cc@example.com\n" +
+                    "Date: Tue, 10 Oct 2023 10:00:00 +0000\n" +
+                    "\n" +
+                    "# Email Content\n" +
+                    "\n" +
+                    "Body of the email"))
+                .build()));
+    }
+
+    @Test
+    void listenerShouldAddInReplyToMetadataWhenEmailHaveInReplyToHeader() throws Exception {
+        mailboxManager.getEventBus().register(ragListener);
+        byte[] CONTENT = (
+            "Subject: Test Subject\r\n" +
+                "From: sender@example.com\r\n" +
+                "To: recipient@example.com\r\n" +
+                "Cc: cc@example.com\r\n" +
+                "Reply-To: \"recipient : Email\" <recipient@example.com>\r\n" +
+                "Date: Tue, 10 Oct 2023 10:00:00 +0000\r\n" +
+                "\r\n" +
+                "Body of the email").getBytes(StandardCharsets.UTF_8);
+        MessageManager.AppendResult appendResult = bobInboxMessageManager.appendMessage(
+            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
+            bobMailboxSession);
+
+        verify(1, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
+
+        verify(postRequestedFor(urlMatching("/indexer/partition/.*/file/.*"))
+            .withHeader("Authorization", equalTo("Bearer dummy-token"))
+            .withHeader("Content-Type", containing("multipart/form-data"))
+            .withRequestBodyPart(aMultipart()
+                .withName("metadata")
+                .withBody(equalToJson("{"
+                    + "\"email.subject\":\"Test Subject\","
+                    + "\"datetime\":\"2023-10-10T10:00:00Z\","
+                    + "\"parent_id\":\"[recipient@example.com]\","
+                    + "\"relationship_id\":\"1\","
+                    + "\"doctype\":\"com.linagora.email\","
                     + "\"email.preview\":\"Body of the email\""
                     + "}"))
                 .build())
@@ -252,11 +302,13 @@ class RagListenerTest {
                 .withName("metadata")
                 .withBody(equalToJson("{"
                     + "\"email.subject\":\"Test Subject\","
-                    + "\"email.date\":\"2023-10-10T10:00:00Z\","
-                    + "\"email.threadId\":\"1\","
-                    + "\"email.doctype\":\"com.linagora.email\","
+                    + "\"datetime\":\"2023-10-10T10:00:00Z\","
+                    + "\"parent_id\":\"\","
+                    + "\"relationship_id\":\"1\","
+                    + "\"doctype\":\"com.linagora.email\","
                     + "\"email.preview\":\"Body of the email\""
-                    + "}"))                .build())
+                    + "}"))
+                .build())
             .withRequestBodyPart(aMultipart()
                 .withName("file")
                 .withHeader("Content-Type", containing("text/plain"))
@@ -349,11 +401,13 @@ class RagListenerTest {
                 .withName("metadata")
                 .withBody(equalToJson("{"
                     + "\"email.subject\":\"Test Subject\","
-                    + "\"email.date\":\"2023-10-10T10:00:00Z\","
-                    + "\"email.threadId\":\"1\","
-                    + "\"email.doctype\":\"com.linagora.email\","
+                    + "\"datetime\":\"2023-10-10T10:00:00Z\","
+                    + "\"parent_id\":\"\","
+                    + "\"relationship_id\":\"1\","
+                    + "\"doctype\":\"com.linagora.email\","
                     + "\"email.preview\":\"Body of the email\""
-                    + "}"))                .build())
+                    + "}"))
+                .build())
             .withRequestBodyPart(aMultipart()
                 .withName("file")
                 .withHeader("Content-Type", containing("text/plain"))
@@ -377,11 +431,13 @@ class RagListenerTest {
                 .withName("metadata")
                 .withBody(equalToJson("{"
                     + "\"email.subject\":\"Test Subject\","
-                    + "\"email.date\":\"2023-10-10T10:00:00Z\","
-                    + "\"email.threadId\":\"2\","
-                    + "\"email.doctype\":\"com.linagora.email\","
+                    + "\"datetime\":\"2023-10-10T10:00:00Z\","
+                    + "\"parent_id\":\"\","
+                    + "\"relationship_id\":\"2\","
+                    + "\"doctype\":\"com.linagora.email\","
                     + "\"email.preview\":\"Body of the email\""
-                    + "}"))                .build())
+                    + "}"))
+                .build())
             .withRequestBodyPart(aMultipart()
                 .withName("file")
                 .withHeader("Content-Type", containing("text/plain"))
@@ -435,12 +491,14 @@ class RagListenerTest {
                 .withName("metadata")
                 .withBody(equalToJson("{"
                     + "\"email.subject\":\"Test Email with Attachment\","
-                    + "\"email.date\":\"2023-10-10T10:00:00Z\","
-                    + "\"email.threadId\":\"1\","
-                    + "\"email.doctype\":\"com.linagora.email\","
+                    + "\"datetime\":\"2023-10-10T10:00:00Z\","
+                    + "\"parent_id\":\"\","
+                    + "\"relationship_id\":\"1\","
+                    + "\"doctype\":\"com.linagora.email\","
                     + "\"email.preview\":\"This is the body of the email.\""
-                    + "}"))                .build())
-             .withRequestBodyPart(aMultipart()
+                    + "}"))
+                .build())
+            .withRequestBodyPart(aMultipart()
                 .withName("file")
                 .withHeader("Content-Type", containing("text/plain"))
                 .withBody(containing("# Email Headers\n" +

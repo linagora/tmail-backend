@@ -166,9 +166,10 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
                 .getTextBody()
                 .orElse("");
             return  Map.of("email.subject", mimeMessage.getSubject(),
-                "email.date", DateTimeFormatter.ISO_INSTANT.format(mimeMessage.getDate().toInstant()),
-                "email.threadId", messageResult.getThreadId().serialize(),
-                "email.doctype", "com.linagora.email",
+                "datetime", DateTimeFormatter.ISO_INSTANT.format(mimeMessage.getDate().toInstant()),
+                "parent_id", mimeMessage.getReplyTo() == null ? "" : mimeMessage.getReplyTo().toString(),
+                "relationship_id", messageResult.getThreadId().serialize(),
+                "doctype", "com.linagora.email",
                 "email.preview", Preview.compute(text).getValue());
         } catch (Exception e) {
             throw new RuntimeException(e);
