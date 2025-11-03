@@ -22,6 +22,7 @@ import static com.linagora.tmail.OpenPaasModule.OPENPAAS_INJECTION_KEY;
 
 import java.util.List;
 
+import com.google.inject.Scopes;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 
@@ -47,6 +48,11 @@ import com.linagora.tmail.contact.SabreContactsOperator;
 
 public class OpenPaasContactsConsumerModule extends AbstractModule {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasContactsConsumerModule.class);
+
+    @Override
+    protected void configure() {
+        bind(SabreContactsOperator.class).in(Scopes.SINGLETON);
+    }
 
     @ProvidesIntoSet
     public InitializationOperation initializeContactsConsumer(SabreContactsOperator instance) {
