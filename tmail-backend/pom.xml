@@ -43,6 +43,7 @@
 
         <module>combined-identity</module>
 
+        <module>data/data-extra-api</module>
         <module>data/data-cassandra</module>
         <module>data/data-rabbitmq</module>
         <module>data/data-postgres</module>
@@ -223,6 +224,17 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>tmail-data-cassandra</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>tmail-data-extra-api</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>tmail-data-extra-api</artifactId>
+                <type>test-jar</type>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
