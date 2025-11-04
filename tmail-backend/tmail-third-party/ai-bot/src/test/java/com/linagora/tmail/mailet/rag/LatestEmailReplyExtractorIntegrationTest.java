@@ -109,7 +109,7 @@ public class LatestEmailReplyExtractorIntegrationTest {
         MessageManager.AppendResult appendResult = bobInboxMessageManager.appendMessage(
             MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
-        LatestEmailReplyExtractor latestEmailReplyExtractor = new LatestEmailReplyExtractor();
+        LatestEmailReplyExtractor latestEmailReplyExtractor = new LatestEmailReplyExtractor.RegexBased();
 
         Mono<String> cleaned = Mono.from(bobInboxMessageManager
             .getMessagesReactive(MessageRange.one(appendResult.getId().getUid()), FetchGroup.BODY_CONTENT, bobMailboxSession))// récupérer le premier MessageResult
@@ -130,7 +130,7 @@ public class LatestEmailReplyExtractorIntegrationTest {
         MessageManager.AppendResult appendResult = bobInboxMessageManager.appendMessage(
             MessageManager.AppendCommand.from(ClassLoaderUtils.getSystemResourceAsSharedStream("Re_ Project Presentation – Task Coordination.eml")),
             bobMailboxSession);
-        LatestEmailReplyExtractor latestEmailReplyExtractor = new LatestEmailReplyExtractor();
+        LatestEmailReplyExtractor latestEmailReplyExtractor = new LatestEmailReplyExtractor.RegexBased();
 
         Mono<String> cleaned = Mono.from(bobInboxMessageManager
                 .getMessagesReactive(MessageRange.one(appendResult.getId().getUid()), FetchGroup.BODY_CONTENT, bobMailboxSession))// récupérer le premier MessageResult
@@ -159,7 +159,7 @@ public class LatestEmailReplyExtractorIntegrationTest {
         MessageManager.AppendResult appendResult = bobInboxMessageManager.appendMessage(
             MessageManager.AppendCommand.from(ClassLoaderUtils.getSystemResourceAsSharedStream("Re_ Question About Tomorrow’s Meeting.eml")),
             bobMailboxSession);
-        LatestEmailReplyExtractor latestEmailReplyExtractor = new LatestEmailReplyExtractor();
+        LatestEmailReplyExtractor latestEmailReplyExtractor = new LatestEmailReplyExtractor.RegexBased();
 
         Mono<String> cleaned = Mono.from(bobInboxMessageManager
                 .getMessagesReactive(MessageRange.one(appendResult.getId().getUid()), FetchGroup.BODY_CONTENT, bobMailboxSession))// récupérer le premier MessageResult

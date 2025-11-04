@@ -32,7 +32,7 @@ import java.util.concurrent.TimeUnit;
 
 public class LatestEmailReplyExtractorBenchmark {
 
-    private static final LatestEmailReplyExtractor LATEST_EMAIL_REPLY_EXTRACTOR = new LatestEmailReplyExtractor();
+    private static final LatestEmailReplyExtractor LATEST_EMAIL_REPLY_EXTRACTOR = new LatestEmailReplyExtractor.RegexBased();
 
     @State(Scope.Benchmark)
     public static class EmailSamples {

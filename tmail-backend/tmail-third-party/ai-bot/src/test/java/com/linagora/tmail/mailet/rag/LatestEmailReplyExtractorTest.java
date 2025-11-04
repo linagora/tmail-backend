@@ -28,7 +28,7 @@ class LatestEmailReplyExtractorTest {
 
     @BeforeEach
     void setUp() {
-        latestEmailReplyExtractor = new LatestEmailReplyExtractor();
+        latestEmailReplyExtractor = new LatestEmailReplyExtractor.RegexBased();
     }
 
     @Test

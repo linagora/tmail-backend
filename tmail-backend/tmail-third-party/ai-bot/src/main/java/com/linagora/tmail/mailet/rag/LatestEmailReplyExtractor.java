@@ -19,40 +19,46 @@ package com.linagora.tmail.mailet.rag;
 
 import java.util.regex.Pattern;
 
-public class LatestEmailReplyExtractor {
+public interface LatestEmailReplyExtractor {
 
-    private static final Pattern QUOTE_PATTERNS = Pattern.compile(
-        "(?mi)" +
-            "^\\s*>.*$|" +
-            "^On .+wrote:.*$|" +
-            "^Le .+a écrit.*$|" +
-            "^De :.*$|" +
-            "^Envoyé :.*$|" +
-            "^À :.*$|" +
-            "^Objet :.*$|" +
-            "^From:.*$|" +
-            "^Sent:.*$|" +
-            "^To:.*$|" +
-            "^Subject:.*$|" +
-            "^On .+from .+<.*>.*$|" +
-            "^Le .+de .+<.*>.*$|" +
-            "^On .+, at .+<.*> wrote:.*$|" +
-            "^Le .+à .+<.*> a écrit.*$"
-    );
+    final class RegexBased implements LatestEmailReplyExtractor {
 
-    public String cleanQuotedContent(String content) {
-        if (content == null || content.trim().isEmpty()) {
-            return "";
-        }
-        String[] lines = content.split("\n");
-        StringBuilder result = new StringBuilder();
+        private static final Pattern QUOTE_PATTERNS = Pattern.compile(
+            "(?mi)" +
+                "^\\s*>.*$|" +
+                "^On .+wrote:.*$|" +
+                "^Le .+a écrit.*$|" +
+                "^De :.*$|" +
+                "^Envoyé :.*$|" +
+                "^À :.*$|" +
+                "^Objet :.*$|" +
+                "^From:.*$|" +
+                "^Sent:.*$|" +
+                "^To:.*$|" +
+                "^Subject:.*$|" +
+                "^On .+from .+<.*>.*$|" +
+                "^Le .+de .+<.*>.*$|" +
+                "^On .+, at .+<.*> wrote:.*$|" +
+                "^Le .+à .+<.*> a écrit.*$"
+        );
 
-        for (String line : lines) {
-            if (QUOTE_PATTERNS.matcher(line).find()) {
-                break;
+        @Override
+        public String cleanQuotedContent(String content) {
+            if (content == null || content.trim().isEmpty()) {
+                return "";
             }
-            result.append(line).append("\n");
+            String[] lines = content.split("\n");
+            StringBuilder result = new StringBuilder();
+
+            for (String line : lines) {
+                if (QUOTE_PATTERNS.matcher(line).find()) {
+                    break;
+                }
+                result.append(line).append("\n");
+            }
+            return result.toString().trim();
         }
-        return result.toString().trim();
     }
+
+    public String cleanQuotedContent(String content);
 }
