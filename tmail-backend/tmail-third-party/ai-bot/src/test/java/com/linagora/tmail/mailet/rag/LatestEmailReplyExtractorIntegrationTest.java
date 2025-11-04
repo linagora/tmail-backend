@@ -57,7 +57,7 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 
-public class EmailParserIntegrationTest {
+public class LatestEmailReplyExtractorIntegrationTest {
     private static final Username BOB = Username.of("bob@test.com");
     private static final MailboxPath BOB_INBOX_PATH = MailboxPath.inbox(BOB);
 
@@ -109,7 +109,7 @@ public class EmailParserIntegrationTest {
         MessageManager.AppendResult appendResult = bobInboxMessageManager.appendMessage(
             MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
-        EmailParser emailParser = new EmailParser();
+        LatestEmailReplyExtractor latestEmailReplyExtractor = new LatestEmailReplyExtractor();
 
         Mono<String> cleaned = Mono.from(bobInboxMessageManager
             .getMessagesReactive(MessageRange.one(appendResult.getId().getUid()), FetchGroup.BODY_CONTENT, bobMailboxSession))// récupérer le premier MessageResult
@@ -119,7 +119,7 @@ public class EmailParserIntegrationTest {
                     messageBuilder.setMimeEntityConfig(MimeConfig.DEFAULT);
                     Message mimeMessage = messageBuilder.parseMessage(messageResult.getFullContent().getInputStream());
                     MessageContentExtractor.MessageContent extractor = new MessageContentExtractor().extract(mimeMessage);
-                    return emailParser.cleanQuotedContent(extractor.getTextBody().get());
+                    return latestEmailReplyExtractor.cleanQuotedContent(extractor.getTextBody().get());
                 }).subscribeOn(Schedulers.boundedElastic())
             );
         Assertions.assertEquals("Body of the email" ,cleaned.block());
@@ -130,7 +130,7 @@ public class EmailParserIntegrationTest {
         MessageManager.AppendResult appendResult = bobInboxMessageManager.appendMessage(
             MessageManager.AppendCommand.from(ClassLoaderUtils.getSystemResourceAsSharedStream("Re_ Project Presentation – Task Coordination.eml")),
             bobMailboxSession);
-        EmailParser emailParser = new EmailParser();
+        LatestEmailReplyExtractor latestEmailReplyExtractor = new LatestEmailReplyExtractor();
 
         Mono<String> cleaned = Mono.from(bobInboxMessageManager
                 .getMessagesReactive(MessageRange.one(appendResult.getId().getUid()), FetchGroup.BODY_CONTENT, bobMailboxSession))// récupérer le premier MessageResult
@@ -140,7 +140,7 @@ public class EmailParserIntegrationTest {
                     messageBuilder.setMimeEntityConfig(MimeConfig.DEFAULT);
                     Message mimeMessage = messageBuilder.parseMessage(messageResult.getFullContent().getInputStream());
                     MessageContentExtractor.MessageContent extractor = new MessageContentExtractor().extract(mimeMessage);
-                    return emailParser.cleanQuotedContent(extractor.getTextBody().get());
+                    return latestEmailReplyExtractor.cleanQuotedContent(extractor.getTextBody().get());
                 }).subscribeOn(Schedulers.boundedElastic()));
 
         String expected = "Hi Ale,\n" +
@@ -159,7 +159,7 @@ public class EmailParserIntegrationTest {
         MessageManager.AppendResult appendResult = bobInboxMessageManager.appendMessage(
             MessageManager.AppendCommand.from(ClassLoaderUtils.getSystemResourceAsSharedStream("Re_ Question About Tomorrow’s Meeting.eml")),
             bobMailboxSession);
-        EmailParser emailParser = new EmailParser();
+        LatestEmailReplyExtractor latestEmailReplyExtractor = new LatestEmailReplyExtractor();
 
         Mono<String> cleaned = Mono.from(bobInboxMessageManager
                 .getMessagesReactive(MessageRange.one(appendResult.getId().getUid()), FetchGroup.BODY_CONTENT, bobMailboxSession))// récupérer le premier MessageResult
@@ -169,7 +169,7 @@ public class EmailParserIntegrationTest {
                     messageBuilder.setMimeEntityConfig(MimeConfig.DEFAULT);
                     Message mimeMessage = messageBuilder.parseMessage(messageResult.getFullContent().getInputStream());
                     MessageContentExtractor.MessageContent extractor = new MessageContentExtractor().extract(mimeMessage);
-                    return emailParser.cleanQuotedContent(extractor.getTextBody().get());
+                    return latestEmailReplyExtractor.cleanQuotedContent(extractor.getTextBody().get());
                 }).subscribeOn(Schedulers.boundedElastic()));
         String expected = """
             Hi Alae,

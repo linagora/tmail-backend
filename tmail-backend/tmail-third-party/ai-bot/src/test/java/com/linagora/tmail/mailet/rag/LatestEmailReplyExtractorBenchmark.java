@@ -30,9 +30,9 @@ import org.junit.jupiter.api.Test;
 import java.util.concurrent.TimeUnit;
 
 
-public class EmailParserBenchmark {
+public class LatestEmailReplyExtractorBenchmark {
 
-    private static final EmailParser emailParser = new EmailParser();
+    private static final LatestEmailReplyExtractor LATEST_EMAIL_REPLY_EXTRACTOR = new LatestEmailReplyExtractor();
 
     @State(Scope.Benchmark)
     public static class EmailSamples {
@@ -76,6 +76,37 @@ public class EmailParserBenchmark {
             On Oct 28, 2025 3:35 pm, from Alae Mghirbi <amghirbi@linagora.com>, <amghirbi@linagora.com>
             Hi Sam,
             """;
+
+        public final String largeEmail;
+
+        public final String largeEmailWithReply;
+
+        public EmailSamples() {
+            StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < 1000; i++) {
+                sb.append("This is line ").append(i).append(": Hello Alae, thanks for the update!\n");
+            }
+            sb.append("\nOn Tue, Oct 10, 2023 at 2:15 PM Jane Smith <jane@example.com> wrote:\n");
+            sb.append("Previous message...");
+            largeEmail = sb.toString();
+
+            StringBuilder withReply = new StringBuilder();
+            for (int i = 0; i < 500; i++) {
+                withReply.append("This is new message line ").append(i)
+                    .append(": Hi Alae, here’s today’s update.\n");
+            }
+
+            withReply.append("\nOn Tue, Oct 10, 2023 at 2:15 PM Jane Smith <jane@example.com> wrote:\n");
+            withReply.append("Sure, here’s the file you asked for.\n");
+            withReply.append("Best,\nJane\n\n");
+
+            for (int i = 500; i < 1000; i++) {
+                withReply.append("> This is old quoted line ").append(i)
+                    .append(": Previous message continues...\n");
+            }
+
+            largeEmailWithReply = withReply.toString();
+        }
     }
 
 
@@ -100,22 +131,32 @@ public class EmailParserBenchmark {
 
     @Benchmark
     public String benchmarkGmailFormat(EmailSamples samples) {
-        return emailParser.cleanQuotedContent(samples.gmail);
+        return LATEST_EMAIL_REPLY_EXTRACTOR.cleanQuotedContent(samples.gmail);
     }
 
     @Benchmark
     public String benchmarkOutlookFormat(EmailSamples samples) {
-        return emailParser.cleanQuotedContent(samples.outlook);
+        return LATEST_EMAIL_REPLY_EXTRACTOR.cleanQuotedContent(samples.outlook);
     }
 
     @Benchmark
     public String benchmarkAppleFormat(EmailSamples samples) {
-        return emailParser.cleanQuotedContent(samples.apple);
+        return LATEST_EMAIL_REPLY_EXTRACTOR.cleanQuotedContent(samples.apple);
     }
 
     @Benchmark
     public String benchmarkTmailFormat(EmailSamples samples) {
-        return emailParser.cleanQuotedContent(samples.tmail);
+        return LATEST_EMAIL_REPLY_EXTRACTOR.cleanQuotedContent(samples.tmail);
+    }
+
+    @Benchmark
+    public String benchmarkLargeEmail(EmailSamples samples) {
+        return LATEST_EMAIL_REPLY_EXTRACTOR.cleanQuotedContent(samples.largeEmail);
+    }
+
+    @Benchmark
+    public String benchmarkLargeEmailWithReply(EmailSamples samples) {
+        return LATEST_EMAIL_REPLY_EXTRACTOR.cleanQuotedContent(samples.largeEmailWithReply);
     }
 
 }

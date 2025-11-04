@@ -22,23 +22,23 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class EmailParserTest {
+class LatestEmailReplyExtractorTest {
 
-    private EmailParser emailParser;
+    private LatestEmailReplyExtractor latestEmailReplyExtractor;
 
     @BeforeEach
     void setUp() {
-        emailParser = new EmailParser();
+        latestEmailReplyExtractor = new LatestEmailReplyExtractor();
     }
 
     @Test
     void shouldReturnEmptyStringForNullContent() {
-        assertThat(emailParser.cleanQuotedContent(null)).isEmpty();
+        assertThat(latestEmailReplyExtractor.cleanQuotedContent(null)).isEmpty();
     }
 
     @Test
     void shouldReturnEmptyStringForEmptyContent() {
-        assertThat(emailParser.cleanQuotedContent("")).isEmpty();
+        assertThat(latestEmailReplyExtractor.cleanQuotedContent("")).isEmpty();
     }
 
     @Test
@@ -51,7 +51,7 @@ class EmailParserTest {
                 Best regards,
                 Alice""";
 
-        assertThat(emailParser.cleanQuotedContent(content)).isEqualTo(content);
+        assertThat(latestEmailReplyExtractor.cleanQuotedContent(content)).isEqualTo(content);
     }
 
     @Test
@@ -62,7 +62,7 @@ class EmailParserTest {
                 > On Tue, Oct 10, 2023 at 9:30 AM John Doe <john@example.com> wrote:
                 > Hi Alice,
                 > Please find attached the first version of the report.""";
-        assertThat(emailParser.cleanQuotedContent(content)).isEqualTo("Thanks for the update!");
+        assertThat(latestEmailReplyExtractor.cleanQuotedContent(content)).isEqualTo("Thanks for the update!");
     }
 
     @Test
@@ -72,7 +72,7 @@ class EmailParserTest {
 
                 On Tue, Oct 10, 2023 at 2:15 PM Jane Smith <jane@example.com> wrote:
                 The meeting has been rescheduled to 3 PM.""";
-        assertThat(emailParser.cleanQuotedContent(content)).isEqualTo("Sure, I’ll handle this today.");
+        assertThat(latestEmailReplyExtractor.cleanQuotedContent(content)).isEqualTo("Sure, I’ll handle this today.");
     }
 
     @Test
@@ -83,7 +83,7 @@ class EmailParserTest {
                 On Tue, Oct 10, 2023 at 2:15 PM Jane Smith <jane@example.com> wrote:
                 The meeting has been rescheduled to 3 PM.
                 """;
-        assertThat(emailParser.cleanQuotedContent(content)).isEqualTo("Sure, I’ll handle this today.");
+        assertThat(latestEmailReplyExtractor.cleanQuotedContent(content)).isEqualTo("Sure, I’ll handle this today.");
     }
 
     @Test
@@ -95,7 +95,7 @@ class EmailParserTest {
                 Bonjour Marie,
                 Peux-tu valider le document joint ?
                 """;
-        assertThat(emailParser.cleanQuotedContent(content)).isEqualTo("Oui, c’est parfait pour moi.");
+        assertThat(latestEmailReplyExtractor.cleanQuotedContent(content)).isEqualTo("Oui, c’est parfait pour moi.");
     }
 
     @Test
@@ -108,7 +108,7 @@ class EmailParserTest {
                 To: user@example.com
                 Subject: Request for confirmation
                 """;
-        assertThat(emailParser.cleanQuotedContent(content)).isEqualTo("Here is my final answer.");
+        assertThat(latestEmailReplyExtractor.cleanQuotedContent(content)).isEqualTo("Here is my final answer.");
     }
 
     @Test
@@ -120,7 +120,7 @@ class EmailParserTest {
                 To: team@example.com
                 Subject: Weekly report
                 """;
-        assertThat(emailParser.cleanQuotedContent(content)).isEqualTo("Let’s confirm this in the meeting.");
+        assertThat(latestEmailReplyExtractor.cleanQuotedContent(content)).isEqualTo("Let’s confirm this in the meeting.");
     }
 
     @Test
@@ -131,7 +131,7 @@ class EmailParserTest {
                 To: hr@company.com
                 Subject: Contract Renewal
                 """;
-        assertThat(emailParser.cleanQuotedContent(content)).isEqualTo("Please find the document attached.");
+        assertThat(latestEmailReplyExtractor.cleanQuotedContent(content)).isEqualTo("Please find the document attached.");
     }
 
     @Test
@@ -142,7 +142,7 @@ class EmailParserTest {
                 Subject: Re: Project Alpha - Final Delivery
                 > Original message
                 """;
-        assertThat(emailParser.cleanQuotedContent(content)).isEqualTo("Thank you for your quick response.");
+        assertThat(latestEmailReplyExtractor.cleanQuotedContent(content)).isEqualTo("Thank you for your quick response.");
     }
 
     @Test
@@ -154,7 +154,7 @@ class EmailParserTest {
                 On 2023-10-10 John wrote:
                 Thank you for the clarification.
                 """;
-        assertThat(emailParser.cleanQuotedContent(content)).isEqualTo("Great, that works for me!");
+        assertThat(latestEmailReplyExtractor.cleanQuotedContent(content)).isEqualTo("Great, that works for me!");
     }
 
     @Test
@@ -167,7 +167,7 @@ class EmailParserTest {
                 À : utilisateur@example.com
                 Objet : Demande de confirmation
                 """;
-        assertThat(emailParser.cleanQuotedContent(content)).isEqualTo("Merci pour votre retour.");
+        assertThat(latestEmailReplyExtractor.cleanQuotedContent(content)).isEqualTo("Merci pour votre retour.");
     }
 
 
@@ -178,7 +178,7 @@ class EmailParserTest {
                   Thanks for your help!   
                   
                 """;
-        assertThat(emailParser.cleanQuotedContent(content)).isEqualTo("Thanks for your help!");
+        assertThat(latestEmailReplyExtractor.cleanQuotedContent(content)).isEqualTo("Thanks for your help!");
     }
 
     @Test
@@ -215,7 +215,7 @@ class EmailParserTest {
             Talk soon,
             Sam
             """.trim();
-        assertThat(emailParser.cleanQuotedContent(content)).isEqualTo(expected);
+        assertThat(latestEmailReplyExtractor.cleanQuotedContent(content)).isEqualTo(expected);
     }
 
 }

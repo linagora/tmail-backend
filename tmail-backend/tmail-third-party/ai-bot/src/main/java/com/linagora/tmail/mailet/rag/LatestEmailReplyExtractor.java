@@ -19,7 +19,7 @@ package com.linagora.tmail.mailet.rag;
 
 import java.util.regex.Pattern;
 
-public class EmailParser {
+public class LatestEmailReplyExtractor {
 
     private static final Pattern QUOTE_PATTERNS = Pattern.compile(
         "(?mi)" +
