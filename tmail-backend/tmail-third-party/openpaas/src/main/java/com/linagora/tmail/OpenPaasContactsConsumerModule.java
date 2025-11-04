@@ -22,7 +22,6 @@ import static com.linagora.tmail.OpenPaasModule.OPENPAAS_INJECTION_KEY;
 
 import java.util.List;
 
-import com.google.inject.Scopes;
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 
@@ -42,6 +41,7 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
+import com.google.inject.Scopes;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.contact.SabreContactsOperator;
