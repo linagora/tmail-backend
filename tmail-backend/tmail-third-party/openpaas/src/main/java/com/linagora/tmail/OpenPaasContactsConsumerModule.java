@@ -41,12 +41,18 @@ import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
+import com.google.inject.Scopes;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.contact.SabreContactsOperator;
 
 public class OpenPaasContactsConsumerModule extends AbstractModule {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenPaasContactsConsumerModule.class);
+
+    @Override
+    protected void configure() {
+        bind(SabreContactsOperator.class).in(Scopes.SINGLETON);
+    }
 
     @ProvidesIntoSet
     public InitializationOperation initializeContactsConsumer(SabreContactsOperator instance) {
