@@ -148,10 +148,10 @@ public class LatestEmailReplyExtractorIntegrationTest {
             "Sounds good. I aim to have a first draft to you by [mention a day, e.g., Wednesday afternoon] for your initial thoughts.\n" +
             "Talk soon,Sam";
 
-        Assertions.assertEquals(normalize("Hi Ale,\n" +
+        Assertions.assertEquals("Hi Ale,\n" +
             "Excellent, thank you for the quick follow-up and the data file. I've downloaded it and will begin the analysis shortly.\n" +
             "Sounds good. I aim to have a first draft to you by [mention a day, e.g., Wednesday afternoon] for your initial thoughts.\n" +
-            "Talk soon,Sam") ,normalize(cleaned.block()));
+            "Talk soon,Sam" ,cleaned.block());
     }
 
     @Test
@@ -185,14 +185,7 @@ public class LatestEmailReplyExtractorIntegrationTest {
             
             Sam""";
 
-        Assertions.assertEquals(normalize(expected) ,normalize(cleaned.block()));
-    }
-
-    private static String normalize(String s) {
-        if (s == null) return null;
-        String n = Normalizer.normalize(s, Normalizer.Form.NFKC);
-        n = n.replace("\r\n", "\n").replace("\r", "\n");
-        return n.trim();
+        Assertions.assertEquals(expected ,cleaned.block());
     }
 }
 

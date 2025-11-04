@@ -19,6 +19,8 @@ package com.linagora.tmail.mailet.rag;
 
 import java.util.regex.Pattern;
 
+import com.google.common.base.Splitter;
+
 public interface LatestEmailReplyExtractor {
 
     final class RegexBased implements LatestEmailReplyExtractor {
@@ -47,16 +49,31 @@ public interface LatestEmailReplyExtractor {
             if (content == null || content.trim().isEmpty()) {
                 return "";
             }
-            String[] lines = content.split("\n");
-            StringBuilder result = new StringBuilder();
+            String normalized = content.replace("\r\n", "\n").replace("\r", "\n");
 
-            for (String line : lines) {
+            StringBuilder result = new StringBuilder();
+            for (String line : Splitter.on('\n').split(normalized)) {
                 if (QUOTE_PATTERNS.matcher(line).find()) {
                     break;
                 }
-                result.append(line).append("\n");
+                if (line.trim().isEmpty() && result.length() == 0) {
+                    continue;
+                }
+                result.append(line.strip()).append("\n");
             }
-            return result.toString().trim();
+
+            removeTrailingNewlines(result);
+
+            return result.toString();
+        }
+
+        private static void removeTrailingNewlines(StringBuilder sb) {
+            if (sb == null) {
+                return;
+            }
+            while (sb.length() > 0 && sb.charAt(sb.length() - 1) == '\n') {
+                sb.setLength(sb.length() - 1);
+            }
         }
     }
 
