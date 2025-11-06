@@ -83,7 +83,7 @@ public class UserQuotaReporterRoutesTest {
             maxQuotaManager.setDomainMaxMessage(DOMAIN, QuotaCountLimit.count(100));
 
             given()
-                .get("/quota/users/count?hasSpecificQuota")
+                .get("/reports/quota/users/count?hasSpecificQuota")
             .then()
                 .statusCode(HttpStatus.OK_200)
                 .contentType(ContentType.JSON)
@@ -99,7 +99,7 @@ public class UserQuotaReporterRoutesTest {
             maxQuotaManager.setMaxStorage(ALICE_QUOTA_ROOT, QuotaSizeLimit.size(10001));
 
             given()
-                .get("/quota/users/count?hasSpecificQuota")
+                .get("/reports/quota/users/count?hasSpecificQuota")
             .then()
                 .statusCode(HttpStatus.OK_200)
                 .contentType(ContentType.JSON)
@@ -115,7 +115,7 @@ public class UserQuotaReporterRoutesTest {
             maxQuotaManager.setMaxStorage(ALICE_QUOTA_ROOT, QuotaSizeLimit.unlimited());
 
             given()
-                .get("/quota/users/count?hasSpecificQuota")
+                .get("/reports/quota/users/count?hasSpecificQuota")
             .then()
                 .statusCode(HttpStatus.OK_200)
                 .contentType(ContentType.JSON)
@@ -125,7 +125,7 @@ public class UserQuotaReporterRoutesTest {
         @Test
         void shouldFailWhenMissingHasSpecificQuotaParameter() {
             Map<String, Object> errors = given()
-                .get("/quota/users/count")
+                .get("/reports/quota/users/count")
             .then()
                 .statusCode(HttpStatus.BAD_REQUEST_400)
                 .contentType(ContentType.JSON)
@@ -149,7 +149,7 @@ public class UserQuotaReporterRoutesTest {
             maxQuotaManager.setDomainMaxMessage(DOMAIN, QuotaCountLimit.count(100));
 
             given()
-                .get("/quota/users?hasSpecificQuota")
+                .get("/reports/quota/users?hasSpecificQuota")
             .then()
                 .statusCode(HttpStatus.OK_200)
                 .contentType(ContentType.JSON)
@@ -165,7 +165,7 @@ public class UserQuotaReporterRoutesTest {
             maxQuotaManager.setMaxMessage(ALICE_QUOTA_ROOT, QuotaCountLimit.count(101));
 
             String response = given()
-                .get("/quota/users?hasSpecificQuota")
+                .get("/reports/quota/users?hasSpecificQuota")
             .then()
                 .statusCode(HttpStatus.OK_200)
                 .contentType(ContentType.JSON)
@@ -199,7 +199,7 @@ public class UserQuotaReporterRoutesTest {
             maxQuotaManager.setMaxMessage(BOB_QUOTA_ROOT, QuotaCountLimit.unlimited());
 
             String response = given()
-                .get("/quota/users?hasSpecificQuota")
+                .get("/reports/quota/users?hasSpecificQuota")
             .then()
                 .statusCode(HttpStatus.OK_200)
                 .contentType(ContentType.JSON)
@@ -230,7 +230,7 @@ public class UserQuotaReporterRoutesTest {
             maxQuotaManager.setMaxMessage(ANDRE_AT_DOMAIN_2_QUOTA_ROOT, QuotaCountLimit.count(101));
 
             String response = given()
-                .get("/quota/users?hasSpecificQuota")
+                .get("/reports/quota/users?hasSpecificQuota")
             .then()
                 .statusCode(HttpStatus.OK_200)
                 .contentType(ContentType.JSON)
@@ -258,7 +258,7 @@ public class UserQuotaReporterRoutesTest {
         @Test
         void shouldFailWhenMissingHasSpecificQuotaParameter() {
             Map<String, Object> errors = given()
-                .get("/quota/users")
+                .get("/reports/quota/users")
             .then()
                 .statusCode(HttpStatus.BAD_REQUEST_400)
                 .contentType(ContentType.JSON)
@@ -282,7 +282,7 @@ public class UserQuotaReporterRoutesTest {
             maxQuotaManager.setDomainMaxMessage(DOMAIN, QuotaCountLimit.count(100));
 
             String response = given()
-                .get("/quota/users/sum?hasSpecificQuota")
+                .get("/reports/quota/users/sum?hasSpecificQuota")
             .then()
                 .statusCode(HttpStatus.OK_200)
                 .contentType(ContentType.JSON)
@@ -309,7 +309,7 @@ public class UserQuotaReporterRoutesTest {
             maxQuotaManager.setMaxMessage(ALICE_QUOTA_ROOT, QuotaCountLimit.count(301));
 
             String response = given()
-                .get("/quota/users/sum?hasSpecificQuota")
+                .get("/reports/quota/users/sum?hasSpecificQuota")
             .then()
                 .statusCode(HttpStatus.OK_200)
                 .contentType(ContentType.JSON)
@@ -338,7 +338,7 @@ public class UserQuotaReporterRoutesTest {
             maxQuotaManager.setMaxMessage(ANDRE_AT_DOMAIN_2_QUOTA_ROOT, QuotaCountLimit.count(301));
 
             String response = given()
-                .get("/quota/users/sum?hasSpecificQuota")
+                .get("/reports/quota/users/sum?hasSpecificQuota")
             .then()
                 .statusCode(HttpStatus.OK_200)
                 .contentType(ContentType.JSON)
@@ -365,7 +365,7 @@ public class UserQuotaReporterRoutesTest {
             maxQuotaManager.setMaxMessage(BOB_QUOTA_ROOT, QuotaCountLimit.unlimited());
 
             String response = given()
-                .get("/quota/users/sum?hasSpecificQuota")
+                .get("/reports/quota/users/sum?hasSpecificQuota")
             .then()
                 .statusCode(HttpStatus.OK_200)
                 .contentType(ContentType.JSON)
@@ -384,7 +384,7 @@ public class UserQuotaReporterRoutesTest {
         @Test
         void shouldFailWhenMissingHasSpecificQuotaParameter() {
             Map<String, Object> errors = given()
-                .get("/quota/users/sum")
+                .get("/reports/quota/users/sum")
             .then()
                 .statusCode(HttpStatus.BAD_REQUEST_400)
                 .contentType(ContentType.JSON)

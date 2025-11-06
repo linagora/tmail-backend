@@ -65,7 +65,7 @@ public abstract class UserQuotaReporterRoutesIntegrationContract {
             .setMaxStorage(BOB, QuotaSizeLimit.size(1000));
 
         given()
-            .get("/quota/users/count?hasSpecificQuota")
+            .get("/reports/quota/users/count?hasSpecificQuota")
         .then()
             .statusCode(HttpStatus.OK_200)
             .contentType(ContentType.JSON)
@@ -81,7 +81,7 @@ public abstract class UserQuotaReporterRoutesIntegrationContract {
             .setMaxStorage(BOB, QuotaSizeLimit.size(1000));
 
         String response = given()
-            .get("/quota/users?hasSpecificQuota")
+            .get("/reports/quota/users?hasSpecificQuota")
         .then()
             .statusCode(HttpStatus.OK_200)
             .contentType(ContentType.JSON)
@@ -109,7 +109,7 @@ public abstract class UserQuotaReporterRoutesIntegrationContract {
             .setMaxStorage(BOB, QuotaSizeLimit.size(1000));
 
         String response = given()
-            .get("/quota/users/sum?hasSpecificQuota")
+            .get("/reports/quota/users/sum?hasSpecificQuota")
         .then()
             .statusCode(HttpStatus.OK_200)
             .contentType(ContentType.JSON)
