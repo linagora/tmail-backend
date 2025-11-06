@@ -36,7 +36,7 @@ import spark.Request;
 import spark.Service;
 
 public class UserQuotaReporterRoutes implements Routes {
-    private static final String USERS_QUOTA_BASE_PATH = "/quota/users";
+    private static final String USERS_QUOTA_BASE_PATH = "/reports/quota/users";
     private static final String LIST_USERS_WITH_SPECIFIC_QUOTA_ENDPOINT = USERS_QUOTA_BASE_PATH;
     private static final String COUNT_USERS_WITH_SPECIFIC_QUOTA_ENDPOINT = USERS_QUOTA_BASE_PATH + "/count";
     private static final String SUM_USERS_EXTRA_QUOTA_ENDPOINT = USERS_QUOTA_BASE_PATH + "/sum";
