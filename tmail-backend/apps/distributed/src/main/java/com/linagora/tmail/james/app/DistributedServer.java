@@ -204,6 +204,7 @@ import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.CassandraTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.mailbox.opensearch.TmailOpenSearchMailboxMappingModule;
+import com.linagora.tmail.mailbox.quota.cassandra.CassandraUserQuotaReporterModule;
 import com.linagora.tmail.modules.data.TMailCassandraDelegationStoreModule;
 import com.linagora.tmail.modules.data.TMailCassandraDomainListModule;
 import com.linagora.tmail.rate.limiter.api.cassandra.module.CassandraRateLimitingModule;
@@ -217,6 +218,7 @@ import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 import com.linagora.tmail.webadmin.archival.InboxArchivalTaskModule;
 import com.linagora.tmail.webadmin.cleanup.MailboxesCleanupModule;
 import com.linagora.tmail.webadmin.contact.aucomplete.ContactIndexingModule;
+import com.linagora.tmail.webadmin.quota.UserQuotaReporterRoutesModule;
 
 import reactor.core.publisher.Mono;
 
@@ -259,6 +261,7 @@ public class DistributedServer {
         new MailQueueRoutesModule(),
         new MailRepositoriesRoutesModule(),
         new RateLimitsRoutesModule(),
+        new UserQuotaReporterRoutesModule(),
         new TeamMailboxModule(),
         new TeamMailboxRoutesModule(),
         new SieveRoutesModule(),
@@ -356,6 +359,7 @@ public class DistributedServer {
             new DistributedTaskManagerModule()))
         .with(new CassandraLabelRepositoryModule(),
             new CassandraRateLimitingModule(),
+            new CassandraUserQuotaReporterModule(),
             new CassandraJmapSettingsRepositoryModule(),
             new CassandraPublicAssetRepositoryModule(),
             new DistributedEmailAddressContactEventModule(),
