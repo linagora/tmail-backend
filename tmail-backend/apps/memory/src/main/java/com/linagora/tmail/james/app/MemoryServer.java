@@ -111,6 +111,7 @@ import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscovery
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
+import com.linagora.tmail.mailbox.quota.memory.MemoryUserQuotaReporterModule;
 import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingModule;
 import com.linagora.tmail.team.TMailScanningQuotaSearcherModule;
 import com.linagora.tmail.team.TeamMailboxModule;
@@ -121,6 +122,7 @@ import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 import com.linagora.tmail.webadmin.archival.InboxArchivalTaskModule;
 import com.linagora.tmail.webadmin.cleanup.MailboxesCleanupModule;
 import com.linagora.tmail.webadmin.contact.aucomplete.ContactIndexingModule;
+import com.linagora.tmail.webadmin.quota.UserQuotaReporterRoutesModule;
 
 public class MemoryServer {
     public static final Module IN_MEMORY_SERVER_MODULE = Modules.combine(
@@ -183,6 +185,8 @@ public class MemoryServer {
             new MemoryRateLimiterModule(),
             new MemoryRateLimitingModule(),
             new RateLimitsRoutesModule(),
+            new MemoryUserQuotaReporterModule(),
+            new UserQuotaReporterRoutesModule(),
             new InMemoryEmailAddressContactSearchEngineModule(),
             new MemoryEmailAddressContactEventBusModule(),
             new EmailAddressContactRoutesModule(),

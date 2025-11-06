@@ -178,6 +178,7 @@ import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.PostgresTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.mailbox.opensearch.TmailOpenSearchMailboxMappingModule;
+import com.linagora.tmail.mailbox.quota.postgres.PostgresUserQuotaReporterModule;
 import com.linagora.tmail.modules.data.TMailPostgresDataModule;
 import com.linagora.tmail.modules.data.TMailPostgresUsersRepositoryModule;
 import com.linagora.tmail.rate.limiter.api.postgres.module.PostgresRateLimitingModule;
@@ -190,6 +191,7 @@ import com.linagora.tmail.webadmin.RateLimitsRoutesModule;
 import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 import com.linagora.tmail.webadmin.archival.InboxArchivalTaskModule;
 import com.linagora.tmail.webadmin.cleanup.MailboxesCleanupModule;
+import com.linagora.tmail.webadmin.quota.UserQuotaReporterRoutesModule;
 
 import reactor.core.publisher.Mono;
 
@@ -279,6 +281,7 @@ public class PostgresTmailServer {
         new MailRepositoriesRoutesModule(),
         new MessagesRoutesModule(),
         new RateLimitsRoutesModule(),
+        new UserQuotaReporterRoutesModule(),
         new ReIndexingModule(),
         new SieveRoutesModule(),
         new TeamMailboxModule(),
@@ -357,6 +360,7 @@ public class PostgresTmailServer {
         .with(new TeamMailboxModule(),
             new TMailMailboxSortOrderProviderModule(),
             new PostgresRateLimitingModule(),
+            new PostgresUserQuotaReporterModule(),
             new RateLimitsRoutesModule(),
             new EmailAddressContactRoutesModule(),
             new PostgresLabelRepositoryModule(),
