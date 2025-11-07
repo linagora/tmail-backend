@@ -32,17 +32,28 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static org.mockito.Mockito.spy;
+import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 
+import com.google.inject.util.Modules;
+import com.linagora.tmail.james.app.MemoryConfiguration;
+import com.linagora.tmail.james.app.MemoryServer;
+import com.linagora.tmail.mailet.AIRedactionalHelperForTest;
+import com.linagora.tmail.mailet.conf.AIBotModule;
+import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 import jakarta.mail.util.SharedByteArrayInputStream;
 
 import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.apache.commons.configuration2.builder.fluent.Configurations;
 import org.apache.commons.configuration2.tree.ImmutableNode;
+import org.apache.james.GuiceJamesServer;
+import org.apache.james.JamesServerBuilder;
+import org.apache.james.JamesServerExtension;
 import org.apache.james.core.Username;
 import org.apache.james.events.InVMEventBus;
 import org.apache.james.events.MemoryEventDeadLetters;
@@ -61,10 +72,18 @@ import org.apache.james.mailbox.store.FakeAuthenticator;
 import org.apache.james.mailbox.store.MailboxSessionMapperFactory;
 import org.apache.james.mailbox.store.StoreMailboxManager;
 import org.apache.james.mailbox.store.SystemMailboxesProviderImpl;
+import org.apache.james.mailbox.store.mail.NaiveThreadIdGuessingAlgorithm;
+import org.apache.james.mailbox.store.mail.ThreadIdGuessingAlgorithm;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
+import org.apache.james.mime4j.dom.Message;
+
+import org.apache.james.mime4j.stream.RawField;
+import org.apache.james.modules.MailboxProbeImpl;
+import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.UpdatableTickingClock;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.Test;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
@@ -72,6 +91,7 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 
 class RagListenerTest {
 
+    private static final String DOMAIN = "james.org";
     private static final Username BOB = Username.of("bob@test.com");
     private static final Username ALICE = Username.of("alice@test.com");
     private static final Username USER_WITH_NO_DOMAIN = Username.of("user");
@@ -99,6 +119,7 @@ class RagListenerTest {
     MessageManager bobInboxMessageManager;
     MessageManager spamMessageManager;
     MessageManager trashMessageManager;
+    ThreadIdGuessingAlgorithm threadIdGuessingAlgorithm;
     MailboxId trashMailboxId;
     MailboxId spamMailboxId;
     SystemMailboxesProviderImpl systemMailboxesProvider;
@@ -116,8 +137,38 @@ class RagListenerTest {
     WireMockServer wireMockServer;
     RagConfig ragConfig;
 
+    //this attributs are added to test if i can get the same threadId from in-reply-to header using a jamesServer
+    static final String PASSWORD = "secret";
+
+    private static final String bob = "bob@" + DOMAIN;
+    private static final String alice = "alice@" + DOMAIN;
+
+    private MailboxPath pathAlice;
+    private MailboxPath pathBob;
+
+    // James Server is used to test is i can get the same threadId from in-reply-to header
+    @RegisterExtension
+    static JamesServerExtension jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->
+        MemoryConfiguration.builder()
+            .workingDirectory(tmpDir)
+            .configurationFromClasspath()
+            .usersRepository(DEFAULT)
+            .build())
+        .server(configuration -> MemoryServer.createServer(configuration)
+            .overrideWith(new LinagoraTestJMAPServerModule()))
+            .build();
+
     @BeforeEach
-    void setup() throws Exception {
+    void setUp(GuiceJamesServer jamesServer) throws Exception {
+        jamesServer.getProbe(DataProbeImpl.class).fluent()
+            .addDomain(DOMAIN)
+            .addUser(alice, PASSWORD)
+            .addUser(bob, PASSWORD);
+        pathAlice = MailboxPath.inbox(Username.of(alice));
+        pathBob = MailboxPath.inbox(Username.of(bob));
+        jamesServer.getProbe(MailboxProbeImpl.class).createMailbox(pathAlice);
+        jamesServer.getProbe(MailboxProbeImpl.class).createMailbox(pathBob);
+
         wireMockServer = new WireMockServer(WireMockConfiguration.options().dynamicPort());
         wireMockServer.start();
         configureFor("localhost", wireMockServer.port());
@@ -146,6 +197,7 @@ class RagListenerTest {
             .storeQuotaManager()
             .build();
 
+        threadIdGuessingAlgorithm = new NaiveThreadIdGuessingAlgorithm();
         mailboxManager = resources.getMailboxManager();;
         messageIdManager = spy(resources.getMessageIdManager());
         FakeAuthenticator authenticator = new FakeAuthenticator();
@@ -177,7 +229,7 @@ class RagListenerTest {
         configuration.addProperty("openrag.ssl.trust.all.certs", "true");
         configuration.addProperty("openrag.partition.pattern", "{localPart}.twake.{domainName}");
         ragConfig = RagConfig.from(configuration);
-        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, config, ragConfig);
+        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, threadIdGuessingAlgorithm, config, ragConfig);
     }
 
     @AfterEach
@@ -225,21 +277,65 @@ class RagListenerTest {
                 .build()));
     }
 
+    //Here I managed to have the same threadId from the in-reply-to header
+    @Test
+    void inreplyto(GuiceJamesServer server) throws Exception {
+        MessageManager.AppendResult message1 = server.getProbe(MailboxProbeImpl.class)
+            .appendMessageAndGetAppendResult(bob, pathBob,
+                MessageManager.AppendCommand.from(
+                    Message.Builder.of()
+                        .setSubject("Sujet Test")
+                        .setMessageId("Message-ID-1")
+                        .setBody("Contenu mail 1", StandardCharsets.UTF_8)));
+
+        MessageManager.AppendResult message2 = server.getProbe(MailboxProbeImpl.class)
+            .appendMessageAndGetAppendResult(bob, pathBob,
+                MessageManager.AppendCommand.from(
+                    Message.Builder.of()
+                        .setSubject("Re: Sujet Test")
+                        .setMessageId("Message-ID-2")
+                        .addField(new RawField("In-Reply-To", "Message-ID-1"))
+                        .setBody("Contenu mail 1", StandardCharsets.UTF_8)));
+        assertEquals(message1.getThreadId(), message2.getThreadId());
+    }
+
+    //here I failed to get the same threadId from the message and the reply
     @Test
     void listenerShouldAddInReplyToMetadataWhenEmailHaveInReplyToHeader() throws Exception {
-        mailboxManager.getEventBus().register(ragListener);
-        byte[] CONTENT = (
+        byte[] original = (
             "Subject: Test Subject\r\n" +
+                "Message-ID: <original@example.com>\r\n" +
                 "From: sender@example.com\r\n" +
                 "To: recipient@example.com\r\n" +
                 "Cc: cc@example.com\r\n" +
                 "Reply-To: \"recipient : Email\" <recipient@example.com>\r\n" +
                 "Date: Tue, 10 Oct 2023 10:00:00 +0000\r\n" +
                 "\r\n" +
-                "Body of the email").getBytes(StandardCharsets.UTF_8);
-        MessageManager.AppendResult appendResult = bobInboxMessageManager.appendMessage(
-            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
+                "Body").getBytes(StandardCharsets.UTF_8);
+
+        MessageManager.AppendResult originalResult = bobInboxMessageManager.appendMessage(
+            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(original)),
             bobMailboxSession);
+
+        mailboxManager.getEventBus().register(ragListener);
+
+        byte[] reply = (
+            "Subject: Re: Test Subject\r\n" +
+                "Message-ID: <reply@example.com>\r\n" +
+                "In-Reply-To: <original@example.com>\r\n" +
+                "References: <original@example.com>\r\n" +
+                "From: recipient@example.com\r\n" +
+                "To: sender@example.com\r\n" +
+                "Date: Tue, 10 Oct 2023 10:05:00 +0000\r\n" +
+                "\r\n" +
+                "Reply body").getBytes(StandardCharsets.UTF_8);
+
+        MessageManager.AppendResult replyResult = bobInboxMessageManager.appendMessage(
+            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(reply)),
+            bobMailboxSession);
+
+        //Ce test fail
+        assertEquals(originalResult.getThreadId(), replyResult.getThreadId());
 
         verify(1, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
 
@@ -251,7 +347,7 @@ class RagListenerTest {
                 .withBody(equalToJson("{"
                     + "\"email.subject\":\"Test Subject\","
                     + "\"datetime\":\"2023-10-10T10:00:00Z\","
-                    + "\"parent_id\":\"[recipient@example.com]\","
+                    + "\"parent_id\":\"1\","
                     + "\"relationship_id\":\"1\","
                     + "\"doctype\":\"com.linagora.email\","
                     + "\"email.preview\":\"Body of the email\""
@@ -382,7 +478,7 @@ class RagListenerTest {
     @Test
     void reactiveEventShouldAllowAllUsersWhenWhiteListIsEmpty() throws Exception {
         config.setProperty("listener.configuration.users", "");
-        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, config, ragConfig);
+        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, threadIdGuessingAlgorithm, config, ragConfig);
         mailboxManager.getEventBus().register(ragListener);
 
         MessageManager.AppendResult appendResult = aliceInboxMessageManager.appendMessage(
@@ -519,7 +615,7 @@ class RagListenerTest {
     @Test
     void reactiveEventShouldNotIndexMessageWhenDomainNameIsMissing() throws Exception {
         config.setProperty("listener.configuration.users", "user");
-        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, config, ragConfig);
+        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, threadIdGuessingAlgorithm, config, ragConfig);
         mailboxManager.getEventBus().register(ragListener);
 
         userWithNoDomainMailBoxMessageManager.appendMessage(

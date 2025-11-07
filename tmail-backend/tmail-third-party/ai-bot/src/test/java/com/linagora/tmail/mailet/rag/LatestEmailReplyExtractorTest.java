@@ -170,7 +170,6 @@ class LatestEmailReplyExtractorTest {
         assertThat(latestEmailReplyExtractor.cleanQuotedContent(content)).isEqualTo("Merci pour votre retour.");
     }
 
-
     @Test
     void shouldTrimWhitespace() {
         String content ="""
