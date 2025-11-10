@@ -20,8 +20,11 @@ package com.linagora.tmail.webadmin.quota;
 
 import static io.restassured.RestAssured.given;
 import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
+import static org.apache.james.mailbox.store.quota.DefaultUserQuotaRootResolver.SEPARATOR;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.CoreMatchers.is;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.Map;
 import java.util.Optional;
@@ -30,8 +33,11 @@ import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.apache.james.core.quota.QuotaCountLimit;
 import org.apache.james.core.quota.QuotaSizeLimit;
+import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.inmemory.quota.InMemoryPerUserMaxQuotaManager;
+import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailbox.model.QuotaRoot;
+import org.apache.james.mailbox.quota.QuotaRootResolver;
 import org.apache.james.webadmin.WebAdminServer;
 import org.apache.james.webadmin.WebAdminUtils;
 import org.apache.james.webadmin.utils.JsonTransformer;
@@ -54,17 +60,30 @@ public class UserQuotaReporterRoutesTest {
     private static final Username BOB = Username.of("bob@domain.tld");
     private static final Username ALICE = Username.of("alice@domain.tld");
     private static final Username ANDRE_AT_DOMAIN_2 = Username.of("andre@domain2.tld");
-    private static final QuotaRoot BOB_QUOTA_ROOT = QuotaRoot.quotaRoot(BOB.asString(), Optional.of(DOMAIN));
-    private static final QuotaRoot ALICE_QUOTA_ROOT = QuotaRoot.quotaRoot(ALICE.asString(), Optional.of(DOMAIN));
-    private static final QuotaRoot ANDRE_AT_DOMAIN_2_QUOTA_ROOT = QuotaRoot.quotaRoot(ANDRE_AT_DOMAIN_2.asString(), Optional.of(DOMAIN_2));
+    private static final QuotaRoot BOB_QUOTA_ROOT = QuotaRoot.quotaRoot(MailboxConstants.USER_NAMESPACE + SEPARATOR + BOB.asString(), Optional.of(DOMAIN));
+    private static final QuotaRoot ALICE_QUOTA_ROOT = QuotaRoot.quotaRoot(MailboxConstants.USER_NAMESPACE + SEPARATOR + ALICE.asString(), Optional.of(DOMAIN));
+    private static final QuotaRoot ANDRE_AT_DOMAIN_2_QUOTA_ROOT = QuotaRoot.quotaRoot(MailboxConstants.USER_NAMESPACE + SEPARATOR + ANDRE_AT_DOMAIN_2.asString(), Optional.of(DOMAIN_2));
 
     private WebAdminServer webAdminServer;
     private InMemoryPerUserMaxQuotaManager maxQuotaManager;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws MailboxException {
         maxQuotaManager = new InMemoryPerUserMaxQuotaManager();
-        UserQuotaReporter userQuotaReporter = new MemoryUserQuotaReporter(maxQuotaManager);
+        QuotaRootResolver quotaRootResolver = mock(QuotaRootResolver.class);
+        when(quotaRootResolver.fromString(BOB_QUOTA_ROOT.getValue()))
+            .thenReturn(BOB_QUOTA_ROOT);
+        when(quotaRootResolver.fromString(ALICE_QUOTA_ROOT.getValue()))
+            .thenReturn(ALICE_QUOTA_ROOT);
+        when(quotaRootResolver.fromString(ANDRE_AT_DOMAIN_2_QUOTA_ROOT.getValue()))
+            .thenReturn(ANDRE_AT_DOMAIN_2_QUOTA_ROOT);
+        when(quotaRootResolver.associatedUsername(BOB_QUOTA_ROOT))
+            .thenReturn(BOB);
+        when(quotaRootResolver.associatedUsername(ALICE_QUOTA_ROOT))
+            .thenReturn(ALICE);
+        when(quotaRootResolver.associatedUsername(ANDRE_AT_DOMAIN_2_QUOTA_ROOT))
+            .thenReturn(ANDRE_AT_DOMAIN_2);
+        UserQuotaReporter userQuotaReporter = new MemoryUserQuotaReporter(maxQuotaManager, quotaRootResolver);
         UserQuotaReporterRoutes userQuotaReporterRoutes = new UserQuotaReporterRoutes(userQuotaReporter, new JsonTransformer());
         webAdminServer = WebAdminUtils.createWebAdminServer(userQuotaReporterRoutes).start();
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer).build();

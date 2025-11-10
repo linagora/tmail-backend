@@ -37,7 +37,6 @@ import jakarta.inject.Named;
 import org.apache.james.backends.postgres.quota.PostgresQuotaLimitDAO;
 import org.apache.james.backends.postgres.utils.PostgresExecutor;
 import org.apache.james.core.Domain;
-import org.apache.james.core.Username;
 import org.apache.james.core.quota.QuotaComponent;
 import org.apache.james.core.quota.QuotaCountLimit;
 import org.apache.james.core.quota.QuotaLimit;
@@ -45,6 +44,7 @@ import org.apache.james.core.quota.QuotaScope;
 import org.apache.james.core.quota.QuotaSizeLimit;
 import org.apache.james.core.quota.QuotaType;
 import org.apache.james.mailbox.quota.QuotaCodec;
+import org.apache.james.mailbox.quota.QuotaRootResolver;
 import org.jooq.Record;
 import org.reactivestreams.Publisher;
 
@@ -62,12 +62,15 @@ public class PostgresUserQuotaReporter implements UserQuotaReporter {
 
     private final PostgresExecutor postgresExecutor;
     private final PostgresQuotaLimitDAO postgresQuotaLimitDao;
+    private final QuotaRootResolver quotaRootResolver;
 
     @Inject
     public PostgresUserQuotaReporter(@Named(DEFAULT_INJECT) PostgresExecutor postgresExecutor,
-                                     PostgresQuotaLimitDAO postgresQuotaLimitDAO) {
+                                     PostgresQuotaLimitDAO postgresQuotaLimitDAO,
+                                     QuotaRootResolver quotaRootResolver) {
         this.postgresExecutor = postgresExecutor;
         this.postgresQuotaLimitDao = postgresQuotaLimitDAO;
+        this.quotaRootResolver = quotaRootResolver;
     }
 
     @Override
@@ -109,8 +112,6 @@ public class PostgresUserQuotaReporter implements UserQuotaReporter {
     }
 
     private Mono<UserWithSpecificQuota> toUserSpecificQuota(GroupedFlux<String, QuotaLimit> limitsOfUser) {
-        Username username = Username.of(limitsOfUser.key());
-
         return limitsOfUser
             .collectList()
             .map(quotaLimits -> {
@@ -120,7 +121,8 @@ public class PostgresUserQuotaReporter implements UserQuotaReporter {
                     map.getOrDefault(QuotaType.SIZE, Optional.empty()).flatMap(QuotaCodec::longToQuotaSize),
                     map.getOrDefault(QuotaType.COUNT, Optional.empty()).flatMap(QuotaCodec::longToQuotaCount));
             })
-            .map(limits -> new UserWithSpecificQuota(username, limits));
+            .flatMap(limits -> Mono.fromCallable(() -> quotaRootResolver.associatedUsername(quotaRootResolver.fromString(limitsOfUser.key())))
+                .map(username -> new UserWithSpecificQuota(username, limits)));
     }
 
     private Mono<ExtraQuotaSum> calculateExtraQuota(GroupedFlux<Optional<Domain>, UserWithSpecificQuota> usersQuotaOfADomain) {

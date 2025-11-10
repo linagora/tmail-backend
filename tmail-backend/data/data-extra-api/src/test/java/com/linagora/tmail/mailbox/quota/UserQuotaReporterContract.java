@@ -18,7 +18,10 @@
 
 package com.linagora.tmail.mailbox.quota;
 
+import static org.apache.james.mailbox.store.quota.DefaultUserQuotaRootResolver.SEPARATOR;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import java.util.Optional;
 
@@ -27,8 +30,10 @@ import org.apache.james.core.Username;
 import org.apache.james.core.quota.QuotaCountLimit;
 import org.apache.james.core.quota.QuotaSizeLimit;
 import org.apache.james.mailbox.exception.MailboxException;
+import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailbox.model.QuotaRoot;
 import org.apache.james.mailbox.quota.MaxQuotaManager;
+import org.apache.james.mailbox.quota.QuotaRootResolver;
 import org.junit.jupiter.api.Test;
 
 import com.linagora.tmail.mailbox.quota.model.ExtraQuotaSum;
@@ -43,14 +48,37 @@ public interface UserQuotaReporterContract {
     Domain DOMAIN_1 = Domain.of("domain.tld");
     Domain DOMAIN_2 = Domain.of("domain2.tld");
     Username BOB = Username.of("bob@domain.tld");
-    QuotaRoot BOB_QUOTA_ROOT = QuotaRoot.quotaRoot(BOB.asString(), Optional.of(DOMAIN_1));
+    QuotaRoot BOB_QUOTA_ROOT = QuotaRoot.quotaRoot(MailboxConstants.USER_NAMESPACE + SEPARATOR + BOB.asString(), Optional.of(DOMAIN_1));
     Username ALICE = Username.of("alice@domain.tld");
-    QuotaRoot ALICE_QUOTA_ROOT = QuotaRoot.quotaRoot(ALICE.asString(), Optional.of(DOMAIN_1));
+    QuotaRoot ALICE_QUOTA_ROOT = QuotaRoot.quotaRoot(MailboxConstants.USER_NAMESPACE + SEPARATOR + ALICE.asString(), Optional.of(DOMAIN_1));
     Username ANDRE_AT_DOMAIN_2 = Username.of("andre@domain2.tld");
-    QuotaRoot ANDRE_AT_DOMAIN_2_QUOTA_ROOT = QuotaRoot.quotaRoot(ANDRE_AT_DOMAIN_2.asString(), Optional.of(DOMAIN_1));
+    QuotaRoot ANDRE_AT_DOMAIN_2_QUOTA_ROOT = QuotaRoot.quotaRoot(MailboxConstants.USER_NAMESPACE + SEPARATOR + ANDRE_AT_DOMAIN_2.asString(), Optional.of(DOMAIN_1));
+    Username LOCAL_PART_ONLY = Username.of("localpartOnly");
+    QuotaRoot LOCAL_PART_ONLY_QUOTA_ROOT = QuotaRoot.quotaRoot(MailboxConstants.USER_NAMESPACE + SEPARATOR + LOCAL_PART_ONLY.asString(), Optional.empty());
 
     MaxQuotaManager maxQuotaManager();
     UserQuotaReporter testee();
+
+    default QuotaRootResolver quotaRootResolver() throws MailboxException {
+        QuotaRootResolver quotaRootResolver = mock(QuotaRootResolver.class);
+        when(quotaRootResolver.fromString(BOB_QUOTA_ROOT.getValue()))
+            .thenReturn(BOB_QUOTA_ROOT);
+        when(quotaRootResolver.fromString(ALICE_QUOTA_ROOT.getValue()))
+            .thenReturn(ALICE_QUOTA_ROOT);
+        when(quotaRootResolver.fromString(ANDRE_AT_DOMAIN_2_QUOTA_ROOT.getValue()))
+            .thenReturn(ANDRE_AT_DOMAIN_2_QUOTA_ROOT);
+        when(quotaRootResolver.fromString(LOCAL_PART_ONLY_QUOTA_ROOT.getValue()))
+            .thenReturn(LOCAL_PART_ONLY_QUOTA_ROOT);
+        when(quotaRootResolver.associatedUsername(BOB_QUOTA_ROOT))
+            .thenReturn(BOB);
+        when(quotaRootResolver.associatedUsername(ALICE_QUOTA_ROOT))
+            .thenReturn(ALICE);
+        when(quotaRootResolver.associatedUsername(ANDRE_AT_DOMAIN_2_QUOTA_ROOT))
+            .thenReturn(ANDRE_AT_DOMAIN_2);
+        when(quotaRootResolver.associatedUsername(LOCAL_PART_ONLY_QUOTA_ROOT))
+            .thenReturn(LOCAL_PART_ONLY);
+        return quotaRootResolver;
+    }
 
     @Test
     default void shouldCountZeroUsersSpecificQuotaByDefault() {
@@ -139,7 +167,7 @@ public interface UserQuotaReporterContract {
     default void shouldCountUsersWithSpecificQuotaWhenVirtualHostingDisabled() throws MailboxException {
         maxQuotaManager().setGlobalMaxStorage(QuotaSizeLimit.size(100));
 
-        maxQuotaManager().setMaxStorage(QuotaRoot.quotaRoot("localpartOnly", Optional.empty()), QuotaSizeLimit.size(10000));
+        maxQuotaManager().setMaxStorage(LOCAL_PART_ONLY_QUOTA_ROOT, QuotaSizeLimit.size(10000));
 
         assertThat(Mono.from(testee().usersWithSpecificQuotaCount()).block())
             .isEqualTo(1L);
@@ -240,12 +268,12 @@ public interface UserQuotaReporterContract {
     default void shouldReturnUsersWithSpecificQuotaWhenVirtualHostingDisabled() throws MailboxException {
         maxQuotaManager().setGlobalMaxStorage(QuotaSizeLimit.size(100));
 
-        maxQuotaManager().setMaxStorage(QuotaRoot.quotaRoot("localpartOnly", Optional.empty()), QuotaSizeLimit.size(10000));
-        maxQuotaManager().setMaxMessage(QuotaRoot.quotaRoot("localpartOnly", Optional.empty()), QuotaCountLimit.count(10001));
+        maxQuotaManager().setMaxStorage(LOCAL_PART_ONLY_QUOTA_ROOT, QuotaSizeLimit.size(10000));
+        maxQuotaManager().setMaxMessage(LOCAL_PART_ONLY_QUOTA_ROOT, QuotaCountLimit.count(10001));
 
         assertThat(Flux.from(testee().usersWithSpecificQuota()).collectList().block())
             .containsOnly(
-                new UserWithSpecificQuota(Username.of("localpartOnly"), new Limits(Optional.of(QuotaSizeLimit.size(10000)), Optional.of(QuotaCountLimit.count(10001)))));
+                new UserWithSpecificQuota(LOCAL_PART_ONLY, new Limits(Optional.of(QuotaSizeLimit.size(10000)), Optional.of(QuotaCountLimit.count(10001)))));
     }
 
     @Test
