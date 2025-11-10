@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.mailbox.quota.memory;
 
+import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.inmemory.quota.InMemoryPerUserMaxQuotaManager;
 import org.apache.james.mailbox.quota.MaxQuotaManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,9 +31,9 @@ public class MemoryUserQuotaReporterTest implements UserQuotaReporterContract {
     private MemoryUserQuotaReporter testee;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws MailboxException {
         memoryMaxQuotaManager = new InMemoryPerUserMaxQuotaManager();
-        testee = new MemoryUserQuotaReporter(memoryMaxQuotaManager);
+        testee = new MemoryUserQuotaReporter(memoryMaxQuotaManager, quotaRootResolver());
     }
 
     @Override

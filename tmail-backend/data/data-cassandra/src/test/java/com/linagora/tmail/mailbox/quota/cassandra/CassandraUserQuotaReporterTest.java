@@ -22,6 +22,7 @@ import org.apache.james.backends.cassandra.CassandraClusterExtension;
 import org.apache.james.backends.cassandra.components.CassandraMutualizedQuotaDataDefinition;
 import org.apache.james.backends.cassandra.components.CassandraQuotaLimitDao;
 import org.apache.james.mailbox.cassandra.quota.CassandraPerUserMaxQuotaManagerV2;
+import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.quota.MaxQuotaManager;
 import org.apache.james.mailbox.quota.QuotaChangeNotifier;
 import org.junit.jupiter.api.BeforeEach;
@@ -37,8 +38,9 @@ public class CassandraUserQuotaReporterTest implements UserQuotaReporterContract
     private CassandraUserQuotaReporter cassandraUserQuotaReporter;
 
     @BeforeEach
-    void setUp() {
-        cassandraUserQuotaReporter = new CassandraUserQuotaReporter(cassandraCluster.getCassandraCluster().getConf(), new CassandraQuotaLimitDao(cassandraCluster.getCassandraCluster().getConf()));
+    void setUp() throws MailboxException {
+        cassandraUserQuotaReporter = new CassandraUserQuotaReporter(cassandraCluster.getCassandraCluster().getConf(), new CassandraQuotaLimitDao(cassandraCluster.getCassandraCluster().getConf()),
+            quotaRootResolver());
     }
 
     @Override

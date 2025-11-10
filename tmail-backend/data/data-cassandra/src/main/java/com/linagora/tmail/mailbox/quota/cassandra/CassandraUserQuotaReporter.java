@@ -37,7 +37,6 @@ import org.apache.james.backends.cassandra.components.CassandraQuotaLimitDao;
 import org.apache.james.backends.cassandra.components.CassandraQuotaLimitTable;
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
 import org.apache.james.core.Domain;
-import org.apache.james.core.Username;
 import org.apache.james.core.quota.QuotaComponent;
 import org.apache.james.core.quota.QuotaCountLimit;
 import org.apache.james.core.quota.QuotaLimit;
@@ -45,6 +44,7 @@ import org.apache.james.core.quota.QuotaScope;
 import org.apache.james.core.quota.QuotaSizeLimit;
 import org.apache.james.core.quota.QuotaType;
 import org.apache.james.mailbox.quota.QuotaCodec;
+import org.apache.james.mailbox.quota.QuotaRootResolver;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
@@ -64,14 +64,17 @@ public class CassandraUserQuotaReporter implements UserQuotaReporter {
     private final CassandraAsyncExecutor executor;
     private final PreparedStatement getAllQuotaLimitsStatement;
     private final CassandraQuotaLimitDao cassandraQuotaLimitDao;
+    private final QuotaRootResolver quotaRootResolver;
 
     @Inject
-    public CassandraUserQuotaReporter(CqlSession session, CassandraQuotaLimitDao cassandraQuotaLimitDao) {
+    public CassandraUserQuotaReporter(CqlSession session, CassandraQuotaLimitDao cassandraQuotaLimitDao,
+                                      QuotaRootResolver quotaRootResolver) {
         this.executor = new CassandraAsyncExecutor(session);
         this.getAllQuotaLimitsStatement = session.prepare(selectFrom(CassandraQuotaLimitTable.TABLE_NAME)
             .all()
             .build());
         this.cassandraQuotaLimitDao = cassandraQuotaLimitDao;
+        this.quotaRootResolver = quotaRootResolver;
     }
 
     @Override
@@ -103,8 +106,6 @@ public class CassandraUserQuotaReporter implements UserQuotaReporter {
     }
 
     private Mono<UserWithSpecificQuota> toUserSpecificQuota(GroupedFlux<String, QuotaLimit> limitsOfUser) {
-        Username username = Username.of(limitsOfUser.key());
-
         return limitsOfUser
             .collectList()
             .map(quotaLimits -> {
@@ -114,7 +115,8 @@ public class CassandraUserQuotaReporter implements UserQuotaReporter {
                     map.getOrDefault(QuotaType.SIZE, Optional.empty()).flatMap(QuotaCodec::longToQuotaSize),
                     map.getOrDefault(QuotaType.COUNT, Optional.empty()).flatMap(QuotaCodec::longToQuotaCount));
             })
-            .map(limits -> new UserWithSpecificQuota(username, limits));
+            .flatMap(limits -> Mono.fromCallable(() -> quotaRootResolver.associatedUsername(quotaRootResolver.fromString(limitsOfUser.key())))
+                .map(username -> new UserWithSpecificQuota(username, limits)));
     }
 
     private Mono<ExtraQuotaSum> calculateExtraQuota(GroupedFlux<Optional<Domain>, UserWithSpecificQuota> usersQuotaOfADomain) {

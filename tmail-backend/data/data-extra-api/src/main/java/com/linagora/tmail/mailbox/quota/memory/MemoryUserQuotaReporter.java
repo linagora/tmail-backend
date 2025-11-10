@@ -31,8 +31,10 @@ import org.apache.james.core.Username;
 import org.apache.james.core.quota.QuotaCountLimit;
 import org.apache.james.core.quota.QuotaSizeLimit;
 import org.apache.james.mailbox.inmemory.quota.InMemoryPerUserMaxQuotaManager;
+import org.apache.james.mailbox.quota.QuotaRootResolver;
 import org.reactivestreams.Publisher;
 
+import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.mailbox.quota.UserQuotaReporter;
 import com.linagora.tmail.mailbox.quota.model.ExtraQuotaSum;
 import com.linagora.tmail.mailbox.quota.model.Limits;
@@ -46,10 +48,12 @@ public class MemoryUserQuotaReporter implements UserQuotaReporter {
     private final InMemoryPerUserMaxQuotaManager maxQuotaManager;
     private final Map<String, QuotaSizeLimit> userMaxStorage;
     private final Map<String, QuotaCountLimit> userMaxMessage;
+    private final QuotaRootResolver quotaRootResolver;
 
     @Inject
-    public MemoryUserQuotaReporter(InMemoryPerUserMaxQuotaManager maxQuotaManager) {
+    public MemoryUserQuotaReporter(InMemoryPerUserMaxQuotaManager maxQuotaManager, QuotaRootResolver quotaRootResolver) {
         this.maxQuotaManager = maxQuotaManager;
+        this.quotaRootResolver = quotaRootResolver;
 
         try {
             Field userMaxStorageField = InMemoryPerUserMaxQuotaManager.class.getDeclaredField("userMaxStorage");
@@ -83,15 +87,18 @@ public class MemoryUserQuotaReporter implements UserQuotaReporter {
     }
 
     private Flux<UserWithSpecificQuota> getSpecificUsersQuota() {
-        Set<String> usernames = new HashSet<>();
-        usernames.addAll(userMaxStorage.keySet());
-        usernames.addAll(userMaxMessage.keySet());
+        Set<String> quotaRoots = new HashSet<>();
+        quotaRoots.addAll(userMaxStorage.keySet());
+        quotaRoots.addAll(userMaxMessage.keySet());
 
-        return Flux.fromIterable(usernames)
-            .map(username -> new UserWithSpecificQuota(Username.of(username),
-                new Limits(
-                    Optional.ofNullable(userMaxStorage.get(username)),
-                    Optional.ofNullable(userMaxMessage.get(username)))));
+        return Flux.fromIterable(quotaRoots)
+            .map(Throwing.function(quotaRoot -> {
+                Username username = quotaRootResolver.associatedUsername(quotaRootResolver.fromString(quotaRoot));
+                return new UserWithSpecificQuota(username,
+                    new Limits(
+                        Optional.ofNullable(userMaxStorage.get(quotaRoot)),
+                        Optional.ofNullable(userMaxMessage.get(quotaRoot))));
+            }));
     }
 
     private Mono<ExtraQuotaSum> calculateExtraQuota(GroupedFlux<Optional<Domain>, UserWithSpecificQuota> usersQuotaOfADomain) {

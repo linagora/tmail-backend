@@ -21,6 +21,7 @@ package com.linagora.tmail.mailbox.quota.postgres;
 import org.apache.james.backends.postgres.PostgresExtension;
 import org.apache.james.backends.postgres.quota.PostgresQuotaDataDefinition;
 import org.apache.james.backends.postgres.quota.PostgresQuotaLimitDAO;
+import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.postgres.quota.PostgresPerUserMaxQuotaManager;
 import org.apache.james.mailbox.quota.MaxQuotaManager;
 import org.apache.james.mailbox.quota.QuotaChangeNotifier;
@@ -37,8 +38,9 @@ public class PostgresUserQuotaReporterTest implements UserQuotaReporterContract 
     private PostgresUserQuotaReporter postgresUserQuotaReporter;
 
     @BeforeEach
-    void setUp() {
-        postgresUserQuotaReporter = new PostgresUserQuotaReporter(postgresExtension.getDefaultPostgresExecutor(), new PostgresQuotaLimitDAO(postgresExtension.getDefaultPostgresExecutor()));
+    void setUp() throws MailboxException {
+        postgresUserQuotaReporter = new PostgresUserQuotaReporter(postgresExtension.getDefaultPostgresExecutor(), new PostgresQuotaLimitDAO(postgresExtension.getDefaultPostgresExecutor()),
+            quotaRootResolver());
     }
 
     @Override
