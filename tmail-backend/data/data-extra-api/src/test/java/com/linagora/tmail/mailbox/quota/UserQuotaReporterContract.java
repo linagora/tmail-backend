@@ -309,7 +309,8 @@ public interface UserQuotaReporterContract {
         maxQuotaManager().setMaxMessage(BOB_QUOTA_ROOT, QuotaCountLimit.count(15));
 
         assertThat(Mono.from(testee().usersExtraQuotaSum()).block())
-            .isEqualTo(new ExtraQuotaSum(QuotaSizeLimit.size(50), QuotaCountLimit.count(5)));
+            .isEqualTo(new ExtraQuotaSum(QuotaSizeLimit.size(50), QuotaCountLimit.count(5),
+                ExtraQuotaSum.UnlimitedStorageCount.ZERO, ExtraQuotaSum.UnlimitedMessagesCount.ZERO));
     }
 
     @Test
@@ -322,7 +323,8 @@ public interface UserQuotaReporterContract {
         maxQuotaManager().setMaxMessage(BOB_QUOTA_ROOT, QuotaCountLimit.count(15));
 
         assertThat(Mono.from(testee().usersExtraQuotaSum()).block())
-            .isEqualTo(new ExtraQuotaSum(QuotaSizeLimit.size(50), QuotaCountLimit.count(5)));
+            .isEqualTo(new ExtraQuotaSum(QuotaSizeLimit.size(50), QuotaCountLimit.count(5),
+                ExtraQuotaSum.UnlimitedStorageCount.ZERO, ExtraQuotaSum.UnlimitedMessagesCount.ZERO));
     }
 
     @Test
@@ -337,7 +339,8 @@ public interface UserQuotaReporterContract {
         maxQuotaManager().setMaxMessage(ALICE_QUOTA_ROOT, QuotaCountLimit.count(300));
 
         assertThat(Mono.from(testee().usersExtraQuotaSum()).block())
-            .isEqualTo(new ExtraQuotaSum(QuotaSizeLimit.size(300), QuotaCountLimit.count(300)));
+            .isEqualTo(new ExtraQuotaSum(QuotaSizeLimit.size(300), QuotaCountLimit.count(300),
+                ExtraQuotaSum.UnlimitedStorageCount.ZERO, ExtraQuotaSum.UnlimitedMessagesCount.ZERO));
     }
 
     @Test
@@ -353,11 +356,12 @@ public interface UserQuotaReporterContract {
         maxQuotaManager().setMaxMessage(ANDRE_AT_DOMAIN_2_QUOTA_ROOT, QuotaCountLimit.count(301));
 
         assertThat(Mono.from(testee().usersExtraQuotaSum()).block())
-            .isEqualTo(new ExtraQuotaSum(QuotaSizeLimit.size(200), QuotaCountLimit.count(200)));
+            .isEqualTo(new ExtraQuotaSum(QuotaSizeLimit.size(200), QuotaCountLimit.count(200),
+                ExtraQuotaSum.UnlimitedStorageCount.ZERO, ExtraQuotaSum.UnlimitedMessagesCount.ZERO));
     }
 
     @Test
-    default void shouldReturnZeroExtraQuotaWhenBothDomainQuotaAndUserQuotaAreUnlimited() throws MailboxException {
+    default void shouldCountUserUnlimitedQuotaWhenBothDomainQuotaAndUserQuotaAreUnlimited() throws MailboxException {
         maxQuotaManager().setDomainMaxStorage(DOMAIN_1, QuotaSizeLimit.unlimited());
         maxQuotaManager().setDomainMaxMessage(DOMAIN_1, QuotaCountLimit.unlimited());
 
@@ -365,7 +369,8 @@ public interface UserQuotaReporterContract {
         maxQuotaManager().setMaxMessage(BOB_QUOTA_ROOT, QuotaCountLimit.unlimited());
 
         assertThat(Mono.from(testee().usersExtraQuotaSum()).block())
-            .isEqualTo(new ExtraQuotaSum(QuotaSizeLimit.size(0L), QuotaCountLimit.count(0L)));
+            .isEqualTo(new ExtraQuotaSum(QuotaSizeLimit.size(0L), QuotaCountLimit.count(0L),
+                new ExtraQuotaSum.UnlimitedStorageCount(1), new ExtraQuotaSum.UnlimitedMessagesCount(1)));
     }
 
     @Test
@@ -377,11 +382,12 @@ public interface UserQuotaReporterContract {
         maxQuotaManager().setMaxMessage(BOB_QUOTA_ROOT, QuotaCountLimit.count(20));
 
         assertThat(Mono.from(testee().usersExtraQuotaSum()).block())
-            .isEqualTo(new ExtraQuotaSum(QuotaSizeLimit.size(0L), QuotaCountLimit.count(0L)));
+            .isEqualTo(new ExtraQuotaSum(QuotaSizeLimit.size(0L), QuotaCountLimit.count(0L),
+                ExtraQuotaSum.UnlimitedStorageCount.ZERO, ExtraQuotaSum.UnlimitedMessagesCount.ZERO));
     }
 
     @Test
-    default void shouldReturnUnlimitedExtraQuotaWhenDomainQuotaIsLimitedAndUserQuotaIsUnlimited() throws MailboxException {
+    default void shouldCountUnlimitedExtraQuotaWhenDomainQuotaIsLimitedAndUserQuotaIsUnlimited() throws MailboxException {
         maxQuotaManager().setDomainMaxStorage(DOMAIN_1, QuotaSizeLimit.size(200));
         maxQuotaManager().setDomainMaxMessage(DOMAIN_1, QuotaCountLimit.count(20));
 
@@ -389,7 +395,8 @@ public interface UserQuotaReporterContract {
         maxQuotaManager().setMaxMessage(BOB_QUOTA_ROOT, QuotaCountLimit.unlimited());
 
         assertThat(Mono.from(testee().usersExtraQuotaSum()).block())
-            .isEqualTo(new ExtraQuotaSum(QuotaSizeLimit.unlimited(), QuotaCountLimit.unlimited()));
+            .isEqualTo(new ExtraQuotaSum(QuotaSizeLimit.size(0), QuotaCountLimit.count(0),
+                new ExtraQuotaSum.UnlimitedStorageCount(1), new ExtraQuotaSum.UnlimitedMessagesCount(1)));
     }
 
     @Test
@@ -401,7 +408,8 @@ public interface UserQuotaReporterContract {
         maxQuotaManager().setMaxMessage(BOB_QUOTA_ROOT, QuotaCountLimit.count(10));
 
         assertThat(Mono.from(testee().usersExtraQuotaSum()).block())
-            .isEqualTo(new ExtraQuotaSum(QuotaSizeLimit.size(0), QuotaCountLimit.count(0)));
+            .isEqualTo(new ExtraQuotaSum(QuotaSizeLimit.size(0), QuotaCountLimit.count(0),
+                ExtraQuotaSum.UnlimitedStorageCount.ZERO, ExtraQuotaSum.UnlimitedMessagesCount.ZERO));
     }
 
     @Test
@@ -413,7 +421,23 @@ public interface UserQuotaReporterContract {
         maxQuotaManager().setMaxMessage(BOB_QUOTA_ROOT, QuotaCountLimit.count(15));
 
         assertThat(Mono.from(testee().usersExtraQuotaSum()).block())
-            .isEqualTo(new ExtraQuotaSum(QuotaSizeLimit.size(0), QuotaCountLimit.count(0)));
+            .isEqualTo(new ExtraQuotaSum(QuotaSizeLimit.size(0), QuotaCountLimit.count(0),
+                ExtraQuotaSum.UnlimitedStorageCount.ZERO, ExtraQuotaSum.UnlimitedMessagesCount.ZERO));
+    }
+
+    @Test
+    default void sumQuotaMixedCase() throws MailboxException {
+        maxQuotaManager().setDomainMaxStorage(DOMAIN_1, QuotaSizeLimit.size(100));
+        maxQuotaManager().setDomainMaxMessage(DOMAIN_1, QuotaCountLimit.count(10));
+
+        maxQuotaManager().setMaxStorage(BOB_QUOTA_ROOT, QuotaSizeLimit.unlimited());
+        maxQuotaManager().setMaxMessage(BOB_QUOTA_ROOT, QuotaCountLimit.count(15));
+        maxQuotaManager().setMaxStorage(ALICE_QUOTA_ROOT, QuotaSizeLimit.size(150));
+        maxQuotaManager().setMaxMessage(ALICE_QUOTA_ROOT, QuotaCountLimit.unlimited());
+
+        assertThat(Mono.from(testee().usersExtraQuotaSum()).block())
+            .isEqualTo(new ExtraQuotaSum(QuotaSizeLimit.size(50), QuotaCountLimit.count(5),
+                new ExtraQuotaSum.UnlimitedStorageCount(1), new ExtraQuotaSum.UnlimitedMessagesCount(1)));
     }
 
     @Test
@@ -422,7 +446,7 @@ public interface UserQuotaReporterContract {
 
         maxQuotaManager().setMaxStorage(BOB_QUOTA_ROOT, QuotaSizeLimit.size(300));
 
-        assertThat(Mono.from(testee().usersExtraQuotaSum()).block().countLimit())
+        assertThat(Mono.from(testee().usersExtraQuotaSum()).block().totalExtraCountLimit())
             .isEqualTo(QuotaCountLimit.count(0));
     }
 
