@@ -561,3 +561,78 @@ Response codes:
 * 200: Success. Token has been invalidated.
 * 400: Error in the request. Details can be found in the reported error.
 * 415: Content type is invalid. It must be `application/x-www-form-urlencoded`.
+
+== User quota reports
+
+=== Get count of users having specific quotas
+
+This endpoint returns the total number of users that have a specific quota (different from domain or global default quotas).
+
+....
+curl -XGET http://ip:port/reports/quota/users/count?hasSpecificQuota
+....
+
+Response example:
+
+....
+3
+....
+
+Return codes:
+
+- `200` Successfully returned the count
+- `400` Missing the `hasSpecificQuota` query parameter
+
+=== List users having specific quotas
+
+Returns the list of users that have specific quotas, along with their specific storage and message count limits.
+
+....
+curl -XGET http://ip:port/reports/quota/users?hasSpecificQuota
+....
+
+Response example:
+
+....
+[
+  {
+    "user": "bob@domain.tld",
+    "storageLimit": 2147483648,
+    "countLimit": 10000
+  },
+  {
+    "user": "alice@domain.tld",
+    "storageLimit": null,
+    "countLimit": 5000
+  }
+]
+....
+
+Return codes:
+
+- `200` Successfully returned the list
+- `400` Missing the `hasSpecificQuota` query parameter
+
+=== Get aggregated sum of user extra quotas
+
+Returns aggregated information about user specific quotas, including total extra storage and message count limits compared to their respective domain quotas, as well as how many users have unlimited quotas.
+
+....
+curl -XGET http://ip:port/reports/quota/users/sum?hasSpecificQuota
+....
+
+Response example:
+
+....
+{
+    "totalExtraStorageLimit": 3221225472,
+    "totalExtraCountLimit": 12000,
+    "totalUnlimitedStorage": 1,
+    "totalUnlimitedCount": 0
+}
+....
+
+Return codes:
+
+- `200` Successfully returned the aggregated data
+- `400` Missing the `hasSpecificQuota` query parameter
