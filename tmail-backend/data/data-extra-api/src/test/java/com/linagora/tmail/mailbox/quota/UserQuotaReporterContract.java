@@ -52,7 +52,7 @@ public interface UserQuotaReporterContract {
     Username ALICE = Username.of("alice@domain.tld");
     QuotaRoot ALICE_QUOTA_ROOT = QuotaRoot.quotaRoot(MailboxConstants.USER_NAMESPACE + SEPARATOR + ALICE.asString(), Optional.of(DOMAIN_1));
     Username ANDRE_AT_DOMAIN_2 = Username.of("andre@domain2.tld");
-    QuotaRoot ANDRE_AT_DOMAIN_2_QUOTA_ROOT = QuotaRoot.quotaRoot(MailboxConstants.USER_NAMESPACE + SEPARATOR + ANDRE_AT_DOMAIN_2.asString(), Optional.of(DOMAIN_1));
+    QuotaRoot ANDRE_AT_DOMAIN_2_QUOTA_ROOT = QuotaRoot.quotaRoot(MailboxConstants.USER_NAMESPACE + SEPARATOR + ANDRE_AT_DOMAIN_2.asString(), Optional.of(DOMAIN_2));
     Username LOCAL_PART_ONLY = Username.of("localpartOnly");
     QuotaRoot LOCAL_PART_ONLY_QUOTA_ROOT = QuotaRoot.quotaRoot(MailboxConstants.USER_NAMESPACE + SEPARATOR + LOCAL_PART_ONLY.asString(), Optional.empty());
 
