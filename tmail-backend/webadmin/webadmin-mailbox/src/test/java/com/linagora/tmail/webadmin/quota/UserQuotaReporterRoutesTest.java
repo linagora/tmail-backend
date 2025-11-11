@@ -311,8 +311,10 @@ public class UserQuotaReporterRoutesTest {
             assertThatJson(response)
                 .isEqualTo("""
                     {
-                        "storageLimit": 0,
-                        "countLimit": 0
+                        "totalExtraStorageLimit": 0,
+                        "totalExtraCountLimit": 0,
+                        "totalUnlimitedStorage": 0,
+                        "totalUnlimitedCount": 0
                     }
                     """);
         }
@@ -338,8 +340,10 @@ public class UserQuotaReporterRoutesTest {
             assertThatJson(response)
                 .isEqualTo("""
                     {
-                        "storageLimit": 300,
-                        "countLimit": 301
+                        "totalExtraStorageLimit": 300,
+                        "totalExtraCountLimit": 301,
+                        "totalUnlimitedStorage": 0,
+                        "totalUnlimitedCount": 0
                     }
                     """);
         }
@@ -367,8 +371,10 @@ public class UserQuotaReporterRoutesTest {
             assertThatJson(response)
                 .isEqualTo("""
                     {
-                        "storageLimit": 200,
-                        "countLimit": 200
+                        "totalExtraStorageLimit": 200,
+                        "totalExtraCountLimit": 200,
+                        "totalUnlimitedStorage": 0,
+                        "totalUnlimitedCount": 0
                     }
                     """);
         }
@@ -394,8 +400,10 @@ public class UserQuotaReporterRoutesTest {
             assertThatJson(response)
                 .isEqualTo("""
                     {
-                        "storageLimit": -1,
-                        "countLimit": -1
+                        "totalExtraStorageLimit": 1000,
+                        "totalExtraCountLimit": 100,
+                        "totalUnlimitedStorage": 1,
+                        "totalUnlimitedCount": 1
                     }
                     """);
         }

@@ -25,19 +25,27 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.linagora.tmail.mailbox.quota.model.ExtraQuotaSum;
 
 public record ExtraQuotaSumDTO(
-    Long extraStorageLimit,
-    Long extraCountLimit) {
+    Long totalExtraStorageLimit,
+    Long totalExtraCountLimit,
+    Long totalUnlimitedStorage,
+    Long totalUnlimitedCount) {
 
     @JsonCreator
-    public ExtraQuotaSumDTO(@JsonProperty("storageLimit") Long extraStorageLimit,
-                            @JsonProperty("countLimit") Long extraCountLimit) {
-        this.extraStorageLimit = extraStorageLimit;
-        this.extraCountLimit = extraCountLimit;
+    public ExtraQuotaSumDTO(@JsonProperty("totalExtraStorageLimit") Long totalExtraStorageLimit,
+                            @JsonProperty("totalExtraCountLimit") Long totalExtraCountLimit,
+                            @JsonProperty("totalUnlimitedStorage") Long totalUnlimitedStorage,
+                            @JsonProperty("totalUnlimitedCount") Long totalUnlimitedCount) {
+        this.totalExtraStorageLimit = totalExtraStorageLimit;
+        this.totalExtraCountLimit = totalExtraCountLimit;
+        this.totalUnlimitedStorage = totalUnlimitedStorage;
+        this.totalUnlimitedCount = totalUnlimitedCount;
     }
 
     public static ExtraQuotaSumDTO from(ExtraQuotaSum extraQuotaSum) {
         return new ExtraQuotaSumDTO(
-            asLong(extraQuotaSum.storageLimit()),
-            asLong(extraQuotaSum.countLimit()));
+            asLong(extraQuotaSum.totalExtraStorageLimit()),
+            asLong(extraQuotaSum.totalExtraCountLimit()),
+            extraQuotaSum.totalUnlimitedStorage().value(),
+            extraQuotaSum.totalUnlimitedCount().value());
     }
 }

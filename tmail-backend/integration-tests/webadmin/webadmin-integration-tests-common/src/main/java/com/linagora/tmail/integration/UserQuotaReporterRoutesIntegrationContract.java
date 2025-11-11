@@ -119,8 +119,10 @@ public abstract class UserQuotaReporterRoutesIntegrationContract {
         assertThatJson(response)
             .isEqualTo("""
                     {
-                        "storageLimit": 900,
-                        "countLimit": 0
+                        "totalExtraStorageLimit": 900,
+                        "totalExtraCountLimit": 0,
+                        "totalUnlimitedStorage": 0,
+                        "totalUnlimitedCount": 0
                     }
                     """);
     }
