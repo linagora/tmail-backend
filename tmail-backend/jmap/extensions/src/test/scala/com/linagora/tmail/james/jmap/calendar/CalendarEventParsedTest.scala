@@ -117,6 +117,42 @@ class CalendarEventParsedTest {
   }
 
   @Test
+  def shouldParseStartAndEndTimeOfAllDayEvent(): Unit = {
+    val icsPayload = """BEGIN:VCALENDAR
+                       |PRODID:-//Google Inc//Google Calendar 70.9054//EN
+                       |VERSION:2.0
+                       |CALSCALE:GREGORIAN
+                       |METHOD:REQUEST
+                       |BEGIN:VEVENT
+                       |DTSTART;VALUE=DATE:20251112
+                       |DTEND;VALUE=DATE:20251113
+                       |DTSTAMP:20251110T091903Z
+                       |ORGANIZER;CN=Test Organizer:mailto:test.organizer@example.com
+                       |UID:uid-1234567890@example.com
+                       |ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=ACCEPTED;RSVP=TRUE;CN=Alice Example;X-NUM-GUESTS=0:mailto:alice@example.com
+                       |ATTENDEE;CUTYPE=INDIVIDUAL;ROLE=REQ-PARTICIPANT;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CN=Bob Example;X-NUM-GUESTS=0:mailto:bob@example.com
+                       |X-MICROSOFT-CDO-OWNERAPPTID:1909058852
+                       |CREATED:20251110T091900Z
+                       |DESCRIPTION:
+                       |LAST-MODIFIED:20251110T091900Z
+                       |LOCATION:
+                       |SEQUENCE:0
+                       |STATUS:CONFIRMED
+                       |SUMMARY:All day event
+                       |TRANSP:TRANSPARENT
+                       |END:VEVENT
+                       |END:VCALENDAR
+                       |""".stripMargin
+
+    val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(new ByteArrayInputStream(icsPayload.getBytes())).head
+
+    assertThat(calendarEventParsed.start.get.value.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX")))
+      .isEqualTo("2025-11-12T00:00:00Z")
+    assertThat(calendarEventParsed.end.get.value.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX")))
+      .isEqualTo("2025-11-13T00:00:00Z")
+  }
+
+  @Test
   def multipleVEventCase(): Unit = {
     val icsPayload =
       """BEGIN:VCALENDAR
