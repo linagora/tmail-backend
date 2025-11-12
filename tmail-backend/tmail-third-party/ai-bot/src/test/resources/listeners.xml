@@ -23,7 +23,7 @@
     <listener>
         <class>com.linagora.tmail.mailet.rag.RagListener</class>
         <configuration>
-            <users>bob@test.com</users>
+            <users>bob@test.com , bob@james.org</users>
         </configuration>
     </listener>
 </listeners>

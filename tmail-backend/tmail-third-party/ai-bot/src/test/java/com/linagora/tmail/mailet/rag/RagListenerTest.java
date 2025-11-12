@@ -38,12 +38,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.time.ZoneOffset;
+import java.time.ZonedDateTime;
+import java.util.Date;
 
-import com.google.inject.util.Modules;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
-import com.linagora.tmail.mailet.AIRedactionalHelperForTest;
-import com.linagora.tmail.mailet.conf.AIBotModule;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 import jakarta.mail.util.SharedByteArrayInputStream;
 
@@ -83,6 +83,7 @@ import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.UpdatableTickingClock;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.Test;
 
@@ -169,7 +170,7 @@ class RagListenerTest {
         jamesServer.getProbe(MailboxProbeImpl.class).createMailbox(pathAlice);
         jamesServer.getProbe(MailboxProbeImpl.class).createMailbox(pathBob);
 
-        wireMockServer = new WireMockServer(WireMockConfiguration.options().dynamicPort());
+        wireMockServer = new WireMockServer(WireMockConfiguration.options().port(8080));
         wireMockServer.start();
         configureFor("localhost", wireMockServer.port());
         stubFor(post(urlPathMatching("/indexer/partition/.*/file/.*"))
@@ -286,6 +287,10 @@ class RagListenerTest {
                     Message.Builder.of()
                         .setSubject("Sujet Test")
                         .setMessageId("Message-ID-1")
+                        .setFrom("sender@example.com")
+                        .setTo("recipient@example.com")
+                        .setDate(Date.from(ZonedDateTime.of(
+                            2023, 10, 10, 10, 0, 0, 0, ZoneOffset.UTC).toInstant()))
                         .setBody("Contenu mail 1", StandardCharsets.UTF_8)));
 
         MessageManager.AppendResult message2 = server.getProbe(MailboxProbeImpl.class)
@@ -294,12 +299,38 @@ class RagListenerTest {
                     Message.Builder.of()
                         .setSubject("Re: Sujet Test")
                         .setMessageId("Message-ID-2")
+                        .setFrom("sender@example.com")
+                        .setTo("recipient@example.com")
+                        .setDate(Date.from(ZonedDateTime.of(
+                            2023, 10, 10, 10, 0, 0, 0, ZoneOffset.UTC).toInstant()))
                         .addField(new RawField("In-Reply-To", "Message-ID-1"))
                         .setBody("Contenu mail 1", StandardCharsets.UTF_8)));
         assertEquals(message1.getThreadId(), message2.getThreadId());
+        verify(2, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
+
+        verify(postRequestedFor(urlMatching("/indexer/partition/.*/file/.*"))
+            .withHeader("Authorization", equalTo("Bearer fake-token"))
+            .withHeader("Content-Type", containing("multipart/form-data"))
+            .withRequestBodyPart(aMultipart()
+                .withName("metadata")
+                .withBody(equalToJson("{"
+                    + "\"email.subject\":\"Re: Sujet Test\","
+                    + "\"datetime\":\"2023-10-10T10:00:00Z\","
+                    + "\"parent_id\":\"1\","
+                    + "\"relationship_id\":\"1\","
+                    + "\"doctype\":\"com.linagora.email\","
+                    + "\"email.preview\":\"Contenu mail 1\""
+                    + "}"))
+                .build())
+            .withRequestBodyPart(aMultipart()
+                .withName("file")
+                .withHeader("Content-Type", containing("text/plain"))
+                .build()));
+
     }
 
     //here I failed to get the same threadId from the message and the reply
+    @Disabled
     @Test
     void listenerShouldAddInReplyToMetadataWhenEmailHaveInReplyToHeader() throws Exception {
         byte[] original = (

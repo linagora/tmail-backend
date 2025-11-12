@@ -191,38 +191,41 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
         if (inReplyTo.isEmpty()) {
             return Mono.empty();
         }
-        return (threadIdGuessingAlgorithm.getMessageIdsInThread(
-            messageResult.getThreadId(), session).collectList().flatMapMany(
-            messageIds -> {
-                return messageIdManager.getMessagesReactive(messageIds, FetchGroup.HEADERS, session);
-            })
-            .filter(msg -> {
-                try {
-                    Message mimeMsg = parseMessage(msg.getFullContent().getInputStream());
-                    String msgId = mimeMsg.getHeader().getField("Message-ID") == null ? "" :
-                        mimeMsg.getHeader()
-                            .getField("Message-ID")
-                            .getBody()
-                            .trim()
-                            .replace("<", "")
-                            .replace(">", "");
-                    return (msgId.equals(inReplyTo));
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                } catch (MailboxException e) {
-                    throw new RuntimeException(e);
-                }
-            })
+        return (
+            threadIdGuessingAlgorithm.getMessageIdsInThread(messageResult.getThreadId(), session)
+                .collectList()
+                .flatMapMany(messageIds -> messageIdManager.getMessagesReactive(messageIds, FetchGroup.HEADERS, session))
+                .filter(message -> messageMatchesInReplyTo(message, inReplyTo))
             .next()
             .map(msgResult -> msgResult.getMessageId()));
     }
 
+    private boolean messageMatchesInReplyTo(MessageResult message, String inReplyTo) {
+        try {
+            Message mimeMsg = parseMessage(message.getFullContent().getInputStream());
+            var field = mimeMsg.getHeader().getField("Message-ID");
+            String msgId = field == null ? "" : stripSurroundingAngleBrackets(field.getBody().trim());
+            return msgId.equals(inReplyTo);
+        } catch (IOException | MailboxException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private String getInReplyTo(Message mimeMessage) {
-        return mimeMessage.getHeader().getField("In-Reply-To") == null ? "" : mimeMessage.getHeader().getField("In-Reply-To")
+        String inReplyTo = mimeMessage.getHeader().getField("In-Reply-To") == null ? "" : mimeMessage.getHeader().getField("In-Reply-To")
             .getBody()
-            .trim()
-            .replace("<", "")
-            .replace(">", "");
+            .trim();
+        return stripSurroundingAngleBrackets(inReplyTo);
+    }
+
+    private String stripSurroundingAngleBrackets(String raw) {
+        if (raw.length() > 0 && raw.charAt(0) == '<') {
+            raw = raw.substring(1);
+        }
+        if (raw.length() > 0 && raw.charAt(raw.length() - 1) == '>') {
+            raw = raw.substring(0, raw.length() - 1);
+        }
+        return raw;
     }
 
     private Mono<String> asRagLearnableContent(MessageResult messageResult) {
