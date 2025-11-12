@@ -223,6 +223,7 @@ object VEventTemporalUtil {
     case zdt: ZonedDateTime => Some(zdt)
     case odt: OffsetDateTime => Some(odt.atZoneSameInstant(zoneIdDefault))
     case ldt: LocalDateTime => Some(ldt.atZone(zoneIdDefault))
+    case localDate: LocalDate => Some(localDate.atStartOfDay(zoneIdDefault))
     case instant: Instant => Some(instant.atZone(zoneIdDefault))
     case _ => None
   }
