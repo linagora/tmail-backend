@@ -21,6 +21,7 @@ import org.openjdk.jmh.annotations.Benchmark;
 import org.openjdk.jmh.annotations.Mode;
 import org.openjdk.jmh.annotations.State;
 import org.openjdk.jmh.annotations.Scope;
+import org.openjdk.jmh.infra.Blackhole;
 import org.openjdk.jmh.runner.Runner;
 import org.openjdk.jmh.runner.options.Options;
 import org.openjdk.jmh.runner.options.OptionsBuilder;
@@ -130,33 +131,38 @@ public class LatestEmailReplyExtractorBenchmark {
     }
 
     @Benchmark
-    public String benchmarkGmailFormat(EmailSamples samples) {
-        return LATEST_EMAIL_REPLY_EXTRACTOR.cleanQuotedContent(samples.gmail);
+    public void benchmarkGmailFormat(EmailSamples samples, Blackhole blackhole) {
+        String result = LATEST_EMAIL_REPLY_EXTRACTOR.cleanQuotedContent(samples.gmail);
+        blackhole.consume(result);
     }
 
     @Benchmark
-    public String benchmarkOutlookFormat(EmailSamples samples) {
-        return LATEST_EMAIL_REPLY_EXTRACTOR.cleanQuotedContent(samples.outlook);
+    public void benchmarkOutlookFormat(EmailSamples samples, Blackhole blackhole) {
+        String result = LATEST_EMAIL_REPLY_EXTRACTOR.cleanQuotedContent(samples.outlook);
+        blackhole.consume(result);
     }
 
     @Benchmark
-    public String benchmarkAppleFormat(EmailSamples samples) {
-        return LATEST_EMAIL_REPLY_EXTRACTOR.cleanQuotedContent(samples.apple);
+    public void benchmarkAppleFormat(EmailSamples samples, Blackhole blackhole) {
+        String result = LATEST_EMAIL_REPLY_EXTRACTOR.cleanQuotedContent(samples.apple);
+        blackhole.consume(result);
     }
 
     @Benchmark
-    public String benchmarkTmailFormat(EmailSamples samples) {
-        return LATEST_EMAIL_REPLY_EXTRACTOR.cleanQuotedContent(samples.tmail);
+    public void benchmarkTmailFormat(EmailSamples samples, Blackhole blackhole) {
+        String result = LATEST_EMAIL_REPLY_EXTRACTOR.cleanQuotedContent(samples.tmail);
+        blackhole.consume(result);
     }
 
     @Benchmark
-    public String benchmarkLargeEmail(EmailSamples samples) {
-        return LATEST_EMAIL_REPLY_EXTRACTOR.cleanQuotedContent(samples.largeEmail);
+    public void benchmarkLargeEmail(EmailSamples samples, Blackhole blackhole) {
+        String result = LATEST_EMAIL_REPLY_EXTRACTOR.cleanQuotedContent(samples.largeEmail);
+        blackhole.consume(result);
     }
 
     @Benchmark
-    public String benchmarkLargeEmailWithReply(EmailSamples samples) {
-        return LATEST_EMAIL_REPLY_EXTRACTOR.cleanQuotedContent(samples.largeEmailWithReply);
+    public void benchmarkLargeEmailWithReply(EmailSamples samples, Blackhole blackhole) {
+        String result = LATEST_EMAIL_REPLY_EXTRACTOR.cleanQuotedContent(samples.largeEmailWithReply);
+        blackhole.consume(result);
     }
-
 }
