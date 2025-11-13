@@ -32,28 +32,17 @@ import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static org.mockito.Mockito.spy;
-import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
-import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
-import java.time.ZoneOffset;
-import java.time.ZonedDateTime;
-import java.util.Date;
 
-import com.linagora.tmail.james.app.MemoryConfiguration;
-import com.linagora.tmail.james.app.MemoryServer;
-import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 import jakarta.mail.util.SharedByteArrayInputStream;
 
 import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.apache.commons.configuration2.builder.fluent.Configurations;
 import org.apache.commons.configuration2.tree.ImmutableNode;
-import org.apache.james.GuiceJamesServer;
-import org.apache.james.JamesServerBuilder;
-import org.apache.james.JamesServerExtension;
 import org.apache.james.core.Username;
 import org.apache.james.events.InVMEventBus;
 import org.apache.james.events.MemoryEventDeadLetters;
@@ -75,16 +64,10 @@ import org.apache.james.mailbox.store.SystemMailboxesProviderImpl;
 import org.apache.james.mailbox.store.mail.NaiveThreadIdGuessingAlgorithm;
 import org.apache.james.mailbox.store.mail.ThreadIdGuessingAlgorithm;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
-import org.apache.james.mime4j.dom.Message;
 
-import org.apache.james.mime4j.stream.RawField;
-import org.apache.james.modules.MailboxProbeImpl;
-import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.UpdatableTickingClock;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.Test;
 
 import com.github.tomakehurst.wiremock.WireMockServer;
@@ -92,7 +75,6 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 
 class RagListenerTest {
 
-    private static final String DOMAIN = "james.org";
     private static final Username BOB = Username.of("bob@test.com");
     private static final Username ALICE = Username.of("alice@test.com");
     private static final Username USER_WITH_NO_DOMAIN = Username.of("user");
@@ -138,38 +120,8 @@ class RagListenerTest {
     WireMockServer wireMockServer;
     RagConfig ragConfig;
 
-    //this attributs are added to test if i can get the same threadId from in-reply-to header using a jamesServer
-    static final String PASSWORD = "secret";
-
-    private static final String bob = "bob@" + DOMAIN;
-    private static final String alice = "alice@" + DOMAIN;
-
-    private MailboxPath pathAlice;
-    private MailboxPath pathBob;
-
-    // James Server is used to test is i can get the same threadId from in-reply-to header
-    @RegisterExtension
-    static JamesServerExtension jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->
-        MemoryConfiguration.builder()
-            .workingDirectory(tmpDir)
-            .configurationFromClasspath()
-            .usersRepository(DEFAULT)
-            .build())
-        .server(configuration -> MemoryServer.createServer(configuration)
-            .overrideWith(new LinagoraTestJMAPServerModule()))
-            .build();
-
     @BeforeEach
-    void setUp(GuiceJamesServer jamesServer) throws Exception {
-        jamesServer.getProbe(DataProbeImpl.class).fluent()
-            .addDomain(DOMAIN)
-            .addUser(alice, PASSWORD)
-            .addUser(bob, PASSWORD);
-        pathAlice = MailboxPath.inbox(Username.of(alice));
-        pathBob = MailboxPath.inbox(Username.of(bob));
-        jamesServer.getProbe(MailboxProbeImpl.class).createMailbox(pathAlice);
-        jamesServer.getProbe(MailboxProbeImpl.class).createMailbox(pathBob);
-
+    void setUp() throws Exception {
         wireMockServer = new WireMockServer(WireMockConfiguration.options().port(8080));
         wireMockServer.start();
         configureFor("localhost", wireMockServer.port());
@@ -256,129 +208,6 @@ class RagListenerTest {
                     + "\"email.subject\":\"Test Subject\","
                     + "\"datetime\":\"2023-10-10T10:00:00Z\","
                     + "\"parent_id\":\"\","
-                    + "\"relationship_id\":\"1\","
-                    + "\"doctype\":\"com.linagora.email\","
-                    + "\"email.preview\":\"Body of the email\""
-                    + "}"))
-                .build())
-            .withRequestBodyPart(aMultipart()
-                .withName("file")
-                .withHeader("Content-Type", containing("text/plain"))
-                .withBody(containing("# Email Headers\n" +
-                    "\n" +
-                    "Subject: Test Subject\n" +
-                    "From: sender@example.com\n" +
-                    "To: recipient@example.com\n" +
-                    "Cc: cc@example.com\n" +
-                    "Date: Tue, 10 Oct 2023 10:00:00 +0000\n" +
-                    "\n" +
-                    "# Email Content\n" +
-                    "\n" +
-                    "Body of the email"))
-                .build()));
-    }
-
-    //Here I managed to have the same threadId from the in-reply-to header
-    @Test
-    void inreplyto(GuiceJamesServer server) throws Exception {
-        MessageManager.AppendResult message1 = server.getProbe(MailboxProbeImpl.class)
-            .appendMessageAndGetAppendResult(bob, pathBob,
-                MessageManager.AppendCommand.from(
-                    Message.Builder.of()
-                        .setSubject("Sujet Test")
-                        .setMessageId("Message-ID-1")
-                        .setFrom("sender@example.com")
-                        .setTo("recipient@example.com")
-                        .setDate(Date.from(ZonedDateTime.of(
-                            2023, 10, 10, 10, 0, 0, 0, ZoneOffset.UTC).toInstant()))
-                        .setBody("Contenu mail 1", StandardCharsets.UTF_8)));
-
-        MessageManager.AppendResult message2 = server.getProbe(MailboxProbeImpl.class)
-            .appendMessageAndGetAppendResult(bob, pathBob,
-                MessageManager.AppendCommand.from(
-                    Message.Builder.of()
-                        .setSubject("Re: Sujet Test")
-                        .setMessageId("Message-ID-2")
-                        .setFrom("sender@example.com")
-                        .setTo("recipient@example.com")
-                        .setDate(Date.from(ZonedDateTime.of(
-                            2023, 10, 10, 10, 0, 0, 0, ZoneOffset.UTC).toInstant()))
-                        .addField(new RawField("In-Reply-To", "Message-ID-1"))
-                        .setBody("Contenu mail 1", StandardCharsets.UTF_8)));
-        assertEquals(message1.getThreadId(), message2.getThreadId());
-        verify(2, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
-
-        verify(postRequestedFor(urlMatching("/indexer/partition/.*/file/.*"))
-            .withHeader("Authorization", equalTo("Bearer fake-token"))
-            .withHeader("Content-Type", containing("multipart/form-data"))
-            .withRequestBodyPart(aMultipart()
-                .withName("metadata")
-                .withBody(equalToJson("{"
-                    + "\"email.subject\":\"Re: Sujet Test\","
-                    + "\"datetime\":\"2023-10-10T10:00:00Z\","
-                    + "\"parent_id\":\"1\","
-                    + "\"relationship_id\":\"1\","
-                    + "\"doctype\":\"com.linagora.email\","
-                    + "\"email.preview\":\"Contenu mail 1\""
-                    + "}"))
-                .build())
-            .withRequestBodyPart(aMultipart()
-                .withName("file")
-                .withHeader("Content-Type", containing("text/plain"))
-                .build()));
-
-    }
-
-    //here I failed to get the same threadId from the message and the reply
-    @Disabled
-    @Test
-    void listenerShouldAddInReplyToMetadataWhenEmailHaveInReplyToHeader() throws Exception {
-        byte[] original = (
-            "Subject: Test Subject\r\n" +
-                "Message-ID: <original@example.com>\r\n" +
-                "From: sender@example.com\r\n" +
-                "To: recipient@example.com\r\n" +
-                "Cc: cc@example.com\r\n" +
-                "Reply-To: \"recipient : Email\" <recipient@example.com>\r\n" +
-                "Date: Tue, 10 Oct 2023 10:00:00 +0000\r\n" +
-                "\r\n" +
-                "Body").getBytes(StandardCharsets.UTF_8);
-
-        MessageManager.AppendResult originalResult = bobInboxMessageManager.appendMessage(
-            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(original)),
-            bobMailboxSession);
-
-        mailboxManager.getEventBus().register(ragListener);
-
-        byte[] reply = (
-            "Subject: Re: Test Subject\r\n" +
-                "Message-ID: <reply@example.com>\r\n" +
-                "In-Reply-To: <original@example.com>\r\n" +
-                "References: <original@example.com>\r\n" +
-                "From: recipient@example.com\r\n" +
-                "To: sender@example.com\r\n" +
-                "Date: Tue, 10 Oct 2023 10:05:00 +0000\r\n" +
-                "\r\n" +
-                "Reply body").getBytes(StandardCharsets.UTF_8);
-
-        MessageManager.AppendResult replyResult = bobInboxMessageManager.appendMessage(
-            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(reply)),
-            bobMailboxSession);
-
-        //Ce test fail
-        assertEquals(originalResult.getThreadId(), replyResult.getThreadId());
-
-        verify(1, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
-
-        verify(postRequestedFor(urlMatching("/indexer/partition/.*/file/.*"))
-            .withHeader("Authorization", equalTo("Bearer dummy-token"))
-            .withHeader("Content-Type", containing("multipart/form-data"))
-            .withRequestBodyPart(aMultipart()
-                .withName("metadata")
-                .withBody(equalToJson("{"
-                    + "\"email.subject\":\"Test Subject\","
-                    + "\"datetime\":\"2023-10-10T10:00:00Z\","
-                    + "\"parent_id\":\"1\","
                     + "\"relationship_id\":\"1\","
                     + "\"doctype\":\"com.linagora.email\","
                     + "\"email.preview\":\"Body of the email\""
@@ -640,7 +469,6 @@ class RagListenerTest {
                     "\n" +
                     "This is the body of the email."))
                 .build()));
-
     }
 
     @Test

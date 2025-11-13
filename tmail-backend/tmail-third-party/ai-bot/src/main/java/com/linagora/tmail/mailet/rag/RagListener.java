@@ -54,6 +54,7 @@ import org.apache.james.mime4j.dom.Entity;
 import org.apache.james.mime4j.dom.Message;
 import org.apache.james.mime4j.dom.Multipart;
 import org.apache.james.mime4j.message.DefaultMessageBuilder;
+import org.apache.james.mime4j.stream.Field;
 import org.apache.james.mime4j.stream.MimeConfig;
 import org.apache.james.util.mime.MessageContentExtractor;
 import org.reactivestreams.Publisher;
@@ -191,19 +192,18 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
         if (inReplyTo.isEmpty()) {
             return Mono.empty();
         }
-        return (
-            threadIdGuessingAlgorithm.getMessageIdsInThread(messageResult.getThreadId(), session)
-                .collectList()
-                .flatMapMany(messageIds -> messageIdManager.getMessagesReactive(messageIds, FetchGroup.HEADERS, session))
-                .filter(message -> messageMatchesInReplyTo(message, inReplyTo))
+        return threadIdGuessingAlgorithm.getMessageIdsInThread(messageResult.getThreadId(), session)
+            .collectList()
+            .flatMapMany(messageIds -> messageIdManager.getMessagesReactive(messageIds, FetchGroup.HEADERS, session))
+            .filter(message -> messageMatchesInReplyTo(message, inReplyTo))
             .next()
-            .map(msgResult -> msgResult.getMessageId()));
+            .map(msgResult -> msgResult.getMessageId());
     }
 
     private boolean messageMatchesInReplyTo(MessageResult message, String inReplyTo) {
         try {
             Message mimeMsg = parseMessage(message.getFullContent().getInputStream());
-            var field = mimeMsg.getHeader().getField("Message-ID");
+            Field field = mimeMsg.getHeader().getField("Message-ID");
             String msgId = field == null ? "" : stripSurroundingAngleBrackets(field.getBody().trim());
             return msgId.equals(inReplyTo);
         } catch (IOException | MailboxException e) {

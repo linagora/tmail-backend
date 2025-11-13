@@ -23,7 +23,7 @@ import com.google.common.base.Splitter;
 
 public interface LatestEmailReplyExtractor {
 
-    final class RegexBased implements LatestEmailReplyExtractor {
+    class RegexBased implements LatestEmailReplyExtractor {
 
         private static final Pattern QUOTE_PATTERNS = Pattern.compile(
             "(?mi)" +
