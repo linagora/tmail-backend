@@ -175,13 +175,18 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
                 .getTextBody()
                 .orElse("");
 
+            String subject = Optional.ofNullable(mimeMessage.getSubject()).orElse("");
+            String datetime = mimeMessage.getDate() == null
+                ? ""
+                : DateTimeFormatter.ISO_INSTANT.format(mimeMessage.getDate().toInstant());
+
             return mimeMessageIdToMailboxMessageId(messageResult.getThreadId(), getInReplyTo(mimeMessage), session)
-                .map(messageId -> messageId.serialize())
+                .map(MessageId::serialize)
                 .defaultIfEmpty("")
                 .publishOn(Schedulers.parallel())
                 .map(parentId -> Map.of(
-                    "email.subject", mimeMessage.getSubject(),
-                    "datetime", DateTimeFormatter.ISO_INSTANT.format(mimeMessage.getDate().toInstant()),
+                    "email.subject", subject,
+                    "datetime", datetime,
                     "parent_id", parentId,
                     "relationship_id", messageResult.getThreadId().serialize(),
                     "doctype", "com.linagora.email",
@@ -237,7 +242,7 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
             StringBuilder markdownBuilder = new StringBuilder();
             LatestEmailReplyExtractor replyExtractor = new LatestEmailReplyExtractor.RegexBased();
             markdownBuilder.append("# Email Headers\n\n");
-            markdownBuilder.append(mimeMessage.getSubject() != null ? "Subject: " + mimeMessage.getSubject().trim() : "");
+            markdownBuilder.append(mimeMessage.getSubject() != null ? "Subject: " + mimeMessage.getSubject().trim() : "Subject: ");
             markdownBuilder.append(mimeMessage.getFrom() != null ? "\nFrom: " + mimeMessage.getFrom().stream()
                 .map(Object::toString)
                 .collect(Collectors.joining(", ")) : "");
@@ -247,10 +252,14 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
             markdownBuilder.append(mimeMessage.getCc() != null ? "\nCc: " + mimeMessage.getCc().stream()
                 .map(Object::toString)
                 .collect(Collectors.joining(", ")) : "");
-            markdownBuilder.append("\nDate: " + mimeMessage.getDate()
-                .toInstant()
-                .atZone(ZoneId.of("UTC"))
-                .format(RFC822_DATE_FORMAT));
+            if (mimeMessage.getDate() != null) {
+                markdownBuilder.append("\nDate: " + mimeMessage.getDate()
+                    .toInstant()
+                    .atZone(ZoneId.of("UTC"))
+                    .format(RFC822_DATE_FORMAT));
+            } else {
+                markdownBuilder.append("\nDate: ");
+            }
             List<String> attachmentNames = findAttachmentNames(mimeMessage);
             if (!attachmentNames.isEmpty()) {
                 markdownBuilder.append("\nAttachments: " + String.join(", ", attachmentNames));

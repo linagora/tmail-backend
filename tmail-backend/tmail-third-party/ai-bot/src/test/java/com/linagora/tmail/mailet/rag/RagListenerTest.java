@@ -231,6 +231,52 @@ class RagListenerTest {
     }
 
     @Test
+    void computeMetaDataShouldHandleNullSubjectAndDate() throws Exception {
+        byte[] Content2 = ("From: sender@example.com\r\n" +
+                "To: recipient@example.com\r\n" +
+                "Cc: cc@example.com\r\n" +
+                "\r\n" +
+                "Body of the email").getBytes(StandardCharsets.UTF_8);
+
+        mailboxManager.getEventBus().register(ragListener);
+        MessageManager.AppendResult appendResult = bobInboxMessageManager.appendMessage(
+            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(Content2)),
+            bobMailboxSession);
+
+        verify(1, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
+
+        verify(postRequestedFor(urlMatching("/indexer/partition/.*/file/.*"))
+            .withHeader("Authorization", equalTo("Bearer dummy-token"))
+            .withHeader("Content-Type", containing("multipart/form-data"))
+            .withRequestBodyPart(aMultipart()
+                .withName("metadata")
+                .withBody(equalToJson("{"
+                    + "\"email.subject\":\"\","
+                    + "\"datetime\":\"\","
+                    + "\"parent_id\":\"\","
+                    + "\"relationship_id\":\"1\","
+                    + "\"doctype\":\"com.linagora.email\","
+                    + "\"email.preview\":\"Body of the email\""
+                    + "}"))
+                .build())
+            .withRequestBodyPart(aMultipart()
+                .withName("file")
+                .withHeader("Content-Type", containing("text/plain"))
+                .withBody(containing("# Email Headers\n" +
+                    "\n" +
+                    "Subject: \n" +
+                    "From: sender@example.com\n" +
+                    "To: recipient@example.com\n" +
+                    "Cc: cc@example.com\n" +
+                    "Date: \n" +
+                    "\n" +
+                    "# Email Content\n" +
+                    "\n" +
+                    "Body of the email"))
+                .build()));
+    }
+
+    @Test
     void HttpClientShouldSendPutRequestWhenDocumentAlreadyIndexed() throws Exception {
 
         stubFor(post(urlPathMatching("/indexer/partition/.*/file/.*"))
