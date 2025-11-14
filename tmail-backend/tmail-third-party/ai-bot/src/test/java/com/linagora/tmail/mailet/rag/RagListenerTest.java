@@ -61,7 +61,10 @@ import org.apache.james.mailbox.store.FakeAuthenticator;
 import org.apache.james.mailbox.store.MailboxSessionMapperFactory;
 import org.apache.james.mailbox.store.StoreMailboxManager;
 import org.apache.james.mailbox.store.SystemMailboxesProviderImpl;
+import org.apache.james.mailbox.store.mail.NaiveThreadIdGuessingAlgorithm;
+import org.apache.james.mailbox.store.mail.ThreadIdGuessingAlgorithm;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
+
 import org.apache.james.utils.UpdatableTickingClock;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -99,6 +102,7 @@ class RagListenerTest {
     MessageManager bobInboxMessageManager;
     MessageManager spamMessageManager;
     MessageManager trashMessageManager;
+    ThreadIdGuessingAlgorithm threadIdGuessingAlgorithm;
     MailboxId trashMailboxId;
     MailboxId spamMailboxId;
     SystemMailboxesProviderImpl systemMailboxesProvider;
@@ -117,8 +121,8 @@ class RagListenerTest {
     RagConfig ragConfig;
 
     @BeforeEach
-    void setup() throws Exception {
-        wireMockServer = new WireMockServer(WireMockConfiguration.options().dynamicPort());
+    void setUp() throws Exception {
+        wireMockServer = new WireMockServer(WireMockConfiguration.options().port(1234));
         wireMockServer.start();
         configureFor("localhost", wireMockServer.port());
         stubFor(post(urlPathMatching("/indexer/partition/.*/file/.*"))
@@ -146,6 +150,7 @@ class RagListenerTest {
             .storeQuotaManager()
             .build();
 
+        threadIdGuessingAlgorithm = new NaiveThreadIdGuessingAlgorithm();
         mailboxManager = resources.getMailboxManager();;
         messageIdManager = spy(resources.getMessageIdManager());
         FakeAuthenticator authenticator = new FakeAuthenticator();
@@ -177,7 +182,7 @@ class RagListenerTest {
         configuration.addProperty("openrag.ssl.trust.all.certs", "true");
         configuration.addProperty("openrag.partition.pattern", "{localPart}.twake.{domainName}");
         ragConfig = RagConfig.from(configuration);
-        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, config, ragConfig);
+        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, threadIdGuessingAlgorithm, config, ragConfig);
     }
 
     @AfterEach
@@ -201,9 +206,10 @@ class RagListenerTest {
                 .withName("metadata")
                 .withBody(equalToJson("{"
                     + "\"email.subject\":\"Test Subject\","
-                    + "\"email.date\":\"2023-10-10T10:00:00Z\","
-                    + "\"email.threadId\":\"1\","
-                    + "\"email.doctype\":\"com.linagora.email\","
+                    + "\"datetime\":\"2023-10-10T10:00:00Z\","
+                    + "\"parent_id\":\"\","
+                    + "\"relationship_id\":\"1\","
+                    + "\"doctype\":\"com.linagora.email\","
                     + "\"email.preview\":\"Body of the email\""
                     + "}"))
                 .build())
@@ -217,6 +223,52 @@ class RagListenerTest {
                     "To: recipient@example.com\n" +
                     "Cc: cc@example.com\n" +
                     "Date: Tue, 10 Oct 2023 10:00:00 +0000\n" +
+                    "\n" +
+                    "# Email Content\n" +
+                    "\n" +
+                    "Body of the email"))
+                .build()));
+    }
+
+    @Test
+    void computeMetaDataShouldHandleNullSubjectAndDate() throws Exception {
+        byte[] Content2 = ("From: sender@example.com\r\n" +
+                "To: recipient@example.com\r\n" +
+                "Cc: cc@example.com\r\n" +
+                "\r\n" +
+                "Body of the email").getBytes(StandardCharsets.UTF_8);
+
+        mailboxManager.getEventBus().register(ragListener);
+        MessageManager.AppendResult appendResult = bobInboxMessageManager.appendMessage(
+            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(Content2)),
+            bobMailboxSession);
+
+        verify(1, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
+
+        verify(postRequestedFor(urlMatching("/indexer/partition/.*/file/.*"))
+            .withHeader("Authorization", equalTo("Bearer dummy-token"))
+            .withHeader("Content-Type", containing("multipart/form-data"))
+            .withRequestBodyPart(aMultipart()
+                .withName("metadata")
+                .withBody(equalToJson("{"
+                    + "\"email.subject\":\"\","
+                    + "\"datetime\":\"\","
+                    + "\"parent_id\":\"\","
+                    + "\"relationship_id\":\"1\","
+                    + "\"doctype\":\"com.linagora.email\","
+                    + "\"email.preview\":\"Body of the email\""
+                    + "}"))
+                .build())
+            .withRequestBodyPart(aMultipart()
+                .withName("file")
+                .withHeader("Content-Type", containing("text/plain"))
+                .withBody(containing("# Email Headers\n" +
+                    "\n" +
+                    "Subject: \n" +
+                    "From: sender@example.com\n" +
+                    "To: recipient@example.com\n" +
+                    "Cc: cc@example.com\n" +
+                    "Date: \n" +
                     "\n" +
                     "# Email Content\n" +
                     "\n" +
@@ -252,11 +304,13 @@ class RagListenerTest {
                 .withName("metadata")
                 .withBody(equalToJson("{"
                     + "\"email.subject\":\"Test Subject\","
-                    + "\"email.date\":\"2023-10-10T10:00:00Z\","
-                    + "\"email.threadId\":\"1\","
-                    + "\"email.doctype\":\"com.linagora.email\","
+                    + "\"datetime\":\"2023-10-10T10:00:00Z\","
+                    + "\"parent_id\":\"\","
+                    + "\"relationship_id\":\"1\","
+                    + "\"doctype\":\"com.linagora.email\","
                     + "\"email.preview\":\"Body of the email\""
-                    + "}"))                .build())
+                    + "}"))
+                .build())
             .withRequestBodyPart(aMultipart()
                 .withName("file")
                 .withHeader("Content-Type", containing("text/plain"))
@@ -330,7 +384,7 @@ class RagListenerTest {
     @Test
     void reactiveEventShouldAllowAllUsersWhenWhiteListIsEmpty() throws Exception {
         config.setProperty("listener.configuration.users", "");
-        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, config, ragConfig);
+        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, threadIdGuessingAlgorithm, config, ragConfig);
         mailboxManager.getEventBus().register(ragListener);
 
         MessageManager.AppendResult appendResult = aliceInboxMessageManager.appendMessage(
@@ -349,11 +403,13 @@ class RagListenerTest {
                 .withName("metadata")
                 .withBody(equalToJson("{"
                     + "\"email.subject\":\"Test Subject\","
-                    + "\"email.date\":\"2023-10-10T10:00:00Z\","
-                    + "\"email.threadId\":\"1\","
-                    + "\"email.doctype\":\"com.linagora.email\","
+                    + "\"datetime\":\"2023-10-10T10:00:00Z\","
+                    + "\"parent_id\":\"\","
+                    + "\"relationship_id\":\"1\","
+                    + "\"doctype\":\"com.linagora.email\","
                     + "\"email.preview\":\"Body of the email\""
-                    + "}"))                .build())
+                    + "}"))
+                .build())
             .withRequestBodyPart(aMultipart()
                 .withName("file")
                 .withHeader("Content-Type", containing("text/plain"))
@@ -377,11 +433,13 @@ class RagListenerTest {
                 .withName("metadata")
                 .withBody(equalToJson("{"
                     + "\"email.subject\":\"Test Subject\","
-                    + "\"email.date\":\"2023-10-10T10:00:00Z\","
-                    + "\"email.threadId\":\"2\","
-                    + "\"email.doctype\":\"com.linagora.email\","
+                    + "\"datetime\":\"2023-10-10T10:00:00Z\","
+                    + "\"parent_id\":\"\","
+                    + "\"relationship_id\":\"2\","
+                    + "\"doctype\":\"com.linagora.email\","
                     + "\"email.preview\":\"Body of the email\""
-                    + "}"))                .build())
+                    + "}"))
+                .build())
             .withRequestBodyPart(aMultipart()
                 .withName("file")
                 .withHeader("Content-Type", containing("text/plain"))
@@ -435,12 +493,14 @@ class RagListenerTest {
                 .withName("metadata")
                 .withBody(equalToJson("{"
                     + "\"email.subject\":\"Test Email with Attachment\","
-                    + "\"email.date\":\"2023-10-10T10:00:00Z\","
-                    + "\"email.threadId\":\"1\","
-                    + "\"email.doctype\":\"com.linagora.email\","
+                    + "\"datetime\":\"2023-10-10T10:00:00Z\","
+                    + "\"parent_id\":\"\","
+                    + "\"relationship_id\":\"1\","
+                    + "\"doctype\":\"com.linagora.email\","
                     + "\"email.preview\":\"This is the body of the email.\""
-                    + "}"))                .build())
-             .withRequestBodyPart(aMultipart()
+                    + "}"))
+                .build())
+            .withRequestBodyPart(aMultipart()
                 .withName("file")
                 .withHeader("Content-Type", containing("text/plain"))
                 .withBody(containing("# Email Headers\n" +
@@ -455,13 +515,12 @@ class RagListenerTest {
                     "\n" +
                     "This is the body of the email."))
                 .build()));
-
     }
 
     @Test
     void reactiveEventShouldNotIndexMessageWhenDomainNameIsMissing() throws Exception {
         config.setProperty("listener.configuration.users", "user");
-        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, config, ragConfig);
+        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, threadIdGuessingAlgorithm, config, ragConfig);
         mailboxManager.getEventBus().register(ragListener);
 
         userWithNoDomainMailBoxMessageManager.appendMessage(
