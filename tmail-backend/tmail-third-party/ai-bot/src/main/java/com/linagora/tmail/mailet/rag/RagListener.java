@@ -48,6 +48,7 @@ import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.model.FetchGroup;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.MessageResult;
+import org.apache.james.mailbox.model.ThreadId;
 import org.apache.james.mailbox.store.mail.ThreadIdGuessingAlgorithm;
 import org.apache.james.mime4j.dom.Body;
 import org.apache.james.mime4j.dom.Entity;
@@ -68,6 +69,7 @@ import com.linagora.tmail.mailet.rag.httpclient.Partition;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 
 public class RagListener implements EventListener.ReactiveGroupEventListener {
@@ -173,9 +175,10 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
                 .getTextBody()
                 .orElse("");
 
-            return getEmailIdFromMessageId(messageResult, session, getInReplyTo(mimeMessage))
+            return mimeMessageIdToMailboxMessageId(messageResult.getThreadId(), getInReplyTo(mimeMessage), session)
                 .map(messageId -> messageId.serialize())
                 .defaultIfEmpty("")
+                .publishOn(Schedulers.parallel())
                 .map(parentId -> Map.of(
                     "email.subject", mimeMessage.getSubject(),
                     "datetime", DateTimeFormatter.ISO_INSTANT.format(mimeMessage.getDate().toInstant()),
@@ -188,24 +191,24 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
         }
     }
 
-    private Mono<MessageId> getEmailIdFromMessageId(MessageResult messageResult, MailboxSession session, String inReplyTo) {
-        if (inReplyTo.isEmpty()) {
+    private Mono<MessageId> mimeMessageIdToMailboxMessageId(ThreadId threadId, String mimeMessageID, MailboxSession session) {
+        if (mimeMessageID.isEmpty()) {
             return Mono.empty();
         }
-        return threadIdGuessingAlgorithm.getMessageIdsInThread(messageResult.getThreadId(), session)
+        return threadIdGuessingAlgorithm.getMessageIdsInThread(threadId, session)
             .collectList()
             .flatMapMany(messageIds -> messageIdManager.getMessagesReactive(messageIds, FetchGroup.HEADERS, session))
-            .filter(message -> messageMatchesInReplyTo(message, inReplyTo))
+            .filter(message -> messageMatchesInReplyTo(message, mimeMessageID))
             .next()
-            .map(msgResult -> msgResult.getMessageId());
+            .map(MessageResult::getMessageId);
     }
 
-    private boolean messageMatchesInReplyTo(MessageResult message, String inReplyTo) {
+    private boolean messageMatchesInReplyTo(MessageResult message, String expectedValue) {
         try {
-            Message mimeMsg = parseMessage(message.getFullContent().getInputStream());
-            Field field = mimeMsg.getHeader().getField("Message-ID");
-            String msgId = field == null ? "" : stripSurroundingAngleBrackets(field.getBody().trim());
-            return msgId.equals(inReplyTo);
+            Message mimeMessage = parseMessage(message.getFullContent().getInputStream());
+            Field field = mimeMessage.getHeader().getField("Message-ID");
+            String messageId = field == null ? "" : stripSurroundingAngleBrackets(field.getBody().trim());
+            return messageId.equals(expectedValue);
         } catch (IOException | MailboxException e) {
             throw new RuntimeException(e);
         }
@@ -232,6 +235,7 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
         return Mono.fromCallable(() -> {
             Message mimeMessage = parseMessage(messageResult.getFullContent().getInputStream());
             StringBuilder markdownBuilder = new StringBuilder();
+            LatestEmailReplyExtractor replyExtractor = new LatestEmailReplyExtractor.RegexBased();
             markdownBuilder.append("# Email Headers\n\n");
             markdownBuilder.append(mimeMessage.getSubject() != null ? "Subject: " + mimeMessage.getSubject().trim() : "");
             markdownBuilder.append(mimeMessage.getFrom() != null ? "\nFrom: " + mimeMessage.getFrom().stream()
@@ -252,7 +256,11 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
                 markdownBuilder.append("\nAttachments: " + String.join(", ", attachmentNames));
             }
             markdownBuilder.append("\n\n# Email Content\n\n");
-            markdownBuilder.append(new MessageContentExtractor().extract(mimeMessage).getTextBody().get());
+            markdownBuilder.append(new MessageContentExtractor()
+                .extract(mimeMessage)
+                .getTextBody()
+                .map(replyExtractor::cleanQuotedContent)
+                .orElse(""));
             return markdownBuilder.toString();
         });
     }

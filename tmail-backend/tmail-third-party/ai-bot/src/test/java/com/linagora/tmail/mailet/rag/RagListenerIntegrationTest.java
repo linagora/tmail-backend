@@ -17,6 +17,21 @@
  ********************************************************************/
 package com.linagora.tmail.mailet.rag;
 
+import static com.github.tomakehurst.wiremock.client.WireMock.aMultipart;
+import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.configureFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.containing;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
+import static com.github.tomakehurst.wiremock.client.WireMock.post;
+import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.put;
+import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
+import static com.github.tomakehurst.wiremock.client.WireMock.verify;
+
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
@@ -34,6 +49,7 @@ import org.apache.james.mime4j.dom.Message;
 import org.apache.james.mime4j.stream.RawField;
 import org.apache.james.modules.MailboxProbeImpl;
 import org.apache.james.utils.DataProbeImpl;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.Test;
@@ -43,21 +59,6 @@ import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
-
-import static com.github.tomakehurst.wiremock.client.WireMock.aMultipart;
-import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
-import static com.github.tomakehurst.wiremock.client.WireMock.configureFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.containing;
-import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
-import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
-import static com.github.tomakehurst.wiremock.client.WireMock.post;
-import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.put;
-import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
-import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 
 import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -72,7 +73,11 @@ public class RagListenerIntegrationTest {
             "Cc: cc@example.com\r\n" +
             "Date: Tue, 10 Oct 2023 10:00:00 +0000\r\n" +
             "\r\n" +
-            "Body of the email").getBytes(StandardCharsets.UTF_8);
+            "Body of the email\r\n" +
+            "\r\n" +
+            "On Tue, 10 Oct 2023 at 09:00, previous@example.com wrote:\r\n" +
+            "> Hello,\r\n" +
+            "> This is the previous reply").getBytes(StandardCharsets.UTF_8);
 
     private static final String DOMAIN = "james.org";
     static final String PASSWORD = "secret";
@@ -105,13 +110,20 @@ public class RagListenerIntegrationTest {
         jamesServer.getProbe(MailboxProbeImpl.class).createMailbox(pathAlice);
         jamesServer.getProbe(MailboxProbeImpl.class).createMailbox(pathBob);
 
-        wireMockServer = new WireMockServer(WireMockConfiguration.options().port(8080));
+        wireMockServer = new WireMockServer(WireMockConfiguration.options().port(1234));
         wireMockServer.start();
         configureFor("localhost", wireMockServer.port());
         stubFor(post(urlPathMatching("/indexer/partition/.*/file/.*"))
             .willReturn(aResponse()
                 .withStatus(200)
                 .withBody(String.format("{\"task_status_url\":\"http://localhost:%d/status/1234\"}", wireMockServer.port()))));
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (wireMockServer != null && wireMockServer.isRunning()) {
+            wireMockServer.stop();
+        }
     }
 
     @Test
@@ -133,11 +145,12 @@ public class RagListenerIntegrationTest {
                     + "\"parent_id\":\"\","
                     + "\"relationship_id\":\"1\","
                     + "\"doctype\":\"com.linagora.email\","
-                    + "\"email.preview\":\"Body of the email\""
+                    + "\"email.preview\":\"Body of the email On Tue, 10 Oct 2023 at 09:00, previous@example.com wrote: > Hello, > This is the previous reply\""
                     + "}"))
                 .build())
             .withRequestBodyPart(aMultipart()
                 .withName("file")
+                .withFileName("tmail_" + message1.getId().getMessageId().serialize() + ".txt")
                 .withHeader("Content-Type", containing("text/plain"))
                 .withBody(containing("# Email Headers\n" +
                     "\n" +
@@ -155,7 +168,7 @@ public class RagListenerIntegrationTest {
 
     @Test
     void listenerShouldAddInReplyToMetadataWhenEmailHaveInReplyToHeader(GuiceJamesServer server) throws Exception {
-        MessageManager.AppendResult message1 = server.getProbe(MailboxProbeImpl.class)
+        MessageManager.AppendResult originalMessage = server.getProbe(MailboxProbeImpl.class)
             .appendMessageAndGetAppendResult(bob, pathBob,
                 MessageManager.AppendCommand.from(
                     Message.Builder.of()
@@ -167,7 +180,7 @@ public class RagListenerIntegrationTest {
                             2023, 10, 10, 10, 0, 0, 0, ZoneOffset.UTC).toInstant()))
                         .setBody("Contenu mail 1", StandardCharsets.UTF_8)));
 
-        MessageManager.AppendResult message2 = server.getProbe(MailboxProbeImpl.class)
+        MessageManager.AppendResult messageResponse = server.getProbe(MailboxProbeImpl.class)
             .appendMessageAndGetAppendResult(bob, pathBob,
                 MessageManager.AppendCommand.from(
                     Message.Builder.of()
@@ -179,7 +192,7 @@ public class RagListenerIntegrationTest {
                             2023, 10, 10, 10, 0, 0, 0, ZoneOffset.UTC).toInstant()))
                         .addField(new RawField("In-Reply-To", "Message-ID-1"))
                         .setBody("Contenu mail 1", StandardCharsets.UTF_8)));
-        assertEquals(message1.getThreadId(), message2.getThreadId());
+        assertEquals(originalMessage.getThreadId(), messageResponse.getThreadId());
         verify(2, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
 
         verify(postRequestedFor(urlMatching("/indexer/partition/.*/file/.*"))
@@ -190,7 +203,7 @@ public class RagListenerIntegrationTest {
                 .withBody(equalToJson("{"
                     + "\"email.subject\":\"Re: Sujet Test\","
                     + "\"datetime\":\"2023-10-10T10:00:00Z\","
-                    + "\"parent_id\":\"1\","
+                    + "\"parent_id\":\""+ originalMessage.getId().getMessageId().serialize() + "\","
                     + "\"relationship_id\":\"1\","
                     + "\"doctype\":\"com.linagora.email\","
                     + "\"email.preview\":\"Contenu mail 1\""
@@ -198,6 +211,7 @@ public class RagListenerIntegrationTest {
                 .build())
             .withRequestBodyPart(aMultipart()
                 .withName("file")
+                .withFileName("tmail_" + messageResponse.getId().getMessageId().serialize() + ".txt")
                 .withHeader("Content-Type", containing("text/plain"))
                 .build()));
     }
@@ -232,11 +246,12 @@ public class RagListenerIntegrationTest {
                     + "\"parent_id\":\"\","
                     + "\"relationship_id\":\"1\","
                     + "\"doctype\":\"com.linagora.email\","
-                    + "\"email.preview\":\"Body of the email\""
+                    + "\"email.preview\":\"Body of the email On Tue, 10 Oct 2023 at 09:00, previous@example.com wrote: > Hello, > This is the previous reply\""
                     + "}"))
                 .build())
             .withRequestBodyPart(aMultipart()
                 .withName("file")
+                .withFileName("tmail_" + message1.getId().getMessageId().serialize() + ".txt")
                 .withHeader("Content-Type", containing("text/plain"))
                 .withBody(containing("# Email Headers\n" +
                     "\n" +

@@ -122,7 +122,7 @@ class RagListenerTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        wireMockServer = new WireMockServer(WireMockConfiguration.options().port(8080));
+        wireMockServer = new WireMockServer(WireMockConfiguration.options().port(1234));
         wireMockServer.start();
         configureFor("localhost", wireMockServer.port());
         stubFor(post(urlPathMatching("/indexer/partition/.*/file/.*"))
