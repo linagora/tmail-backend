@@ -158,8 +158,19 @@ public class CalDavCollect extends GenericMailet {
         return Optional.ofNullable(event.getOrganizer())
             .map(Organizer::getCalAddress)
             .map(URI::getSchemeSpecificPart)
+            .map(CalDavCollect::removeAddressBrackets)
             .map(Throwing.function(MailAddress::new))
             .map(mailAddress::equals)
             .orElse(false);
+    }
+
+    private static String removeAddressBrackets(String s) {
+        if (s.startsWith("<")) {
+            s = s.substring(1);
+        }
+        if (s.endsWith(">")) {
+            s = s.substring(0, s.length() - 1);
+        }
+        return s;
     }
 }
