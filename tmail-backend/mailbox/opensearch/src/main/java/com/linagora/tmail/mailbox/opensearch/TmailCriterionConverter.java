@@ -92,7 +92,7 @@ public class TmailCriterionConverter extends DefaultCriterionConverter {
     }
 
     private Query convertRawSubject(SearchQuery.SubjectCriterion headerCriterion) {
-        if (useQueryStringQuery && QUERY_STRING_CONTROL_CHAR.matchesAnyOf(headerCriterion.getSubject())) {
+        if (useQueryStringQuery && matchesQueryStringHeuristic(headerCriterion.getSubject())) {
             return new QueryStringQuery.Builder()
                 .fields(ImmutableList.of(JsonMessageConstants.SUBJECT))
                 .query(headerCriterion.getSubject())
@@ -113,7 +113,7 @@ public class TmailCriterionConverter extends DefaultCriterionConverter {
 
     @Override
     protected Query manageAddressFields(String headerName, String value) {
-        if (useQueryStringQuery && QUERY_STRING_CONTROL_CHAR.matchesAnyOf(value)) {
+        if (useQueryStringQuery && matchesQueryStringHeuristic(value)) {
             return new MatchNoneQuery.Builder()
                 .build()
                 .toQuery();
@@ -125,7 +125,7 @@ public class TmailCriterionConverter extends DefaultCriterionConverter {
     protected Query convertTextCriterion(SearchQuery.TextCriterion textCriterion) {
         switch (textCriterion.getType()) {
             case ATTACHMENT_FILE_NAME:
-                if (useQueryStringQuery && QUERY_STRING_CONTROL_CHAR.matchesAnyOf(textCriterion.getOperator().getValue())) {
+                if (useQueryStringQuery && matchesQueryStringHeuristic(textCriterion.getOperator().getValue())) {
                     return new MatchNoneQuery.Builder()
                         .build()
                         .toQuery();
