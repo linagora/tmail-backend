@@ -27,7 +27,7 @@ import jakarta.inject.Inject;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.james.webadmin.Constants;
-import org.apache.james.webadmin.Routes;
+import org.apache.james.webadmin.PublicRoutes;
 import org.apache.james.webadmin.utils.JsonTransformer;
 import org.eclipse.jetty.http.HttpStatus;
 import org.slf4j.Logger;
@@ -44,7 +44,7 @@ import com.linagora.tmail.james.jmap.oidc.Sid;
 import spark.Route;
 import spark.Service;
 
-public class OidcBackchannelLogoutRoutes implements Routes {
+public class OidcBackchannelLogoutRoutes implements PublicRoutes {
     public static final String BASE_PATH = "/add-revoked-token";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(OidcBackchannelLogoutRoutes.class);
