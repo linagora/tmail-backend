@@ -21,8 +21,6 @@ package com.linagora.tmail.james.jmap.ticket
 import java.net.InetAddress
 import java.time.{Clock, ZonedDateTime}
 
-import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration
-import jakarta.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.UTCDate
 import reactor.core.scala.publisher.SMono
@@ -31,7 +29,7 @@ object TicketManager {
   private val validity: java.time.Duration = java.time.Duration.ofMinutes(1)
 }
 
-class TicketManager @Inject() (clock: Clock, ticketStore: TicketStore, jmapExtensionConfiguration: JMAPExtensionConfiguration) {
+class TicketManager(clock: Clock, ticketStore: TicketStore, ticketIpValidationEnabled: Boolean) {
 
   def generate(username: Username, remoteAddress: InetAddress): SMono[Ticket] = {
     val now = ZonedDateTime.now(clock)
@@ -57,7 +55,7 @@ class TicketManager @Inject() (clock: Clock, ticketStore: TicketStore, jmapExten
       .switchIfEmpty(SMono.error(ForbiddenException()))
 
   private def validateIpIfNeeded(ip: InetAddress, ticket: Ticket): Boolean =
-    if (jmapExtensionConfiguration.ticketIpValidationEnable.value) {
+    if (ticketIpValidationEnabled) {
       ticket.clientAddress.equals(ip)
     } else {
       true
