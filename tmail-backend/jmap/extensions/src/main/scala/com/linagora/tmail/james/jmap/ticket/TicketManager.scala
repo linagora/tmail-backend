@@ -29,7 +29,7 @@ object TicketManager {
   private val validity: java.time.Duration = java.time.Duration.ofMinutes(1)
 }
 
-class TicketManager (clock: Clock, ticketStore: TicketStore, ticketIpValidationEnabled: Boolean) {
+class TicketManager(clock: Clock, ticketStore: TicketStore, ticketIpValidationEnabled: Boolean) {
 
   def generate(username: Username, remoteAddress: InetAddress): SMono[Ticket] = {
     val now = ZonedDateTime.now(clock)
