@@ -40,7 +40,7 @@ class TicketManagerTest {
   def setUp(): Unit = {
     clock = new UpdatableTickingClock(initialDate.toInstant)
     jmapExtensionConfig = JMAPExtensionConfiguration()
-    testee = new TicketManager(clock, new MemoryTicketStore(), jmapExtensionConfig)
+    testee = new TicketManager(clock, new MemoryTicketStore(), jmapExtensionConfig.ticketIpValidationEnable.value)
   }
 
   @Test
@@ -54,7 +54,7 @@ class TicketManagerTest {
   @Test
   def ticketShouldBeScopedBySourceIpWhenIpValidationEnabledExplicitly(): Unit = {
     jmapExtensionConfig = JMAPExtensionConfiguration(ticketIpValidationEnable = TICKET_IP_VALIDATION_ENABLED)
-    testee = new TicketManager(clock, new MemoryTicketStore(), jmapExtensionConfig)
+    testee = new TicketManager(clock, new MemoryTicketStore(), jmapExtensionConfig.ticketIpValidationEnable.value)
 
     val ticket = testee.generate(username, address).block()
 
@@ -65,7 +65,7 @@ class TicketManagerTest {
   @Test
   def ticketShouldNotBeScopedBySourceIpWhenIpValidationDisabled(): Unit = {
     jmapExtensionConfig = JMAPExtensionConfiguration(ticketIpValidationEnable = TicketIpValidationEnable(false))
-    testee = new TicketManager(clock, new MemoryTicketStore(), jmapExtensionConfig)
+    testee = new TicketManager(clock, new MemoryTicketStore(), jmapExtensionConfig.ticketIpValidationEnable.value)
 
     val ticket = testee.generate(username, address).block()
 

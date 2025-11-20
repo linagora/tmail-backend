@@ -20,12 +20,14 @@ package com.linagora.tmail.james.jmap.ticket
 
 import java.net.{URI, URL}
 import java.nio.charset.StandardCharsets
+import java.time.Clock
 import java.util.stream
 
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
-import com.google.inject.{AbstractModule, Scopes}
+import com.google.inject.{AbstractModule, Provides, Scopes, Singleton}
+import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration
 import com.linagora.tmail.james.jmap.json.TicketSerializer
-import com.linagora.tmail.james.jmap.ticket.TicketRoutes.{ENDPOINT, LOGGER, REVOCATION_ENDPOINT, TICKET_PARAM}
+import com.linagora.tmail.james.jmap.ticket.TicketRoutes.{ENDPOINT, LOGGER, TICKET_PARAM}
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesCapability.LINAGORA_WS_TICKET
 import eu.timepit.refined.auto._
 import io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE
@@ -63,6 +65,12 @@ case class TicketRoutesModule() extends AbstractModule {
 
   @ProvidesIntoSet
   private def capability(): CapabilityFactory = TicketRoutesCapabilityFactory
+
+  @Provides
+  @Singleton
+  def provideTicketManager(clock: Clock, ticketStore: TicketStore,
+                           jmapExtensionConfiguration: JMAPExtensionConfiguration): TicketManager =
+    new TicketManager(clock, ticketStore, jmapExtensionConfiguration.ticketIpValidationEnable.value)
 }
 
 object TicketRoutesCapability {
@@ -98,21 +106,23 @@ object TicketRoutes {
 class TicketRoutes @Inject() (@Named(InjectionKeys.RFC_8621) val authenticator: Authenticator, ticketManager: TicketManager) extends JMAPRoutes {
   override def routes(): stream.Stream[JMAPRoute] = stream.Stream.of(
     JMAPRoute.builder
-      .endpoint(new Endpoint(HttpMethod.POST, s"/$ENDPOINT"))
+      .endpoint(new Endpoint(HttpMethod.POST, s"/${baseEndpoint()}"))
       .action(this.generate)
       .corsHeaders,
     JMAPRoute.builder
-      .endpoint(new Endpoint(HttpMethod.OPTIONS, s"/$ENDPOINT"))
+      .endpoint(new Endpoint(HttpMethod.OPTIONS, s"/${baseEndpoint()}"))
       .action(JMAPRoutes.CORS_CONTROL)
       .corsHeaders(),
     JMAPRoute.builder
-      .endpoint(new Endpoint(HttpMethod.DELETE, s"/$REVOCATION_ENDPOINT"))
+      .endpoint(new Endpoint(HttpMethod.DELETE, s"/${baseEndpoint()}/{$TICKET_PARAM}"))
       .action(this.revoke)
       .corsHeaders,
     JMAPRoute.builder
-      .endpoint(new Endpoint(HttpMethod.OPTIONS, s"/$REVOCATION_ENDPOINT"))
+      .endpoint(new Endpoint(HttpMethod.OPTIONS, s"/${baseEndpoint()}/{$TICKET_PARAM}"))
       .action(JMAPRoutes.CORS_CONTROL)
       .corsHeaders())
+
+  protected def baseEndpoint(): String = ENDPOINT
 
   private def generate(request: HttpServerRequest, response: HttpServerResponse): Mono[Void] =
     SMono(authenticator.authenticate(request))
