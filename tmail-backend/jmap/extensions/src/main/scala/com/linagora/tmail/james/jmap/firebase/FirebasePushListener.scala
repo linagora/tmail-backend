@@ -95,10 +95,10 @@ class FirebasePushListener @Inject()(subscriptionRepository: FirebaseSubscriptio
         .onErrorResume {
           case e: FirebaseMessagingException => e.getMessagingErrorCode match {
             case MessagingErrorCode.INVALID_ARGUMENT | MessagingErrorCode.UNREGISTERED => SMono.fromPublisher(subscriptionRepository.revoke(stateChangeEvent.username, subscription.id))
-              .`then`(SMono.fromPublisher(ReactorUtils.logAsMono(() => LOGGER.warn("Subscription with invalid FCM token is removed", e))))
-            case _ => SMono.fromPublisher(ReactorUtils.logAsMono(() => LOGGER.warn("Unexpected error during push message to Firebase Cloud Messaging", e)))
+              .`then`(SMono.fromPublisher(ReactorUtils.logAsMono(() => LOGGER.warn("Subscription with invalid FCM token is removed for user {}", stateChangeEvent.username.asString(), e))))
+            case _ => SMono.fromPublisher(ReactorUtils.logAsMono(() => LOGGER.warn("Unexpected error during push message to Firebase Cloud Messaging for user {}", stateChangeEvent.username.asString(), e)))
           }
-          case e => SMono.fromPublisher(ReactorUtils.logAsMono(() => LOGGER.warn("Unexpected error during push message to Firebase Cloud Messaging", e)))
+          case e => SMono.fromPublisher(ReactorUtils.logAsMono(() => LOGGER.warn("Unexpected error during push message to Firebase Cloud Messaging fo user {}", stateChangeEvent.username.asString(), e)))
         }
         .`then`())
 
