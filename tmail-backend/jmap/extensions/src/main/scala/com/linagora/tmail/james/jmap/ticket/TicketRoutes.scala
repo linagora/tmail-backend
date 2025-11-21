@@ -37,13 +37,14 @@ import jakarta.inject.{Inject, Named}
 import org.apache.james.core.Username
 import org.apache.james.jmap.HttpConstants.JSON_CONTENT_TYPE
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
-import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, ProblemDetails, UrlPrefixes}
+import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, JmapRfc8621Configuration, ProblemDetails, UrlPrefixes}
 import org.apache.james.jmap.exceptions.UnauthorizedException
 import org.apache.james.jmap.http.rfc8621.InjectionKeys
 import org.apache.james.jmap.http.{AuthenticationStrategy, Authenticator}
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.routes.ForbiddenException
 import org.apache.james.jmap.{Endpoint, JMAPRoute, JMAPRoutes}
+import org.apache.james.mailbox.SessionProvider
 import org.apache.james.util.ReactorUtils
 import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.{JsObject, Json}
@@ -71,6 +72,12 @@ case class TicketRoutesModule() extends AbstractModule {
   def provideTicketManager(clock: Clock, ticketStore: TicketStore,
                            jmapExtensionConfiguration: JMAPExtensionConfiguration): TicketManager =
     new TicketManager(clock, ticketStore, jmapExtensionConfiguration.ticketIpValidationEnable.value)
+
+  @Provides
+  @Singleton
+  def provideTicketAuthenticationStrategy(ticketManager: TicketManager, sessionProvider: SessionProvider,
+                                          configuration: JmapRfc8621Configuration): TicketAuthenticationStrategy =
+    new TicketAuthenticationStrategy(ticketManager, sessionProvider, configuration.urlPrefixString)
 }
 
 object TicketRoutesCapability {
