@@ -300,8 +300,4 @@ public class TMailEventDispatcher {
     private OutboundMessage toMessage(byte[] serializedEvent, RoutingKey routingKey) {
         return new OutboundMessage(namingStrategy.exchange(), routingKey.asString(), basicProperties, serializedEvent);
     }
-
-    private byte[] serializeEvent(Event event) {
-        return eventSerializer.toJsonBytes(event);
-    }
 }
