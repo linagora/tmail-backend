@@ -26,3 +26,4 @@ This includes:
 - link:ecosystem-discovery.adoc[Linagora Ecosystem discovery]
 - link:twake-workplace.adoc[Twake Workplace Integration]
 - link:I18NDSNBounce.adoc[Internationalized DSN Bounce]
+- link:extra-mailet.adoc[Extra mailets]
