@@ -215,10 +215,10 @@ public class TMailEventDispatcher {
     }
 
     private Mono<Void> dispatchToRemoteListeners(Event event, Set<RegistrationKey> keys) {
-        return Mono.fromCallable(() -> serializeEvent(event))
+        return Mono.fromCallable(() -> eventSerializer.toJson(event))
             .flatMap(serializedEvent -> Mono.zipDelayError(
-                remoteGroupsDispatch(serializedEvent, event),
-                remoteKeysDispatch(eventSerializer.toJson(event), keys)))
+                remoteGroupsDispatch(serializedEvent.getBytes(StandardCharsets.UTF_8), event),
+                remoteKeysDispatch(serializedEvent, keys)))
             .then();
     }
 
@@ -299,9 +299,5 @@ public class TMailEventDispatcher {
 
     private OutboundMessage toMessage(byte[] serializedEvent, RoutingKey routingKey) {
         return new OutboundMessage(namingStrategy.exchange(), routingKey.asString(), basicProperties, serializedEvent);
-    }
-
-    private byte[] serializeEvent(Event event) {
-        return eventSerializer.toJsonBytes(event);
     }
 }
