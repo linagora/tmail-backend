@@ -1,0 +1,71 @@
+= Extra Mailets
+:navtitle: Extra Mailets
+
+This page documents additional mailets provided by TMail for specific use cases.
+
+== AlignFromHeaderWithMailFrom
+
+=== Purpose
+
+The `AlignFromHeaderWithMailFrom` mailet rewrites the `From` header to align with the envelope sender (MAIL FROM) address. This is particularly useful for email forwarding scenarios to preserve DKIM alignment and avoid spam filter issues.
+
+When emails are forwarded, the envelope sender (MAIL FROM) is typically rewritten to the forwarder's address, but the `From` header remains unchanged. This creates a DKIM alignment mismatch that can trigger spam filters. This mailet solves this problem by aligning both addresses.
+
+Use cases:
+
+* *Email forwarding*: When implementing email forwarding services to maintain DKIM alignment
+* *Email aliasing*: When routing emails through aliases while preserving sender information
+* *Mailing lists*: When forwarding list emails while maintaining proper email authentication
+
+=== How it works
+
+The mailet performs the following transformations:
+
+1. Extracts the original `From` header address and display name
+2. Stores the original email address in an `Original-From` header
+3. Rewrites the `From` header to use the MAIL FROM address
+4. Preserves the original sender information in the display name
+
+*Example transformation:*
+
+Original:
+
+....
+MAIL FROM: alice@us.com
+From: "Bob External" <bob@external.com>
+....
+
+After transformation:
+
+....
+MAIL FROM: alice@us.com
+From: "Bob External (bob@external.com)" <alice@us.com>
+Original-From: bob@external.com
+....
+
+=== Configuration
+
+==== Parameters
+
+[cols="1,1,3", options="header"]
+|===
+|Parameter
+|Default
+|Description
+
+|misAlignProcessor
+|error
+|The processor to which mails with unparseable or missing From headers will be redirected for error handling.
+|===
+
+==== Usage with DKIM signature stripping
+
+To achieve proper DKIM alignment for forwarded emails, it's recommended to strip existing DKIM signatures before running this mailet. Use the `RemoveMimeHeader` mailet for this purpose.
+
+*Sample configuration:*
+
+....
+<mailet match="All" class="com.linagora.tmail.mailet.AlignFromHeaderWithMailFrom">
+  <misAlignProcessor>error</misAlignProcessor>
+</mailet>
+....
