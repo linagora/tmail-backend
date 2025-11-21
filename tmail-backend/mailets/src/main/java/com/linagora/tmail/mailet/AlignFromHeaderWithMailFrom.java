@@ -21,8 +21,6 @@ package com.linagora.tmail.mailet;
 import java.util.Collection;
 import java.util.Optional;
 
-import com.github.fge.lambdas.Throwing;
-import com.google.common.collect.ImmutableList;
 import jakarta.mail.MessagingException;
 
 import org.apache.james.core.MailAddress;
@@ -36,7 +34,9 @@ import org.apache.mailet.base.GenericMailet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.fge.lambdas.Throwing;
 import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableList;
 
 /**
  * AlignFromHeaderWithMailFrom rewrites the From header to align with the MAIL FROM address.
