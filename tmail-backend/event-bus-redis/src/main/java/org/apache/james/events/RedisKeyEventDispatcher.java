@@ -38,7 +38,7 @@ import reactor.core.publisher.Mono;
 
 public class RedisKeyEventDispatcher {
 
-    public static final Predicate<? super Throwable> REDIS_ERROR_PREDICATE =
+    private static final Predicate<? super Throwable> REDIS_ERROR_PREDICATE =
         throwable -> throwable instanceof RedisException || throwable instanceof TimeoutException;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RedisKeyEventDispatcher.class);
