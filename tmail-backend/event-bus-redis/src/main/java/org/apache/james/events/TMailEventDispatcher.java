@@ -52,8 +52,6 @@ import com.google.common.collect.ImmutableSet;
 import com.rabbitmq.client.AMQP;
 
 import io.lettuce.core.RedisException;
-import io.lettuce.core.api.reactive.RedisSetReactiveCommands;
-import io.lettuce.core.pubsub.api.reactive.RedisPubSubReactiveCommands;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -77,18 +75,15 @@ public class TMailEventDispatcher {
     private final EventDeadLetters deadLetters;
     private final RabbitMQConfiguration configuration;
     private final DispatchingFailureGroup dispatchingFailureGroup;
-    private final RedisPubSubReactiveCommands<String, String> redisPublisher;
-    private final RedisSetReactiveCommands<String, String> redisSetReactiveCommands;
-    private final EventBusId eventBusId;
-    private final RedisEventBusConfiguration redisEventBusConfiguration;
     private final TmailGroupRegistrationHandler groupRegistrationHandler;
+    private final RedisKeyEventDispatcher keyEventDispatcher;
 
     TMailEventDispatcher(NamingStrategy namingStrategy, EventBusId eventBusId, EventSerializer eventSerializer, Sender sender,
                          LocalListenerRegistry localListenerRegistry,
                          ListenerExecutor listenerExecutor,
                          EventDeadLetters deadLetters, RabbitMQConfiguration configuration,
-                         RedisPubSubReactiveCommands<String, String> redisPubSubReactiveCommands,
-                         RedisSetReactiveCommands<String, String> redisSetReactiveCommands, RedisEventBusConfiguration redisEventBusConfiguration, TmailGroupRegistrationHandler groupRegistrationHandler) {
+                         TmailGroupRegistrationHandler groupRegistrationHandler,
+                         RedisKeyEventDispatcher keyEventDispatcher) {
         this.namingStrategy = namingStrategy;
         this.eventSerializer = eventSerializer;
         this.sender = sender;
@@ -103,11 +98,8 @@ public class TMailEventDispatcher {
         this.deadLetters = deadLetters;
         this.configuration = configuration;
         this.dispatchingFailureGroup = new DispatchingFailureGroup(namingStrategy.getEventBusName());
-        this.redisPublisher = redisPubSubReactiveCommands;
-        this.redisSetReactiveCommands = redisSetReactiveCommands;
-        this.eventBusId = eventBusId;
-        this.redisEventBusConfiguration = redisEventBusConfiguration;
         this.groupRegistrationHandler = groupRegistrationHandler;
+        this.keyEventDispatcher = keyEventDispatcher;
     }
 
     void start() {
@@ -190,7 +182,7 @@ public class TMailEventDispatcher {
         return Mono.fromCallable(() -> eventSerializer.toJson(underlyingEvents))
             .flatMap(serializedEvent -> Mono.zipDelayError(
                 remoteGroupsDispatch(serializedEvent.getBytes(StandardCharsets.UTF_8), underlyingEvents),
-                remoteKeysDispatch(serializedEvent, keys)))
+                keyEventDispatcher.remoteKeysDispatch(serializedEvent, keys)))
             .then();
     }
 
@@ -218,7 +210,7 @@ public class TMailEventDispatcher {
         return Mono.fromCallable(() -> eventSerializer.toJson(event))
             .flatMap(serializedEvent -> Mono.zipDelayError(
                 remoteGroupsDispatch(serializedEvent.getBytes(StandardCharsets.UTF_8), event),
-                remoteKeysDispatch(serializedEvent, keys)))
+                keyEventDispatcher.remoteKeysDispatch(serializedEvent, keys)))
             .then();
     }
 
@@ -254,34 +246,6 @@ public class TMailEventDispatcher {
             return Mono.error(throwable);
         }
         return Mono.empty();
-    }
-
-    private Mono<Void> remoteKeysDispatch(String eventAsJson, Set<RegistrationKey> keys) {
-        return remoteDispatch(eventAsJson,
-            keys.stream()
-                .map(RoutingKey::of)
-                .collect(ImmutableList.toImmutableList()));
-    }
-
-    private Mono<Void> remoteDispatch(String eventAsJson, Collection<RoutingKey> routingKeys) {
-        if (routingKeys.isEmpty()) {
-            return Mono.empty();
-        }
-
-        return Flux.fromIterable(routingKeys)
-            .flatMap(routingKey -> getTargetChannels(routingKey)
-                .flatMap(channel -> redisPublisher.publish(channel, KeyChannelMessage.from(eventBusId, routingKey, eventAsJson).serialize()))
-                .timeout(redisEventBusConfiguration.durationTimeout())
-                .onErrorResume(REDIS_ERROR_PREDICATE.and(e -> redisEventBusConfiguration.failureIgnore()), e -> {
-                    LOGGER.warn("Error while dispatching event to remote listeners", e);
-                    return Flux.empty();
-                })
-                .then())
-            .then();
-    }
-
-    private Flux<String> getTargetChannels(RoutingKey routingKey) {
-        return redisSetReactiveCommands.smembers(routingKey.asString());
     }
 
     private Mono<Void> remoteDispatchWithAcks(byte[] serializedEvent) {
