@@ -40,9 +40,6 @@ import java.util.function.Predicate;
 
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.events.RoutingKeyConverter.RoutingKey;
-import org.apache.james.util.MDCBuilder;
-import org.apache.james.util.MDCStructuredLogger;
-import org.apache.james.util.StructuredLogger;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -59,7 +56,6 @@ import reactor.rabbitmq.BindingSpecification;
 import reactor.rabbitmq.ExchangeSpecification;
 import reactor.rabbitmq.OutboundMessage;
 import reactor.rabbitmq.Sender;
-import reactor.util.function.Tuples;
 import reactor.util.retry.Retry;
 
 public class TMailEventDispatcher {
@@ -69,37 +65,35 @@ public class TMailEventDispatcher {
     private final NamingStrategy namingStrategy;
     private final EventSerializer eventSerializer;
     private final Sender sender;
-    private final LocalListenerRegistry localListenerRegistry;
     private final AMQP.BasicProperties basicProperties;
-    private final ListenerExecutor listenerExecutor;
     private final EventDeadLetters deadLetters;
     private final RabbitMQConfiguration configuration;
     private final DispatchingFailureGroup dispatchingFailureGroup;
     private final TmailGroupRegistrationHandler groupRegistrationHandler;
     private final RedisKeyEventDispatcher keyEventDispatcher;
+    private final LocalKeyListenerExecutor localKeyListenerExecutor;
 
-    TMailEventDispatcher(NamingStrategy namingStrategy, EventBusId eventBusId, EventSerializer eventSerializer, Sender sender,
-                         LocalListenerRegistry localListenerRegistry,
-                         ListenerExecutor listenerExecutor,
+    TMailEventDispatcher(NamingStrategy namingStrategy, EventBusId eventBusId,
+                         EventSerializer eventSerializer, Sender sender,
                          EventDeadLetters deadLetters, RabbitMQConfiguration configuration,
                          TmailGroupRegistrationHandler groupRegistrationHandler,
-                         RedisKeyEventDispatcher keyEventDispatcher) {
+                         RedisKeyEventDispatcher keyEventDispatcher,
+                         LocalKeyListenerExecutor localKeyListenerExecutor) {
         this.namingStrategy = namingStrategy;
         this.eventSerializer = eventSerializer;
         this.sender = sender;
-        this.localListenerRegistry = localListenerRegistry;
         this.basicProperties = new AMQP.BasicProperties.Builder()
             .headers(ImmutableMap.of(EVENT_BUS_ID, eventBusId.asString()))
             .deliveryMode(PERSISTENT_TEXT_PLAIN.getDeliveryMode())
             .priority(PERSISTENT_TEXT_PLAIN.getPriority())
             .contentType(PERSISTENT_TEXT_PLAIN.getContentType())
             .build();
-        this.listenerExecutor = listenerExecutor;
         this.deadLetters = deadLetters;
         this.configuration = configuration;
         this.dispatchingFailureGroup = new DispatchingFailureGroup(namingStrategy.getEventBusName());
         this.groupRegistrationHandler = groupRegistrationHandler;
         this.keyEventDispatcher = keyEventDispatcher;
+        this.localKeyListenerExecutor = localKeyListenerExecutor;
     }
 
     void start() {
@@ -128,7 +122,7 @@ public class TMailEventDispatcher {
         return Flux
             .concat(
                 executeLocalSynchronousListeners(ImmutableList.of(new EventBus.EventWithRegistrationKey(event, keys))),
-                dispatchToLocalListeners(event, keys),
+                localKeyListenerExecutor.execute(event, keys),
                 dispatchToRemoteListeners(event, keys))
             .doOnError(throwable -> LOGGER.error("error while dispatching event", throwable))
             .then();
@@ -138,7 +132,7 @@ public class TMailEventDispatcher {
         return Flux
             .concat(
                 executeLocalSynchronousListeners(events),
-                dispatchToLocalListeners(events),
+                localKeyListenerExecutor.execute(events),
                 dispatchToRemoteListeners(events))
             .doOnError(throwable -> LOGGER.error("error while dispatching event", throwable))
             .then();
@@ -152,21 +146,6 @@ public class TMailEventDispatcher {
             .flatMap(registration -> registration.runListenerReliably(DEFAULT_RETRY_COUNT, events.stream()
                 .map(EventBus.EventWithRegistrationKey::event)
                 .collect(ImmutableList.toImmutableList())))
-            .then();
-    }
-
-    private Mono<Void> dispatchToLocalListeners(Collection<EventBus.EventWithRegistrationKey> events) {
-        return Flux.fromIterable(events)
-            .concatMap(e -> dispatchToLocalListeners(e.event(), e.keys()))
-            .then();
-    }
-
-    private Mono<Void> dispatchToLocalListeners(Event event, Set<RegistrationKey> keys) {
-        return Flux.fromIterable(keys)
-            .flatMap(key -> Flux.fromIterable(localListenerRegistry.getLocalListeners(key))
-                .map(listener -> Tuples.of(key, listener)), EventBus.EXECUTION_RATE)
-            .filter(pair -> pair.getT2().getExecutionMode() == EventListener.ExecutionMode.SYNCHRONOUS)
-            .flatMap(pair -> executeListener(event, pair.getT2(), pair.getT1()), EventBus.EXECUTION_RATE)
             .then();
     }
 
@@ -184,26 +163,6 @@ public class TMailEventDispatcher {
                 remoteGroupsDispatch(serializedEvent.getBytes(StandardCharsets.UTF_8), underlyingEvents),
                 keyEventDispatcher.remoteKeysDispatch(serializedEvent, keys)))
             .then();
-    }
-
-    private Mono<Void> executeListener(Event event, EventListener.ReactiveEventListener listener, RegistrationKey registrationKey) {
-        return listenerExecutor.execute(listener,
-                    MDCBuilder.create()
-                        .addToContext(EventBus.StructuredLoggingFields.REGISTRATION_KEY, registrationKey.asString()),
-                    event)
-            .onErrorResume(e -> {
-                structuredLogger(event, ImmutableSet.of(registrationKey))
-                    .log(logger -> logger.error("Exception happens when dispatching event", e));
-                return Mono.empty();
-            });
-    }
-
-    private StructuredLogger structuredLogger(Event event, Set<RegistrationKey> keys) {
-        return MDCStructuredLogger.forLogger(LOGGER)
-            .field(EventBus.StructuredLoggingFields.EVENT_ID, event.getEventId().getId().toString())
-            .field(EventBus.StructuredLoggingFields.EVENT_CLASS, event.getClass().getCanonicalName())
-            .field(EventBus.StructuredLoggingFields.USER, event.getUsername().asString())
-            .field(EventBus.StructuredLoggingFields.REGISTRATION_KEYS, keys.toString());
     }
 
     private Mono<Void> dispatchToRemoteListeners(Event event, Set<RegistrationKey> keys) {
