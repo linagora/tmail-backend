@@ -110,11 +110,13 @@ public class RabbitMQAndRedisEventBus implements EventBus, Startable {
         if (!isRunning && !isStopping) {
 
             LocalListenerRegistry localListenerRegistry = new LocalListenerRegistry();
+            LocalKeyListenerExecutor localKeyListenerExecutor = new LocalKeyListenerExecutor(localListenerRegistry, listenerExecutor);
             keyRegistrationHandler = new RedisKeyRegistrationHandler(namingStrategy, eventBusId, eventSerializer, routingKeyConverter,
                 localListenerRegistry, listenerExecutor, retryBackoff, metricFactory, redisEventBusClientFactory, redisSetReactiveCommands, redisEventBusConfiguration);
             groupRegistrationHandler = new TmailGroupRegistrationHandler(namingStrategy, eventSerializer, channelPool, sender, receiverProvider, retryBackoff, eventDeadLetters, listenerExecutor, eventBusId, configuration);
-            eventDispatcher = new TMailEventDispatcher(namingStrategy, eventBusId, eventSerializer, sender, localListenerRegistry, listenerExecutor, eventDeadLetters, configuration,
-                redisPublisher, redisSetReactiveCommands, redisEventBusConfiguration, groupRegistrationHandler);
+            RedisKeyEventDispatcher redisKeyEventDispatcher = new RedisKeyEventDispatcher(eventBusId, eventSerializer, redisPublisher, redisSetReactiveCommands, redisEventBusConfiguration);
+            eventDispatcher = new TMailEventDispatcher(namingStrategy, eventBusId, eventSerializer, sender, eventDeadLetters, configuration,
+                groupRegistrationHandler, redisKeyEventDispatcher, localKeyListenerExecutor);
 
             eventDispatcher.start();
             keyRegistrationHandler.start();
@@ -132,11 +134,13 @@ public class RabbitMQAndRedisEventBus implements EventBus, Startable {
         if (!isRunning && !isStopping) {
 
             LocalListenerRegistry localListenerRegistry = new LocalListenerRegistry();
+            LocalKeyListenerExecutor localKeyListenerExecutor =  new LocalKeyListenerExecutor(localListenerRegistry, listenerExecutor);
             keyRegistrationHandler = new RedisKeyRegistrationHandler(namingStrategy, eventBusId, eventSerializer, routingKeyConverter,
                 localListenerRegistry, listenerExecutor, retryBackoff, metricFactory, redisEventBusClientFactory, redisSetReactiveCommands, redisEventBusConfiguration);
             groupRegistrationHandler = new TmailGroupRegistrationHandler(namingStrategy, eventSerializer, channelPool, sender, receiverProvider, retryBackoff, eventDeadLetters, listenerExecutor, eventBusId, configuration);
-            eventDispatcher = new TMailEventDispatcher(namingStrategy, eventBusId, eventSerializer, sender, localListenerRegistry, listenerExecutor, eventDeadLetters, configuration,
-                redisPublisher, redisSetReactiveCommands, redisEventBusConfiguration, groupRegistrationHandler);
+            RedisKeyEventDispatcher redisKeyEventDispatcher = new RedisKeyEventDispatcher(eventBusId, eventSerializer, redisPublisher, redisSetReactiveCommands, redisEventBusConfiguration);
+            eventDispatcher = new TMailEventDispatcher(namingStrategy, eventBusId, eventSerializer, sender, eventDeadLetters, configuration,
+                groupRegistrationHandler, redisKeyEventDispatcher, localKeyListenerExecutor);
 
             keyRegistrationHandler.declarePubSubChannel();
 
