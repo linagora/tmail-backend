@@ -576,7 +576,6 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
 
     }
 
-    @Disabled("MAILBOX-401 '-' causes address matching to fail")
     @Test
     void localPartShouldBeMatchedWhenHyphen() throws Exception {
         MailboxPath mailboxPath = MailboxPath.forUser(USERNAME, INBOX);
@@ -595,20 +594,12 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
                     .build()),
             session).getId();
 
-        ComposedMessageId messageId2 = messageManager.appendMessage(
-            MessageManager.AppendCommand.builder().build(
-                messageBuilder
-                    .addField(new RawField("To", "bob@other.tld"))
-                    .build()),
-            session).getId();
-
-        openSearch.awaitForOpenSearch();
+        awaitForOpenSearch(QueryBuilders.matchAll().build().toQuery(), 14);
 
         assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.address(SearchQuery.AddressType.To, "alice-test")), session)).toStream())
-            .containsOnly(messageId2.getUid());
+            .containsOnly(messageId1.getUid());
     }
 
-    @Disabled("MAILBOX-401 '-' causes address matching to fail")
     @Test
     void addressShouldBeMatchedWhenHyphen() throws Exception {
         MailboxPath mailboxPath = MailboxPath.forUser(USERNAME, INBOX);
@@ -627,20 +618,12 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
                     .build()),
             session).getId();
 
-        ComposedMessageId messageId2 = messageManager.appendMessage(
-            MessageManager.AppendCommand.builder().build(
-                messageBuilder
-                    .addField(new RawField("To", "bob@other.tld"))
-                    .build()),
-            session).getId();
-
-        openSearch.awaitForOpenSearch();
+        awaitForOpenSearch(QueryBuilders.matchAll().build().toQuery(), 14);
 
         assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.address(SearchQuery.AddressType.To, "alice-test@domain.tld")), session)).toStream())
             .containsOnly(messageId1.getUid());
     }
 
-    @Disabled("MAILBOX-401 '-' causes address matching to fail")
     @Test
     void domainPartShouldBeMatchedWhenHyphen() throws Exception {
         MailboxPath mailboxPath = MailboxPath.forUser(USERNAME, INBOX);
@@ -659,14 +642,7 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
                     .build()),
             session).getId();
 
-        ComposedMessageId messageId2 = messageManager.appendMessage(
-            MessageManager.AppendCommand.builder().build(
-                messageBuilder
-                    .addField(new RawField("To", "bob@other.tld"))
-                    .build()),
-            session).getId();
-
-        openSearch.awaitForOpenSearch();
+        awaitForOpenSearch(QueryBuilders.matchAll().build().toQuery(), 14);
 
         assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.address(SearchQuery.AddressType.To, "domain-test.tld")), session)).toStream())
             .containsOnly(messageId1.getUid());
