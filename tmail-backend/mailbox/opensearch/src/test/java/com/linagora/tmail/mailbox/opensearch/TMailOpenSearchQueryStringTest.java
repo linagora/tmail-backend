@@ -30,8 +30,12 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
 
 import java.io.IOException;
+import java.io.StringReader;
+import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneId;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.UUID;
 
 import org.apache.james.backends.opensearch.DockerOpenSearchExtension;
@@ -67,6 +71,7 @@ import org.apache.james.mailbox.tika.TikaTextExtractor;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.apache.james.mime4j.dom.Message;
 import org.apache.james.mime4j.stream.RawField;
+import org.apache.james.util.ClassLoaderUtils;
 import org.awaitility.Awaitility;
 import org.awaitility.Durations;
 import org.awaitility.core.ConditionFactory;
@@ -74,10 +79,15 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.opensearch.client.opensearch._types.query_dsl.Query;
 import org.opensearch.client.opensearch._types.query_dsl.QueryBuilders;
 import org.opensearch.client.opensearch.core.SearchRequest;
 
+import com.github.mustachejava.DefaultMustacheFactory;
+import com.github.mustachejava.Mustache;
+import com.github.mustachejava.MustacheFactory;
 import com.google.common.collect.ImmutableSet;
 
 import reactor.core.publisher.Flux;
@@ -191,6 +201,25 @@ class TMailOpenSearchQueryStringTest {
             .containsOnly(messageId1.getUid());
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "Report*(draft)~v2|approved.pdf",
+        "Report*",
+        "(draft)"
+    })
+    void attachmentFilenameWithSomeQueryStringCharactersShouldBeSearchable(String searchInput) throws Exception {
+        MessageManager messageManager = storeMailboxManager.getMailbox(inboxPath, session);
+
+        ComposedMessageId messageId = messageManager.appendMessage(MessageManager.AppendCommand.builder()
+                .build(emlWithAttachmentFilename("Report*(draft)~v2|approved.pdf")),
+            session).getId();
+
+        awaitForOpenSearch(QueryBuilders.matchAll().build().toQuery(), 1);
+
+        assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.attachmentFileName(searchInput)), session)).toStream())
+            .containsOnly(messageId.getUid());
+    }
+
     private void awaitForOpenSearch(Query query, long totalHits) {
         CALMLY_AWAIT.atMost(Durations.TEN_SECONDS)
             .untilAsserted(() -> assertThat(client.search(
@@ -200,5 +229,16 @@ class TMailOpenSearchQueryStringTest {
                         .build())
                 .block()
                 .hits().total().value()).isEqualTo(totalHits));
+    }
+
+    private String emlWithAttachmentFilename(String attachmentFilename) throws IOException {
+        String template = ClassLoaderUtils.getSystemResourceAsString("eml/template/attachment-filename.eml.mustache");
+        MustacheFactory mustacheFactory = new DefaultMustacheFactory();
+        Mustache mustache = mustacheFactory.compile(new StringReader(template), "attachment-filename");
+        Map<String, Object> params = new HashMap<>();
+        params.put("attachmentFilename", attachmentFilename);
+        StringWriter writer = new StringWriter();
+        mustache.execute(writer, params).flush();
+        return writer.toString();
     }
 }
