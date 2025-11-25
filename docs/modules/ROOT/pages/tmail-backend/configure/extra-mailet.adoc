@@ -69,3 +69,86 @@ To achieve proper DKIM alignment for forwarded emails, it's recommended to strip
   <misAlignProcessor>error</misAlignProcessor>
 </mailet>
 ....
+
+== Sampling
+
+=== Purpose
+
+The `Sampling` matcher randomly matches a percentage of emails based on a probability parameter. This matcher enables probabilistic email routing for traffic management and reputation control.
+
+Use cases:
+
+* *Traffic distribution*: Evenly divide outgoing mail across multiple gateways to enhance email deliverability rates
+* *Reputation management*: Enable gradual warming up of sending reputation through controlled traffic distribution
+* *A/B testing*: Route a percentage of emails through different processing pipelines for testing purposes
+* *Load balancing*: Distribute email processing load across multiple systems
+
+=== How it works
+
+The matcher uses a random number generator to determine whether each email should match based on the configured sampling rate. Each email is independently evaluated, ensuring a statistically even distribution over time.
+
+The sampling rate is specified as a decimal value between 0.0 and 1.0:
+
+* `0.0` = 0% (no emails match)
+* `0.01` = 1% of emails match
+* `0.5` = 50% of emails match
+* `1.0` = 100% (all emails match)
+
+=== Configuration
+
+==== Parameters
+
+The matcher accepts a single parameter: the sampling rate as a decimal value.
+
+[cols="1,1,3", options="header"]
+|===
+|Parameter
+|Required
+|Description
+
+|rate
+|Yes
+|A decimal value between 0.0 and 1.0 representing the probability that an email will match. For example, 0.01 means approximately 1% of emails will be matched.
+|===
+
+==== Basic usage
+
+*Sample configuration for 1% sampling:*
+
+....
+<mailet match="Sampling=0.01" class="RemoteDelivery">
+  <gateway>smtp-gateway-1.example.com</gateway>
+</mailet>
+....
+
+==== Traffic distribution example
+
+To distribute traffic across multiple gateways for better deliverability:
+
+....
+<!-- 50% of emails go through gateway 1 -->
+<mailet match="Sampling=0.5" class="RemoteDelivery">
+  <gateway>smtp-gateway-1.example.com</gateway>
+</mailet>
+
+<!-- Remaining emails go through gateway 2 -->
+<mailet match="All" class="RemoteDelivery">
+  <gateway>smtp-gateway-2.example.com</gateway>
+</mailet>
+....
+
+==== Gradual reputation warming
+
+To gradually increase sending volume when warming up a new IP address:
+
+....
+<!-- Week 1: Send only 10% of emails through new IP -->
+<mailet match="Sampling=0.1" class="RemoteDelivery">
+  <gateway>new-smtp-gateway.example.com</gateway>
+</mailet>
+
+<!-- Remaining emails through established IP -->
+<mailet match="All" class="RemoteDelivery">
+  <gateway>established-smtp-gateway.example.com</gateway>
+</mailet>
+....
