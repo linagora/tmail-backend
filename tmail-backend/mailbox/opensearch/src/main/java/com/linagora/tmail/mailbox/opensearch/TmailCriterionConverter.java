@@ -36,6 +36,7 @@ import org.apache.james.mailbox.model.SearchQuery;
 import org.apache.james.mailbox.opensearch.OpenSearchMailboxConfiguration;
 import org.apache.james.mailbox.opensearch.json.JsonMessageConstants;
 import org.apache.james.mailbox.opensearch.query.DefaultCriterionConverter;
+import org.apache.james.mailbox.store.search.SearchUtil;
 import org.opensearch.client.opensearch._types.FieldValue;
 import org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
 import org.opensearch.client.opensearch._types.query_dsl.MatchNoneQuery;
@@ -92,17 +93,18 @@ public class TmailCriterionConverter extends DefaultCriterionConverter {
     }
 
     private Query convertRawSubject(SearchQuery.SubjectCriterion headerCriterion) {
+        String normalizedValue = SearchUtil.getBaseSubject(headerCriterion.getSubject());
         if (useQueryStringQuery && matchesQueryStringHeuristic(headerCriterion.getSubject())) {
             return new QueryStringQuery.Builder()
                 .fields(ImmutableList.of(JsonMessageConstants.SUBJECT))
-                .query(headerCriterion.getSubject())
+                .query(normalizedValue)
                 .fuzziness(textFuzzinessSearchValue)
                 .build().toQuery();
         } else {
             return new MatchQuery.Builder()
                 .field(JsonMessageConstants.SUBJECT)
                 .query(new FieldValue.Builder()
-                    .stringValue(headerCriterion.getSubject())
+                    .stringValue(normalizedValue)
                     .build())
                 .fuzziness(textFuzzinessSearchValue)
                 .operator(Operator.And)
