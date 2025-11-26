@@ -220,6 +220,27 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
     }
 
     @Test
+    void exactSubjectShouldMatchWhenReply() throws Exception {
+        MailboxPath mailboxPath = MailboxPath.forUser(USERNAME, INBOX);
+        MailboxSession session = MailboxSessionUtil.create(USERNAME);
+        MessageManager messageManager = storeMailboxManager.getMailbox(mailboxPath, session);
+
+        ComposedMessageId messageId1 = messageManager.appendMessage(
+            MessageManager.AppendCommand.builder().build(
+                Message.Builder
+                    .of()
+                    .setSubject("Re: Vieux téléphone?")
+                    .setBody("benwa@apache.org email address do not exist", StandardCharsets.UTF_8)
+                    .build()),
+            session).getId();
+
+        awaitMessageCount(ImmutableList.of(), SearchQuery.matchAll(), 14);
+
+        assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.subject("Re: Vieux téléphone?")), session)).toStream())
+            .containsOnly(messageId1.getUid());
+    }
+
+    @Test
     void theDocumentShouldBeReindexWithNewMailboxWhenMoveMessages() throws Exception {
         // Given mailboxA, mailboxB. Add message in mailboxA
         MailboxPath mailboxA = MailboxPath.forUser(USERNAME, "mailboxA");
