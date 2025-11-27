@@ -115,6 +115,7 @@ import org.apache.james.modules.server.RabbitMailQueueRoutesModule;
 import org.apache.james.modules.server.ReIndexingModule;
 import org.apache.james.modules.server.SieveRoutesModule;
 import org.apache.james.modules.server.UserIdentityModule;
+import org.apache.james.modules.server.VacationRoutesModule;
 import org.apache.james.modules.server.WebAdminMailOverWebModule;
 import org.apache.james.modules.server.WebAdminReIndexingTaskSerializationModule;
 import org.apache.james.modules.server.WebAdminServerModule;
@@ -273,6 +274,7 @@ public class DistributedServer {
         new UserIdentityModule(),
         new MailboxesCleanupModule(),
         new InboxArchivalTaskModule(),
+        new VacationRoutesModule(),
         new ContactIndexingModule());
 
     public static final Module JMAP = Modules.override(
