@@ -1,0 +1,15 @@
+=== IsMainRecipient
+
+The `IsMainRecipient` matcher selects only the recipients that are explicitly listed
+in the message `To:` header. It is useful when you want a mailet to act only for
+recipients that are the primary targets of the message (as opposed to `Cc` or
+`Bcc` recipients or recipients added by envelope-level routing).
+
+=== Configuration
+
+This matcher does not require any special parameters.
+
+Example:
+....
+<mailet match="com.linagora.tmail.matcher.IsMainRecipient" class="LlmMailet"/>
+....
