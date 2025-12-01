@@ -66,6 +66,20 @@ class IsMainRecipientTest {
     }
 
     @Test
+    void shouldMatchFoldedToHeader() throws Exception {
+        FakeMail fakeMail = FakeMail.builder()
+            .name("mail")
+            .recipients("modalif@domain.tld")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .addToRecipient("=?UTF-8?Q?MODAL=C4=B0F?=\r\n <modalif@domain.tld>"))
+            .build();
+
+        Collection<MailAddress> matched = testee.match(fakeMail);
+
+        assertThat(matched).containsOnly(new MailAddress("modalif@domain.tld"));
+    }
+
+    @Test
     void matchShouldSupportMultipleToRecipients() throws Exception {
         FakeMail fakeMail = FakeMail.builder()
             .name("mail")
@@ -150,4 +164,17 @@ class IsMainRecipientTest {
         assertThat(matched).containsOnly(recipient1, recipient2);
     }
 
+    @Test
+    void matchShouldSupportRecipientsSeparatedByComma() throws Exception {
+        FakeMail fakeMail = FakeMail.builder()
+            .name("mail")
+            .recipients(recipient1, recipient2, recipient3)
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .addHeader("To", recipient1.asString() + "," + recipient2.asString()))
+            .build();
+
+        Collection<MailAddress> matched = testee.match(fakeMail);
+
+        assertThat(matched).containsOnly(recipient1, recipient2);
+    }
 }

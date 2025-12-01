@@ -18,13 +18,12 @@
 
 package com.linagora.tmail.matcher;
 
-import java.io.UnsupportedEncodingException;
+import java.util.Arrays;
 import java.util.Collection;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.AddressException;
 import jakarta.mail.internet.MimeMessage;
-import jakarta.mail.internet.MimeUtility;
 
 import org.apache.james.core.MailAddress;
 import org.apache.james.mime4j.dom.address.Mailbox;
@@ -33,7 +32,6 @@ import org.apache.james.mime4j.util.MimeUtil;
 import org.apache.mailet.Mail;
 import org.apache.mailet.base.GenericMatcher;
 
-import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
 
 /**
@@ -54,41 +52,25 @@ public class IsMainRecipient extends GenericMatcher {
     public Collection<MailAddress> match(Mail mail) throws MessagingException {
         MimeMessage mimeMessage = mail.getMessage();
         Collection<MailAddress> toAddresses = getMailAddressesFromHeader(mimeMessage, "To");
-        Collection<MailAddress> recipients = mail.getRecipients();
 
-        ImmutableList.Builder<MailAddress> mainRecipients = ImmutableList.builder();
-        for (MailAddress recipient : recipients) {
-            if (toAddresses.contains(recipient)) {
-                mainRecipients.add(recipient);
-            }
-        }
-        return mainRecipients.build();
+        return mail.getRecipients()
+            .stream()
+            .filter(toAddresses::contains)
+            .collect(ImmutableList.toImmutableList());
     }
 
     private Collection<MailAddress> getMailAddressesFromHeader(MimeMessage message, String headerName) throws MessagingException {
         String[] headers = message.getHeader(headerName);
         ImmutableList.Builder<MailAddress> addresses = ImmutableList.builder();
         if (headers != null) {
-            for (String header : headers) {
-                addresses.addAll(getMailAddressesFromHeaderLine(header));
-            }
+            Arrays.stream(headers)
+                .forEach(header -> addresses.addAll(getMailAddressesFromHeader(header)));
         }
         return addresses.build();
     }
 
-    private ImmutableList<MailAddress> getMailAddressesFromHeaderLine(String header) throws MessagingException {
-        String unfoldedDecodedString = sanitizeHeaderString(header);
-        Iterable<String> headerParts = Splitter.on(",")
-            .split(unfoldedDecodedString);
-        return getMailAddressesFromHeadersParts(headerParts);
-    }
-
-    private ImmutableList<MailAddress> getMailAddressesFromHeadersParts(Iterable<String> headerParts) {
-        ImmutableList.Builder<MailAddress> result = ImmutableList.builder();
-        for (String headerPart : headerParts) {
-            result.addAll(asMailAddresses(headerPart));
-        }
-        return result.build();
+    private Collection<MailAddress> getMailAddressesFromHeader(String header) {
+        return asMailAddresses(header);
     }
 
     private Collection<MailAddress> asMailAddresses(String headerPart) {
@@ -108,11 +90,4 @@ public class IsMainRecipient extends GenericMatcher {
         }
     }
 
-    private String sanitizeHeaderString(String header) throws MessagingException {
-        try {
-            return MimeUtility.unfold(MimeUtility.decodeText(header));
-        } catch (UnsupportedEncodingException e) {
-            throw new MessagingException("Can not decode header", e);
-        }
-    }
 }
