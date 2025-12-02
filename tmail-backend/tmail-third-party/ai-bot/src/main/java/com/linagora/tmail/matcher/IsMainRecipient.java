@@ -28,7 +28,6 @@ import jakarta.mail.internet.MimeMessage;
 import org.apache.james.core.MailAddress;
 import org.apache.james.mime4j.dom.address.Mailbox;
 import org.apache.james.mime4j.field.address.LenientAddressParser;
-import org.apache.james.mime4j.util.MimeUtil;
 import org.apache.james.util.StreamUtils;
 import org.apache.mailet.Mail;
 import org.apache.mailet.base.GenericMatcher;
@@ -72,7 +71,7 @@ public class IsMainRecipient extends GenericMatcher {
 
     private Collection<MailAddress> asMailAddresses(String headerPart) {
         return LenientAddressParser.DEFAULT
-            .parseAddressList(MimeUtil.unfold(headerPart))
+            .parseAddressList(headerPart)
             .flatten()
             .stream()
             .flatMap(this::asMailAddress)
