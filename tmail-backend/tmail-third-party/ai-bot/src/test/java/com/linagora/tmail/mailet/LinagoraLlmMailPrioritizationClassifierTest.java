@@ -19,21 +19,27 @@
 package com.linagora.tmail.mailet;
 
 import static com.linagora.tmail.mailet.AIBotConfig.DEFAULT_TIMEOUT;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 import java.net.URI;
 import java.util.Optional;
 
 import org.apache.james.core.Domain;
+import org.apache.james.core.builder.MimeMessageBuilder;
 import org.apache.james.dnsservice.api.DNSService;
 import org.apache.james.domainlist.lib.DomainListConfiguration;
 import org.apache.james.domainlist.memory.MemoryDomainList;
 import org.apache.james.jmap.utils.JsoupHtmlTextExtractor;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
+import org.apache.james.server.core.MailImpl;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.james.user.memory.MemoryUsersRepository;
+import org.apache.mailet.Mail;
+import org.apache.mailet.base.test.FakeMailetConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 
@@ -67,4 +73,43 @@ public class LinagoraLlmMailPrioritizationClassifierTest implements LlmMailPrior
     public LlmMailPrioritizationClassifier testee() {
         return testee;
     }
+
+    @Test
+    void shouldNotHangWhenInvalidLlmApiKey() throws Exception {
+        AIBotConfig aiBotConfig = new AIBotConfig(
+            "invalid-api-key",
+            new LlmModel("gpt-oss-120b"),
+            Optional.of(URI.create("https://ai.linagora.com/api/v1/").toURL()),
+            DEFAULT_TIMEOUT);
+        StreamChatLanguageModelFactory streamChatLanguageModelFactory = new StreamChatLanguageModelFactory();
+        StreamingChatLanguageModel chatLanguageModel = streamChatLanguageModelFactory.createChatLanguageModel(aiBotConfig);
+        testee = new LlmMailPrioritizationClassifier(usersRepository, chatLanguageModel, new JsoupHtmlTextExtractor(),
+            new RecordingMetricFactory());
+
+        testee().init(FakeMailetConfig
+            .builder()
+            .build());
+
+        Mail mail = MailImpl.builder()
+            .name("mail-id")
+            .sender(BOB.asString())
+            .addRecipient(ALICE.asString())
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("URGENT – Production API Failure")
+                .addFrom(BOB.asString())
+                .addToRecipient(ALICE.asString())
+                .setText("""
+                    Hi team,
+                    Our payment gateway API has been failing since 03:12 AM UTC. All customer transactions are currently being rejected. We need an immediate fix or rollback before peak traffic starts in 2 hours.
+                    Please acknowledge as soon as possible.
+                    Thanks,
+                    Robert
+                    """)
+                .build())
+            .build();
+
+        assertThatThrownBy(() -> testee().service(mail))
+            .hasMessageContaining("401 Unauthorized");
+    }
+
 }
