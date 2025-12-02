@@ -1,0 +1,49 @@
+== LlmMailPrioritizationClassifier
+
+`LlmMailPrioritizationClassifier` is a mailet that uses a Large Language Model (LLM)
+to determine whether an incoming email requires immediate user action.
+
+The mailet analyzes the *From*, *To*, *Subject*, and the main body content of the message.
+HTML bodies are automatically converted to plain text.
+A classification request is then sent to the configured LLM, which must answer strictly
+`YES` or `NO`.
+
+If the model replies `YES`, the mailet adds a `needs-action` keyword for each recipient.
+Client applications or filtering rules may then use this keyword to highlight urgent email.
+
+=== Configuration
+
+The LLM endpoint, model, and credentials are defined globally in `ai.properties`.
+
+The mailet itself supports the following configuration parameter:
+
+|===
+| Parameter | Required | Description
+
+| `systemPrompt`
+| no
+| Overrides the built-in system prompt that guides the LLM classification.
+Useful when administrators want custom prioritization rules.
+
+| `maxReportBodyLength`
+| no
+| Maximum email body length to report to LLM. Defaults to 4000.
+|===
+
+=== Example
+
+This example runs the classifier only when the recipient is part of the `To` header
+(using the `IsMainRecipient` matcher), which reduces unnecessary LLM calls:
+
+[source,xml]
+----
+<mailet match="com.linagora.tmail.matcher.IsMainRecipient"
+        class="com.linagora.tmail.mailet.LlmMailPrioritizationClassifier">
+    <!-- Optional -->
+    <!--
+    <systemPrompt>Return YES only if this message affects production availability.</systemPrompt>
+    -->
+    <onMailetException>ignore</onMailetException>
+    <onMatchException>ignore</onMatchException>
+</mailet>
+----

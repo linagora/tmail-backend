@@ -68,6 +68,11 @@ Modify the `mailetcontainer.xml` file by adding the following lines:
     </matcher>
 
     ...
+    <mailet match="com.linagora.tmail.matcher.IsMainRecipient" class="com.linagora.tmail.mailet.LlmMailPrioritizationClassifier">
+        <onMailetException>ignore</onMailetException>
+        <onMatchException>ignore</onMatchException>
+    </mailet>
+    
     <mailet match="All" class="com.linagora.tmail.mailets.TmailLocalDelivery">
         <consume>false</consume>
     </mailet>
