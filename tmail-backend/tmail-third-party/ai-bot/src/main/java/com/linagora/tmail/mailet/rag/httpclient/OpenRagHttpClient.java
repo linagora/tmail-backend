@@ -30,6 +30,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.linagora.tmail.mailet.rag.RagConfig;
 
+import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
@@ -44,13 +45,12 @@ public class OpenRagHttpClient {
     private static final String API_KEY_HEADER = "Authorization";
     private static final String CONTENT_TYPE_HEADER = "Content-Type";
     private static final String APPLICATION_JSON = "application/json";
+    private static final String CHAT_COMPLETIONS_ENDPOINT = "/v1/chat/completions";
 
     private final HttpClient httpClient;
-    private final RagConfig configuration;
     private final ObjectMapper objectMapper;
 
     public OpenRagHttpClient(RagConfig configuration) {
-        this.configuration = configuration;
         this.objectMapper = new ObjectMapper().registerModule(new Jdk8Module());
         this.httpClient = buildReactorNettyHttpClient(configuration);
     }
@@ -75,9 +75,7 @@ public class OpenRagHttpClient {
                 .multipart(true)
                 .attr("metadata", metadataJson)
                 .file("file", documentId.asString() + ".txt", new ByteArrayInputStream(textualContent.getBytes(StandardCharsets.UTF_8)), "text/plain"))
-            .responseSingle((res, content) -> {
-                return getIndexationResponse(method, documentId, res, content);
-            });
+            .responseSingle((res, content) -> getIndexationResponse(method, documentId, res, content));
     }
 
     private Mono<String> getIndexationResponse(HttpMethod method, DocumentId documentId, HttpClientResponse res, ByteBufMono content) {
@@ -92,6 +90,17 @@ public class OpenRagHttpClient {
         } else {
             return (Mono.error(new RuntimeException("Failed to " + method.name() + " document: " + documentId.asString() + " (status: " + res.status().code() + ")")));
         }
+    }
+
+    public Mono<ChatCompletionResult> proxyChatCompletions(String payload) {
+        return httpClient
+            .headers(headers -> headers.add(CONTENT_TYPE_HEADER, APPLICATION_JSON))
+            .post()
+            .uri(CHAT_COMPLETIONS_ENDPOINT)
+            .send(Mono.just(Unpooled.wrappedBuffer(payload.getBytes(StandardCharsets.UTF_8))))
+            .responseSingle((response, content) -> content
+                .asByteArray()
+                .map(body -> new ChatCompletionResult(body, response.status().code(), response.responseHeaders())));
     }
 
     private static SslContext buildInsecureSslContext() {
