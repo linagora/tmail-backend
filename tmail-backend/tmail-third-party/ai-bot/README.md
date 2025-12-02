@@ -28,6 +28,7 @@ baseURL=https://chat.lucie.example.com
 * `apiKey`: The API key for accessing the LLM API service.
 * `baseURL`: The URL of an LLM API compatible with OpenAI, e.g. https://ai.linagora.com/api. If left blank, defaults to the official OpenAI API base URL.
 * `model`: The identifier of the LLM that generates the replies. Defaults to `gpt-4o-mini`.
+* `timeout`: Optional, duration, defaults to 10 seconds. Timeout for LLM requests.
 
 You can use the langchain4j demo API at http://langchain4j.dev/demo/openai/v1 with the `gpt-4o-mini` model and `demo` API key for testing purposes.
 

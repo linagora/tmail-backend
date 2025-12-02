@@ -18,19 +18,20 @@
 
 package com.linagora.tmail.mailet;
 
+import static com.linagora.tmail.mailet.AIBotConfig.DEFAULT_TIMEOUT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.net.URI;
+import java.util.Optional;
 
 import org.apache.commons.configuration2.Configuration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
-import reactor.core.publisher.Mono;
 
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
-
-import java.net.URI;
-import java.util.Optional;
+import reactor.core.publisher.Mono;
 
 @Disabled("Requires a valid API key in order to be run")
 public class AIRedactionalHelperTest {
@@ -43,7 +44,8 @@ public class AIRedactionalHelperTest {
         aiBotConfig = new AIBotConfig(
             "sk-fakefakefakefakefakefakefakefake",
             new LlmModel("lucie-7b-instruct-v1.1"),
-            Optional.of(URI.create("https://chat.lucie.ovh.linagora.com/v1/").toURL()));
+            Optional.of(URI.create("https://chat.lucie.ovh.linagora.com/v1/").toURL()),
+            DEFAULT_TIMEOUT);
         StreamingChatLanguageModel chatLanguageModel = new StreamChatLanguageModelFactory().createChatLanguageModel(aiBotConfig);
 
         aiRedactionalHelper = new LangchainAIRedactionalHelper(chatLanguageModel);
