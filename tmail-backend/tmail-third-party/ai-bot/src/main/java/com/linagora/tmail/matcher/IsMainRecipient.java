@@ -18,8 +18,8 @@
 
 package com.linagora.tmail.matcher;
 
-import java.util.Arrays;
 import java.util.Collection;
+import java.util.stream.Stream;
 
 import jakarta.mail.MessagingException;
 import jakarta.mail.internet.AddressException;
@@ -29,10 +29,14 @@ import org.apache.james.core.MailAddress;
 import org.apache.james.mime4j.dom.address.Mailbox;
 import org.apache.james.mime4j.field.address.LenientAddressParser;
 import org.apache.james.mime4j.util.MimeUtil;
+import org.apache.james.util.StreamUtils;
 import org.apache.mailet.Mail;
 import org.apache.mailet.base.GenericMatcher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 
 /**
  * IsMainRecipient matcher returns only the recipients of the Mail that are explicitly present in
@@ -42,6 +46,7 @@ import com.google.common.collect.ImmutableList;
  * empty collection (no recipients matched).</p>
  */
 public class IsMainRecipient extends GenericMatcher {
+    private static final Logger LOGGER = LoggerFactory.getLogger(IsMainRecipient.class);
 
     @Override
     public String getMatcherName() {
@@ -60,17 +65,9 @@ public class IsMainRecipient extends GenericMatcher {
     }
 
     private Collection<MailAddress> getMailAddressesFromHeader(MimeMessage message, String headerName) throws MessagingException {
-        String[] headers = message.getHeader(headerName);
-        ImmutableList.Builder<MailAddress> addresses = ImmutableList.builder();
-        if (headers != null) {
-            Arrays.stream(headers)
-                .forEach(header -> addresses.addAll(getMailAddressesFromHeader(header)));
-        }
-        return addresses.build();
-    }
-
-    private Collection<MailAddress> getMailAddressesFromHeader(String header) {
-        return asMailAddresses(header);
+        return StreamUtils.ofNullable(message.getHeader(headerName))
+            .flatMap(header -> asMailAddresses(header).stream())
+            .collect(ImmutableSet.toImmutableSet());
     }
 
     private Collection<MailAddress> asMailAddresses(String headerPart) {
@@ -78,15 +75,16 @@ public class IsMainRecipient extends GenericMatcher {
             .parseAddressList(MimeUtil.unfold(headerPart))
             .flatten()
             .stream()
-            .map(this::asMailAddress)
+            .flatMap(this::asMailAddress)
             .collect(ImmutableList.toImmutableList());
     }
 
-    private MailAddress asMailAddress(Mailbox mailbox) {
+    private Stream<MailAddress> asMailAddress(Mailbox mailbox) {
         try {
-            return new MailAddress(mailbox.getAddress());
+            return Stream.of(new MailAddress(mailbox.getAddress()));
         } catch (AddressException e) {
-            throw new RuntimeException(e);
+            LOGGER.warn("Invalid mail address: {}", mailbox.getAddress(), e);
+            return Stream.empty();
         }
     }
 
