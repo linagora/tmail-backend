@@ -20,16 +20,17 @@ package com.linagora.tmail.mailet;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
-import com.google.inject.Injector;
-
-import nl.jqno.equalsverifier.EqualsVerifier;
+import java.net.URI;
+import java.time.Duration;
+import java.util.Optional;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.junit.jupiter.api.Test;
 
-import java.net.URI;
-import java.util.Optional;
+import com.google.inject.Injector;
+
+import nl.jqno.equalsverifier.EqualsVerifier;
 
 public class AIBotConfigTest {
     private Injector injector;
@@ -66,9 +67,11 @@ public class AIBotConfigTest {
         configuration.addProperty("apiKey", "sk-fakefakefakefakefakefakefakefake");
         configuration.addProperty("model", "Lucie");
         configuration.addProperty("baseURL", "https://chat.lucie.exemple.com");
+        configuration.addProperty("timeout", "5s");
 
         //act
-        AIBotConfig expected = new AIBotConfig("sk-fakefakefakefakefakefakefakefake", new LlmModel("Lucie"), Optional.of(URI.create("https://chat.lucie.exemple.com").toURL()));
+        AIBotConfig expected = new AIBotConfig("sk-fakefakefakefakefakefakefakefake", new LlmModel("Lucie"), Optional.of(URI.create("https://chat.lucie.exemple.com").toURL()),
+            Duration.ofSeconds(5));
         AIBotConfig actual = AIBotConfig.from(configuration);
 
         //Assertions
@@ -82,7 +85,8 @@ public class AIBotConfigTest {
         configuration.addProperty("model", "Lucie");
         configuration.addProperty("baseURL", "");
 
-        AIBotConfig expected = new AIBotConfig("sk-fakefakefakefakefakefakefakefake", new LlmModel("Lucie"), Optional.empty());
+        AIBotConfig expected = new AIBotConfig("sk-fakefakefakefakefakefakefakefake", new LlmModel("Lucie"), Optional.empty(),
+            Duration.ofSeconds(10));
         AIBotConfig actual = AIBotConfig.from(configuration);
 
         assertThat(actual).isEqualTo(expected);
