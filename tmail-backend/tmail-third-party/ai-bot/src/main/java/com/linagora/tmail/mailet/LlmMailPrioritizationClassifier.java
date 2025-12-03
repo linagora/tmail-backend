@@ -43,6 +43,7 @@ import org.apache.mailet.base.GenericMailet;
 
 import com.github.fge.lambdas.Throwing;
 import com.github.fge.lambdas.consumers.ThrowingConsumer;
+import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 
@@ -126,6 +127,10 @@ public class LlmMailPrioritizationClassifier extends GenericMailet {
 
         this.maxReportBodyLength = Optional.ofNullable(getMailetConfig().getInitParameter(MAX_REPORT_BODY_LENGTH_PARAMETER_NAME))
             .map(Integer::parseInt)
+            .map(length -> {
+                Preconditions.checkArgument(length > 0, "'maxReportBodyLength' must be strictly positive");
+                return length;
+            })
             .orElse(DEFAULT_REPORT_MAX_BODY_LENGTH);
     }
 
