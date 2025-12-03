@@ -51,6 +51,7 @@ public class AIBotConfig {
         Preconditions.checkNotNull(apiKey);
         Preconditions.checkNotNull(llmModel);
         Preconditions.checkNotNull(baseURLOpt);
+        Preconditions.checkNotNull(timeout);
 
         this.apiKey = apiKey;
         this.baseURLOpt = baseURLOpt;
