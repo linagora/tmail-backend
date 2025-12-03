@@ -20,6 +20,7 @@ package com.linagora.tmail.james.jmap.perfs
 
 import java.io.InputStream
 import java.util
+import java.util.Locale
 
 import com.google.common.io.ByteSource
 import jakarta.inject.Inject
@@ -92,7 +93,7 @@ class TMailCleverMessageParser @Inject() (zoneIdProvider: ZoneIdProvider) extend
       .map(attachment => {
         val isInline = attachment.disposition.contains(Disposition.INLINE) && attachment.cid.isDefined
         TMailCleverParsedAttachment(ParsedAttachment.builder
-          .contentType(attachment.`type`.value + attachment.charset.map(charset => "; charset=" + charset.value).getOrElse(""))
+          .contentType(attachment.`type`.value + attachment.charset.map(charset => "; charset=" + charset.value.toUpperCase(Locale.US)).getOrElse(""))
           .content(EmailBodyPartContent(attachment))
           .name(attachment.name.map(_.value).toJava)
           .cid(attachment.cid.map(_.getValue).map(Cid.from).toJava)
