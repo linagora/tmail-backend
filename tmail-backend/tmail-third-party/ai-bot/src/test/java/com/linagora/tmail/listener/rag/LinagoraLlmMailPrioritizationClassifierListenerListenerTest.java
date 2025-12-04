@@ -1,0 +1,140 @@
+/********************************************************************
+ *  As a subpart of Twake Mail, this file is edited by Linagora.    *
+ *                                                                  *
+ *  https://twake-mail.com/                                         *
+ *  https://linagora.com                                            *
+ *                                                                  *
+ *  This file is subject to The Affero Gnu Public License           *
+ *  version 3.                                                      *
+ *                                                                  *
+ *  https://www.gnu.org/licenses/agpl-3.0.en.html                   *
+ *                                                                  *
+ *  This program is distributed in the hope that it will be         *
+ *  useful, but WITHOUT ANY WARRANTY; without even the implied      *
+ *  warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR         *
+ *  PURPOSE. See the GNU Affero General Public License for          *
+ *  more details.                                                   *
+ ********************************************************************/
+
+package com.linagora.tmail.listener.rag;
+
+import static com.linagora.tmail.mailet.AIBotConfig.DEFAULT_TIMEOUT;
+
+import java.net.URI;
+import java.time.Duration;
+import java.util.List;
+import java.util.Optional;
+
+import jakarta.mail.Flags;
+
+import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
+import org.apache.commons.configuration2.HierarchicalConfiguration;
+import org.apache.commons.configuration2.tree.ImmutableNode;
+import org.apache.james.events.InVMEventBus;
+import org.apache.james.events.MemoryEventDeadLetters;
+import org.apache.james.events.RetryBackoffConfiguration;
+import org.apache.james.events.delivery.InVmEventDelivery;
+import org.apache.james.jmap.utils.JsoupHtmlTextExtractor;
+import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.mailbox.MessageIdManager;
+import org.apache.james.mailbox.MessageManager;
+import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
+import org.apache.james.mailbox.model.FetchGroup;
+import org.apache.james.mailbox.model.MailboxPath;
+import org.apache.james.mailbox.model.MessageId;
+import org.apache.james.mailbox.model.MessageResult;
+import org.apache.james.mailbox.store.StoreMailboxManager;
+import org.apache.james.mailbox.store.SystemMailboxesProviderImpl;
+import org.apache.james.metrics.api.MetricFactory;
+import org.apache.james.metrics.tests.RecordingMetricFactory;
+import org.apache.james.util.html.HtmlTextExtractor;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
+
+import com.linagora.tmail.mailet.AIBotConfig;
+import com.linagora.tmail.mailet.LlmModel;
+import com.linagora.tmail.mailet.StreamChatLanguageModelFactory;
+
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import reactor.core.publisher.Mono;
+
+@Disabled("Manual run. Requires a valid Linagora AI's API key to be run")
+public class LinagoraLlmMailPrioritizationClassifierListenerListenerTest implements LlmMailPrioritizationClassifierListenerListenerContract {
+
+    private MessageIdManager messageIdManager;
+    private MailboxSession aliceSession;
+    private MessageManager aliceInbox;
+
+    @BeforeEach
+    void setup() throws Exception {
+        RetryBackoffConfiguration backoffConfiguration = RetryBackoffConfiguration.builder()
+            .maxRetries(2)
+            .firstBackoff(Duration.ofMillis(1))
+            .jitterFactor(0.5)
+            .build();
+
+        MemoryEventDeadLetters eventDeadLetters = new MemoryEventDeadLetters();
+
+        InMemoryIntegrationResources resources = InMemoryIntegrationResources.builder()
+            .preProvisionnedFakeAuthenticator()
+            .fakeAuthorizator()
+            .eventBus(new InVMEventBus(new InVmEventDelivery(new RecordingMetricFactory()), backoffConfiguration, eventDeadLetters))
+            .defaultAnnotationLimits()
+            .defaultMessageParser()
+            .scanningSearchIndex()
+            .noPreDeletionHooks()
+            .storeQuotaManager()
+            .build();
+        StoreMailboxManager mailboxManager = resources.getMailboxManager();
+        messageIdManager = resources.getMessageIdManager();
+        MetricFactory metricFactory = new RecordingMetricFactory();
+        HtmlTextExtractor htmlTextExtractor = new JsoupHtmlTextExtractor();
+
+        MailboxSession bobSession = mailboxManager.createSystemSession(BOB);
+        MailboxPath bobInboxPath = MailboxPath.inbox(BOB);
+        mailboxManager.createMailbox(bobInboxPath, bobSession).get();
+        MessageManager bobInbox = mailboxManager.getMailbox(bobInboxPath, bobSession);
+
+        aliceSession = mailboxManager.createSystemSession(ALICE);
+        MailboxPath aliceInboxPath = MailboxPath.inbox(ALICE);
+        mailboxManager.createMailbox(aliceInboxPath, aliceSession).get();
+        aliceInbox = mailboxManager.getMailbox(aliceInboxPath, aliceSession);
+
+        HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
+        config.setProperty("listener.configuration.maxBodyLength", 4000);
+
+        AIBotConfig aiBotConfig = new AIBotConfig(
+            Optional.ofNullable(System.getenv("LLM_API_KEY")).orElse("change-me"),
+            new LlmModel("gpt-oss-120b"),
+            Optional.of(URI.create("https://ai.linagora.com/api/v1/").toURL()),
+            DEFAULT_TIMEOUT);
+        StreamChatLanguageModelFactory streamChatLanguageModelFactory = new StreamChatLanguageModelFactory();
+        StreamingChatLanguageModel chatLanguageModel = streamChatLanguageModelFactory.createChatLanguageModel(aiBotConfig);
+
+        LlmMailPrioritizationClassifierListener listener = new LlmMailPrioritizationClassifierListener(
+            mailboxManager,
+            messageIdManager,
+            new SystemMailboxesProviderImpl(mailboxManager),
+            chatLanguageModel,
+            htmlTextExtractor,
+            metricFactory,
+            config);
+        mailboxManager.getEventBus().register(listener);
+    }
+
+    @Override
+    public MessageManager aliceInbox() {
+        return aliceInbox;
+    }
+
+    @Override
+    public MailboxSession aliceSession() {
+        return aliceSession;
+    }
+
+    @Override
+    public Mono<Flags> readFlags(MessageId messageId, MailboxSession userSession) {
+        return Mono.from(messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.MINIMAL, userSession))
+            .map(MessageResult::getFlags);
+    }
+}
