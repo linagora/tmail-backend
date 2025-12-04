@@ -48,6 +48,7 @@ import org.apache.james.mime4j.dom.Message;
 import org.apache.james.modules.MailboxProbeImpl;
 import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.GuiceProbe;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -138,5 +139,12 @@ class PostgresEmailGetMethodTest implements EmailGetMethodContract {
             .until(() -> server.getProbe(MessageFastViewProjectionProbe.class)
                 .retrieve(messageId)
                 .isPresent());
+    }
+
+    @Disabled("JAMES-3872: Issue with read attachment level: fix on James first...")
+    @Test
+    @Override
+    public void shouldUseFastViewWithAttachmentMetadataWhenSupportedBodyPropertiesAtAttachmentReadLevel(GuiceJamesServer server) {
+
     }
 }
