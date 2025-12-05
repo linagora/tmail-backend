@@ -67,7 +67,9 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class LlmMailPrioritizationClassifierListener implements EventListener.ReactiveGroupEventListener {
-    public static class LlmMailPrioritizationClassifierGroup extends Group {}
+    public static class LlmMailPrioritizationClassifierGroup extends Group {
+
+    }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LlmMailPrioritizationClassifierListener.class);
     private static final Group GROUP = new LlmMailPrioritizationClassifierGroup();
@@ -77,10 +79,23 @@ public class LlmMailPrioritizationClassifierListener implements EventListener.Re
     private static final String MAX_BODY_LENGTH_PARAM = "maxBodyLength";
     private static final int DEFAULT_MAX_BODY_LENGTH = 4000;
     private static final String DEFAULT_SYSTEM_PROMPT = """
-        You are an email-triage classifier. Your ONLY task is to evaluate whether an incoming email requires immediate human action by the recipient.
-        Return strictly one word: "YES" or "NO". Do not add explanations or any additional text.
-        An email requires immediate action (YES) only if it reports urgent issues (like production failures or security incidents), time-sensitive requests or approvals (with clear deadlines), or payment/billing problems that might lead to service disruption soon.
-        Return NO for newsletters, marketing, spam, general updates, casual conversations, or unclear/ambiguous messages. If the email looks like spam or phishing, always return NO.
+        You are an email action classifier. Your ONLY task is to decide whether the email expects the recipient to perform any action.
+        
+        Output: Return exactly one word: "YES" or "NO". No explanations or extra text.
+        
+        Return YES if the email clearly asks the recipient to do something, such as:
+        - providing information, answering a question, or making a decision
+        - completing a task
+        - handling a problem, request, complaint, or follow-up
+        
+        Return NO if the email does NOT expect action, including:
+        - newsletters, announcements, marketing, spam, or phishing
+        - general updates, status reports, or FYI messages
+        - conversations with no request (e.g., greetings, thank you messages)
+        - ambiguous messages where no action is explicitly asked
+        
+        If the email looks like spam or phishing, always return NO.
+        If it is unclear whether an action is expected, return NO.
         """;
 
     private final MailboxManager mailboxManager;
@@ -121,15 +136,15 @@ public class LlmMailPrioritizationClassifierListener implements EventListener.Re
 
     @Override
     public boolean isHandling(Event event) {
-        return event instanceof MailboxEvents.Added added && added.isAppended();
+        return event instanceof MailboxEvents.Added added && added.isDelivery();
     }
 
     @Override
     public Publisher<Void> reactiveEvent(Event event) {
-        if (event instanceof MailboxEvents.Added added && added.isAppended()) {
+        if (event instanceof MailboxEvents.Added added && added.isDelivery()) {
             return isAppendedToInbox(added)
                 .filter(Boolean::booleanValue)
-                .flatMapMany(any -> processAddedEvent(added))
+                .flatMap(matched -> processAddedEvent(added))
                 .then();
         }
 
@@ -142,22 +157,19 @@ public class LlmMailPrioritizationClassifierListener implements EventListener.Re
             .any(inboxId -> inboxId.equals(addedEvent.getMailboxId()));
     }
 
-    private Flux<Void> processAddedEvent(MailboxEvents.Added addedEvent) {
+    private Mono<Void> processAddedEvent(MailboxEvents.Added addedEvent) {
         Username username = addedEvent.getUsername();
         MailboxSession session = mailboxManager.createSystemSession(username);
 
-        return Mono.from(messageIdManager.getMessagesReactive(addedEvent.getMessageIds(), FetchGroup.FULL_CONTENT, session))
+        return Flux.from(messageIdManager.getMessagesReactive(addedEvent.getMessageIds(), FetchGroup.FULL_CONTENT, session))
             .flatMap(messageResult -> buildUserPrompt(messageResult)
-                .flatMap(userPrompt -> {
-                    System.out.println("user prompt: " + userPrompt); // TODO debug remove
-                    return callLlm(systemPrompt, userPrompt)
-                        .doOnError(e -> LOGGER.error("LLM call failed for messageId {} in mailboxId {} of user {}",
-                            messageResult.getMessageId().serialize(), addedEvent.getMailboxId().serialize(), addedEvent.getUsername().asString(), e));
-                })
+                .flatMap(userPrompt -> Mono.from(metricFactory.decoratePublisherWithTimerMetric("llm-mail-prioritization-classifier", callLlm(systemPrompt, userPrompt)))
+                    .doOnError(e -> LOGGER.error("LLM call failed for messageId {} in mailboxId {} of user {}",
+                        messageResult.getMessageId().serialize(), addedEvent.getMailboxId().serialize(), addedEvent.getUsername().asString(), e)))
                 .map(this::isActionRequired)
                 .flatMap(actionRequired -> actionRequired ? addNeedsActionKeyword(messageResult, addedEvent.getMailboxId(), session) : Mono.empty()))
             .doFinally(signal -> mailboxManager.endProcessingRequest(session))
-            .thenMany(Flux.empty());
+            .then();
     }
 
     private Mono<Void> addNeedsActionKeyword(MessageResult messageResult, MailboxId mailboxId, MailboxSession session) {
@@ -187,8 +199,6 @@ public class LlmMailPrioritizationClassifierListener implements EventListener.Re
             String subject = Strings.nullToEmpty(mimeMessage.getSubject());
             MessageContentExtractor.MessageContent messageContent = new MessageContentExtractor().extract(mimeMessage);
             Optional<String> maybeBody = messageContent.extractMainTextContent(htmlTextExtractor);
-
-            // TODO do not build the prompt if the username is not the recipient list (TO, CC, BCC)
 
             return Mono.justOrEmpty(maybeBody)
                 .map(body -> {
@@ -227,26 +237,24 @@ public class LlmMailPrioritizationClassifierListener implements EventListener.Re
         ChatMessage userMessage = new UserMessage(userPrompt);
         List<ChatMessage> messages = List.of(systemMessage, userMessage);
 
-        return Mono.create(sink -> {
-            chatLanguageModel.generate(messages, new StreamingResponseHandler() {
-                StringBuilder result = new StringBuilder();
+        return Mono.create(sink -> chatLanguageModel.generate(messages, new StreamingResponseHandler<>() {
+            final StringBuilder result = new StringBuilder();
 
-                @Override
-                public void onComplete(Response response) {
-                    sink.success(result.toString());
-                }
+            @Override
+            public void onComplete(Response response) {
+                sink.success(result.toString());
+            }
 
-                @Override
-                public void onError(Throwable error) {
-                    sink.error(error);
-                }
+            @Override
+            public void onError(Throwable error) {
+                sink.error(error);
+            }
 
-                @Override
-                public void onNext(String partialResponse) {
-                    result.append(partialResponse);
-                }
-            });
-        });
+            @Override
+            public void onNext(String partialResponse) {
+                result.append(partialResponse);
+            }
+        }));
     }
 
     private boolean isActionRequired(String llmOutput) {

@@ -53,7 +53,7 @@ import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 import reactor.core.publisher.Mono;
 
-public class MockLlmMailPrioritizationClassifierListenerListenerTest implements LlmMailPrioritizationClassifierListenerListenerContract {
+public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailPrioritizationClassifierListenerContract {
 
     static class StubModel implements StreamingChatLanguageModel {
         volatile String llOutput;
@@ -69,6 +69,10 @@ public class MockLlmMailPrioritizationClassifierListenerListenerTest implements 
     private StubModel model;
     private MailboxSession aliceSession;
     private MessageManager aliceInbox;
+    private MessageManager aliceCustomMailbox;
+    private HierarchicalConfiguration<ImmutableNode> listenerConfig;
+    private StoreMailboxManager mailboxManager;
+    private LlmMailPrioritizationClassifierListener listener;
 
     @BeforeEach
     void setup() throws Exception {
@@ -90,34 +94,29 @@ public class MockLlmMailPrioritizationClassifierListenerListenerTest implements 
             .noPreDeletionHooks()
             .storeQuotaManager()
             .build();
-        StoreMailboxManager mailboxManager = resources.getMailboxManager();
+        mailboxManager = resources.getMailboxManager();
         messageIdManager = resources.getMessageIdManager();
         MetricFactory metricFactory = new RecordingMetricFactory();
         HtmlTextExtractor htmlTextExtractor = new JsoupHtmlTextExtractor();
         model = new StubModel();
 
-        MailboxSession bobSession = mailboxManager.createSystemSession(BOB);
-        MailboxPath bobInboxPath = MailboxPath.inbox(BOB);
-        mailboxManager.createMailbox(bobInboxPath, bobSession).get();
-        MessageManager bobInbox = mailboxManager.getMailbox(bobInboxPath, bobSession);
-
         aliceSession = mailboxManager.createSystemSession(ALICE);
         MailboxPath aliceInboxPath = MailboxPath.inbox(ALICE);
         mailboxManager.createMailbox(aliceInboxPath, aliceSession).get();
         aliceInbox = mailboxManager.getMailbox(aliceInboxPath, aliceSession);
+        mailboxManager.createMailbox(MailboxPath.forUser(ALICE, "customMailbox"), aliceSession).get();
+        aliceCustomMailbox = mailboxManager.getMailbox(MailboxPath.forUser(ALICE, "customMailbox"), aliceSession);
 
-        HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
-        config.setProperty("listener.configuration.maxBodyLength", 4000);
+        listenerConfig = new BaseHierarchicalConfiguration();
 
-        LlmMailPrioritizationClassifierListener listener = new LlmMailPrioritizationClassifierListener(
+        listener = new LlmMailPrioritizationClassifierListener(
             mailboxManager,
             messageIdManager,
             new SystemMailboxesProviderImpl(mailboxManager),
             model,
             htmlTextExtractor,
             metricFactory,
-            config);
-        mailboxManager.getEventBus().register(listener);
+            listenerConfig);
     }
 
     @Override
@@ -126,8 +125,35 @@ public class MockLlmMailPrioritizationClassifierListenerListenerTest implements 
     }
 
     @Override
+    public MessageManager aliceCustomMailbox() {
+        return aliceCustomMailbox;
+    }
+
+    @Override
     public MailboxSession aliceSession() {
         return aliceSession;
+    }
+
+    @Override
+    public HierarchicalConfiguration<ImmutableNode> listenerConfig() {
+        return listenerConfig;
+    }
+
+    @Override
+    public void resetListenerWithConfig(HierarchicalConfiguration<ImmutableNode> overrideConfig) {
+        listener = new LlmMailPrioritizationClassifierListener(
+            mailboxManager,
+            messageIdManager,
+            new SystemMailboxesProviderImpl(mailboxManager),
+            model,
+            new JsoupHtmlTextExtractor(),
+            new RecordingMetricFactory(),
+            overrideConfig);
+    }
+
+    @Override
+    public void registerListenerToEventBus() {
+        mailboxManager.getEventBus().register(listener);
     }
 
     @Override
