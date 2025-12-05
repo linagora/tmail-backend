@@ -21,10 +21,13 @@ package com.linagora.tmail.mailet;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
 import java.util.Objects;
 import java.util.Optional;
 
 import org.apache.commons.configuration2.Configuration;
+import org.apache.james.util.DurationParser;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
@@ -33,22 +36,27 @@ public class AIBotConfig {
     public static String API_KEY_PARAMETER_NAME = "apiKey";
     public static String MODEL_PARAMETER_NAME = "model";
     public static String BASE_URL_PARAMETER_NAME = "baseURL";
+    public static String TIMEOUT_PARAMETER_NAME = "timeout";
 
     public static final LlmModel DEFAULT_LLM_MODEL =
         new LlmModel("gpt-4o-mini");
+    public static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(10);
 
     private final String apiKey;
     private final Optional<URL> baseURLOpt;
     private final LlmModel llmModel;
+    private final Duration timeout;
 
-    public AIBotConfig(String apiKey, LlmModel llmModel, Optional<URL> baseURLOpt) {
+    public AIBotConfig(String apiKey, LlmModel llmModel, Optional<URL> baseURLOpt, Duration timeout) {
         Preconditions.checkNotNull(apiKey);
         Preconditions.checkNotNull(llmModel);
         Preconditions.checkNotNull(baseURLOpt);
+        Preconditions.checkNotNull(timeout);
 
         this.apiKey = apiKey;
         this.baseURLOpt = baseURLOpt;
         this.llmModel = llmModel;
+        this.timeout = timeout;
     }
 
     public static AIBotConfig from(Configuration configuration) throws IllegalArgumentException {
@@ -64,8 +72,13 @@ public class AIBotConfig {
             .filter(baseUrlString -> !Strings.isNullOrEmpty(baseUrlString))
             .flatMap(AIBotConfig::baseURLStringToURL);
 
+        Duration timeout = Optional.ofNullable(configuration.getString(TIMEOUT_PARAMETER_NAME, null))
+            .map(value -> DurationParser.parse(value, ChronoUnit.SECONDS))
+            .orElse(DEFAULT_TIMEOUT);
+
+
         try {
-            return new AIBotConfig(apiKeyParam, llmModelParam, baseURLOpt);
+            return new AIBotConfig(apiKeyParam, llmModelParam, baseURLOpt, timeout);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -91,13 +104,15 @@ public class AIBotConfig {
         return Objects.equals(apiKey, that.apiKey) &&
             Objects.equals(llmModel, that.llmModel) &&
             Objects.equals(Optional.ofNullable(baseURLOpt).map(opt -> opt.map(URL::toString)),
-                Optional.ofNullable(that.baseURLOpt).map(opt -> opt.map(URL::toString)));
+                Optional.ofNullable(that.baseURLOpt).map(opt -> opt.map(URL::toString))) &&
+            Objects.equals(timeout, that.timeout);
     }
 
     @Override
     public int hashCode() {
         return Objects.hash(apiKey, llmModel,
-            Optional.ofNullable(baseURLOpt).map(opt -> opt.map(URL::toString)));
+            Optional.ofNullable(baseURLOpt).map(opt -> opt.map(URL::toString)),
+            timeout);
     }
 
     public String getApiKey() {
@@ -110,5 +125,9 @@ public class AIBotConfig {
 
     public Optional<URL> getBaseURL() {
         return baseURLOpt;
+    }
+
+    public Duration getTimeout() {
+        return timeout;
     }
 }

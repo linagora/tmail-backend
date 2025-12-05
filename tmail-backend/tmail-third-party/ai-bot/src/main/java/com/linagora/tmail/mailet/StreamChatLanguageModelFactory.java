@@ -19,6 +19,7 @@
 package com.linagora.tmail.mailet;
 
 import java.net.URL;
+import java.time.Duration;
 import java.util.Optional;
 
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
@@ -32,14 +33,16 @@ public class StreamChatLanguageModelFactory {
         LlmModel llmModel = config.getLlmModel();
         Optional<URL> baseURLOpt = config.getBaseURL();
 
-        return createOpenAILanguageModel(apiKey, llmModel.modelName(), baseURLOpt.map(URL::toString).orElse(USE_DEFAULT_BASE_URL));
+        return createOpenAILanguageModel(apiKey, llmModel.modelName(), baseURLOpt.map(URL::toString).orElse(USE_DEFAULT_BASE_URL),
+            config.getTimeout());
     }
 
-    private StreamingChatLanguageModel createOpenAILanguageModel(String apiKey, String modelName, String baseUrl) {
+    private StreamingChatLanguageModel createOpenAILanguageModel(String apiKey, String modelName, String baseUrl, Duration timeout) {
         return OpenAiStreamingChatModel.builder()
             .apiKey(apiKey)
             .modelName(modelName)
             .baseUrl(baseUrl)
+            .timeout(timeout)
             .build();
     }
 }

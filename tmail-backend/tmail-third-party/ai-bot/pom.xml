@@ -32,7 +32,7 @@
     <description>OpenAI integration for Twake Mail</description>
 
     <properties>
-        <langchain4j.version>0.34.0</langchain4j.version>
+        <langchain4j.version>0.36.2</langchain4j.version>
         <jmh.version>1.35</jmh.version>
     </properties>
 
