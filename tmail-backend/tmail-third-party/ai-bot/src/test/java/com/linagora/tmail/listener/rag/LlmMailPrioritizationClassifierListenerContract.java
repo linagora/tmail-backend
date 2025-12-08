@@ -221,7 +221,7 @@ public interface LlmMailPrioritizationClassifierListenerContract {
         registerListenerToEventBus();
         noNeedActionsLlmHook();
 
-        MessageId messageId = aliceInbox().appendMessage(        MessageManager.AppendCommand.builder()
+        MessageId messageId = aliceInbox().appendMessage(MessageManager.AppendCommand.builder()
                     .isDelivery(true)
                     .build(Message.Builder.of()
                         .setSubject("URGENT: Your Account Will Be Suspended Today")
