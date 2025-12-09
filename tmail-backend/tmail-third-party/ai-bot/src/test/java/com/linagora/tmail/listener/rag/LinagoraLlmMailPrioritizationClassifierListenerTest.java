@@ -53,6 +53,9 @@ import org.apache.james.util.html.HtmlTextExtractor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 
+import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
+import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
+import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
 import com.linagora.tmail.mailet.AIBotConfig;
 import com.linagora.tmail.mailet.LlmModel;
 import com.linagora.tmail.mailet.StreamChatLanguageModelFactory;
@@ -71,6 +74,8 @@ public class LinagoraLlmMailPrioritizationClassifierListenerTest implements LlmM
     private StoreMailboxManager mailboxManager;
     private StreamingChatLanguageModel chatLanguageModel;
     private IdentityRepository identityRepository;
+    private JmapSettingsRepository jmapSettingsRepository;
+    private JmapSettingsRepositoryJavaUtils jmapSettingsRepositoryUtils;
     private LlmMailPrioritizationClassifierListener listener;
 
     @BeforeEach
@@ -115,6 +120,8 @@ public class LinagoraLlmMailPrioritizationClassifierListenerTest implements LlmM
         StreamChatLanguageModelFactory streamChatLanguageModelFactory = new StreamChatLanguageModelFactory();
         chatLanguageModel = streamChatLanguageModelFactory.createChatLanguageModel(aiBotConfig);
         identityRepository = setUpIdentityRepository();
+        jmapSettingsRepository = new MemoryJmapSettingsRepository();
+        jmapSettingsRepositoryUtils = new JmapSettingsRepositoryJavaUtils(jmapSettingsRepository);
 
         listener = new LlmMailPrioritizationClassifierListener(
             mailboxManager,
@@ -123,6 +130,7 @@ public class LinagoraLlmMailPrioritizationClassifierListenerTest implements LlmM
             chatLanguageModel,
             htmlTextExtractor,
             identityRepository,
+            jmapSettingsRepository,
             metricFactory,
             listenerConfig);
     }
@@ -156,6 +164,7 @@ public class LinagoraLlmMailPrioritizationClassifierListenerTest implements LlmM
             chatLanguageModel,
             new JsoupHtmlTextExtractor(),
             identityRepository,
+            jmapSettingsRepository,
             new RecordingMetricFactory(),
             overrideConfig);
     }
@@ -163,6 +172,11 @@ public class LinagoraLlmMailPrioritizationClassifierListenerTest implements LlmM
     @Override
     public void registerListenerToEventBus() {
         mailboxManager.getEventBus().register(listener);
+    }
+
+    @Override
+    public JmapSettingsRepositoryJavaUtils jmapSettingsRepositoryUtils() {
+        return jmapSettingsRepositoryUtils;
     }
 
     @Override

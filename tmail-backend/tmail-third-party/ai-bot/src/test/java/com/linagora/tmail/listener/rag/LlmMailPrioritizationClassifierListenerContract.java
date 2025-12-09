@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Map;
 
 import jakarta.mail.Flags;
 
@@ -41,6 +42,8 @@ import org.awaitility.Durations;
 import org.awaitility.core.ConditionFactory;
 import org.junit.jupiter.api.Test;
 
+import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
+
 import reactor.core.publisher.Mono;
 
 public interface LlmMailPrioritizationClassifierListenerContract {
@@ -58,6 +61,7 @@ public interface LlmMailPrioritizationClassifierListenerContract {
     HierarchicalConfiguration<ImmutableNode> listenerConfig();
     void resetListenerWithConfig(HierarchicalConfiguration<ImmutableNode> overrideConfig);
     void registerListenerToEventBus();
+    JmapSettingsRepositoryJavaUtils jmapSettingsRepositoryUtils();
 
     default void needActionsLlmHook() {
 
@@ -537,4 +541,126 @@ public interface LlmMailPrioritizationClassifierListenerContract {
             });
     }
 
+    @Test
+    default void urgentEmailShouldBeTaggedNeedsActionWhenUserHasNoSettingByDefault() throws Exception {
+        registerListenerToEventBus();
+        needActionsLlmHook();
+
+        MessageId messageId = aliceInbox().appendMessage(MessageManager.AppendCommand.builder()
+                    .isDelivery(true)
+                    .build(Message.Builder.of()
+                        .setSubject("URGENT – Production API Failure")
+                        .setMessageId("Message-ID")
+                        .setFrom(BOB.asString())
+                        .setTo(ALICE.asString())
+                        .setBody("""
+                            Hi team,
+                            Our payment gateway API has been failing since 03:12 AM UTC. All customer transactions are currently being rejected. We need an immediate fix or rollback before peak traffic starts in 2 hours.
+                            Please acknowledge as soon as possible.
+                            Thanks,
+                            Robert
+                            """, StandardCharsets.UTF_8)),
+                aliceSession())
+            .getId().getMessageId();
+
+        CALMLY_AWAIT.atMost(Durations.TEN_SECONDS)
+            .untilAsserted(() -> {
+                assertThat(readFlags(messageId, aliceSession()).block()).isNotNull();
+                assertThat(readFlags(messageId, aliceSession()).block().getUserFlags())
+                    .contains("needs-action");
+            });
+    }
+
+    @Test
+    default void urgentEmailShouldBeTaggedNeedsActionWhenUserHasNoNeedsActionSettingByDefault() throws Exception {
+        jmapSettingsRepositoryUtils().reset(ALICE, Map.of("whatever", "true"));
+        registerListenerToEventBus();
+        needActionsLlmHook();
+
+        MessageId messageId = aliceInbox().appendMessage(MessageManager.AppendCommand.builder()
+                    .isDelivery(true)
+                    .build(Message.Builder.of()
+                        .setSubject("URGENT – Production API Failure")
+                        .setMessageId("Message-ID")
+                        .setFrom(BOB.asString())
+                        .setTo(ALICE.asString())
+                        .setBody("""
+                            Hi team,
+                            Our payment gateway API has been failing since 03:12 AM UTC. All customer transactions are currently being rejected. We need an immediate fix or rollback before peak traffic starts in 2 hours.
+                            Please acknowledge as soon as possible.
+                            Thanks,
+                            Robert
+                            """, StandardCharsets.UTF_8)),
+                aliceSession())
+            .getId().getMessageId();
+
+        CALMLY_AWAIT.atMost(Durations.TEN_SECONDS)
+            .untilAsserted(() -> {
+                assertThat(readFlags(messageId, aliceSession()).block()).isNotNull();
+                assertThat(readFlags(messageId, aliceSession()).block().getUserFlags())
+                    .contains("needs-action");
+            });
+    }
+
+    @Test
+    default void urgentEmailShouldBeTaggedNeedsActionWhenUserEnabledNeedsActionSetting() throws Exception {
+        jmapSettingsRepositoryUtils().reset(ALICE, Map.of("ai.needs-action.enabled", "true"));
+        registerListenerToEventBus();
+        needActionsLlmHook();
+
+        MessageId messageId = aliceInbox().appendMessage(MessageManager.AppendCommand.builder()
+                    .isDelivery(true)
+                    .build(Message.Builder.of()
+                        .setSubject("URGENT – Production API Failure")
+                        .setMessageId("Message-ID")
+                        .setFrom(BOB.asString())
+                        .setTo(ALICE.asString())
+                        .setBody("""
+                            Hi team,
+                            Our payment gateway API has been failing since 03:12 AM UTC. All customer transactions are currently being rejected. We need an immediate fix or rollback before peak traffic starts in 2 hours.
+                            Please acknowledge as soon as possible.
+                            Thanks,
+                            Robert
+                            """, StandardCharsets.UTF_8)),
+                aliceSession())
+            .getId().getMessageId();
+
+        CALMLY_AWAIT.atMost(Durations.TEN_SECONDS)
+            .untilAsserted(() -> {
+                assertThat(readFlags(messageId, aliceSession()).block()).isNotNull();
+                assertThat(readFlags(messageId, aliceSession()).block().getUserFlags())
+                    .contains("needs-action");
+            });
+    }
+
+    @Test
+    default void urgentEmailShouldNotBeTaggedNeedsActionWhenUserDisabledNeedsActionSetting() throws Exception {
+        jmapSettingsRepositoryUtils().reset(ALICE, Map.of("ai.needs-action.enabled", "false"));
+        registerListenerToEventBus();
+        needActionsLlmHook();
+
+        MessageId messageId = aliceInbox().appendMessage(MessageManager.AppendCommand.builder()
+                    .isDelivery(true)
+                    .build(Message.Builder.of()
+                        .setSubject("URGENT – Production API Failure")
+                        .setMessageId("Message-ID")
+                        .setFrom(BOB.asString())
+                        .setTo(ALICE.asString())
+                        .setBody("""
+                            Hi team,
+                            Our payment gateway API has been failing since 03:12 AM UTC. All customer transactions are currently being rejected. We need an immediate fix or rollback before peak traffic starts in 2 hours.
+                            Please acknowledge as soon as possible.
+                            Thanks,
+                            Robert
+                            """, StandardCharsets.UTF_8)),
+                aliceSession())
+            .getId().getMessageId();
+
+        CALMLY_AWAIT.atMost(Durations.TEN_SECONDS)
+            .untilAsserted(() -> {
+                assertThat(readFlags(messageId, aliceSession()).block()).isNotNull();
+                assertThat(readFlags(messageId, aliceSession()).block().getUserFlags())
+                    .doesNotContain("needs-action");
+            });
+    }
 }
