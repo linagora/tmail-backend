@@ -106,7 +106,7 @@ public class OpenRagHttpClientTest {
                "stream": false
             }""";
 
-        ChatCompletionResult result = client.proxyChatCompletions(incomingPayload).block();
+        ChatCompletionResult result = client.proxyChatCompletions(incomingPayload.getBytes(StandardCharsets.UTF_8)).block();
 
         verify(1, postRequestedFor(urlMatching(CHAT_COMPLETIONS_ENDPOINT)));
 
@@ -139,7 +139,7 @@ public class OpenRagHttpClientTest {
                 .withHeader("Content-Type", "application/json")
                 .withBody(resultBody)));
 
-        ChatCompletionResult result = client.proxyChatCompletions(incomingPayload).block();
+        ChatCompletionResult result = client.proxyChatCompletions(incomingPayload.getBytes(StandardCharsets.UTF_8)).block();
         String body = new String(result.body(), StandardCharsets.UTF_8);
         SoftAssertions.assertSoftly(solftly -> {
             solftly.assertThat(result.status()).isEqualTo(500);
