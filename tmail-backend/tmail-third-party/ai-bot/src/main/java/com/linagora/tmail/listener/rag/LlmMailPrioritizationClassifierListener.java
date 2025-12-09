@@ -51,6 +51,7 @@ import org.apache.james.mime4j.dom.Message;
 import org.apache.james.mime4j.dom.address.Mailbox;
 import org.apache.james.mime4j.message.DefaultMessageBuilder;
 import org.apache.james.mime4j.stream.MimeConfig;
+import org.apache.james.util.ReactorUtils;
 import org.apache.james.util.html.HtmlTextExtractor;
 import org.apache.james.util.mime.MessageContentExtractor;
 import org.reactivestreams.Publisher;
@@ -168,16 +169,16 @@ public class LlmMailPrioritizationClassifierListener implements EventListener.Re
         Username username = addedEvent.getUsername();
         MailboxSession session = mailboxManager.createSystemSession(username);
 
-        return Flux.from(messageIdManager.getMessagesReactive(addedEvent.getMessageIds(), FetchGroup.FULL_CONTENT, session))
-            .flatMap(messageResult -> getUserDisplayName(username)
-                .flatMap(userDisplayName -> buildUserPrompt(messageResult, username, userDisplayName))
-                .flatMap(userPrompt -> Mono.from(metricFactory.decoratePublisherWithTimerMetric("llm-mail-prioritization-classifier", callLlm(systemPrompt, userPrompt)))
-                    .doOnError(e -> LOGGER.error("LLM call failed for messageId {} in mailboxId {} of user {}",
-                        messageResult.getMessageId().serialize(), addedEvent.getMailboxId().serialize(), addedEvent.getUsername().asString(), e)))
-                .map(this::isActionRequired)
-                .flatMap(actionRequired -> actionRequired ? addNeedsActionKeyword(messageResult, addedEvent.getMailboxId(), session) : Mono.empty()))
-            .doFinally(signal -> mailboxManager.endProcessingRequest(session))
-            .then();
+        return getUserDisplayName(username)
+            .flatMap(userDisplayName -> Flux.from(messageIdManager.getMessagesReactive(addedEvent.getMessageIds(), FetchGroup.FULL_CONTENT, session))
+                .flatMap(messageResult -> buildUserPrompt(messageResult, username, userDisplayName)
+                    .flatMap(userPrompt -> Mono.from(metricFactory.decoratePublisherWithTimerMetric("llm-mail-prioritization-classifier", callLlm(systemPrompt, userPrompt)))
+                        .doOnError(e -> LOGGER.error("LLM call failed for messageId {} in mailboxId {} of user {}",
+                            messageResult.getMessageId().serialize(), addedEvent.getMailboxId().serialize(), addedEvent.getUsername().asString(), e)))
+                    .map(this::isActionRequired)
+                    .flatMap(actionRequired -> actionRequired ? addNeedsActionKeyword(messageResult, addedEvent.getMailboxId(), session) : Mono.empty()), ReactorUtils.LOW_CONCURRENCY)
+                .doFinally(signal -> mailboxManager.endProcessingRequest(session))
+                .then());
     }
 
     private Mono<Void> addNeedsActionKeyword(MessageResult messageResult, MailboxId mailboxId, MailboxSession session) {
