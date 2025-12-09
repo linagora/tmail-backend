@@ -92,12 +92,12 @@ public class OpenRagHttpClient {
         }
     }
 
-    public Mono<ChatCompletionResult> proxyChatCompletions(String payload) {
+    public Mono<ChatCompletionResult> proxyChatCompletions(byte[] payload) {
         return httpClient
             .headers(headers -> headers.add(CONTENT_TYPE_HEADER, APPLICATION_JSON))
             .post()
             .uri(CHAT_COMPLETIONS_ENDPOINT)
-            .send(Mono.just(Unpooled.wrappedBuffer(payload.getBytes(StandardCharsets.UTF_8))))
+            .send(Mono.just(Unpooled.wrappedBuffer(payload)))
             .responseSingle((response, content) -> content
                 .asByteArray()
                 .map(body -> new ChatCompletionResult(body, response.status().code(), response.responseHeaders())));
