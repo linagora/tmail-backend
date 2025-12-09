@@ -60,6 +60,6 @@ class AiBotMethodModule extends AbstractModule {
 
     Multibinder.newSetBinder(binder, classOf[JMAPRoutes])
       .addBinding()
-      .to(classOf[JmapAiRoutes])
+      .to(classOf[AIChatCompletionRoutes])
   }
 }

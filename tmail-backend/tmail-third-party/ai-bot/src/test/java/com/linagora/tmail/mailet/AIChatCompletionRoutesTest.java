@@ -21,12 +21,8 @@ package com.linagora.tmail.mailet;
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.configureFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
-import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
-import static com.github.tomakehurst.wiremock.client.WireMock.verify;
-import static io.netty.handler.codec.http.HttpHeaderNames.ACCEPT;
 import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.requestSpecification;
 import static jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED;
@@ -39,19 +35,14 @@ import static org.apache.james.jmap.JMAPTestingConstants.ALICE_PASSWORD;
 import static org.apache.james.jmap.JMAPTestingConstants.BOB;
 import static org.apache.james.jmap.JMAPTestingConstants.BOB_PASSWORD;
 import static org.apache.james.jmap.JMAPTestingConstants.DOMAIN;
-import static org.apache.james.jmap.rfc8621.contract.Fixture.ACCEPT_RFC8621_VERSION_HEADER;
 import static org.apache.james.jmap.rfc8621.contract.Fixture.authScheme;
 import static org.apache.james.jmap.rfc8621.contract.Fixture.baseRequestSpecBuilder;
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.nio.charset.StandardCharsets;
 
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.jmap.http.UserCredential;
 import org.apache.james.utils.DataProbeImpl;
-import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -61,12 +52,11 @@ import com.github.tomakehurst.wiremock.WireMockServer;
 import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
-import com.linagora.tmail.mailet.rag.httpclient.ChatCompletionResult;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 import io.restassured.specification.RequestSpecification;
 
-public class JmapAiRoutesTest {
+public class AIChatCompletionRoutesTest {
     private static final String JMAP_CHAT_COMPLETIONS_ENDPOINT = "/ai/v1/chat/completions";
     private static final String CHAT_COMPLETIONS_ENDPOINT = "/v1/chat/completions";
 

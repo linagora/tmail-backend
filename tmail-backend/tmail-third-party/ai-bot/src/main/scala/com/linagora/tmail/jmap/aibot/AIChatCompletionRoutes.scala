@@ -22,11 +22,9 @@ import java.nio.charset.StandardCharsets
 import java.util.stream
 import java.util.stream.Stream
 
-import com.linagora.tmail.jmap.aibot.JmapAiRoutes.LOGGER
-import com.linagora.tmail.jmap.aibot.json.AiBotSerializer
+import com.linagora.tmail.jmap.aibot.AIChatCompletionRoutes.LOGGER
 import com.linagora.tmail.mailet.rag.RagConfig
-import com.linagora.tmail.mailet.rag.httpclient.{ChatCompletionResult, OpenRagHttpClient}
-import io.netty.buffer.Unpooled
+import com.linagora.tmail.mailet.rag.httpclient.OpenRagHttpClient
 import io.netty.handler.codec.http.HttpHeaderNames.{CONTENT_LENGTH, CONTENT_TYPE}
 import io.netty.handler.codec.http.HttpMethod
 import io.netty.handler.codec.http.HttpResponseStatus.{INTERNAL_SERVER_ERROR, UNAUTHORIZED}
@@ -38,19 +36,18 @@ import org.apache.james.jmap.http.Authenticator
 import org.apache.james.jmap.http.rfc8621.InjectionKeys
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.{Endpoint, JMAPRoute, JMAPRoutes}
-import org.apache.james.util.ReactorUtils
 import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.Json
 import reactor.core.publisher.Mono
 import reactor.core.scala.publisher.SMono
 import reactor.netty.http.server.{HttpServerRequest, HttpServerResponse}
 
-object JmapAiRoutes {
-  val LOGGER: Logger = LoggerFactory.getLogger(classOf[JmapAiRoutes])
+object AIChatCompletionRoutes {
+  val LOGGER: Logger = LoggerFactory.getLogger(classOf[AIChatCompletionRoutes])
 }
 
-class JmapAiRoutes @Inject()(@Named(InjectionKeys.RFC_8621) val authenticator: Authenticator,
-                             val ragConfig: RagConfig) extends JMAPRoutes {
+class AIChatCompletionRoutes @Inject()(@Named(InjectionKeys.RFC_8621) val authenticator: Authenticator,
+                                       val ragConfig: RagConfig) extends JMAPRoutes {
   private val openRagHttpClient = new OpenRagHttpClient(ragConfig)
   private val jmapAiUri = "/ai/v1/chat/completions"
 
@@ -75,7 +72,6 @@ class JmapAiRoutes @Inject()(@Named(InjectionKeys.RFC_8621) val authenticator: A
           LOGGER.error("Unexpected error upon calling LLM chat completion {}", request.uri(), e)
           respondDetails(response, ProblemDetails(status = INTERNAL_SERVER_ERROR, detail = e.getMessage))
       }
-      .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
       .asJava()
       .`then`
 
