@@ -140,11 +140,4 @@ class PostgresEmailGetMethodTest implements EmailGetMethodContract {
                 .retrieve(messageId)
                 .isPresent());
     }
-
-    @Disabled("JAMES-3872: Issue with read attachment level: fix on James first...")
-    @Test
-    @Override
-    public void shouldUseFastViewWithAttachmentMetadataWhenSupportedBodyPropertiesAtAttachmentReadLevel(GuiceJamesServer server) {
-
-    }
 }
