@@ -37,6 +37,7 @@ import org.apache.james.backends.rabbitmq.SimpleConnectionPool;
 import org.apache.james.core.healthcheck.HealthCheck;
 import org.apache.james.metrics.api.GaugeRegistry;
 import org.apache.james.metrics.api.MetricFactory;
+import org.apache.james.user.api.UsersRepository;
 import org.apache.james.util.Host;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
@@ -56,6 +57,8 @@ import com.linagora.tmail.saas.rabbitmq.settings.TWPSettingsConsumer;
 import com.linagora.tmail.saas.rabbitmq.settings.TWPSettingsDeadLetterQueueHealthCheck;
 import com.linagora.tmail.saas.rabbitmq.settings.TWPSettingsQueueConsumerHealthCheck;
 import com.linagora.tmail.saas.rabbitmq.settings.TWPSettingsRabbitMQConfiguration;
+import com.linagora.tmail.saas.rabbitmq.settings.TWPSettingsUpdater;
+import com.linagora.tmail.saas.rabbitmq.settings.TWPSettingsUpdaterImpl;
 
 public class TWPSettingsModule extends AbstractModule {
     private static final Logger LOGGER = LoggerFactory.getLogger(TWPSettingsModule.class);
@@ -69,6 +72,33 @@ public class TWPSettingsModule extends AbstractModule {
             .to(TWPSettingsDeadLetterQueueHealthCheck.class);
         Multibinder.newSetBinder(binder(), HealthCheck.class).addBinding()
             .to(TWPSettingsQueueConsumerHealthCheck.class);
+    }
+
+    @Provides
+    @Singleton
+    TWPSettingsConsumer provideTWPSettingsConsumer(@Named(TWP_INJECTION_KEY) ReactorRabbitMQChannelPool channelPool,
+                                                   @Named(TWP_INJECTION_KEY) RabbitMQConfiguration rabbitMQConfiguration,
+                                                   UsersRepository usersRepository,
+                                                   JmapSettingsRepository jmapSettingsRepository,
+                                                   TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration,
+                                                   TWPSettingsRabbitMQConfiguration twpSettingsRabbitMQConfiguration) {
+
+        TWPSettingsUpdater twpSettingsUpdater = new TWPSettingsUpdaterImpl(usersRepository, jmapSettingsRepository);
+        return new TWPSettingsConsumer(channelPool, rabbitMQConfiguration, twpCommonRabbitMQConfiguration,
+            twpSettingsRabbitMQConfiguration, TWPSettingsConsumer.SettingsConsumerConfig.DEFAULT, twpSettingsUpdater);
+    }
+
+    @Provides
+    @Singleton
+    TWPSettingsQueueConsumerHealthCheck provideTWPSettingsQueueConsumerHealthCheck(@Named(TWP_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration,
+                                                                                   TWPSettingsConsumer twpSettingsConsumer) {
+        return new TWPSettingsQueueConsumerHealthCheck(twpRabbitMQConfiguration, twpSettingsConsumer, TWPSettingsConsumer.SettingsConsumerConfig.DEFAULT.queue());
+    }
+
+    @Provides
+    @Singleton
+    TWPSettingsDeadLetterQueueHealthCheck provideTWPSettingsDeadLetterQueueHealthCheck(@Named(TWP_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration) {
+        return new TWPSettingsDeadLetterQueueHealthCheck(twpRabbitMQConfiguration, TWPSettingsConsumer.SettingsConsumerConfig.DEFAULT.deadLetterQueue());
     }
 
     @ProvidesIntoSet

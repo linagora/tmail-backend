@@ -162,13 +162,14 @@ public class TWPSettingsConsumerTest {
             .managementCredentials(DEFAULT_MANAGEMENT_CREDENTIAL)
             .build();
 
+        TWPSettingsUpdater twpSettingsUpdater = new TWPSettingsUpdaterImpl(usersRepository, jmapSettingsRepository);
         testee = new TWPSettingsConsumer(
             rabbitMQExtension.getRabbitChannelPool(),
             rabbitMQConfiguration,
-            usersRepository,
-            jmapSettingsRepository,
             twpCommonRabbitMQConfiguration,
-            twpSettingsRabbitMQConfiguration);
+            twpSettingsRabbitMQConfiguration,
+            TWPSettingsConsumer.SettingsConsumerConfig.DEFAULT,
+            twpSettingsUpdater);
 
         testee.init();
     }

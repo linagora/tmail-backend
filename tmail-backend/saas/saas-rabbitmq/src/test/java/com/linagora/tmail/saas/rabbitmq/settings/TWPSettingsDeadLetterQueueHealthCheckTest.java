@@ -18,7 +18,6 @@
 
 package com.linagora.tmail.saas.rabbitmq.settings;
 
-import static com.linagora.tmail.saas.rabbitmq.settings.TWPSettingsConsumer.TWP_SETTINGS_DEAD_LETTER_QUEUE;
 import static com.linagora.tmail.saas.rabbitmq.settings.TWPSettingsRabbitMQConfiguration.TWP_SETTINGS_EXCHANGE_DEFAULT;
 import static com.rabbitmq.client.BuiltinExchangeType.FANOUT;
 import static com.rabbitmq.client.MessageProperties.PERSISTENT_TEXT_PLAIN;
@@ -55,6 +54,7 @@ class TWPSettingsDeadLetterQueueHealthCheckTest {
 
     public static final String TWP_VHOST = "twp-test";
     public static final ImmutableMap<String, Object> NO_QUEUE_DECLARE_ARGUMENTS = ImmutableMap.of();
+    private static final String twpSettingsDeadLetterQueue = TWPSettingsConsumer.SettingsConsumerConfig.DEFAULT.deadLetterQueue();
 
     private Connection connection;
     private Channel channel;
@@ -72,7 +72,7 @@ class TWPSettingsDeadLetterQueueHealthCheckTest {
         channel = connection.createChannel();
         testee = new TWPSettingsDeadLetterQueueHealthCheck(rabbitMQ.getConfigurationBuilder()
             .vhost(Optional.of(TWP_VHOST))
-            .build());
+            .build(), twpSettingsDeadLetterQueue);
     }
 
     @AfterEach
@@ -90,7 +90,7 @@ class TWPSettingsDeadLetterQueueHealthCheckTest {
 
     @Test
     void healthCheckShouldReturnHealthyWhenTWPSettingsDeadLetterQueueIsEmpty() throws Exception {
-        createDeadLetterQueue(TWP_SETTINGS_DEAD_LETTER_QUEUE);
+        createDeadLetterQueue(twpSettingsDeadLetterQueue);
 
         assertThat(testee.check().block().isHealthy()).isTrue();
     }
@@ -102,7 +102,7 @@ class TWPSettingsDeadLetterQueueHealthCheckTest {
 
     @Test
     void healthCheckShouldReturnDegradedWhenTWPSettingsDeadLetterQueueIsNotEmpty() throws Exception {
-        createDeadLetterQueue(TWP_SETTINGS_DEAD_LETTER_QUEUE);
+        createDeadLetterQueue(twpSettingsDeadLetterQueue);
         publishAMessage();
 
         awaitAtMostOneMinute.until(() -> testee.check().block().isDegraded());

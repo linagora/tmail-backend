@@ -18,12 +18,6 @@
 
 package com.linagora.tmail.saas.rabbitmq.settings;
 
-import static com.linagora.tmail.saas.rabbitmq.TWPConstants.TWP_INJECTION_KEY;
-import static com.linagora.tmail.saas.rabbitmq.settings.TWPSettingsConsumer.TWP_SETTINGS_QUEUE;
-
-import jakarta.inject.Inject;
-import jakarta.inject.Named;
-
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.core.healthcheck.ComponentName;
 import org.apache.james.core.healthcheck.HealthCheck;
@@ -43,14 +37,16 @@ public class TWPSettingsQueueConsumerHealthCheck implements HealthCheck {
 
     private final RabbitMQConfiguration twpRabbitMQConfiguration;
     private final TWPSettingsConsumer twpSettingsConsumer;
-    private final RabbitMQManagementAPI api;
+    private final RabbitMQManagementAPI managementAPI;
+    private final String queueName;
 
-    @Inject
-    public TWPSettingsQueueConsumerHealthCheck(@Named(TWP_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration,
-                                               TWPSettingsConsumer twpSettingsConsumer) {
+    public TWPSettingsQueueConsumerHealthCheck(RabbitMQConfiguration twpRabbitMQConfiguration,
+                                               TWPSettingsConsumer twpSettingsConsumer,
+                                               String queueName) {
         this.twpRabbitMQConfiguration = twpRabbitMQConfiguration;
-        this.api = RabbitMQManagementAPI.from(twpRabbitMQConfiguration);
+        this.managementAPI = RabbitMQManagementAPI.from(twpRabbitMQConfiguration);
         this.twpSettingsConsumer = twpSettingsConsumer;
+        this.queueName = queueName;
     }
 
     @Override
@@ -60,7 +56,7 @@ public class TWPSettingsQueueConsumerHealthCheck implements HealthCheck {
 
     @Override
     public Mono<Result> check() {
-        return Mono.fromCallable(() -> api.queueDetails(twpRabbitMQConfiguration.getVhost().orElse(DEFAULT_VHOST), TWP_SETTINGS_QUEUE)
+        return Mono.fromCallable(() -> managementAPI.queueDetails(twpRabbitMQConfiguration.getVhost().orElse(DEFAULT_VHOST), queueName)
                 .getConsumerDetails())
             .flatMap(consumers -> {
                 if (consumers.isEmpty()) {
