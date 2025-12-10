@@ -18,28 +18,22 @@
 
 package com.linagora.tmail.mailet.rag.http;
 
-import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
-import static com.github.tomakehurst.wiremock.client.WireMock.configureFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
-import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 
 import java.nio.charset.StandardCharsets;
 
 import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.assertj.core.api.SoftAssertions;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.github.tomakehurst.wiremock.WireMockServer;
-import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import com.linagora.tmail.extension.WireMockRagServerExtension;
 import com.linagora.tmail.mailet.rag.RagConfig;
 import com.linagora.tmail.mailet.rag.httpclient.ChatCompletionResult;
 import com.linagora.tmail.mailet.rag.httpclient.OpenRagHttpClient;
@@ -47,27 +41,20 @@ import com.linagora.tmail.mailet.rag.httpclient.OpenRagHttpClient;
 public class OpenRagHttpClientTest {
     private static final String CHAT_COMPLETIONS_ENDPOINT = "/v1/chat/completions";
 
-    private WireMockServer wireMockServer;
+    @RegisterExtension
+    static WireMockRagServerExtension wireMockRagServerExtension = new WireMockRagServerExtension();
+
     private OpenRagHttpClient client;
 
     @BeforeEach
     void setUp() {
-        wireMockServer = new WireMockServer(WireMockConfiguration.options().dynamicPort());
-        wireMockServer.start();
-        configureFor("localhost", wireMockServer.port());
-
         PropertiesConfiguration configuration = new PropertiesConfiguration();
-        configuration.addProperty("openrag.url", String.format("http://localhost:%d", wireMockServer.port()));
+        configuration.addProperty("openrag.url", wireMockRagServerExtension.getBaseUrl().toString());
         configuration.addProperty("openrag.token", "dummy-token");
         configuration.addProperty("openrag.ssl.trust.all.certs", "true");
         configuration.addProperty("openrag.partition.pattern", "{localPart}.twake.{domainName}");
         RagConfig ragConfig = RagConfig.from(configuration);
         client = new OpenRagHttpClient(ragConfig);
-    }
-
-    @AfterEach
-    void tearDown() {
-        wireMockServer.stop();
     }
 
     @Test
@@ -87,11 +74,7 @@ public class OpenRagHttpClientTest {
             }
             """;
 
-        stubFor(post(urlPathMatching(CHAT_COMPLETIONS_ENDPOINT))
-            .willReturn(aResponse()
-                .withStatus(200)
-                .withHeader("Content-Type", "application/json")
-                .withBody(resultBody)));
+        wireMockRagServerExtension.setChatCompletionResponse(200, resultBody);
 
         String incomingPayload = """
             {
@@ -133,11 +116,7 @@ public class OpenRagHttpClientTest {
 
         String incomingPayload = "{bad_payload}";
 
-        stubFor(post(urlPathMatching(CHAT_COMPLETIONS_ENDPOINT))
-            .willReturn(aResponse()
-                .withStatus(500)
-                .withHeader("Content-Type", "application/json")
-                .withBody(resultBody)));
+        wireMockRagServerExtension.setChatCompletionResponse(500, resultBody);
 
         ChatCompletionResult result = client.proxyChatCompletions(incomingPayload.getBytes(StandardCharsets.UTF_8)).block();
         String body = new String(result.body(), StandardCharsets.UTF_8);

@@ -18,18 +18,12 @@
 package com.linagora.tmail.mailet.rag;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aMultipart;
-import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
-import static com.github.tomakehurst.wiremock.client.WireMock.configureFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
-import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.put;
 import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static org.mockito.Mockito.spy;
 
@@ -64,17 +58,16 @@ import org.apache.james.mailbox.store.SystemMailboxesProviderImpl;
 import org.apache.james.mailbox.store.mail.NaiveThreadIdGuessingAlgorithm;
 import org.apache.james.mailbox.store.mail.ThreadIdGuessingAlgorithm;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
-
 import org.apache.james.utils.UpdatableTickingClock;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.github.tomakehurst.wiremock.WireMockServer;
-import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import com.linagora.tmail.extension.WireMockRagServerExtension;
 
 class RagListenerTest {
 
+    private static final String RAG_INDEXER_ENDPOINT = "/indexer/partition/.*/file/.*";
     private static final Username BOB = Username.of("bob@test.com");
     private static final Username ALICE = Username.of("alice@test.com");
     private static final Username USER_WITH_NO_DOMAIN = Username.of("user");
@@ -93,6 +86,10 @@ class RagListenerTest {
             "Date: Tue, 10 Oct 2023 10:00:00 +0000\r\n" +
             "\r\n" +
             "Body of the email").getBytes(StandardCharsets.UTF_8);
+
+    @RegisterExtension
+    static WireMockRagServerExtension wireMockRagServerExtension = new WireMockRagServerExtension();
+
     StoreMailboxManager mailboxManager;
     RagListener ragListener;
     MessageIdManager messageIdManager;
@@ -117,18 +114,12 @@ class RagListenerTest {
     MailboxId aliceInboxId;
     MemoryEventDeadLetters eventDeadLetters;
     HierarchicalConfiguration<ImmutableNode> config;
-    WireMockServer wireMockServer;
     RagConfig ragConfig;
 
     @BeforeEach
     void setUp() throws Exception {
-        wireMockServer = new WireMockServer(WireMockConfiguration.options().port(1234));
-        wireMockServer.start();
-        configureFor("localhost", wireMockServer.port());
-        stubFor(post(urlPathMatching("/indexer/partition/.*/file/.*"))
-            .willReturn(aResponse()
-                .withStatus(200)
-                .withBody(String.format("{\"task_status_url\":\"http://localhost:%d/status/1234\"}", wireMockServer.port()))));
+        wireMockRagServerExtension.setRagIndexerPostResponse(200,
+                String.format("{\"task_status_url\":\"http://localhost:%d/status/1234\"}", wireMockRagServerExtension.getPort()));
 
         clock = new UpdatableTickingClock(Instant.now());
         mapperFactory = new InMemoryMailboxSessionMapperFactory(clock);
@@ -177,17 +168,12 @@ class RagListenerTest {
         Configurations configurations = new Configurations();
         config = configurations.xml("listeners.xml");
         PropertiesConfiguration configuration = new PropertiesConfiguration();
-        configuration.addProperty("openrag.url", String.format("http://localhost:%d", wireMockServer.port()));
+        configuration.addProperty("openrag.url", String.format("http://localhost:%d", wireMockRagServerExtension.getPort()));
         configuration.addProperty("openrag.token", "dummy-token");
         configuration.addProperty("openrag.ssl.trust.all.certs", "true");
         configuration.addProperty("openrag.partition.pattern", "{localPart}.twake.{domainName}");
         ragConfig = RagConfig.from(configuration);
         ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, threadIdGuessingAlgorithm, config, ragConfig);
-    }
-
-    @AfterEach
-    void tearDown() {
-        wireMockServer.stop();
     }
 
     @Test
@@ -197,9 +183,9 @@ class RagListenerTest {
             MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
 
-        verify(1, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
+        verify(1, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
 
-        verify(postRequestedFor(urlMatching("/indexer/partition/.*/file/.*"))
+        verify(postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT))
             .withHeader("Authorization", equalTo("Bearer dummy-token"))
             .withHeader("Content-Type", containing("multipart/form-data"))
             .withRequestBodyPart(aMultipart()
@@ -239,13 +225,13 @@ class RagListenerTest {
                 "Body of the email").getBytes(StandardCharsets.UTF_8);
 
         mailboxManager.getEventBus().register(ragListener);
-        MessageManager.AppendResult appendResult = bobInboxMessageManager.appendMessage(
+        bobInboxMessageManager.appendMessage(
             MessageManager.AppendCommand.from(new SharedByteArrayInputStream(Content2)),
             bobMailboxSession);
 
-        verify(1, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
+        verify(1, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
 
-        verify(postRequestedFor(urlMatching("/indexer/partition/.*/file/.*"))
+        verify(postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT))
             .withHeader("Authorization", equalTo("Bearer dummy-token"))
             .withHeader("Content-Type", containing("multipart/form-data"))
             .withRequestBodyPart(aMultipart()
@@ -278,26 +264,21 @@ class RagListenerTest {
 
     @Test
     void HttpClientShouldSendPutRequestWhenDocumentAlreadyIndexed() throws Exception {
+        wireMockRagServerExtension.setRagIndexerPostResponse(409,
+                "{\"details\":\"Document already exists\"}");
 
-        stubFor(post(urlPathMatching("/indexer/partition/.*/file/.*"))
-            .willReturn(aResponse()
-                .withStatus(409)
-                .withBody("{\"details\":\"Document already exists\"}")));
-
-        stubFor(put(urlPathMatching("/indexer/partition/.*/file/.*"))
-            .willReturn(aResponse()
-                .withStatus(200)
-                .withBody(String.format("{\"task_status_url\":\"http://localhost:%d/status/1234\"}", wireMockServer.port()))));
+        wireMockRagServerExtension.setRagIndexerPutResponse(200,
+                String.format("{\"task_status_url\":\"http://localhost:%d/status/1234\"}", wireMockRagServerExtension.getPort()));
 
         mailboxManager.getEventBus().register(ragListener);
-        MessageManager.AppendResult appendResult = bobInboxMessageManager.appendMessage(
+        bobInboxMessageManager.appendMessage(
             MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
 
-        verify(1, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
-        verify(1, putRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
+        verify(1, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
+        verify(1, putRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
 
-        verify(putRequestedFor(urlMatching("/indexer/partition/.*/file/.*"))
+        verify(putRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT))
             .withHeader("Authorization", equalTo("Bearer dummy-token"))
             .withHeader("Content-Type", containing("multipart/form-data"))
             .withRequestBodyPart(aMultipart()
@@ -345,7 +326,7 @@ class RagListenerTest {
 
         mailboxManager.copyMessages(MessageRange.from(appendResult.getId().getUid()), bobInboxId,bobMailBoxId,bobMailboxSession);
 
-        verify(0, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
+        verify(0, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
     }
 
     @Test
@@ -356,7 +337,7 @@ class RagListenerTest {
             MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
 
-        verify(0, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
+        verify(0, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
     }
 
     @Test
@@ -367,7 +348,7 @@ class RagListenerTest {
             MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
 
-        verify(0, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
+        verify(0, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
     }
 
     @Test
@@ -378,7 +359,7 @@ class RagListenerTest {
             MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             aliceMailboxSession);
 
-        verify(0, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
+        verify(0, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
     }
 
     @Test
@@ -394,7 +375,7 @@ class RagListenerTest {
             MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
 
-        verify(2, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
+        verify(2, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
 
         verify(postRequestedFor(urlMatching("/indexer/partition/.*/file/tmail_1"))
             .withHeader("Authorization", equalTo("Bearer dummy-token"))
@@ -484,7 +465,7 @@ class RagListenerTest {
             MessageManager.AppendCommand.from(new SharedByteArrayInputStream(emailWithAttachment)),
             bobMailboxSession);
 
-        verify(1, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
+        verify(1, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
 
         verify(postRequestedFor(urlMatching("/indexer/partition/.*/file/tmail_1"))
             .withHeader("Authorization", equalTo("Bearer dummy-token"))
@@ -527,6 +508,6 @@ class RagListenerTest {
                 MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
                 userWithNoDomainMailboxSession);
 
-        verify(0, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
+        verify(0, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
     }
 }
