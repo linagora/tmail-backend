@@ -18,19 +18,15 @@
 package com.linagora.tmail.mailet.rag;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aMultipart;
-import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
-import static com.github.tomakehurst.wiremock.client.WireMock.configureFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
-import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.put;
 import static com.github.tomakehurst.wiremock.client.WireMock.putRequestedFor;
-import static com.github.tomakehurst.wiremock.client.WireMock.stubFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
-import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
+import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.nio.charset.StandardCharsets;
 import java.time.ZoneOffset;
@@ -39,32 +35,30 @@ import java.util.Date;
 
 import jakarta.mail.util.SharedByteArrayInputStream;
 
-import org.apache.james.core.Username;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
+import org.apache.james.core.Username;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mime4j.dom.Message;
 import org.apache.james.mime4j.stream.RawField;
 import org.apache.james.modules.MailboxProbeImpl;
 import org.apache.james.utils.DataProbeImpl;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.github.tomakehurst.wiremock.WireMockServer;
-import com.github.tomakehurst.wiremock.core.WireMockConfiguration;
+import com.linagora.tmail.extension.WireMockRagServerExtension;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
-import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
-import static org.junit.jupiter.api.Assertions.assertEquals;
-
 public class RagListenerIntegrationTest {
-    WireMockServer wireMockServer;
+    private static final String RAG_INDEXER_ENDPOINT = "/indexer/partition/.*/file/.*";
+
+    @RegisterExtension
+    static WireMockRagServerExtension wireMockRagServerExtension = new WireMockRagServerExtension();
 
     private static final byte[] CONTENT = (
         "Subject: Test Subject\r\n" +
@@ -97,6 +91,7 @@ public class RagListenerIntegrationTest {
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule()))
+        .extension(wireMockRagServerExtension)
         .build();
 
     @BeforeEach
@@ -110,20 +105,8 @@ public class RagListenerIntegrationTest {
         jamesServer.getProbe(MailboxProbeImpl.class).createMailbox(pathAlice);
         jamesServer.getProbe(MailboxProbeImpl.class).createMailbox(pathBob);
 
-        wireMockServer = new WireMockServer(WireMockConfiguration.options().port(1234));
-        wireMockServer.start();
-        configureFor("localhost", wireMockServer.port());
-        stubFor(post(urlPathMatching("/indexer/partition/.*/file/.*"))
-            .willReturn(aResponse()
-                .withStatus(200)
-                .withBody(String.format("{\"task_status_url\":\"http://localhost:%d/status/1234\"}", wireMockServer.port()))));
-    }
-
-    @AfterEach
-    void tearDown() {
-        if (wireMockServer != null && wireMockServer.isRunning()) {
-            wireMockServer.stop();
-        }
+        wireMockRagServerExtension.setRagIndexerPostResponse(200,
+                String.format("{\"task_status_url\":\"http://localhost:%d/status/1234\"}", wireMockRagServerExtension.getPort()));
     }
 
     @Test
@@ -132,9 +115,9 @@ public class RagListenerIntegrationTest {
             .appendMessageAndGetAppendResult(bob, pathBob,
                 MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)));
 
-        verify(1, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
+        verify(1, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
 
-        verify(postRequestedFor(urlMatching("/indexer/partition/.*/file/.*"))
+        verify(postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT))
             .withHeader("Authorization", equalTo("Bearer fake-token"))
             .withHeader("Content-Type", containing("multipart/form-data"))
             .withRequestBodyPart(aMultipart()
@@ -193,9 +176,9 @@ public class RagListenerIntegrationTest {
                         .addField(new RawField("In-Reply-To", "Message-ID-1"))
                         .setBody("Contenu mail 1", StandardCharsets.UTF_8)));
         assertEquals(originalMessage.getThreadId(), messageResponse.getThreadId());
-        verify(2, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
+        verify(2, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
 
-        verify(postRequestedFor(urlMatching("/indexer/partition/.*/file/.*"))
+        verify(postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT))
             .withHeader("Authorization", equalTo("Bearer fake-token"))
             .withHeader("Content-Type", containing("multipart/form-data"))
             .withRequestBodyPart(aMultipart()
@@ -218,24 +201,20 @@ public class RagListenerIntegrationTest {
 
     @Test
     void HttpClientShouldSendPutRequestWhenDocumentAlreadyIndexed(GuiceJamesServer server) throws Exception {
-        stubFor(post(urlPathMatching("/indexer/partition/.*/file/.*"))
-            .willReturn(aResponse()
-                .withStatus(409)
-                .withBody("{\"details\":\"Document already exists\"}")));
+        wireMockRagServerExtension.setRagIndexerPostResponse(409,
+                "{\"details\":\"Document already exists\"}");
 
-        stubFor(put(urlPathMatching("/indexer/partition/.*/file/.*"))
-            .willReturn(aResponse()
-                .withStatus(200)
-                .withBody(String.format("{\"task_status_url\":\"http://localhost:%d/status/1234\"}", wireMockServer.port()))));
+        wireMockRagServerExtension.setRagIndexerPutResponse(200,
+                String.format("{\"task_status_url\":\"http://localhost:%d/status/1234\"}", wireMockRagServerExtension.getPort()));
 
         MessageManager.AppendResult message1 = server.getProbe(MailboxProbeImpl.class)
             .appendMessageAndGetAppendResult(bob, pathBob,
                 MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)));
 
-        verify(1, postRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
-        verify(1, putRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
+        verify(1, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
+        verify(1, putRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
 
-        verify(putRequestedFor(urlMatching("/indexer/partition/.*/file/.*"))
+        verify(putRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT))
             .withHeader("Authorization", equalTo("Bearer fake-token"))
             .withHeader("Content-Type", containing("multipart/form-data"))
             .withRequestBodyPart(aMultipart()
