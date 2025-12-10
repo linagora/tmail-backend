@@ -991,7 +991,7 @@ abstract class LinagoraCalendarEventAcceptMethodContract {
              |            "type": "text/calendar"
              |        },
              |        {
-             |            "charset": "us-ascii",
+             |            "charset": "US-ASCII",
              |            "disposition": "attachment",
              |            "size": 874,
              |            "partId": "4",
@@ -1103,7 +1103,7 @@ abstract class LinagoraCalendarEventAcceptMethodContract {
              |            "type": "text/calendar"
              |        },
              |        {
-             |            "charset": "us-ascii",
+             |            "charset": "US-ASCII",
              |            "disposition": "attachment",
              |            "size": 874,
              |            "partId": "4",
