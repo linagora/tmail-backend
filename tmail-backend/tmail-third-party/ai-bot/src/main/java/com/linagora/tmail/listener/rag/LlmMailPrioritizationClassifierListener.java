@@ -60,6 +60,8 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
+import com.linagora.tmail.james.jmap.settings.JmapSettings;
+import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -110,6 +112,7 @@ public class LlmMailPrioritizationClassifierListener implements EventListener.Re
     private final HtmlTextExtractor htmlTextExtractor;
     private final MetricFactory metricFactory;
     private final IdentityRepository identityRepository;
+    private final JmapSettingsRepository jmapSettingsRepository;
     private final String systemPrompt;
     private final int maxBodyLength;
 
@@ -120,6 +123,7 @@ public class LlmMailPrioritizationClassifierListener implements EventListener.Re
                                                    StreamingChatLanguageModel chatLanguageModel,
                                                    HtmlTextExtractor htmlTextExtractor,
                                                    IdentityRepository identityRepository,
+                                                   JmapSettingsRepository jmapSettingsRepository,
                                                    MetricFactory metricFactory,
                                                    HierarchicalConfiguration<ImmutableNode> configuration) {
         this.mailboxManager = mailboxManager;
@@ -128,6 +132,7 @@ public class LlmMailPrioritizationClassifierListener implements EventListener.Re
         this.chatLanguageModel = chatLanguageModel;
         this.htmlTextExtractor = htmlTextExtractor;
         this.identityRepository = identityRepository;
+        this.jmapSettingsRepository = jmapSettingsRepository;
         this.metricFactory = metricFactory;
 
         this.systemPrompt = Optional.ofNullable(configuration.getString("listener.configuration." + SYSTEM_PROMPT_PARAM, null))
@@ -169,16 +174,44 @@ public class LlmMailPrioritizationClassifierListener implements EventListener.Re
         Username username = addedEvent.getUsername();
         MailboxSession session = mailboxManager.createSystemSession(username);
 
+        return aiNeedActionsSettingEnabled(username)
+            .flatMap(needsActionEnabled -> classifyMailsPrioritization(addedEvent, username, session));
+    }
+
+    private Mono<Void> classifyMailsPrioritization(MailboxEvents.Added addedEvent, Username username, MailboxSession session) {
         return getUserDisplayName(username)
-            .flatMap(userDisplayName -> Flux.from(messageIdManager.getMessagesReactive(addedEvent.getMessageIds(), FetchGroup.FULL_CONTENT, session))
-                .flatMap(messageResult -> buildUserPrompt(messageResult, username, userDisplayName)
-                    .flatMap(userPrompt -> Mono.from(metricFactory.decoratePublisherWithTimerMetric("llm-mail-prioritization-classifier", callLlm(systemPrompt, userPrompt)))
-                        .doOnError(e -> LOGGER.error("LLM call failed for messageId {} in mailboxId {} of user {}",
-                            messageResult.getMessageId().serialize(), addedEvent.getMailboxId().serialize(), addedEvent.getUsername().asString(), e)))
-                    .map(this::isActionRequired)
-                    .flatMap(actionRequired -> actionRequired ? addNeedsActionKeyword(messageResult, addedEvent.getMailboxId(), session) : Mono.empty()), ReactorUtils.LOW_CONCURRENCY)
-                .doFinally(signal -> mailboxManager.endProcessingRequest(session))
-                .then());
+            .flatMap(userDisplayName -> classifyMails(addedEvent, username, session, userDisplayName));
+    }
+
+    private Mono<Void> classifyMails(MailboxEvents.Added addedEvent, Username username, MailboxSession session, String userDisplayName) {
+        return getMessages(addedEvent, session)
+            .flatMap(messageResult -> classifyMail(addedEvent, username, session, userDisplayName, messageResult), ReactorUtils.LOW_CONCURRENCY)
+            .doFinally(signal -> mailboxManager.endProcessingRequest(session))
+            .then();
+    }
+
+    private Flux<MessageResult> getMessages(MailboxEvents.Added addedEvent, MailboxSession session) {
+        return Flux.from(messageIdManager.getMessagesReactive(addedEvent.getMessageIds(), FetchGroup.FULL_CONTENT, session));
+    }
+
+    private Mono<Void> classifyMail(MailboxEvents.Added addedEvent, Username username, MailboxSession session, String userDisplayName, MessageResult messageResult) {
+        return buildUserPrompt(messageResult, username, userDisplayName)
+            .flatMap(userPrompt -> callLlm(addedEvent, messageResult, userPrompt))
+            .map(this::isActionRequired)
+            .flatMap(actionRequired -> actionRequired ? addNeedsActionKeyword(messageResult, addedEvent.getMailboxId(), session) : Mono.empty());
+    }
+
+    private Mono<String> callLlm(MailboxEvents.Added addedEvent, MessageResult messageResult, String userPrompt) {
+        return Mono.from(metricFactory.decoratePublisherWithTimerMetric("llm-mail-prioritization-classifier", callLlm(systemPrompt, userPrompt)))
+            .doOnError(e -> LOGGER.error("LLM call failed for messageId {} in mailboxId {} of user {}",
+                messageResult.getMessageId().serialize(), addedEvent.getMailboxId().serialize(), addedEvent.getUsername().asString(), e));
+    }
+
+    private Mono<Boolean> aiNeedActionsSettingEnabled(Username username) {
+        return Mono.from(jmapSettingsRepository.get(username))
+            .map(JmapSettings::aiNeedsActionEnable)
+            .defaultIfEmpty(JmapSettings.AI_NEEDS_ACTION_ENABLE_DEFAULT_VALUE())
+            .filter(Boolean::booleanValue);
     }
 
     private Mono<Void> addNeedsActionKeyword(MessageResult messageResult, MailboxId mailboxId, MailboxSession session) {

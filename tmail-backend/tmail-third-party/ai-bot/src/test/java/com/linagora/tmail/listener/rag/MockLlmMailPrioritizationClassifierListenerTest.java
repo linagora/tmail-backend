@@ -58,6 +58,10 @@ import org.apache.james.util.html.HtmlTextExtractor;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mockito;
 
+import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
+import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
+import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
+
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
@@ -87,6 +91,8 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
     private HierarchicalConfiguration<ImmutableNode> listenerConfig;
     private StoreMailboxManager mailboxManager;
     private IdentityRepository identityRepository;
+    private JmapSettingsRepository jmapSettingsRepository;
+    private JmapSettingsRepositoryJavaUtils jmapSettingsRepositoryUtils;
     private LlmMailPrioritizationClassifierListener listener;
 
     @BeforeEach
@@ -124,6 +130,8 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
 
         listenerConfig = new BaseHierarchicalConfiguration();
         identityRepository = setUpIdentityRepository();
+        jmapSettingsRepository = new MemoryJmapSettingsRepository();
+        jmapSettingsRepositoryUtils = new JmapSettingsRepositoryJavaUtils(jmapSettingsRepository);
 
         listener = new LlmMailPrioritizationClassifierListener(
             mailboxManager,
@@ -132,6 +140,7 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
             model,
             htmlTextExtractor,
             identityRepository,
+            jmapSettingsRepository,
             metricFactory,
             listenerConfig);
     }
@@ -199,6 +208,7 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
             model,
             new JsoupHtmlTextExtractor(),
             identityRepository,
+            jmapSettingsRepository,
             new RecordingMetricFactory(),
             overrideConfig);
     }
@@ -206,6 +216,11 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
     @Override
     public void registerListenerToEventBus() {
         mailboxManager.getEventBus().register(listener);
+    }
+
+    @Override
+    public JmapSettingsRepositoryJavaUtils jmapSettingsRepositoryUtils() {
+        return jmapSettingsRepositoryUtils;
     }
 
     @Override
