@@ -542,36 +542,6 @@ public interface LlmMailPrioritizationClassifierListenerContract {
     }
 
     @Test
-    default void urgentEmailShouldBeTaggedNeedsActionWhenUserHasNoSettingByDefault() throws Exception {
-        registerListenerToEventBus();
-        needActionsLlmHook();
-
-        MessageId messageId = aliceInbox().appendMessage(MessageManager.AppendCommand.builder()
-                    .isDelivery(true)
-                    .build(Message.Builder.of()
-                        .setSubject("URGENT – Production API Failure")
-                        .setMessageId("Message-ID")
-                        .setFrom(BOB.asString())
-                        .setTo(ALICE.asString())
-                        .setBody("""
-                            Hi team,
-                            Our payment gateway API has been failing since 03:12 AM UTC. All customer transactions are currently being rejected. We need an immediate fix or rollback before peak traffic starts in 2 hours.
-                            Please acknowledge as soon as possible.
-                            Thanks,
-                            Robert
-                            """, StandardCharsets.UTF_8)),
-                aliceSession())
-            .getId().getMessageId();
-
-        CALMLY_AWAIT.atMost(Durations.TEN_SECONDS)
-            .untilAsserted(() -> {
-                assertThat(readFlags(messageId, aliceSession()).block()).isNotNull();
-                assertThat(readFlags(messageId, aliceSession()).block().getUserFlags())
-                    .contains("needs-action");
-            });
-    }
-
-    @Test
     default void urgentEmailShouldBeTaggedNeedsActionWhenUserHasNoNeedsActionSettingByDefault() throws Exception {
         jmapSettingsRepositoryUtils().reset(ALICE, Map.of("whatever", "true"));
         registerListenerToEventBus();
