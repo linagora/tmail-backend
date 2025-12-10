@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.listener.rag;
 
+import static com.linagora.tmail.listener.rag.MockLlmMailPrioritizationClassifierListenerTest.setUpIdentityRepository;
 import static com.linagora.tmail.mailet.AIBotConfig.DEFAULT_TIMEOUT;
 
 import java.net.URI;
@@ -34,6 +35,7 @@ import org.apache.james.events.InVMEventBus;
 import org.apache.james.events.MemoryEventDeadLetters;
 import org.apache.james.events.RetryBackoffConfiguration;
 import org.apache.james.events.delivery.InVmEventDelivery;
+import org.apache.james.jmap.api.identity.IdentityRepository;
 import org.apache.james.jmap.utils.JsoupHtmlTextExtractor;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageIdManager;
@@ -68,6 +70,7 @@ public class LinagoraLlmMailPrioritizationClassifierListenerTest implements LlmM
     private HierarchicalConfiguration<ImmutableNode> listenerConfig;
     private StoreMailboxManager mailboxManager;
     private StreamingChatLanguageModel chatLanguageModel;
+    private IdentityRepository identityRepository;
     private LlmMailPrioritizationClassifierListener listener;
 
     @BeforeEach
@@ -111,6 +114,7 @@ public class LinagoraLlmMailPrioritizationClassifierListenerTest implements LlmM
             DEFAULT_TIMEOUT);
         StreamChatLanguageModelFactory streamChatLanguageModelFactory = new StreamChatLanguageModelFactory();
         chatLanguageModel = streamChatLanguageModelFactory.createChatLanguageModel(aiBotConfig);
+        identityRepository = setUpIdentityRepository();
 
         listener = new LlmMailPrioritizationClassifierListener(
             mailboxManager,
@@ -118,6 +122,7 @@ public class LinagoraLlmMailPrioritizationClassifierListenerTest implements LlmM
             new SystemMailboxesProviderImpl(mailboxManager),
             chatLanguageModel,
             htmlTextExtractor,
+            identityRepository,
             metricFactory,
             listenerConfig);
     }
@@ -150,6 +155,7 @@ public class LinagoraLlmMailPrioritizationClassifierListenerTest implements LlmM
             new SystemMailboxesProviderImpl(mailboxManager),
             chatLanguageModel,
             new JsoupHtmlTextExtractor(),
+            identityRepository,
             new RecordingMetricFactory(),
             overrideConfig);
     }

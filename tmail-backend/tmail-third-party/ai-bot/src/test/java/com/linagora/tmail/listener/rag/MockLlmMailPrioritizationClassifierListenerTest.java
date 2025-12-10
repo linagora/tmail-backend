@@ -18,18 +18,29 @@
 
 package com.linagora.tmail.listener.rag;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
+
 import java.time.Duration;
 import java.util.List;
+import java.util.Optional;
 
 import jakarta.mail.Flags;
+import jakarta.mail.internet.AddressException;
 
 import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
 import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.tree.ImmutableNode;
+import org.apache.james.core.MailAddress;
 import org.apache.james.events.InVMEventBus;
 import org.apache.james.events.MemoryEventDeadLetters;
 import org.apache.james.events.RetryBackoffConfiguration;
 import org.apache.james.events.delivery.InVmEventDelivery;
+import org.apache.james.jmap.api.identity.DefaultIdentitySupplier;
+import org.apache.james.jmap.api.identity.IdentityCreationRequest;
+import org.apache.james.jmap.api.identity.IdentityRepository;
+import org.apache.james.jmap.api.model.EmailAddress;
+import org.apache.james.jmap.memory.identity.MemoryCustomIdentityDAO;
 import org.apache.james.jmap.utils.JsoupHtmlTextExtractor;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageIdManager;
@@ -45,13 +56,16 @@ import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.apache.james.util.html.HtmlTextExtractor;
 import org.junit.jupiter.api.BeforeEach;
+import org.mockito.Mockito;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.output.Response;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scala.publisher.SMono;
 
 public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailPrioritizationClassifierListenerContract {
 
@@ -72,6 +86,7 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
     private MessageManager aliceCustomMailbox;
     private HierarchicalConfiguration<ImmutableNode> listenerConfig;
     private StoreMailboxManager mailboxManager;
+    private IdentityRepository identityRepository;
     private LlmMailPrioritizationClassifierListener listener;
 
     @BeforeEach
@@ -108,6 +123,7 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
         aliceCustomMailbox = mailboxManager.getMailbox(MailboxPath.forUser(ALICE, "customMailbox"), aliceSession);
 
         listenerConfig = new BaseHierarchicalConfiguration();
+        identityRepository = setUpIdentityRepository();
 
         listener = new LlmMailPrioritizationClassifierListener(
             mailboxManager,
@@ -115,8 +131,43 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
             new SystemMailboxesProviderImpl(mailboxManager),
             model,
             htmlTextExtractor,
+            identityRepository,
             metricFactory,
             listenerConfig);
+    }
+
+    public static IdentityRepository setUpIdentityRepository() throws AddressException {
+        DefaultIdentitySupplier identityFactory = mock(DefaultIdentitySupplier.class);
+        Mockito.when(identityFactory.listIdentities(ALICE))
+            .thenReturn(Flux.just(IdentityFixture.ALICE_SERVER_SET_IDENTITY()));
+        Mockito.when(identityFactory.userCanSendFrom(any(), any()))
+            .thenReturn(SMono.just(true));
+        IdentityRepository identityRepository = new IdentityRepository(new MemoryCustomIdentityDAO(), identityFactory);
+
+        Integer highPriorityOrder = 1;
+        Integer lowPriorityOrder = 2;
+        IdentityCreationRequest creationRequest1 = IdentityCreationRequest.fromJava(
+            ALICE.asMailAddress(),
+            Optional.of("Alice in wonderland"),
+            Optional.of(List.of(EmailAddress.from(Optional.of("reply name 1"), new MailAddress("reply1@domain.org")))),
+            Optional.of(List.of(EmailAddress.from(Optional.of("bcc name 1"), new MailAddress("bcc1@domain.org")))),
+            Optional.of(highPriorityOrder),
+            Optional.of("textSignature 1"),
+            Optional.of("htmlSignature 1"));
+
+        IdentityCreationRequest creationRequest2 = IdentityCreationRequest.fromJava(
+            ALICE.asMailAddress(),
+            Optional.of("Alice in borderland"),
+            Optional.of(List.of(EmailAddress.from(Optional.of("reply name 2"), new MailAddress("reply2@domain.org")))),
+            Optional.of(List.of(EmailAddress.from(Optional.of("bcc name 2"), new MailAddress("bcc2@domain.org")))),
+            Optional.of(lowPriorityOrder),
+            Optional.of("textSignature 2"),
+            Optional.of("htmlSignature 2"));
+
+        Mono.from(identityRepository.save(ALICE, creationRequest1)).block();
+        Mono.from(identityRepository.save(ALICE, creationRequest2)).block();
+
+        return identityRepository;
     }
 
     @Override
@@ -147,6 +198,7 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
             new SystemMailboxesProviderImpl(mailboxManager),
             model,
             new JsoupHtmlTextExtractor(),
+            identityRepository,
             new RecordingMetricFactory(),
             overrideConfig);
     }

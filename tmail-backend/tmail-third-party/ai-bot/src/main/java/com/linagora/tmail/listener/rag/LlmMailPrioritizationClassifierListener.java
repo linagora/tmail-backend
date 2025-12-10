@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.listener.rag;
 
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -32,6 +33,8 @@ import org.apache.james.core.Username;
 import org.apache.james.events.Event;
 import org.apache.james.events.EventListener;
 import org.apache.james.events.Group;
+import org.apache.james.jmap.api.identity.IdentityRepository;
+import org.apache.james.jmap.api.model.Identity;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageIdManager;
@@ -48,6 +51,7 @@ import org.apache.james.mime4j.dom.Message;
 import org.apache.james.mime4j.dom.address.Mailbox;
 import org.apache.james.mime4j.message.DefaultMessageBuilder;
 import org.apache.james.mime4j.stream.MimeConfig;
+import org.apache.james.util.ReactorUtils;
 import org.apache.james.util.html.HtmlTextExtractor;
 import org.apache.james.util.mime.MessageContentExtractor;
 import org.reactivestreams.Publisher;
@@ -95,6 +99,7 @@ public class LlmMailPrioritizationClassifierListener implements EventListener.Re
         - ambiguous messages where no action is explicitly asked
         
         If the email looks like spam or phishing, always return NO.
+        If the email does not target the receiving user, return NO.
         If it is unclear whether an action is expected, return NO.
         """;
 
@@ -104,6 +109,7 @@ public class LlmMailPrioritizationClassifierListener implements EventListener.Re
     private final StreamingChatLanguageModel chatLanguageModel;
     private final HtmlTextExtractor htmlTextExtractor;
     private final MetricFactory metricFactory;
+    private final IdentityRepository identityRepository;
     private final String systemPrompt;
     private final int maxBodyLength;
 
@@ -113,6 +119,7 @@ public class LlmMailPrioritizationClassifierListener implements EventListener.Re
                                                    SystemMailboxesProvider systemMailboxesProvider,
                                                    StreamingChatLanguageModel chatLanguageModel,
                                                    HtmlTextExtractor htmlTextExtractor,
+                                                   IdentityRepository identityRepository,
                                                    MetricFactory metricFactory,
                                                    HierarchicalConfiguration<ImmutableNode> configuration) {
         this.mailboxManager = mailboxManager;
@@ -120,6 +127,7 @@ public class LlmMailPrioritizationClassifierListener implements EventListener.Re
         this.systemMailboxesProvider = systemMailboxesProvider;
         this.chatLanguageModel = chatLanguageModel;
         this.htmlTextExtractor = htmlTextExtractor;
+        this.identityRepository = identityRepository;
         this.metricFactory = metricFactory;
 
         this.systemPrompt = Optional.ofNullable(configuration.getString("listener.configuration." + SYSTEM_PROMPT_PARAM, null))
@@ -161,15 +169,16 @@ public class LlmMailPrioritizationClassifierListener implements EventListener.Re
         Username username = addedEvent.getUsername();
         MailboxSession session = mailboxManager.createSystemSession(username);
 
-        return Flux.from(messageIdManager.getMessagesReactive(addedEvent.getMessageIds(), FetchGroup.FULL_CONTENT, session))
-            .flatMap(messageResult -> buildUserPrompt(messageResult)
-                .flatMap(userPrompt -> Mono.from(metricFactory.decoratePublisherWithTimerMetric("llm-mail-prioritization-classifier", callLlm(systemPrompt, userPrompt)))
-                    .doOnError(e -> LOGGER.error("LLM call failed for messageId {} in mailboxId {} of user {}",
-                        messageResult.getMessageId().serialize(), addedEvent.getMailboxId().serialize(), addedEvent.getUsername().asString(), e)))
-                .map(this::isActionRequired)
-                .flatMap(actionRequired -> actionRequired ? addNeedsActionKeyword(messageResult, addedEvent.getMailboxId(), session) : Mono.empty()))
-            .doFinally(signal -> mailboxManager.endProcessingRequest(session))
-            .then();
+        return getUserDisplayName(username)
+            .flatMap(userDisplayName -> Flux.from(messageIdManager.getMessagesReactive(addedEvent.getMessageIds(), FetchGroup.FULL_CONTENT, session))
+                .flatMap(messageResult -> buildUserPrompt(messageResult, username, userDisplayName)
+                    .flatMap(userPrompt -> Mono.from(metricFactory.decoratePublisherWithTimerMetric("llm-mail-prioritization-classifier", callLlm(systemPrompt, userPrompt)))
+                        .doOnError(e -> LOGGER.error("LLM call failed for messageId {} in mailboxId {} of user {}",
+                            messageResult.getMessageId().serialize(), addedEvent.getMailboxId().serialize(), addedEvent.getUsername().asString(), e)))
+                    .map(this::isActionRequired)
+                    .flatMap(actionRequired -> actionRequired ? addNeedsActionKeyword(messageResult, addedEvent.getMailboxId(), session) : Mono.empty()), ReactorUtils.LOW_CONCURRENCY)
+                .doFinally(signal -> mailboxManager.endProcessingRequest(session))
+                .then());
     }
 
     private Mono<Void> addNeedsActionKeyword(MessageResult messageResult, MailboxId mailboxId, MailboxSession session) {
@@ -178,7 +187,7 @@ public class LlmMailPrioritizationClassifierListener implements EventListener.Re
             .doOnError(e -> LOGGER.error("Failed adding '{}' keyword to message {} in mailbox {} of user {}", NEEDS_ACTION, messageResult.getMessageId().serialize(), mailboxId.serialize(), session.getUser().asString(), e));
     }
 
-    private Mono<String> buildUserPrompt(MessageResult messageResult) {
+    private Mono<String> buildUserPrompt(MessageResult messageResult, Username username, String userDisplayName) {
         try {
             DefaultMessageBuilder messageBuilder = new DefaultMessageBuilder();
             messageBuilder.setMimeEntityConfig(MimeConfig.PERMISSIVE);
@@ -204,18 +213,30 @@ public class LlmMailPrioritizationClassifierListener implements EventListener.Re
                 .map(body -> {
                     String truncated = truncate(body);
                     return """
+                        Username (of the person receiving this mail) is %s. His/her mail address is %s.
+                        Below is the content of the email:
+                        
                         From: %s
                         To: %s
                         Subject: %s
 
                         %s
 
-                        Does this email require immediate action? Respond only with YES or NO.
-                        """.formatted(from, to, subject, truncated);
+                        Does this email require immediate action from the user? Respond only with YES or NO.
+                        """.formatted(userDisplayName, username.asString(), from, to, subject, truncated);
                 });
         } catch (Exception e) {
             return Mono.error(new MessagingException("Error while building LLM prompt", e));
         }
+    }
+
+    private Mono<String> getUserDisplayName(Username username) {
+        return Flux.from(identityRepository.list(username))
+            .filter(Identity::mayDelete)
+            .sort(Comparator.comparing(Identity::sortOrder))
+            .next()
+            .map(Identity::name)
+            .defaultIfEmpty(username.asString());
     }
 
     private String asString(Mailbox mime4jMailbox) {
