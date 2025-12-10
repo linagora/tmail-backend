@@ -1,0 +1,18 @@
+= JMAP AI Chat Completion
+
+This extension allows to call the RAG (that calls the LLM) to do some chat completion (for the Scribe UI).
+
+The route is only a simple proxy. Tmail-backend does not treat anything, it just forwards the initial request to
+the RAG and then forwards the response back to the client.
+
+== Additions to the capability object
+
+Servers supporting the JMAP AI Chat Completion extension need to advertise it through the session capabilities:
+....
+com:linagora:params:jmap:aibot
+....
+
+The associated object has the following field:
+
+- `scribeEndpoint`: *URL*. The url endpoint associated for scribe AI chat completion. By default, it should
+be "http://[jmap_endpoint]/ai/v1/chat/completions"
