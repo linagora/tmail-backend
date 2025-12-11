@@ -66,7 +66,6 @@ public class TWPSettingsModule extends AbstractModule {
     @Override
     protected void configure() {
         bind(TWPReadOnlyPropertyProvider.class).in(Scopes.SINGLETON);
-        bind(TWPSettingsConsumer.class).in(Scopes.SINGLETON);
 
         Multibinder.newSetBinder(binder(), HealthCheck.class).addBinding()
             .to(TWPSettingsDeadLetterQueueHealthCheck.class);
