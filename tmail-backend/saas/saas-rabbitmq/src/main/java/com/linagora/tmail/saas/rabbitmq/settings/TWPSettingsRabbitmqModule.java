@@ -68,14 +68,19 @@ public class TWPSettingsRabbitmqModule extends AbstractModule {
 
     @Provides
     @Singleton
+    @Named(TWP_INJECTION_KEY)
+    TWPSettingsUpdater provideTWPSettingsUpdater(UsersRepository usersRepository,
+                                                 JmapSettingsRepository jmapSettingsRepository) {
+        return new TWPSettingsUpdaterImpl(usersRepository, jmapSettingsRepository);
+    }
+
+    @Provides
+    @Singleton
     TWPSettingsConsumer provideTWPSettingsConsumer(@Named(TWP_INJECTION_KEY) ReactorRabbitMQChannelPool channelPool,
                                                    @Named(TWP_INJECTION_KEY) RabbitMQConfiguration rabbitMQConfiguration,
-                                                   UsersRepository usersRepository,
-                                                   JmapSettingsRepository jmapSettingsRepository,
+                                                   @Named(TWP_INJECTION_KEY) TWPSettingsUpdater twpSettingsUpdater,
                                                    TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration,
                                                    TWPSettingsRabbitMQConfiguration twpSettingsRabbitMQConfiguration) {
-
-        TWPSettingsUpdater twpSettingsUpdater = new TWPSettingsUpdaterImpl(usersRepository, jmapSettingsRepository);
         return new TWPSettingsConsumer(channelPool, rabbitMQConfiguration, twpCommonRabbitMQConfiguration,
             twpSettingsRabbitMQConfiguration, TWPSettingsConsumer.SettingsConsumerConfig.DEFAULT, twpSettingsUpdater);
     }
