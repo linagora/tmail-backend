@@ -20,6 +20,7 @@ package com.linagora.tmail.saas.rabbitmq.settings;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.Optional;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
@@ -99,5 +100,19 @@ public record TWPCommonSettingsMessage(String source, String nickname, String re
         this.timestamp = timestamp;
         this.version = version;
         this.payload = payload;
+    }
+
+    public record IncomingLanguageSetting(String language, Long version) {
+
+        public Locale toLocale() {
+            Locale locale = Locale.forLanguageTag(language);
+            Preconditions.checkArgument(!locale.getLanguage().isEmpty(), "Invalid language tag: %s", language);
+            return locale;
+        }
+    }
+
+    public Optional<IncomingLanguageSetting> languageSettings() {
+        return payload().language()
+            .flatMap(language -> Optional.of(new IncomingLanguageSetting(language, version())));
     }
 }

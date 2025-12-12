@@ -84,15 +84,15 @@ public class TWPSettingsUpdaterImpl implements TWPSettingsUpdater {
     }
 
     private Mono<Void> applySettingsUpdate(TWPCommonSettingsMessage message, Username username) {
-        return Mono.justOrEmpty(message.payload().language())
-            .flatMap(language -> {
-                JmapSettingsPatch languagePatch = JmapSettingsPatch$.MODULE$.toUpsert(LANGUAGE, language);
-                JmapSettingsPatch versionPatch = JmapSettingsPatch$.MODULE$.toUpsert(TWPReadOnlyPropertyProvider.TWP_SETTINGS_VERSION, message.version().toString());
+        return message.languageSettings()
+            .map(languageSetting -> {
+                JmapSettingsPatch languagePatch = JmapSettingsPatch$.MODULE$.toUpsert(LANGUAGE, languageSetting.language());
+                JmapSettingsPatch versionPatch = JmapSettingsPatch$.MODULE$.toUpsert(TWPReadOnlyPropertyProvider.TWP_SETTINGS_VERSION, languageSetting.version().toString());
                 JmapSettingsPatch combinedPatch = JmapSettingsPatch$.MODULE$.merge(languagePatch, versionPatch);
-
                 return Mono.from(jmapSettingsRepository.updatePartial(username, combinedPatch))
-                    .doOnNext(updatedSettings -> LOGGER.info("Updated language setting for user {} to {}", username.asString(), language));
+                    .doOnNext(updatedSettings -> LOGGER.info("Updated language setting for user {} to {}", username.asString(), languageSetting.language()))
+                    .then();
             })
-            .then();
+            .orElse(Mono.empty());
     }
 }
