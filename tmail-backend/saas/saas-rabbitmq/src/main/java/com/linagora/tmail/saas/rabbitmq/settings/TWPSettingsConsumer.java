@@ -18,7 +18,6 @@
 
 package com.linagora.tmail.saas.rabbitmq.settings;
 
-import static com.linagora.tmail.saas.rabbitmq.TWPConstants.TWP_INJECTION_KEY;
 import static org.apache.james.backends.rabbitmq.Constants.DURABLE;
 import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
@@ -26,27 +25,14 @@ import java.io.Closeable;
 import java.time.Duration;
 import java.util.Optional;
 
-import jakarta.inject.Inject;
-import jakarta.inject.Named;
-
 import org.apache.james.backends.rabbitmq.QueueArguments;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
-import org.apache.james.core.Username;
 import org.apache.james.lifecycle.api.Startable;
-import org.apache.james.user.api.UsersRepository;
-import org.apache.james.user.api.model.User;
-import org.apache.james.util.ReactorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.linagora.tmail.james.jmap.settings.JmapSettingsKey;
-import com.linagora.tmail.james.jmap.settings.JmapSettingsPatch;
-import com.linagora.tmail.james.jmap.settings.JmapSettingsPatch$;
-import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
-import com.linagora.tmail.james.jmap.settings.JmapSettingsUtil;
-import com.linagora.tmail.james.jmap.settings.TWPReadOnlyPropertyProvider;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
@@ -63,42 +49,41 @@ import reactor.rabbitmq.ExchangeSpecification;
 import reactor.rabbitmq.QueueSpecification;
 import reactor.rabbitmq.Receiver;
 import reactor.rabbitmq.Sender;
-import scala.jdk.javaapi.OptionConverters;
 
 public class TWPSettingsConsumer implements Closeable, Startable {
+    public record SettingsConsumerConfig(String queue, String deadLetterQueue) {
+        public static SettingsConsumerConfig DEFAULT = new SettingsConsumerConfig("tmail-settings", "tmail-settings-dead-letter");
+    }
+
     private static final Logger LOGGER = LoggerFactory.getLogger(TWPSettingsConsumer.class);
     private static final boolean REQUEUE_ON_NACK = true;
-    private static final JmapSettingsKey LANGUAGE = JmapSettingsKey.liftOrThrow("language");
-    public static final String TWP_SETTINGS_QUEUE = "tmail-settings";
-    public static final String TWP_SETTINGS_DEAD_LETTER_QUEUE = "tmail-settings-dead-letter";
 
     private final ReceiverProvider receiverProvider;
-    private final UsersRepository usersRepository;
-    private final JmapSettingsRepository jmapSettingsRepository;
     private final Sender sender;
     private final RabbitMQConfiguration rabbitMQConfiguration;
     private final TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration;
     private final TWPSettingsRabbitMQConfiguration twpSettingsRabbitMQConfiguration;
     private Disposable consumeSettingsDisposable;
+    private final SettingsConsumerConfig consumerConfig;
+    private final TWPSettingsUpdater settingsUpdater;
 
-    @Inject
-    public TWPSettingsConsumer(@Named(TWP_INJECTION_KEY) ReactorRabbitMQChannelPool channelPool,
-                               @Named(TWP_INJECTION_KEY) RabbitMQConfiguration rabbitMQConfiguration,
-                               UsersRepository usersRepository,
-                               JmapSettingsRepository jmapSettingsRepository,
+    public TWPSettingsConsumer(ReactorRabbitMQChannelPool channelPool,
+                               RabbitMQConfiguration rabbitMQConfiguration,
                                TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration,
-                               TWPSettingsRabbitMQConfiguration twpSettingsRabbitMQConfiguration) {
+                               TWPSettingsRabbitMQConfiguration twpSettingsRabbitMQConfiguration,
+                               SettingsConsumerConfig consumerConfig,
+                               TWPSettingsUpdater settingsUpdater) {
         this.receiverProvider = channelPool::createReceiver;
         this.sender = channelPool.getSender();
-        this.usersRepository = usersRepository;
-        this.jmapSettingsRepository = jmapSettingsRepository;
         this.rabbitMQConfiguration = rabbitMQConfiguration;
         this.twpCommonRabbitMQConfiguration = twpCommonRabbitMQConfiguration;
         this.twpSettingsRabbitMQConfiguration = twpSettingsRabbitMQConfiguration;
+        this.consumerConfig = consumerConfig;
+        this.settingsUpdater = settingsUpdater;
     }
 
     public void init() {
-        declareExchangeAndQueue(twpSettingsRabbitMQConfiguration.exchange(), TWP_SETTINGS_QUEUE, TWP_SETTINGS_DEAD_LETTER_QUEUE);
+        declareExchangeAndQueue(twpSettingsRabbitMQConfiguration.exchange(), consumerConfig.queue(), consumerConfig.deadLetterQueue());
         startConsumer();
     }
 
@@ -155,7 +140,7 @@ public class TWPSettingsConsumer implements Closeable, Startable {
     }
 
     private Disposable consumeSettingsQueue() {
-        return delivery(TWP_SETTINGS_QUEUE)
+        return delivery(consumerConfig.queue())
             .concatMap(delivery -> consumeSettingsUpdate(delivery, delivery.getBody()))
             .subscribeOn(Schedulers.boundedElastic())
             .subscribe();
@@ -183,40 +168,7 @@ public class TWPSettingsConsumer implements Closeable, Startable {
     }
 
     private Mono<Void> handleSettingsMessage(TWPCommonSettingsMessage message) {
-        return Mono.fromCallable(() -> usersRepository.getUserByName(Username.of(message.payload().email())))
-            .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
-            .map(User::getUserName)
-            .flatMap(username -> getStoredSettingsVersion(username)
-                .flatMap(storedVersion -> {
-                    if (message.version() > storedVersion) {
-                        return updateSettings(message, username);
-                    } else {
-                        LOGGER.warn("Received outdated TWP settings update for user {}. Current stored version: {}, received version: {}. Ignoring update.",
-                            username.asString(), storedVersion, message.version());
-                        return Mono.empty();
-                    }
-                }))
-            .then();
-    }
-
-    private Mono<Void> updateSettings(TWPCommonSettingsMessage message, Username username) {
-        return Mono.justOrEmpty(message.payload().language())
-            .flatMap(language -> {
-                JmapSettingsPatch languagePatch = JmapSettingsPatch$.MODULE$.toUpsert(LANGUAGE, language);
-                JmapSettingsPatch versionPatch = JmapSettingsPatch$.MODULE$.toUpsert(TWPReadOnlyPropertyProvider.TWP_SETTINGS_VERSION, message.version().toString());
-                JmapSettingsPatch combinedPatch = JmapSettingsPatch$.MODULE$.merge(languagePatch, versionPatch);
-
-                return Mono.from(jmapSettingsRepository.updatePartial(username, combinedPatch))
-                    .doOnNext(updatedSettings -> LOGGER.info("Updated language setting for user {} to {}", username.asString(), language));
-            })
-            .then();
-    }
-
-    private Mono<Long> getStoredSettingsVersion(Username username) {
-        return Mono.from(jmapSettingsRepository.get(username))
-            .map(jmapSettings -> OptionConverters.toJava(JmapSettingsUtil.getTWPSettingsVersion(jmapSettings))
-                .orElse(TWPReadOnlyPropertyProvider.TWP_SETTINGS_VERSION_DEFAULT))
-            .switchIfEmpty(Mono.just(TWPReadOnlyPropertyProvider.TWP_SETTINGS_VERSION_DEFAULT));
+        return settingsUpdater.updateSettings(message);
     }
 
     @Override

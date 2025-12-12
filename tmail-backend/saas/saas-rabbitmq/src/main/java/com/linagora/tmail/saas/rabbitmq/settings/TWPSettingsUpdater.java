@@ -16,17 +16,10 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.james.jmap.settings;
+package com.linagora.tmail.saas.rabbitmq.settings;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.Scopes;
-import com.linagora.tmail.saas.rabbitmq.settings.TWPSettingsRabbitmqModule;
+import reactor.core.publisher.Mono;
 
-public class TWPSettingsModule extends AbstractModule {
-
-    @Override
-    protected void configure() {
-        install(new TWPSettingsRabbitmqModule());
-        bind(TWPReadOnlyPropertyProvider.class).in(Scopes.SINGLETON);
-    }
+public interface TWPSettingsUpdater {
+    Mono<Void> updateSettings(TWPCommonSettingsMessage message);
 }

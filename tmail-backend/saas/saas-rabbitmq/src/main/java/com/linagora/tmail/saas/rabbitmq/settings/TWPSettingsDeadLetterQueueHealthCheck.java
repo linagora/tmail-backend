@@ -18,12 +18,6 @@
 
 package com.linagora.tmail.saas.rabbitmq.settings;
 
-import static com.linagora.tmail.saas.rabbitmq.TWPConstants.TWP_INJECTION_KEY;
-import static com.linagora.tmail.saas.rabbitmq.settings.TWPSettingsConsumer.TWP_SETTINGS_DEAD_LETTER_QUEUE;
-
-import jakarta.inject.Inject;
-import jakarta.inject.Named;
-
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.RabbitMQManagementAPI;
 import org.apache.james.core.healthcheck.ComponentName;
@@ -38,12 +32,14 @@ public class TWPSettingsDeadLetterQueueHealthCheck implements HealthCheck {
     private static final String DEFAULT_VHOST = "/";
 
     private final RabbitMQConfiguration twpRabbitMQConfiguration;
-    private final RabbitMQManagementAPI api;
+    private final RabbitMQManagementAPI managementAPI;
+    private final String queueName;
 
-    @Inject
-    public TWPSettingsDeadLetterQueueHealthCheck(@Named(TWP_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration) {
+    public TWPSettingsDeadLetterQueueHealthCheck(RabbitMQConfiguration twpRabbitMQConfiguration,
+                                                 String queueName) {
         this.twpRabbitMQConfiguration = twpRabbitMQConfiguration;
-        this.api = RabbitMQManagementAPI.from(twpRabbitMQConfiguration);
+        this.managementAPI = RabbitMQManagementAPI.from(twpRabbitMQConfiguration);
+        this.queueName = queueName;
     }
 
     @Override
@@ -53,7 +49,7 @@ public class TWPSettingsDeadLetterQueueHealthCheck implements HealthCheck {
 
     @Override
     public Mono<Result> check() {
-        return Mono.fromCallable(() -> api.queueDetails(twpRabbitMQConfiguration.getVhost().orElse(DEFAULT_VHOST), TWP_SETTINGS_DEAD_LETTER_QUEUE)
+        return Mono.fromCallable(() -> managementAPI.queueDetails(twpRabbitMQConfiguration.getVhost().orElse(DEFAULT_VHOST), queueName)
                 .getQueueLength())
             .map(queueSize -> {
                 if (queueSize != 0) {
