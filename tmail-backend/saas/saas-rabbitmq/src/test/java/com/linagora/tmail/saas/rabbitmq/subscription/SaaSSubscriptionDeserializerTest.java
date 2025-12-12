@@ -72,9 +72,25 @@ class SaaSSubscriptionDeserializerTest {
             softly.assertThat(message.internalEmail()).isEqualTo("alice@twake.app");
             softly.assertThat(message.isPaying()).isTrue();
             softly.assertThat(message.canUpgrade()).isTrue();
-            softly.assertThat(message.features().mail().storageQuota()).isEqualTo(12334534L);
-            softly.assertThat(message.features().mail().rateLimitingDefinition()).isEqualTo(RATE_LIMITING_1);
+            softly.assertThat(message.features().mail().get().storageQuota()).isEqualTo(12334534L);
+            softly.assertThat(message.features().mail().get().rateLimitingDefinition()).isEqualTo(RATE_LIMITING_1);
         });
+    }
+
+    @Test
+    void parseMissingMailShouldReturnEmptyOptional() {
+        String message = """
+        {
+            "internalEmail": "alice@twake.app",
+            "isPaying": true,
+            "canUpgrade": true,
+            "features": {}
+        }
+        """;
+
+        SaaSSubscriptionMessage parsed = SaaSSubscriptionDeserializer.parseAMQPUserMessage(message);
+
+        assertThat(parsed.features().mail()).isEmpty();
     }
 
     @Test
@@ -215,8 +231,8 @@ class SaaSSubscriptionDeserializerTest {
             softly.assertThat(parsed.internalEmail()).isEqualTo("alice@twake.app");
             softly.assertThat(parsed.isPaying()).isTrue();
             softly.assertThat(parsed.canUpgrade()).isTrue();
-            softly.assertThat(parsed.features().mail().storageQuota()).isEqualTo(123L);
-            softly.assertThat(parsed.features().mail().rateLimitingDefinition()).isEqualTo(RATE_LIMITING_1);
+            softly.assertThat(parsed.features().mail().get().storageQuota()).isEqualTo(123L);
+            softly.assertThat(parsed.features().mail().get().rateLimitingDefinition()).isEqualTo(RATE_LIMITING_1);
         });
     }
 
@@ -243,6 +259,6 @@ class SaaSSubscriptionDeserializerTest {
 
         SaaSSubscriptionMessage parsed = SaaSSubscriptionDeserializer.parseAMQPUserMessage(message);
 
-        assertThat(parsed.features().mail().storageQuota()).isEqualTo(-1L);
+        assertThat(parsed.features().mail().get().storageQuota()).isEqualTo(-1L);
     }
 }

@@ -22,19 +22,34 @@ import org.apache.commons.configuration2.Configuration;
 
 public record SaaSSubscriptionRabbitMQConfiguration(String exchange,
                                                     String routingKey,
-                                                    String domainRoutingKey) {
+                                                    String domainRoutingKey,
+                                                    String configurationExchange,
+                                                    String domainConfigurationRoutingKey) {
+
     private static final String TWP_SAAS_SUBSCRIPTION_EXCHANGE_PROPERTY = "twp.saas.subscription.exchange";
     private static final String TWP_SAAS_SUBSCRIPTION_ROUTING_KEY_PROPERTY = "twp.saas.subscription.routingKey";
     private static final String TWP_SAAS_DOMAIN_SUBSCRIPTION_ROUTING_KEY_PROPERTY = "twp.saas.domain.subscription.routingKey";
     public static final String TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT = "saas.subscription";
     public static final String TWP_SAAS_SUBSCRIPTION_ROUTING_KEY_DEFAULT = "saas.subscription.routingKey";
     public static final String TWP_SAAS_DOMAIN_SUBSCRIPTION_ROUTING_KEY_DEFAULT = "domain.subscription.changed";
+    public static final String TWP_SAAS_CONFIGURATION_EXCHANGE_PROPERTY = "twp.saas.configuration.exchange";
+    public static final String TWP_SAAS_CONFIGURATION_EXCHANGE_DEFAULT = "configuration";
+    public static final String TWP_SAAS_DOMAIN_CONFIGURATION_ROUTING_KEY_PROPERTY = "twp.saas.configuration.routingKey";
+    public static final String TWP_SAAS_DOMAIN_CONFIGURATION_ROUTING_KEY_DEFAULT = "domain.dns.configuration.status";
+
+    public static final SaaSSubscriptionRabbitMQConfiguration DEFAULT = new SaaSSubscriptionRabbitMQConfiguration(TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT,
+        TWP_SAAS_SUBSCRIPTION_ROUTING_KEY_DEFAULT,
+        TWP_SAAS_DOMAIN_SUBSCRIPTION_ROUTING_KEY_DEFAULT,
+        TWP_SAAS_CONFIGURATION_EXCHANGE_DEFAULT,
+        TWP_SAAS_DOMAIN_CONFIGURATION_ROUTING_KEY_DEFAULT);
 
     public static SaaSSubscriptionRabbitMQConfiguration from(Configuration rabbitMQConfiguration) {
         String exchange = rabbitMQConfiguration.getString(TWP_SAAS_SUBSCRIPTION_EXCHANGE_PROPERTY, TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT);
         String routingKey = rabbitMQConfiguration.getString(TWP_SAAS_SUBSCRIPTION_ROUTING_KEY_PROPERTY, TWP_SAAS_SUBSCRIPTION_ROUTING_KEY_DEFAULT);
         String domainRoutingKey = rabbitMQConfiguration.getString(TWP_SAAS_DOMAIN_SUBSCRIPTION_ROUTING_KEY_PROPERTY, TWP_SAAS_DOMAIN_SUBSCRIPTION_ROUTING_KEY_DEFAULT);
+        String configurationExchange = rabbitMQConfiguration.getString(TWP_SAAS_CONFIGURATION_EXCHANGE_PROPERTY, TWP_SAAS_CONFIGURATION_EXCHANGE_DEFAULT);
+        String configurationRoutingKey = rabbitMQConfiguration.getString(TWP_SAAS_DOMAIN_CONFIGURATION_ROUTING_KEY_PROPERTY, TWP_SAAS_DOMAIN_CONFIGURATION_ROUTING_KEY_DEFAULT);
 
-        return new SaaSSubscriptionRabbitMQConfiguration(exchange, routingKey, domainRoutingKey);
+        return new SaaSSubscriptionRabbitMQConfiguration(exchange, routingKey, domainRoutingKey, configurationExchange, configurationRoutingKey);
     }
 }

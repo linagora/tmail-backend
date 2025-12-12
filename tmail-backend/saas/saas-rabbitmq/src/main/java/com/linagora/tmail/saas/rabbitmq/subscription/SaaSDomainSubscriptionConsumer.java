@@ -98,30 +98,35 @@ public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
     }
 
     public void init() {
-        declareExchangeAndQueue(saasSubscriptionRabbitMQConfiguration.exchange(), SAAS_DOMAIN_SUBSCRIPTION_QUEUE, SAAS_DOMAIN_SUBSCRIPTION_DEAD_LETTER_QUEUE);
+        declareExchangeAndQueue();
         startConsumer();
     }
 
-    public void declareExchangeAndQueue(String exchange, String queue, String deadLetter) {
+    public void declareExchangeAndQueue() {
         Flux.concat(
-                declareExchange(exchange),
+                declareExchange(saasSubscriptionRabbitMQConfiguration.exchange()),
+                declareExchange(saasSubscriptionRabbitMQConfiguration.configurationExchange()),
                 sender.declareQueue(QueueSpecification
-                    .queue(deadLetter)
+                    .queue(SAAS_DOMAIN_SUBSCRIPTION_DEAD_LETTER_QUEUE)
                     .durable(DURABLE)
                     .arguments(queueArgumentSupplier()
                         .build())),
                 sender.declareQueue(QueueSpecification
-                    .queue(queue)
+                    .queue(SAAS_DOMAIN_SUBSCRIPTION_QUEUE)
                     .durable(DURABLE)
                     .arguments(queueArgumentSupplier()
-                        .deadLetter(deadLetter)
+                        .deadLetter(SAAS_DOMAIN_SUBSCRIPTION_DEAD_LETTER_QUEUE)
                         .singleActiveConsumer()
                         .consumerTimeout(Duration.ofMinutes(10L).toMillis())
                         .build())),
                 sender.bind(BindingSpecification.binding()
-                    .exchange(exchange)
-                    .queue(queue)
-                    .routingKey(saasSubscriptionRabbitMQConfiguration.domainRoutingKey())))
+                    .exchange(saasSubscriptionRabbitMQConfiguration.exchange())
+                    .queue(SAAS_DOMAIN_SUBSCRIPTION_QUEUE)
+                    .routingKey(saasSubscriptionRabbitMQConfiguration.domainRoutingKey())),
+                sender.bind(BindingSpecification.binding()
+                    .exchange(saasSubscriptionRabbitMQConfiguration.configurationExchange())
+                    .queue(SAAS_DOMAIN_SUBSCRIPTION_QUEUE)
+                    .routingKey(saasSubscriptionRabbitMQConfiguration.domainConfigurationRoutingKey())))
             .then()
             .block();
     }
@@ -202,16 +207,28 @@ public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
             .then();
     }
 
-    private Mono<Void> handleDomainValidSubscriptionMessage(SaaSDomainValidSubscriptionMessage domainValidSubscriptionMessage) {
-        if (domainValidSubscriptionMessage.validated()) {
-            Domain domain = Domain.of(domainValidSubscriptionMessage.domain());
-            return addDomainIfNotExist(domain)
-                .then(updateStorageDomainQuota(domain, domainValidSubscriptionMessage.features().mail().storageQuota())
-                    .then(updateRateLimiting(domain, domainValidSubscriptionMessage.features().mail().rateLimitingDefinition()))
-                    .doOnSuccess(success -> LOGGER.info("Updated SaaS subscription for domain: {}, storageQuota: {}, rateLimiting: {}",
-                        domain, domainValidSubscriptionMessage.features().mail().storageQuota(), domainValidSubscriptionMessage.features().mail().rateLimitingDefinition())));
+    private Mono<Void> handleDomainValidSubscriptionMessage(SaaSDomainValidSubscriptionMessage message) {
+        return createDomainIfValidated(message)
+            .then(applyDomainSettings(message));
+    }
+
+    private Mono<Void> createDomainIfValidated(SaaSDomainValidSubscriptionMessage message) {
+        Domain domain = Domain.of(message.domain());
+        if (message.mailDnsConfigurationValidated().orElse(false)) {
+            return addDomainIfNotExist(domain);
         }
         return Mono.empty();
+    }
+
+    private Mono<Void> applyDomainSettings(SaaSDomainValidSubscriptionMessage message) {
+        Domain domain = Domain.of(message.domain());
+
+        return message.features()
+            .flatMap(SaasFeatures::mail)
+            .map(mailSettings -> updateStorageDomainQuota(domain, mailSettings.storageQuota())
+                .then(updateRateLimiting(domain, mailSettings.rateLimitingDefinition()))
+                .doOnSuccess(success -> LOGGER.info("Updated SaaS subscription for domain: {}, storageQuota: {}, rateLimiting: {}",
+                    domain, mailSettings.storageQuota(), mailSettings.rateLimitingDefinition()))).orElse(Mono.empty());
     }
 
     private Mono<Void> addDomainIfNotExist(Domain domain) {

@@ -31,6 +31,8 @@ The Twake Workplace settings module may require RabbitMQ configuration to functi
 - `twp.saas.subscription.exchange`: Optional. The exchange name for SaaS subscriptions. Default to `saas.subscription`.
 - `twp.saas.subscription.routingKey`: Optional. The routing key for SaaS subscriptions. Default to `saas.subscription.routingKey`.
 - `twp.saas.domain.subscription.routingKey`: Optional. The routing key for SaaS domain subscriptions. Default to `domain.subscription.changed`.
+- `twp.saas.configuration.exchange`: Optional. The exchange name for SaaS domain configuration. Default to `configuration`.
+- `twp.saas.configuration.routingKey`: Optional. The routing key for SaaS domain configuration. Default to `domain.dns.configuration.status`.
 
 Example configuration:
 
@@ -43,4 +45,6 @@ twp.settings.routingKey=user.settings.updated
 twp.saas.subscription.exchange=saas.subscription
 twp.saas.subscription.routingKey=saas.subscription.routingKey
 twp.saas.domain.subscription.routingKey=domain.subscription.changed
+twp.saas.configuration.exchange=configuration
+twp.saas.configuration.routingKey=domain.dns.configuration.status
 ....

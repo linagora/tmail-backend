@@ -23,17 +23,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.junit.jupiter.api.Test;
 
-
-public class SaaSSubscriptionRabbitMQConfigurationTest {
+class SaaSSubscriptionRabbitMQConfigurationTest {
     @Test
     void shouldFallbackToDefaultConfig() {
         PropertiesConfiguration rabbitConfiguration = new PropertiesConfiguration();
         SaaSSubscriptionRabbitMQConfiguration configuration = SaaSSubscriptionRabbitMQConfiguration.from(rabbitConfiguration);
 
-        assertThat(configuration).isEqualTo(new SaaSSubscriptionRabbitMQConfiguration(
-            "saas.subscription",
-            "saas.subscription.routingKey",
-            "domain.subscription.changed"));
+        assertThat(configuration).isEqualTo(SaaSSubscriptionRabbitMQConfiguration.DEFAULT);
     }
 
     @Test
@@ -64,5 +60,25 @@ public class SaaSSubscriptionRabbitMQConfigurationTest {
         SaaSSubscriptionRabbitMQConfiguration configuration = SaaSSubscriptionRabbitMQConfiguration.from(rabbitConfiguration);
 
         assertThat(configuration.domainRoutingKey()).isEqualTo("SaaSDomainSubscriptionRoutingKey");
+    }
+
+    @Test
+    void configureConfigurationExchangeShouldWork() {
+        PropertiesConfiguration rabbitConfiguration = new PropertiesConfiguration();
+        rabbitConfiguration.addProperty("twp.saas.configuration.exchange", "CustomConfigExchange");
+
+        SaaSSubscriptionRabbitMQConfiguration configuration = SaaSSubscriptionRabbitMQConfiguration.from(rabbitConfiguration);
+
+        assertThat(configuration.configurationExchange()).isEqualTo("CustomConfigExchange");
+    }
+
+    @Test
+    void configureConfigurationRoutingKeyShouldWork() {
+        PropertiesConfiguration rabbitConfiguration = new PropertiesConfiguration();
+        rabbitConfiguration.addProperty("twp.saas.configuration.routingKey", "custom.config.routingKey");
+
+        SaaSSubscriptionRabbitMQConfiguration configuration = SaaSSubscriptionRabbitMQConfiguration.from(rabbitConfiguration);
+
+        assertThat(configuration.domainConfigurationRoutingKey()).isEqualTo("custom.config.routingKey");
     }
 }

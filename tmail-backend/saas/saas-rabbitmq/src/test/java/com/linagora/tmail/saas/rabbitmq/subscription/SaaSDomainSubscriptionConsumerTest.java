@@ -59,10 +59,7 @@ import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
 import reactor.core.publisher.Mono;
 import reactor.rabbitmq.OutboundMessage;
 
-public class SaaSDomainSubscriptionConsumerTest {
-    private static final String EXCHANGE_NAME = SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT;
-    private static final String ROUTING_KEY = SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_DOMAIN_SUBSCRIPTION_ROUTING_KEY_DEFAULT;
-    private static final String DOMAIN_ROUTING_KEY = SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_DOMAIN_SUBSCRIPTION_ROUTING_KEY_DEFAULT;
+class SaaSDomainSubscriptionConsumerTest {
     private static final Domain DOMAIN = Domain.of("twake.app");
     RateLimitingDefinition RATE_LIMITING_1 = RateLimitingDefinition.builder()
         .mailsSentPerMinute(10L)
@@ -106,9 +103,6 @@ public class SaaSDomainSubscriptionConsumerTest {
             .managementCredentials(DEFAULT_MANAGEMENT_CREDENTIAL)
             .build();
 
-        SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration =
-            new SaaSSubscriptionRabbitMQConfiguration(EXCHANGE_NAME, ROUTING_KEY, DOMAIN_ROUTING_KEY);
-
         TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration = new TWPCommonRabbitMQConfiguration(
             Optional.empty(),
             Optional.empty(),
@@ -123,7 +117,7 @@ public class SaaSDomainSubscriptionConsumerTest {
             rabbitMQExtension.getRabbitChannelPool(),
             rabbitMQConfiguration,
             twpCommonRabbitMQConfiguration,
-            saasSubscriptionRabbitMQConfiguration,
+            SaaSSubscriptionRabbitMQConfiguration.DEFAULT,
             domainList,
             maxQuotaManager,
             rateLimitingRepository);
@@ -142,7 +136,7 @@ public class SaaSDomainSubscriptionConsumerTest {
             String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": 1234,
@@ -163,12 +157,90 @@ public class SaaSDomainSubscriptionConsumerTest {
         }
 
         @Test
+        void shouldRegisterSaasValidatedDomainOnConfigurationExchange() {
+            String validMessage = String.format("""
+            {
+                "domain": "%s",
+                "mailDnsConfigurationValidated": true
+            }
+            """, DOMAIN.asString());
+
+            publishAmqpSaaSConfigurationMessage(validMessage);
+
+            await.untilAsserted(() -> assertThat(domainList.containsDomain(DOMAIN)).isTrue());
+        }
+
+        @Test
+        void shouldNotRegisterSaasValidatedDomainWhenValidatedNoop() {
+            String validMessage = String.format("""
+            {
+                "domain": "%s",
+                "features": {
+                    "mail": {
+                        "storageQuota": 1234,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
+            }
+            """, DOMAIN.asString());
+
+            publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+
+            await.untilAsserted(() -> assertThat(domainList.containsDomain(DOMAIN)).isFalse());
+        }
+
+        @Test
+        void shouldNotUnRegisterSaasValidatedDomainWhenValidatedNoop() {
+            publishAmqpSaaSDomainSubscriptionMessage(String.format("""
+            {
+                "domain": "%s",
+                "mailDnsConfigurationValidated": true,
+                "features": {
+                    "mail": {
+                        "storageQuota": 1234,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
+            }
+            """, DOMAIN.asString()));
+
+            publishAmqpSaaSDomainSubscriptionMessage(String.format("""
+            {
+                "domain": "%s",
+                "features": {
+                    "mail": {
+                        "storageQuota": 1234,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
+            }
+            """, DOMAIN.asString()));
+
+            await.untilAsserted(() -> assertThat(domainList.containsDomain(DOMAIN)).isTrue());
+        }
+
+        @Test
         void shouldIgnoreSaasUnvalidatedDomain() {
             Domain unvalidatedDomain = Domain.of("unvalidated.org");
             String unvalidatedMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": false,
+                "mailDnsConfigurationValidated": false,
                 "features": {
                     "mail": {
                         "storageQuota": 1234,
@@ -188,7 +260,7 @@ public class SaaSDomainSubscriptionConsumerTest {
             String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": 1234,
@@ -216,7 +288,32 @@ public class SaaSDomainSubscriptionConsumerTest {
             String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
+                "features": {
+                    "mail": {
+                        "storageQuota": 1234,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
+            }
+            """, DOMAIN.asString());
+
+            publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+
+            await.untilAsserted(() -> assertThat(maxQuotaManager.getDomainMaxStorage(DOMAIN))
+                .isEqualTo(Optional.of(QuotaSizeLimit.size(1234))));
+        }
+
+        @Test
+        void shouldSetStorageQuotaWhenDomainHasNoQuotaYetWhenValidatedNoop() {
+            String validMessage = String.format("""
+            {
+                "domain": "%s",
                 "features": {
                     "mail": {
                         "storageQuota": 1234,
@@ -242,7 +339,34 @@ public class SaaSDomainSubscriptionConsumerTest {
             String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
+                "features": {
+                    "mail": {
+                        "storageQuota": 1234,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
+            }
+            """, DOMAIN.asString());
+
+            publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+
+            await.untilAsserted(() -> {
+                RateLimitingDefinition rateLimitingDefinition = Mono.from(rateLimitingRepository.getRateLimiting(DOMAIN)).block();
+                assertThat(rateLimitingDefinition).isEqualTo(RATE_LIMITING_1);
+            });
+        }
+
+        @Test
+        void shouldSetRateLimitingWhenDomainHasNoRateLimitingYetWhenValidatedNoop() {
+            String validMessage = String.format("""
+            {
+                "domain": "%s",
                 "features": {
                     "mail": {
                         "storageQuota": 1234,
@@ -270,7 +394,7 @@ public class SaaSDomainSubscriptionConsumerTest {
             String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": -1,
@@ -296,7 +420,7 @@ public class SaaSDomainSubscriptionConsumerTest {
             String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": 1000,
@@ -327,7 +451,7 @@ public class SaaSDomainSubscriptionConsumerTest {
             String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": 12334534,
@@ -353,7 +477,7 @@ public class SaaSDomainSubscriptionConsumerTest {
             String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": 12334534,
@@ -373,7 +497,7 @@ public class SaaSDomainSubscriptionConsumerTest {
             String validUpdateMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": 12334534,
@@ -415,7 +539,7 @@ public class SaaSDomainSubscriptionConsumerTest {
             String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": 12334534,
@@ -446,7 +570,7 @@ public class SaaSDomainSubscriptionConsumerTest {
             String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": 1234,
@@ -482,7 +606,7 @@ public class SaaSDomainSubscriptionConsumerTest {
             String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": 1234,
@@ -600,7 +724,7 @@ public class SaaSDomainSubscriptionConsumerTest {
         String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": 1234,
@@ -634,8 +758,17 @@ public class SaaSDomainSubscriptionConsumerTest {
     private void publishAmqpSaaSDomainSubscriptionMessage(String message) {
         rabbitMQExtension.getSender()
             .send(Mono.just(new OutboundMessage(
-                EXCHANGE_NAME,
-                DOMAIN_ROUTING_KEY,
+                SaaSSubscriptionRabbitMQConfiguration.DEFAULT.exchange(),
+                SaaSSubscriptionRabbitMQConfiguration.DEFAULT.domainRoutingKey(),
+                message.getBytes(UTF_8))))
+            .block();
+    }
+
+    private void publishAmqpSaaSConfigurationMessage(String message) {
+        rabbitMQExtension.getSender()
+            .send(Mono.just(new OutboundMessage(
+                SaaSSubscriptionRabbitMQConfiguration.DEFAULT.configurationExchange(),
+                SaaSSubscriptionRabbitMQConfiguration.DEFAULT.domainConfigurationRoutingKey(),
                 message.getBytes(UTF_8))))
             .block();
     }

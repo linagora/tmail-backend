@@ -35,6 +35,7 @@ import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
 import org.apache.james.core.Username;
 import org.apache.james.lifecycle.api.Startable;
+import org.apache.james.mailbox.model.QuotaRoot;
 import org.apache.james.mailbox.quota.MaxQuotaManager;
 import org.apache.james.mailbox.quota.UserQuotaRootResolver;
 import org.apache.james.user.api.UsersRepository;
@@ -44,7 +45,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
-import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition;
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
 import com.linagora.tmail.saas.model.SaaSAccount;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
@@ -192,18 +192,29 @@ public class SaaSSubscriptionConsumer implements Closeable, Startable {
             .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
             .map(User::getUserName)
             .flatMap(username -> Mono.from(saasAccountRepository.upsertSaasAccount(username, saaSAccount))
-                .then(updateStorageQuota(username, subscriptionMessage.features().mail().storageQuota()))
-                .then(updateRateLimiting(username, subscriptionMessage.features().mail().rateLimitingDefinition()))
-                .doOnSuccess(success -> LOGGER.info("Updated SaaS subscription for user: {}, isPaying: {}, canUpgrade: {}, storageQuota: {}, rateLimiting: {}",
-                    username, subscriptionMessage.isPaying(), subscriptionMessage.canUpgrade(), subscriptionMessage.features().mail().storageQuota(), subscriptionMessage.features().mail().rateLimitingDefinition())));
+                .then(updateStorageQuota(username, subscriptionMessage.features()))
+                .then(updateRateLimiting(username, subscriptionMessage.features()))
+                .doOnSuccess(success -> LOGGER.info("Updated SaaS subscription for user: {}, isPaying: {}, canUpgrade: {}, mail features: {}",
+                    username, subscriptionMessage.isPaying(), subscriptionMessage.canUpgrade(), subscriptionMessage.features().mail())));
     }
 
-    private Mono<Void> updateStorageQuota(Username username, Long storageQuota) {
-        return Mono.from(maxQuotaManager.setMaxStorageReactive(userQuotaRootResolver.forUser(username), SaaSSubscriptionUtils.asQuotaSizeLimit(storageQuota)));
+    private Mono<Void> updateStorageQuota(Username username, SaasFeatures saasFeatures) {
+        QuotaRoot quotaRoot = userQuotaRootResolver.forUser(username);
+
+        return saasFeatures.mail()
+            .map(SaasFeatures.MailLimitation::storageQuota)
+            .map(SaaSSubscriptionUtils::asQuotaSizeLimit)
+            .map(quota -> maxQuotaManager.setMaxStorageReactive(quotaRoot, quota))
+            .map(Mono::from)
+            .orElse(Mono.empty());
     }
 
-    private Mono<Void> updateRateLimiting(Username username, RateLimitingDefinition rateLimiting) {
-        return Mono.from(rateLimitingRepository.setRateLimiting(username, rateLimiting));
+    private Mono<Void> updateRateLimiting(Username username, SaasFeatures saasFeatures) {
+        return saasFeatures.mail()
+            .map(SaasFeatures.MailLimitation::rateLimitingDefinition)
+            .map(rateLimiting -> rateLimitingRepository.setRateLimiting(username, rateLimiting))
+            .map(Mono::from)
+            .orElse(Mono.empty());
     }
 
     @Override
