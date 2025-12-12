@@ -76,8 +76,8 @@ public class SaaSDomainSubscriptionDeserializerTest {
             SoftAssertions.assertSoftly(softly -> {
                 softly.assertThat(message.domain()).isEqualTo("twake.app");
                 softly.assertThat(message.mailDnsConfigurationValidated()).contains(true);
-                softly.assertThat(message.features().mail().get().storageQuota()).isEqualTo(12334534L);
-                softly.assertThat(message.features().mail().get().rateLimitingDefinition()).isEqualTo(RATE_LIMITING_1);
+                softly.assertThat(message.features().get().mail().get().storageQuota()).isEqualTo(12334534L);
+                softly.assertThat(message.features().get().mail().get().rateLimitingDefinition()).isEqualTo(RATE_LIMITING_1);
             });
         }
 
@@ -106,8 +106,8 @@ public class SaaSDomainSubscriptionDeserializerTest {
             SoftAssertions.assertSoftly(softly -> {
                 softly.assertThat(message.domain()).isEqualTo("twake.app");
                 softly.assertThat(message.mailDnsConfigurationValidated()).isEmpty();
-                softly.assertThat(message.features().mail().get().storageQuota()).isEqualTo(12334534L);
-                softly.assertThat(message.features().mail().get().rateLimitingDefinition()).isEqualTo(RATE_LIMITING_1);
+                softly.assertThat(message.features().get().mail().get().storageQuota()).isEqualTo(12334534L);
+                softly.assertThat(message.features().get().mail().get().rateLimitingDefinition()).isEqualTo(RATE_LIMITING_1);
             });
         }
 
@@ -135,8 +135,8 @@ public class SaaSDomainSubscriptionDeserializerTest {
             SoftAssertions.assertSoftly(softly -> {
                 softly.assertThat(message.domain()).isEqualTo("twake.app");
                 softly.assertThat(message.mailDnsConfigurationValidated()).isEmpty();
-                softly.assertThat(message.features().mail().get().storageQuota()).isEqualTo(12334534L);
-                softly.assertThat(message.features().mail().get().rateLimitingDefinition()).isEqualTo(RATE_LIMITING_1);
+                softly.assertThat(message.features().get().mail().get().storageQuota()).isEqualTo(12334534L);
+                softly.assertThat(message.features().get().mail().get().rateLimitingDefinition()).isEqualTo(RATE_LIMITING_1);
             });
         }
 
@@ -273,7 +273,7 @@ public class SaaSDomainSubscriptionDeserializerTest {
 
             SaaSDomainValidSubscriptionMessage parsed = (SaaSDomainValidSubscriptionMessage) SaaSSubscriptionDeserializer.parseAMQPDomainMessage(message);
 
-            assertThat(parsed.features().mail().get().storageQuota()).isEqualTo(-1L);
+            assertThat(parsed.features().get().mail().get().storageQuota()).isEqualTo(-1L);
         }
     }
 
