@@ -222,10 +222,12 @@ public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
 
     private Mono<Void> applyDomainSettings(SaaSDomainValidSubscriptionMessage message) {
         Domain domain = Domain.of(message.domain());
-        return updateStorageDomainQuota(domain, message.features().mail().storageQuota())
-            .then(updateRateLimiting(domain, message.features().mail().rateLimitingDefinition()))
-            .doOnSuccess(success -> LOGGER.info("Updated SaaS subscription for domain: {}, storageQuota: {}, rateLimiting: {}",
-                domain, message.features().mail().storageQuota(), message.features().mail().rateLimitingDefinition()));
+
+        return message.features().mail().map(mailSettings ->
+            updateStorageDomainQuota(domain, mailSettings.storageQuota())
+                .then(updateRateLimiting(domain, mailSettings.rateLimitingDefinition()))
+                .doOnSuccess(success -> LOGGER.info("Updated SaaS subscription for domain: {}, storageQuota: {}, rateLimiting: {}",
+                    domain, mailSettings.storageQuota(), mailSettings.rateLimitingDefinition()))).orElse(Mono.empty());
     }
 
     private Mono<Void> addDomainIfNotExist(Domain domain) {

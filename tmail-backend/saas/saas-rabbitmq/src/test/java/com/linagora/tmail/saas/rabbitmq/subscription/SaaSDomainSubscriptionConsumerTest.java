@@ -193,7 +193,7 @@ class SaaSDomainSubscriptionConsumerTest {
 
             await.untilAsserted(() -> assertThat(domainList.containsDomain(DOMAIN)).isFalse());
         }
-        
+
         @Test
         void shouldNotUnRegisterSaasValidatedDomainWhenValidatedNoop() {
             publishAmqpSaaSDomainSubscriptionMessage(String.format("""
