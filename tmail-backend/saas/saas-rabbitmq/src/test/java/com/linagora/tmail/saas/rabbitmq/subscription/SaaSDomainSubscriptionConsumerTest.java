@@ -758,8 +758,8 @@ class SaaSDomainSubscriptionConsumerTest {
     private void publishAmqpSaaSDomainSubscriptionMessage(String message) {
         rabbitMQExtension.getSender()
             .send(Mono.just(new OutboundMessage(
-                SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT,
-                SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_DOMAIN_SUBSCRIPTION_ROUTING_KEY_DEFAULT,
+                SaaSSubscriptionRabbitMQConfiguration.DEFAULT.exchange(),
+                SaaSSubscriptionRabbitMQConfiguration.DEFAULT.domainRoutingKey(),
                 message.getBytes(UTF_8))))
             .block();
     }
@@ -767,8 +767,8 @@ class SaaSDomainSubscriptionConsumerTest {
     private void publishAmqpSaaSConfigurationMessage(String message) {
         rabbitMQExtension.getSender()
             .send(Mono.just(new OutboundMessage(
-                SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_CONFIGURATION_EXCHANGE_DEFAULT,
-                SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_DOMAIN_CONFIGURATION_ROUTING_KEY_DEFAULT,
+                SaaSSubscriptionRabbitMQConfiguration.DEFAULT.configurationExchange(),
+                SaaSSubscriptionRabbitMQConfiguration.DEFAULT.domainConfigurationRoutingKey(),
                 message.getBytes(UTF_8))))
             .block();
     }
