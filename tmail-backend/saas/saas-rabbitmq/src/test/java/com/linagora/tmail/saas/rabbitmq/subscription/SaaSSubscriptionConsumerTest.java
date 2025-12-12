@@ -66,9 +66,6 @@ import reactor.core.publisher.Mono;
 import reactor.rabbitmq.OutboundMessage;
 
 class SaaSSubscriptionConsumerTest {
-    private static final String EXCHANGE_NAME = SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT;
-    private static final String ROUTING_KEY = SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_SUBSCRIPTION_ROUTING_KEY_DEFAULT;
-    private static final String DOMAIN_ROUTING_KEY = SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_DOMAIN_SUBSCRIPTION_ROUTING_KEY_DEFAULT;
     private static final Username ALICE = Username.of("alice@james.org");
     private static final Username BOB = Username.of("bob@james.org");
     RateLimitingDefinition RATE_LIMITING_1 = RateLimitingDefinition.builder()
@@ -117,9 +114,6 @@ class SaaSSubscriptionConsumerTest {
             .managementCredentials(DEFAULT_MANAGEMENT_CREDENTIAL)
             .build();
 
-        SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration =
-            new SaaSSubscriptionRabbitMQConfiguration(EXCHANGE_NAME, ROUTING_KEY, DOMAIN_ROUTING_KEY);
-
         TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration = new TWPCommonRabbitMQConfiguration(
             Optional.empty(),
             Optional.empty(),
@@ -140,7 +134,7 @@ class SaaSSubscriptionConsumerTest {
             rabbitMQExtension.getRabbitChannelPool(),
             rabbitMQConfiguration,
             twpCommonRabbitMQConfiguration,
-            saasSubscriptionRabbitMQConfiguration,
+            SaaSSubscriptionRabbitMQConfiguration.DEFAULT,
             usersRepository,
             saasAccountRepository,
             maxQuotaManager,
@@ -512,8 +506,8 @@ class SaaSSubscriptionConsumerTest {
     private void publishAmqpSaaSSubscriptionMessage(String message) {
         rabbitMQExtension.getSender()
             .send(Mono.just(new OutboundMessage(
-                EXCHANGE_NAME,
-                ROUTING_KEY,
+                SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT,
+                SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_SUBSCRIPTION_ROUTING_KEY_DEFAULT,
                 message.getBytes(UTF_8))))
             .block();
     }
