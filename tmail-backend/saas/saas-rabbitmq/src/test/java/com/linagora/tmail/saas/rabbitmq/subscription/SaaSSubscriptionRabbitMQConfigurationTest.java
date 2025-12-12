@@ -23,19 +23,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.junit.jupiter.api.Test;
 
-
 class SaaSSubscriptionRabbitMQConfigurationTest {
     @Test
     void shouldFallbackToDefaultConfig() {
         PropertiesConfiguration rabbitConfiguration = new PropertiesConfiguration();
         SaaSSubscriptionRabbitMQConfiguration configuration = SaaSSubscriptionRabbitMQConfiguration.from(rabbitConfiguration);
 
-        assertThat(configuration).isEqualTo(new SaaSSubscriptionRabbitMQConfiguration(
-            "saas.subscription",
-            "saas.subscription.routingKey",
-            "domain.subscription.changed",
-            "configuration",
-            "domain.dns.configuration.status"));
+        assertThat(configuration).isEqualTo(SaaSSubscriptionRabbitMQConfiguration.DEFAULT);
     }
 
     @Test
