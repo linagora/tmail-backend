@@ -59,10 +59,7 @@ import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
 import reactor.core.publisher.Mono;
 import reactor.rabbitmq.OutboundMessage;
 
-public class SaaSDomainSubscriptionConsumerTest {
-    private static final String EXCHANGE_NAME = SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT;
-    private static final String ROUTING_KEY = SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_DOMAIN_SUBSCRIPTION_ROUTING_KEY_DEFAULT;
-    private static final String DOMAIN_ROUTING_KEY = SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_DOMAIN_SUBSCRIPTION_ROUTING_KEY_DEFAULT;
+class SaaSDomainSubscriptionConsumerTest {
     private static final Domain DOMAIN = Domain.of("twake.app");
     RateLimitingDefinition RATE_LIMITING_1 = RateLimitingDefinition.builder()
         .mailsSentPerMinute(10L)
@@ -106,9 +103,6 @@ public class SaaSDomainSubscriptionConsumerTest {
             .managementCredentials(DEFAULT_MANAGEMENT_CREDENTIAL)
             .build();
 
-        SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration =
-            new SaaSSubscriptionRabbitMQConfiguration(EXCHANGE_NAME, ROUTING_KEY, DOMAIN_ROUTING_KEY);
-
         TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration = new TWPCommonRabbitMQConfiguration(
             Optional.empty(),
             Optional.empty(),
@@ -123,7 +117,7 @@ public class SaaSDomainSubscriptionConsumerTest {
             rabbitMQExtension.getRabbitChannelPool(),
             rabbitMQConfiguration,
             twpCommonRabbitMQConfiguration,
-            saasSubscriptionRabbitMQConfiguration,
+            SaaSSubscriptionRabbitMQConfiguration.DEFAULT,
             domainList,
             maxQuotaManager,
             rateLimitingRepository);
@@ -161,6 +155,21 @@ public class SaaSDomainSubscriptionConsumerTest {
 
             await.untilAsserted(() -> assertThat(domainList.containsDomain(DOMAIN)).isTrue());
         }
+
+        @Test
+        void shouldRegisterSaasValidatedDomainOnConfigurationExchange() {
+            String validMessage = String.format("""
+            {
+                "domain": "%s",
+                "validated": true
+            }
+            """, DOMAIN.asString());
+
+            publishAmqpSaaSConfigurationMessage(validMessage);
+
+            await.untilAsserted(() -> assertThat(domainList.containsDomain(DOMAIN)).isTrue());
+        }
+
         @Test
         void shouldNotRegisterSaasValidatedDomainWhenValidatedNoop() {
             String validMessage = String.format("""
@@ -184,6 +193,7 @@ public class SaaSDomainSubscriptionConsumerTest {
 
             await.untilAsserted(() -> assertThat(domainList.containsDomain(DOMAIN)).isFalse());
         }
+        
         @Test
         void shouldNotUnRegisterSaasValidatedDomainWhenValidatedNoop() {
             publishAmqpSaaSDomainSubscriptionMessage(String.format("""
@@ -748,8 +758,17 @@ public class SaaSDomainSubscriptionConsumerTest {
     private void publishAmqpSaaSDomainSubscriptionMessage(String message) {
         rabbitMQExtension.getSender()
             .send(Mono.just(new OutboundMessage(
-                EXCHANGE_NAME,
-                DOMAIN_ROUTING_KEY,
+                SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT,
+                SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_DOMAIN_SUBSCRIPTION_ROUTING_KEY_DEFAULT,
+                message.getBytes(UTF_8))))
+            .block();
+    }
+
+    private void publishAmqpSaaSConfigurationMessage(String message) {
+        rabbitMQExtension.getSender()
+            .send(Mono.just(new OutboundMessage(
+                SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_CONFIGURATION_EXCHANGE_DEFAULT,
+                SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_DOMAIN_CONFIGURATION_ROUTING_KEY_DEFAULT,
                 message.getBytes(UTF_8))))
             .block();
     }
