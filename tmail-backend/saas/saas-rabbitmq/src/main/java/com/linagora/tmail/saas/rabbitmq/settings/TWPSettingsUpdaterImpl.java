@@ -87,7 +87,7 @@ public class TWPSettingsUpdaterImpl implements TWPSettingsUpdater {
         return message.languageSettings()
             .map(languageSetting -> {
                 JmapSettingsPatch languagePatch = JmapSettingsPatch$.MODULE$.toUpsert(LANGUAGE, languageSetting.language());
-                JmapSettingsPatch versionPatch = JmapSettingsPatch$.MODULE$.toUpsert(TWPReadOnlyPropertyProvider.TWP_SETTINGS_VERSION, languageSetting.version().toString());
+                JmapSettingsPatch versionPatch = JmapSettingsPatch$.MODULE$.toUpsert(TWPReadOnlyPropertyProvider.TWP_SETTINGS_VERSION, String.valueOf(languageSetting.version()));
                 JmapSettingsPatch combinedPatch = JmapSettingsPatch$.MODULE$.merge(languagePatch, versionPatch);
                 return Mono.from(jmapSettingsRepository.updatePartial(username, combinedPatch))
                     .doOnNext(updatedSettings -> LOGGER.info("Updated language setting for user {} to {}", username.asString(), languageSetting.language()))

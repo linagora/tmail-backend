@@ -102,7 +102,7 @@ public record TWPCommonSettingsMessage(String source, String nickname, String re
         this.payload = payload;
     }
 
-    public record IncomingLanguageSetting(String language, Long version) {
+    public record IncomingLanguageSetting(String language, long version) {
 
         public Locale toLocale() {
             Locale locale = Locale.forLanguageTag(language);
@@ -113,6 +113,6 @@ public record TWPCommonSettingsMessage(String source, String nickname, String re
 
     public Optional<IncomingLanguageSetting> languageSettings() {
         return payload().language()
-            .flatMap(language -> Optional.of(new IncomingLanguageSetting(language, version())));
+            .map(language -> new IncomingLanguageSetting(language, version()));
     }
 }
