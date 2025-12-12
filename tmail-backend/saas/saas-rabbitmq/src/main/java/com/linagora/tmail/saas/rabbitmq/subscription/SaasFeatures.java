@@ -18,12 +18,14 @@
 
 package com.linagora.tmail.saas.rabbitmq.subscription;
 
+import java.util.Optional;
+
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Preconditions;
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition;
 
-public record SaasFeatures(@JsonProperty("mail") MailLimitation mail) {
+public record SaasFeatures(@JsonProperty("mail") Optional<MailLimitation> mail) {
     public record MailLimitation(
         @JsonProperty("storageQuota") Long storageQuota,
         @JsonProperty("mailsSentPerMinute") Long mailsSentPerMinute,
@@ -58,6 +60,6 @@ public record SaasFeatures(@JsonProperty("mail") MailLimitation mail) {
 
     @JsonCreator
     public SaasFeatures {
-        Preconditions.checkNotNull(mail, "mail cannot be null");
+
     }
 }
