@@ -42,8 +42,6 @@ import org.apache.james.util.Host;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
 import org.apache.james.utils.PropertiesProvider;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
@@ -55,8 +53,6 @@ import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
 
 public class TWPSettingsRabbitmqModule extends AbstractModule {
-
-    private static final Logger LOGGER = LoggerFactory.getLogger(TWPSettingsRabbitmqModule.class);
 
     @Override
     protected void configure() {
@@ -122,12 +118,7 @@ public class TWPSettingsRabbitmqModule extends AbstractModule {
     @Singleton
     public SimpleConnectionPool provideSimpleConnectionPool(@Named(TWP_INJECTION_KEY) RabbitMQConfiguration rabbitMQConfiguration) {
         RabbitMQConnectionFactory rabbitMQConnectionFactory = new RabbitMQConnectionFactory(rabbitMQConfiguration);
-        try {
-            return new SimpleConnectionPool(rabbitMQConnectionFactory, SimpleConnectionPool.Configuration.DEFAULT);
-        } catch (Exception e) {
-            LOGGER.info("Error while retrieving SimpleConnectionPool.Configuration, falling back to defaults.", e);
-            return new SimpleConnectionPool(rabbitMQConnectionFactory, SimpleConnectionPool.Configuration.DEFAULT);
-        }
+        return new SimpleConnectionPool(rabbitMQConnectionFactory, SimpleConnectionPool.Configuration.DEFAULT);
     }
 
     @Provides
