@@ -136,7 +136,7 @@ class SaaSDomainSubscriptionConsumerTest {
             String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": 1234,
@@ -161,7 +161,7 @@ class SaaSDomainSubscriptionConsumerTest {
             String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true
+                "mailDnsConfigurationValidated": true
             }
             """, DOMAIN.asString());
 
@@ -199,7 +199,7 @@ class SaaSDomainSubscriptionConsumerTest {
             publishAmqpSaaSDomainSubscriptionMessage(String.format("""
             {
                 "domain": "%s",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": 1234,
@@ -240,7 +240,7 @@ class SaaSDomainSubscriptionConsumerTest {
             String unvalidatedMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": false,
+                "mailDnsConfigurationValidated": false,
                 "features": {
                     "mail": {
                         "storageQuota": 1234,
@@ -260,7 +260,7 @@ class SaaSDomainSubscriptionConsumerTest {
             String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": 1234,
@@ -288,7 +288,7 @@ class SaaSDomainSubscriptionConsumerTest {
             String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": 1234,
@@ -339,7 +339,7 @@ class SaaSDomainSubscriptionConsumerTest {
             String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": 1234,
@@ -394,7 +394,7 @@ class SaaSDomainSubscriptionConsumerTest {
             String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": -1,
@@ -420,7 +420,7 @@ class SaaSDomainSubscriptionConsumerTest {
             String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": 1000,
@@ -451,7 +451,7 @@ class SaaSDomainSubscriptionConsumerTest {
             String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": 12334534,
@@ -477,7 +477,7 @@ class SaaSDomainSubscriptionConsumerTest {
             String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": 12334534,
@@ -497,7 +497,7 @@ class SaaSDomainSubscriptionConsumerTest {
             String validUpdateMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": 12334534,
@@ -539,7 +539,7 @@ class SaaSDomainSubscriptionConsumerTest {
             String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": 12334534,
@@ -570,7 +570,7 @@ class SaaSDomainSubscriptionConsumerTest {
             String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": 1234,
@@ -606,7 +606,7 @@ class SaaSDomainSubscriptionConsumerTest {
             String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": 1234,
@@ -724,7 +724,7 @@ class SaaSDomainSubscriptionConsumerTest {
         String validMessage = String.format("""
             {
                 "domain": "%s",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": 1234,

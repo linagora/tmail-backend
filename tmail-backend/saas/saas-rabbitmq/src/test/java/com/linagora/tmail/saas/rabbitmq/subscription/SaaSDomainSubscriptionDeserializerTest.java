@@ -19,6 +19,7 @@
 package com.linagora.tmail.saas.rabbitmq.subscription;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import org.assertj.core.api.SoftAssertions;
@@ -55,7 +56,7 @@ public class SaaSDomainSubscriptionDeserializerTest {
             String validMessage = """
             {
                 "domain": "twake.app",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": 12334534,
@@ -74,7 +75,7 @@ public class SaaSDomainSubscriptionDeserializerTest {
 
             SoftAssertions.assertSoftly(softly -> {
                 softly.assertThat(message.domain()).isEqualTo("twake.app");
-                softly.assertThat(message.validated()).contains(true);
+                softly.assertThat(message.mailDnsConfigurationValidated()).contains(true);
                 softly.assertThat(message.features().mail().get().storageQuota()).isEqualTo(12334534L);
                 softly.assertThat(message.features().mail().get().rateLimitingDefinition()).isEqualTo(RATE_LIMITING_1);
             });
@@ -85,7 +86,7 @@ public class SaaSDomainSubscriptionDeserializerTest {
             String validMessage = """
             {
                 "domain": "twake.app",
-                "validated": null,
+                "mailDnsConfigurationValidated": null,
                 "features": {
                     "mail": {
                         "storageQuota": 12334534,
@@ -104,7 +105,7 @@ public class SaaSDomainSubscriptionDeserializerTest {
 
             SoftAssertions.assertSoftly(softly -> {
                 softly.assertThat(message.domain()).isEqualTo("twake.app");
-                softly.assertThat(message.validated()).contains(true);
+                softly.assertThat(message.mailDnsConfigurationValidated()).isEmpty();
                 softly.assertThat(message.features().mail().get().storageQuota()).isEqualTo(12334534L);
                 softly.assertThat(message.features().mail().get().rateLimitingDefinition()).isEqualTo(RATE_LIMITING_1);
             });
@@ -133,7 +134,7 @@ public class SaaSDomainSubscriptionDeserializerTest {
 
             SoftAssertions.assertSoftly(softly -> {
                 softly.assertThat(message.domain()).isEqualTo("twake.app");
-                softly.assertThat(message.validated()).isEmpty();
+                softly.assertThat(message.mailDnsConfigurationValidated()).isEmpty();
                 softly.assertThat(message.features().mail().get().storageQuota()).isEqualTo(12334534L);
                 softly.assertThat(message.features().mail().get().rateLimitingDefinition()).isEqualTo(RATE_LIMITING_1);
             });
@@ -143,7 +144,7 @@ public class SaaSDomainSubscriptionDeserializerTest {
         void parseMissingRequiredDomainShouldThrowException() {
             String message = """
             {
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": 12334534,
@@ -164,7 +165,7 @@ public class SaaSDomainSubscriptionDeserializerTest {
         }
 
         @Test
-        void parseMissingRequiredValidatedShouldThrowException() {
+        void parseMissingRequiredValidatedShouldNotThrowException() {
             String message = """
             {
                 "domain": "twake.app",
@@ -182,9 +183,8 @@ public class SaaSDomainSubscriptionDeserializerTest {
             }
             """;
 
-            assertThatThrownBy(() -> SaaSSubscriptionDeserializer.parseAMQPDomainMessage(message))
-                .isInstanceOf(SaaSSubscriptionDeserializer.SaaSSubscriptionMessageParseException.class)
-                .hasMessageContaining("Failed to parse SaaS subscription domain message");
+            assertThatCode(() -> SaaSSubscriptionDeserializer.parseAMQPDomainMessage(message))
+                .doesNotThrowAnyException();
         }
 
         @Test
@@ -206,7 +206,7 @@ public class SaaSDomainSubscriptionDeserializerTest {
             String message = """
             {
                 "domain": "twake.app",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": 12334534
@@ -225,7 +225,7 @@ public class SaaSDomainSubscriptionDeserializerTest {
             String validMessage = """
             {
                 "domain": "twake.app",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": 12334534,
@@ -245,7 +245,7 @@ public class SaaSDomainSubscriptionDeserializerTest {
 
             SoftAssertions.assertSoftly(softly -> {
                 softly.assertThat(message.domain()).isEqualTo("twake.app");
-                softly.assertThat(message.validated()).contains(true);
+                softly.assertThat(message.mailDnsConfigurationValidated()).contains(true);
             });
         }
 
@@ -254,7 +254,7 @@ public class SaaSDomainSubscriptionDeserializerTest {
             String message = """
             {
                 "domain": "twake.app",
-                "validated": true,
+                "mailDnsConfigurationValidated": true,
                 "features": {
                     "mail": {
                         "storageQuota": -1,

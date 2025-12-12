@@ -214,7 +214,7 @@ public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
 
     private Mono<Void> createDomainIfValidated(SaaSDomainValidSubscriptionMessage message) {
         Domain domain = Domain.of(message.domain());
-        if (message.validated().orElse(false)) {
+        if (message.mailDnsConfigurationValidated().orElse(false)) {
             return addDomainIfNotExist(domain);
         }
         return Mono.empty();
