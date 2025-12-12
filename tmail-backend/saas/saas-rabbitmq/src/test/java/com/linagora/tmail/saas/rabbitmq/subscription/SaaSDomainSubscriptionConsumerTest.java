@@ -161,6 +161,68 @@ public class SaaSDomainSubscriptionConsumerTest {
 
             await.untilAsserted(() -> assertThat(domainList.containsDomain(DOMAIN)).isTrue());
         }
+        @Test
+        void shouldNotRegisterSaasValidatedDomainWhenValidatedNoop() {
+            String validMessage = String.format("""
+            {
+                "domain": "%s",
+                "features": {
+                    "mail": {
+                        "storageQuota": 1234,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
+            }
+            """, DOMAIN.asString());
+
+            publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+
+            await.untilAsserted(() -> assertThat(domainList.containsDomain(DOMAIN)).isFalse());
+        }
+        @Test
+        void shouldNotUnRegisterSaasValidatedDomainWhenValidatedNoop() {
+            publishAmqpSaaSDomainSubscriptionMessage(String.format("""
+            {
+                "domain": "%s",
+                "validated": true,
+                "features": {
+                    "mail": {
+                        "storageQuota": 1234,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
+            }
+            """, DOMAIN.asString()));
+
+            publishAmqpSaaSDomainSubscriptionMessage(String.format("""
+            {
+                "domain": "%s",
+                "features": {
+                    "mail": {
+                        "storageQuota": 1234,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
+            }
+            """, DOMAIN.asString()));
+
+            await.untilAsserted(() -> assertThat(domainList.containsDomain(DOMAIN)).isTrue());
+        }
 
         @Test
         void shouldIgnoreSaasUnvalidatedDomain() {
@@ -238,11 +300,63 @@ public class SaaSDomainSubscriptionConsumerTest {
         }
 
         @Test
+        void shouldSetStorageQuotaWhenDomainHasNoQuotaYetWhenValidatedNoop() {
+            String validMessage = String.format("""
+            {
+                "domain": "%s",
+                "features": {
+                    "mail": {
+                        "storageQuota": 1234,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
+            }
+            """, DOMAIN.asString());
+
+            publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+
+            await.untilAsserted(() -> assertThat(maxQuotaManager.getDomainMaxStorage(DOMAIN))
+                .isEqualTo(Optional.of(QuotaSizeLimit.size(1234))));
+        }
+
+        @Test
         void shouldSetRateLimitingWhenDomainHasNoRateLimitingYet() {
             String validMessage = String.format("""
             {
                 "domain": "%s",
                 "validated": true,
+                "features": {
+                    "mail": {
+                        "storageQuota": 1234,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
+            }
+            """, DOMAIN.asString());
+
+            publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+
+            await.untilAsserted(() -> {
+                RateLimitingDefinition rateLimitingDefinition = Mono.from(rateLimitingRepository.getRateLimiting(DOMAIN)).block();
+                assertThat(rateLimitingDefinition).isEqualTo(RATE_LIMITING_1);
+            });
+        }
+
+        @Test
+        void shouldSetRateLimitingWhenDomainHasNoRateLimitingYetWhenValidatedNoop() {
+            String validMessage = String.format("""
+            {
+                "domain": "%s",
                 "features": {
                     "mail": {
                         "storageQuota": 1234,

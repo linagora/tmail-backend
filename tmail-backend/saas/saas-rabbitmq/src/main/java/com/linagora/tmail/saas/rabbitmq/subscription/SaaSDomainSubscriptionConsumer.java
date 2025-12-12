@@ -202,16 +202,25 @@ public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
             .then();
     }
 
-    private Mono<Void> handleDomainValidSubscriptionMessage(SaaSDomainValidSubscriptionMessage domainValidSubscriptionMessage) {
-        if (domainValidSubscriptionMessage.validated()) {
-            Domain domain = Domain.of(domainValidSubscriptionMessage.domain());
-            return addDomainIfNotExist(domain)
-                .then(updateStorageDomainQuota(domain, domainValidSubscriptionMessage.features().mail().storageQuota())
-                    .then(updateRateLimiting(domain, domainValidSubscriptionMessage.features().mail().rateLimitingDefinition()))
-                    .doOnSuccess(success -> LOGGER.info("Updated SaaS subscription for domain: {}, storageQuota: {}, rateLimiting: {}",
-                        domain, domainValidSubscriptionMessage.features().mail().storageQuota(), domainValidSubscriptionMessage.features().mail().rateLimitingDefinition())));
+    private Mono<Void> handleDomainValidSubscriptionMessage(SaaSDomainValidSubscriptionMessage message) {
+        return createDomainIfValidated(message)
+            .then(applyDomainSettings(message));
+    }
+
+    private Mono<Void> createDomainIfValidated(SaaSDomainValidSubscriptionMessage message) {
+        Domain domain = Domain.of(message.domain());
+        if (message.validated().orElse(false)) {
+            return addDomainIfNotExist(domain);
         }
         return Mono.empty();
+    }
+
+    private Mono<Void> applyDomainSettings(SaaSDomainValidSubscriptionMessage message) {
+        Domain domain = Domain.of(message.domain());
+        return updateStorageDomainQuota(domain, message.features().mail().storageQuota())
+            .then(updateRateLimiting(domain, message.features().mail().rateLimitingDefinition()))
+            .doOnSuccess(success -> LOGGER.info("Updated SaaS subscription for domain: {}, storageQuota: {}, rateLimiting: {}",
+                domain, message.features().mail().storageQuota(), message.features().mail().rateLimitingDefinition()));
     }
 
     private Mono<Void> addDomainIfNotExist(Domain domain) {
