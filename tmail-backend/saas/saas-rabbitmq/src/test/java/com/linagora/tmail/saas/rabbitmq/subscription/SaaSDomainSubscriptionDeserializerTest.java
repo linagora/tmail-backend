@@ -183,8 +183,10 @@ public class SaaSDomainSubscriptionDeserializerTest {
             }
             """;
 
-            assertThatCode(() -> SaaSSubscriptionDeserializer.parseAMQPDomainMessage(message))
-                .doesNotThrowAnyException();
+            assertThat(SaaSSubscriptionDeserializer.parseAMQPDomainMessage(message))
+                .isInstanceOf(SaaSDomainValidSubscriptionMessage.class)
+                .extracting(v -> (SaaSDomainValidSubscriptionMessage) v)
+                .satisfies(v -> assertThat(v.mailDnsConfigurationValidated()).isEmpty());
         }
 
         @Test
