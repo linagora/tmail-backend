@@ -190,17 +190,18 @@ public class SaaSDomainSubscriptionDeserializerTest {
         }
 
         @Test
-        void parseMissingRequiredMailPayloadShouldThrowException() {
+        void parseMissingRequiredMailPayloadShouldNotThrowException() {
             String message = """
             {
                 "domain": "twake.app",
-                "validated": true
+                "mailDnsConfigurationValidated": true
             }
             """;
 
-            assertThatThrownBy(() -> SaaSSubscriptionDeserializer.parseAMQPDomainMessage(message))
-                .isInstanceOf(SaaSSubscriptionDeserializer.SaaSSubscriptionMessageParseException.class)
-                .hasMessageContaining("Failed to parse SaaS subscription domain message");
+            assertThat(SaaSSubscriptionDeserializer.parseAMQPDomainMessage(message))
+                    .isInstanceOf(SaaSDomainValidSubscriptionMessage.class)
+                    .extracting(v -> (SaaSDomainValidSubscriptionMessage) v)
+                    .satisfies(v -> assertThat(v.features()).isEmpty());
         }
 
         @Test
@@ -310,19 +311,6 @@ public class SaaSDomainSubscriptionDeserializerTest {
             String message = """
             {
                 "enabled": false
-            }
-            """;
-
-            assertThatThrownBy(() -> SaaSSubscriptionDeserializer.parseAMQPDomainMessage(message))
-                .isInstanceOf(SaaSSubscriptionDeserializer.SaaSSubscriptionMessageParseException.class)
-                .hasMessageContaining("Failed to parse SaaS subscription domain message");
-        }
-
-        @Test
-        void parseMissingRequiredEnabledShouldThrowException() {
-            String message = """
-            {
-                "domain": "twake.app"
             }
             """;
 
