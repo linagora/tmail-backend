@@ -98,14 +98,14 @@ public class ScheduledReconnectionHandler implements Startable {
         Set<String> rabbitMQEventBusGroupQueuesToMonitor() {
             return ImmutableSet.of(
                 "mailboxEvent-workQueue-org.apache.james.events.GroupRegistrationHandler$GroupRegistrationHandlerGroup",
-                "jmapEvent-workQueue-org.apache.james.events.GroupRegistrationHandler$GroupRegistrationHandlerGroup");
+                "jmapEvent-workQueue-org.apache.james.events.GroupRegistrationHandler$GroupRegistrationHandlerGroup",
+                "contentDeletionEvent-workQueue-org.apache.james.events.GroupRegistrationHandler$GroupRegistrationHandlerGroup");
         }
     }
 
     private static final ImmutableList<String> STATIC_QUEUES_TO_MONITOR = new ImmutableList.Builder<String>()
         .add("JamesMailQueue-workqueue-spool",
         "JamesMailQueue-workqueue-outgoing",
-        "deleted-message-vault-work-queue",
         "sabre-contacts-queue-add",
         "sabre-contacts-queue-update",
         "sabre-contacts-queue-delete")

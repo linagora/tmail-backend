@@ -20,8 +20,10 @@ package com.linagora.tmail.event;
 
 import static com.linagora.tmail.ScheduledReconnectionHandler.Module.EVENT_BUS_GROUP_QUEUES_TO_MONITOR_INJECT_KEY;
 import static com.linagora.tmail.event.DistributedEmailAddressContactEventModule.EMAIL_ADDRESS_CONTACT_NAMING_STRATEGY;
+import static org.apache.james.events.NamingStrategy.CONTENT_DELETION_NAMING_STRATEGY;
 import static org.apache.james.events.NamingStrategy.JMAP_NAMING_STRATEGY;
 import static org.apache.james.events.NamingStrategy.MAILBOX_EVENT_NAMING_STRATEGY;
+import static org.apache.james.modules.event.ContentDeletionEventBusModule.CONTENT_DELETION;
 
 import java.io.FileNotFoundException;
 import java.util.Set;
@@ -37,15 +39,18 @@ import org.apache.james.backends.rabbitmq.ReceiverProvider;
 import org.apache.james.backends.rabbitmq.SimpleConnectionPool;
 import org.apache.james.backends.redis.RedisConfiguration;
 import org.apache.james.core.healthcheck.HealthCheck;
+import org.apache.james.event.json.MailboxEventSerializer;
 import org.apache.james.events.CleanRedisEventBusService;
 import org.apache.james.events.EventBus;
 import org.apache.james.events.EventBusId;
 import org.apache.james.events.EventBusReconnectionHandler;
 import org.apache.james.events.EventDeadLetters;
+import org.apache.james.events.EventListener;
 import org.apache.james.events.EventSerializer;
 import org.apache.james.events.NamingStrategy;
 import org.apache.james.events.RabbitEventBusConsumerHealthCheck;
 import org.apache.james.events.RabbitMQAndRedisEventBus;
+import org.apache.james.events.RabbitMQContentDeletionEventBusDeadLetterQueueHealthCheck;
 import org.apache.james.events.RabbitMQJmapEventBusDeadLetterQueueHealthCheck;
 import org.apache.james.events.RabbitMQMailboxEventBusDeadLetterQueueHealthCheck;
 import org.apache.james.events.RedisEventBusClientFactory;
@@ -60,6 +65,7 @@ import org.apache.james.jmap.change.JmapEventSerializer;
 import org.apache.james.jmap.pushsubscription.PushListener;
 import org.apache.james.mailbox.events.MailboxIdRegistrationKey;
 import org.apache.james.metrics.api.MetricFactory;
+import org.apache.james.modules.event.ContentDeletionEventBusModule;
 import org.apache.james.util.ReactorUtils;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
@@ -101,6 +107,9 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
         bind(RabbitMQAndRedisEventBus.class).in(Scopes.SINGLETON);
 
         bind(EventBusId.class).annotatedWith(Names.named(InjectionKeys.JMAP)).toInstance(EventBusId.random());
+
+        bind(EventBusId.class).annotatedWith(Names.named(CONTENT_DELETION)).toInstance(EventBusId.random());
+        Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class, Names.named(CONTENT_DELETION));
     }
 
     @ProvidesIntoSet
@@ -245,6 +254,80 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
 
     @Provides
     @Singleton
+    @Named(CONTENT_DELETION)
+    RabbitMQAndRedisEventBus provideContentDeletionEventBus(Sender sender,
+                                                            ReceiverProvider receiverProvider,
+                                                            MailboxEventSerializer eventSerializer,
+                                                            RetryBackoffConfiguration retryBackoffConfiguration,
+                                                            EventDeadLetters eventDeadLetters,
+                                                            MetricFactory metricFactory,
+                                                            ReactorRabbitMQChannelPool channelPool,
+                                                            @Named(CONTENT_DELETION) EventBusId eventBusId,
+                                                            RabbitMQConfiguration configuration,
+                                                            RedisEventBusClientFactory redisEventBusClientFactory,
+                                                            RedisEventBusConfiguration redisEventBusConfiguration) {
+        return new RabbitMQAndRedisEventBus(
+            CONTENT_DELETION_NAMING_STRATEGY,
+            sender,
+            receiverProvider,
+            eventSerializer,
+            retryBackoffConfiguration,
+            new RoutingKeyConverter(ImmutableSet.of(new Factory())),
+            eventDeadLetters,
+            metricFactory,
+            channelPool,
+            eventBusId,
+            configuration,
+            redisEventBusClientFactory,
+            redisEventBusConfiguration);
+    }
+
+    @Provides
+    @Singleton
+    @Named(CONTENT_DELETION)
+    EventBus provideContentDeletionEventBus(@Named(CONTENT_DELETION) RabbitMQAndRedisEventBus eventBus) {
+        return eventBus;
+    }
+
+    @ProvidesIntoSet
+    EventBus registerContentDeletionEventBusToDeadLettersRedeliverService(@Named(CONTENT_DELETION) EventBus eventBus) {
+        return eventBus;
+    }
+
+    @ProvidesIntoSet
+    SimpleConnectionPool.ReconnectionHandler provideContentDeletionReconnectionHandler(@Named(CONTENT_DELETION) RabbitMQAndRedisEventBus eventBus) {
+        return new EventBusReconnectionHandler(eventBus);
+    }
+
+    @ProvidesIntoSet
+    HealthCheck provideContentDeletionConsumerHealthCheck(@Named(CONTENT_DELETION) RabbitMQAndRedisEventBus eventBus,
+                                                          SimpleConnectionPool connectionPool) {
+        return new RabbitEventBusConsumerHealthCheck(eventBus, CONTENT_DELETION_NAMING_STRATEGY, connectionPool,
+            TmailGroupRegistrationHandler.GROUP);
+    }
+
+    @ProvidesIntoSet
+    HealthCheck provideContentDeletionEventBusDeadLetterQueueHealthCheck(RabbitMQConfiguration rabbitMQConfiguration) {
+        return new RabbitMQContentDeletionEventBusDeadLetterQueueHealthCheck(rabbitMQConfiguration);
+    }
+
+    @ProvidesIntoSet
+    InitializationOperation workQueue(@Named(CONTENT_DELETION) RabbitMQAndRedisEventBus instance,
+                                      @Named(CONTENT_DELETION) Set<EventListener.ReactiveGroupEventListener> contentDeletionListeners) {
+        return InitilizationOperationBuilder
+            .forClass(RabbitMQAndRedisEventBus.class)
+            .init(() -> {
+                instance.start();
+                contentDeletionListeners.forEach(instance::register);
+
+                // workaround for Postgres app to make the content deletion queue created and pass tests
+                // TODO remove after refactoring JAMES-4154 for Postgres app
+                instance.register(new ContentDeletionEventBusModule.NoopListener());
+            });
+    }
+
+    @Provides
+    @Singleton
     RedisEventBusConfiguration redisEventBusConfiguration(PropertiesProvider propertiesProvider) throws ConfigurationException {
         try {
             Configuration config = propertiesProvider.getConfiguration("redis");
@@ -261,6 +344,7 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     Set<String> redisEventBusGroupQueuesToMonitor() {
         return ImmutableSet.of(
             "mailboxEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
-            "jmapEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup");
+            "jmapEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
+            "contentDeletionEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup");
     }
 }
