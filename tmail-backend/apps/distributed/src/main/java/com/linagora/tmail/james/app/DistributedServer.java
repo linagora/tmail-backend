@@ -72,10 +72,10 @@ import org.apache.james.modules.data.CassandraSieveQuotaModule;
 import org.apache.james.modules.data.CassandraSieveRepositoryModule;
 import org.apache.james.modules.data.CassandraUsersRepositoryModule;
 import org.apache.james.modules.data.CassandraVacationModule;
+import org.apache.james.modules.event.ContentDeletionEventBusModule;
 import org.apache.james.modules.event.JMAPEventBusModule;
 import org.apache.james.modules.event.MailboxEventBusModule;
 import org.apache.james.modules.eventstore.CassandraEventStoreModule;
-import org.apache.james.modules.mailbox.CassandraDeletedMessageVaultModule;
 import org.apache.james.modules.mailbox.CassandraMailboxModule;
 import org.apache.james.modules.mailbox.CassandraMailboxQuotaLegacyModule;
 import org.apache.james.modules.mailbox.CassandraMailboxQuotaModule;
@@ -586,6 +586,7 @@ public class DistributedServer {
                 LOGGER.info("Using RabbitMQ for Event Bus user notifications");
                 return Modules.combine(new MailboxEventBusModule(),
                     new JMAPEventBusModule(),
+                    new ContentDeletionEventBusModule(),
                     new EmailAddressContactRabbitMQEventBusModule());
             }
             default -> throw new NotImplementedException();
@@ -602,15 +603,9 @@ public class DistributedServer {
     }
 
     private static Module chooseDeletedMessageVault(VaultConfiguration vaultConfiguration) {
-        if (vaultConfiguration.isEnabled() && vaultConfiguration.isWorkQueueEnabled()) {
-            return Modules.combine(
-                new DistributedDeletedMessageVaultModule(),
-                new DeletedMessageVaultRoutesModule(),
-                new EmailRecoveryActionMethodModule());
-        }
         if (vaultConfiguration.isEnabled()) {
             return Modules.combine(
-                new CassandraDeletedMessageVaultModule(),
+                new DistributedDeletedMessageVaultModule(),
                 new DeletedMessageVaultRoutesModule(),
                 new EmailRecoveryActionMethodModule());
         }

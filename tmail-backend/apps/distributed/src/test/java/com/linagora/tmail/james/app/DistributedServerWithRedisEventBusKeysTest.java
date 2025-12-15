@@ -115,7 +115,8 @@ class DistributedServerWithRedisEventBusKeysTest implements JamesServerConcreteC
         .then()
             .statusCode(HttpStatus.OK_200)
             .body("status", equalTo(ResultStatus.HEALTHY.getValue()))
-            .body("checks.componentName", hasItems("EventbusConsumers-mailboxEvent", "EventbusConsumers-jmapEvent"));
+            .body("checks.componentName", hasItems("EventbusConsumers-mailboxEvent", "EventbusConsumers-jmapEvent",
+                "EventbusConsumers-contentDeletionEvent"));
     }
 
     @Test

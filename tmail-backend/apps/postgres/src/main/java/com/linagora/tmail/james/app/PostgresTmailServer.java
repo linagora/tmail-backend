@@ -63,6 +63,7 @@ import org.apache.james.modules.data.PostgresDelegationStoreModule;
 import org.apache.james.modules.data.PostgresEventStoreModule;
 import org.apache.james.modules.data.PostgresVacationModule;
 import org.apache.james.modules.data.SievePostgresRepositoryModules;
+import org.apache.james.modules.event.ContentDeletionEventBusModule;
 import org.apache.james.modules.event.JMAPEventBusModule;
 import org.apache.james.modules.event.MailboxEventBusModule;
 import org.apache.james.modules.events.PostgresDeadLetterModule;
@@ -400,6 +401,7 @@ public class PostgresTmailServer {
 
     private static final Module RABBITMQ_EVENT_BUS_FEATURE_MODULE = Modules.combine(
         new MailboxEventBusModule(),
+        new ContentDeletionEventBusModule(),
         new JMAPEventBusModule(),
         new EmailAddressContactRabbitMQEventBusModule());
 
