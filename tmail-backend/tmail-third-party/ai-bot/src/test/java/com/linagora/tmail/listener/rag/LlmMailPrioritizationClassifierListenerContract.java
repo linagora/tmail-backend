@@ -515,7 +515,7 @@ public interface LlmMailPrioritizationClassifierListenerContract {
     }
 
     @Test
-    default void urgentEmailShouldBeTaggedNeedsActionWhenUserHasNoNeedsActionSettingByDefault() throws Exception {
+    default void urgentEmailShouldNotBeTaggedNeedsActionWhenUserHasNoNeedsActionSettingByDefault() throws Exception {
         jmapSettingsRepositoryUtils().reset(ALICE, Map.of("whatever", "true"));
         registerListenerToEventBus();
         needActionsLlmHook();
@@ -541,7 +541,7 @@ public interface LlmMailPrioritizationClassifierListenerContract {
             .untilAsserted(() -> {
                 assertThat(readFlags(messageId, aliceSession()).block()).isNotNull();
                 assertThat(readFlags(messageId, aliceSession()).block().getUserFlags())
-                    .contains("needs-action");
+                    .doesNotContain("needs-action");
             });
     }
 

@@ -212,7 +212,7 @@ public class LlmMailPrioritizationClassifierListener implements EventListener.Re
     private Mono<Boolean> aiNeedActionsSettingEnabled(Username username) {
         return Mono.from(jmapSettingsRepository.get(username))
             .map(JmapSettings::aiNeedsActionEnable)
-            .defaultIfEmpty(JmapSettings.AI_NEEDS_ACTION_ENABLE_DEFAULT_VALUE())
+            .defaultIfEmpty(JmapSettings.AI_NEEDS_ACTION_DISABLE_DEFAULT_VALUE())
             .filter(Boolean::booleanValue);
     }
 

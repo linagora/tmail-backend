@@ -92,7 +92,7 @@ Users can enable or disable the AI needs-action feature through JMAP settings:
 
 - **Setting Key**: `ai.needs-action.enabled`
 - **Values**: `true` (enabled) or `false` (disabled)
-- **Default**: `true` (enabled by default)
+- **Default**: `false` (disabled by default in order to collect explicit user consent)
 
 When disabled, the listener will not process any emails for that user, regardless of filter configuration.
 
@@ -107,7 +107,7 @@ When disabled, the listener will not process any emails for that user, regardles
        <and>
            <isInINBOX/>
            <or>
-             <isMainRecipient>true</isMailRecipient>
+             <isMainRecipient>true</isMainRecipient>
              <!-- user might be mentioned in a list, it may be important to process -->
              <hasHeader name="List-Id"/>
            </or>

@@ -26,6 +26,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
+import com.google.common.collect.ImmutableMap;
 import jakarta.mail.Flags;
 
 import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
@@ -133,6 +134,8 @@ public class LinagoraLlmMailPrioritizationClassifierListenerTest implements LlmM
             jmapSettingsRepository,
             metricFactory,
             listenerConfig);
+
+        jmapSettingsRepositoryUtils().reset(ALICE, ImmutableMap.of("ai.needs-action.enabled", "true"));
     }
 
     @Override

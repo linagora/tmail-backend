@@ -25,6 +25,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
+import com.google.common.collect.ImmutableMap;
 import jakarta.mail.Flags;
 import jakarta.mail.internet.AddressException;
 
@@ -143,6 +144,8 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
             jmapSettingsRepository,
             metricFactory,
             listenerConfig);
+
+        jmapSettingsRepositoryUtils().reset(ALICE, ImmutableMap.of("ai.needs-action.enabled", "true"));
     }
 
     public static IdentityRepository setUpIdentityRepository() throws AddressException {
