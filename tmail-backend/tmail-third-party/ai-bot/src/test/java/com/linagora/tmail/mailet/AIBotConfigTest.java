@@ -28,17 +28,11 @@ import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.junit.jupiter.api.Test;
 
-import com.google.inject.Injector;
-
 import nl.jqno.equalsverifier.EqualsVerifier;
 
-public class AIBotConfigTest {
-    private Injector injector;
-    private AIBotConfig aiBotConfig;
-    private AIRedactionalHelper aiRedactionalHelper;
-
+class AIBotConfigTest {
     @Test
-    public void shouldThrowIllegalArgumentExceptionWhenApiKeyIsNull() {
+    void shouldThrowIllegalArgumentExceptionWhenApiKeyIsNull() {
         Configuration configuration = new PropertiesConfiguration();
         configuration.addProperty("model", "Lucie");
         configuration.addProperty("baseURL", "https://chat.lucie.exemple.com");
@@ -49,7 +43,7 @@ public class AIBotConfigTest {
     }
 
     @Test
-    public void shouldThrowRuntimeExceptionWhenURLIsWrong() {
+    void shouldThrowRuntimeExceptionWhenURLIsWrong() {
         Configuration configuration = new PropertiesConfiguration();
         configuration.addProperty("apiKey", "sk-fakefakefakefakefakefakefakefake");
         configuration.addProperty("model", "Lucie");
@@ -61,7 +55,7 @@ public class AIBotConfigTest {
     }
 
     @Test
-    public void shouldVerifyCorrectConfiguration() throws Exception {
+    void shouldVerifyCorrectConfiguration() throws Exception {
         //Arrange
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("apiKey", "sk-fakefakefakefakefakefakefakefake");
@@ -79,13 +73,27 @@ public class AIBotConfigTest {
     }
 
     @Test
-    public void shouldAcceptBlankBaseUrl() throws Exception {
+    void shouldAcceptBlankBaseUrl() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("apiKey", "sk-fakefakefakefakefakefakefakefake");
         configuration.addProperty("model", "Lucie");
         configuration.addProperty("baseURL", "");
 
         AIBotConfig expected = new AIBotConfig("sk-fakefakefakefakefakefakefakefake", new LlmModel("Lucie"), Optional.empty(),
+            Duration.ofSeconds(10));
+        AIBotConfig actual = AIBotConfig.from(configuration);
+
+        assertThat(actual).isEqualTo(expected);
+    }
+
+    @Test
+    void shouldSupportNoModel() {
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("apiKey", "sk-fakefakefakefakefakefakefakefake");
+        configuration.addProperty("model", "");
+        configuration.addProperty("baseURL", "https://chat.lucie.exemple.com");
+
+        AIBotConfig expected = new AIBotConfig("sk-fakefakefakefakefakefakefakefake", new LlmModel(""), Optional.of(URI.create("https://chat.lucie.exemple.com").toURL(),
             Duration.ofSeconds(10));
         AIBotConfig actual = AIBotConfig.from(configuration);
 
