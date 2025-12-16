@@ -187,6 +187,7 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
         return aliceInbox;
     }
 
+    @Override
     public MessageManager aliceSpam() {
         return aliceSpam;
     }

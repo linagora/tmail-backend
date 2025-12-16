@@ -147,6 +147,7 @@ public class LinagoraLlmMailPrioritizationClassifierListenerTest implements LlmM
         return aliceInbox;
     }
 
+    @Override
     public MessageManager aliceSpam() {
         return aliceSpam;
     }

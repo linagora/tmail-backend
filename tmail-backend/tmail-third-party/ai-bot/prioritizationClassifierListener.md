@@ -49,20 +49,20 @@ The filter system allows you to configure which emails should be processed by th
 - Matches only emails delivered to the user's INBOX
 - Useful to skip processing for emails in other folders
 
-**1. SpamFilter (`isSpam`)**
+**2. SpamFilter (`isSpam`)**
 - Matches only emails delivered to the user's Spam mailbox
 - Useful to skip processing for spam emails
 
-**2. MainRecipientFilter (`isMainRecipient`)**
+**3. MainRecipientFilter (`isMainRecipient`)**
 - Matches only when the user is in the `To` field (not just Cc or Bcc)
 - Helps prioritize emails directly addressed to the user
 
-**3. AutoSubmittedFilter (`isAutoSubmitted`)**
+**4. AutoSubmittedFilter (`isAutoSubmitted`)**
 - Detects auto-generated emails (per RFC 3834)
 - Checks for `Auto-Submitted` header with values other than `no`
 - Typically used with `NOT` to exclude automated messages
 
-**4. HasHeaderFilter (`hasHeader`)**
+**5. HasHeaderFilter (`hasHeader`)**
 - Matches emails with a specific header
 - Optionally checks for a specific header value
 - Useful for priority headers like `X-Priority`, `Importance`, etc.

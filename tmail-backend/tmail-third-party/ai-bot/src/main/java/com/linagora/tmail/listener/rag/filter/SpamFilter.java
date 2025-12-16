@@ -36,6 +36,6 @@ public class SpamFilter implements MessageFilter {
     public Mono<Boolean> matches(FilterContext context) {
         return Flux.from(systemMailboxesProvider.getMailboxByRole(Role.SPAM, context.session().getUser()))
             .map(MessageManager::getId)
-            .any(inboxId -> inboxId.equals(context.addedEvent().getMailboxId()));
+            .any(spamId -> spamId.equals(context.addedEvent().getMailboxId()));
     }
 }
