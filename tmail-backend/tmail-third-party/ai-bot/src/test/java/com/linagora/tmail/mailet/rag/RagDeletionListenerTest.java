@@ -25,6 +25,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import java.time.Duration;
 import java.time.Instant;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.apache.james.core.Username;
@@ -38,6 +39,7 @@ import org.apache.james.mailbox.events.MailboxEvents;
 import org.apache.james.mailbox.inmemory.InMemoryId;
 import org.apache.james.mailbox.model.TestMessageId;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -94,6 +96,8 @@ public class RagDeletionListenerTest {
 
         eventBus.dispatch(messageContentDeletionEvent, Set.of()).block();
 
-        verify(1, deleteRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
+        Awaitility.await()
+            .atMost(10, TimeUnit.SECONDS)
+            .untilAsserted(() -> verify(1, deleteRequestedFor(urlMatching("/indexer/partition/.*/file/.*"))));
     }
 }

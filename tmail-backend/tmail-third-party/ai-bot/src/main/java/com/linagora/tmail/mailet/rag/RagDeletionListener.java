@@ -75,7 +75,7 @@ public class RagDeletionListener implements EventListener.ReactiveGroupEventList
         DocumentId documentId = new DocumentId(contentDeletionEvent.messageId());
 
         return openRagHttpClient.deleteDocument(partition, documentId)
-            .doOnSuccess(any -> LOGGER.info("Deleted RAG document {} with partition {} for user {}",
+            .doOnSuccess(any -> LOGGER.debug("Deleted RAG document {} with partition {} for user {}",
                 documentId.asString(), partition.partitionName(), contentDeletionEvent.getUsername().asString()))
             .doOnError(error -> LOGGER.error("Failed to delete RAG document {} with partition {} for user {}",
                 documentId.asString(), partition.partitionName(), contentDeletionEvent.getUsername().asString(), error));
