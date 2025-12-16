@@ -19,7 +19,6 @@
 package com.linagora.tmail.james.jmap.firebase
 
 import java.time.Clock
-
 import com.google.firebase.messaging.{FirebaseMessagingException, MessagingErrorCode}
 import com.linagora.tmail.james.jmap.firebase.FirebasePushListener.{GROUP, LOGGER}
 import com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionHelper.isNotOutdatedSubscription
@@ -37,6 +36,7 @@ import org.apache.james.user.api.DelegationStore
 import org.apache.james.util.{MDCBuilder, ReactorUtils}
 import org.reactivestreams.Publisher
 import org.slf4j.LoggerFactory
+import reactor.core.publisher.Mono
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.javaapi.CollectionConverters
@@ -62,7 +62,7 @@ class FirebasePushListener @Inject()(subscriptionRepository: FirebaseSubscriptio
       case event: StateChangeEvent =>
         firebasePushEnabled(event.username)
           .flatMap {
-            case true => pushToAccountOwnerAndDelegatees(event)
+            case true => SMono(pushToAccountOwnerAndDelegatees(event))
             case _ => noPush
           }
       case _ => noPush
@@ -75,7 +75,7 @@ class FirebasePushListener @Inject()(subscriptionRepository: FirebaseSubscriptio
       .defaultIfEmpty(FirebasePushEnableSettingParser.ENABLED)
       .map(_.enabled)
 
-  private def pushToAccountOwnerAndDelegatees(event: StateChangeEvent): SMono[Void] =
+  private def pushToAccountOwnerAndDelegatees(event: StateChangeEvent): Mono[Void] =
     SFlux.fromPublisher(delegationStore.authorizedUsers(event.username))
       .filterWhen(firebasePushEnabled(_))
       .concatWith(SMono.just(event.username))
@@ -84,7 +84,8 @@ class FirebasePushListener @Inject()(subscriptionRepository: FirebaseSubscriptio
       .flatMap(sendNotification(_, event), ReactorUtils.DEFAULT_CONCURRENCY)
       .`then`()
       .`then`(SMono.empty)
-      .subscriberContext(ReactorUtils.context("fcm", MDCBuilder.create().addToContext("user", event.username.asString())))
+      .asJava()
+      .contextWrite(ReactorUtils.context("fcm", MDCBuilder.create().addToContext("user", event.username.asString())))
 
   private def noPush: SMono[Void] = SMono.empty
 
