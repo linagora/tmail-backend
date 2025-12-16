@@ -93,7 +93,7 @@ class AIBotConfigTest {
         configuration.addProperty("model", "");
         configuration.addProperty("baseURL", "https://chat.lucie.exemple.com");
 
-        AIBotConfig expected = new AIBotConfig("sk-fakefakefakefakefakefakefakefake", new LlmModel(""), Optional.empty(),
+        AIBotConfig expected = new AIBotConfig("sk-fakefakefakefakefakefakefakefake", new LlmModel(""), Optional.of(URI.create("https://chat.lucie.exemple.com").toURL(),
             Duration.ofSeconds(10));
         AIBotConfig actual = AIBotConfig.from(configuration);
 
