@@ -87,14 +87,14 @@ class AIBotConfigTest {
     }
 
     @Test
-    void shouldSupportNoModel() {
+    void shouldSupportNoModel() throws Exception {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("apiKey", "sk-fakefakefakefakefakefakefakefake");
         configuration.addProperty("model", "");
         configuration.addProperty("baseURL", "https://chat.lucie.exemple.com");
 
-        AIBotConfig expected = new AIBotConfig("sk-fakefakefakefakefakefakefakefake", new LlmModel(""), Optional.of(URI.create("https://chat.lucie.exemple.com").toURL(),
-            Duration.ofSeconds(10));
+        AIBotConfig expected = new AIBotConfig("sk-fakefakefakefakefakefakefakefake", new LlmModel(""),
+            Optional.of(URI.create("https://chat.lucie.exemple.com").toURL()), Duration.ofSeconds(10));
         AIBotConfig actual = AIBotConfig.from(configuration);
 
         assertThat(actual).isEqualTo(expected);
