@@ -59,6 +59,7 @@ public interface LlmMailPrioritizationClassifierListenerContract {
     Username ANDRE = Username.of("andre@example.com");
 
     MessageManager aliceInbox();
+    MessageManager aliceSpam();
     MessageManager aliceCustomMailbox();
     MailboxSession aliceSession();
     HierarchicalConfiguration<ImmutableNode> listenerConfig();
@@ -894,6 +895,59 @@ public interface LlmMailPrioritizationClassifierListenerContract {
                 softly.assertThat(readFlags(customMailboxMessageId, aliceSession()).block().getUserFlags())
                     .as("Messages not in inbox should not match")
                     .doesNotContain("needs-action");
+                softly.assertAll();
+            });
+    }
+
+    @Test
+    default void filterShouldSupportIsSpam() throws Exception {
+        HierarchicalConfiguration<ImmutableNode> overrideConfig = listenerConfig();
+        overrideConfig.addProperty("listener.configuration.filter.isIsSpam", "");
+        resetListenerWithConfig(overrideConfig);
+        registerListenerToEventBus();
+        needActionsLlmHook();
+
+        MessageId inboxMessageId = aliceInbox().appendMessage(MessageManager.AppendCommand.builder()
+                    .isDelivery(true)
+                    .build(Message.Builder.of()
+                        .setSubject("URGENT – Production API Failure")
+                        .setMessageId("Message-ID-1")
+                        .setFrom(BOB.asString())
+                        .setTo(ALICE.asString())
+                        .setBody("""
+                            Hi Alice,
+                            Our payment gateway API has been failing since 03:12 AM UTC.
+                            Thanks,
+                            Robert
+                            """, StandardCharsets.UTF_8)),
+                aliceSession())
+            .getId().getMessageId();
+
+        MessageId customMailboxMessageId = aliceSpam().appendMessage(MessageManager.AppendCommand.builder()
+                    .isDelivery(true)
+                    .build(Message.Builder.of()
+                        .setSubject("URGENT – Production API Failure")
+                        .setMessageId("Message-ID-2")
+                        .setFrom(BOB.asString())
+                        .setTo(ALICE.asString())
+                        .setBody("""
+                            Hi Alice,
+                            Our payment gateway API has been failing since 03:12 AM UTC.
+                            Thanks,
+                            Robert
+                            """, StandardCharsets.UTF_8)),
+                aliceSession())
+            .getId().getMessageId();
+
+        CALMLY_AWAIT.atMost(Durations.TEN_SECONDS)
+            .untilAsserted(() -> {
+                SoftAssertions softly = new SoftAssertions();
+                softly.assertThat(readFlags(inboxMessageId, aliceSession()).block().getUserFlags())
+                    .as("Messages in inbox should match")
+                    .doesNotContain("needs-action");
+                softly.assertThat(readFlags(customMailboxMessageId, aliceSession()).block().getUserFlags())
+                    .as("Messages not in inbox should not match")
+                    .contains("needs-action");
                 softly.assertAll();
             });
     }

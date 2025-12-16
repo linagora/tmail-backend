@@ -70,6 +70,7 @@ public class LinagoraLlmMailPrioritizationClassifierListenerTest implements LlmM
     private MessageIdManager messageIdManager;
     private MailboxSession aliceSession;
     private MessageManager aliceInbox;
+    private MessageManager aliceSpam;
     private MessageManager aliceCustomMailbox;
     private HierarchicalConfiguration<ImmutableNode> listenerConfig;
     private StoreMailboxManager mailboxManager;
@@ -108,6 +109,7 @@ public class LinagoraLlmMailPrioritizationClassifierListenerTest implements LlmM
         MailboxPath aliceInboxPath = MailboxPath.inbox(ALICE);
         mailboxManager.createMailbox(aliceInboxPath, aliceSession).get();
         aliceInbox = mailboxManager.getMailbox(aliceInboxPath, aliceSession);
+        aliceSpam = mailboxManager.getMailbox(MailboxPath.forUser(ALICE, "Spam"), aliceSession);
         mailboxManager.createMailbox(MailboxPath.forUser(ALICE, "customMailbox"), aliceSession).get();
         aliceCustomMailbox = mailboxManager.getMailbox(MailboxPath.forUser(ALICE, "customMailbox"), aliceSession);
 
@@ -141,6 +143,10 @@ public class LinagoraLlmMailPrioritizationClassifierListenerTest implements LlmM
     @Override
     public MessageManager aliceInbox() {
         return aliceInbox;
+    }
+
+    public MessageManager aliceSpam() {
+        return aliceSpam;
     }
 
     @Override

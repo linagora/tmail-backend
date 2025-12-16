@@ -71,6 +71,7 @@ public class MessageFilterParser {
             case "or" -> parseOrFilter(node);
             case "not" -> parseNotFilter(node);
             case "isInINBOX" -> new InboxFilter(systemMailboxesProvider);
+            case "isSpam" -> new SpamFilter(systemMailboxesProvider);
             case "isMainRecipient" -> new MainRecipientFilter();
             case "isAutoSubmitted" -> new AutoSubmittedFilter();
             case "hasHeader" -> parseHasHeaderFilter(node);

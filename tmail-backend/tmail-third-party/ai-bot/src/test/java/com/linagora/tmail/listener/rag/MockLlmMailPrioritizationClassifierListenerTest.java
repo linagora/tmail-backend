@@ -48,6 +48,7 @@ import org.apache.james.mailbox.MessageIdManager;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
 import org.apache.james.mailbox.model.FetchGroup;
+import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.MessageResult;
@@ -88,6 +89,7 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
     private StubModel model;
     private MailboxSession aliceSession;
     private MessageManager aliceInbox;
+    private MessageManager aliceSpam;
     private MessageManager aliceCustomMailbox;
     private HierarchicalConfiguration<ImmutableNode> listenerConfig;
     private StoreMailboxManager mailboxManager;
@@ -126,6 +128,7 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
         MailboxPath aliceInboxPath = MailboxPath.inbox(ALICE);
         mailboxManager.createMailbox(aliceInboxPath, aliceSession).get();
         aliceInbox = mailboxManager.getMailbox(aliceInboxPath, aliceSession);
+        aliceSpam = mailboxManager.getMailbox(MailboxPath.forUser(ALICE, "Spam"), aliceSession);
         mailboxManager.createMailbox(MailboxPath.forUser(ALICE, "customMailbox"), aliceSession).get();
         aliceCustomMailbox = mailboxManager.getMailbox(MailboxPath.forUser(ALICE, "customMailbox"), aliceSession);
 
@@ -185,6 +188,10 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
     @Override
     public MessageManager aliceInbox() {
         return aliceInbox;
+    }
+
+    public MessageManager aliceSpam() {
+        return aliceSpam;
     }
 
     @Override

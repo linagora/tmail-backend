@@ -75,6 +75,16 @@ class MessageFilterParserTest {
         }
 
         @Test
+        void shouldParseSpamFilter() {
+            HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
+            config.addProperty("listener.configuration.filter.isSpam", "");
+
+            MessageFilter result = parser.parse(config);
+
+            assertThat(result).isInstanceOf(SpamFilter.class);
+        }
+
+        @Test
         void shouldParseMainRecipientFilter() {
             HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
             config.addProperty("listener.configuration.filter.isMainRecipient", "");

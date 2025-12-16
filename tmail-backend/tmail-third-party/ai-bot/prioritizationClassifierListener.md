@@ -17,9 +17,8 @@ Example:
          <and>
             <isInINBOX/>
             <isMainRecipient/>
-            <not>
-               <isAutoSubmitted/>
-            </not>
+            <not><isAutoSubmitted/></not>
+            <not><isSpam/></not>
          </and>
       </filter>
       <systemPrompt>
@@ -49,6 +48,10 @@ The filter system allows you to configure which emails should be processed by th
 **1. InboxFilter (`isInINBOX`)**
 - Matches only emails delivered to the user's INBOX
 - Useful to skip processing for emails in other folders
+
+**1. SpamFilter (`isSpam`)**
+- Matches only emails delivered to the user's Spam mailbox
+- Useful to skip processing for spam emails
 
 **2. MainRecipientFilter (`isMainRecipient`)**
 - Matches only when the user is in the `To` field (not just Cc or Bcc)
@@ -118,6 +121,7 @@ When disabled, the listener will not process any emails for that user, regardles
              </and>
            </not> 
            <not><isAutoSubmitted/></not>
+           <not><isSpam/></not>
        </and>
    </filter>
 ```
