@@ -20,6 +20,7 @@ package com.linagora.tmail.extension;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.configureFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.delete;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
 import static com.github.tomakehurst.wiremock.client.WireMock.put;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlPathMatching;
@@ -96,6 +97,13 @@ public class WireMockRagServerExtension extends WireMockExtension implements Gui
 
     public void setRagIndexerPutResponse(int status, String resultBody) {
         stubFor(put(urlPathMatching(RAG_INDEXER_ENDPOINT))
+            .willReturn(aResponse()
+                .withStatus(status)
+                .withBody(resultBody)));
+    }
+
+    public void setRagIndexerDeleteResponse(int status, String resultBody) {
+        stubFor(delete(urlPathMatching(RAG_INDEXER_ENDPOINT))
             .willReturn(aResponse()
                 .withStatus(status)
                 .withBody(resultBody)));
