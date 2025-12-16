@@ -108,11 +108,11 @@ public class LinagoraLlmMailPrioritizationClassifierListenerTest implements LlmM
         aliceSession = mailboxManager.createSystemSession(ALICE);
         MailboxPath aliceInboxPath = MailboxPath.inbox(ALICE);
         MailboxPath spamMailboxPath = MailboxPath.forUser(ALICE, "Spam");
-        mailboxManager.createMailbox(aliceInboxPath, aliceSession).get();
-        mailboxManager.createMailbox(spamMailboxPath, aliceSession).get();
+        mailboxManager.createMailbox(aliceInboxPath, aliceSession);
+        mailboxManager.createMailbox(spamMailboxPath, aliceSession);
         aliceInbox = mailboxManager.getMailbox(aliceInboxPath, aliceSession);
         aliceSpam = mailboxManager.getMailbox(spamMailboxPath, aliceSession);
-        mailboxManager.createMailbox(MailboxPath.forUser(ALICE, "customMailbox"), aliceSession).get();
+        mailboxManager.createMailbox(MailboxPath.forUser(ALICE, "customMailbox"), aliceSession);
         aliceCustomMailbox = mailboxManager.getMailbox(MailboxPath.forUser(ALICE, "customMailbox"), aliceSession);
 
         listenerConfig = new BaseHierarchicalConfiguration();

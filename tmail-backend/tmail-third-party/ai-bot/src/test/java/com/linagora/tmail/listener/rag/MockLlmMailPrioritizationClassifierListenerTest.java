@@ -126,10 +126,11 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
 
         aliceSession = mailboxManager.createSystemSession(ALICE);
         MailboxPath aliceInboxPath = MailboxPath.inbox(ALICE);
-        mailboxManager.createMailbox(aliceInboxPath, aliceSession).get();
+        mailboxManager.createMailbox(aliceInboxPath, aliceSession);
         aliceInbox = mailboxManager.getMailbox(aliceInboxPath, aliceSession);
         MailboxPath spamMailboxPath = MailboxPath.forUser(ALICE, "Spam");
-        mailboxManager.createMailbox(spamMailboxPath, aliceSession).get();
+        mailboxManager.createMailbox(spamMailboxPath, aliceSession);
+        aliceSpam = mailboxManager.getMailbox(spamMailboxPath, aliceSession);
         aliceCustomMailbox = mailboxManager.getMailbox(spamMailboxPath, aliceSession);
 
         listenerConfig = new BaseHierarchicalConfiguration();
