@@ -78,7 +78,7 @@ import reactor.core.publisher.Mono;
 public class LlmMailPrioritizationClassifierListener implements EventListener.ReactiveGroupEventListener {
     record ParsedMessage(MessageResult messageResult, Message parsed) {
         static ParsedMessage from(MessageResult messageResult) {
-            try(InputStream inputStream = messageResult.getFullContent().getInputStream()) {
+            try (InputStream inputStream = messageResult.getFullContent().getInputStream()) {
                 DefaultMessageBuilder messageBuilder = new DefaultMessageBuilder();
                 messageBuilder.setMimeEntityConfig(MimeConfig.PERMISSIVE);
                 messageBuilder.setDecodeMonitor(DecodeMonitor.SILENT);
