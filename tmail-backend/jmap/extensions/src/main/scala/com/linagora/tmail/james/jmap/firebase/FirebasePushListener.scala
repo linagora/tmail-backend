@@ -34,7 +34,7 @@ import org.apache.james.jmap.change.{EmailDeliveryTypeName, StateChangeEvent}
 import org.apache.james.jmap.core.{AccountId, StateChange}
 import org.apache.james.lifecycle.api.Startable
 import org.apache.james.user.api.DelegationStore
-import org.apache.james.util.ReactorUtils
+import org.apache.james.util.{MDCBuilder, ReactorUtils}
 import org.reactivestreams.Publisher
 import org.slf4j.LoggerFactory
 import reactor.core.scala.publisher.{SFlux, SMono}
@@ -79,11 +79,12 @@ class FirebasePushListener @Inject()(subscriptionRepository: FirebaseSubscriptio
     SFlux.fromPublisher(delegationStore.authorizedUsers(event.username))
       .filterWhen(firebasePushEnabled(_))
       .concatWith(SMono.just(event.username))
-      .flatMap(subscriptionRepository.list)
+      .flatMap(subscriptionRepository.list, ReactorUtils.DEFAULT_CONCURRENCY)
       .filter(isNotOutdatedSubscription(_, clock))
       .flatMap(sendNotification(_, event), ReactorUtils.DEFAULT_CONCURRENCY)
       .`then`()
       .`then`(SMono.empty)
+      .subscriberContext(ReactorUtils.context("fcm", MDCBuilder.create().addToContext("user", event.username.asString())))
 
   private def noPush: SMono[Void] = SMono.empty
 
