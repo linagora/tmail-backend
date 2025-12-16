@@ -923,7 +923,7 @@ public interface LlmMailPrioritizationClassifierListenerContract {
                 aliceSession())
             .getId().getMessageId();
 
-        MessageId customMailboxMessageId = aliceSpam().appendMessage(MessageManager.AppendCommand.builder()
+        MessageId spamMessageId = aliceSpam().appendMessage(MessageManager.AppendCommand.builder()
                     .isDelivery(true)
                     .build(Message.Builder.of()
                         .setSubject("URGENT – Production API Failure")
@@ -943,10 +943,10 @@ public interface LlmMailPrioritizationClassifierListenerContract {
             .untilAsserted(() -> {
                 SoftAssertions softly = new SoftAssertions();
                 softly.assertThat(readFlags(inboxMessageId, aliceSession()).block().getUserFlags())
-                    .as("Messages in inbox should match")
+                    .as("Non-spam messages should not be processed")
                     .doesNotContain("needs-action");
-                softly.assertThat(readFlags(customMailboxMessageId, aliceSession()).block().getUserFlags())
-                    .as("Messages not in inbox should not match")
+                softly.assertThat(readFlags(spamMessageId, aliceSession()).block().getUserFlags())
+                    .as("Spam messages should be processed")
                     .contains("needs-action");
                 softly.assertAll();
             });
