@@ -90,7 +90,8 @@ class AIBotConfigTest {
     void shouldSupportNoModel() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("apiKey", "sk-fakefakefakefakefakefakefakefake");
-        configuration.addProperty("baseURL", "");
+        configuration.addProperty("model", "");
+        configuration.addProperty("baseURL", "https://chat.lucie.exemple.com");
 
         AIBotConfig expected = new AIBotConfig("sk-fakefakefakefakefakefakefakefake", new LlmModel(""), Optional.empty(),
             Duration.ofSeconds(10));
