@@ -63,8 +63,8 @@ public class AIBotConfig {
         String apiKeyParam = Optional.ofNullable(configuration.getString(API_KEY_PARAMETER_NAME, null))
             .orElseThrow(() ->  new IllegalArgumentException("No value for " + API_KEY_PARAMETER_NAME + " parameter was provided."));
         LlmModel llmModelParam = Optional.ofNullable(configuration.getString(MODEL_PARAMETER_NAME))
-            .filter(modelString -> !Strings.isNullOrEmpty(modelString))
-            .map(LlmModel::new).orElse(DEFAULT_LLM_MODEL);
+            .map(LlmModel::new)
+            .orElse(DEFAULT_LLM_MODEL);
         String baseUrlParam = Optional.ofNullable(configuration.getString(BASE_URL_PARAMETER_NAME,null))
             .orElseThrow(() ->  new IllegalArgumentException("No value for " + BASE_URL_PARAMETER_NAME + " parameter was provided."));
 
