@@ -35,6 +35,7 @@ public class HasHeaderFilter implements MessageFilter {
 
     public HasHeaderFilter(String headerName, Optional<String> expectedValue) {
         Preconditions.checkArgument(!Strings.isNullOrEmpty(headerName), "Header name cannot be null or empty");
+        Preconditions.checkNotNull(expectedValue, "Expected value cannot be null");
         this.headerName = headerName;
         this.expectedValue = expectedValue;
     }
