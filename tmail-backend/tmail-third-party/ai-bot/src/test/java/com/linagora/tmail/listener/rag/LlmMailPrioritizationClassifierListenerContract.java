@@ -902,7 +902,7 @@ public interface LlmMailPrioritizationClassifierListenerContract {
     @Test
     default void filterShouldSupportIsSpam() throws Exception {
         HierarchicalConfiguration<ImmutableNode> overrideConfig = listenerConfig();
-        overrideConfig.addProperty("listener.configuration.filter.isIsSpam", "");
+        overrideConfig.addProperty("listener.configuration.filter.isSpam", "");
         resetListenerWithConfig(overrideConfig);
         registerListenerToEventBus();
         needActionsLlmHook();
