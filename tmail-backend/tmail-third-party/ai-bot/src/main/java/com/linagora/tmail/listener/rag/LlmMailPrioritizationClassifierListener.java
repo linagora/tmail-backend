@@ -184,7 +184,7 @@ public class LlmMailPrioritizationClassifierListener implements EventListener.Re
         MailboxSession session = mailboxManager.createSystemSession(username);
 
         return aiNeedActionsSettingEnabled(username)
-            .flatMap(needsActionEnabled -> classifyMailsPrioritization(addedEvent, session));
+            .flatMap(any -> classifyMailsPrioritization(addedEvent, session));
     }
 
     private Mono<Void> classifyMailsPrioritization(MailboxEvents.Added addedEvent, MailboxSession session) {
