@@ -164,6 +164,12 @@ To enable RAG, you need to mount a configuration file called listeners.xml, whic
 </listeners>
 ```
 
+To enable Rag deletions add the following guice module in `extensions.properties`:
+
+```
+guice.extension.module=...,com.linagora.tmail.mailet.conf.RagDeletionModule
+```
+
 You need to also add the following keys in `ai.properties` file:
 
 ```properties

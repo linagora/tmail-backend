@@ -22,36 +22,26 @@ import java.io.FileNotFoundException;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
-import org.apache.james.events.EventListener;
 import org.apache.james.utils.PropertiesProvider;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
-import com.google.inject.multibindings.Multibinder;
 import com.google.inject.name.Named;
-import com.google.inject.name.Names;
 import com.linagora.tmail.mailet.AIBotConfig;
 import com.linagora.tmail.mailet.AIRedactionalHelper;
 import com.linagora.tmail.mailet.LangchainAIRedactionalHelper;
 import com.linagora.tmail.mailet.StreamChatLanguageModelFactory;
 import com.linagora.tmail.mailet.rag.RagConfig;
-import com.linagora.tmail.mailet.rag.RagDeletionListener;
 import com.linagora.tmail.mailet.rag.httpclient.OpenRagHttpClient;
 import com.linagora.tmail.mailet.rag.httpclient.Partition;
 
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 
 public class AIBotModule extends AbstractModule {
-    private static final String CONTENT_DELETION = "contentDeletion";
-
     @Override
     protected void configure() {
         bind(AIRedactionalHelper.class).to(LangchainAIRedactionalHelper.class);
-
-        Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class, Names.named(CONTENT_DELETION))
-            .addBinding()
-            .to(RagDeletionListener.class);
     }
 
     @Provides
