@@ -24,6 +24,8 @@ import java.util.Map;
 
 import javax.net.ssl.SSLException;
 
+import jakarta.inject.Inject;
+
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -53,6 +55,7 @@ public class OpenRagHttpClient {
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
 
+    @Inject
     public OpenRagHttpClient(RagConfig configuration) {
         this.objectMapper = new ObjectMapper().registerModule(new Jdk8Module());
         this.httpClient = buildReactorNettyHttpClient(configuration);
