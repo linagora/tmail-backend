@@ -31,7 +31,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 
-import com.linagora.tmail.mailet.conf.AIBotModule;
+import com.linagora.tmail.mailet.conf.AIBaseModule;
 
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
@@ -60,7 +60,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 
 @Disabled("Unstable test https://github.com/linagora/tmail-backend/issues/1303")
-class AIBotIntegrationTest {
+class AIIntegrationTest {
     private static final String BOB = "bob@" + DEFAULT_DOMAIN;
     private static final String ALICE = "alice@" + DEFAULT_DOMAIN;
     private static final String ANDRE = "andre@" + DEFAULT_DOMAIN;
@@ -106,7 +106,7 @@ class AIBotIntegrationTest {
                 .addMailetsFrom(CommonProcessors.transport()));
 
         jamesServer = TemporaryJamesServer.builder()
-            .withOverrides(new AIBotModule())
+            .withOverrides(new AIBaseModule())
             .withMailetContainer(mailetContainer)
             .build(temporaryFolder);
         jamesServer.start();

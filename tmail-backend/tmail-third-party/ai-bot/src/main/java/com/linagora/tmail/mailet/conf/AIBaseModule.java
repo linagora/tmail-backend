@@ -38,7 +38,7 @@ import com.linagora.tmail.mailet.rag.httpclient.Partition;
 
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 
-public class AIBotModule extends AbstractModule {
+public class AIBaseModule extends AbstractModule {
     @Override
     protected void configure() {
         bind(AIRedactionalHelper.class).to(LangchainAIRedactionalHelper.class);

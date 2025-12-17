@@ -131,7 +131,7 @@ The following steps will start the AIBot extension in memory, without rate-limit
       - Copy the generated JAR `target/tmail-ai-bot-jar-with-dependencies.jar` in the `/root/libs/` directory of your TMail application.
       - Declare the plugin in the `extensions.properties` file
           ```bash
-          guice.extension.module=com.linagora.tmail.mailet.conf.AIBotModule,com.linagora.tmail.jmap.aibot.AiBotMethodModule
+          guice.extension.module=com.linagora.tmail.mailet.conf.AIBaseModule,com.linagora.tmail.jmap.aibot.AiMethodModule
           ```
 
 3. **Run the server**

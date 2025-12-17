@@ -51,12 +51,12 @@ case object AiBotCapabilityFactory extends CapabilityFactory {
   override def id(): CapabilityIdentifier = LINAGORA_AIBOT
 }
 
-class AiBotMethodModule extends AbstractModule {
+class AiMethodModule extends AbstractModule {
   override def configure(): Unit = {
     install(new AiBotCapabilitiesModule())
     Multibinder.newSetBinder(binder(), classOf[Method])
       .addBinding()
-      .to(classOf[AiBotSuggestionMethod])
+      .to(classOf[AiSuggestionMethod])
 
     Multibinder.newSetBinder(binder, classOf[JMAPRoutes])
       .addBinding()

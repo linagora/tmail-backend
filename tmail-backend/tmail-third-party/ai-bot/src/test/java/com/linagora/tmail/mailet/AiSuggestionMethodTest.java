@@ -21,7 +21,7 @@ package com.linagora.tmail.mailet;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
-import com.linagora.tmail.mailet.conf.AIBotModule;
+import com.linagora.tmail.mailet.conf.AIBaseModule;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 import io.restassured.response.Response;
 import io.restassured.specification.RequestSpecification;
@@ -62,7 +62,7 @@ import static org.hamcrest.CoreMatchers.containsString;
 import static org.hamcrest.CoreMatchers.equalTo;
 import org.apache.james.mime4j.dom.Message;
 
-public class AiBotSuggestionMethodTest {
+public class AiSuggestionMethodTest {
     static final String DOMAIN = "james.org";
     static final String PASSWORD = "secret";
 
@@ -81,7 +81,7 @@ public class AiBotSuggestionMethodTest {
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
-            .overrideWith(Modules.override(new AIBotModule()).with(binder -> binder.bind(AIRedactionalHelper.class).to(AIRedactionalHelperForTest.class))))
+            .overrideWith(Modules.override(new AIBaseModule()).with(binder -> binder.bind(AIRedactionalHelper.class).to(AIRedactionalHelperForTest.class))))
         .build();
 
     @BeforeEach

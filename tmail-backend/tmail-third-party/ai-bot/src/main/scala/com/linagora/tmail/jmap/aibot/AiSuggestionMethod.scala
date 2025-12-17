@@ -44,12 +44,12 @@ import java.util.Optional
 case class MessageNotFoundException(id: MessageId) extends IllegalArgumentException(){
   override def getMessage: String = s"Message with id ${id.serialize()} not found"}
 
-class AiBotSuggestionMethod @Inject()(val aiBotService: AIRedactionalHelper,
-                                      val metricFactory: MetricFactory,
-                                      val sessionSupplier: SessionSupplier,
-                                      val sessionTranslator: SessionTranslator,
-                                      val messageIdManager: MessageIdManager,
-                                      val messageIdFactory: MessageId.Factory)
+class AiSuggestionMethod @Inject()(val aiBotService: AIRedactionalHelper,
+                                   val metricFactory: MetricFactory,
+                                   val sessionSupplier: SessionSupplier,
+                                   val sessionTranslator: SessionTranslator,
+                                   val messageIdManager: MessageIdManager,
+                                   val messageIdFactory: MessageId.Factory)
   extends MethodRequiringAccountId[AiBotSuggestReplyRequest] {
 
   override val methodName: Invocation.MethodName = MethodName("AiBot/Suggest")
