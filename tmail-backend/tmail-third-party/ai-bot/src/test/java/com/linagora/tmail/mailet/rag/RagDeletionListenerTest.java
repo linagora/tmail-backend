@@ -44,7 +44,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.google.common.collect.ImmutableMap;
 import com.linagora.tmail.extension.WireMockRagServerExtension;
+import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
+import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
+import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
 import com.linagora.tmail.mailet.rag.httpclient.OpenRagHttpClient;
 import com.linagora.tmail.mailet.rag.httpclient.Partition;
 
@@ -54,6 +58,8 @@ public class RagDeletionListenerTest {
     static WireMockRagServerExtension wireMockRagServerExtension = new WireMockRagServerExtension();
 
     private EventBus eventBus;
+    private JmapSettingsRepository jmapSettingsRepository;
+    private JmapSettingsRepositoryJavaUtils jmapSettingsRepositoryUtils;
 
     @BeforeEach
     void setUp() {
@@ -74,7 +80,10 @@ public class RagDeletionListenerTest {
         OpenRagHttpClient openRagHttpClient = new OpenRagHttpClient(ragConfig);
         Partition.Factory partitionFactory = Partition.Factory.fromPattern(ragConfig.getPartitionPattern());
 
-        RagDeletionListener ragDeletionListener = new RagDeletionListener(partitionFactory, openRagHttpClient);
+        jmapSettingsRepository = new MemoryJmapSettingsRepository();
+        jmapSettingsRepositoryUtils = new JmapSettingsRepositoryJavaUtils(jmapSettingsRepository);
+
+        RagDeletionListener ragDeletionListener = new RagDeletionListener(jmapSettingsRepository, partitionFactory, openRagHttpClient);
         eventBus.register(ragDeletionListener);
     }
 
@@ -83,6 +92,8 @@ public class RagDeletionListenerTest {
         wireMockRagServerExtension.setRagIndexerDeleteResponse(204, "");
 
         Username username = Username.of("bob@domain.tld");
+        jmapSettingsRepositoryUtils.reset(username, ImmutableMap.of("ai.rag.enabled", "true"));
+
         MailboxEvents.MessageContentDeletionEvent messageContentDeletionEvent = new MailboxEvents.MessageContentDeletionEvent(
             Event.EventId.random(),
             username,
@@ -99,5 +110,57 @@ public class RagDeletionListenerTest {
         Awaitility.await()
             .atMost(10, TimeUnit.SECONDS)
             .untilAsserted(() -> verify(1, deleteRequestedFor(urlMatching("/indexer/partition/.*/file/.*"))));
+    }
+
+    @Test
+    void shouldNotDeleteRagDocumentWhenAiRagSettingIsDisabled() {
+        wireMockRagServerExtension.setRagIndexerDeleteResponse(204, "");
+
+        Username username = Username.of("bob@domain.tld");
+        jmapSettingsRepositoryUtils.reset(username, ImmutableMap.of("ai.rag.enabled", "false"));
+
+        MailboxEvents.MessageContentDeletionEvent messageContentDeletionEvent = new MailboxEvents.MessageContentDeletionEvent(
+            Event.EventId.random(),
+            username,
+            InMemoryId.of(1),
+            TestMessageId.of(1),
+            123L,
+            Instant.now(),
+            false,
+            "headerBlobId",
+            "bodyBlobId");
+
+        eventBus.dispatch(messageContentDeletionEvent, Set.of()).block();
+
+        Awaitility.await()
+            .pollDelay(1, TimeUnit.SECONDS)
+            .atMost(2, TimeUnit.SECONDS)
+            .untilAsserted(() -> verify(0, deleteRequestedFor(urlMatching("/indexer/partition/.*/file/.*"))));
+    }
+
+    @Test
+    void shouldNotDeleteRagDocumentWhenAiRagSettingIsNotSet() {
+        wireMockRagServerExtension.setRagIndexerDeleteResponse(204, "");
+
+        Username username = Username.of("bob@domain.tld");
+        jmapSettingsRepositoryUtils.reset(username, ImmutableMap.of());
+
+        MailboxEvents.MessageContentDeletionEvent messageContentDeletionEvent = new MailboxEvents.MessageContentDeletionEvent(
+            Event.EventId.random(),
+            username,
+            InMemoryId.of(1),
+            TestMessageId.of(1),
+            123L,
+            Instant.now(),
+            false,
+            "headerBlobId",
+            "bodyBlobId");
+
+        eventBus.dispatch(messageContentDeletionEvent, Set.of()).block();
+
+        Awaitility.await()
+            .pollDelay(1, TimeUnit.SECONDS)
+            .atMost(2, TimeUnit.SECONDS)
+            .untilAsserted(() -> verify(0, deleteRequestedFor(urlMatching("/indexer/partition/.*/file/.*"))));
     }
 }

@@ -52,6 +52,8 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.linagora.tmail.extension.WireMockRagServerExtension;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
+import com.linagora.tmail.james.common.probe.JmapSettingsProbe;
+import com.linagora.tmail.james.common.probe.JmapSettingsProbeModule;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class RagListenerIntegrationTest {
@@ -90,7 +92,8 @@ public class RagListenerIntegrationTest {
             .usersRepository(DEFAULT)
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
-            .overrideWith(new LinagoraTestJMAPServerModule()))
+            .overrideWith(new LinagoraTestJMAPServerModule())
+            .overrideWith(new JmapSettingsProbeModule()))
         .extension(wireMockRagServerExtension)
         .build();
 
@@ -104,6 +107,11 @@ public class RagListenerIntegrationTest {
         pathBob = MailboxPath.inbox(Username.of(bob));
         jamesServer.getProbe(MailboxProbeImpl.class).createMailbox(pathAlice);
         jamesServer.getProbe(MailboxProbeImpl.class).createMailbox(pathBob);
+
+        // Enable RAG for both users
+        JmapSettingsProbe jmapSettingsProbe = jamesServer.getProbe(JmapSettingsProbe.class);
+        jmapSettingsProbe.reset(Username.of(alice), java.util.Map.of("ai.rag.enabled", "true"));
+        jmapSettingsProbe.reset(Username.of(bob), java.util.Map.of("ai.rag.enabled", "true"));
 
         wireMockRagServerExtension.setRagIndexerPostResponse(200,
                 String.format("{\"task_status_url\":\"http://localhost:%d/status/1234\"}", wireMockRagServerExtension.getPort()));

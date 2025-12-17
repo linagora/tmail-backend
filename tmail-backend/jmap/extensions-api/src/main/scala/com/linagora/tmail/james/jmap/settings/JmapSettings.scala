@@ -23,7 +23,7 @@ import java.util.Locale
 
 import com.google.common.base.CharMatcher
 import com.linagora.tmail.james.jmap.settings.InboxArchivalFormat.InboxArchivalFormat
-import com.linagora.tmail.james.jmap.settings.JmapSettings.{AI_NEEDS_ACTION_DISABLE_DEFAULT_VALUE, AI_NEEDS_ACTION_ENABLE_KEY, INBOX_ARCHIVAL_ENABLE_DEFAULT_VALUE, INBOX_ARCHIVAL_ENABLE_KEY, INBOX_ARCHIVAL_FORMAT_DEFAULT_VALUE, INBOX_ARCHIVAL_FORMAT_KEY, INBOX_ARCHIVAL_PERIOD_DEFAULT_VALUE, INBOX_ARCHIVAL_PERIOD_KEY, LANGUAGE_KEY, cleanupDefaultPeriod, spamCleanupEnabledSetting, spamCleanupPeriodSetting, trashCleanupEnabledSetting, trashCleanupPeriodSetting}
+import com.linagora.tmail.james.jmap.settings.JmapSettings.{AI_NEEDS_ACTION_DISABLE_DEFAULT_VALUE, AI_NEEDS_ACTION_ENABLE_KEY, AI_RAG_DISABLE_DEFAULT_VALUE, AI_RAG_ENABLE_KEY, INBOX_ARCHIVAL_ENABLE_DEFAULT_VALUE, INBOX_ARCHIVAL_ENABLE_KEY, INBOX_ARCHIVAL_FORMAT_DEFAULT_VALUE, INBOX_ARCHIVAL_FORMAT_KEY, INBOX_ARCHIVAL_PERIOD_DEFAULT_VALUE, INBOX_ARCHIVAL_PERIOD_KEY, LANGUAGE_KEY, cleanupDefaultPeriod, spamCleanupEnabledSetting, spamCleanupPeriodSetting, trashCleanupEnabledSetting, trashCleanupPeriodSetting}
 import com.linagora.tmail.james.jmap.settings.JmapSettingsKey.SettingKeyType
 import eu.timepit.refined
 import eu.timepit.refined.api.{Refined, Validate}
@@ -121,11 +121,13 @@ object JmapSettings {
   val INBOX_ARCHIVAL_FORMAT_KEY = "inbox.archival.format"
   val LANGUAGE_KEY = "language"
   val AI_NEEDS_ACTION_ENABLE_KEY = "ai.needs-action.enabled"
+  val AI_RAG_ENABLE_KEY = "ai.rag.enabled"
 
   val INBOX_ARCHIVAL_ENABLE_DEFAULT_VALUE: Boolean = false
   val INBOX_ARCHIVAL_PERIOD_DEFAULT_VALUE: Period = Period.ofMonths(1)
   val INBOX_ARCHIVAL_FORMAT_DEFAULT_VALUE: InboxArchivalFormat = InboxArchivalFormat.Single
   val AI_NEEDS_ACTION_DISABLE_DEFAULT_VALUE: Boolean = false
+  val AI_RAG_DISABLE_DEFAULT_VALUE: Boolean = false
 }
 
 case class JmapSettings(settings: Map[JmapSettingsKey, JmapSettingsValue], state: UuidState) {
@@ -174,6 +176,12 @@ case class JmapSettings(settings: Map[JmapSettingsKey, JmapSettingsValue], state
       .map(value => Try(value.value.toBoolean)
         .getOrElse(AI_NEEDS_ACTION_DISABLE_DEFAULT_VALUE))
       .getOrElse(AI_NEEDS_ACTION_DISABLE_DEFAULT_VALUE)
+
+  def aiRagEnable(): Boolean =
+    settings.get(JmapSettingsKey.liftOrThrow(AI_RAG_ENABLE_KEY))
+      .map(value => Try(value.value.toBoolean)
+        .getOrElse(AI_RAG_DISABLE_DEFAULT_VALUE))
+      .getOrElse(AI_RAG_DISABLE_DEFAULT_VALUE)
 }
 
 case class JmapSettingsUpsertRequest(settings: Map[JmapSettingsKey, JmapSettingsValue])

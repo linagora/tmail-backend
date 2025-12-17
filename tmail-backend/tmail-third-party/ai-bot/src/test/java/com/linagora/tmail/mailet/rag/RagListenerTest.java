@@ -33,10 +33,7 @@ import java.time.Instant;
 
 import jakarta.mail.util.SharedByteArrayInputStream;
 
-import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.PropertiesConfiguration;
-import org.apache.commons.configuration2.builder.fluent.Configurations;
-import org.apache.commons.configuration2.tree.ImmutableNode;
 import org.apache.james.core.Username;
 import org.apache.james.events.InVMEventBus;
 import org.apache.james.events.MemoryEventDeadLetters;
@@ -63,7 +60,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.google.common.collect.ImmutableMap;
 import com.linagora.tmail.extension.WireMockRagServerExtension;
+import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
+import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
+import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
 import com.linagora.tmail.mailet.rag.httpclient.OpenRagHttpClient;
 import com.linagora.tmail.mailet.rag.httpclient.Partition;
 
@@ -117,8 +118,9 @@ class RagListenerTest {
     MemoryEventDeadLetters eventDeadLetters;
     OpenRagHttpClient openRagHttpClient;
     Partition.Factory partitionFactory;
-    HierarchicalConfiguration<ImmutableNode> config;
     RagConfig ragConfig;
+    JmapSettingsRepository jmapSettingsRepository;
+    JmapSettingsRepositoryJavaUtils jmapSettingsRepositoryUtils;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -169,8 +171,6 @@ class RagListenerTest {
         bobMailBoxMessageManager = mailboxManager.getMailbox(bobMailBoxId, bobMailboxSession);
         aliceInboxMessageManager = mailboxManager.getMailbox(aliceInboxId, aliceMailboxSession);
         systemMailboxesProvider = new SystemMailboxesProviderImpl(mailboxManager);
-        Configurations configurations = new Configurations();
-        config = configurations.xml("listeners.xml");
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("openrag.url", String.format("http://localhost:%d", wireMockRagServerExtension.getPort()));
         configuration.addProperty("openrag.token", "dummy-token");
@@ -179,8 +179,12 @@ class RagListenerTest {
         ragConfig = RagConfig.from(configuration);
         openRagHttpClient = new OpenRagHttpClient(ragConfig);
         partitionFactory = Partition.Factory.fromPattern(ragConfig.getPartitionPattern());
-        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, threadIdGuessingAlgorithm, config,
-            partitionFactory, openRagHttpClient);
+        jmapSettingsRepository = new MemoryJmapSettingsRepository();
+        jmapSettingsRepositoryUtils = new JmapSettingsRepositoryJavaUtils(jmapSettingsRepository);
+        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, threadIdGuessingAlgorithm,
+            jmapSettingsRepository, partitionFactory, openRagHttpClient);
+
+        jmapSettingsRepositoryUtils.reset(BOB, ImmutableMap.of("ai.rag.enabled", "true"));
     }
 
     @Test
@@ -359,22 +363,10 @@ class RagListenerTest {
     }
 
     @Test
-    void reactiveEventShouldSkipListenerWhenUserNotInWhiteList() throws Exception {
+    void reactiveEventShouldAllowAllUsersWhenRagIsEnabled() throws Exception {
         mailboxManager.getEventBus().register(ragListener);
 
-        MessageManager.AppendResult appendResult = aliceInboxMessageManager.appendMessage(
-            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
-            aliceMailboxSession);
-
-        verify(0, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
-    }
-
-    @Test
-    void reactiveEventShouldAllowAllUsersWhenWhiteListIsEmpty() throws Exception {
-        config.setProperty("listener.configuration.users", "");
-        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, threadIdGuessingAlgorithm, config,
-            partitionFactory, openRagHttpClient);
-        mailboxManager.getEventBus().register(ragListener);
+        jmapSettingsRepositoryUtils.reset(ALICE, ImmutableMap.of("ai.rag.enabled", "true"));
 
         MessageManager.AppendResult appendResult = aliceInboxMessageManager.appendMessage(
             MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
@@ -507,15 +499,25 @@ class RagListenerTest {
     }
 
     @Test
-    void reactiveEventShouldNotIndexMessageWhenDomainNameIsMissing() throws Exception {
-        config.setProperty("listener.configuration.users", "user");
-        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, threadIdGuessingAlgorithm, config,
-            partitionFactory, openRagHttpClient);
+    void reactiveEventShouldNotIndexWhenAiRagSettingIsDisabled() throws Exception {
+        jmapSettingsRepositoryUtils.reset(BOB, ImmutableMap.of("ai.rag.enabled", "false"));
         mailboxManager.getEventBus().register(ragListener);
 
-        userWithNoDomainMailBoxMessageManager.appendMessage(
-                MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
-                userWithNoDomainMailboxSession);
+        bobInboxMessageManager.appendMessage(
+            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
+            bobMailboxSession);
+
+        verify(0, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
+    }
+
+    @Test
+    void reactiveEventShouldNotIndexWhenAiRagSettingIsNotSet() throws Exception {
+        jmapSettingsRepositoryUtils.reset(BOB, ImmutableMap.of());
+        mailboxManager.getEventBus().register(ragListener);
+
+        bobInboxMessageManager.appendMessage(
+            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
+            bobMailboxSession);
 
         verify(0, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
     }
