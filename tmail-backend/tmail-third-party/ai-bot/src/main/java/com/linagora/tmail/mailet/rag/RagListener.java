@@ -85,20 +85,20 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
     private final SystemMailboxesProvider systemMailboxesProvider;
     private final ThreadIdGuessingAlgorithm threadIdGuessingAlgorithm;
     private final Optional<List<Username>> whitelist;
-    private final RagConfig ragConfig;
     private final Partition.Factory partitionFactory;
     private final OpenRagHttpClient openRagHttpClient;
 
     @Inject
-    public RagListener(MailboxManager mailboxManager, MessageIdManager messageIdManager, SystemMailboxesProvider systemMailboxesProvider, ThreadIdGuessingAlgorithm threadIdGuessingAlgorithm, HierarchicalConfiguration<ImmutableNode> config, RagConfig ragConfig) {
+    public RagListener(MailboxManager mailboxManager, MessageIdManager messageIdManager, SystemMailboxesProvider systemMailboxesProvider,
+                       ThreadIdGuessingAlgorithm threadIdGuessingAlgorithm, HierarchicalConfiguration<ImmutableNode> config,
+                       Partition.Factory partitionFactory, OpenRagHttpClient openRagHttpClient) {
         this.mailboxManager = mailboxManager;
         this.messageIdManager = messageIdManager;
         this.systemMailboxesProvider = systemMailboxesProvider;
         this.threadIdGuessingAlgorithm = threadIdGuessingAlgorithm;
         this.whitelist = parseWhitelist(config);
-        this.ragConfig = ragConfig;
-        this.partitionFactory = Partition.Factory.fromPattern(ragConfig.getPartitionPattern());
-        this.openRagHttpClient = new OpenRagHttpClient(ragConfig);
+        this.partitionFactory = partitionFactory;
+        this.openRagHttpClient = openRagHttpClient;
     }
 
     private Optional<List<Username>> parseWhitelist(HierarchicalConfiguration<ImmutableNode> config) {

@@ -64,6 +64,8 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.extension.WireMockRagServerExtension;
+import com.linagora.tmail.mailet.rag.httpclient.OpenRagHttpClient;
+import com.linagora.tmail.mailet.rag.httpclient.Partition;
 
 class RagListenerTest {
 
@@ -113,6 +115,8 @@ class RagListenerTest {
     MailboxId bobMailBoxId;
     MailboxId aliceInboxId;
     MemoryEventDeadLetters eventDeadLetters;
+    OpenRagHttpClient openRagHttpClient;
+    Partition.Factory partitionFactory;
     HierarchicalConfiguration<ImmutableNode> config;
     RagConfig ragConfig;
 
@@ -173,7 +177,10 @@ class RagListenerTest {
         configuration.addProperty("openrag.ssl.trust.all.certs", "true");
         configuration.addProperty("openrag.partition.pattern", "{localPart}.twake.{domainName}");
         ragConfig = RagConfig.from(configuration);
-        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, threadIdGuessingAlgorithm, config, ragConfig);
+        openRagHttpClient = new OpenRagHttpClient(ragConfig);
+        partitionFactory = Partition.Factory.fromPattern(ragConfig.getPartitionPattern());
+        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, threadIdGuessingAlgorithm, config,
+            partitionFactory, openRagHttpClient);
     }
 
     @Test
@@ -365,7 +372,8 @@ class RagListenerTest {
     @Test
     void reactiveEventShouldAllowAllUsersWhenWhiteListIsEmpty() throws Exception {
         config.setProperty("listener.configuration.users", "");
-        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, threadIdGuessingAlgorithm, config, ragConfig);
+        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, threadIdGuessingAlgorithm, config,
+            partitionFactory, openRagHttpClient);
         mailboxManager.getEventBus().register(ragListener);
 
         MessageManager.AppendResult appendResult = aliceInboxMessageManager.appendMessage(
@@ -501,7 +509,8 @@ class RagListenerTest {
     @Test
     void reactiveEventShouldNotIndexMessageWhenDomainNameIsMissing() throws Exception {
         config.setProperty("listener.configuration.users", "user");
-        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, threadIdGuessingAlgorithm, config, ragConfig);
+        ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, threadIdGuessingAlgorithm, config,
+            partitionFactory, openRagHttpClient);
         mailboxManager.getEventBus().register(ragListener);
 
         userWithNoDomainMailBoxMessageManager.appendMessage(

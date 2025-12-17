@@ -15,6 +15,7 @@
  *  PURPOSE. See the GNU Affero General Public License for          *
  *  more details.                                                   *
  ********************************************************************/
+
 package com.linagora.tmail.mailet.rag.httpclient;
 
 import java.io.ByteArrayInputStream;
@@ -22,6 +23,8 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 import javax.net.ssl.SSLException;
+
+import jakarta.inject.Inject;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,6 +35,7 @@ import com.linagora.tmail.mailet.rag.RagConfig;
 
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.HttpMethod;
+import io.netty.handler.codec.http.HttpResponseStatus;
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
@@ -46,17 +50,19 @@ public class OpenRagHttpClient {
     private static final String CONTENT_TYPE_HEADER = "Content-Type";
     private static final String APPLICATION_JSON = "application/json";
     private static final String CHAT_COMPLETIONS_ENDPOINT = "/v1/chat/completions";
+    private static final String RAG_DOCUMENT_ENDPOINT = "/indexer/partition/%s/file/%s";
 
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
 
+    @Inject
     public OpenRagHttpClient(RagConfig configuration) {
         this.objectMapper = new ObjectMapper().registerModule(new Jdk8Module());
         this.httpClient = buildReactorNettyHttpClient(configuration);
     }
 
     public Mono<String> addDocument(Partition partition, DocumentId documentId, String textualContent, Map<String, String> metadata) {
-        String url = String.format("/indexer/partition/%s/file/%s", partition.partitionName(), documentId.asString());
+        String url = String.format(RAG_DOCUMENT_ENDPOINT, partition.partitionName(), documentId.asString());
         return Mono.fromCallable(() -> objectMapper.writeValueAsString(metadata))
             .flatMap(metadataJson ->
                 sendFormRequest(HttpMethod.POST, url, documentId, textualContent, metadataJson)
@@ -64,6 +70,30 @@ public class OpenRagHttpClient {
                         LOGGER.debug("Document already exists. Retrying with PUT.");
                         return sendFormRequest(HttpMethod.PUT, url, documentId, textualContent, metadataJson);
                     }));
+    }
+
+    public Mono<Void> deleteDocument(Partition partition, DocumentId documentId) {
+        return httpClient
+            .delete()
+            .uri(String.format(RAG_DOCUMENT_ENDPOINT, partition.partitionName(), documentId.asString()))
+            .responseSingle((response, content) -> {
+                int statusCode = response.status().code();
+
+                if (statusCode == HttpResponseStatus.NO_CONTENT.code()) {
+                    return content.then()
+                        .doOnSuccess(any -> LOGGER.debug("Document {} is deleted from RAG context", documentId.asString()));
+                }
+
+                if (statusCode == HttpResponseStatus.NOT_FOUND.code()) {
+                    return content.then()
+                        .doOnSuccess(any -> LOGGER.debug("Document {} not found in partition {} while deleting from RAG context", documentId.asString(), partition.partitionName()));
+                }
+
+                return content.asString(StandardCharsets.UTF_8)
+                    .defaultIfEmpty("")
+                    .flatMap(body -> Mono.error(() -> new OpenRagUnexpectedException(
+                        String.format("Failed to DELETE document %s: status %d and body %s", documentId.asString(), statusCode, body))));
+            });
     }
 
     private Mono<String> sendFormRequest(HttpMethod method, String url, DocumentId documentId, String textualContent, String metadataJson) {
