@@ -25,6 +25,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
+import com.google.common.collect.ImmutableMap;
 import jakarta.mail.Flags;
 import jakarta.mail.internet.AddressException;
 
@@ -47,6 +48,7 @@ import org.apache.james.mailbox.MessageIdManager;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
 import org.apache.james.mailbox.model.FetchGroup;
+import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.MessageResult;
@@ -87,6 +89,7 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
     private StubModel model;
     private MailboxSession aliceSession;
     private MessageManager aliceInbox;
+    private MessageManager aliceSpam;
     private MessageManager aliceCustomMailbox;
     private HierarchicalConfiguration<ImmutableNode> listenerConfig;
     private StoreMailboxManager mailboxManager;
@@ -123,10 +126,12 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
 
         aliceSession = mailboxManager.createSystemSession(ALICE);
         MailboxPath aliceInboxPath = MailboxPath.inbox(ALICE);
-        mailboxManager.createMailbox(aliceInboxPath, aliceSession).get();
+        mailboxManager.createMailbox(aliceInboxPath, aliceSession);
         aliceInbox = mailboxManager.getMailbox(aliceInboxPath, aliceSession);
-        mailboxManager.createMailbox(MailboxPath.forUser(ALICE, "customMailbox"), aliceSession).get();
-        aliceCustomMailbox = mailboxManager.getMailbox(MailboxPath.forUser(ALICE, "customMailbox"), aliceSession);
+        MailboxPath spamMailboxPath = MailboxPath.forUser(ALICE, "Spam");
+        mailboxManager.createMailbox(spamMailboxPath, aliceSession);
+        aliceSpam = mailboxManager.getMailbox(spamMailboxPath, aliceSession);
+        aliceCustomMailbox = mailboxManager.getMailbox(spamMailboxPath, aliceSession);
 
         listenerConfig = new BaseHierarchicalConfiguration();
         identityRepository = setUpIdentityRepository();
@@ -143,6 +148,8 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
             jmapSettingsRepository,
             metricFactory,
             listenerConfig);
+
+        jmapSettingsRepositoryUtils().reset(ALICE, ImmutableMap.of("ai.needs-action.enabled", "true"));
     }
 
     public static IdentityRepository setUpIdentityRepository() throws AddressException {
@@ -182,6 +189,11 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
     @Override
     public MessageManager aliceInbox() {
         return aliceInbox;
+    }
+
+    @Override
+    public MessageManager aliceSpam() {
+        return aliceSpam;
     }
 
     @Override

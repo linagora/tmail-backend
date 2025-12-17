@@ -18,6 +18,8 @@
 
 package com.linagora.tmail.listener.rag;
 
+import java.io.IOException;
+import java.io.InputStream;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -39,11 +41,10 @@ import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageIdManager;
 import org.apache.james.mailbox.MessageManager;
-import org.apache.james.mailbox.Role;
 import org.apache.james.mailbox.SystemMailboxesProvider;
 import org.apache.james.mailbox.events.MailboxEvents;
+import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.model.FetchGroup;
-import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MessageResult;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.mime4j.codec.DecodeMonitor;
@@ -62,6 +63,8 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.linagora.tmail.james.jmap.settings.JmapSettings;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
+import com.linagora.tmail.listener.rag.filter.MessageFilter;
+import com.linagora.tmail.listener.rag.filter.MessageFilterParser;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -73,6 +76,20 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class LlmMailPrioritizationClassifierListener implements EventListener.ReactiveGroupEventListener {
+    record ParsedMessage(MessageResult messageResult, Message parsed) {
+        static ParsedMessage from(MessageResult messageResult) {
+            try (InputStream inputStream = messageResult.getFullContent().getInputStream()) {
+                DefaultMessageBuilder messageBuilder = new DefaultMessageBuilder();
+                messageBuilder.setMimeEntityConfig(MimeConfig.PERMISSIVE);
+                messageBuilder.setDecodeMonitor(DecodeMonitor.SILENT);
+                Message mimeMessage = messageBuilder.parseMessage(inputStream);
+                return new ParsedMessage(messageResult, mimeMessage);
+            } catch (IOException | MailboxException e) {
+                throw new RuntimeException(e);
+            }
+        }
+    }
+
     public static class LlmMailPrioritizationClassifierGroup extends Group {
 
     }
@@ -107,7 +124,6 @@ public class LlmMailPrioritizationClassifierListener implements EventListener.Re
 
     private final MailboxManager mailboxManager;
     private final MessageIdManager messageIdManager;
-    private final SystemMailboxesProvider systemMailboxesProvider;
     private final StreamingChatLanguageModel chatLanguageModel;
     private final HtmlTextExtractor htmlTextExtractor;
     private final MetricFactory metricFactory;
@@ -115,6 +131,7 @@ public class LlmMailPrioritizationClassifierListener implements EventListener.Re
     private final JmapSettingsRepository jmapSettingsRepository;
     private final String systemPrompt;
     private final int maxBodyLength;
+    private final MessageFilter messageFilter;
 
     @Inject
     public LlmMailPrioritizationClassifierListener(MailboxManager mailboxManager,
@@ -128,7 +145,6 @@ public class LlmMailPrioritizationClassifierListener implements EventListener.Re
                                                    HierarchicalConfiguration<ImmutableNode> configuration) {
         this.mailboxManager = mailboxManager;
         this.messageIdManager = messageIdManager;
-        this.systemMailboxesProvider = systemMailboxesProvider;
         this.chatLanguageModel = chatLanguageModel;
         this.htmlTextExtractor = htmlTextExtractor;
         this.identityRepository = identityRepository;
@@ -140,6 +156,8 @@ public class LlmMailPrioritizationClassifierListener implements EventListener.Re
             .orElse(DEFAULT_SYSTEM_PROMPT);
         this.maxBodyLength = configuration.getInt("listener.configuration." + MAX_BODY_LENGTH_PARAM, DEFAULT_MAX_BODY_LENGTH);
         Preconditions.checkArgument(maxBodyLength > 0, "'maxBodyLength' must be strictly positive");
+
+        this.messageFilter = new MessageFilterParser(systemMailboxesProvider).parse(configuration);
     }
 
     @Override
@@ -155,19 +173,10 @@ public class LlmMailPrioritizationClassifierListener implements EventListener.Re
     @Override
     public Publisher<Void> reactiveEvent(Event event) {
         if (event instanceof MailboxEvents.Added added && added.isDelivery()) {
-            return isAppendedToInbox(added)
-                .filter(Boolean::booleanValue)
-                .flatMap(matched -> processAddedEvent(added))
-                .then();
+            return processAddedEvent(added);
         }
 
         return Mono.empty();
-    }
-
-    private Mono<Boolean> isAppendedToInbox(MailboxEvents.Added addedEvent) {
-        return Flux.from(systemMailboxesProvider.getMailboxByRole(Role.INBOX, addedEvent.getUsername()))
-            .map(MessageManager::getId)
-            .any(inboxId -> inboxId.equals(addedEvent.getMailboxId()));
     }
 
     private Mono<Void> processAddedEvent(MailboxEvents.Added addedEvent) {
@@ -175,71 +184,60 @@ public class LlmMailPrioritizationClassifierListener implements EventListener.Re
         MailboxSession session = mailboxManager.createSystemSession(username);
 
         return aiNeedActionsSettingEnabled(username)
-            .flatMap(needsActionEnabled -> classifyMailsPrioritization(addedEvent, username, session));
+            .flatMap(any -> classifyMailsPrioritization(addedEvent, session));
     }
 
-    private Mono<Void> classifyMailsPrioritization(MailboxEvents.Added addedEvent, Username username, MailboxSession session) {
-        return getUserDisplayName(username)
-            .flatMap(userDisplayName -> classifyMails(addedEvent, username, session, userDisplayName));
+    private Mono<Void> classifyMailsPrioritization(MailboxEvents.Added addedEvent, MailboxSession session) {
+        return getUserDisplayName(session.getUser())
+            .flatMap(userDisplayName -> classifyMails(addedEvent, userDisplayName, session));
     }
 
-    private Mono<Void> classifyMails(MailboxEvents.Added addedEvent, Username username, MailboxSession session, String userDisplayName) {
-        return getMessages(addedEvent, session)
-            .flatMap(messageResult -> classifyMail(addedEvent, username, session, userDisplayName, messageResult), ReactorUtils.LOW_CONCURRENCY)
+    private Mono<Void> classifyMails(MailboxEvents.Added addedEvent, String userDisplayName, MailboxSession session) {
+        return Flux.from(messageIdManager.getMessagesReactive(addedEvent.getMessageIds(), FetchGroup.FULL_CONTENT, session))
+            .map(ParsedMessage::from)
+            .filterWhen(message -> messageFilter.matches(new MessageFilter.FilterContext(addedEvent, message.messageResult(), message.parsed(), session)))
+            .flatMap(messageResult -> classifyMail(messageResult, userDisplayName, session), ReactorUtils.LOW_CONCURRENCY)
             .doFinally(signal -> mailboxManager.endProcessingRequest(session))
             .then();
     }
 
-    private Flux<MessageResult> getMessages(MailboxEvents.Added addedEvent, MailboxSession session) {
-        return Flux.from(messageIdManager.getMessagesReactive(addedEvent.getMessageIds(), FetchGroup.FULL_CONTENT, session));
-    }
-
-    private Mono<Void> classifyMail(MailboxEvents.Added addedEvent, Username username, MailboxSession session, String userDisplayName, MessageResult messageResult) {
-        return buildUserPrompt(messageResult, username, userDisplayName)
-            .flatMap(userPrompt -> callLlm(addedEvent, messageResult, userPrompt))
-            .map(this::isActionRequired)
-            .flatMap(actionRequired -> actionRequired ? addNeedsActionKeyword(messageResult, addedEvent.getMailboxId(), session) : Mono.empty());
-    }
-
-    private Mono<String> callLlm(MailboxEvents.Added addedEvent, MessageResult messageResult, String userPrompt) {
-        return Mono.from(metricFactory.decoratePublisherWithTimerMetric("llm-mail-prioritization-classifier", callLlm(systemPrompt, userPrompt)))
+    private Mono<Void> classifyMail(ParsedMessage message, String userDisplayName, MailboxSession session) {
+        return buildUserPrompt(message, session.getUser(), userDisplayName)
+            .flatMap(userPrompt -> Mono.from(metricFactory.decoratePublisherWithTimerMetric("llm-mail-prioritization-classifier", callLlm(systemPrompt, userPrompt))))
+            .filter(this::isActionRequired)
+            .flatMap(any -> addNeedsActionKeyword(message.messageResult(), session))
             .doOnError(e -> LOGGER.error("LLM call failed for messageId {} in mailboxId {} of user {}",
-                messageResult.getMessageId().serialize(), addedEvent.getMailboxId().serialize(), addedEvent.getUsername().asString(), e));
+                message.messageResult().getMessageId().serialize(), message.messageResult().getMailboxId().serialize(), session.getUser(), e));
     }
 
     private Mono<Boolean> aiNeedActionsSettingEnabled(Username username) {
         return Mono.from(jmapSettingsRepository.get(username))
             .map(JmapSettings::aiNeedsActionEnable)
-            .defaultIfEmpty(JmapSettings.AI_NEEDS_ACTION_ENABLE_DEFAULT_VALUE())
+            .defaultIfEmpty(JmapSettings.AI_NEEDS_ACTION_DISABLE_DEFAULT_VALUE())
             .filter(Boolean::booleanValue);
     }
 
-    private Mono<Void> addNeedsActionKeyword(MessageResult messageResult, MailboxId mailboxId, MailboxSession session) {
-        return Mono.from(messageIdManager.setFlagsReactive(new Flags(NEEDS_ACTION), MessageManager.FlagsUpdateMode.ADD, messageResult.getMessageId(), List.of(mailboxId), session))
-            .doOnSuccess(ignored -> LOGGER.info("Added '{}' keyword to message {} in mailbox {} of user {}", NEEDS_ACTION, messageResult.getMessageId().serialize(), mailboxId.serialize(), session.getUser().asString()))
-            .doOnError(e -> LOGGER.error("Failed adding '{}' keyword to message {} in mailbox {} of user {}", NEEDS_ACTION, messageResult.getMessageId().serialize(), mailboxId.serialize(), session.getUser().asString(), e));
+    private Mono<Void> addNeedsActionKeyword(MessageResult messageResult, MailboxSession session) {
+        return Mono.from(messageIdManager.setFlagsReactive(new Flags(NEEDS_ACTION), MessageManager.FlagsUpdateMode.ADD, messageResult.getMessageId(), List.of(messageResult.getMailboxId()), session))
+            .doOnSuccess(ignored -> LOGGER.info("Added '{}' keyword to message {} in mailbox {} of user {}", NEEDS_ACTION, messageResult.getMessageId().serialize(), messageResult.getMailboxId().serialize(), session.getUser().asString()))
+            .doOnError(e -> LOGGER.error("Failed adding '{}' keyword to message {} in mailbox {} of user {}", NEEDS_ACTION, messageResult.getMessageId().serialize(), messageResult.getMailboxId().serialize(), session.getUser().asString(), e));
     }
 
-    private Mono<String> buildUserPrompt(MessageResult messageResult, Username username, String userDisplayName) {
+    private Mono<String> buildUserPrompt(ParsedMessage message, Username username, String userDisplayName) {
         try {
-            DefaultMessageBuilder messageBuilder = new DefaultMessageBuilder();
-            messageBuilder.setMimeEntityConfig(MimeConfig.PERMISSIVE);
-            messageBuilder.setDecodeMonitor(DecodeMonitor.SILENT);
-            Message mimeMessage = messageBuilder.parseMessage(messageResult.getFullContent().getInputStream());
-
-            String from = Optional.ofNullable(mimeMessage.getFrom())
+            String from = Optional.ofNullable(message.parsed().getFrom())
                 .map(mailboxList -> mailboxList.stream()
                     .map(this::asString)
                     .collect(Collectors.joining(", ")))
                 .orElse("");
-            String to = Optional.ofNullable(mimeMessage.getTo())
+            String to = Optional.ofNullable(message.parsed().getTo())
                 .map(addressList -> addressList.flatten()
                     .stream()
                     .map(this::asString)
                     .collect(Collectors.joining(", ")))
                 .orElse("");
-            String subject = Strings.nullToEmpty(mimeMessage.getSubject());
-            MessageContentExtractor.MessageContent messageContent = new MessageContentExtractor().extract(mimeMessage);
+            String subject = Strings.nullToEmpty(message.parsed().getSubject());
+            MessageContentExtractor.MessageContent messageContent = new MessageContentExtractor().extract(message.parsed());
             Optional<String> maybeBody = messageContent.extractMainTextContent(htmlTextExtractor);
 
             return Mono.justOrEmpty(maybeBody)

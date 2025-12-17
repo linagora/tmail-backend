@@ -26,6 +26,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
+import com.google.common.collect.ImmutableMap;
 import jakarta.mail.Flags;
 
 import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
@@ -69,6 +70,7 @@ public class LinagoraLlmMailPrioritizationClassifierListenerTest implements LlmM
     private MessageIdManager messageIdManager;
     private MailboxSession aliceSession;
     private MessageManager aliceInbox;
+    private MessageManager aliceSpam;
     private MessageManager aliceCustomMailbox;
     private HierarchicalConfiguration<ImmutableNode> listenerConfig;
     private StoreMailboxManager mailboxManager;
@@ -105,9 +107,12 @@ public class LinagoraLlmMailPrioritizationClassifierListenerTest implements LlmM
 
         aliceSession = mailboxManager.createSystemSession(ALICE);
         MailboxPath aliceInboxPath = MailboxPath.inbox(ALICE);
-        mailboxManager.createMailbox(aliceInboxPath, aliceSession).get();
+        MailboxPath spamMailboxPath = MailboxPath.forUser(ALICE, "Spam");
+        mailboxManager.createMailbox(aliceInboxPath, aliceSession);
+        mailboxManager.createMailbox(spamMailboxPath, aliceSession);
         aliceInbox = mailboxManager.getMailbox(aliceInboxPath, aliceSession);
-        mailboxManager.createMailbox(MailboxPath.forUser(ALICE, "customMailbox"), aliceSession).get();
+        aliceSpam = mailboxManager.getMailbox(spamMailboxPath, aliceSession);
+        mailboxManager.createMailbox(MailboxPath.forUser(ALICE, "customMailbox"), aliceSession);
         aliceCustomMailbox = mailboxManager.getMailbox(MailboxPath.forUser(ALICE, "customMailbox"), aliceSession);
 
         listenerConfig = new BaseHierarchicalConfiguration();
@@ -133,11 +138,18 @@ public class LinagoraLlmMailPrioritizationClassifierListenerTest implements LlmM
             jmapSettingsRepository,
             metricFactory,
             listenerConfig);
+
+        jmapSettingsRepositoryUtils().reset(ALICE, ImmutableMap.of("ai.needs-action.enabled", "true"));
     }
 
     @Override
     public MessageManager aliceInbox() {
         return aliceInbox;
+    }
+
+    @Override
+    public MessageManager aliceSpam() {
+        return aliceSpam;
     }
 
     @Override
