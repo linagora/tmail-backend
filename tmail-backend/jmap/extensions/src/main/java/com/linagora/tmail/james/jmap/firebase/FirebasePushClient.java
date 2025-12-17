@@ -25,6 +25,7 @@ import java.util.concurrent.ExecutionException;
 
 import jakarta.inject.Inject;
 
+import org.apache.james.util.ReactorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -77,7 +78,7 @@ public class FirebasePushClient {
 
     public Mono<Void> push(FirebasePushRequest pushRequest) {
         return sendReactive(createFcmMessage(pushRequest), !DRY_RUN)
-            .doOnError(throwable -> LOGGER.warn("Error when pushing FCM notification", throwable));
+            .doOnEach(ReactorUtils.logOnError(throwable -> LOGGER.warn("Error when pushing FCM notification", throwable)));
     }
 
     public Mono<Boolean> validateToken(FirebaseToken token) {
