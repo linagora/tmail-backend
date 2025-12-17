@@ -19,6 +19,7 @@
 package com.linagora.tmail.james.jmap.firebase
 
 import java.time.Clock
+
 import com.google.firebase.messaging.{FirebaseMessagingException, MessagingErrorCode}
 import com.linagora.tmail.james.jmap.firebase.FirebasePushListener.{GROUP, LOGGER}
 import com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionHelper.isNotOutdatedSubscription
@@ -86,6 +87,7 @@ class FirebasePushListener @Inject()(subscriptionRepository: FirebaseSubscriptio
       .`then`(SMono.empty)
       .asJava()
       .contextWrite(ReactorUtils.context("fcm", MDCBuilder.create().addToContext("user", event.username.asString())))
+      .`then`()
 
   private def noPush: SMono[Void] = SMono.empty
 
