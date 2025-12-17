@@ -20,6 +20,7 @@ package com.linagora.tmail.mailet.rag;
 
 import jakarta.inject.Inject;
 
+import org.apache.james.core.Username;
 import org.apache.james.events.Event;
 import org.apache.james.events.EventListener;
 import org.apache.james.events.Group;
@@ -28,6 +29,8 @@ import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.linagora.tmail.james.jmap.settings.JmapSettings;
+import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.mailet.rag.httpclient.DocumentId;
 import com.linagora.tmail.mailet.rag.httpclient.OpenRagHttpClient;
 import com.linagora.tmail.mailet.rag.httpclient.Partition;
@@ -42,11 +45,13 @@ public class RagDeletionListener implements EventListener.ReactiveGroupEventList
     private static final Group RAG_DELETION_LISTENER_GROUP = new RagDeletionListenerGroup();
     private static final Logger LOGGER = LoggerFactory.getLogger(RagDeletionListener.class);
 
+    private final JmapSettingsRepository jmapSettingsRepository;
     private final Partition.Factory partitionFactory;
     private final OpenRagHttpClient openRagHttpClient;
 
     @Inject
-    public RagDeletionListener(Partition.Factory partitionFactory, OpenRagHttpClient openRagHttpClient) {
+    public RagDeletionListener(JmapSettingsRepository jmapSettingsRepository, Partition.Factory partitionFactory, OpenRagHttpClient openRagHttpClient) {
+        this.jmapSettingsRepository = jmapSettingsRepository;
         this.partitionFactory = partitionFactory;
         this.openRagHttpClient = openRagHttpClient;
     }
@@ -64,10 +69,20 @@ public class RagDeletionListener implements EventListener.ReactiveGroupEventList
     @Override
     public Publisher<Void> reactiveEvent(Event event) {
         if (event instanceof MailboxEvents.MessageContentDeletionEvent contentDeletionEvent) {
-            return deleteRagDocument(contentDeletionEvent);
+            return Mono.just(contentDeletionEvent)
+                .map(MailboxEvents.MessageContentDeletionEvent::getUsername)
+                .filterWhen(this::aiRagSettingEnabled)
+                .flatMap(any -> deleteRagDocument(contentDeletionEvent));
         }
 
         return Mono.empty();
+    }
+
+    private Mono<Boolean> aiRagSettingEnabled(Username username) {
+        return Mono.from(jmapSettingsRepository.get(username))
+            .map(JmapSettings::aiRagEnable)
+            .defaultIfEmpty(JmapSettings.AI_RAG_DISABLE_DEFAULT_VALUE())
+            .filter(Boolean::booleanValue);
     }
 
     private Mono<Void> deleteRagDocument(MailboxEvents.MessageContentDeletionEvent contentDeletionEvent) {

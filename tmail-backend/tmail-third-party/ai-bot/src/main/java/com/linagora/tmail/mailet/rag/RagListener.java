@@ -29,8 +29,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import org.apache.commons.configuration2.HierarchicalConfiguration;
-import org.apache.commons.configuration2.tree.ImmutableNode;
 import org.apache.james.core.Username;
 import org.apache.james.events.Event;
 import org.apache.james.events.EventListener;
@@ -63,6 +61,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.inject.Inject;
+import com.linagora.tmail.james.jmap.settings.JmapSettings;
+import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.mailet.rag.httpclient.DocumentId;
 import com.linagora.tmail.mailet.rag.httpclient.OpenRagHttpClient;
 import com.linagora.tmail.mailet.rag.httpclient.Partition;
@@ -70,7 +70,6 @@ import com.linagora.tmail.mailet.rag.httpclient.Partition;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
-
 
 public class RagListener implements EventListener.ReactiveGroupEventListener {
     public static class RagListenerGroup extends Group {
@@ -84,38 +83,21 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
     private final MessageIdManager messageIdManager;
     private final SystemMailboxesProvider systemMailboxesProvider;
     private final ThreadIdGuessingAlgorithm threadIdGuessingAlgorithm;
-    private final Optional<List<Username>> whitelist;
+    private final JmapSettingsRepository jmapSettingsRepository;
     private final Partition.Factory partitionFactory;
     private final OpenRagHttpClient openRagHttpClient;
 
     @Inject
     public RagListener(MailboxManager mailboxManager, MessageIdManager messageIdManager, SystemMailboxesProvider systemMailboxesProvider,
-                       ThreadIdGuessingAlgorithm threadIdGuessingAlgorithm, HierarchicalConfiguration<ImmutableNode> config,
+                       ThreadIdGuessingAlgorithm threadIdGuessingAlgorithm, JmapSettingsRepository jmapSettingsRepository,
                        Partition.Factory partitionFactory, OpenRagHttpClient openRagHttpClient) {
         this.mailboxManager = mailboxManager;
         this.messageIdManager = messageIdManager;
         this.systemMailboxesProvider = systemMailboxesProvider;
         this.threadIdGuessingAlgorithm = threadIdGuessingAlgorithm;
-        this.whitelist = parseWhitelist(config);
+        this.jmapSettingsRepository = jmapSettingsRepository;
         this.partitionFactory = partitionFactory;
         this.openRagHttpClient = openRagHttpClient;
-    }
-
-    private Optional<List<Username>> parseWhitelist(HierarchicalConfiguration<ImmutableNode> config) {
-        String users = config.getString("listener.configuration.users", null);
-        if (users == null || users.trim().isEmpty()) {
-            return Optional.empty();
-        }
-        return Optional.of(List.of(users.split(","))
-            .stream()
-            .map(String::trim)
-            .filter(user -> !user.isEmpty())
-            .map(Username::of)
-            .collect(Collectors.toList()));
-    }
-
-    public Optional<List<Username>> getWhitelist() {
-        return whitelist;
     }
 
     @Override
@@ -130,35 +112,39 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
 
     @Override
     public Publisher<Void> reactiveEvent(Event event) {
-        if (isUserAllowed(event.getUsername())) {
-            if (event instanceof MailboxEvents.Added addedEvent && addedEvent.isAppended()) {
-                return Flux.concat(
-                        systemMailboxesProvider.getMailboxByRole(Role.SPAM, addedEvent.getUsername()),
-                        systemMailboxesProvider.getMailboxByRole(Role.TRASH, addedEvent.getUsername()))
-                    .map(MessageManager::getId)
-                    .any(mailboxId -> mailboxId.equals(addedEvent.getMailboxId()))
-                    .flatMap(isSpamOrTrash -> {
-                        if (isSpamOrTrash) {
-                            return Mono.empty();
-                        }
-                        LOGGER.info("RAG Listener triggered for mailbox: {}", addedEvent.getMailboxId());
-                        MailboxSession session = mailboxManager.createSystemSession(addedEvent.getUsername());
-                        return Mono.from(messageIdManager.getMessagesReactive(addedEvent.getMessageIds(), FetchGroup.FULL_CONTENT, session))
-                            .flatMap(messageResult ->
-                                addDocumentToRagContext(addedEvent, messageResult, session))
-                            .then();
-                    });
-            }
-        } else {
-            LOGGER.info("RAG Listener skipped for user: {}", event.getUsername().getLocalPart());
+        if (event instanceof MailboxEvents.Added addedEvent) {
+            return handleAddedEvent(addedEvent);
         }
         return Mono.empty();
+    }
+
+    private Mono<Void> handleAddedEvent(MailboxEvents.Added addedEvent) {
+        return Mono.just(addedEvent)
+            .filter(MailboxEvents.Added::isAppended)
+            .filterWhen(e -> aiRagSettingEnabled(e.getUsername()))
+            .filterWhen(this::isNotInRestrictedMailbox)
+            .flatMap(any -> {
+                LOGGER.info("RAG Listener triggered for mailbox: {}", addedEvent.getMailboxId());
+                MailboxSession session = mailboxManager.createSystemSession(addedEvent.getUsername());
+                return Mono.from(messageIdManager.getMessagesReactive(addedEvent.getMessageIds(), FetchGroup.FULL_CONTENT, session))
+                    .flatMap(messageResult -> addDocumentToRagContext(addedEvent, messageResult, session))
+                    .then();
+            });
+    }
+
+    private Mono<Boolean> isNotInRestrictedMailbox(MailboxEvents.Added addedEvent) {
+        return Flux.concat(
+                systemMailboxesProvider.getMailboxByRole(Role.SPAM, addedEvent.getUsername()),
+                systemMailboxesProvider.getMailboxByRole(Role.TRASH, addedEvent.getUsername()))
+            .map(MessageManager::getId)
+            .collectList()
+            .map(mailboxIds -> !mailboxIds.contains(addedEvent.getMailboxId()));
     }
 
     private Mono<String> addDocumentToRagContext(MailboxEvents.Added addedEvent, MessageResult messageResult, MailboxSession session) {
         return asRagLearnableContent(messageResult)
             .doOnSuccess(text -> LOGGER.debug("RAG Listener successfully processed mailContent ***** \n{}\n *****", new DocumentId(messageResult.getMessageId())))
-            .flatMap(content -> computeMetaData(addedEvent, messageResult, session)
+            .flatMap(content -> computeMetaData(messageResult, session)
                 .flatMap(metaData ->
                     openRagHttpClient.addDocument(
                     partitionFactory.forUsername(addedEvent.getUsername()),
@@ -167,7 +153,7 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
                     metaData)));
     }
 
-    private Mono<Map<String, String>> computeMetaData(MailboxEvents.Added addedEvent, MessageResult messageResult, MailboxSession session) {
+    private Mono<Map<String, String>> computeMetaData(MessageResult messageResult, MailboxSession session) {
         try {
             Message mimeMessage = parseMessage(messageResult.getFullContent().getInputStream());
             String text = new MessageContentExtractor()
@@ -281,16 +267,18 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
         return defaultMessageBuilder.parseMessage(inputStream);
     }
 
-    public boolean isUserAllowed(Username userEmail) {
-        return this.whitelist.isEmpty() || this.whitelist.get().contains(userEmail);
+    private Mono<Boolean> aiRagSettingEnabled(Username username) {
+        return Mono.from(jmapSettingsRepository.get(username))
+            .map(JmapSettings::aiRagEnable)
+            .defaultIfEmpty(JmapSettings.AI_RAG_DISABLE_DEFAULT_VALUE())
+            .filter(Boolean::booleanValue);
     }
 
     private List<String> findAttachmentNames(Entity entity) {
         List<String> attachmentNames = new ArrayList<>();
         Body body = entity.getBody();
 
-        if (body instanceof Multipart) {
-            Multipart multipart = (Multipart) body;
+        if (body instanceof Multipart multipart) {
             for (Entity part : multipart.getBodyParts()) {
                 attachmentNames.addAll(findAttachmentNames(part));
             }

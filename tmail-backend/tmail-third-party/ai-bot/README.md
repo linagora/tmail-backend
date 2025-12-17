@@ -157,9 +157,6 @@ To enable RAG, you need to mount a configuration file called listeners.xml, whic
 <listeners>
     <listener>
         <class>com.linagora.tmail.mailet.rag.RagListener</class>
-        <configuration>
-            <users>btellier@linagora.com,ptranvan@linagora.com</users>
-        </configuration>
     </listener>
 </listeners>
 ```
@@ -180,11 +177,22 @@ openrag.partition.pattern={localPart}.twake.{domainName}
 * `openrag.ssl.trust.all.certs`: Bypass OpenRAG ssl certificate validation or not. Optional, defaults to true.
 * `openrag.partition.pattern`: Partition pattern for OpenRAG listener. It must contain `{localPart}` and `{domainName}`. Optional, defaults to `{localPart}.twake.{domainName}`.
 
-The RagListener is responsible for processing mailbox events. It is designed to listen for messages being added to a mailbox, at which point it extracts the message content and sends it to the RAG database for indexing and future retrieval. It also listens for message deletion events to remove the corresponding content from the RAG database.You can specify a whitelist of users authorized to use the RAG feature in the <users> tag.
+The RagListener is responsible for processing mailbox events. It is designed to listen for messages being added to a mailbox, at which point it extracts the message content and sends it to the RAG database for indexing and future retrieval. It also listens for message deletion events to remove the corresponding content from the RAG database.
+
 The RagListener will process the text content of new incoming emails and update the RAG database accordingly.
 
+#### User Settings
+
+Users can enable or disable the RAG feature through JMAP settings:
+
+- **Setting Key**: `ai.rag.enabled`
+- **Values**: `true` (enabled) or `false` (disabled)
+- **Default**: `false` (disabled by default to collect explicit user consent)
+
+When disabled, the listener will not process any emails for that user.
+
 Older received emails are not pushed to the database for now.
-This Rag functionality is applied to all user by default unless you specify a whitelist of users in the `<users>` tag in th listener.xml configuration file. If you want to restrict the RAG functionality to specific users, you can list their email addresses separated by commas.
+
 To enable this functionality, add the following mount to your Docker command:
 ```bash
       --mount type=bind,source="$PWD/sample_conf/listener.xml",target="/root/conf/listeners.xml" \
