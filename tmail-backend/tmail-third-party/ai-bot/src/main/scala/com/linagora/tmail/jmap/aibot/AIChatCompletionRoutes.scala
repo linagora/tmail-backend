@@ -21,10 +21,9 @@ package com.linagora.tmail.jmap.aibot
 import java.nio.charset.StandardCharsets
 import java.util.stream
 import java.util.stream.Stream
-
 import com.linagora.tmail.jmap.aibot.AIChatCompletionRoutes.LOGGER
 import com.linagora.tmail.mailet.rag.RagConfig
-import com.linagora.tmail.mailet.rag.httpclient.OpenRagHttpClient
+import com.linagora.tmail.mailet.rag.httpclient.{ChatCompletionResult, OpenRagHttpClient}
 import io.netty.handler.codec.http.HttpHeaderNames.{CONTENT_LENGTH, CONTENT_TYPE}
 import io.netty.handler.codec.http.HttpMethod
 import io.netty.handler.codec.http.HttpResponseStatus.{INTERNAL_SERVER_ERROR, UNAUTHORIZED}
@@ -81,11 +80,17 @@ class AIChatCompletionRoutes @Inject()(@Named(InjectionKeys.RFC_8621) val authen
         .aggregate()
         .asByteArray())
       .flatMap(input => SMono.fromPublisher(openRagHttpClient.proxyChatCompletions(input)))
-      .flatMap(result => SMono.fromPublisher(response.status(result.status())
-            .headers(result.headers())
-            .sendByteArray(SMono.just(result.body()))
-          .`then`())
+      .flatMap(result => sendResponse(response, result)
         .`then`())
+
+  private def sendResponse(response: HttpServerResponse, chatCompletionResult: ChatCompletionResult): SMono[Void] = {
+    val result = response.status(chatCompletionResult.status())
+
+    chatCompletionResult.headers().entries().forEach(header => result.addHeader(header.getKey, header.getValue))
+
+    SMono.fromPublisher(result.sendByteArray(SMono.just(chatCompletionResult.body()))
+      .`then`())
+  }
 
   private def respondDetails(httpServerResponse: HttpServerResponse, details: ProblemDetails): SMono[Unit] =
     SMono.fromCallable(() => ResponseSerializer.serialize(details))
