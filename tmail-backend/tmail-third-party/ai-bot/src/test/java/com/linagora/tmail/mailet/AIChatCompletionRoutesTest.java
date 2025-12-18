@@ -49,7 +49,7 @@ import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 import io.restassured.specification.RequestSpecification;
 
-public class AIChatCompletionRoutesTest {
+class AIChatCompletionRoutesTest {
     private static final String JMAP_CHAT_COMPLETIONS_ENDPOINT = "/ai/v1/chat/completions";
 
     @RegisterExtension
@@ -117,6 +117,7 @@ public class AIChatCompletionRoutesTest {
             .post()
         .then()
             .statusCode(SC_OK)
+            .header("Access-Control-Allow-Origin", "*")
             .contentType("application/json")
             .extract()
             .body()
