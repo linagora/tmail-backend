@@ -24,6 +24,7 @@ import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
@@ -102,7 +103,8 @@ public class RagDeletionListenerTest {
             123L,
             Instant.now(),
             false,
-            "headerBlobId",
+            Optional.of("headerBlobId"),
+            Optional.empty(),
             "bodyBlobId");
 
         eventBus.dispatch(messageContentDeletionEvent, Set.of()).block();
@@ -127,7 +129,8 @@ public class RagDeletionListenerTest {
             123L,
             Instant.now(),
             false,
-            "headerBlobId",
+            Optional.of("headerBlobId"),
+            Optional.empty(),
             "bodyBlobId");
 
         eventBus.dispatch(messageContentDeletionEvent, Set.of()).block();
@@ -153,7 +156,8 @@ public class RagDeletionListenerTest {
             123L,
             Instant.now(),
             false,
-            "headerBlobId",
+            Optional.of("headerBlobId"),
+            Optional.empty(),
             "bodyBlobId");
 
         eventBus.dispatch(messageContentDeletionEvent, Set.of()).block();

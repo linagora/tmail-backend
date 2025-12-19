@@ -73,6 +73,7 @@ import org.apache.james.modules.mailbox.OpenSearchDisabledModule;
 import org.apache.james.modules.mailbox.OpenSearchMailboxModule;
 import org.apache.james.modules.mailbox.PostgresDeletedMessageVaultModule;
 import org.apache.james.modules.mailbox.PostgresMailboxModule;
+import org.apache.james.modules.mailbox.PostgresMemoryContentDeletionEventBusModule;
 import org.apache.james.modules.mailbox.RLSSupportPostgresMailboxModule;
 import org.apache.james.modules.mailbox.TikaMailboxModule;
 import org.apache.james.modules.plugins.QuotaMailingModule;
@@ -408,7 +409,8 @@ public class PostgresTmailServer {
     public static Module chooseQueueModules(PostgresTmailConfiguration configuration) {
         return switch (configuration.eventBusImpl()) {
             case IN_MEMORY -> Modules.combine(new DefaultEventModule(),
-                new ActiveMQQueueModule());
+                new ActiveMQQueueModule(),
+                new PostgresMemoryContentDeletionEventBusModule());
             case RABBITMQ, RABBITMQ_AND_REDIS -> Modules.combine(new RabbitMQModule(),
                 new RabbitMQMailQueueModule(),
                 new FakeMailQueueViewModule(),
