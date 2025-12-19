@@ -65,7 +65,6 @@ import org.apache.james.jmap.change.JmapEventSerializer;
 import org.apache.james.jmap.pushsubscription.PushListener;
 import org.apache.james.mailbox.events.MailboxIdRegistrationKey;
 import org.apache.james.metrics.api.MetricFactory;
-import org.apache.james.modules.event.ContentDeletionEventBusModule;
 import org.apache.james.util.ReactorUtils;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
@@ -319,10 +318,6 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
             .init(() -> {
                 instance.start();
                 contentDeletionListeners.forEach(instance::register);
-
-                // workaround for Postgres app to make the content deletion queue created and pass tests
-                // TODO remove after refactoring JAMES-4154 for Postgres app
-                instance.register(new ContentDeletionEventBusModule.NoopListener());
             });
     }
 
