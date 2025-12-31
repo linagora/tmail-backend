@@ -49,7 +49,7 @@ public class MemoryJmapSaaSTest implements JmapSaasContract {
     public GuiceJamesServer startJmapServer(boolean saasSupport) {
         guiceJamesServer = MemoryServer.createServer(MemoryConfiguration.builder()
                 .workingDirectory(tmpDir)
-                .configurationPath(OpenpaasTestUtils.setupConfigurationPath(tmpDir))
+                .configurationPath(OpenpaasTestUtils.setupConfigurationPath(tmpDir, false))
                 .usersRepository(DEFAULT)
                 .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
                 .build())

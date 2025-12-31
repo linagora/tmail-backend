@@ -60,7 +60,7 @@ public class MemoryCalendarEventSupportCapabilityTest implements CalendarEventSu
 
         guiceJamesServer = MemoryServer.createServer(MemoryConfiguration.builder()
                 .workingDirectory(tmpDir)
-                .configurationPath(OpenpaasTestUtils.setupConfigurationPath(tmpDir))
+                .configurationPath(OpenpaasTestUtils.setupConfigurationPath(tmpDir, calDavSupport))
                 .usersRepository(DEFAULT)
                 .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
                 .openPaasModuleChooserConfiguration(openPaasModuleChooserConfigurationPair.getKey())

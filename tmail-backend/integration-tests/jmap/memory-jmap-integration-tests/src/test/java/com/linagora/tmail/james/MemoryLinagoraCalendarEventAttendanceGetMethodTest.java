@@ -98,7 +98,7 @@ public class MemoryLinagoraCalendarEventAttendanceGetMethodTest {
             jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->
             MemoryConfiguration.builder()
                 .workingDirectory(tmpDir)
-                .configurationPath(OpenpaasTestUtils.setupConfigurationPath(tmpDir))
+                .configurationPath(OpenpaasTestUtils.setupConfigurationPath(tmpDir, true))
                 .usersRepository(DEFAULT)
                 .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
                 .openPaasModuleChooserConfiguration(OpenPaasModuleChooserConfiguration.ENABLED_DAV)
