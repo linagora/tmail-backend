@@ -32,12 +32,12 @@ public class OpenpaasTestUtils {
     public static Configuration.ConfigurationPath setupConfigurationPath(File workingDir) {
         TemporaryTmailServerUtils serverUtils = new TemporaryTmailServerUtils(workingDir, ImmutableList.<String>builder()
             .addAll(BASE_CONFIGURATION_FILE_NAMES)
-            .add("mailetcontainer_with_amqpforward_openpass.xml")
+            .add("mailetcontainer_with_dav_openpaas.xml")
             .add("linagora-ecosystem.properties")
             .add("usersrepository.xml")
             .add("pop3server.xml")
             .build());
-        serverUtils.copyResource("mailetcontainer_with_amqpforward_openpass.xml", "mailetcontainer.xml");
+        serverUtils.copyResource("mailetcontainer_with_dav_openpaas.xml", "mailetcontainer.xml");
         return serverUtils.getConfigurationPath();
     }
 }
