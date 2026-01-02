@@ -29,15 +29,18 @@ import com.linagora.tmail.common.TemporaryTmailServerUtils;
 
 public class OpenpaasTestUtils {
 
-    public static Configuration.ConfigurationPath setupConfigurationPath(File workingDir) {
+    public static Configuration.ConfigurationPath setupConfigurationPath(File workingDir, boolean calDavSupport) {
         TemporaryTmailServerUtils serverUtils = new TemporaryTmailServerUtils(workingDir, ImmutableList.<String>builder()
             .addAll(BASE_CONFIGURATION_FILE_NAMES)
-            .add("mailetcontainer_with_amqpforward_openpass.xml")
+            .add("mailetcontainer_with_dav_openpaas.xml")
             .add("linagora-ecosystem.properties")
             .add("usersrepository.xml")
             .add("pop3server.xml")
             .build());
-        serverUtils.copyResource("mailetcontainer_with_amqpforward_openpass.xml", "mailetcontainer.xml");
+
+        if (calDavSupport) {
+            serverUtils.copyResource("mailetcontainer_with_dav_openpaas.xml", "mailetcontainer.xml");
+        }
         return serverUtils.getConfigurationPath();
     }
 }
