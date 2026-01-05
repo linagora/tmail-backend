@@ -37,8 +37,7 @@ trait CalendarEventSupportCapabilityContract {
 
   def stopJmapServer(): Unit
 
-  private def setUpJmapServer(calDavSupport: Boolean): Unit = {
-    val server = startJmapServer(calDavSupport)
+  private def provisionTestResources(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
       .addDomain(DOMAIN.asString())
@@ -49,19 +48,12 @@ trait CalendarEventSupportCapabilityContract {
       .build
   }
 
-  private def startJmapServer(calDavSupport: Boolean): GuiceJamesServer =
-    if (calDavSupport) {
-      startJmapServerWithCalendarSupport()
-    } else {
-      startJmapServer()
-    }
-
   @AfterEach
   def tearDown(): Unit = stopJmapServer()
 
   @Test
   def shouldEnableSupportFreeBusyQueryWhenCalDavIsConfigured(): Unit = {
-    setUpJmapServer(calDavSupport = true)
+    provisionTestResources(startJmapServerWithCalendarSupport())
 
     `given`()
       .when()
@@ -76,7 +68,7 @@ trait CalendarEventSupportCapabilityContract {
 
   @Test
   def shouldDisableSupportFreeBusyQueryWhenCalDavIsNotConfigured(): Unit = {
-    setUpJmapServer(calDavSupport = false)
+    provisionTestResources(startJmapServer())
 
     `given`()
       .when()
@@ -91,7 +83,7 @@ trait CalendarEventSupportCapabilityContract {
 
   @Test
   def shouldEnableSupportCounterQueryWhenCalDavIsConfigured(): Unit = {
-    setUpJmapServer(calDavSupport = true)
+    provisionTestResources(startJmapServerWithCalendarSupport())
 
     `given`()
       .when()
@@ -106,7 +98,7 @@ trait CalendarEventSupportCapabilityContract {
 
   @Test
   def shouldDisableSupportCounterQueryWhenCalDavIsNotConfigured(): Unit = {
-    setUpJmapServer(calDavSupport = false)
+    provisionTestResources(startJmapServer())
 
     `given`()
       .when()
