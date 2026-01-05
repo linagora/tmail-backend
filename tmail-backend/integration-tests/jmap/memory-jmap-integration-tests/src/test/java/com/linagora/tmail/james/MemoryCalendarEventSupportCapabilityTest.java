@@ -25,6 +25,7 @@ import java.util.Optional;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.james.GuiceJamesServer;
+import org.apache.james.server.core.configuration.Configuration.ConfigurationPath;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -39,7 +40,7 @@ import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.CalendarEventSupportCapabilityContract;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
-import com.linagora.tmail.james.openpaas.OpenpaasTestUtils;
+import com.linagora.tmail.james.calendar.ConfigurationPathFactory;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class MemoryCalendarEventSupportCapabilityTest implements CalendarEventSupportCapabilityContract {
@@ -60,7 +61,7 @@ public class MemoryCalendarEventSupportCapabilityTest implements CalendarEventSu
 
         guiceJamesServer = MemoryServer.createServer(MemoryConfiguration.builder()
                 .workingDirectory(tmpDir)
-                .configurationPath(OpenpaasTestUtils.setupConfigurationPath(tmpDir, calDavSupport))
+                .configurationPath(getConfigurationPath(calDavSupport))
                 .usersRepository(DEFAULT)
                 .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
                 .openPaasModuleChooserConfiguration(openPaasModuleChooserConfigurationPair.getKey())
@@ -86,5 +87,13 @@ public class MemoryCalendarEventSupportCapabilityTest implements CalendarEventSu
         }
         return Pair.of(OpenPaasModuleChooserConfiguration.DISABLED,
             Modules.EMPTY_MODULE);
+    }
+
+    private ConfigurationPath getConfigurationPath(boolean calDavSupport) {
+        ConfigurationPathFactory configurationPathFactory = ConfigurationPathFactory.create(tmpDir);
+        if (calDavSupport) {
+            return configurationPathFactory.withCalendarSupport();
+        }
+        return configurationPathFactory.withoutCalendarSupport();
     }
 }

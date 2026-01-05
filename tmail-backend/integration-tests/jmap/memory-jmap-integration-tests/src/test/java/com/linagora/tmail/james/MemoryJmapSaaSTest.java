@@ -36,7 +36,7 @@ import com.linagora.tmail.james.app.MemorySaaSModule;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.JmapSaasContract;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
-import com.linagora.tmail.james.openpaas.OpenpaasTestUtils;
+import com.linagora.tmail.james.calendar.ConfigurationPathFactory;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class MemoryJmapSaaSTest implements JmapSaasContract {
@@ -49,7 +49,7 @@ public class MemoryJmapSaaSTest implements JmapSaasContract {
     public GuiceJamesServer startJmapServer(boolean saasSupport) {
         guiceJamesServer = MemoryServer.createServer(MemoryConfiguration.builder()
                 .workingDirectory(tmpDir)
-                .configurationPath(OpenpaasTestUtils.setupConfigurationPath(tmpDir, false))
+                .configurationPath(ConfigurationPathFactory.create(tmpDir).withoutCalendarSupport())
                 .usersRepository(DEFAULT)
                 .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
                 .build())
