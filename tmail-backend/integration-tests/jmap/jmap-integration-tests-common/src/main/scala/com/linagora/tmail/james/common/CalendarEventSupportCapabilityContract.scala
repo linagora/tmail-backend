@@ -31,7 +31,9 @@ import org.junit.jupiter.api.{AfterEach, Test}
 
 trait CalendarEventSupportCapabilityContract {
 
-  def startJmapServer(calDavSupport: Boolean): GuiceJamesServer
+  def startJmapServer(): GuiceJamesServer
+
+  def startJmapServerWithCalendarSupport(): GuiceJamesServer
 
   def stopJmapServer(): Unit
 
@@ -46,6 +48,13 @@ trait CalendarEventSupportCapabilityContract {
       .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
       .build
   }
+
+  private def startJmapServer(calDavSupport: Boolean): GuiceJamesServer =
+    if (calDavSupport) {
+      startJmapServerWithCalendarSupport()
+    } else {
+      startJmapServer()
+    }
 
   @AfterEach
   def tearDown(): Unit = stopJmapServer()
