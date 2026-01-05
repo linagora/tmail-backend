@@ -23,23 +23,20 @@ import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.
 import java.io.File;
 import java.util.Optional;
 
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.james.GuiceJamesServer;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 
 import com.github.fge.lambdas.Throwing;
-import com.google.inject.Module;
-import com.google.inject.util.Modules;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.OpenPaasTestModule;
 import com.linagora.tmail.dav.DavServerExtension;
 import com.linagora.tmail.dav.WireMockOpenPaaSServerExtension;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
+import com.linagora.tmail.james.calendar.ConfigurationPathFactory;
 import com.linagora.tmail.james.common.CalendarEventSupportCapabilityContract;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
-import com.linagora.tmail.james.openpaas.OpenpaasTestUtils;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class MemoryCalendarEventSupportCapabilityTest implements CalendarEventSupportCapabilityContract {
@@ -55,18 +52,31 @@ public class MemoryCalendarEventSupportCapabilityTest implements CalendarEventSu
     private GuiceJamesServer guiceJamesServer;
 
     @Override
-    public GuiceJamesServer startJmapServer(boolean calDavSupport) {
-        Pair<OpenPaasModuleChooserConfiguration, Module> openPaasModuleChooserConfigurationPair = getOpenPaasModuleChooserConfigurationModule(calDavSupport);
-
+    public GuiceJamesServer startJmapServer() {
         guiceJamesServer = MemoryServer.createServer(MemoryConfiguration.builder()
                 .workingDirectory(tmpDir)
-                .configurationPath(OpenpaasTestUtils.setupConfigurationPath(tmpDir))
+                .configurationPath(ConfigurationPathFactory.create(tmpDir).withoutCalendarSupport())
                 .usersRepository(DEFAULT)
                 .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
-                .openPaasModuleChooserConfiguration(openPaasModuleChooserConfigurationPair.getKey())
+                .openPaasModuleChooserConfiguration(OpenPaasModuleChooserConfiguration.DISABLED)
                 .build())
-            .overrideWith(new LinagoraTestJMAPServerModule())
-            .overrideWith(openPaasModuleChooserConfigurationPair.getRight());
+            .overrideWith(new LinagoraTestJMAPServerModule());
+
+        Throwing.runnable(() -> guiceJamesServer.start()).run();
+        return guiceJamesServer;
+    }
+
+    @Override
+    public GuiceJamesServer startJmapServerWithCalendarSupport() {
+        guiceJamesServer = MemoryServer.createServer(MemoryConfiguration.builder()
+                        .workingDirectory(tmpDir)
+                        .configurationPath(ConfigurationPathFactory.create(tmpDir).withCalendarSupport())
+                        .usersRepository(DEFAULT)
+                        .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
+                        .openPaasModuleChooserConfiguration(OpenPaasModuleChooserConfiguration.ENABLED_DAV)
+                        .build())
+                .overrideWith(new LinagoraTestJMAPServerModule())
+                .overrideWith(new OpenPaasTestModule(openPaasServerExtension, Optional.of(davServerExtension.getDavConfiguration()), Optional.empty()));
 
         Throwing.runnable(() -> guiceJamesServer.start()).run();
         return guiceJamesServer;
@@ -77,14 +87,5 @@ public class MemoryCalendarEventSupportCapabilityTest implements CalendarEventSu
         if (guiceJamesServer != null && guiceJamesServer.isStarted()) {
             guiceJamesServer.stop();
         }
-    }
-
-    private static Pair<OpenPaasModuleChooserConfiguration, Module> getOpenPaasModuleChooserConfigurationModule(boolean calDavSupport) {
-        if (calDavSupport) {
-            return Pair.of(OpenPaasModuleChooserConfiguration.ENABLED_DAV,
-                new OpenPaasTestModule(openPaasServerExtension, Optional.of(davServerExtension.getDavConfiguration()), Optional.empty()));
-        }
-        return Pair.of(OpenPaasModuleChooserConfiguration.DISABLED,
-            Modules.EMPTY_MODULE);
     }
 }

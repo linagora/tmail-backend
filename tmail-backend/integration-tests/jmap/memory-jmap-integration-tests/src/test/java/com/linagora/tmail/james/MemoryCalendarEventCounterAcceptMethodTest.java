@@ -48,7 +48,7 @@ import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.CalendarEventCounterAcceptMethodContract;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
-import com.linagora.tmail.james.openpaas.OpenpaasTestUtils;
+import com.linagora.tmail.james.calendar.ConfigurationPathFactory;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 import net.fortuna.ical4j.model.Calendar;
@@ -65,7 +65,7 @@ public class MemoryCalendarEventCounterAcceptMethodTest implements CalendarEvent
         jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->
         MemoryConfiguration.builder()
             .workingDirectory(tmpDir)
-            .configurationPath(OpenpaasTestUtils.setupConfigurationPath(tmpDir))
+            .configurationPath(ConfigurationPathFactory.create(tmpDir).withCalendarSupport())
             .usersRepository(DEFAULT)
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .openPaasModuleChooserConfiguration(OpenPaasModuleChooserConfiguration.ENABLED_DAV)

@@ -16,28 +16,36 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.james.openpaas;
+package com.linagora.tmail.james.calendar;
 
 import static com.linagora.tmail.common.TemporaryTmailServerUtils.BASE_CONFIGURATION_FILE_NAMES;
 
 import java.io.File;
 
-import org.apache.james.server.core.configuration.Configuration;
+import org.apache.james.server.core.configuration.Configuration.ConfigurationPath;
 
 import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.common.TemporaryTmailServerUtils;
 
-public class OpenpaasTestUtils {
-
-    public static Configuration.ConfigurationPath setupConfigurationPath(File workingDir) {
+public record ConfigurationPathFactory(TemporaryTmailServerUtils serverUtils) {
+    public static ConfigurationPathFactory create(File workingDir) {
         TemporaryTmailServerUtils serverUtils = new TemporaryTmailServerUtils(workingDir, ImmutableList.<String>builder()
             .addAll(BASE_CONFIGURATION_FILE_NAMES)
-            .add("mailetcontainer_with_amqpforward_openpass.xml")
+            .add("mailetcontainer_with_dav_openpaas.xml")
             .add("linagora-ecosystem.properties")
             .add("usersrepository.xml")
             .add("pop3server.xml")
             .build());
-        serverUtils.copyResource("mailetcontainer_with_amqpforward_openpass.xml", "mailetcontainer.xml");
+
+        return new ConfigurationPathFactory(serverUtils);
+    }
+
+    public ConfigurationPath withCalendarSupport() {
+        serverUtils.copyResource("mailetcontainer_with_dav_openpaas.xml", "mailetcontainer.xml");
+        return serverUtils.getConfigurationPath();
+    }
+
+    public ConfigurationPath withoutCalendarSupport() {
         return serverUtils.getConfigurationPath();
     }
 }
