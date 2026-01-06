@@ -35,6 +35,7 @@ import org.apache.james.jmap.http.Authenticator
 import org.apache.james.jmap.http.rfc8621.InjectionKeys
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.{Endpoint, JMAPRoute, JMAPRoutes}
+import org.apache.james.metrics.api.MetricFactory
 import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.Json
 import reactor.core.publisher.Mono
@@ -46,7 +47,8 @@ object AIChatCompletionRoutes {
 }
 
 class AIChatCompletionRoutes @Inject()(@Named(InjectionKeys.RFC_8621) val authenticator: Authenticator,
-                                       val ragConfig: RagConfig) extends JMAPRoutes {
+                                       val ragConfig: RagConfig,
+                                       val metricFactory: MetricFactory) extends JMAPRoutes {
   private val openRagHttpClient = new OpenRagHttpClient(ragConfig)
   private val jmapAiUri = "/ai/v1/chat/completions"
 
@@ -79,7 +81,8 @@ class AIChatCompletionRoutes @Inject()(@Named(InjectionKeys.RFC_8621) val authen
         .receive()
         .aggregate()
         .asByteArray())
-      .flatMap(input => SMono.fromPublisher(openRagHttpClient.proxyChatCompletions(input)))
+      .flatMap(input => SMono.fromPublisher(metricFactory.decoratePublisherWithTimerMetric("JMAP-ai-chat-completion",
+          openRagHttpClient.proxyChatCompletions(input))))
       .flatMap(result => sendResponse(response, result)
         .`then`())
 
