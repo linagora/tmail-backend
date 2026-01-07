@@ -106,10 +106,10 @@ public class RedisEventBusServiceSentinelTest {
     private void initEventBus(RedisEventBusConfiguration redisEventBusConfiguration) throws Exception {
         SentinelRedisConfiguration redisConfiguration = redisExtension.getRedisSentinelCluster().redisSentinelContainerList().getRedisConfiguration();
         eventBus = new RabbitMQAndRedisEventBus(new NamingStrategy(new EventBusName("test")), rabbitMQExtension.getSender(),
-            rabbitMQExtension.getReceiverProvider(), new EventBusTestFixture.TestEventSerializer(),
-            EventBusTestFixture.RETRY_BACKOFF_CONFIGURATION, RoutingKeyConverter.forFactories(new EventBusTestFixture.TestRegistrationKeyFactory()),
+            rabbitMQExtension.getReceiverProvider(), new EventBusTestFixture.TestEventSerializer(), RoutingKeyConverter.forFactories(new EventBusTestFixture.TestRegistrationKeyFactory()),
             new MemoryEventDeadLetters(), new RecordingMetricFactory(),
-            rabbitMQExtension.getRabbitChannelPool(), EventBusId.random(), rabbitMQExtension.getRabbitMQ().getConfiguration(),
+            rabbitMQExtension.getRabbitChannelPool(), EventBusId.random(),
+            new RabbitMQEventBus.Configurations(rabbitMQExtension.getRabbitMQ().getConfiguration(), EventBusTestFixture.RETRY_BACKOFF_CONFIGURATION),
             new RedisEventBusClientFactory(redisConfiguration, new RedisClientFactory(FileSystemImpl.forTesting(), redisConfiguration)),
             redisEventBusConfiguration);
         eventBus.start();

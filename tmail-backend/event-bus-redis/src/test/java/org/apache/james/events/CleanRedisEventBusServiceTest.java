@@ -95,9 +95,9 @@ class CleanRedisEventBusServiceTest {
 
     private RabbitMQAndRedisEventBus newEventBus() throws Exception {
         return new RabbitMQAndRedisEventBus(TEST_NAMING_STRATEGY, rabbitMQExtension.getSender(), rabbitMQExtension.getReceiverProvider(), new EventBusTestFixture.TestEventSerializer(),
-            EventBusTestFixture.RETRY_BACKOFF_CONFIGURATION, routingKeyConverter,
-            new MemoryEventDeadLetters(), new RecordingMetricFactory(),
-            rabbitMQExtension.getRabbitChannelPool(), EventBusId.random(), rabbitMQExtension.getRabbitMQ().getConfiguration(),
+            routingKeyConverter, new MemoryEventDeadLetters(), new RecordingMetricFactory(),
+            rabbitMQExtension.getRabbitChannelPool(), EventBusId.random(),
+            new RabbitMQEventBus.Configurations(rabbitMQExtension.getRabbitMQ().getConfiguration(), EventBusTestFixture.RETRY_BACKOFF_CONFIGURATION),
             new RedisEventBusClientFactory(redisConfiguration, redisClientFactory),
             RedisEventBusConfiguration.DEFAULT);
     }
