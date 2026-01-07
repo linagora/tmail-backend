@@ -32,7 +32,6 @@ import java.time.Duration;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
@@ -71,10 +70,11 @@ import com.google.common.cache.LoadingCache;
 import com.google.common.collect.ImmutableSet;
 import com.linagora.tmail.james.jmap.settings.JmapSettings;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
+import com.linagora.tmail.james.jmap.settings.JmapSettingsUtil;
+import com.linagora.tmail.james.jmap.settings.LocaleUtil;
 
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
-import scala.jdk.javaapi.OptionConverters;
 
 /**
  * <p>
@@ -185,7 +185,7 @@ public class I18NDSNBounce extends DSNBounce {
         i18nDsnTemplateDirectory = getInitParameter(I18N_DSN_TEMPLATE_DIRECTORY_PARAMETER, DEFAULT_I18N_DSN_TEMPLATE_DIRECTORY);
         contentType = getInitParameter(CONTENT_TYPE_PARAMETER, DEFAULT_CONTENT_TYPE);
         defaultLanguage = Optional.ofNullable(getInitParameter(DEFAULT_LANGUAGE_PARAMETER))
-            .map(I18NDSNBounce::toLocaleStrictly)
+            .map(LocaleUtil::toLocaleStrictly)
             .orElse(DEFAULT_LANGUAGE);
     }
 
@@ -234,12 +234,11 @@ public class I18NDSNBounce extends DSNBounce {
     }
 
     private Optional<Locale> parseLocaleFromSettings(JmapSettings jmapSettings) {
-        return OptionConverters.toJava(jmapSettings.language())
-            .map(language -> toLocaleRelaxedly(language, defaultLanguage));
+        return JmapSettingsUtil.parseLocaleFromSettings(jmapSettings, defaultLanguage);
     }
 
     private Locale parseLocaleByContentLanguageHeader(Mail originalMail) throws MessagingException, IOException {
-        return toLocaleRelaxedly(getContentLanguageFromMail(originalMail), defaultLanguage);
+        return LocaleUtil.toLocaleRelaxedly(getContentLanguageFromMail(originalMail), defaultLanguage);
     }
 
     private String getContentLanguageFromMail(Mail mail) throws MessagingException, IOException {
@@ -274,26 +273,8 @@ public class I18NDSNBounce extends DSNBounce {
             .omitEmptyStrings()
             .trimResults()
             .splitToStream(supportedLanguages)
-            .map(I18NDSNBounce::toLocaleStrictly)
+            .map(LocaleUtil::toLocaleStrictly)
             .collect(ImmutableSet.toImmutableSet());
-    }
-
-    public static Locale toLocaleStrictly(String language) {
-        if (Arrays.stream(Locale.getISOLanguages())
-            .anyMatch(localeLanguage -> localeLanguage.equalsIgnoreCase(language))) {
-            return Locale.forLanguageTag(language);
-        }
-        throw new IllegalArgumentException("The provided language '" + language + "' can not be parsed to a valid Locale.");
-    }
-
-    public static Locale toLocaleRelaxedly(String language, Locale defaultLanguage) {
-        if (Arrays.stream(Locale.getISOLanguages())
-            .anyMatch(localeLanguage -> localeLanguage.equalsIgnoreCase(language))) {
-            return Locale.forLanguageTag(language);
-        }
-
-        LOGGER.info("The provided language '{}' can not be parsed to a valid Locale. Falling back to default locale '{}'", language, defaultLanguage);
-        return defaultLanguage;
     }
 
     private String generateDsnBodyPart(Locale locale, Map<String, String> variables) {
