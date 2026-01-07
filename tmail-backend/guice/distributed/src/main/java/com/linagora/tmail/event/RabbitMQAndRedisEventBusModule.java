@@ -34,8 +34,6 @@ import jakarta.inject.Singleton;
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
-import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
-import org.apache.james.backends.rabbitmq.ReceiverProvider;
 import org.apache.james.backends.rabbitmq.SimpleConnectionPool;
 import org.apache.james.backends.redis.RedisConfiguration;
 import org.apache.james.core.healthcheck.HealthCheck;
@@ -44,13 +42,13 @@ import org.apache.james.events.CleanRedisEventBusService;
 import org.apache.james.events.EventBus;
 import org.apache.james.events.EventBusId;
 import org.apache.james.events.EventBusReconnectionHandler;
-import org.apache.james.events.EventDeadLetters;
 import org.apache.james.events.EventListener;
 import org.apache.james.events.EventSerializer;
 import org.apache.james.events.NamingStrategy;
 import org.apache.james.events.RabbitEventBusConsumerHealthCheck;
 import org.apache.james.events.RabbitMQAndRedisEventBus;
 import org.apache.james.events.RabbitMQContentDeletionEventBusDeadLetterQueueHealthCheck;
+import org.apache.james.events.RabbitMQEventBus;
 import org.apache.james.events.RabbitMQJmapEventBusDeadLetterQueueHealthCheck;
 import org.apache.james.events.RabbitMQMailboxEventBusDeadLetterQueueHealthCheck;
 import org.apache.james.events.RedisEventBusClientFactory;
@@ -64,7 +62,6 @@ import org.apache.james.jmap.change.Factory;
 import org.apache.james.jmap.change.JmapEventSerializer;
 import org.apache.james.jmap.pushsubscription.PushListener;
 import org.apache.james.mailbox.events.MailboxIdRegistrationKey;
-import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.util.ReactorUtils;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
@@ -82,8 +79,6 @@ import com.google.inject.name.Names;
 import com.linagora.tmail.james.jmap.EmailAddressContactInjectKeys;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactListener;
 import com.linagora.tmail.james.jmap.contact.TmailJmapEventSerializer;
-
-import reactor.rabbitmq.Sender;
 
 public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     private static final Logger LOGGER = LoggerFactory.getLogger(RabbitMQAndRedisEventBusModule.class);
@@ -156,19 +151,17 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     @Provides
     @Singleton
     @Named(InjectionKeys.JMAP)
-    RabbitMQAndRedisEventBus provideJmapEventBus(Sender sender, ReceiverProvider receiverProvider,
+    RabbitMQAndRedisEventBus provideJmapEventBus(RabbitMQAndRedisEventBus.Factory eventBusFactory,
                                                  JmapEventSerializer eventSerializer,
-                                                 RetryBackoffConfiguration retryBackoffConfiguration,
-                                                 EventDeadLetters eventDeadLetters,
-                                                 MetricFactory metricFactory, ReactorRabbitMQChannelPool channelPool,
                                                  @Named(InjectionKeys.JMAP) EventBusId eventBusId,
-                                                 RabbitMQConfiguration configuration,
-                                                 RedisEventBusClientFactory redisEventBusClientFactory,
-                                                 RedisEventBusConfiguration redisEventBusConfiguration) {
-        return new RabbitMQAndRedisEventBus(
-            JMAP_NAMING_STRATEGY,
-            sender, receiverProvider, eventSerializer, retryBackoffConfiguration, new RoutingKeyConverter(ImmutableSet.of(new Factory())),
-            eventDeadLetters, metricFactory, channelPool, eventBusId, configuration, redisEventBusClientFactory, redisEventBusConfiguration);
+                                                 RabbitMQEventBus.Configurations configurations) {
+        return eventBusFactory.create(eventBusId, JMAP_NAMING_STRATEGY, new RoutingKeyConverter(ImmutableSet.of(new Factory())), eventSerializer, configurations);
+    }
+
+    @Provides
+    @Singleton
+        RabbitMQEventBus.Configurations provideRabbitMQEventBusConfigurations(RetryBackoffConfiguration retryBackoffConfiguration, RabbitMQConfiguration configuration, EventBus.Configuration eventBusConfiguration) {
+        return new RabbitMQEventBus.Configurations(configuration, retryBackoffConfiguration, eventBusConfiguration);
     }
 
     @Provides
@@ -218,19 +211,11 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     @Provides
     @Singleton
     @Named(EmailAddressContactInjectKeys.AUTOCOMPLETE)
-    RabbitMQAndRedisEventBus provideEmailAddressContactEventBus(Sender sender, ReceiverProvider receiverProvider,
+    RabbitMQAndRedisEventBus provideEmailAddressContactEventBus(RabbitMQAndRedisEventBus.Factory eventBusFactory,
                                                                 TmailJmapEventSerializer eventSerializer,
-                                                                RetryBackoffConfiguration retryBackoffConfiguration,
-                                                                @Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) EventDeadLetters eventDeadLetters,
-                                                                MetricFactory metricFactory, ReactorRabbitMQChannelPool channelPool,
                                                                 @Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) EventBusId eventBusId,
-                                                                RabbitMQConfiguration configuration,
-                                                                RedisEventBusClientFactory redisEventBusClientFactory,
-                                                                RedisEventBusConfiguration redisEventBusConfiguration) {
-        return new RabbitMQAndRedisEventBus(
-            EMAIL_ADDRESS_CONTACT_NAMING_STRATEGY,
-            sender, receiverProvider, eventSerializer, retryBackoffConfiguration, new RoutingKeyConverter(ImmutableSet.of(new Factory())),
-            eventDeadLetters, metricFactory, channelPool, eventBusId, configuration, redisEventBusClientFactory, redisEventBusConfiguration);
+                                                                RabbitMQEventBus.Configurations configurations) {
+        return eventBusFactory.create(eventBusId, EMAIL_ADDRESS_CONTACT_NAMING_STRATEGY, new RoutingKeyConverter(ImmutableSet.of(new Factory())), eventSerializer, configurations);
     }
 
     @Provides
@@ -254,31 +239,11 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     @Provides
     @Singleton
     @Named(CONTENT_DELETION)
-    RabbitMQAndRedisEventBus provideContentDeletionEventBus(Sender sender,
-                                                            ReceiverProvider receiverProvider,
+    RabbitMQAndRedisEventBus provideContentDeletionEventBus(RabbitMQAndRedisEventBus.Factory eventBusFactory,
                                                             MailboxEventSerializer eventSerializer,
-                                                            RetryBackoffConfiguration retryBackoffConfiguration,
-                                                            EventDeadLetters eventDeadLetters,
-                                                            MetricFactory metricFactory,
-                                                            ReactorRabbitMQChannelPool channelPool,
                                                             @Named(CONTENT_DELETION) EventBusId eventBusId,
-                                                            RabbitMQConfiguration configuration,
-                                                            RedisEventBusClientFactory redisEventBusClientFactory,
-                                                            RedisEventBusConfiguration redisEventBusConfiguration) {
-        return new RabbitMQAndRedisEventBus(
-            CONTENT_DELETION_NAMING_STRATEGY,
-            sender,
-            receiverProvider,
-            eventSerializer,
-            retryBackoffConfiguration,
-            new RoutingKeyConverter(ImmutableSet.of(new Factory())),
-            eventDeadLetters,
-            metricFactory,
-            channelPool,
-            eventBusId,
-            configuration,
-            redisEventBusClientFactory,
-            redisEventBusConfiguration);
+                                                            RabbitMQEventBus.Configurations configurations) {
+        return eventBusFactory.create(eventBusId, CONTENT_DELETION_NAMING_STRATEGY, new RoutingKeyConverter(ImmutableSet.of(new Factory())), eventSerializer, configurations);
     }
 
     @Provides

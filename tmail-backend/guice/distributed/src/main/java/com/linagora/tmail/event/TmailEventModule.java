@@ -23,12 +23,9 @@ import java.util.Set;
 import jakarta.inject.Named;
 
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
-import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
-import org.apache.james.backends.rabbitmq.ReceiverProvider;
 import org.apache.james.events.EventBus;
 import org.apache.james.events.EventBusId;
 import org.apache.james.events.EventBusName;
-import org.apache.james.events.EventDeadLetters;
 import org.apache.james.events.EventListener;
 import org.apache.james.events.EventSerializer;
 import org.apache.james.events.NamingStrategy;
@@ -36,7 +33,6 @@ import org.apache.james.events.RabbitMQEventBus;
 import org.apache.james.events.RetryBackoffConfiguration;
 import org.apache.james.events.RoutingKeyConverter;
 import org.apache.james.jmap.change.Factory;
-import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
 
@@ -48,8 +44,6 @@ import com.google.inject.Singleton;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Names;
-
-import reactor.rabbitmq.Sender;
 
 public class TmailEventModule extends AbstractModule {
     public static final NamingStrategy TMAIL_NAMING_STRATEGY = new NamingStrategy(new EventBusName("tmailEvent"));
@@ -65,7 +59,6 @@ public class TmailEventModule extends AbstractModule {
             .to(TmailEventSerializer.class);
         Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class,
             Names.named(TMAIL_EVENT_BUS_INJECT_NAME));
-
     }
 
     @ProvidesIntoSet
@@ -82,17 +75,13 @@ public class TmailEventModule extends AbstractModule {
     @Provides
     @Singleton
     @Named(TMAIL_EVENT_BUS_INJECT_NAME)
-    RabbitMQEventBus provideEmailAddressContactEventBus(Sender sender, ReceiverProvider receiverProvider,
+    RabbitMQEventBus provideEmailAddressContactEventBus(RabbitMQEventBus.Factory eventBusFactory,
                                                         RetryBackoffConfiguration retryBackoffConfiguration,
-                                                        @Named(TMAIL_EVENT_BUS_INJECT_NAME) EventDeadLetters eventDeadLetters,
-                                                        MetricFactory metricFactory, ReactorRabbitMQChannelPool channelPool,
                                                         @Named(TMAIL_EVENT_BUS_INJECT_NAME) EventBusId eventBusId,
                                                         RabbitMQConfiguration configuration,
-                                                        TmailEventSerializer tmailEventSerializer) {
-        return new RabbitMQEventBus(
-            TMAIL_NAMING_STRATEGY,
-            sender, receiverProvider, tmailEventSerializer, retryBackoffConfiguration, new RoutingKeyConverter(ImmutableSet.of(new Factory())),
-            eventDeadLetters, metricFactory, channelPool, eventBusId, configuration);
+                                                        TmailEventSerializer tmailEventSerializer,
+                                                        EventBus.Configuration eventBusConfiguration) {
+        return eventBusFactory.create(eventBusId, TMAIL_NAMING_STRATEGY, new RoutingKeyConverter(ImmutableSet.of(new Factory())), tmailEventSerializer, new RabbitMQEventBus.Configurations(configuration, retryBackoffConfiguration, eventBusConfiguration));
     }
 
     @Provides

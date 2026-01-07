@@ -19,7 +19,6 @@
 package com.linagora.tmail.james;
 
 import static com.linagora.tmail.blob.guice.BlobStoreModulesChooser.MAYBE_SECONDARY_BLOBSTORE;
-import static com.linagora.tmail.event.TmailEventModule.TMAIL_EVENT_BUS_INJECT_NAME;
 import static io.netty.handler.codec.http.HttpHeaderNames.ACCEPT;
 import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.requestSpecification;
@@ -118,7 +117,7 @@ class DistributedLinagoraSecondaryBlobStoreTest {
 
         @Inject
         public BlobStoreProbe(@Named(MAYBE_SECONDARY_BLOBSTORE) BlobStoreDAO blobStoreDAO,
-                              @Named(TMAIL_EVENT_BUS_INJECT_NAME) EventDeadLetters eventDeadLetters) {
+                              EventDeadLetters eventDeadLetters) {
             SecondaryBlobStoreDAO secondaryBlobStoreDAO = (SecondaryBlobStoreDAO) blobStoreDAO;
             this.primaryBlobStoreDAO = (S3BlobStoreDAO) secondaryBlobStoreDAO.getFirstBlobStoreDAO();
             this.secondaryBlobStoreDAO = (S3BlobStoreDAO) secondaryBlobStoreDAO.getSecondBlobStoreDAO();

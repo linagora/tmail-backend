@@ -181,10 +181,10 @@ abstract class RabbitMQAndRedisEventBusContractTest implements GroupContract.Sin
     }
 
     private RabbitMQAndRedisEventBus newEventBus(NamingStrategy namingStrategy, Sender sender, ReceiverProvider receiverProvider) throws Exception {
-        return new RabbitMQAndRedisEventBus(namingStrategy, sender, receiverProvider, eventSerializer,
-            EventBusTestFixture.RETRY_BACKOFF_CONFIGURATION, routingKeyConverter,
+        return new RabbitMQAndRedisEventBus(namingStrategy, sender, receiverProvider, eventSerializer, routingKeyConverter,
             memoryEventDeadLetters, new RecordingMetricFactory(),
-            rabbitMQExtension.getRabbitChannelPool(), EventBusId.random(), rabbitMQExtension.getRabbitMQ().getConfiguration(),
+            rabbitMQExtension.getRabbitChannelPool(), EventBusId.random(),
+            new RabbitMQEventBus.Configurations(rabbitMQExtension.getRabbitMQ().getConfiguration(), EventBusTestFixture.RETRY_BACKOFF_CONFIGURATION),
             redisEventBusClientFactory,
             new RedisEventBusConfiguration(FAILURE_IGNORE_DEFAULT, Duration.ofSeconds(2)));
     }

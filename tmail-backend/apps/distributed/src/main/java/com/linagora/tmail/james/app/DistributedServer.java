@@ -365,7 +365,6 @@ public class DistributedServer {
             new CassandraJmapSettingsRepositoryModule(),
             new CassandraPublicAssetRepositoryModule(),
             new DistributedEmailAddressContactEventModule(),
-            new DistributedEmailAddressContactEventDeadLettersModule(),
             new DistributedTaskSerializationModule(),
             new RabbitMQDisconnectorModule(),
             new RabbitMQEmailAddressContactModule(),
@@ -377,7 +376,6 @@ public class DistributedServer {
             new TeamMailboxModule(),
             new TMailMailboxSortOrderProviderModule(),
             new TmailEventModule(),
-            new TMailEventDeadLettersModule(),
             new TMailIMAPModule());
 
     public static void main(String[] args) throws Exception {
