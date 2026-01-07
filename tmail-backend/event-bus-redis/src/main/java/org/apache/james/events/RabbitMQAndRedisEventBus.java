@@ -25,7 +25,6 @@ import java.util.Set;
 import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
 
-import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
 import org.apache.james.lifecycle.api.Startable;
@@ -54,17 +53,42 @@ public class RabbitMQAndRedisEventBus implements EventBus, Startable {
 
     static final String EVENT_BUS_ID = "eventBusId";
 
+    public static class Factory {
+        private final EventDeadLetters eventDeadLetters;
+        private final Sender sender;
+        private final ReceiverProvider receiverProvider;
+        private final ReactorRabbitMQChannelPool channelPool;
+        private final MetricFactory metricFactory;
+        private final RedisEventBusClientFactory redisEventBusClientFactory;
+        private final RedisEventBusConfiguration redisEventBusConfiguration;
+
+        @Inject
+        public Factory(EventDeadLetters eventDeadLetters, Sender sender, ReceiverProvider receiverProvider, ReactorRabbitMQChannelPool channelPool, MetricFactory metricFactory, RedisEventBusClientFactory redisEventBusClientFactory,
+                       RedisEventBusConfiguration redisEventBusConfiguration) {
+            this.eventDeadLetters = eventDeadLetters;
+            this.sender = sender;
+            this.receiverProvider = receiverProvider;
+            this.channelPool = channelPool;
+            this.metricFactory = metricFactory;
+            this.redisEventBusClientFactory = redisEventBusClientFactory;
+            this.redisEventBusConfiguration = redisEventBusConfiguration;
+        }
+
+        public RabbitMQAndRedisEventBus create(EventBusId eventBusId, NamingStrategy namingStrategy, RoutingKeyConverter routingKeyConverter, EventSerializer eventSerializer, RabbitMQEventBus.Configurations configurations) {
+            return new RabbitMQAndRedisEventBus(namingStrategy, sender, receiverProvider, eventSerializer, routingKeyConverter, eventDeadLetters, metricFactory, channelPool, eventBusId, configurations, redisEventBusClientFactory, redisEventBusConfiguration);
+        }
+    }
+
     private final NamingStrategy namingStrategy;
     private final EventSerializer eventSerializer;
     private final RoutingKeyConverter routingKeyConverter;
-    private final RetryBackoffConfiguration retryBackoff;
     private final EventBusId eventBusId;
     private final EventDeadLetters eventDeadLetters;
     private final ListenerExecutor listenerExecutor;
     private final Sender sender;
     private final ReceiverProvider receiverProvider;
     private final ReactorRabbitMQChannelPool channelPool;
-    private final RabbitMQConfiguration configuration;
+    private final RabbitMQEventBus.Configurations configurations;
     private final MetricFactory metricFactory;
     private final RedisEventBusClientFactory redisEventBusClientFactory;
     private final RedisSetReactiveCommands<String, String> redisSetReactiveCommands;
@@ -79,10 +103,9 @@ public class RabbitMQAndRedisEventBus implements EventBus, Startable {
 
     @Inject
     public RabbitMQAndRedisEventBus(NamingStrategy namingStrategy, Sender sender, ReceiverProvider receiverProvider, EventSerializer eventSerializer,
-                                    RetryBackoffConfiguration retryBackoff,
                                     RoutingKeyConverter routingKeyConverter,
                                     EventDeadLetters eventDeadLetters, MetricFactory metricFactory, ReactorRabbitMQChannelPool channelPool,
-                                    EventBusId eventBusId, RabbitMQConfiguration configuration,
+                                    EventBusId eventBusId, RabbitMQEventBus.Configurations configurations,
                                     RedisEventBusClientFactory redisEventBusClientFactory,
                                     RedisEventBusConfiguration redisEventBusConfiguration) {
         this.namingStrategy = namingStrategy;
@@ -93,9 +116,8 @@ public class RabbitMQAndRedisEventBus implements EventBus, Startable {
         this.eventBusId = eventBusId;
         this.eventSerializer = eventSerializer;
         this.routingKeyConverter = routingKeyConverter;
-        this.retryBackoff = retryBackoff;
         this.eventDeadLetters = eventDeadLetters;
-        this.configuration = configuration;
+        this.configurations = configurations;
         this.metricFactory = metricFactory;
         this.redisEventBusClientFactory = redisEventBusClientFactory;
         this.redisSetReactiveCommands = redisEventBusClientFactory.createRedisSetCommand();
@@ -112,10 +134,10 @@ public class RabbitMQAndRedisEventBus implements EventBus, Startable {
             LocalListenerRegistry localListenerRegistry = new LocalListenerRegistry();
             LocalKeyListenerExecutor localKeyListenerExecutor = new LocalKeyListenerExecutor(localListenerRegistry, listenerExecutor);
             keyRegistrationHandler = new RedisKeyRegistrationHandler(namingStrategy, eventBusId, eventSerializer, routingKeyConverter,
-                localListenerRegistry, listenerExecutor, retryBackoff, metricFactory, redisEventBusClientFactory, redisSetReactiveCommands, redisEventBusConfiguration);
-            groupRegistrationHandler = new TmailGroupRegistrationHandler(namingStrategy, eventSerializer, channelPool, sender, receiverProvider, retryBackoff, eventDeadLetters, listenerExecutor, eventBusId, configuration);
+                localListenerRegistry, listenerExecutor, configurations.retryBackoff(), metricFactory, redisEventBusClientFactory, redisSetReactiveCommands, redisEventBusConfiguration);
+            groupRegistrationHandler = new TmailGroupRegistrationHandler(namingStrategy, eventSerializer, channelPool, sender, receiverProvider, eventDeadLetters, listenerExecutor, configurations);
             RedisKeyEventDispatcher redisKeyEventDispatcher = new RedisKeyEventDispatcher(eventBusId, eventSerializer, redisPublisher, redisSetReactiveCommands, redisEventBusConfiguration);
-            eventDispatcher = new TMailEventDispatcher(namingStrategy, eventBusId, eventSerializer, sender, eventDeadLetters, configuration,
+            eventDispatcher = new TMailEventDispatcher(namingStrategy, eventBusId, eventSerializer, sender, eventDeadLetters, configurations.rabbitMQConfiguration(),
                 groupRegistrationHandler, redisKeyEventDispatcher, localKeyListenerExecutor);
 
             eventDispatcher.start();
@@ -136,10 +158,10 @@ public class RabbitMQAndRedisEventBus implements EventBus, Startable {
             LocalListenerRegistry localListenerRegistry = new LocalListenerRegistry();
             LocalKeyListenerExecutor localKeyListenerExecutor =  new LocalKeyListenerExecutor(localListenerRegistry, listenerExecutor);
             keyRegistrationHandler = new RedisKeyRegistrationHandler(namingStrategy, eventBusId, eventSerializer, routingKeyConverter,
-                localListenerRegistry, listenerExecutor, retryBackoff, metricFactory, redisEventBusClientFactory, redisSetReactiveCommands, redisEventBusConfiguration);
-            groupRegistrationHandler = new TmailGroupRegistrationHandler(namingStrategy, eventSerializer, channelPool, sender, receiverProvider, retryBackoff, eventDeadLetters, listenerExecutor, eventBusId, configuration);
+                localListenerRegistry, listenerExecutor, configurations.retryBackoff(), metricFactory, redisEventBusClientFactory, redisSetReactiveCommands, redisEventBusConfiguration);
+            groupRegistrationHandler = new TmailGroupRegistrationHandler(namingStrategy, eventSerializer, channelPool, sender, receiverProvider, eventDeadLetters, listenerExecutor, configurations);
             RedisKeyEventDispatcher redisKeyEventDispatcher = new RedisKeyEventDispatcher(eventBusId, eventSerializer, redisPublisher, redisSetReactiveCommands, redisEventBusConfiguration);
-            eventDispatcher = new TMailEventDispatcher(namingStrategy, eventBusId, eventSerializer, sender, eventDeadLetters, configuration,
+            eventDispatcher = new TMailEventDispatcher(namingStrategy, eventBusId, eventSerializer, sender, eventDeadLetters, configurations.rabbitMQConfiguration(),
                 groupRegistrationHandler, redisKeyEventDispatcher, localKeyListenerExecutor);
 
             keyRegistrationHandler.declarePubSubChannel();

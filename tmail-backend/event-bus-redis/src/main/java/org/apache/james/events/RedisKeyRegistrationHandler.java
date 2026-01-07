@@ -45,7 +45,6 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
-import reactor.util.retry.Retry;
 
 public class RedisKeyRegistrationHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(RedisKeyRegistrationHandler.class);
@@ -133,9 +132,7 @@ public class RedisKeyRegistrationHandler {
                     return Mono.from(metricFactory.decoratePublisherWithTimerMetric("redis-unregister", registrationBinder.unbind(key)
                         .doOnError(any -> !isStopping, throwable -> LOGGER.error("Error while unbinding key", throwable))
                         .timeout(redisEventBusConfiguration.durationTimeout())
-                        .retryWhen(Retry.backoff(retryBackoff.getMaxRetries(), retryBackoff.getFirstBackoff())
-                            .jitter(retryBackoff.getJitterFactor())
-                            .scheduler(Schedulers.boundedElastic()))
+                        .retryWhen(retryBackoff.asReactorRetry().scheduler(Schedulers.boundedElastic()))
                         .onErrorResume(error -> (REDIS_ERROR_PREDICATE.test(error.getCause()) && redisEventBusConfiguration.failureIgnore()), error -> {
                             LOGGER.warn("Error while unbinding key", error);
                             return Mono.empty();
@@ -150,7 +147,7 @@ public class RedisKeyRegistrationHandler {
             return registrationBinder.bind(key)
                 .doOnError(any -> !isStopping, throwable -> LOGGER.error("Error while binding key", throwable))
                 .timeout(redisEventBusConfiguration.durationTimeout())
-                .retryWhen(Retry.backoff(retryBackoff.getMaxRetries(), retryBackoff.getFirstBackoff()).jitter(retryBackoff.getJitterFactor()).scheduler(Schedulers.boundedElastic()))
+                .retryWhen(retryBackoff.asReactorRetry().scheduler(Schedulers.boundedElastic()))
                 .onErrorResume(error -> (REDIS_ERROR_PREDICATE.test(error.getCause()) && redisEventBusConfiguration.failureIgnore()), error -> {
                     LOGGER.warn("Error while binding key", error);
                     return Mono.empty();
