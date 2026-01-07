@@ -16,7 +16,7 @@
  *  more details.                                                   *
  *******************************************************************/
 
-package com.linagora.tmail.saas.mailet;
+package com.linagora.tmail.james.jmap.settings;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -27,43 +27,43 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-public class LocaleParsingTest {
+class LocaleParsingTest {
     @ParameterizedTest
     @ValueSource(strings = {"fr", "FR"})
     void parseFrenchLanguageSettingTest(String language) {
-        assertThat(I18NDSNBounce.toLocaleStrictly(language))
+        assertThat(LocaleUtil.toLocaleStrictly(language))
             .isEqualTo(Locale.FRENCH);
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"en", "EN"})
     void parseEnglishLanguageSettingTest(String language) {
-        assertThat(I18NDSNBounce.toLocaleStrictly(language))
+        assertThat(LocaleUtil.toLocaleStrictly(language))
             .isEqualTo(Locale.ENGLISH);
     }
 
     @ParameterizedTest
     @ValueSource(strings = {"ru", "RU"})
     void parseRussiaLanguageSettingTest(String language) {
-        assertThat(I18NDSNBounce.toLocaleStrictly(language))
+        assertThat(LocaleUtil.toLocaleStrictly(language))
             .isEqualTo(Locale.of("ru"));
     }
 
     @Test
     void parseInvalidLanguageSettingShouldBeResilientAndFallbackToDefaultLanguageWhenRelaxMode() {
-        assertThat(I18NDSNBounce.toLocaleRelaxedly("invalid", Locale.ENGLISH))
+        assertThat(LocaleUtil.toLocaleRelaxedly("invalid", Locale.ENGLISH))
             .isEqualTo(Locale.ENGLISH);
     }
 
     @Test
     void parseInvalidLanguageSettingShouldThrowWhenStrictMode() {
-        assertThatThrownBy(() -> I18NDSNBounce.toLocaleStrictly("invalid"))
+        assertThatThrownBy(() -> LocaleUtil.toLocaleStrictly("invalid"))
             .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
     void parseNullLanguageShouldBeResilientAndFallbackToDefaultLanguageWhenRelaxMode() {
-        assertThat(I18NDSNBounce.toLocaleRelaxedly(null, Locale.ENGLISH))
+        assertThat(LocaleUtil.toLocaleRelaxedly(null, Locale.ENGLISH))
             .isEqualTo(Locale.ENGLISH);
     }
 }
