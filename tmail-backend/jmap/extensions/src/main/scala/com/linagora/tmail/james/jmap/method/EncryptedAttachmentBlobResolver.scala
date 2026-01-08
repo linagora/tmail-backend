@@ -19,10 +19,9 @@
 package com.linagora.tmail.james.jmap.method
 
 import java.io.{ByteArrayInputStream, InputStream}
-
 import com.linagora.tmail.encrypted.{EncryptedAttachmentBlobId, EncryptedEmailContentStore}
 import jakarta.inject.Inject
-import org.apache.james.blob.api.BlobStore
+import org.apache.james.blob.api.{BlobStore, BucketName}
 import org.apache.james.blob.api.BlobStore.StoragePolicy
 import org.apache.james.jmap.api.model.Size
 import org.apache.james.jmap.api.model.Size.Size
@@ -52,6 +51,6 @@ class EncryptedAttachmentBlobResolver @Inject()(encryptedEmailContentStore: Encr
         encryptedId => SMono.just(Applicable(
           SMono(encryptedEmailContentStore.retrieveAttachmentContent(encryptedId.messageId, encryptedId.position))
             .flatMap((blobStoreId: org.apache.james.blob.api.BlobId) =>
-              SMono(blobStore.readBytes(blobStore.getDefaultBucketName, blobStoreId, StoragePolicy.LOW_COST)))
+              SMono(blobStore.readBytes(BucketName.DEFAULT, blobStoreId, StoragePolicy.LOW_COST)))
             .map(bytes => EncryptedAttachmentBlob(blobId, bytes)))))
 }

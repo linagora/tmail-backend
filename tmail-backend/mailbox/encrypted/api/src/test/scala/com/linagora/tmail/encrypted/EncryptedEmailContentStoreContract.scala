@@ -53,8 +53,6 @@ trait EncryptedEmailContentStoreContract {
 
   def blobStore: BlobStore
 
-  def bucketName: BucketName
-
   @Test
   def saveShouldSuccessWhenNoAttachment(): Unit = {
     val messageId: MessageId = randomMessageId
@@ -76,7 +74,7 @@ trait EncryptedEmailContentStoreContract {
     val messageId: MessageId = randomMessageId
     SMono.fromPublisher(testee.store(messageId, ENCRYPTED_EMAIL_CONTENT)).block()
     val blobId: BlobId = SMono.fromPublisher(testee.retrieveAttachmentContent(messageId, POSITION_NUMBER_START_AT)).block()
-    assertThat(blobStore.read(bucketName, blobId).readAllBytes())
+    assertThat(blobStore.read(BucketName.DEFAULT, blobId).readAllBytes())
       .isNotNull
   }
 
@@ -188,7 +186,7 @@ trait EncryptedEmailContentStoreContract {
     val messageId: MessageId = randomMessageId
     SMono.fromPublisher(testee.store(messageId, ENCRYPTED_EMAIL_CONTENT)).block()
     val blobId: BlobId = SMono.fromPublisher(testee.retrieveAttachmentContent(messageId, POSITION_NUMBER_START_AT)).block()
-    assertThat(blobStore.read(bucketName, blobId))
+    assertThat(blobStore.read(BucketName.DEFAULT, blobId))
       .hasSameContentAs(new ByteArrayInputStream(ENCRYPTED_EMAIL_CONTENT.encryptedAttachmentContents
         .head
         .getBytes(StandardCharsets.UTF_8)))
@@ -229,9 +227,9 @@ trait EncryptedEmailContentStoreContract {
     val blobId2: BlobId = SMono.fromPublisher(testee.retrieveAttachmentContent(messageId, 2)).block()
 
     assertThat(List(
-      new String(SMono.fromPublisher(blobStore.readBytes(bucketName, blobId0)).block(), StandardCharsets.UTF_8),
-      new String(SMono.fromPublisher(blobStore.readBytes(bucketName, blobId1)).block(), StandardCharsets.UTF_8),
-      new String(SMono.fromPublisher(blobStore.readBytes(bucketName, blobId2)).block(), StandardCharsets.UTF_8)))
+      new String(SMono.fromPublisher(blobStore.readBytes(BucketName.DEFAULT, blobId0)).block(), StandardCharsets.UTF_8),
+      new String(SMono.fromPublisher(blobStore.readBytes(BucketName.DEFAULT, blobId1)).block(), StandardCharsets.UTF_8),
+      new String(SMono.fromPublisher(blobStore.readBytes(BucketName.DEFAULT, blobId2)).block(), StandardCharsets.UTF_8)))
       .isEqualTo(encryptedEmailContent.encryptedAttachmentContents)
   }
 
@@ -257,7 +255,7 @@ trait EncryptedEmailContentStoreContract {
     val blobId: BlobId = SMono.fromPublisher(testee.retrieveAttachmentContent(messageId, POSITION_NUMBER_START_AT)).block()
     SMono.fromPublisher(testee.delete(messageId)).block()
 
-    assertThatThrownBy(() => blobStore.read(bucketName, blobId).read())
+    assertThatThrownBy(() => blobStore.read(BucketName.DEFAULT, blobId).read())
       .isInstanceOf(classOf[ObjectStoreException])
   }
 }

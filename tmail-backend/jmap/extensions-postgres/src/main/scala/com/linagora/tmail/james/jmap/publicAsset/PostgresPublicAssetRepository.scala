@@ -38,12 +38,11 @@ class PostgresPublicAssetRepository @Inject()(val executorFactory: PostgresExecu
                                               val blobStore: BlobStore,
                                               @Named("publicAssetUriPrefix") publicAssetUriPrefix: URI,
                                               @Named(PostgresExecutor.BY_PASS_RLS_INJECT) bypassRlsExecutor: PostgresExecutor) extends PublicAssetRepository {
-  private val bucketName: BucketName = blobStore.getDefaultBucketName
   private val byPassRlsDao: PostgresPublicAssetDAO = new PostgresPublicAssetDAO(bypassRlsExecutor, blobIdFactory)
 
   override def create(username: Username, creationRequest: PublicAssetCreationRequest): Publisher[PublicAssetStorage] =
     SMono.fromCallable(() => creationRequest.content.apply().readAllBytes())
-      .flatMap((dataAsByte: Array[Byte]) => SMono(blobStore.save(bucketName, dataAsByte, BlobStore.StoragePolicy.LOW_COST))
+      .flatMap((dataAsByte: Array[Byte]) => SMono(blobStore.save(BucketName.DEFAULT, dataAsByte, BlobStore.StoragePolicy.LOW_COST))
         .flatMap(blobId => {
           val assetId: PublicAssetId = PublicAssetIdFactory.generate()
           dao(username).insertAsset(username = username,
@@ -91,7 +90,7 @@ class PostgresPublicAssetRepository @Inject()(val executorFactory: PostgresExecu
     new PostgresPublicAssetDAO(executorFactory.create(username.getDomainPart), blobIdFactory)
 
   private def getBlobContentAndMapToPublicAssetStorage(metaData: PublicAssetMetadata): SMono[PublicAssetStorage] =
-    SMono(blobStore.readReactive(bucketName, metaData.blobId))
+    SMono(blobStore.readReactive(BucketName.DEFAULT, metaData.blobId))
       .map(inputStream => metaData.asPublicAssetStorage(inputStream))
 
   override def getTotalSize(username: Username): Publisher[Long] =

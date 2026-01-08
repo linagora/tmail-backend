@@ -37,8 +37,6 @@ class CassandraPublicAssetRepository @Inject()(val dao: CassandraPublicAssetDAO,
                                                val blobStore: BlobStore,
                                                val publicAssetTotalSizeLimit: PublicAssetTotalSizeLimit,
                                                @Named("publicAssetUriPrefix") publicAssetUriPrefix: URI) extends PublicAssetRepository {
-  private val bucketName: BucketName = blobStore.getDefaultBucketName
-
   override def create(username: Username, creationRequest: PublicAssetCreationRequest): Publisher[PublicAssetStorage] =
     SMono(getTotalSize(username))
       .filter(totalSize => (totalSize + creationRequest.size.value) <= publicAssetTotalSizeLimit.asLong())
@@ -47,7 +45,7 @@ class CassandraPublicAssetRepository @Inject()(val dao: CassandraPublicAssetDAO,
 
   private def createAsset(username: Username, creationRequest: PublicAssetCreationRequest): Publisher[PublicAssetStorage] =
     SMono.fromCallable(() => creationRequest.content.apply().readAllBytes())
-      .flatMap((dataAsByte: Array[Byte]) => SMono(blobStore.save(bucketName, dataAsByte, BlobStore.StoragePolicy.LOW_COST))
+      .flatMap((dataAsByte: Array[Byte]) => SMono(blobStore.save(BucketName.DEFAULT, dataAsByte, BlobStore.StoragePolicy.LOW_COST))
         .flatMap(blobId => {
           val assetId: PublicAssetId = PublicAssetIdFactory.generate()
           dao.insertAsset(username = username,
@@ -89,7 +87,7 @@ class CassandraPublicAssetRepository @Inject()(val dao: CassandraPublicAssetDAO,
     dao.selectAllBlobIds()
 
   private def getBlobContentAndMapToPublicAssetStorage(metaData: PublicAssetMetadata): SMono[PublicAssetStorage] =
-    SMono(blobStore.readReactive(bucketName, metaData.blobId))
+    SMono(blobStore.readReactive(BucketName.DEFAULT, metaData.blobId))
       .map(inputStream => metaData.asPublicAssetStorage(inputStream))
 
   override def getTotalSize(username: Username): Publisher[Long] =

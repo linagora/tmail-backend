@@ -32,7 +32,7 @@ class MemoryPublicAssetRepositoryTest extends PublicAssetRepositoryContract {
   @BeforeEach
   def setup(): Unit = {
 
-    val blobStore = new DeDuplicationBlobStore(new MemoryBlobStoreDAO, BucketName.DEFAULT, blobIdFactory)
+    val blobStore = new DeDuplicationBlobStore(new MemoryBlobStoreDAO, blobIdFactory)
     memoryPublicAssetRepository = new MemoryPublicAssetRepository(blobStore, PublicAssetTotalSizeLimit.DEFAULT, PUBLIC_ASSET_URI_PREFIX)
   }
 

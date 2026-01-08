@@ -22,6 +22,7 @@ import jakarta.inject.Inject;
 
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.BlobStore;
+import org.apache.james.blob.api.BucketName;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.postgres.PostgresMessageId;
 import org.reactivestreams.Publisher;
@@ -53,7 +54,7 @@ public class PostgresEncryptedEmailContentStore implements EncryptedEmailContent
     public Publisher<BoxedUnit> store(MessageId messageId, EncryptedEmailContent encryptedEmailContent) {
         return Flux.fromIterable(CollectionConverters.asJavaCollection(encryptedEmailContent.encryptedAttachmentContents()))
             .concatMap(encryptedAttachmentContent ->
-                Mono.from(blobStore.save(blobStore.getDefaultBucketName(), encryptedAttachmentContent, BlobStore.StoragePolicy.LOW_COST)))
+                Mono.from(blobStore.save(BucketName.DEFAULT, encryptedAttachmentContent, BlobStore.StoragePolicy.LOW_COST)))
             .index()
             .collectMap(indexBlobIdPair -> indexBlobIdPair.getT1().intValue() + EncryptedEmailContentStore.POSITION_NUMBER_START_AT(),
                 indexBlobIdPair -> indexBlobIdPair.getT2())
@@ -92,7 +93,7 @@ public class PostgresEncryptedEmailContentStore implements EncryptedEmailContent
 
     private Mono<Void> deleteBlobStore(PostgresMessageId messageId) {
         return encryptedEmailStoreDAO.getBlobIds(messageId)
-            .flatMap(blobId -> blobStore.delete(blobStore.getDefaultBucketName(), blobId))
+            .flatMap(blobId -> blobStore.delete(BucketName.DEFAULT, blobId))
             .then();
     }
 }

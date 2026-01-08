@@ -23,7 +23,6 @@ import static org.assertj.core.api.Assertions.assertThat;
 import org.apache.james.backends.postgres.PostgresExtension;
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.BlobStore;
-import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.api.MetricableBlobStore;
 import org.apache.james.blob.api.PlainBlobId;
 import org.apache.james.blob.memory.MemoryBlobStoreFactory;
@@ -74,7 +73,6 @@ public class PostgresEncryptedEmailContentStoreTest implements EncryptedEmailCon
     void setUp() {
         blobStore = new MetricableBlobStore(metricsTestExtension.getMetricFactory(), MemoryBlobStoreFactory.builder()
             .blobIdFactory(BLOB_ID_FACTORY)
-            .defaultBucketName()
             .passthrough());
         encryptedEmailStoreDAO = new PostgresEncryptedEmailStoreDAO(postgresExtension.getDefaultPostgresExecutor(), BLOB_ID_FACTORY);
         blobReferenceSource = new PostgresEncryptedEmailBlobReferenceSource(encryptedEmailStoreDAO);
@@ -93,11 +91,6 @@ public class PostgresEncryptedEmailContentStoreTest implements EncryptedEmailCon
     @Override
     public BlobStore blobStore() {
         return blobStore;
-    }
-
-    @Override
-    public BucketName bucketName() {
-        return blobStore.getDefaultBucketName();
     }
 
     @Test

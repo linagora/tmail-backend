@@ -220,11 +220,6 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
     }
 
     @Override
-    public Flux<BucketName> listBuckets() {
-        return Flux.from(primaryBlobStoreDAO.listBuckets());
-    }
-
-    @Override
     public Flux<BlobId> listBlobs(BucketName bucketName) {
         return Flux.from(primaryBlobStoreDAO.listBlobs(bucketName));
     }
