@@ -1,19 +1,42 @@
 == Welcome Listener
 :navtitle: Welcome Listener
 
-This listener will add an email in a user newly created INBOX from a predefined EML.
+This listener will add an email in a user newly created INBOX.
 
 This can be used to welcome users and avoid the "Empty INBOX newcomer syndrome".
 
+=== Legacy configuration
 Sample configuration: `listeners.xml`
 
-....xml
+....
 <listeners>
-<listener>
-<class>com.linagora.tmail.mailbox.WelcomeListener</class>
-<configuration>
-<eml>file://welcome.eml</eml>
-</configuration>
-</listener>
+    <listener>
+        <class>com.linagora.tmail.mailbox.WelcomeListener</class>
+        <configuration>
+            <eml>file://welcome.eml</eml>
+        </configuration>
+    </listener>
 </listeners>
 ....
+
+=== Internationalization configuration
+Sample I18n configuration (preferred over the legacy configuration, if `supportedLanguages` is set):
+
+....
+<listeners>
+    <listener>
+        <class>com.linagora.tmail.mailbox.WelcomeListener</class>
+        <configuration>
+            <supportedLanguages>en,fr,vi</supportedLanguages>
+            <i18nWelcomeTemplateDirectory>classpath://eml-template/welcome/</i18nWelcomeTemplateDirectory>
+            <defaultLanguage>en</defaultLanguage>
+        </configuration>
+    </listener>
+</listeners>
+....
+
+- `supportedLanguages`: Optional. Comma-separated list of supported languages (ISO 639-1 codes). If `supportedLanguages` is not configured, the listener falls back to the legacy `eml` configuration.
+
+- `i18nWelcomeTemplateDirectory`: Optional. Directory containing the welcome email templates for each supported language. Each template must follow the naming convention: `welcome-<languageCode>.eml` (for example `welcome-en.eml`).
+
+- `defaultLanguage`: Optional. The default language (ISO 639-1 code) to use when the user's language is not supported or missing. Defaults to `en`.
