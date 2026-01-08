@@ -128,11 +128,6 @@ public class SecondaryBlobStoreDAOWithEmptySuffixTest implements BlobStoreDAOCon
         return testee;
     }
 
-    @Override
-    @Disabled("Not supported")
-    public void listBucketsShouldReturnBucketsWithNoBlob() {
-    }
-
     @Test
     public void readShouldReturnInputStreamWhenBlobDoesNotExistInThePrimaryBlobStore() {
         Mono.from(secondaryBlobStoreDAO.save(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();

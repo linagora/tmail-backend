@@ -8,7 +8,6 @@ import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.api.PlainBlobId;
 import org.apache.james.blob.memory.MemoryBlobStoreDAO;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.blob.blobid.list.BlobIdList;
@@ -47,11 +46,5 @@ public class PostgresSingleSaveBlobStoreTest implements SingleSaveBlobStoreContr
     @Override
     public BucketName defaultBucketName() {
         return BucketName.DEFAULT;
-    }
-
-    @Override
-    @Disabled("Not supported")
-    public void listBucketsShouldReturnBucketsWithNoBlob() {
-
     }
 }
