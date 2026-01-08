@@ -85,13 +85,13 @@ public class RedisKeyRegistrationHandler {
     }
 
     void start() {
-        scheduler = Schedulers.newBoundedElastic(EventBus.EXECUTION_RATE, ReactorUtils.DEFAULT_BOUNDED_ELASTIC_QUEUESIZE, "keys-handler"); // worker thread pool for each key queue
+        scheduler = Schedulers.newBoundedElastic(EventBus.DEFAULT_MAX_CONCURRENCY, ReactorUtils.DEFAULT_BOUNDED_ELASTIC_QUEUESIZE, "keys-handler"); // worker thread pool for each key queue
 
         declarePubSubChannel();
 
         Disposable newSubscription = Mono.from(redisSubscriber.subscribe(registrationChannel.asString()))
             .thenMany(redisSubscriber.observeChannels())
-            .flatMap(this::handleChannelMessage, EventBus.EXECUTION_RATE)
+            .flatMap(this::handleChannelMessage, EventBus.DEFAULT_MAX_CONCURRENCY)
             .doOnError(throwable -> LOGGER.error(throwable.getMessage()))
             .subscribeOn(scheduler)
             .subscribe();
@@ -178,7 +178,7 @@ public class RedisKeyRegistrationHandler {
         List<Event> events = toEvents(keyChannelMessage.eventAsJson());
 
         return Flux.fromIterable(listenersToCall)
-            .flatMap(listener -> executeListener(listener, events, registrationKey), EventBus.EXECUTION_RATE)
+            .flatMap(listener -> executeListener(listener, events, registrationKey), EventBus.DEFAULT_MAX_CONCURRENCY)
             .then();
     }
 

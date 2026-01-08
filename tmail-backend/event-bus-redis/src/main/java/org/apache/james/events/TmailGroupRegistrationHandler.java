@@ -100,7 +100,7 @@ public class TmailGroupRegistrationHandler {
         this.configurations = configurations;
         this.groupRegistrations = new ConcurrentHashMap<>();
         this.queueName = namingStrategy.workQueue(GROUP);
-        this.scheduler = Schedulers.newBoundedElastic(EventBus.EXECUTION_RATE, ReactorUtils.DEFAULT_BOUNDED_ELASTIC_QUEUESIZE, "groups-handler");
+        this.scheduler = Schedulers.newBoundedElastic(configurations.eventBusConfiguration().maxConcurrency(), ReactorUtils.DEFAULT_BOUNDED_ELASTIC_QUEUESIZE, "groups-handler");
         this.consumer = Optional.empty();
     }
 
@@ -145,10 +145,10 @@ public class TmailGroupRegistrationHandler {
     private Disposable consumeWorkQueue() {
         return Flux.using(
                 receiverProvider::createReceiver,
-            receiver -> receiver.consumeManualAck(queueName.asString(), new ConsumeOptions().qos(configurations.eventBusConfiguration().executionRate())),
+            receiver -> receiver.consumeManualAck(queueName.asString(), new ConsumeOptions().qos(configurations.eventBusConfiguration().maxConcurrency())),
             Receiver::close)
             .filter(delivery -> Objects.nonNull(delivery.getBody()))
-            .flatMap(this::deliver, configurations.eventBusConfiguration().executionRate())
+            .flatMap(this::deliver, configurations.eventBusConfiguration().maxConcurrency())
             .subscribeOn(scheduler)
             .subscribe();
     }
