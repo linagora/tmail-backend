@@ -132,11 +132,6 @@ public class SingleSaveBlobStoreDAO implements BlobStoreDAO {
     }
 
     @Override
-    public Publisher<BucketName> listBuckets() {
-        return blobStoreDAO.listBuckets();
-    }
-
-    @Override
     public Publisher<BlobId> listBlobs(BucketName bucketName) {
         return blobStoreDAO.listBlobs(bucketName);
     }

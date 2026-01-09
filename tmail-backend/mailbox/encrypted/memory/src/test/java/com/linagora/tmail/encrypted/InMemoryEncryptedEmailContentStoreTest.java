@@ -21,7 +21,6 @@ package com.linagora.tmail.encrypted;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.apache.james.blob.api.BlobStore;
-import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.api.MetricableBlobStore;
 import org.apache.james.blob.api.PlainBlobId;
 import org.apache.james.blob.memory.MemoryBlobStoreFactory;
@@ -58,7 +57,6 @@ public class InMemoryEncryptedEmailContentStoreTest implements EncryptedEmailCon
     void setUp() {
         blobStore = new MetricableBlobStore(metricsTestExtension.getMetricFactory(), MemoryBlobStoreFactory.builder()
             .blobIdFactory(BLOB_ID_FACTORY)
-            .defaultBucketName()
             .passthrough());
         inMemoryEncryptedEmailContentStore = new InMemoryEncryptedEmailContentStore(blobStore);
     }
@@ -76,10 +74,5 @@ public class InMemoryEncryptedEmailContentStoreTest implements EncryptedEmailCon
     @Override
     public BlobStore blobStore() {
         return blobStore;
-    }
-
-    @Override
-    public BucketName bucketName() {
-        return blobStore.getDefaultBucketName();
     }
 }

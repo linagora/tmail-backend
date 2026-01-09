@@ -52,7 +52,6 @@ import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.ImmutableList;
@@ -126,11 +125,6 @@ public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
     @Override
     public BlobStoreDAO testee() {
         return testee;
-    }
-
-    @Override
-    @Disabled("Not supported")
-    public void listBucketsShouldReturnBucketsWithNoBlob() {
     }
 
     @Test

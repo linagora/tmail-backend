@@ -28,6 +28,7 @@ import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.blob.aes.CryptoConfig;
 import org.apache.james.blob.api.BlobStoreDAO;
+import org.apache.james.blob.objectstorage.aws.S3BlobStoreDAO;
 import org.apache.james.jmap.JmapJamesServerContract;
 import org.apache.james.user.cassandra.CassandraUsersDAO;
 import org.apache.james.utils.GuiceProbe;
@@ -46,14 +47,14 @@ import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 class EncryptedDistributedServerTest implements JamesServerConcreteContract, JmapJamesServerContract {
     static class BlobStoreDaoClassProbe implements GuiceProbe {
-        private final BlobStoreDAO blobStoreDAO;
+        private final S3BlobStoreDAO blobStoreDAO;
 
         @Inject
-        public BlobStoreDaoClassProbe(BlobStoreDAO blobStoreDAO) {
+        public BlobStoreDaoClassProbe(S3BlobStoreDAO blobStoreDAO) {
             this.blobStoreDAO = blobStoreDAO;
         }
 
-        public BlobStoreDAO getBlobStoreDAO() {
+        public S3BlobStoreDAO getBlobStoreDAO() {
             return blobStoreDAO;
         }
     }

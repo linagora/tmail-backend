@@ -53,11 +53,9 @@ object CassandraEncryptedEmailContentStore {
 
 class CassandraEncryptedEmailContentStore @Inject()(blobStore: BlobStore,
                                                     encryptedEmailDAO: CassandraEncryptedEmailDAO) extends EncryptedEmailContentStore {
-  val bucketName: BucketName = blobStore.getDefaultBucketName
-
   override def store(messageId: MessageId, encryptedEmailContent: EncryptedEmailContent): Publisher[Unit] =
     SFlux.fromIterable(encryptedEmailContent.encryptedAttachmentContents)
-      .concatMap(encryptedAttachmentContent => SMono.fromPublisher(blobStore.save(bucketName, encryptedAttachmentContent, DEFAULT_STORAGE_POLICY)))
+      .concatMap(encryptedAttachmentContent => SMono.fromPublisher(blobStore.save(BucketName.DEFAULT, encryptedAttachmentContent, DEFAULT_STORAGE_POLICY)))
       .index()
       .collectMap(positionBlobId => positionBlobId._1.intValue + POSITION_NUMBER_START_AT, positionBlobId => positionBlobId._2)
       .flatMap(positionBlobIdMap => encryptedEmailDAO.insert(messageId.asInstanceOf[CassandraMessageId],
@@ -88,5 +86,5 @@ class CassandraEncryptedEmailContentStore @Inject()(blobStore: BlobStore,
 
   private def deleteBlobStore(messageId: MessageId): SFlux[lang.Boolean] =
     encryptedEmailDAO.getBlobIds(messageId.asInstanceOf[CassandraMessageId])
-      .flatMap(blobId => SMono.fromPublisher(blobStore.delete(bucketName, blobId)))
+      .flatMap(blobId => SMono.fromPublisher(blobStore.delete(BucketName.DEFAULT, blobId)))
 }

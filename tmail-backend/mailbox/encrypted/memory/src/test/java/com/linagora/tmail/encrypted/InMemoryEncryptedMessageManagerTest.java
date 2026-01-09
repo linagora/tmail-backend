@@ -88,7 +88,7 @@ public class InMemoryEncryptedMessageManagerTest {
 
         keystoreManager = new InMemoryKeystoreManager();
         MessageContentExtractor messageContentExtractor = new MessageContentExtractor();
-        blobStore = new DeDuplicationBlobStore(new MemoryBlobStoreDAO(), BucketName.DEFAULT, new PlainBlobId.Factory());
+        blobStore = new DeDuplicationBlobStore(new MemoryBlobStoreDAO(), new PlainBlobId.Factory());
         emailContentStore = new InMemoryEncryptedEmailContentStore(blobStore);
         testee = new EncryptedMessageManager(messageManager, keystoreManager,
             new ClearEmailContentFactory(new MessageParserImpl(), messageContentExtractor, new Preview.Factory(messageContentExtractor, new JsoupHtmlTextExtractor())),
@@ -164,7 +164,7 @@ public class InMemoryEncryptedMessageManagerTest {
             .from(ClassLoaderUtils.getSystemResourceAsSharedStream("emailWithTextAttachment.eml")), session);
 
         BlobId encryptedAttachmentBlobId = Mono.from(emailContentStore.retrieveAttachmentContent(appendResult.getId().getMessageId(), 0)).block();
-        byte[] encryptedAttachment = Mono.from(blobStore.readBytes(blobStore.getDefaultBucketName(), encryptedAttachmentBlobId)).block();
+        byte[] encryptedAttachment = Mono.from(blobStore.readBytes(BucketName.DEFAULT, encryptedAttachmentBlobId)).block();
 
         byte[] decryptedPayload = Decrypter
             .forKey(ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.private"), "123456".toCharArray())

@@ -24,7 +24,6 @@ import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.CassandraClusterExtension;
 import org.apache.james.backends.cassandra.components.CassandraDataDefinition;
 import org.apache.james.blob.api.BlobStore;
-import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.api.MetricableBlobStore;
 import org.apache.james.blob.api.PlainBlobId;
 import org.apache.james.blob.memory.MemoryBlobStoreFactory;
@@ -77,7 +76,6 @@ public class CassandraEncryptedEmailContentStoreTest implements EncryptedEmailCo
     void setUp(CassandraCluster cassandra) {
         blobStore = new MetricableBlobStore(metricsTestExtension.getMetricFactory(), MemoryBlobStoreFactory.builder()
             .blobIdFactory(BLOB_ID_FACTORY)
-            .defaultBucketName()
             .passthrough());
         cassandraEncryptedEmailDAO = new CassandraEncryptedEmailDAO(cassandra.getConf(), BLOB_ID_FACTORY);
         cassandraEncryptedEmailContentStore = new CassandraEncryptedEmailContentStore(blobStore, cassandraEncryptedEmailDAO);
@@ -97,11 +95,6 @@ public class CassandraEncryptedEmailContentStoreTest implements EncryptedEmailCo
     @Override
     public BlobStore blobStore() {
         return blobStore;
-    }
-
-    @Override
-    public BucketName bucketName() {
-        return blobStore.getDefaultBucketName();
     }
 
     @Test

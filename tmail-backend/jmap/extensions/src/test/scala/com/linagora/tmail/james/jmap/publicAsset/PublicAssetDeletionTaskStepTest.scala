@@ -41,9 +41,7 @@ class PublicAssetDeletionTaskStepTest {
 
   @BeforeEach
   def beforeEach(): Unit = {
-    publicAssetRepository = new MemoryPublicAssetRepository(new DeDuplicationBlobStore(new MemoryBlobStoreDAO,
-        BucketName.DEFAULT,
-        new PlainBlobId.Factory()),
+    publicAssetRepository = new MemoryPublicAssetRepository(new DeDuplicationBlobStore(new MemoryBlobStoreDAO, new PlainBlobId.Factory()),
       JMAPExtensionConfiguration.PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT,
       PUBLIC_ASSET_URI_PREFIX)
     publicAssetDeletionTaskStep = new PublicAssetDeletionTaskStep(publicAssetRepository);

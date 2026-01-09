@@ -39,8 +39,6 @@ class MemoryPublicAssetRepository @Inject()(val blobStore: BlobStore,
                                             @Named("publicAssetUriPrefix") publicAssetUriPrefix: URI) extends PublicAssetRepository {
   private val tableStore: Table[Username, PublicAssetId, PublicAssetMetadata] = Tables.synchronizedTable(HashBasedTable.create())
 
-  private val bucketName: BucketName = blobStore.getDefaultBucketName
-
   override def create(username: Username, creationRequest: PublicAssetCreationRequest): Publisher[PublicAssetStorage] =
     SMono(getTotalSize(username))
       .filter(totalSize => (totalSize + creationRequest.size.value) <= publicAssetTotalSizeLimit.asLong())
@@ -49,7 +47,7 @@ class MemoryPublicAssetRepository @Inject()(val blobStore: BlobStore,
 
   private def createAsset(username: Username, creationRequest: PublicAssetCreationRequest): SMono[PublicAssetStorage] =
     SMono.fromCallable(() => creationRequest.content.apply().readAllBytes())
-      .flatMap((dataAsByte: Array[Byte]) => SMono(blobStore.save(bucketName, dataAsByte, BlobStore.StoragePolicy.LOW_COST))
+      .flatMap((dataAsByte: Array[Byte]) => SMono(blobStore.save(BucketName.DEFAULT, dataAsByte, BlobStore.StoragePolicy.LOW_COST))
         .map(blobId => {
           val publicAssetId = PublicAssetIdFactory.generate()
           val publicAsset: PublicAssetStorage = PublicAssetStorage(id = publicAssetId,
@@ -88,7 +86,7 @@ class MemoryPublicAssetRepository @Inject()(val blobStore: BlobStore,
       .flatMap(getBlobContentAndMapToPublicAssetStorage, ReactorUtils.DEFAULT_CONCURRENCY)
 
   private def getBlobContentAndMapToPublicAssetStorage(metaData: PublicAssetMetadata): SMono[PublicAssetStorage] =
-    SMono(blobStore.readReactive(bucketName, metaData.blobId))
+    SMono(blobStore.readReactive(BucketName.DEFAULT, metaData.blobId))
       .map(bytes => metaData.asPublicAssetStorage(bytes))
 
   override def listAllBlobIds(): Publisher[BlobId] =

@@ -20,13 +20,12 @@ package com.linagora.tmail.encrypted
 
 import java.lang
 import java.nio.charset.StandardCharsets
-
 import com.google.common.base.Preconditions
 import com.google.inject.{AbstractModule, Provides, Singleton}
 import com.linagora.tmail.encrypted.EncryptedEmailContentStore.POSITION_NUMBER_START_AT
 import jakarta.inject.Inject
 import org.apache.james.blob.api.BlobStore.StoragePolicy
-import org.apache.james.blob.api.{BlobId, BlobStore}
+import org.apache.james.blob.api.{BlobId, BlobStore, BucketName}
 import org.apache.james.mailbox.model.MessageId
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
@@ -76,7 +75,7 @@ class InMemoryEncryptedEmailContentStore @Inject()(blobStore: BlobStore,
   private def storeAttachment(messageId: MessageId, encryptedAttachmentContents: List[String]): SMono[Unit] = {
     Preconditions.checkNotNull(encryptedAttachmentContents)
     SFlux.fromIterable(encryptedAttachmentContents)
-      .concatMap(attachmentContent => SMono.fromPublisher(blobStore.save(blobStore.getDefaultBucketName, attachmentContent.getBytes(StandardCharsets.UTF_8), StoragePolicy.LOW_COST)))
+      .concatMap(attachmentContent => SMono.fromPublisher(blobStore.save(BucketName.DEFAULT, attachmentContent.getBytes(StandardCharsets.UTF_8), StoragePolicy.LOW_COST)))
       .index()
       .collectMap(positionBlobId => positionBlobId._1.intValue + POSITION_NUMBER_START_AT, positionBlobId => positionBlobId._2)
       .map(positionBlobIdMap => messageIdBlobIdStore.put(messageId, positionBlobIdMap))
@@ -90,5 +89,5 @@ class InMemoryEncryptedEmailContentStore @Inject()(blobStore: BlobStore,
 
   private def deleteBlobStore(messageId: MessageId): SFlux[lang.Boolean] =
     SFlux.fromIterable(messageIdBlobIdStore.getOrElse(messageId, Map()).values)
-      .flatMap(blobId => SMono.fromPublisher(blobStore.delete(blobStore.getDefaultBucketName, blobId)))
+      .flatMap(blobId => SMono.fromPublisher(blobStore.delete(BucketName.DEFAULT, blobId)))
 }
