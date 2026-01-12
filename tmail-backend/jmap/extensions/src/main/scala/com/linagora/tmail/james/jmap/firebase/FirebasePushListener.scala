@@ -19,6 +19,7 @@
 package com.linagora.tmail.james.jmap.firebase
 
 import java.time.Clock
+import java.util.UUID
 
 import com.google.firebase.messaging.{FirebaseMessagingException, MessagingErrorCode}
 import com.linagora.tmail.james.jmap.firebase.FirebasePushListener.{GROUP, LOGGER}
@@ -94,23 +95,29 @@ class FirebasePushListener @Inject()(subscriptionRepository: FirebaseSubscriptio
     stateChangeEvent
       .asStateChange
       .filter(subscription.types.toSet)
-      .fold(SMono.empty[Unit])(stateChange => SMono(pushClient.push(asPushRequest(stateChange, subscription)))
-        .onErrorResume {
-          case e: FirebaseMessagingException => e.getMessagingErrorCode match {
-            case MessagingErrorCode.INVALID_ARGUMENT | MessagingErrorCode.UNREGISTERED => SMono.fromPublisher(subscriptionRepository.revoke(stateChangeEvent.username, subscription.id))
-              .`then`(SMono.fromPublisher(ReactorUtils.logAsMono(() => LOGGER.warn("Subscription with invalid FCM token is removed for user {}", stateChangeEvent.username.asString(), e))))
-            case _ => SMono.fromPublisher(ReactorUtils.logAsMono(() => LOGGER.warn("Unexpected error during push message to Firebase Cloud Messaging for user {}", stateChangeEvent.username.asString(), e)))
+      .fold(SMono.empty[Unit])(stateChange => {
+        val notificationId = UUID.randomUUID()
+        val username = stateChangeEvent.username.asString()
+        SMono(pushClient.push(asPushRequest(stateChange, subscription, notificationId, username)))
+          .onErrorResume {
+            case e: FirebaseMessagingException => e.getMessagingErrorCode match {
+              case MessagingErrorCode.INVALID_ARGUMENT | MessagingErrorCode.UNREGISTERED => SMono.fromPublisher(subscriptionRepository.revoke(stateChangeEvent.username, subscription.id))
+                .`then`(SMono.fromPublisher(ReactorUtils.logAsMono(() => LOGGER.warn("Subscription with invalid FCM token is removed [id={}, user={}]", notificationId, username, e))))
+              case _ => SMono.fromPublisher(ReactorUtils.logAsMono(() => LOGGER.warn("Unexpected error during push message to Firebase Cloud Messaging [id={}, user={}]", notificationId, username, e)))
+            }
+            case e => SMono.fromPublisher(ReactorUtils.logAsMono(() => LOGGER.warn("Unexpected error during push message to Firebase Cloud Messaging [id={}, user={}]", notificationId, username, e)))
           }
-          case e => SMono.fromPublisher(ReactorUtils.logAsMono(() => LOGGER.warn("Unexpected error during push message to Firebase Cloud Messaging for user {}", stateChangeEvent.username.asString(), e)))
-        }
-        .`then`())
+          .`then`()
+      })
 
-  private def asPushRequest(stateChange: StateChange, subscription: FirebaseSubscription): FirebasePushRequest =
+  private def asPushRequest(stateChange: StateChange, subscription: FirebaseSubscription, notificationId: UUID, username: String): FirebasePushRequest =
     new FirebasePushRequest(CollectionConverters.asJava(stateChange.changes
       .flatMap(accountIdToTypeState => accountIdToTypeState._2.changes
         .map(typeNameToState => evaluateKey(accountIdToTypeState._1, typeNameToState._1) -> typeNameToState._2.serialize))),
       subscription.token,
-      urgency(stateChange))
+      urgency(stateChange),
+      notificationId,
+      username)
 
   private def evaluateKey(accountId: AccountId, typeName: TypeName): String =
     accountId.id.value + ":" + typeName.asString()

@@ -19,8 +19,9 @@
 package com.linagora.tmail.james.jmap.firebase;
 
 import java.util.Map;
+import java.util.UUID;
 
 import com.linagora.tmail.james.jmap.model.FirebaseToken;
 
-public record FirebasePushRequest(Map<String, String> stateChangesMap, FirebaseToken token, FirebasePushUrgency urgency) {
+public record FirebasePushRequest(Map<String, String> stateChangesMap, FirebaseToken token, FirebasePushUrgency urgency, UUID notificationId, String username) {
 }

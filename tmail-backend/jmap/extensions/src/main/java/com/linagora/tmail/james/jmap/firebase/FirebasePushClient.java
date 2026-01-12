@@ -21,6 +21,7 @@ package com.linagora.tmail.james.jmap.firebase;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.concurrent.ExecutionException;
 
 import jakarta.inject.Inject;
@@ -47,6 +48,8 @@ import com.linagora.tmail.james.jmap.model.FirebaseToken;
 import com.linagora.tmail.james.jmap.model.MissingOrInvalidFirebaseCredentialException;
 
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
+import reactor.util.retry.Retry;
 
 public class FirebasePushClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(FirebasePushClient.class);
@@ -54,6 +57,8 @@ public class FirebasePushClient {
     private static final String APNS_URGENCY_HEADER = "apns-priority";
     private static final String WEB_PUSH_URGENCY_HEADER = "Urgency";
     private static final String APNS_REQUIRED_NORMAL_PRIORITY = "5";
+    private static final int MAX_RETRIES = 3;
+    private static final Duration INITIAL_BACKOFF = Duration.ofMillis(500);
 
     private final FirebaseMessaging firebaseMessaging;
 
@@ -77,8 +82,28 @@ public class FirebasePushClient {
     }
 
     public Mono<Void> push(FirebasePushRequest pushRequest) {
+        String notificationId = pushRequest.notificationId().toString();
+        String username = pushRequest.username();
+        
+        LOGGER.info("Sending FCM push notification [id={}, user={}]", notificationId, username);
+        
         return sendReactive(createFcmMessage(pushRequest), !DRY_RUN)
-            .doOnEach(ReactorUtils.logOnError(throwable -> LOGGER.warn("Error when pushing FCM notification", throwable)));
+            .retryWhen(Retry.backoff(MAX_RETRIES, INITIAL_BACKOFF)
+                .filter(this::isRetryableError)
+                .doBeforeRetry(retrySignal -> LOGGER.info("Retrying FCM push notification [id={}, user={}] (attempt {}/{}) due to: {}", 
+                    notificationId, username, retrySignal.totalRetries() + 1, MAX_RETRIES, retrySignal.failure().getMessage()))
+                .scheduler(Schedulers.boundedElastic()))
+            .doOnSuccess(unused -> LOGGER.info("FCM push notification sent successfully [id={}, user={}]", notificationId, username))
+            .doOnEach(ReactorUtils.logOnError(throwable -> LOGGER.warn("Error when pushing FCM notification [id={}, user={}]", notificationId, username, throwable)));
+    }
+
+    private boolean isRetryableError(Throwable throwable) {
+        if (throwable instanceof FirebaseMessagingException) {
+            FirebaseMessagingException fcmException = (FirebaseMessagingException) throwable;
+            MessagingErrorCode errorCode = fcmException.getMessagingErrorCode();
+            return errorCode == MessagingErrorCode.INTERNAL || errorCode == MessagingErrorCode.UNAVAILABLE;
+        }
+        return false;
     }
 
     public Mono<Boolean> validateToken(FirebaseToken token) {
