@@ -29,6 +29,7 @@ import org.apache.james.core.Username
 import org.apache.james.events.Event.EventId
 import org.apache.james.jmap.change.{EmailDeliveryTypeName, EmailTypeName, MailboxTypeName, StateChangeEvent}
 import org.apache.james.jmap.core.UuidState
+import org.apache.james.metrics.tests.RecordingMetricFactory
 import org.apache.james.user.api.DelegationStore
 import org.apache.james.user.memory.MemoryDelegationStore
 import org.assertj.core.api.Assertions.assertThat
@@ -59,7 +60,7 @@ class FirebasePushListenerTest {
     pushClient = mock(classOf[FirebasePushClient])
     delegationStore = new MemoryDelegationStore()
     jmapSettingsRepository = MemoryJmapSettingsRepository()
-    testee = new FirebasePushListener(subscriptionRepository, delegationStore, jmapSettingsRepository, pushClient, Clock.systemUTC())
+    testee = new FirebasePushListener(subscriptionRepository, delegationStore, jmapSettingsRepository, pushClient, Clock.systemUTC(), new RecordingMetricFactory)
 
     when(pushClient.push(any())).thenReturn(Mono.empty)
   }
