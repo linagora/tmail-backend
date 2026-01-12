@@ -491,6 +491,11 @@
             </dependency>
             <dependency>
                 <groupId>${project.groupId}</groupId>
+                <artifactId>tmail-mailbox-deleted-messages-vault</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
                 <artifactId>tmail-mailbox-opensearch</artifactId>
                 <version>${project.version}</version>
             </dependency>
