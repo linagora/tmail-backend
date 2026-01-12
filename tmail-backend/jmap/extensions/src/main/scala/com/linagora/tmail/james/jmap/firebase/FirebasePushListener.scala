@@ -33,6 +33,7 @@ import org.apache.james.jmap.api.model.TypeName
 import org.apache.james.jmap.change.{EmailDeliveryTypeName, StateChangeEvent}
 import org.apache.james.jmap.core.{AccountId, StateChange}
 import org.apache.james.lifecycle.api.Startable
+import org.apache.james.metrics.api.MetricFactory
 import org.apache.james.user.api.DelegationStore
 import org.apache.james.util.{MDCBuilder, ReactorUtils}
 import org.reactivestreams.Publisher
@@ -53,7 +54,11 @@ class FirebasePushListener @Inject()(subscriptionRepository: FirebaseSubscriptio
                                      delegationStore: DelegationStore,
                                      jmapSettingsRepository: JmapSettingsRepository,
                                      pushClient: FirebasePushClient,
-                                     clock: Clock) extends ReactiveGroupEventListener {
+                                     clock: Clock,
+                                     metricFactory: MetricFactory) extends ReactiveGroupEventListener {
+  private val pushSuccess = metricFactory.generate("fcm-push-success")
+  private val pushFailure = metricFactory.generate("fcm-push-failure")
+  private val invalidSubscription = metricFactory.generate("fcm-invalid-subscription")
   override def getDefaultGroup: Group = GROUP
 
   override def isHandling(event: Event): Boolean = event.isInstanceOf[StateChangeEvent]
@@ -95,17 +100,23 @@ class FirebasePushListener @Inject()(subscriptionRepository: FirebaseSubscriptio
       .asStateChange
       .filter(subscription.types.toSet)
       .fold(SMono.empty[Unit])(stateChange => SMono(pushClient.push(asPushRequest(stateChange, subscription)))
+        .`then`(SMono.fromCallable(() => pushSuccess.increment()))
+        .`then`()
         .onErrorResume {
           case e: FirebaseMessagingException => e.getMessagingErrorCode match {
             case MessagingErrorCode.INVALID_ARGUMENT | MessagingErrorCode.UNREGISTERED =>
+              invalidSubscription.increment()
               SMono.fromPublisher(subscriptionRepository.revoke(stateChangeEvent.username, subscription.id))
                 .`then`(SMono.fromPublisher(ReactorUtils.logAsMono(() => LOGGER.warn("Subscription with invalid FCM token is removed for user {} and subscription {}", stateChangeEvent.username.asString(), subscription.id.serialize, e))))
             case _ =>
+              pushFailure.increment()
               SMono.error(new RuntimeException(
                 s"Unexpected error during push message to Firebase Cloud Messaging for user ${stateChangeEvent.username.asString()} and subscription ${subscription.id.serialize} and code ${e.getMessagingErrorCode.name()}", e))
           }
-          case e => SMono.error(new RuntimeException(
-            s"Unexpected error during push message to Firebase Cloud Messaging for user ${stateChangeEvent.username.asString()} and subscription ${subscription.id.serialize}", e))
+          case e =>
+            pushFailure.increment()
+            SMono.error(new RuntimeException(
+              s"Unexpected error during push message to Firebase Cloud Messaging for user ${stateChangeEvent.username.asString()} and subscription ${subscription.id.serialize}", e))
         }
         .`then`())
 
