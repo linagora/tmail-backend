@@ -66,6 +66,7 @@
         <module>mailbox/listeners</module>
         <module>mailbox/opensearch</module>
         <module>mailbox/plugin/welcome-listener</module>
+        <module>mailbox/plugin/tmail-deleted-message-vault</module>
         <module>mailbox/team-mailboxes</module>
 
         <module>mailets</module>
@@ -487,6 +488,11 @@
                 <groupId>${project.groupId}</groupId>
                 <artifactId>tmail-listeners</artifactId>
                 <type>test-jar</type>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>tmail-mailbox-deleted-messages-vault</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
