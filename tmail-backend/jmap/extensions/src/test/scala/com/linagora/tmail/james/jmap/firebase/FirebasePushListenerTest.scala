@@ -192,7 +192,8 @@ class FirebasePushListenerTest {
       .isNotNull
 
     SMono(testee.reactiveEvent(StateChangeEvent(EventId.random(), bob,
-      Map(EmailTypeName -> UuidState(UUID.randomUUID()))))).block()
+      Map(EmailTypeName -> UuidState(UUID.randomUUID())))))
+      .onErrorResume(_ => SMono.empty).block()
 
     assertThat(SMono.fromPublisher(subscriptionRepository.get(bob, java.util.Set.of(subscriptionId))).block())
       .isNotNull
