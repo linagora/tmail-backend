@@ -97,11 +97,15 @@ class FirebasePushListener @Inject()(subscriptionRepository: FirebaseSubscriptio
       .fold(SMono.empty[Unit])(stateChange => SMono(pushClient.push(asPushRequest(stateChange, subscription)))
         .onErrorResume {
           case e: FirebaseMessagingException => e.getMessagingErrorCode match {
-            case MessagingErrorCode.INVALID_ARGUMENT | MessagingErrorCode.UNREGISTERED => SMono.fromPublisher(subscriptionRepository.revoke(stateChangeEvent.username, subscription.id))
-              .`then`(SMono.fromPublisher(ReactorUtils.logAsMono(() => LOGGER.warn("Subscription with invalid FCM token is removed for user {}", stateChangeEvent.username.asString(), e))))
-            case _ => SMono.fromPublisher(ReactorUtils.logAsMono(() => LOGGER.warn("Unexpected error during push message to Firebase Cloud Messaging for user {}", stateChangeEvent.username.asString(), e)))
+            case MessagingErrorCode.INVALID_ARGUMENT | MessagingErrorCode.UNREGISTERED =>
+              SMono.fromPublisher(subscriptionRepository.revoke(stateChangeEvent.username, subscription.id))
+                .`then`(SMono.fromPublisher(ReactorUtils.logAsMono(() => LOGGER.warn("Subscription with invalid FCM token is removed for user {} and subscription {}", stateChangeEvent.username.asString(), subscription.id.serialize, e))))
+            case _ =>
+              SMono.error(new RuntimeException(
+                s"Unexpected error during push message to Firebase Cloud Messaging for user user ${stateChangeEvent.username.asString()} and subscription ${subscription.id.serialize} and code ${e.getMessagingErrorCode.name()}", e))
           }
-          case e => SMono.fromPublisher(ReactorUtils.logAsMono(() => LOGGER.warn("Unexpected error during push message to Firebase Cloud Messaging for user {}", stateChangeEvent.username.asString(), e)))
+          case e => SMono.error(new RuntimeException(
+            s"Unexpected error during push message to Firebase Cloud Messaging for user ${stateChangeEvent.username.asString()} and subscription ${subscription.id.serialize}", e))
         }
         .`then`())
 
