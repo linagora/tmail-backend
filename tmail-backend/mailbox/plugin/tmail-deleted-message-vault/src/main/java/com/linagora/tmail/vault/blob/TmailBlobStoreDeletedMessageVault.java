@@ -27,12 +27,16 @@
 package com.linagora.tmail.vault.blob;
 
 import static org.apache.james.blob.api.BlobStore.StoragePolicy.LOW_COST;
+import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
 import java.io.InputStream;
+import java.time.Clock;
+import java.time.ZonedDateTime;
+import java.util.Optional;
 
 import jakarta.inject.Inject;
 
-import org.apache.commons.lang3.NotImplementedException;
+import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.BlobStore;
 import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.blob.api.BucketName;
@@ -41,47 +45,64 @@ import org.apache.james.core.Username;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.task.Task;
+import org.apache.james.user.api.UsersRepository;
 import org.apache.james.vault.DeletedMessage;
 import org.apache.james.vault.DeletedMessageContentNotFoundException;
 import org.apache.james.vault.DeletedMessageVault;
+import org.apache.james.vault.VaultConfiguration;
 import org.apache.james.vault.metadata.DeletedMessageMetadataVault;
 import org.apache.james.vault.metadata.DeletedMessageWithStorageInformation;
 import org.apache.james.vault.metadata.StorageInformation;
 import org.apache.james.vault.search.Query;
 import org.reactivestreams.Publisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import com.linagora.tmail.vault.blob.TmailBlobStoreVaultGarbageCollectionTask.TmailBlobStoreVaultGarbageCollectionContext;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.function.Tuples;
 
 public class TmailBlobStoreDeletedMessageVault implements DeletedMessageVault {
-    private static final String DEFAULT_SINGLE_BUCKET_NAME = "tmail-deleted-message-vault";
+    private static final Logger LOGGER = LoggerFactory.getLogger(TmailBlobStoreDeletedMessageVault.class);
+
+    private static final BucketName DEFAULT_SINGLE_BUCKET_NAME = BucketName.of("tmail-deleted-message-vault");
     private static final String TMAIL_BLOBSTORE_DELETED_MESSAGE_VAULT_METRIC = "tmailDeletedMessageVault:blobStore:";
     static final String APPEND_METRIC_NAME = TMAIL_BLOBSTORE_DELETED_MESSAGE_VAULT_METRIC + "append";
     static final String LOAD_MIME_MESSAGE_METRIC_NAME = TMAIL_BLOBSTORE_DELETED_MESSAGE_VAULT_METRIC + "loadMimeMessage";
     static final String SEARCH_METRIC_NAME = TMAIL_BLOBSTORE_DELETED_MESSAGE_VAULT_METRIC + "search";
     static final String DELETE_METRIC_NAME = TMAIL_BLOBSTORE_DELETED_MESSAGE_VAULT_METRIC + "delete";
+    static final String DELETE_EXPIRED_MESSAGES_METRIC_NAME = TMAIL_BLOBSTORE_DELETED_MESSAGE_VAULT_METRIC + "deleteExpiredMessages";
 
     private final MetricFactory metricFactory;
     private final DeletedMessageMetadataVault messageMetadataVault;
     private final BlobStore blobStore;
     private final BlobStoreDAO blobStoreDAO;
     private final BucketNameGenerator nameGenerator;
+    private final Clock clock;
+    private final VaultConfiguration vaultConfiguration;
     private final BlobIdTimeGenerator blobIdTimeGenerator;
+    private final UsersRepository usersRepository;
+    private final TmailBlobStoreVaultGarbageCollectionTask.Factory taskFactory;
 
     @Inject
     public TmailBlobStoreDeletedMessageVault(MetricFactory metricFactory, DeletedMessageMetadataVault messageMetadataVault,
                                              BlobStore blobStore, BlobStoreDAO blobStoreDAO, BucketNameGenerator nameGenerator,
-                                             BlobIdTimeGenerator blobIdTimeGenerator) {
+                                             Clock clock, BlobIdTimeGenerator blobIdTimeGenerator,
+                                             VaultConfiguration vaultConfiguration, UsersRepository usersRepository) {
         this.metricFactory = metricFactory;
         this.messageMetadataVault = messageMetadataVault;
         this.blobStore = blobStore;
         this.blobStoreDAO = blobStoreDAO;
         this.nameGenerator = nameGenerator;
+        this.clock = clock;
+        this.vaultConfiguration = vaultConfiguration;
         this.blobIdTimeGenerator = blobIdTimeGenerator;
+        this.usersRepository = usersRepository;
+        this.taskFactory = new TmailBlobStoreVaultGarbageCollectionTask.Factory(this);
     }
 
     @Deprecated
@@ -110,11 +131,10 @@ public class TmailBlobStoreDeletedMessageVault implements DeletedMessageVault {
     public Publisher<Void> append(DeletedMessage deletedMessage, InputStream mimeMessage) {
         Preconditions.checkNotNull(deletedMessage);
         Preconditions.checkNotNull(mimeMessage);
-        BucketName bucketName = BucketName.of(DEFAULT_SINGLE_BUCKET_NAME);
 
         return metricFactory.decoratePublisherWithTimerMetric(
             APPEND_METRIC_NAME,
-            appendMessage(deletedMessage, mimeMessage, bucketName));
+            appendMessage(deletedMessage, mimeMessage, DEFAULT_SINGLE_BUCKET_NAME));
     }
 
     private Mono<Void> appendMessage(DeletedMessage deletedMessage, InputStream mimeMessage, BucketName bucketName) {
@@ -190,6 +210,76 @@ public class TmailBlobStoreDeletedMessageVault implements DeletedMessageVault {
 
     @Override
     public Task deleteExpiredMessagesTask() {
-        throw new NotImplementedException("not implemented");
+        return taskFactory.create();
+    }
+
+    Mono<Void> deleteExpiredMessages(ZonedDateTime beginningOfRetentionPeriod, TmailBlobStoreVaultGarbageCollectionContext context) {
+        return Flux.from(
+                metricFactory.decoratePublisherWithTimerMetric(
+                    DELETE_EXPIRED_MESSAGES_METRIC_NAME,
+                    deletedExpiredMessagesFromOldBuckets(beginningOfRetentionPeriod, context)
+                        .then(deleteUserExpiredMessages(beginningOfRetentionPeriod, context))))
+            .then();
+    }
+
+    @Deprecated
+    private Flux<BucketName> deletedExpiredMessagesFromOldBuckets(ZonedDateTime beginningOfRetentionPeriod, TmailBlobStoreVaultGarbageCollectionContext context) {
+        return retentionQualifiedBuckets(beginningOfRetentionPeriod)
+            .flatMap(bucketName -> deleteBucketData(bucketName).then(Mono.just(bucketName)), DEFAULT_CONCURRENCY)
+            .doOnNext(context::recordDeletedBucketSuccess);
+    }
+
+    ZonedDateTime getBeginningOfRetentionPeriod() {
+        ZonedDateTime now = ZonedDateTime.now(clock);
+        return now.minus(vaultConfiguration.getRetentionPeriod());
+    }
+
+    @VisibleForTesting
+    @Deprecated
+    Flux<BucketName> retentionQualifiedBuckets(ZonedDateTime beginningOfRetentionPeriod) {
+        return Flux.from(messageMetadataVault.listRelatedBuckets())
+            .filter(bucketName -> !bucketName.equals(DEFAULT_SINGLE_BUCKET_NAME))
+            .filter(bucketName -> isFullyExpired(beginningOfRetentionPeriod, bucketName));
+    }
+
+    private boolean isFullyExpired(ZonedDateTime beginningOfRetentionPeriod, BucketName bucketName) {
+        Optional<ZonedDateTime> maybeEndDate = nameGenerator.bucketEndTime(bucketName);
+
+        if (!maybeEndDate.isPresent()) {
+            LOGGER.error("Pattern used for bucketName used in deletedMessageVault is invalid and end date cannot be parsed {}", bucketName);
+        }
+        return maybeEndDate.map(endDate -> endDate.isBefore(beginningOfRetentionPeriod))
+            .orElse(false);
+    }
+
+    private Mono<Void> deleteBucketData(BucketName bucketName) {
+        return Mono.from(blobStore.deleteBucket(bucketName))
+            .then(Mono.from(messageMetadataVault.removeMetadataRelatedToBucket(bucketName)));
+    }
+
+    private Mono<Void> deleteUserExpiredMessages(ZonedDateTime beginningOfRetentionPeriod, TmailBlobStoreVaultGarbageCollectionContext context) {
+        return Flux.from(usersRepository.listReactive())
+            .flatMap(username -> Flux.from(messageMetadataVault.listMessages(DEFAULT_SINGLE_BUCKET_NAME, username))
+                .filter(deletedMessage -> isMessageFullyExpired(beginningOfRetentionPeriod, deletedMessage))
+                .flatMap(deletedMessage -> Mono.from(blobStoreDAO.delete(deletedMessage.getStorageInformation().getBucketName(), deletedMessage.getStorageInformation().getBlobId()))
+                    .then(Mono.from(messageMetadataVault.remove(DEFAULT_SINGLE_BUCKET_NAME, username, deletedMessage.getDeletedMessage().getMessageId())))
+                    .doOnSuccess(any -> context.recordDeletedBlobSuccess())
+                    .onErrorResume(ex -> {
+                        LOGGER.warn("Failure when attempting to delete from deleted message vault the blob {}", deletedMessage.getStorageInformation().getBlobId().asString());
+                        return Mono.empty();
+                    })))
+            .then();
+    }
+
+    private boolean isMessageFullyExpired(ZonedDateTime beginningOfRetentionPeriod, DeletedMessageWithStorageInformation deletedMessage) {
+        BlobId blobId = deletedMessage.getStorageInformation().getBlobId();
+        Optional<ZonedDateTime> maybeEndDate = blobIdTimeGenerator.blobIdEndTime(blobId);
+
+        if (maybeEndDate.isEmpty()) {
+            LOGGER.error("Pattern used for blobId used in deletedMessageVault is invalid and end date cannot be parsed {}", blobId);
+        }
+
+        return maybeEndDate.map(endDate -> endDate.isBefore(beginningOfRetentionPeriod))
+            .orElse(false);
     }
 }
