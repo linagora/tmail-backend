@@ -26,7 +26,7 @@ import org.apache.james.core.Username
 import org.apache.james.mailbox.MailboxManager.{MailboxCapabilities, MailboxRenamedResult, MessageCapabilities, SearchCapabilities}
 import org.apache.james.mailbox.model.search.MailboxQuery
 import org.apache.james.mailbox.model.{Mailbox, MailboxACL, MailboxAnnotation, MailboxAnnotationKey, MailboxId, MailboxMetaData, MailboxPath, MessageId, MessageRange, MultimailboxesSearchQuery, ThreadId}
-import org.apache.james.mailbox.{MailboxManager, MailboxSession, MessageManager, SessionProvider}
+import org.apache.james.mailbox.{Authorizator, MailboxManager, MailboxSession, MessageManager, SessionProvider}
 import org.reactivestreams.Publisher
 import reactor.core.publisher.Flux
 import reactor.core.scala.publisher.SMono
@@ -35,6 +35,8 @@ class EncryptedMailboxManager @Inject()(mailboxManager: MailboxManager,
                                         keystoreManager: KeystoreManager,
                                         clearEmailContentFactory: ClearEmailContentFactory,
                                         encryptedEmailContentStore: EncryptedEmailContentStore) extends MailboxManager {
+
+  override def withExtraAuthorizator(authorizator: Authorizator): SessionProvider = mailboxManager.withExtraAuthorizator(authorizator)
 
   override def getMailbox(mailbox: Mailbox, session: MailboxSession): MessageManager = mailboxManager.getMailbox(mailbox, session)
 
