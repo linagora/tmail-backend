@@ -42,6 +42,10 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>jmap-extensions-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>jmap-extensions-rabbitmq</artifactId>
         </dependency>
         <dependency>
