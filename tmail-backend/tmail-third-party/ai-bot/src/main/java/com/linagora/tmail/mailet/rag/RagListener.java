@@ -77,7 +77,7 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
     }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RagListener.class);
-    private static final Group GROUP = new RagListenerGroup();
+    public static final Group GROUP = new RagListenerGroup();
 
     private final MailboxManager mailboxManager;
     private final MessageIdManager messageIdManager;

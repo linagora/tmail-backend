@@ -95,7 +95,7 @@ public class LlmMailPrioritizationClassifierListener implements EventListener.Re
     }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(LlmMailPrioritizationClassifierListener.class);
-    private static final Group GROUP = new LlmMailPrioritizationClassifierGroup();
+    public static final Group GROUP = new LlmMailPrioritizationClassifierGroup();
 
     private static final String NEEDS_ACTION = "needs-action";
     private static final String SYSTEM_PROMPT_PARAM = "systemPrompt";
