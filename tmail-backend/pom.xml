@@ -66,6 +66,7 @@
         <module>mailbox/listeners</module>
         <module>mailbox/opensearch</module>
         <module>mailbox/plugin/welcome-listener</module>
+        <module>mailbox/plugin/tmail-deleted-message-vault</module>
         <module>mailbox/team-mailboxes</module>
 
         <module>mailets</module>
