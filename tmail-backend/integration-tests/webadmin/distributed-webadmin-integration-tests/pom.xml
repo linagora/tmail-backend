@@ -119,6 +119,12 @@
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-mailbox-plugin-deleted-messages-vault-guice</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
             <artifactId>apache-james-rspamd</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
@@ -127,6 +133,11 @@
             <groupId>${james.groupId}</groupId>
             <artifactId>james-server-rate-limiter-redis</artifactId>
             <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-webadmin-integration-test-common</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>
