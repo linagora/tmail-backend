@@ -18,21 +18,28 @@
 
 package com.linagora.tmail.mailet.conf;
 
+import static org.apache.james.events.EventDeadLettersHealthCheck.DEAD_LETTERS_IGNORED_GROUPS;
+
 import java.io.FileNotFoundException;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.james.events.Group;
 import org.apache.james.utils.PropertiesProvider;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import com.google.inject.multibindings.Multibinder;
 import com.google.inject.name.Named;
+import com.google.inject.name.Names;
+import com.linagora.tmail.listener.rag.LlmMailPrioritizationClassifierListener;
 import com.linagora.tmail.mailet.AIBotConfig;
 import com.linagora.tmail.mailet.AIRedactionalHelper;
 import com.linagora.tmail.mailet.LangchainAIRedactionalHelper;
 import com.linagora.tmail.mailet.StreamChatLanguageModelFactory;
 import com.linagora.tmail.mailet.rag.RagConfig;
+import com.linagora.tmail.mailet.rag.RagListener;
 import com.linagora.tmail.mailet.rag.httpclient.OpenRagHttpClient;
 import com.linagora.tmail.mailet.rag.httpclient.Partition;
 
@@ -42,6 +49,10 @@ public class AIBaseModule extends AbstractModule {
     @Override
     protected void configure() {
         bind(AIRedactionalHelper.class).to(LangchainAIRedactionalHelper.class);
+
+        Multibinder<Group> deadLetterIgnoredGroups = Multibinder.newSetBinder(binder(), Group.class, Names.named(DEAD_LETTERS_IGNORED_GROUPS));
+        deadLetterIgnoredGroups.addBinding().toInstance(RagListener.GROUP);
+        deadLetterIgnoredGroups.addBinding().toInstance(LlmMailPrioritizationClassifierListener.GROUP);
     }
 
     @Provides

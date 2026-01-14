@@ -42,7 +42,7 @@ public class RagDeletionListener implements EventListener.ReactiveGroupEventList
 
     }
 
-    private static final Group RAG_DELETION_LISTENER_GROUP = new RagDeletionListenerGroup();
+    public static final Group RAG_DELETION_LISTENER_GROUP = new RagDeletionListenerGroup();
     private static final Logger LOGGER = LoggerFactory.getLogger(RagDeletionListener.class);
 
     private final JmapSettingsRepository jmapSettingsRepository;

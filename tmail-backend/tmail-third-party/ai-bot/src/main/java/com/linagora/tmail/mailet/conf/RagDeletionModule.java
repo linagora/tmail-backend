@@ -18,7 +18,11 @@
 
 package com.linagora.tmail.mailet.conf;
 
+import static com.linagora.tmail.mailet.rag.RagDeletionListener.RAG_DELETION_LISTENER_GROUP;
+import static org.apache.james.events.EventDeadLettersHealthCheck.DEAD_LETTERS_IGNORED_GROUPS;
+
 import org.apache.james.events.EventListener;
+import org.apache.james.events.Group;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.multibindings.Multibinder;
@@ -33,5 +37,9 @@ public class RagDeletionModule extends AbstractModule {
         Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class, Names.named(CONTENT_DELETION))
             .addBinding()
             .to(RagDeletionListener.class);
+
+        Multibinder.newSetBinder(binder(), Group.class, Names.named(DEAD_LETTERS_IGNORED_GROUPS))
+            .addBinding()
+            .toInstance(RAG_DELETION_LISTENER_GROUP);
     }
 }
