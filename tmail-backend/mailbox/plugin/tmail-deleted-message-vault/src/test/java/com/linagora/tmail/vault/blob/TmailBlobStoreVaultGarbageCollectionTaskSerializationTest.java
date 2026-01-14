@@ -86,8 +86,9 @@ class TmailBlobStoreVaultGarbageCollectionTaskSerializationTest {
     }
 
     @Test
-    void additonalInformationShouldBeDeserializable() throws IOException {
+    void additionalInformationShouldBeDeserializable() throws IOException {
         assertThat(JSON_TASK_ADDITIONAL_INFORMATION_SERIALIZER.deserialize(SERIALIZED_ADDITIONAL_INFORMATION_TASK))
-            .isEqualToComparingFieldByField(DETAILS);
+            .usingRecursiveComparison()
+            .isEqualTo(DETAILS);
     }
 }
