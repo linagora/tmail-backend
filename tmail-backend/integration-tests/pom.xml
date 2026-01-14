@@ -47,6 +47,7 @@
         <module>webadmin/webadmin-integration-tests-common</module>
         <module>webadmin/distributed-webadmin-integration-tests</module>
         <module>webadmin/postgres-webadmin-integration-tests</module>
+        <module>webadmin/memory-webadmin-integration-tests</module>
 
         <module>rspamd/rspamd-integration-tests-common</module>
         <module>rspamd/distributed-rspamd-integration-tests</module>

@@ -29,7 +29,7 @@ under the License.
             <!-- To create a new keystore execute:
             keytool -genkey -alias james -keyalg RSA -keystore /path/to/james/conf/keystore
               -->
-            <keystore>classpath://keystore</keystore>
+            <keystore>file://conf/keystore</keystore>
             <secret>james72laBalle</secret>
             <provider>org.bouncycastle.jce.provider.BouncyCastleProvider</provider>
         </tls>
@@ -37,16 +37,22 @@ under the License.
         <connectionLimitPerIP>0</connectionLimitPerIP>
         <plainAuthDisallowed>false</plainAuthDisallowed>
         <gracefulShutdown>false</gracefulShutdown>
+        <trafficShaping>
+            <writeTrafficPerSecond>0</writeTrafficPerSecond>
+            <readTrafficPerSecond>0</readTrafficPerSecond>
+            <checkInterval>1000</checkInterval>
+            <maxDelays>15000</maxDelays>
+        </trafficShaping>
     </imapserver>
     <imapserver enabled="true">
         <jmxName>imapserver-ssl</jmxName>
         <bind>0.0.0.0:0</bind>
         <connectionBacklog>200</connectionBacklog>
-        <tls socketTLS="false" startTLS="true">
+        <tls socketTLS="false" startTLS="false">
             <!-- To create a new keystore execute:
               keytool -genkey -alias james -keyalg RSA -keystore /path/to/james/conf/keystore
              -->
-            <keystore>classpath://keystore</keystore>
+            <keystore>file://conf/keystore</keystore>
             <secret>james72laBalle</secret>
             <provider>org.bouncycastle.jce.provider.BouncyCastleProvider</provider>
         </tls>
