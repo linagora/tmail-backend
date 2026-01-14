@@ -43,11 +43,13 @@ import org.apache.james.json.DTOModule;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.MultimailboxesSearchQuery;
+import org.apache.james.mailbox.quota.QuotaRootDeserializer;
 import org.apache.james.mailbox.searchhighligt.SearchHighlighter;
 import org.apache.james.mailbox.searchhighligt.SearchSnippet;
 import org.apache.james.mailbox.store.mail.AttachmentIdAssignationStrategy;
 import org.apache.james.mailbox.store.mail.model.impl.MessageParser;
 import org.apache.james.mailbox.store.quota.DefaultQuotaChangeNotifier;
+import org.apache.james.mailbox.store.quota.DefaultUserQuotaRootResolver;
 import org.apache.james.mailbox.store.search.ListeningMessageSearchIndex;
 import org.apache.james.mailbox.store.search.MessageSearchIndex;
 import org.apache.james.mailbox.store.search.SimpleMessageSearchIndex;
@@ -337,6 +339,7 @@ public class PostgresTmailServer {
             .with(binder -> {
                 binder.bind(AttachmentIdAssignationStrategy.class).to(TMailCleverAttachmentIdAssignationStrategy.class);
                 binder.bind(MessageParser.class).to(TMailCleverMessageParser.class);
+                binder.bind(QuotaRootDeserializer.class).toInstance(new DefaultUserQuotaRootResolver.DefaultQuotaRootDeserializer());
             }),
         new PostgresDeadLetterModule(),
         new TMailPostgresDataModule(),
