@@ -167,10 +167,6 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>tmail-guice-distributed</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
             <artifactId>tmail-rate-limiter-api</artifactId>
         </dependency>
         <dependency>
