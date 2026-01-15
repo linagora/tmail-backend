@@ -231,12 +231,10 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     @Singleton
     @Named(TMAIL_EVENT_BUS_INJECT_NAME)
     RabbitMQAndRedisEventBus provideTmailEventBus(RabbitMQAndRedisEventBus.Factory eventBusFactory,
-                                                  RetryBackoffConfiguration retryBackoffConfiguration,
                                                   @Named(TMAIL_EVENT_BUS_INJECT_NAME) EventBusId eventBusId,
-                                                  RabbitMQConfiguration configuration,
                                                   TmailEventSerializer tmailEventSerializer,
-                                                  RabbitMQEventBus.Configuration eventBusConfiguration) {
-        return eventBusFactory.create(eventBusId, TMAIL_NAMING_STRATEGY, new RoutingKeyConverter(ImmutableSet.of(new Factory())), tmailEventSerializer, new RabbitMQEventBus.Configurations(configuration, retryBackoffConfiguration, eventBusConfiguration));
+                                                  RabbitMQEventBus.Configurations configurations) {
+        return eventBusFactory.create(eventBusId, TMAIL_NAMING_STRATEGY, new RoutingKeyConverter(ImmutableSet.of(new Factory())), tmailEventSerializer, configurations);
     }
 
     @Provides
@@ -328,6 +326,7 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
         return ImmutableSet.of(
             "mailboxEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
             "jmapEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
-            "contentDeletionEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup");
+            "contentDeletionEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
+            "tmailEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup");
     }
 }
