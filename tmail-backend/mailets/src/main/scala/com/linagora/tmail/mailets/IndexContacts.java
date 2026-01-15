@@ -80,7 +80,8 @@ public class IndexContacts extends GenericMailet {
     private static final Logger LOGGER = LoggerFactory.getLogger(IndexContacts.class);
     private static final ImmutableSet<RegistrationKey> NO_REGISTRATION_KEYS = ImmutableSet.of();
     private static final String EMPTY_STRING = "";
-    private static final String TMAIL_EVENT_BUS_INJECT_NAME = "TMAIL_EVENT_BUS";
+
+    public static final String TMAIL_EVENT_BUS_INJECT_NAME = "TMAIL_EVENT_BUS";
 
     private final ObjectMapper objectMapper = new ObjectMapper()
         .registerModule(new GuavaModule());
