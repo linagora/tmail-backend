@@ -77,7 +77,6 @@ import com.google.inject.Scopes;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Names;
-import com.linagora.tmail.event.EmailAddressContactRabbitMQEventBusModule.EmailAddressContactEventLoader;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactListener;
 
 public class RabbitMQAndRedisEventBusModule extends AbstractModule {
@@ -110,8 +109,9 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
         Multibinder.newSetBinder(binder(), EventSerializer.class)
             .addBinding()
             .to(TmailEventSerializer.class);
-        Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class,
-            Names.named(TMAIL_EVENT_BUS_INJECT_NAME));
+        Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class, Names.named(TMAIL_EVENT_BUS_INJECT_NAME))
+            .addBinding()
+            .to(EmailAddressContactListener.class);
     }
 
     @ProvidesIntoSet
@@ -247,14 +247,6 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     @ProvidesIntoSet
     EventBus registerEventBus(@Named(TMAIL_EVENT_BUS_INJECT_NAME) EventBus eventBus) {
         return eventBus;
-    }
-
-    @ProvidesIntoSet
-    public InitializationOperation registerListener(@Named(TMAIL_EVENT_BUS_INJECT_NAME) EventBus eventBus,
-                                                    EmailAddressContactListener emailAddressContactListener) {
-        return InitilizationOperationBuilder
-            .forClass(EmailAddressContactEventLoader.class)
-            .init(() -> eventBus.register(emailAddressContactListener));
     }
 
     @Provides

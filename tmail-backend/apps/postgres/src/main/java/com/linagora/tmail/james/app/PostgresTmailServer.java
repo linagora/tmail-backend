@@ -136,7 +136,6 @@ import com.linagora.tmail.NoopGuiceLoader;
 import com.linagora.tmail.ScheduledReconnectionHandler;
 import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.blob.guice.BlobStoreModulesChooser;
-import com.linagora.tmail.event.EmailAddressContactRabbitMQEventBusModule;
 import com.linagora.tmail.event.RabbitMQAndRedisEventBusModule;
 import com.linagora.tmail.event.TMailJMAPListenerModule;
 import com.linagora.tmail.event.TmailEventModule;
@@ -407,8 +406,7 @@ public class PostgresTmailServer {
         new TmailEventModule(),
         new MailboxEventBusModule(),
         new ContentDeletionEventBusModule(),
-        new JMAPEventBusModule(),
-        new EmailAddressContactRabbitMQEventBusModule());
+        new JMAPEventBusModule());
 
     public static Module chooseQueueModules(PostgresTmailConfiguration configuration) {
         return switch (configuration.eventBusImpl()) {
