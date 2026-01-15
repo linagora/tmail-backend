@@ -50,6 +50,7 @@ import org.jooq.Record;
 import org.reactivestreams.Publisher;
 
 import com.linagora.tmail.vault.blob.BlobIdTimeGenerator;
+import com.linagora.tmail.vault.metadata.TmailMetadataSerializer;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
