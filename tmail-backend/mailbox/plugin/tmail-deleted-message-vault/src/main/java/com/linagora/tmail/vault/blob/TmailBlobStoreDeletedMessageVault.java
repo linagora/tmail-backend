@@ -263,7 +263,11 @@ public class TmailBlobStoreDeletedMessageVault implements DeletedMessageVault {
                 .filter(deletedMessage -> isMessageFullyExpired(beginningOfRetentionPeriod, deletedMessage))
                 .flatMap(deletedMessage -> Mono.from(blobStoreDAO.delete(deletedMessage.getStorageInformation().getBucketName(), deletedMessage.getStorageInformation().getBlobId()))
                     .then(Mono.from(messageMetadataVault.remove(DEFAULT_SINGLE_BUCKET_NAME, username, deletedMessage.getDeletedMessage().getMessageId())))
-                    .doOnSuccess(any -> context.recordDeletedBlobSuccess())))
+                    .doOnSuccess(any -> context.recordDeletedBlobSuccess())
+                    .onErrorResume(ex -> {
+                        LOGGER.warn("Failure when attempting to delete from deleted message vault the blob {}", deletedMessage.getStorageInformation().getBlobId().asString());
+                        return Mono.empty();
+                    })))
             .then();
     }
 
