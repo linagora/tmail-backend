@@ -57,7 +57,6 @@ import org.apache.james.modules.server.DKIMMailetModule;
 import org.apache.james.modules.server.DropListsRoutesModule;
 import org.apache.james.modules.server.JMXServerModule;
 import org.apache.james.modules.server.TaskManagerModule;
-import org.apache.james.modules.vault.DeletedMessageVaultModule;
 import org.apache.james.rate.limiter.memory.MemoryRateLimiterModule;
 import org.apache.james.util.Host;
 import org.apache.james.utils.GuiceLoader;
@@ -115,6 +114,7 @@ import com.linagora.tmail.mailbox.quota.memory.MemoryUserQuotaReporterModule;
 import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingModule;
 import com.linagora.tmail.team.TMailScanningQuotaSearcherModule;
 import com.linagora.tmail.team.TeamMailboxModule;
+import com.linagora.tmail.vault.TMailDeletedMessageVaultModule;
 import com.linagora.tmail.webadmin.EmailAddressContactRoutesModule;
 import com.linagora.tmail.webadmin.OidcBackchannelLogoutRoutesModule;
 import com.linagora.tmail.webadmin.RateLimitsRoutesModule;
@@ -128,7 +128,7 @@ public class MemoryServer {
     public static final Module IN_MEMORY_SERVER_MODULE = Modules.combine(
         new MailetProcessingModule(),
         new BlobMemoryModule(),
-        new DeletedMessageVaultModule(),
+        new TMailDeletedMessageVaultModule(),
         new BlobExportMechanismModule(),
         new MailboxModule(),
         new MemoryDataModule(),
