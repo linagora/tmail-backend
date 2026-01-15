@@ -24,13 +24,12 @@
  *  http://www.apache.org/licenses/LICENSE-2.0                      *
  ********************************************************************/
 
-package com.linagora.tmail.vault.postgres;
+package com.linagora.tmail.vault.metadata;
 
 import java.util.Optional;
 
 import jakarta.inject.Inject;
 
-import org.apache.james.vault.dto.DeletedMessageWithStorageInformationConverter;
 import org.apache.james.vault.dto.DeletedMessageWithStorageInformationDTO;
 import org.apache.james.vault.metadata.DeletedMessageWithStorageInformation;
 import org.slf4j.Logger;
@@ -40,22 +39,23 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
+import com.linagora.tmail.vault.dto.TmailDeletedMessageWithStorageInformationConverter;
 
-class TmailMetadataSerializer {
+public class TmailMetadataSerializer {
     private static final Logger LOGGER = LoggerFactory.getLogger(TmailMetadataSerializer.class);
 
     private final ObjectMapper objectMapper;
-    private final DeletedMessageWithStorageInformationConverter dtoConverter;
+    private final TmailDeletedMessageWithStorageInformationConverter dtoConverter;
 
     @Inject
-    TmailMetadataSerializer(DeletedMessageWithStorageInformationConverter dtoConverter) {
+    public TmailMetadataSerializer(TmailDeletedMessageWithStorageInformationConverter dtoConverter) {
         this.dtoConverter = dtoConverter;
         this.objectMapper = new ObjectMapper()
             .registerModule(new Jdk8Module())
             .setSerializationInclusion(JsonInclude.Include.NON_ABSENT);
     }
 
-    Optional<DeletedMessageWithStorageInformation> deserialize(String payload) {
+    public Optional<DeletedMessageWithStorageInformation> deserialize(String payload) {
         return deserializeDto(payload)
             .flatMap(this::toDomainObject);
     }
@@ -78,7 +78,7 @@ class TmailMetadataSerializer {
         }
     }
 
-    String serialize(DeletedMessageWithStorageInformation message) {
+    public String serialize(DeletedMessageWithStorageInformation message) {
         DeletedMessageWithStorageInformationDTO dto = DeletedMessageWithStorageInformationDTO.toDTO(message);
 
         try {
