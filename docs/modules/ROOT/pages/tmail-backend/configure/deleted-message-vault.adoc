@@ -3,6 +3,8 @@
 
 By default, on Tmail backend, the deleted message vault is enabled (contrary to James server where it is disabled).
 
+TMail stores deleted message contents in a single blobstore bucket named `tmail-deleted-message-vault`. The garbage collection task also removes legacy time-based buckets if they exist.
+
 It is still possible to disable it by modifying the following property on `deletedMessageVault.properties`:
 
 ....
