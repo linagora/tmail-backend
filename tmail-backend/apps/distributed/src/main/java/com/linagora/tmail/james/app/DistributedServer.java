@@ -83,7 +83,6 @@ import org.apache.james.modules.mailbox.CassandraMailboxQuotaLegacyModule;
 import org.apache.james.modules.mailbox.CassandraMailboxQuotaModule;
 import org.apache.james.modules.mailbox.CassandraQuotaMailingModule;
 import org.apache.james.modules.mailbox.CassandraSessionModule;
-import org.apache.james.modules.mailbox.DistributedDeletedMessageVaultModule;
 import org.apache.james.modules.mailbox.OpenSearchClientModule;
 import org.apache.james.modules.mailbox.OpenSearchDisabledModule;
 import org.apache.james.modules.mailbox.OpenSearchMailboxModule;
@@ -207,6 +206,7 @@ import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.mailbox.opensearch.TmailOpenSearchMailboxMappingModule;
 import com.linagora.tmail.mailbox.quota.cassandra.CassandraUserQuotaReporterModule;
 import com.linagora.tmail.modules.data.TMailCassandraDelegationStoreModule;
+import com.linagora.tmail.modules.data.TMailCassandraDeletedMessageVaultModule;
 import com.linagora.tmail.modules.data.TMailCassandraDomainListModule;
 import com.linagora.tmail.rate.limiter.api.cassandra.module.CassandraRateLimitingModule;
 import com.linagora.tmail.rspamd.RspamdModule;
@@ -602,7 +602,7 @@ public class DistributedServer {
     private static Module chooseDeletedMessageVault(VaultConfiguration vaultConfiguration) {
         if (vaultConfiguration.isEnabled()) {
             return Modules.combine(
-                new DistributedDeletedMessageVaultModule(),
+                new TMailCassandraDeletedMessageVaultModule(),
                 new DeletedMessageVaultRoutesModule(),
                 new EmailRecoveryActionMethodModule());
         }

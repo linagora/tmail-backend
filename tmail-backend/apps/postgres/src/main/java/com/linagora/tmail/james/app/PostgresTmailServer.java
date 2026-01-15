@@ -73,7 +73,6 @@ import org.apache.james.modules.mailbox.DefaultEventModule;
 import org.apache.james.modules.mailbox.OpenSearchClientModule;
 import org.apache.james.modules.mailbox.OpenSearchDisabledModule;
 import org.apache.james.modules.mailbox.OpenSearchMailboxModule;
-import org.apache.james.modules.mailbox.PostgresDeletedMessageVaultModule;
 import org.apache.james.modules.mailbox.PostgresMailboxModule;
 import org.apache.james.modules.mailbox.PostgresMemoryContentDeletionEventBusModule;
 import org.apache.james.modules.mailbox.RLSSupportPostgresMailboxModule;
@@ -183,6 +182,7 @@ import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.mailbox.opensearch.TmailOpenSearchMailboxMappingModule;
 import com.linagora.tmail.mailbox.quota.postgres.PostgresUserQuotaReporterModule;
 import com.linagora.tmail.modules.data.TMailPostgresDataModule;
+import com.linagora.tmail.modules.data.TMailPostgresDeletedMessageVaultModule;
 import com.linagora.tmail.modules.data.TMailPostgresUsersRepositoryModule;
 import com.linagora.tmail.rate.limiter.api.postgres.module.PostgresRateLimitingModule;
 import com.linagora.tmail.rspamd.RspamdModule;
@@ -348,7 +348,7 @@ public class PostgresTmailServer {
         new TikaMailboxModule(),
         new PostgresVacationModule(),
         new PostgresDLPConfigurationStoreModule(),
-        new PostgresDeletedMessageVaultModule(),
+        new TMailPostgresDeletedMessageVaultModule(),
         new PostgresEventStoreModule(),
         EVENT_STORE_JSON_SERIALIZATION_DEFAULT_MODULE);
 
