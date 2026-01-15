@@ -238,6 +238,7 @@ public class TmailBlobStoreDeletedMessageVault implements DeletedMessageVault {
     @Deprecated
     Flux<BucketName> retentionQualifiedBuckets(ZonedDateTime beginningOfRetentionPeriod) {
         return Flux.from(messageMetadataVault.listRelatedBuckets())
+            .filter(bucketName -> !bucketName.equals(DEFAULT_SINGLE_BUCKET_NAME))
             .filter(bucketName -> isFullyExpired(beginningOfRetentionPeriod, bucketName));
     }
 
