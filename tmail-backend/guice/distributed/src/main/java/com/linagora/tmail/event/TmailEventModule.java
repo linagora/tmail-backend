@@ -44,6 +44,7 @@ import com.google.inject.Singleton;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Names;
+import com.linagora.tmail.james.jmap.contact.EmailAddressContactListener;
 
 public class TmailEventModule extends AbstractModule {
     public static final NamingStrategy TMAIL_NAMING_STRATEGY = new NamingStrategy(new EventBusName("tmailEvent"));
@@ -57,8 +58,9 @@ public class TmailEventModule extends AbstractModule {
         Multibinder.newSetBinder(binder(), EventSerializer.class)
             .addBinding()
             .to(TmailEventSerializer.class);
-        Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class,
-            Names.named(TMAIL_EVENT_BUS_INJECT_NAME));
+        Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class, Names.named(TMAIL_EVENT_BUS_INJECT_NAME))
+            .addBinding()
+            .to(EmailAddressContactListener.class);
     }
 
     @ProvidesIntoSet
@@ -75,19 +77,19 @@ public class TmailEventModule extends AbstractModule {
     @Provides
     @Singleton
     @Named(TMAIL_EVENT_BUS_INJECT_NAME)
-    RabbitMQEventBus provideEmailAddressContactEventBus(RabbitMQEventBus.Factory eventBusFactory,
-                                                        RetryBackoffConfiguration retryBackoffConfiguration,
-                                                        @Named(TMAIL_EVENT_BUS_INJECT_NAME) EventBusId eventBusId,
-                                                        RabbitMQConfiguration configuration,
-                                                        TmailEventSerializer tmailEventSerializer,
-                                                        EventBus.Configuration eventBusConfiguration) {
+    RabbitMQEventBus provideTmailEventBus(RabbitMQEventBus.Factory eventBusFactory,
+                                          RetryBackoffConfiguration retryBackoffConfiguration,
+                                          @Named(TMAIL_EVENT_BUS_INJECT_NAME) EventBusId eventBusId,
+                                          RabbitMQConfiguration configuration,
+                                          TmailEventSerializer tmailEventSerializer,
+                                          EventBus.Configuration eventBusConfiguration) {
         return eventBusFactory.create(eventBusId, TMAIL_NAMING_STRATEGY, new RoutingKeyConverter(ImmutableSet.of(new Factory())), tmailEventSerializer, new RabbitMQEventBus.Configurations(configuration, retryBackoffConfiguration, eventBusConfiguration));
     }
 
     @Provides
     @Singleton
     @Named(TMAIL_EVENT_BUS_INJECT_NAME)
-    EventBus provideEmailAddressContactEventBus(@Named(TMAIL_EVENT_BUS_INJECT_NAME) RabbitMQEventBus eventBus) {
+    EventBus provideTmailEventBus(@Named(TMAIL_EVENT_BUS_INJECT_NAME) RabbitMQEventBus eventBus) {
         return eventBus;
     }
 

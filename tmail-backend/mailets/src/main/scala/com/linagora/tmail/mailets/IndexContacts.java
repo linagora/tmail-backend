@@ -48,7 +48,6 @@ import com.fasterxml.jackson.datatype.guava.GuavaModule;
 import com.github.fge.lambdas.Throwing;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
-import com.linagora.tmail.james.jmap.EmailAddressContactInjectKeys;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.contact.TmailContactUserAddedEvent;
 
@@ -82,6 +81,8 @@ public class IndexContacts extends GenericMailet {
     private static final ImmutableSet<RegistrationKey> NO_REGISTRATION_KEYS = ImmutableSet.of();
     private static final String EMPTY_STRING = "";
 
+    public static final String TMAIL_EVENT_BUS_INJECT_NAME = "TMAIL_EVENT_BUS";
+
     private final ObjectMapper objectMapper = new ObjectMapper()
         .registerModule(new GuavaModule());
 
@@ -90,7 +91,7 @@ public class IndexContacts extends GenericMailet {
     private AttributeName attributeName;
 
     @Inject
-    public IndexContacts(@Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) EventBus eventBus) {
+    public IndexContacts(@Named(TMAIL_EVENT_BUS_INJECT_NAME) EventBus eventBus) {
         this.eventBus = eventBus;
     }
 

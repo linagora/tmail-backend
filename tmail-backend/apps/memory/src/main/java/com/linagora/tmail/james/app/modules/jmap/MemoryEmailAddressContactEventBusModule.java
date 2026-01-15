@@ -18,6 +18,8 @@
 
 package com.linagora.tmail.james.app.modules.jmap;
 
+import static com.linagora.tmail.mailets.IndexContacts.TMAIL_EVENT_BUS_INJECT_NAME;
+
 import org.apache.james.events.EventBus;
 import org.apache.james.lifecycle.api.Startable;
 import org.apache.james.utils.InitializationOperation;
@@ -28,13 +30,12 @@ import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Named;
-import com.linagora.tmail.james.jmap.EmailAddressContactInjectKeys;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactListener;
 
 public class MemoryEmailAddressContactEventBusModule extends AbstractModule {
     @ProvidesIntoSet
     public InitializationOperation registerListener(
-            @Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) EventBus eventBus,
+            @Named(TMAIL_EVENT_BUS_INJECT_NAME) EventBus eventBus,
             EmailAddressContactListener emailAddressContactListener) {
         return InitilizationOperationBuilder
                 .forClass(EmailAddressContactEventLoader.class)
@@ -43,7 +44,7 @@ public class MemoryEmailAddressContactEventBusModule extends AbstractModule {
 
     @Provides
     @Singleton
-    @Named(EmailAddressContactInjectKeys.AUTOCOMPLETE)
+    @Named(TMAIL_EVENT_BUS_INJECT_NAME)
     public EventBus provideInVMEventBus(EventBus eventBus) {
         return eventBus;
     }

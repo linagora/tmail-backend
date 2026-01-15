@@ -136,10 +136,9 @@ import com.linagora.tmail.NoopGuiceLoader;
 import com.linagora.tmail.ScheduledReconnectionHandler;
 import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.blob.guice.BlobStoreModulesChooser;
-import com.linagora.tmail.event.DistributedEmailAddressContactEventModule;
-import com.linagora.tmail.event.EmailAddressContactRabbitMQEventBusModule;
 import com.linagora.tmail.event.RabbitMQAndRedisEventBusModule;
 import com.linagora.tmail.event.TMailJMAPListenerModule;
+import com.linagora.tmail.event.TmailEventModule;
 import com.linagora.tmail.healthcheck.TasksHeathCheckModule;
 import com.linagora.tmail.imap.TMailIMAPModule;
 import com.linagora.tmail.james.app.modules.jmap.MemoryEmailAddressContactEventBusModule;
@@ -404,10 +403,10 @@ public class PostgresTmailServer {
         new MemoryEmailAddressContactEventBusModule());
 
     private static final Module RABBITMQ_EVENT_BUS_FEATURE_MODULE = Modules.combine(
+        new TmailEventModule(),
         new MailboxEventBusModule(),
         new ContentDeletionEventBusModule(),
-        new JMAPEventBusModule(),
-        new EmailAddressContactRabbitMQEventBusModule());
+        new JMAPEventBusModule());
 
     public static Module chooseQueueModules(PostgresTmailConfiguration configuration) {
         return switch (configuration.eventBusImpl()) {
@@ -421,8 +420,6 @@ public class PostgresTmailServer {
                 new RabbitMQEmailAddressContactModule(),
                 new ScheduledReconnectionHandler.Module(),
                 new DistributedTaskSerializationModule(),
-                new PostgresEmailAddressContactEventDeadLettersModule(),
-                new DistributedEmailAddressContactEventModule(),
                 new DefaultEventModule());
         };
     }

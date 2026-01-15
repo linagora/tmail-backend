@@ -157,8 +157,6 @@ import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.blob.guice.BlobStoreCacheModulesChooser;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.blob.guice.BlobStoreModulesChooser;
-import com.linagora.tmail.event.DistributedEmailAddressContactEventModule;
-import com.linagora.tmail.event.EmailAddressContactRabbitMQEventBusModule;
 import com.linagora.tmail.event.RabbitMQAndRedisEventBusModule;
 import com.linagora.tmail.event.TMailJMAPListenerModule;
 import com.linagora.tmail.event.TmailEventModule;
@@ -367,7 +365,6 @@ public class DistributedServer {
             new CassandraUserQuotaReporterModule(),
             new CassandraJmapSettingsRepositoryModule(),
             new CassandraPublicAssetRepositoryModule(),
-            new DistributedEmailAddressContactEventModule(),
             new DistributedTaskSerializationModule(),
             new RabbitMQDisconnectorModule(),
             new RabbitMQEmailAddressContactModule(),
@@ -378,7 +375,6 @@ public class DistributedServer {
             new TasksHeathCheckModule(),
             new TeamMailboxModule(),
             new TMailMailboxSortOrderProviderModule(),
-            new TmailEventModule(),
             new TMailIMAPModule());
 
     public static void main(String[] args) throws Exception {
@@ -586,9 +582,9 @@ public class DistributedServer {
             case RABBITMQ -> {
                 LOGGER.info("Using RabbitMQ for Event Bus user notifications");
                 return Modules.combine(new MailboxEventBusModule(),
+                    new TmailEventModule(),
                     new JMAPEventBusModule(),
-                    new ContentDeletionEventBusModule(),
-                    new EmailAddressContactRabbitMQEventBusModule());
+                    new ContentDeletionEventBusModule());
             }
             default -> throw new NotImplementedException();
         }

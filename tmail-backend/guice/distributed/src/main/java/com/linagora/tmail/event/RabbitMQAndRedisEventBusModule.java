@@ -19,7 +19,8 @@
 package com.linagora.tmail.event;
 
 import static com.linagora.tmail.ScheduledReconnectionHandler.Module.EVENT_BUS_GROUP_QUEUES_TO_MONITOR_INJECT_KEY;
-import static com.linagora.tmail.event.DistributedEmailAddressContactEventModule.EMAIL_ADDRESS_CONTACT_NAMING_STRATEGY;
+import static com.linagora.tmail.event.TmailEventModule.TMAIL_EVENT_BUS_INJECT_NAME;
+import static com.linagora.tmail.event.TmailEventModule.TMAIL_NAMING_STRATEGY;
 import static org.apache.james.events.NamingStrategy.CONTENT_DELETION_NAMING_STRATEGY;
 import static org.apache.james.events.NamingStrategy.JMAP_NAMING_STRATEGY;
 import static org.apache.james.events.NamingStrategy.MAILBOX_EVENT_NAMING_STRATEGY;
@@ -76,9 +77,7 @@ import com.google.inject.Scopes;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Names;
-import com.linagora.tmail.james.jmap.EmailAddressContactInjectKeys;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactListener;
-import com.linagora.tmail.james.jmap.contact.TmailJmapEventSerializer;
 
 public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     private static final Logger LOGGER = LoggerFactory.getLogger(RabbitMQAndRedisEventBusModule.class);
@@ -104,6 +103,15 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
 
         bind(EventBusId.class).annotatedWith(Names.named(CONTENT_DELETION)).toInstance(EventBusId.random());
         Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class, Names.named(CONTENT_DELETION));
+
+        bind(TmailEventSerializer.class).in(Scopes.SINGLETON);
+        bind(EventBusId.class).annotatedWith(Names.named(TMAIL_EVENT_BUS_INJECT_NAME)).toInstance(EventBusId.random());
+        Multibinder.newSetBinder(binder(), EventSerializer.class)
+            .addBinding()
+            .to(TmailEventSerializer.class);
+        Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class, Names.named(TMAIL_EVENT_BUS_INJECT_NAME))
+            .addBinding()
+            .to(EmailAddressContactListener.class);
     }
 
     @ProvidesIntoSet
@@ -160,7 +168,7 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
 
     @Provides
     @Singleton
-        RabbitMQEventBus.Configurations provideRabbitMQEventBusConfigurations(RetryBackoffConfiguration retryBackoffConfiguration, RabbitMQConfiguration configuration, EventBus.Configuration eventBusConfiguration) {
+    RabbitMQEventBus.Configurations provideRabbitMQEventBusConfigurations(RetryBackoffConfiguration retryBackoffConfiguration, RabbitMQConfiguration configuration, EventBus.Configuration eventBusConfiguration) {
         return new RabbitMQEventBus.Configurations(configuration, retryBackoffConfiguration, eventBusConfiguration);
     }
 
@@ -208,32 +216,37 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
         return new RabbitMQJmapEventBusDeadLetterQueueHealthCheck(rabbitMQConfiguration);
     }
 
-    @Provides
-    @Singleton
-    @Named(EmailAddressContactInjectKeys.AUTOCOMPLETE)
-    RabbitMQAndRedisEventBus provideEmailAddressContactEventBus(RabbitMQAndRedisEventBus.Factory eventBusFactory,
-                                                                TmailJmapEventSerializer eventSerializer,
-                                                                @Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) EventBusId eventBusId,
-                                                                RabbitMQEventBus.Configurations configurations) {
-        return eventBusFactory.create(eventBusId, EMAIL_ADDRESS_CONTACT_NAMING_STRATEGY, new RoutingKeyConverter(ImmutableSet.of(new Factory())), eventSerializer, configurations);
-    }
-
-    @Provides
-    @Singleton
-    @Named(EmailAddressContactInjectKeys.AUTOCOMPLETE)
-    EventBus provideEmailAddressContactEventBus(@Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) RabbitMQAndRedisEventBus eventBus) {
-        return eventBus;
-    }
-
     @ProvidesIntoSet
-    InitializationOperation workQueue(@Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) RabbitMQAndRedisEventBus instance,
-                                      EmailAddressContactListener emailAddressContactListener) {
+    InitializationOperation tmailWorkQueue(@Named(TMAIL_EVENT_BUS_INJECT_NAME) RabbitMQAndRedisEventBus instance,
+                                           @Named(TMAIL_EVENT_BUS_INJECT_NAME) Set<EventListener.ReactiveGroupEventListener> tmailReactiveGroupEventListeners) {
         return InitilizationOperationBuilder
             .forClass(RabbitMQAndRedisEventBus.class)
             .init(() -> {
                 instance.start();
-                instance.register(emailAddressContactListener);
+                tmailReactiveGroupEventListeners.forEach(instance::register);
             });
+    }
+
+    @Provides
+    @Singleton
+    @Named(TMAIL_EVENT_BUS_INJECT_NAME)
+    RabbitMQAndRedisEventBus provideTmailEventBus(RabbitMQAndRedisEventBus.Factory eventBusFactory,
+                                                  @Named(TMAIL_EVENT_BUS_INJECT_NAME) EventBusId eventBusId,
+                                                  TmailEventSerializer tmailEventSerializer,
+                                                  RabbitMQEventBus.Configurations configurations) {
+        return eventBusFactory.create(eventBusId, TMAIL_NAMING_STRATEGY, new RoutingKeyConverter(ImmutableSet.of(new Factory())), tmailEventSerializer, configurations);
+    }
+
+    @Provides
+    @Singleton
+    @Named(TMAIL_EVENT_BUS_INJECT_NAME)
+    EventBus provideTmailEventBus(@Named(TMAIL_EVENT_BUS_INJECT_NAME) RabbitMQAndRedisEventBus eventBus) {
+        return eventBus;
+    }
+
+    @ProvidesIntoSet
+    EventBus registerEventBus(@Named(TMAIL_EVENT_BUS_INJECT_NAME) EventBus eventBus) {
+        return eventBus;
     }
 
     @Provides
@@ -305,6 +318,7 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
         return ImmutableSet.of(
             "mailboxEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
             "jmapEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
-            "contentDeletionEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup");
+            "contentDeletionEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
+            "tmailEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup");
     }
 }
