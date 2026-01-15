@@ -74,6 +74,10 @@
         <dependency>
             <groupId>${project.groupId}</groupId>
             <artifactId>tmail-guice-distributed</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>tmail-guice-distributed</artifactId>
             <scope>test</scope>
             <type>test-jar</type>
         </dependency>

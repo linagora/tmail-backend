@@ -19,7 +19,6 @@
 package com.linagora.tmail.event;
 
 import static com.linagora.tmail.ScheduledReconnectionHandler.Module.EVENT_BUS_GROUP_QUEUES_TO_MONITOR_INJECT_KEY;
-import static com.linagora.tmail.event.DistributedEmailAddressContactEventModule.EMAIL_ADDRESS_CONTACT_NAMING_STRATEGY;
 import static org.apache.james.events.NamingStrategy.CONTENT_DELETION_NAMING_STRATEGY;
 import static org.apache.james.events.NamingStrategy.JMAP_NAMING_STRATEGY;
 import static org.apache.james.events.NamingStrategy.MAILBOX_EVENT_NAMING_STRATEGY;
@@ -76,9 +75,8 @@ import com.google.inject.Scopes;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Names;
-import com.linagora.tmail.james.jmap.EmailAddressContactInjectKeys;
+import com.linagora.tmail.event.EmailAddressContactRabbitMQEventBusModule.EmailAddressContactEventLoader;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactListener;
-import com.linagora.tmail.james.jmap.contact.TmailJmapEventSerializer;
 
 public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     private static final Logger LOGGER = LoggerFactory.getLogger(RabbitMQAndRedisEventBusModule.class);
@@ -208,32 +206,13 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
         return new RabbitMQJmapEventBusDeadLetterQueueHealthCheck(rabbitMQConfiguration);
     }
 
-    @Provides
-    @Singleton
-    @Named(EmailAddressContactInjectKeys.AUTOCOMPLETE)
-    RabbitMQAndRedisEventBus provideEmailAddressContactEventBus(RabbitMQAndRedisEventBus.Factory eventBusFactory,
-                                                                TmailJmapEventSerializer eventSerializer,
-                                                                @Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) EventBusId eventBusId,
-                                                                RabbitMQEventBus.Configurations configurations) {
-        return eventBusFactory.create(eventBusId, EMAIL_ADDRESS_CONTACT_NAMING_STRATEGY, new RoutingKeyConverter(ImmutableSet.of(new Factory())), eventSerializer, configurations);
-    }
-
-    @Provides
-    @Singleton
-    @Named(EmailAddressContactInjectKeys.AUTOCOMPLETE)
-    EventBus provideEmailAddressContactEventBus(@Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) RabbitMQAndRedisEventBus eventBus) {
-        return eventBus;
-    }
-
     @ProvidesIntoSet
-    InitializationOperation workQueue(@Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) RabbitMQAndRedisEventBus instance,
-                                      EmailAddressContactListener emailAddressContactListener) {
+    public InitializationOperation registerListener(
+        @Named(TmailEventModule.TMAIL_EVENT_BUS_INJECT_NAME) EventBus eventBus,
+        EmailAddressContactListener emailAddressContactListener) {
         return InitilizationOperationBuilder
-            .forClass(RabbitMQAndRedisEventBus.class)
-            .init(() -> {
-                instance.start();
-                instance.register(emailAddressContactListener);
-            });
+            .forClass(EmailAddressContactEventLoader.class)
+            .init(() -> eventBus.register(emailAddressContactListener));
     }
 
     @Provides

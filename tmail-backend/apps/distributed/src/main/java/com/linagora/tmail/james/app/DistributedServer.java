@@ -157,7 +157,6 @@ import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.blob.guice.BlobStoreCacheModulesChooser;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.blob.guice.BlobStoreModulesChooser;
-import com.linagora.tmail.event.DistributedEmailAddressContactEventModule;
 import com.linagora.tmail.event.EmailAddressContactRabbitMQEventBusModule;
 import com.linagora.tmail.event.RabbitMQAndRedisEventBusModule;
 import com.linagora.tmail.event.TMailJMAPListenerModule;
@@ -367,7 +366,6 @@ public class DistributedServer {
             new CassandraUserQuotaReporterModule(),
             new CassandraJmapSettingsRepositoryModule(),
             new CassandraPublicAssetRepositoryModule(),
-            new DistributedEmailAddressContactEventModule(),
             new DistributedTaskSerializationModule(),
             new RabbitMQDisconnectorModule(),
             new RabbitMQEmailAddressContactModule(),

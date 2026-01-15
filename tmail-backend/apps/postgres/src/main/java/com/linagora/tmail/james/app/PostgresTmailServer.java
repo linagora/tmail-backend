@@ -136,7 +136,6 @@ import com.linagora.tmail.NoopGuiceLoader;
 import com.linagora.tmail.ScheduledReconnectionHandler;
 import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.blob.guice.BlobStoreModulesChooser;
-import com.linagora.tmail.event.DistributedEmailAddressContactEventModule;
 import com.linagora.tmail.event.EmailAddressContactRabbitMQEventBusModule;
 import com.linagora.tmail.event.RabbitMQAndRedisEventBusModule;
 import com.linagora.tmail.event.TMailJMAPListenerModule;
@@ -421,8 +420,6 @@ public class PostgresTmailServer {
                 new RabbitMQEmailAddressContactModule(),
                 new ScheduledReconnectionHandler.Module(),
                 new DistributedTaskSerializationModule(),
-                new PostgresEmailAddressContactEventDeadLettersModule(),
-                new DistributedEmailAddressContactEventModule(),
                 new DefaultEventModule());
         };
     }
