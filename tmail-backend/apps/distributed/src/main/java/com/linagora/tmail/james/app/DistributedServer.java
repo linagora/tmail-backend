@@ -376,7 +376,6 @@ public class DistributedServer {
             new TasksHeathCheckModule(),
             new TeamMailboxModule(),
             new TMailMailboxSortOrderProviderModule(),
-            new TmailEventModule(),
             new TMailIMAPModule());
 
     public static void main(String[] args) throws Exception {
@@ -584,6 +583,7 @@ public class DistributedServer {
             case RABBITMQ -> {
                 LOGGER.info("Using RabbitMQ for Event Bus user notifications");
                 return Modules.combine(new MailboxEventBusModule(),
+                    new TmailEventModule(),
                     new JMAPEventBusModule(),
                     new ContentDeletionEventBusModule(),
                     new EmailAddressContactRabbitMQEventBusModule());

@@ -139,6 +139,7 @@ import com.linagora.tmail.blob.guice.BlobStoreModulesChooser;
 import com.linagora.tmail.event.EmailAddressContactRabbitMQEventBusModule;
 import com.linagora.tmail.event.RabbitMQAndRedisEventBusModule;
 import com.linagora.tmail.event.TMailJMAPListenerModule;
+import com.linagora.tmail.event.TmailEventModule;
 import com.linagora.tmail.healthcheck.TasksHeathCheckModule;
 import com.linagora.tmail.imap.TMailIMAPModule;
 import com.linagora.tmail.james.app.modules.jmap.MemoryEmailAddressContactEventBusModule;
@@ -403,6 +404,7 @@ public class PostgresTmailServer {
         new MemoryEmailAddressContactEventBusModule());
 
     private static final Module RABBITMQ_EVENT_BUS_FEATURE_MODULE = Modules.combine(
+        new TmailEventModule(),
         new MailboxEventBusModule(),
         new ContentDeletionEventBusModule(),
         new JMAPEventBusModule(),
