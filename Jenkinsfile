@@ -26,7 +26,7 @@ pipeline {
         stage('Test') {
             steps {
                 dir("tmail-backend") {
-                    sh 'mvn -B surefire:test'
+                    sh 'mvn -B -Dapi.version=1.43 surefire:test'
                 }
             }
             post {
