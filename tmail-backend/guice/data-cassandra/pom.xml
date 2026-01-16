@@ -23,6 +23,10 @@
             <artifactId>tmail-guice-common</artifactId>
         </dependency>
         <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>tmail-mailbox-deleted-messages-vault-cassandra</artifactId>
+        </dependency>
+        <dependency>
             <groupId>${james.groupId}</groupId>
             <artifactId>apache-james-mailbox-cassandra</artifactId>
         </dependency>
