@@ -264,7 +264,8 @@ public class TmailBlobStoreDeletedMessageVault implements DeletedMessageVault {
         return Flux.from(usersRepository.listReactive())
             .flatMap(username -> Flux.from(messageMetadataVault.listMessages(DEFAULT_SINGLE_BUCKET_NAME, username))
                 .filter(deletedMessage -> isMessageFullyExpired(beginningOfRetentionPeriod, deletedMessage))
-                .flatMap(deletedMessage -> Mono.from(messageMetadataVault.remove(DEFAULT_SINGLE_BUCKET_NAME, username, deletedMessage.getDeletedMessage().getMessageId()))
+                .flatMap(deletedMessage -> Mono.from(blobStoreDAO.delete(deletedMessage.getStorageInformation().getBucketName(), deletedMessage.getStorageInformation().getBlobId()))
+                    .then(Mono.from(messageMetadataVault.remove(DEFAULT_SINGLE_BUCKET_NAME, username, deletedMessage.getDeletedMessage().getMessageId())))
                     .doOnSuccess(any -> context.recordDeletedBlobSuccess())))
             .then();
     }
