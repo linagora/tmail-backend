@@ -36,14 +36,15 @@ import java.util.Optional;
 
 import jakarta.inject.Inject;
 
-import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.BlobStore;
 import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.api.ObjectNotFoundException;
+import org.apache.james.blob.api.PlainBlobId;
 import org.apache.james.core.Username;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.metrics.api.MetricFactory;
+import org.apache.james.server.blob.deduplication.BlobStoreFactory;
 import org.apache.james.task.Task;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.james.vault.DeletedMessage;
@@ -79,28 +80,30 @@ public class TmailBlobStoreDeletedMessageVault implements DeletedMessageVault {
 
     private final MetricFactory metricFactory;
     private final DeletedMessageMetadataVault messageMetadataVault;
-    private final BlobStore blobStore;
     private final BlobStoreDAO blobStoreDAO;
+    private final BlobStore blobStore;
     private final BucketNameGenerator nameGenerator;
     private final Clock clock;
     private final VaultConfiguration vaultConfiguration;
-    private final BlobIdTimeGenerator blobIdTimeGenerator;
     private final UsersRepository usersRepository;
     private final TmailBlobStoreVaultGarbageCollectionTask.Factory taskFactory;
 
     @Inject
     public TmailBlobStoreDeletedMessageVault(MetricFactory metricFactory, DeletedMessageMetadataVault messageMetadataVault,
-                                             BlobStore blobStore, BlobStoreDAO blobStoreDAO, BucketNameGenerator nameGenerator,
-                                             Clock clock, BlobIdTimeGenerator blobIdTimeGenerator,
+                                             BlobStoreDAO blobStoreDAO, BucketNameGenerator nameGenerator,
+                                             Clock clock,
                                              VaultConfiguration vaultConfiguration, UsersRepository usersRepository) {
         this.metricFactory = metricFactory;
         this.messageMetadataVault = messageMetadataVault;
-        this.blobStore = blobStore;
         this.blobStoreDAO = blobStoreDAO;
+        this.blobStore = BlobStoreFactory.builder()
+            .blobStoreDAO(blobStoreDAO)
+            .blobIdFactory(new PlainBlobId.Factory())
+            .defaultBucketName()
+            .passthrough();
         this.nameGenerator = nameGenerator;
         this.clock = clock;
         this.vaultConfiguration = vaultConfiguration;
-        this.blobIdTimeGenerator = blobIdTimeGenerator;
         this.usersRepository = usersRepository;
         this.taskFactory = new TmailBlobStoreVaultGarbageCollectionTask.Factory(this);
     }
@@ -149,7 +152,7 @@ public class TmailBlobStoreDeletedMessageVault implements DeletedMessageVault {
 
     private BlobStore.BlobIdProvider<InputStream> withTimePrefixBlobId() {
         return data -> Mono.just(Tuples.of(
-            blobIdTimeGenerator.currentBlobId(),
+            BlobIdTimeGenerator.currentBlobId(clock),
             data));
     }
 
@@ -261,21 +264,14 @@ public class TmailBlobStoreDeletedMessageVault implements DeletedMessageVault {
         return Flux.from(usersRepository.listReactive())
             .flatMap(username -> Flux.from(messageMetadataVault.listMessages(DEFAULT_SINGLE_BUCKET_NAME, username))
                 .filter(deletedMessage -> isMessageFullyExpired(beginningOfRetentionPeriod, deletedMessage))
-                .flatMap(deletedMessage -> Mono.from(blobStoreDAO.delete(deletedMessage.getStorageInformation().getBucketName(), deletedMessage.getStorageInformation().getBlobId()))
-                    .then(Mono.from(messageMetadataVault.remove(DEFAULT_SINGLE_BUCKET_NAME, username, deletedMessage.getDeletedMessage().getMessageId())))
+                .flatMap(deletedMessage -> Mono.from(messageMetadataVault.remove(DEFAULT_SINGLE_BUCKET_NAME, username, deletedMessage.getDeletedMessage().getMessageId()))
                     .doOnSuccess(any -> context.recordDeletedBlobSuccess())))
             .then();
     }
 
     private boolean isMessageFullyExpired(ZonedDateTime beginningOfRetentionPeriod, DeletedMessageWithStorageInformation deletedMessage) {
-        BlobId blobId = deletedMessage.getStorageInformation().getBlobId();
-        Optional<ZonedDateTime> maybeEndDate = blobIdTimeGenerator.blobIdEndTime(blobId);
+        ZonedDateTime deletionDate = deletedMessage.getDeletedMessage().getDeletionDate();
 
-        if (maybeEndDate.isEmpty()) {
-            LOGGER.error("Pattern used for blobId used in deletedMessageVault is invalid and end date cannot be parsed {}", blobId);
-        }
-
-        return maybeEndDate.map(endDate -> endDate.isBefore(beginningOfRetentionPeriod))
-            .orElse(false);
+        return deletionDate.isBefore(beginningOfRetentionPeriod);
     }
 }

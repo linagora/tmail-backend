@@ -33,6 +33,7 @@ import jakarta.inject.Inject;
 import jakarta.mail.internet.AddressException;
 
 import org.apache.james.blob.api.BucketName;
+import org.apache.james.blob.api.PlainBlobId;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.MaybeSender;
 import org.apache.james.core.Username;
@@ -45,18 +46,14 @@ import org.apache.james.vault.metadata.StorageInformation;
 
 import com.github.fge.lambdas.Throwing;
 import com.google.common.collect.ImmutableList;
-import com.linagora.tmail.vault.blob.BlobIdTimeGenerator;
 
 public class TmailDeletedMessageWithStorageInformationConverter {
-    private final BlobIdTimeGenerator blobIdTimeGenerator;
     private final MessageId.Factory messageIdFactory;
     private final MailboxId.Factory mailboxIdFactory;
 
     @Inject
-    public TmailDeletedMessageWithStorageInformationConverter(BlobIdTimeGenerator blobIdTimeGenerator,
-                                                              MessageId.Factory messageIdFactory,
+    public TmailDeletedMessageWithStorageInformationConverter(MessageId.Factory messageIdFactory,
                                                               MailboxId.Factory mailboxIdFactory) {
-        this.blobIdTimeGenerator = blobIdTimeGenerator;
         this.messageIdFactory = messageIdFactory;
         this.mailboxIdFactory = mailboxIdFactory;
     }
@@ -64,7 +61,7 @@ public class TmailDeletedMessageWithStorageInformationConverter {
     public StorageInformation toDomainObject(DeletedMessageWithStorageInformationDTO.StorageInformationDTO storageInformationDTO) {
         return StorageInformation.builder()
             .bucketName(BucketName.of(storageInformationDTO.getBucketName()))
-            .blobId(blobIdTimeGenerator.toDeletedMessageBlobId(storageInformationDTO.getBlobId()));
+            .blobId(new PlainBlobId(storageInformationDTO.getBlobId()));
     }
 
     public DeletedMessage toDomainObject(DeletedMessageWithStorageInformationDTO.DeletedMessageDTO deletedMessageDTO) throws AddressException {
