@@ -206,9 +206,9 @@ public class TmailBlobStoreDeletedMessageVault implements DeletedMessageVault {
 
     private Mono<Void> deleteMessage(Username username, MessageId messageId) {
         return Mono.from(messageMetadataVault.retrieveStorageInformation(username, messageId))
-            .flatMap(storageInformation -> Mono.from(messageMetadataVault.remove(storageInformation.getBucketName(), username, messageId))
+            .flatMap(storageInformation -> Mono.from(blobStoreDAO.delete(storageInformation.getBucketName(), storageInformation.getBlobId()))
                 .thenReturn(storageInformation))
-            .flatMap(storageInformation -> Mono.from(blobStoreDAO.delete(storageInformation.getBucketName(), storageInformation.getBlobId())));
+            .flatMap(storageInformation -> Mono.from(messageMetadataVault.remove(storageInformation.getBucketName(), username, messageId)));
     }
 
     @Override
