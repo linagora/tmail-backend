@@ -23,7 +23,6 @@ import org.apache.james.vault.DeletedMessageVault;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Scopes;
-import com.linagora.tmail.vault.blob.BlobIdTimeGenerator;
 import com.linagora.tmail.vault.blob.BucketNameGenerator;
 import com.linagora.tmail.vault.blob.TmailBlobStoreDeletedMessageVault;
 
@@ -34,7 +33,6 @@ public class TMailDeletedMessageVaultModule extends AbstractModule {
         install(new TMailVaultTaskSerializationModule());
 
         bind(BucketNameGenerator.class).in(Scopes.SINGLETON);
-        bind(BlobIdTimeGenerator.class).in(Scopes.SINGLETON);
         bind(TmailBlobStoreDeletedMessageVault.class).in(Scopes.SINGLETON);
         bind(DeletedMessageVault.class)
             .to(TmailBlobStoreDeletedMessageVault.class);

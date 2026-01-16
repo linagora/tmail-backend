@@ -41,6 +41,7 @@ import jakarta.inject.Inject;
 
 import org.apache.james.backends.postgres.utils.PostgresExecutor;
 import org.apache.james.blob.api.BucketName;
+import org.apache.james.blob.api.PlainBlobId;
 import org.apache.james.core.Username;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.vault.metadata.DeletedMessageMetadataVault;
@@ -49,7 +50,6 @@ import org.apache.james.vault.metadata.StorageInformation;
 import org.jooq.Record;
 import org.reactivestreams.Publisher;
 
-import com.linagora.tmail.vault.blob.BlobIdTimeGenerator;
 import com.linagora.tmail.vault.metadata.TmailMetadataSerializer;
 
 import reactor.core.publisher.Flux;
@@ -58,15 +58,12 @@ import reactor.core.publisher.Mono;
 public class TmailPostgresDeletedMessageMetadataVault implements DeletedMessageMetadataVault {
     private final PostgresExecutor postgresExecutor;
     private final TmailMetadataSerializer metadataSerializer;
-    private final BlobIdTimeGenerator blobIdTimeGenerator;
 
     @Inject
     public TmailPostgresDeletedMessageMetadataVault(PostgresExecutor postgresExecutor,
-                                                    TmailMetadataSerializer metadataSerializer,
-                                                    BlobIdTimeGenerator blobIdTimeGenerator) {
+                                                    TmailMetadataSerializer metadataSerializer) {
         this.postgresExecutor = postgresExecutor;
         this.metadataSerializer = metadataSerializer;
-        this.blobIdTimeGenerator = blobIdTimeGenerator;
     }
 
     @Override
@@ -105,7 +102,7 @@ public class TmailPostgresDeletedMessageMetadataVault implements DeletedMessageM
     private Function<Record, StorageInformation> toStorageInformation() {
         return record -> StorageInformation.builder()
             .bucketName(BucketName.of(record.get(BUCKET_NAME)))
-            .blobId(blobIdTimeGenerator.toDeletedMessageBlobId(record.get(BLOB_ID)));
+            .blobId(new PlainBlobId(record.get(BLOB_ID)));
     }
 
     @Override
