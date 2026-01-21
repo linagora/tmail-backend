@@ -101,6 +101,11 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>tmail-guice-distributed</artifactId>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
             <groupId>${james.groupId}</groupId>
             <artifactId>james-server-mailets</artifactId>
             <scope>provided</scope>
@@ -146,6 +151,11 @@
             <groupId>${james.groupId}</groupId>
             <artifactId>james-server-guice-configuration</artifactId>
             <version>${james.version}</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-guice-mailbox</artifactId>
             <scope>provided</scope>
         </dependency>
         <dependency>
