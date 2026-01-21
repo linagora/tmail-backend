@@ -21,8 +21,6 @@ package com.linagora.tmail.listener.rag;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
 
-import org.assertj.core.api.SoftAssertions;
-
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
@@ -40,6 +38,7 @@ import org.apache.james.mime4j.message.BasicBodyFactory;
 import org.apache.james.mime4j.message.BodyPartBuilder;
 import org.apache.james.mime4j.message.MultipartBuilder;
 import org.apache.james.mime4j.stream.RawField;
+import org.assertj.core.api.SoftAssertions;
 import org.awaitility.Awaitility;
 import org.awaitility.Durations;
 import org.awaitility.core.ConditionFactory;

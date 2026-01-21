@@ -25,7 +25,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
-import com.google.common.collect.ImmutableMap;
 import jakarta.mail.Flags;
 import jakarta.mail.internet.AddressException;
 
@@ -33,6 +32,7 @@ import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
 import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.tree.ImmutableNode;
 import org.apache.james.core.MailAddress;
+import org.apache.james.events.EventBus;
 import org.apache.james.events.InVMEventBus;
 import org.apache.james.events.MemoryEventDeadLetters;
 import org.apache.james.events.RetryBackoffConfiguration;
@@ -48,7 +48,6 @@ import org.apache.james.mailbox.MessageIdManager;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
 import org.apache.james.mailbox.model.FetchGroup;
-import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.MessageResult;
@@ -60,6 +59,7 @@ import org.apache.james.util.html.HtmlTextExtractor;
 import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mockito;
 
+import com.google.common.collect.ImmutableMap;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
 import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
@@ -97,6 +97,8 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
     private JmapSettingsRepository jmapSettingsRepository;
     private JmapSettingsRepositoryJavaUtils jmapSettingsRepositoryUtils;
     private LlmMailPrioritizationClassifierListener listener;
+    private LlmMailPrioritizationBackendClassifierListener backendListener;
+    private EventBus tmailEventBus;
 
     @BeforeEach
     void setup() throws Exception {
@@ -123,6 +125,7 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
         MetricFactory metricFactory = new RecordingMetricFactory();
         HtmlTextExtractor htmlTextExtractor = new JsoupHtmlTextExtractor();
         model = new StubModel();
+        tmailEventBus = new InVMEventBus(new InVmEventDelivery(metricFactory), backoffConfiguration, eventDeadLetters);
 
         aliceSession = mailboxManager.createSystemSession(ALICE);
         MailboxPath aliceInboxPath = MailboxPath.inbox(ALICE);
@@ -142,10 +145,15 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
             mailboxManager,
             messageIdManager,
             new SystemMailboxesProviderImpl(mailboxManager),
+            jmapSettingsRepository,
+            tmailEventBus,
+            listenerConfig);
+        backendListener = new LlmMailPrioritizationBackendClassifierListener(
+            mailboxManager,
+            messageIdManager,
             model,
             htmlTextExtractor,
             identityRepository,
-            jmapSettingsRepository,
             metricFactory,
             listenerConfig);
 
@@ -217,10 +225,15 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
             mailboxManager,
             messageIdManager,
             new SystemMailboxesProviderImpl(mailboxManager),
+            jmapSettingsRepository,
+            tmailEventBus,
+            overrideConfig);
+        backendListener = new LlmMailPrioritizationBackendClassifierListener(
+            mailboxManager,
+            messageIdManager,
             model,
             new JsoupHtmlTextExtractor(),
             identityRepository,
-            jmapSettingsRepository,
             new RecordingMetricFactory(),
             overrideConfig);
     }
@@ -228,6 +241,7 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
     @Override
     public void registerListenerToEventBus() {
         mailboxManager.getEventBus().register(listener);
+        tmailEventBus.register(backendListener);
     }
 
     @Override
