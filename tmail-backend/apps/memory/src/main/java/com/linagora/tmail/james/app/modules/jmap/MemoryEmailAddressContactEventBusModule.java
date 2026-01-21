@@ -20,7 +20,10 @@ package com.linagora.tmail.james.app.modules.jmap;
 
 import static com.linagora.tmail.mailets.IndexContacts.TMAIL_EVENT_BUS_INJECT_NAME;
 
+import java.util.Set;
+
 import org.apache.james.events.EventBus;
+import org.apache.james.events.EventListener;
 import org.apache.james.lifecycle.api.Startable;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
@@ -28,18 +31,27 @@ import org.apache.james.utils.InitilizationOperationBuilder;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Named;
+import com.google.inject.name.Names;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactListener;
 
 public class MemoryEmailAddressContactEventBusModule extends AbstractModule {
+    @Override
+    protected void configure() {
+        Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class, Names.named(TMAIL_EVENT_BUS_INJECT_NAME))
+            .addBinding()
+            .to(EmailAddressContactListener.class);
+    }
+
     @ProvidesIntoSet
     public InitializationOperation registerListener(
             @Named(TMAIL_EVENT_BUS_INJECT_NAME) EventBus eventBus,
-            EmailAddressContactListener emailAddressContactListener) {
+            @Named(TMAIL_EVENT_BUS_INJECT_NAME) Set<EventListener.ReactiveGroupEventListener> tmailListeners) {
         return InitilizationOperationBuilder
                 .forClass(EmailAddressContactEventLoader.class)
-                .init(() -> eventBus.register(emailAddressContactListener));
+                .init(() -> tmailListeners.forEach(eventBus::register));
     }
 
     @Provides
