@@ -30,12 +30,12 @@ import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-
-import com.linagora.tmail.mailet.conf.AIBaseModule;
+import java.util.Map;
 
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 
+import org.apache.james.core.Username;
 import org.apache.james.core.builder.MimeMessageBuilder;
 import org.apache.james.mailets.TemporaryJamesServer;
 import org.apache.james.mailets.configuration.CommonProcessors;
@@ -58,6 +58,12 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
+
+import com.google.inject.name.Names;
+import com.linagora.tmail.james.app.MemoryServer;
+import com.linagora.tmail.james.common.probe.JmapSettingsProbe;
+import com.linagora.tmail.james.common.probe.JmapSettingsProbeModule;
+import com.linagora.tmail.mailet.conf.AIBaseModule;
 
 @Disabled("Unstable test https://github.com/linagora/tmail-backend/issues/1303")
 class AIIntegrationTest {
@@ -88,6 +94,15 @@ class AIIntegrationTest {
         Files.createDirectories(resourcesFolder);
         Files.writeString(resolvedResource, content);
 
+        String listenersContent = """
+            <listeners>
+                <listener>
+                    <class>com.linagora.tmail.listener.rag.LlmMailPrioritizationClassifierListener</class>
+                </listener>
+            </listeners>
+            """;
+        Files.writeString(resourcesFolder.resolve("listeners.xml"), listenersContent);
+
         MailetContainer.Builder mailetContainer = TemporaryJamesServer.simpleMailetContainerConfiguration()
             .putProcessor(ProcessorConfiguration.error()
                 .enableJmx(false)
@@ -106,7 +121,9 @@ class AIIntegrationTest {
                 .addMailetsFrom(CommonProcessors.transport()));
 
         jamesServer = TemporaryJamesServer.builder()
-            .withOverrides(new AIBaseModule())
+            .withBase(MemoryServer.MODULES)
+            .withOverrides(new AIBaseModule(), new JmapSettingsProbeModule(),
+                binder -> binder.bind(Boolean.class).annotatedWith(Names.named("calDavSupport")).toInstance(false))
             .withMailetContainer(mailetContainer)
             .build(temporaryFolder);
         jamesServer.start();
@@ -118,6 +135,9 @@ class AIIntegrationTest {
             .addUser(ANDRE, PASSWORD)
             .addUser(MARIA, PASSWORD)
             .addUser(BOT_ADDRESS, PASSWORD);
+
+        jamesServer.getProbe(JmapSettingsProbe.class)
+            .reset(Username.of(ALICE), Map.of("ai.needs-action.enabled", "true"));
     }
 
     @AfterEach
@@ -134,6 +154,15 @@ class AIIntegrationTest {
 
     private void awaitFirstMessage(String username) throws IOException {
         awaitMessages(username, 1);
+    }
+
+    private void awaitFirstMessageWithFlag(String username, String flag) throws IOException {
+        imapClient.connect(LOCALHOST_IP, jamesServer.getProbe(ImapGuiceProbe.class).getImapPort())
+            .login(username, PASSWORD)
+            .select(TestIMAPClient.INBOX);
+
+        Constants.awaitAtMostOneMinute.untilAsserted(() -> assertThat(imapClient.hasAMessageWithFlags(flag))
+            .isTrue());
     }
 
     @Test
@@ -344,5 +373,28 @@ class AIIntegrationTest {
 
         awaitMessages(BOB, 0);
         awaitMessages(ALICE, 1);
+    }
+
+    @Test
+    void urgentMailShouldBeTaggedNeedsActionKeyword() throws Exception {
+        messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
+            .authenticate(BOB, PASSWORD)
+            .sendMessage(FakeMail.builder()
+                .name("urgent")
+                .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                    .setSender(BOB)
+                    .addToRecipient(ALICE)
+                    .setSubject("URGENT – Production API Failure")
+                    .setText("""
+                        Hi team,
+                        Our payment gateway API has been failing since 03:12 AM UTC. All customer transactions are currently being rejected. We need an immediate fix or rollback before peak traffic starts in 2 hours.
+                        Please acknowledge as soon as possible.
+                        Thanks,
+                        Robert
+                        """))
+                .sender(BOB)
+                .recipient(ALICE));
+
+        awaitFirstMessageWithFlag(ALICE, "needs-action");
     }
 }
