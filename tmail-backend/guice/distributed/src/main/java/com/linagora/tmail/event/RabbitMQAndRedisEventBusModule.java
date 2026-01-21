@@ -45,6 +45,7 @@ import org.apache.james.events.EventBusId;
 import org.apache.james.events.EventBusReconnectionHandler;
 import org.apache.james.events.EventListener;
 import org.apache.james.events.EventSerializer;
+import org.apache.james.events.EventSerializersAggregator;
 import org.apache.james.events.NamingStrategy;
 import org.apache.james.events.RabbitEventBusConsumerHealthCheck;
 import org.apache.james.events.RabbitMQAndRedisEventBus;
@@ -232,9 +233,9 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     @Named(TMAIL_EVENT_BUS_INJECT_NAME)
     RabbitMQAndRedisEventBus provideTmailEventBus(RabbitMQAndRedisEventBus.Factory eventBusFactory,
                                                   @Named(TMAIL_EVENT_BUS_INJECT_NAME) EventBusId eventBusId,
-                                                  TmailEventSerializer tmailEventSerializer,
+                                                  EventSerializersAggregator eventSerializersAggregator,
                                                   RabbitMQEventBus.Configurations configurations) {
-        return eventBusFactory.create(eventBusId, TMAIL_NAMING_STRATEGY, new RoutingKeyConverter(ImmutableSet.of(new Factory())), tmailEventSerializer, configurations);
+        return eventBusFactory.create(eventBusId, TMAIL_NAMING_STRATEGY, new RoutingKeyConverter(ImmutableSet.of(new Factory())), eventSerializersAggregator, configurations);
     }
 
     @Provides

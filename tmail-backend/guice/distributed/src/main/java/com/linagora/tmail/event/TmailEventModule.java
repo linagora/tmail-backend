@@ -28,6 +28,7 @@ import org.apache.james.events.EventBusId;
 import org.apache.james.events.EventBusName;
 import org.apache.james.events.EventListener;
 import org.apache.james.events.EventSerializer;
+import org.apache.james.events.EventSerializersAggregator;
 import org.apache.james.events.NamingStrategy;
 import org.apache.james.events.RabbitMQEventBus;
 import org.apache.james.events.RetryBackoffConfiguration;
@@ -81,9 +82,9 @@ public class TmailEventModule extends AbstractModule {
                                           RetryBackoffConfiguration retryBackoffConfiguration,
                                           @Named(TMAIL_EVENT_BUS_INJECT_NAME) EventBusId eventBusId,
                                           RabbitMQConfiguration configuration,
-                                          TmailEventSerializer tmailEventSerializer,
+                                          EventSerializersAggregator eventSerializersAggregator,
                                           EventBus.Configuration eventBusConfiguration) {
-        return eventBusFactory.create(eventBusId, TMAIL_NAMING_STRATEGY, new RoutingKeyConverter(ImmutableSet.of(new Factory())), tmailEventSerializer, new RabbitMQEventBus.Configurations(configuration, retryBackoffConfiguration, eventBusConfiguration));
+        return eventBusFactory.create(eventBusId, TMAIL_NAMING_STRATEGY, new RoutingKeyConverter(ImmutableSet.of(new Factory())), eventSerializersAggregator, new RabbitMQEventBus.Configurations(configuration, retryBackoffConfiguration, eventBusConfiguration));
     }
 
     @Provides
