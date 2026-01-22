@@ -63,6 +63,7 @@ import com.google.common.collect.ImmutableMap;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
 import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
+import com.linagora.tmail.listener.rag.logger.NeedsActionReviewLogger;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -124,6 +125,7 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
         messageIdManager = resources.getMessageIdManager();
         MetricFactory metricFactory = new RecordingMetricFactory();
         HtmlTextExtractor htmlTextExtractor = new JsoupHtmlTextExtractor();
+        NeedsActionReviewLogger needsActionReviewLogger = new NeedsActionReviewLogger();
         model = new StubModel();
         tmailEventBus = new InVMEventBus(new InVmEventDelivery(metricFactory), backoffConfiguration, eventDeadLetters);
 
@@ -155,7 +157,8 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
             htmlTextExtractor,
             identityRepository,
             metricFactory,
-            listenerConfig);
+            listenerConfig,
+            needsActionReviewLogger);
 
         jmapSettingsRepositoryUtils().reset(ALICE, ImmutableMap.of("ai.needs-action.enabled", "true"));
     }
@@ -235,7 +238,8 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
             new JsoupHtmlTextExtractor(),
             identityRepository,
             new RecordingMetricFactory(),
-            overrideConfig);
+            overrideConfig,
+            new NeedsActionReviewLogger());
     }
 
     @Override
