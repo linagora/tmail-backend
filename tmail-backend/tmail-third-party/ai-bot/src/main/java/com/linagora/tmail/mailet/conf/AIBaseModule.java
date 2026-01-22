@@ -35,7 +35,6 @@ import org.apache.james.events.EventSerializer;
 import org.apache.james.events.Group;
 import org.apache.james.modules.mailbox.ListenerConfiguration;
 import org.apache.james.modules.mailbox.ListenersConfiguration;
-import org.apache.james.server.core.configuration.ConfigurationProvider;
 import org.apache.james.utils.PropertiesProvider;
 
 import com.google.inject.AbstractModule;
@@ -84,11 +83,8 @@ public class AIBaseModule extends AbstractModule {
     @Provides
     @Singleton
     @Named(LLM_MAIL_CLASSIFIER_CONFIGURATION)
-    public HierarchicalConfiguration<ImmutableNode> provideLlmMailPrioritizationListenerConfiguration(ConfigurationProvider configurationProvider) throws ConfigurationException {
-        HierarchicalConfiguration<ImmutableNode> configuration = configurationProvider.getConfiguration("listeners");
-
-        return ListenersConfiguration.from(configuration)
-            .getListenersConfiguration()
+    public HierarchicalConfiguration<ImmutableNode> provideLlmMailPrioritizationListenerConfiguration(ListenersConfiguration listenersConfiguration) {
+        return listenersConfiguration.getListenersConfiguration()
             .stream()
             .filter(listener -> listener.getClazz().equals(LlmMailPrioritizationClassifierListener.class.getCanonicalName()))
             .map(ListenerConfiguration::getConfiguration)
