@@ -108,6 +108,7 @@ public class LlmMailPrioritizationBackendClassifierListener implements EventList
     private final IdentityRepository identityRepository;
     private final String systemPrompt;
     private final int maxBodyLength;
+    private final boolean reviewModeEnabled;
 
     @Inject
     public LlmMailPrioritizationBackendClassifierListener(MailboxManager mailboxManager,
@@ -128,6 +129,7 @@ public class LlmMailPrioritizationBackendClassifierListener implements EventList
             .orElse(DEFAULT_SYSTEM_PROMPT);
         this.maxBodyLength = configuration.getInt("listener.configuration." + MAX_BODY_LENGTH_PARAM, DEFAULT_MAX_BODY_LENGTH);
         Preconditions.checkArgument(maxBodyLength > 0, "'maxBodyLength' must be strictly positive");
+        this.reviewModeEnabled = Boolean.parseBoolean(System.getProperty("tmail.ai.needsaction.relevance.review", "false"));
     }
 
     @Override
@@ -163,17 +165,26 @@ public class LlmMailPrioritizationBackendClassifierListener implements EventList
     private Mono<Void> classifyMail(LlmMailPrioritizationClassifierListener.ParsedMessage message, MailboxSession session) {
         return getUserDisplayName(session.getUser())
             .flatMap(userDisplayName -> Mono.fromCallable(() -> buildUserPrompt(message, session.getUser(), userDisplayName)))
-            .flatMap(userPrompt -> Mono.from(metricFactory.decoratePublisherWithTimerMetric("llm-mail-prioritization-classifier",
-                callLlm(systemPrompt, userPrompt.correspondingUserPrompt())))
-            .flatMap(llmOutput -> {
-                boolean actionRequired = isActionRequired(llmOutput);
-                return emitStructureLog(userPrompt, actionRequired)
-                    .thenReturn(llmOutput);
-            }))
-            .filter(this::isActionRequired)
-            .flatMap(any -> addNeedsActionKeyword(message.messageResult(), session))
+            .flatMap(userPrompt ->
+                callLlmAndLog(userPrompt)
+                    .filter(this::isActionRequired)
+                    .flatMap(any -> addNeedsActionKeyword(message.messageResult(), session))
+            )
             .doOnError(e -> LOGGER.error("LLM call failed for messageId {} in mailboxId {} of user {}",
                 message.messageResult().getMessageId().serialize(), message.messageResult().getMailboxId().serialize(), session.getUser(), e));
+    }
+
+    private Mono<String> callLlmAndLog(LlmUserPrompt userPrompt) {
+        return Mono.from(metricFactory.decoratePublisherWithTimerMetric("llm-mail-prioritization-classifier",
+                callLlm(systemPrompt, userPrompt.correspondingUserPrompt())))
+            .flatMap(llmOutput -> {
+                if (reviewModeEnabled) {
+                    boolean actionRequired = isActionRequired(llmOutput);
+                    return emitStructureLog(userPrompt, actionRequired)
+                        .thenReturn(llmOutput);
+                }
+                return Mono.just(llmOutput);
+            });
     }
 
     private Mono<Void> emitStructureLog(LlmUserPrompt llmUserPrompt, boolean actionRequired) {
