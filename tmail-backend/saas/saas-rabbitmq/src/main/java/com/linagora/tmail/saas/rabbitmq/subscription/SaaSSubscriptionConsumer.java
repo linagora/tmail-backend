@@ -26,27 +26,16 @@ import java.io.Closeable;
 import java.time.Duration;
 import java.util.Optional;
 
-import jakarta.inject.Inject;
 import jakarta.inject.Named;
 
 import org.apache.james.backends.rabbitmq.QueueArguments;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
-import org.apache.james.core.Username;
 import org.apache.james.lifecycle.api.Startable;
-import org.apache.james.mailbox.model.QuotaRoot;
-import org.apache.james.mailbox.quota.MaxQuotaManager;
-import org.apache.james.mailbox.quota.UserQuotaRootResolver;
-import org.apache.james.user.api.UsersRepository;
-import org.apache.james.user.api.model.User;
-import org.apache.james.util.ReactorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
-import com.linagora.tmail.saas.api.SaaSAccountRepository;
-import com.linagora.tmail.saas.model.SaaSAccount;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
@@ -75,33 +64,19 @@ public class SaaSSubscriptionConsumer implements Closeable, Startable {
     private final RabbitMQConfiguration rabbitMQConfiguration;
     private final TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration;
     private final SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration;
-    private final UsersRepository usersRepository;
-    private final SaaSAccountRepository saasAccountRepository;
-    private final MaxQuotaManager maxQuotaManager;
-    private final UserQuotaRootResolver userQuotaRootResolver;
-    private final RateLimitingRepository rateLimitingRepository;
+    private final SaaSSubscriptionHandler saasSubscriptionHandler;
     private Disposable consumeSubscriptionDisposable;
 
-    @Inject
     public SaaSSubscriptionConsumer(@Named(TWP_INJECTION_KEY) ReactorRabbitMQChannelPool channelPool,
                                     @Named(TWP_INJECTION_KEY) RabbitMQConfiguration rabbitMQConfiguration,
                                     TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration,
-                                    SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration,
-                                    UsersRepository usersRepository,
-                                    SaaSAccountRepository saasAccountRepository,
-                                    MaxQuotaManager maxQuotaManager,
-                                    UserQuotaRootResolver userQuotaRootResolver,
-                                    RateLimitingRepository rateLimitingRepository) {
+                                    SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration, SaaSSubscriptionHandler saasSubscriptionHandler) {
         this.receiverProvider = channelPool::createReceiver;
         this.sender = channelPool.getSender();
         this.rabbitMQConfiguration = rabbitMQConfiguration;
         this.twpCommonRabbitMQConfiguration = twpCommonRabbitMQConfiguration;
         this.saasSubscriptionRabbitMQConfiguration = saasSubscriptionRabbitMQConfiguration;
-        this.usersRepository = usersRepository;
-        this.saasAccountRepository = saasAccountRepository;
-        this.maxQuotaManager = maxQuotaManager;
-        this.userQuotaRootResolver = userQuotaRootResolver;
-        this.rateLimitingRepository = rateLimitingRepository;
+        this.saasSubscriptionHandler = saasSubscriptionHandler;
     }
 
     public void init() {
@@ -177,44 +152,13 @@ public class SaaSSubscriptionConsumer implements Closeable, Startable {
 
     private Mono<Void> consumeSubscriptionUpdate(AcknowledgableDelivery ackDelivery, byte[] messagePayload) {
         return Mono.fromCallable(() -> SaaSSubscriptionDeserializer.parseAMQPUserMessage(messagePayload))
-            .flatMap(this::handleSubscriptionMessage)
+            .flatMap(saasSubscriptionHandler::handleMessage)
             .doOnSuccess(result -> ackDelivery.ack())
             .onErrorResume(error -> {
                 LOGGER.error("Error when consuming SaaS subscription message", error);
                 ackDelivery.nack(!REQUEUE_ON_NACK);
                 return Mono.empty();
             });
-    }
-
-    private Mono<Void> handleSubscriptionMessage(SaaSSubscriptionMessage subscriptionMessage) {
-        SaaSAccount saaSAccount = new SaaSAccount(subscriptionMessage.canUpgrade(), subscriptionMessage.isPaying());
-        return Mono.fromCallable(() -> usersRepository.getUserByName(Username.of(subscriptionMessage.internalEmail())))
-            .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
-            .map(User::getUserName)
-            .flatMap(username -> Mono.from(saasAccountRepository.upsertSaasAccount(username, saaSAccount))
-                .then(updateStorageQuota(username, subscriptionMessage.features()))
-                .then(updateRateLimiting(username, subscriptionMessage.features()))
-                .doOnSuccess(success -> LOGGER.info("Updated SaaS subscription for user: {}, isPaying: {}, canUpgrade: {}, mail features: {}",
-                    username, subscriptionMessage.isPaying(), subscriptionMessage.canUpgrade(), subscriptionMessage.features().mail())));
-    }
-
-    private Mono<Void> updateStorageQuota(Username username, SaasFeatures saasFeatures) {
-        QuotaRoot quotaRoot = userQuotaRootResolver.forUser(username);
-
-        return saasFeatures.mail()
-            .map(SaasFeatures.MailLimitation::storageQuota)
-            .map(SaaSSubscriptionUtils::asQuotaSizeLimit)
-            .map(quota -> maxQuotaManager.setMaxStorageReactive(quotaRoot, quota))
-            .map(Mono::from)
-            .orElse(Mono.empty());
-    }
-
-    private Mono<Void> updateRateLimiting(Username username, SaasFeatures saasFeatures) {
-        return saasFeatures.mail()
-            .map(SaasFeatures.MailLimitation::rateLimitingDefinition)
-            .map(rateLimiting -> rateLimitingRepository.setRateLimiting(username, rateLimiting))
-            .map(Mono::from)
-            .orElse(Mono.empty());
     }
 
     @Override
