@@ -35,9 +35,13 @@ import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Named;
 import com.google.inject.name.Names;
+import com.linagora.tmail.disconnector.DisconnectionEventListener;
+import com.linagora.tmail.disconnector.DisconnectorRegistrationKey;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactListener;
 
-public class MemoryEmailAddressContactEventBusModule extends AbstractModule {
+import reactor.core.publisher.Mono;
+
+public class MemoryTmailEventBusModule extends AbstractModule {
     @Override
     protected void configure() {
         Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class, Names.named(TMAIL_EVENT_BUS_INJECT_NAME))
@@ -47,11 +51,15 @@ public class MemoryEmailAddressContactEventBusModule extends AbstractModule {
 
     @ProvidesIntoSet
     public InitializationOperation registerListener(
-            @Named(TMAIL_EVENT_BUS_INJECT_NAME) EventBus eventBus,
-            @Named(TMAIL_EVENT_BUS_INJECT_NAME) Set<EventListener.ReactiveGroupEventListener> tmailListeners) {
+            @Named(TMAIL_EVENT_BUS_INJECT_NAME) EventBus tmailEventBus,
+            @Named(TMAIL_EVENT_BUS_INJECT_NAME) Set<EventListener.ReactiveGroupEventListener> tmailListeners,
+            DisconnectionEventListener disconnectionEventListener) {
         return InitilizationOperationBuilder
                 .forClass(EmailAddressContactEventLoader.class)
-                .init(() -> tmailListeners.forEach(eventBus::register));
+                .init(() -> {
+                    tmailListeners.forEach(tmailEventBus::register);
+                    Mono.from(tmailEventBus.register(disconnectionEventListener, DisconnectorRegistrationKey.KEY)).block();
+                });
     }
 
     @Provides

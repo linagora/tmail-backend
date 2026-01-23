@@ -16,26 +16,21 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail;
+package com.linagora.tmail.disconnector;
+
+import jakarta.inject.Named;
+import jakarta.inject.Singleton;
 
 import org.apache.james.DisconnectorNotifier;
-import org.apache.james.utils.InitializationOperation;
-import org.apache.james.utils.InitilizationOperationBuilder;
+import org.apache.james.events.EventBus;
 
 import com.google.inject.AbstractModule;
-import com.google.inject.multibindings.ProvidesIntoSet;
+import com.google.inject.Provides;
 
-public class RabbitMQDisconnectorModule extends AbstractModule {
-
-    @Override
-    protected void configure() {
-        bind(DisconnectorNotifier.class).to(RabbitMQDisconnectorNotifier.class);
-    }
-
-    @ProvidesIntoSet
-    InitializationOperation init(RabbitMQDisconnectorOperator operator) {
-        return InitilizationOperationBuilder
-            .forClass(RabbitMQDisconnectorOperator.class)
-            .init(operator::init);
+public class EventBusDisconnectorModule extends AbstractModule {
+    @Provides
+    @Singleton
+    DisconnectorNotifier disconnectorNotifier(@Named("TMAIL_EVENT_BUS") EventBus tmailEventBus) {
+        return new EventBusDisconnectorNotifier(tmailEventBus);
     }
 }
