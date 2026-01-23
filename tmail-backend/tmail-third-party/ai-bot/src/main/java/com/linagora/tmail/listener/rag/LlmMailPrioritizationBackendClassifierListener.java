@@ -165,38 +165,32 @@ public class LlmMailPrioritizationBackendClassifierListener implements EventList
     private Mono<Void> classifyMail(LlmMailPrioritizationClassifierListener.ParsedMessage message, MailboxSession session) {
         return getUserDisplayName(session.getUser())
             .flatMap(userDisplayName -> Mono.fromCallable(() -> buildUserPrompt(message, session.getUser(), userDisplayName)))
-            .flatMap(userPrompt ->
-                callLlmAndLog(userPrompt)
+            .flatMap(userPrompt -> {
+                return Mono.from(metricFactory.decoratePublisherWithTimerMetric("llm-mail-prioritization-classifier",
+                        callLlm(systemPrompt, userPrompt.correspondingUserPrompt())))
+                    .doOnNext(llmOutput -> {
+                        if (reviewModeEnabled) {
+                            boolean actionRequired = isActionRequired(llmOutput);
+                            emitStructureLog(userPrompt, actionRequired);
+                        }
+                    })
                     .filter(this::isActionRequired)
-                    .flatMap(any -> addNeedsActionKeyword(message.messageResult(), session))
-            )
+                    .flatMap(any -> addNeedsActionKeyword(message.messageResult(), session));
+            })
             .doOnError(e -> LOGGER.error("LLM call failed for messageId {} in mailboxId {} of user {}",
                 message.messageResult().getMessageId().serialize(), message.messageResult().getMailboxId().serialize(), session.getUser(), e));
     }
 
-    private Mono<String> callLlmAndLog(LlmUserPrompt userPrompt) {
-        return Mono.from(metricFactory.decoratePublisherWithTimerMetric("llm-mail-prioritization-classifier",
-                callLlm(systemPrompt, userPrompt.correspondingUserPrompt())))
-            .flatMap(llmOutput -> {
-                if (reviewModeEnabled) {
-                    boolean actionRequired = isActionRequired(llmOutput);
-                    return emitStructureLog(userPrompt, actionRequired)
-                        .thenReturn(llmOutput);
-                }
-                return Mono.just(llmOutput);
-            });
-    }
 
-    private Mono<Void> emitStructureLog(LlmUserPrompt llmUserPrompt, boolean actionRequired) {
-        return Mono.fromRunnable(() -> {
+
+    private void emitStructureLog(LlmUserPrompt llmUserPrompt, boolean actionRequired) {
             MDCStructuredLogger.forLogger(LOGGER)
-                .field("sender", llmUserPrompt.sender)
-                .field("user", llmUserPrompt.user)
-                .field("subject", llmUserPrompt.subject)
+                .field("sender", llmUserPrompt.sender())
+                .field("user", llmUserPrompt.user())
+                .field("subject", llmUserPrompt.subject())
                 .field("decision", actionRequired ? "YES" : "NO")
                 .field("preview", truncatePreview(llmUserPrompt.textContent()))
                 .log(logger -> logger.info("Email successfully classified"));
-        }).then();
     }
 
     private Mono<Void> addNeedsActionKeyword(MessageResult messageResult, MailboxSession session) {
