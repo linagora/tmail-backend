@@ -23,14 +23,24 @@ import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.not;
 
+import java.net.URISyntaxException;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 
 import org.apache.james.DisconnectorNotifier;
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.core.Username;
+import org.apache.james.events.EventBusId;
+import org.apache.james.events.EventBusName;
+import org.apache.james.events.EventSerializer;
+import org.apache.james.events.EventSerializersAggregator;
+import org.apache.james.events.MemoryEventDeadLetters;
+import org.apache.james.events.NamingStrategy;
+import org.apache.james.events.RabbitMQEventBus;
+import org.apache.james.events.RetryBackoffConfiguration;
+import org.apache.james.events.RoutingKeyConverter;
+import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.apache.james.protocols.webadmin.ProtocolServerRoutes;
 import org.apache.james.webadmin.WebAdminServer;
 import org.apache.james.webadmin.WebAdminUtils;
@@ -41,11 +51,18 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.github.fge.lambdas.Throwing;
+import com.google.common.collect.ImmutableSet;
+import com.linagora.tmail.disconnector.DisconnectionEventListener;
+import com.linagora.tmail.disconnector.DisconnectionRequestedEventSerializer;
+import com.linagora.tmail.disconnector.DisconnectorRegistrationKey;
+import com.linagora.tmail.disconnector.EventBusDisconnectorNotifier;
 
 import io.restassured.specification.RequestSpecification;
+import reactor.core.publisher.Mono;
 
 public class DisconnectionRouteTest {
+    private record ServerWithEventBus(WebAdminServer server, RabbitMQEventBus eventBus) {
+    }
 
     public static final String BOB = "bob@domain.tld";
     public static final Username BOB_USERNAME = Username.of(BOB);
@@ -61,24 +78,33 @@ public class DisconnectionRouteTest {
 
     private WebAdminServer webAdminServer1;
     private WebAdminServer webAdminServer2;
+    private RabbitMQEventBus eventBus1;
+    private RabbitMQEventBus eventBus2;
 
-    private WebAdminServer webAdminServer(List<Username> initConnectedUsers) {
+    private static final NamingStrategy NAMING_STRATEGY = new NamingStrategy(new EventBusName("tmail-event-bus"));
+    private static final RoutingKeyConverter ROUTING_KEY_CONVERTER = new RoutingKeyConverter(ImmutableSet.of(new DisconnectorRegistrationKey.Factory()));
+    private static final EventSerializer EVENT_SERIALIZER = new EventSerializersAggregator(ImmutableSet.of(new DisconnectionRequestedEventSerializer()));
+
+    private ServerWithEventBus webAdminServer(List<Username> initConnectedUsers) throws URISyntaxException {
         TestConnectionDisconnector testConnectionDisconnector = new TestConnectionDisconnector(initConnectedUsers);
-        DisconnectorNotifier.InVMDisconnectorNotifier inVmDisconnectorNotifier = new DisconnectorNotifier.InVMDisconnectorNotifier(testConnectionDisconnector);
-        DisconnectorRequestSerializer disconnectorRequestSerializer = new DisconnectorRequestSerializer();
-        RabbitMQDisconnectorConsumer rabbitMQDisconnectorConsumer = new RabbitMQDisconnectorConsumer(rabbitMQExtension.getReceiverProvider(),
-            inVmDisconnectorNotifier,
-            disconnectorRequestSerializer,
-            UUID.randomUUID().toString());
+        RabbitMQEventBus.Configurations rabbitMQConfigurations = new RabbitMQEventBus.Configurations(rabbitMQExtension.getRabbitMQ().getConfiguration(), RetryBackoffConfiguration.DEFAULT);
+        RabbitMQEventBus eventBus = new RabbitMQEventBus(NAMING_STRATEGY,
+            rabbitMQExtension.getSender(),
+            rabbitMQExtension.getReceiverProvider(),
+            EVENT_SERIALIZER,
+            ROUTING_KEY_CONVERTER,
+            new MemoryEventDeadLetters(),
+            new RecordingMetricFactory(),
+            rabbitMQExtension.getRabbitChannelPool(),
+            EventBusId.random(),
+            rabbitMQConfigurations);
 
-        RabbitMQDisconnectorOperator rabbitMQDisconnectorOperator = new RabbitMQDisconnectorOperator(rabbitMQExtension.getSender(),
-            Throwing.supplier(() -> rabbitMQExtension.getRabbitMQ().getConfiguration()).get(), rabbitMQDisconnectorConsumer);
+        eventBus.start();
+        Mono.from(eventBus.register(new DisconnectionEventListener(testConnectionDisconnector), DisconnectorRegistrationKey.KEY)).block();
 
-        rabbitMQDisconnectorOperator.init();
-
-        DisconnectorNotifier disconnectorNotifier = new RabbitMQDisconnectorNotifier(rabbitMQExtension.getSender(), disconnectorRequestSerializer);
+        DisconnectorNotifier disconnectorNotifier = new EventBusDisconnectorNotifier(eventBus);
         ProtocolServerRoutes protocolServerRoutes = new ProtocolServerRoutes(Set.of(), disconnectorNotifier, testConnectionDisconnector);
-        return WebAdminUtils.createWebAdminServer(protocolServerRoutes).start();
+        return new ServerWithEventBus(WebAdminUtils.createWebAdminServer(protocolServerRoutes).start(), eventBus);
     }
 
     private RequestSpecification requestSpecification(WebAdminServer webAdminServer) {
@@ -95,13 +121,24 @@ public class DisconnectionRouteTest {
         if (webAdminServer2 != null) {
             webAdminServer2.destroy();
         }
+        if (eventBus1 != null) {
+            eventBus1.stop();
+        }
+        if (eventBus2 != null) {
+            eventBus2.stop();
+        }
     }
 
     @Test
-    void bobShouldBeDisconnectedOnConnectedServer() {
+    void bobShouldBeDisconnectedOnConnectedServer() throws Exception {
         // Given Bob is connected on server 1
-        webAdminServer1 = webAdminServer(List.of(BOB_USERNAME));
-        webAdminServer2 = webAdminServer(List.of());
+        ServerWithEventBus server1 = webAdminServer(List.of(BOB_USERNAME));
+        webAdminServer1 = server1.server();
+        eventBus1 = server1.eventBus();
+
+        ServerWithEventBus server2 = webAdminServer(List.of());
+        webAdminServer2 = server2.server();
+        eventBus2 = server2.eventBus();
 
         // Verify Bob is connected on server 1
         given()
@@ -130,10 +167,15 @@ public class DisconnectionRouteTest {
     }
 
     @Test
-    void bobShouldBeDisconnectedOnAllServerWhenAskedOnAnyServer() {
+    void bobShouldBeDisconnectedOnAllServerWhenAskedOnAnyServer() throws Exception {
         // Given Bob is connected on server 1 and server 2
-        webAdminServer1 = webAdminServer(List.of(BOB_USERNAME));
-        webAdminServer2 = webAdminServer(List.of(BOB_USERNAME));
+        ServerWithEventBus server1 = webAdminServer(List.of(BOB_USERNAME));
+        webAdminServer1 = server1.server();
+        eventBus1 = server1.eventBus();
+
+        ServerWithEventBus server2 = webAdminServer(List.of(BOB_USERNAME));
+        webAdminServer2 = server2.server();
+        eventBus2 = server2.eventBus();
 
         // Verify Bob is connected on server 1
         given()
@@ -178,10 +220,15 @@ public class DisconnectionRouteTest {
     }
 
     @Test
-    void bobShouldNotDisconnectedWhenDisconnectAlice() throws InterruptedException {
+    void bobShouldNotBeDisconnectedWhenDisconnectAlice() throws Exception {
         // Given Bob is connected on server 1
-        webAdminServer1 = webAdminServer(List.of(BOB_USERNAME));
-        webAdminServer2 = webAdminServer(List.of());
+        ServerWithEventBus server1 = webAdminServer(List.of(BOB_USERNAME));
+        webAdminServer1 = server1.server();
+        eventBus1 = server1.eventBus();
+
+        ServerWithEventBus server2 = webAdminServer(List.of());
+        webAdminServer2 = server2.server();
+        eventBus2 = server2.eventBus();
 
         // Verify Bob is connected on server 1
         given()
