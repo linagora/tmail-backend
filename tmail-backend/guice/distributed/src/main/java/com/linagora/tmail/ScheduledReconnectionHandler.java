@@ -18,7 +18,6 @@
 
 package com.linagora.tmail;
 
-import static com.linagora.tmail.RabbitMQDisconnectorConsumer.TMAIL_DISCONNECTOR_QUEUE_NAME;
 import static com.rabbitmq.client.ConnectionFactory.DEFAULT_VHOST;
 
 import java.io.FileNotFoundException;
@@ -109,7 +108,6 @@ public class ScheduledReconnectionHandler implements Startable {
         "sabre-contacts-queue-add",
         "sabre-contacts-queue-update",
         "sabre-contacts-queue-delete")
-        .add(TMAIL_DISCONNECTOR_QUEUE_NAME)
         .build();
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ScheduledReconnectionHandler.class);
