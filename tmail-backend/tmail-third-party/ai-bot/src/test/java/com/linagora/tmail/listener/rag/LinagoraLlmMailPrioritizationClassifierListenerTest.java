@@ -58,7 +58,6 @@ import com.google.common.collect.ImmutableMap;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
 import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
-import com.linagora.tmail.listener.rag.logger.NeedsActionReviewLogger;
 import com.linagora.tmail.mailet.AIBotConfig;
 import com.linagora.tmail.mailet.LlmModel;
 import com.linagora.tmail.mailet.StreamChatLanguageModelFactory;
@@ -108,7 +107,6 @@ public class LinagoraLlmMailPrioritizationClassifierListenerTest implements LlmM
         messageIdManager = resources.getMessageIdManager();
         MetricFactory metricFactory = new RecordingMetricFactory();
         HtmlTextExtractor htmlTextExtractor = new JsoupHtmlTextExtractor();
-        NeedsActionReviewLogger needsActionReviewLogger = new NeedsActionReviewLogger();
         tmailEventBus = new InVMEventBus(new InVmEventDelivery(metricFactory), backoffConfiguration, eventDeadLetters);
 
         aliceSession = mailboxManager.createSystemSession(ALICE);
@@ -148,8 +146,7 @@ public class LinagoraLlmMailPrioritizationClassifierListenerTest implements LlmM
             htmlTextExtractor,
             identityRepository,
             metricFactory,
-            listenerConfig,
-            needsActionReviewLogger);
+            listenerConfig);
 
         jmapSettingsRepositoryUtils().reset(ALICE, ImmutableMap.of("ai.needs-action.enabled", "true"));
     }
@@ -195,8 +192,7 @@ public class LinagoraLlmMailPrioritizationClassifierListenerTest implements LlmM
             new JsoupHtmlTextExtractor(),
             identityRepository,
             new RecordingMetricFactory(),
-            overrideConfig,
-            new NeedsActionReviewLogger());
+            overrideConfig);
     }
 
     @Override
