@@ -33,20 +33,11 @@ import org.apache.james.backends.rabbitmq.QueueArguments;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
-import org.apache.james.core.Domain;
-import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.lifecycle.api.Startable;
-import org.apache.james.mailbox.quota.MaxQuotaManager;
-import org.apache.james.util.ReactorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.fge.lambdas.Throwing;
-import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
-import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
-import com.linagora.tmail.saas.rabbitmq.subscription.SaaSDomainSubscriptionMessage.SaaSDomainCancelSubscriptionMessage;
-import com.linagora.tmail.saas.rabbitmq.subscription.SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.ShutdownSignalException;
@@ -74,9 +65,7 @@ public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
     private final RabbitMQConfiguration rabbitMQConfiguration;
     private final TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration;
     private final SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration;
-    private final DomainList domainList;
-    private final MaxQuotaManager maxQuotaManager;
-    private final RateLimitingRepository rateLimitingRepository;
+    private final SaaSDomainSubscriptionHandler saasDomainSubscriptionHandler;
     private Disposable consumeSubscriptionDisposable;
 
     @Inject
@@ -84,17 +73,13 @@ public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
                                           @Named(TWP_INJECTION_KEY) RabbitMQConfiguration rabbitMQConfiguration,
                                           TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration,
                                           SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration,
-                                          DomainList domainList,
-                                          MaxQuotaManager maxQuotaManager,
-                                          RateLimitingRepository rateLimitingRepository) {
+                                          SaaSDomainSubscriptionHandler saasDomainSubscriptionHandler) {
         this.receiverProvider = channelPool::createReceiver;
         this.sender = channelPool.getSender();
         this.rabbitMQConfiguration = rabbitMQConfiguration;
         this.twpCommonRabbitMQConfiguration = twpCommonRabbitMQConfiguration;
         this.saasSubscriptionRabbitMQConfiguration = saasSubscriptionRabbitMQConfiguration;
-        this.domainList = domainList;
-        this.maxQuotaManager = maxQuotaManager;
-        this.rateLimitingRepository = rateLimitingRepository;
+        this.saasDomainSubscriptionHandler = saasDomainSubscriptionHandler;
     }
 
     public void init() {
@@ -175,80 +160,13 @@ public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
 
     private Mono<Void> consumeDomainSubscriptionUpdate(AcknowledgableDelivery ackDelivery, byte[] messagePayload) {
         return Mono.fromCallable(() -> SaaSSubscriptionDeserializer.parseAMQPDomainMessage(messagePayload))
-            .flatMap(this::handleDomainSubscriptionMessage)
+            .flatMap(saasDomainSubscriptionHandler::handleMessage)
             .doOnSuccess(result -> ackDelivery.ack())
             .onErrorResume(error -> {
                 LOGGER.error("Error when consuming SaaS domain subscription message", error);
                 ackDelivery.nack(!REQUEUE_ON_NACK);
                 return Mono.empty();
             });
-    }
-
-    private Mono<Void> handleDomainSubscriptionMessage(SaaSDomainSubscriptionMessage domainSubscriptionMessage) {
-        return switch (domainSubscriptionMessage) {
-            case SaaSDomainValidSubscriptionMessage message  -> handleDomainValidSubscriptionMessage(message);
-            case SaaSDomainCancelSubscriptionMessage message -> handleDomainCancelSubscriptionMessage(message);
-            default                                          -> throw new IllegalArgumentException("Unrecognized SaaS domain subscription message");
-        };
-    }
-
-    private Mono<Void> handleDomainCancelSubscriptionMessage(SaaSDomainCancelSubscriptionMessage domainCancelSubscriptionMessage) {
-        if (!domainCancelSubscriptionMessage.enabled()) {
-            Domain domain = Domain.of(domainCancelSubscriptionMessage.domain());
-            return removeDomainIfExists(domain)
-                .doOnSuccess(success -> LOGGER.info("Cancelled SaaS subscription for domain: {}", domain));
-        }
-        return Mono.empty();
-    }
-
-    private Mono<Void> removeDomainIfExists(Domain domain) {
-        return Mono.fromRunnable(Throwing.runnable(() -> domainList.removeDomain(domain)))
-            .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
-            .then();
-    }
-
-    private Mono<Void> handleDomainValidSubscriptionMessage(SaaSDomainValidSubscriptionMessage message) {
-        return createDomainIfValidated(message)
-            .then(applyDomainSettings(message));
-    }
-
-    private Mono<Void> createDomainIfValidated(SaaSDomainValidSubscriptionMessage message) {
-        Domain domain = Domain.of(message.domain());
-        if (message.mailDnsConfigurationValidated().orElse(false)) {
-            return addDomainIfNotExist(domain);
-        }
-        return Mono.empty();
-    }
-
-    private Mono<Void> applyDomainSettings(SaaSDomainValidSubscriptionMessage message) {
-        Domain domain = Domain.of(message.domain());
-
-        return message.features()
-            .flatMap(SaasFeatures::mail)
-            .map(mailSettings -> updateStorageDomainQuota(domain, mailSettings.storageQuota())
-                .then(updateRateLimiting(domain, mailSettings.rateLimitingDefinition()))
-                .doOnSuccess(success -> LOGGER.info("Updated SaaS subscription for domain: {}, storageQuota: {}, rateLimiting: {}",
-                    domain, mailSettings.storageQuota(), mailSettings.rateLimitingDefinition()))).orElse(Mono.empty());
-    }
-
-    private Mono<Void> addDomainIfNotExist(Domain domain) {
-        return Mono.from(domainList.containsDomainReactive(domain))
-            .flatMap(alreadyExists -> {
-                if (alreadyExists) {
-                    return Mono.empty();
-                }
-                return Mono.fromRunnable(Throwing.runnable(() -> domainList.addDomain(domain)))
-                    .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
-                    .then();
-            });
-    }
-
-    private Mono<Void> updateStorageDomainQuota(Domain domain, Long storageQuota) {
-        return Mono.from(maxQuotaManager.setDomainMaxStorageReactive(domain, SaaSSubscriptionUtils.asQuotaSizeLimit(storageQuota)));
-    }
-
-    private Mono<Void> updateRateLimiting(Domain domain, RateLimitingDefinition rateLimiting) {
-        return Mono.from(rateLimitingRepository.setRateLimiting(domain, rateLimiting));
     }
 
     @Override

@@ -118,9 +118,9 @@ class SaaSDomainSubscriptionConsumerTest {
             rabbitMQConfiguration,
             twpCommonRabbitMQConfiguration,
             SaaSSubscriptionRabbitMQConfiguration.DEFAULT,
-            domainList,
-            maxQuotaManager,
-            rateLimitingRepository);
+            new SaaSDomainSubscriptionHandlerImpl(domainList,
+                maxQuotaManager,
+                rateLimitingRepository));
         testee.init();
     }
 
