@@ -46,6 +46,8 @@ public class SaaSSubscriptionModule extends AbstractModule {
     protected void configure() {
         bind(SaaSSubscriptionHandler.class).to(SaaSSubscriptionHandlerImpl.class);
         bind(SaaSSubscriptionHandlerImpl.class).in(Scopes.SINGLETON);
+        bind(SaaSDomainSubscriptionHandler.class).to(SaaSDomainSubscriptionHandlerImpl.class);
+        bind(SaaSDomainSubscriptionHandlerImpl.class).in(Scopes.SINGLETON);
 
         Multibinder.newSetBinder(binder(), HealthCheck.class).addBinding()
             .to(SaaSSubscriptionDeadLetterQueueHealthCheck.class);
