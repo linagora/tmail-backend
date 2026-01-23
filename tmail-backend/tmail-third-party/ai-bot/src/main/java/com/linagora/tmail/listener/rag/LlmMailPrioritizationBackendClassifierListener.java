@@ -26,7 +26,6 @@ import java.util.stream.Collectors;
 
 import jakarta.inject.Inject;
 import jakarta.mail.Flags;
-import jakarta.mail.MessagingException;
 
 import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.tree.ImmutableNode;
@@ -36,7 +35,6 @@ import org.apache.james.events.EventListener;
 import org.apache.james.events.Group;
 import org.apache.james.jmap.api.identity.IdentityRepository;
 import org.apache.james.jmap.api.model.Identity;
-import org.apache.james.jmap.api.model.Preview;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageIdManager;
@@ -45,10 +43,10 @@ import org.apache.james.mailbox.model.FetchGroup;
 import org.apache.james.mailbox.model.MessageResult;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.mime4j.dom.address.Mailbox;
+import org.apache.james.util.MDCStructuredLogger;
 import org.apache.james.util.ReactorUtils;
 import org.apache.james.util.html.HtmlTextExtractor;
 import org.apache.james.util.mime.MessageContentExtractor;
-import org.jetbrains.annotations.NotNull;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -57,7 +55,6 @@ import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 import com.google.inject.name.Named;
 import com.linagora.tmail.listener.rag.event.AIAnalysisNeeded;
-import com.linagora.tmail.listener.rag.logger.NeedsActionReviewLogger;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -81,6 +78,7 @@ public class LlmMailPrioritizationBackendClassifierListener implements EventList
     private static final String SYSTEM_PROMPT_PARAM = "systemPrompt";
     private static final String MAX_BODY_LENGTH_PARAM = "maxBodyLength";
     private static final int DEFAULT_MAX_BODY_LENGTH = 4000;
+    private static final int MAX_PREVIEW_LENGTH = 255;
     private static final String DEFAULT_SYSTEM_PROMPT = """
         You are an email action classifier. Your ONLY task is to decide whether the email expects the recipient to perform any action.
         
@@ -110,7 +108,6 @@ public class LlmMailPrioritizationBackendClassifierListener implements EventList
     private final IdentityRepository identityRepository;
     private final String systemPrompt;
     private final int maxBodyLength;
-    private final NeedsActionReviewLogger needsActionReviewLogger;
 
     @Inject
     public LlmMailPrioritizationBackendClassifierListener(MailboxManager mailboxManager,
@@ -119,15 +116,13 @@ public class LlmMailPrioritizationBackendClassifierListener implements EventList
                                                           HtmlTextExtractor htmlTextExtractor,
                                                           IdentityRepository identityRepository,
                                                           MetricFactory metricFactory,
-                                                          @Named(LLM_MAIL_CLASSIFIER_CONFIGURATION) HierarchicalConfiguration<ImmutableNode> configuration,
-                                                          NeedsActionReviewLogger needsActionReviewLogger) {
+                                                          @Named(LLM_MAIL_CLASSIFIER_CONFIGURATION) HierarchicalConfiguration<ImmutableNode> configuration) {
         this.mailboxManager = mailboxManager;
         this.messageIdManager = messageIdManager;
         this.chatLanguageModel = chatLanguageModel;
         this.htmlTextExtractor = htmlTextExtractor;
         this.identityRepository = identityRepository;
         this.metricFactory = metricFactory;
-        this.needsActionReviewLogger = needsActionReviewLogger;
         this.systemPrompt = Optional.ofNullable(configuration.getString("listener.configuration." + SYSTEM_PROMPT_PARAM, null))
             .filter(s -> !s.isBlank())
             .orElse(DEFAULT_SYSTEM_PROMPT);
@@ -167,30 +162,29 @@ public class LlmMailPrioritizationBackendClassifierListener implements EventList
 
     private Mono<Void> classifyMail(LlmMailPrioritizationClassifierListener.ParsedMessage message, MailboxSession session) {
         return getUserDisplayName(session.getUser())
-            .flatMap(userDisplayName -> buildUserPrompt(message, session.getUser(), userDisplayName))
+            .flatMap(userDisplayName -> Mono.fromCallable(() -> buildUserPrompt(message, session.getUser(), userDisplayName)))
             .flatMap(userPrompt -> Mono.from(metricFactory.decoratePublisherWithTimerMetric("llm-mail-prioritization-classifier",
-                callLlm(systemPrompt, userPrompt))))
-            .flatMap(llmoutput -> {
-                boolean actionRequired = isActionRequired(llmoutput);
-                return emitStructureLog(message, session, isActionRequired(llmoutput))
-                    .thenReturn(llmoutput);
-            })
+                callLlm(systemPrompt, userPrompt.correspondingUserPrompt())))
+            .flatMap(llmOutput -> {
+                boolean actionRequired = isActionRequired(llmOutput);
+                return emitStructureLog(userPrompt, actionRequired)
+                    .thenReturn(llmOutput);
+            }))
             .filter(this::isActionRequired)
             .flatMap(any -> addNeedsActionKeyword(message.messageResult(), session))
             .doOnError(e -> LOGGER.error("LLM call failed for messageId {} in mailboxId {} of user {}",
                 message.messageResult().getMessageId().serialize(), message.messageResult().getMailboxId().serialize(), session.getUser(), e));
     }
 
-    private Mono<Void> emitStructureLog(LlmMailPrioritizationClassifierListener.ParsedMessage message, MailboxSession session, boolean actionRequired) {
+    private Mono<Void> emitStructureLog(LlmUserPrompt llmUserPrompt, boolean actionRequired) {
         return Mono.fromRunnable(() -> {
-            String sender = getSender(message);
-            String preview = null;
-            try {
-                preview = getPreview(message);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
-            needsActionReviewLogger.log(sender,session.getUser().asString(), message.parsed().getSubject(), actionRequired, preview);
+            MDCStructuredLogger.forLogger(LOGGER)
+                .field("sender", llmUserPrompt.sender)
+                .field("user", llmUserPrompt.user)
+                .field("subject", llmUserPrompt.subject)
+                .field("decision", actionRequired ? "YES" : "NO")
+                .field("preview", truncatePreview(llmUserPrompt.textContent()))
+                .log(logger -> logger.info("Email successfully classified"));
         }).then();
     }
 
@@ -203,8 +197,24 @@ public class LlmMailPrioritizationBackendClassifierListener implements EventList
                 messageResult.getMessageId().serialize(), messageResult.getMailboxId().serialize(), session.getUser().asString(), e));
     }
 
-    private Mono<String> buildUserPrompt(LlmMailPrioritizationClassifierListener.ParsedMessage message, Username username, String userDisplayName) {
-        try {
+    record LlmUserPrompt(String userDisplayName, String user, String textContent, String sender, String to, String subject) {
+        String correspondingUserPrompt() {
+            return """
+                Username (of the person receiving this mail) is %s. His/her mail address is %s.
+                Below is the content of the email:
+                From: %s
+                To: %s
+                Subject: %s
+
+                %s
+
+                Does this email require immediate action from the user? Respond only with YES or NO.
+                """.formatted(userDisplayName, user, sender, to, subject, textContent);
+        }
+    }
+
+    private LlmUserPrompt buildUserPrompt(LlmMailPrioritizationClassifierListener.ParsedMessage message, Username username, String userDisplayName) throws IOException {
+
             String from = Optional.ofNullable(message.parsed().getFrom())
                 .map(mailboxList -> mailboxList.stream()
                     .map(this::asString)
@@ -220,25 +230,7 @@ public class LlmMailPrioritizationBackendClassifierListener implements EventList
             MessageContentExtractor.MessageContent messageContent = new MessageContentExtractor().extract(message.parsed());
             Optional<String> maybeBody = messageContent.extractMainTextContent(htmlTextExtractor);
 
-            return Mono.justOrEmpty(maybeBody)
-                .map(body -> {
-                    String truncated = truncate(body);
-                    return """
-                        Username (of the person receiving this mail) is %s. His/her mail address is %s.
-                        Below is the content of the email:
-                        
-                        From: %s
-                        To: %s
-                        Subject: %s
-
-                        %s
-
-                        Does this email require immediate action from the user? Respond only with YES or NO.
-                        """.formatted(userDisplayName, username.asString(), from, to, subject, truncated);
-                });
-        } catch (Exception e) {
-            return Mono.error(new MessagingException("Error while building LLM prompt", e));
-        }
+            return new LlmUserPrompt(userDisplayName, username.asString(), truncateBody(maybeBody.orElse("")), from, to, subject);
     }
 
     private Mono<String> getUserDisplayName(Username username) {
@@ -257,7 +249,7 @@ public class LlmMailPrioritizationBackendClassifierListener implements EventList
         return String.format("%s <%s>", mime4jMailbox.getName(), mime4jMailbox.getAddress());
     }
 
-    private String truncate(String body) {
+    private String truncateBody(String body) {
         if (body.length() <= maxBodyLength) {
             return body;
         }
@@ -296,17 +288,10 @@ public class LlmMailPrioritizationBackendClassifierListener implements EventList
             .orElse(false);
     }
 
-    private static @NotNull String getSender(LlmMailPrioritizationClassifierListener.ParsedMessage message) {
-        String sender = Optional.ofNullable(message.parsed().getFrom())
-            .map(list -> list.isEmpty() ? null : list.get(0).getAddress())
-            .orElse("");
-        return sender;
-    }
-
-    private String getPreview(LlmMailPrioritizationClassifierListener.ParsedMessage message) throws IOException {
-        MessageContentExtractor.MessageContent messageContent = new MessageContentExtractor().extract(message.parsed());
-        Optional<String> maybeBody = messageContent.extractMainTextContent(htmlTextExtractor);
-        String preview = Preview.compute(maybeBody.orElse("")).getValue();
-        return preview;
+    private String truncatePreview(String body) {
+        if (body.length() <= MAX_PREVIEW_LENGTH) {
+            return body;
+        }
+        return body.substring(0, MAX_PREVIEW_LENGTH);
     }
 }
