@@ -69,30 +69,32 @@ case class Color(value: String)
 
 object LabelCreationRequest {
   val serverSetProperty = Set("id", "keyword")
-  val assignableProperties = Set("displayName", "color")
+  val assignableProperties = Set("displayName", "color", "documentation")
   val knownProperties = assignableProperties ++ serverSetProperty
 }
 
-case class LabelCreationRequest(displayName: DisplayName, color: Option[Color]) {
+case class LabelCreationRequest(displayName: DisplayName, color: Option[Color], documentation: Option[String]) {
   def toLabel: Label = {
     val keyword: Keyword = KeywordUtil.generate()
 
     Label(id = LabelId.fromKeyword(keyword),
       displayName = displayName,
       keyword = keyword,
-      color = color)
+      color = color,
+      documentation = documentation)
   }
 }
 
 object Label {
-  val allProperties: Properties = Properties("id", "displayName", "keyword", "color")
+  val allProperties: Properties = Properties("id", "displayName", "keyword", "color", "documentation")
   val idProperty: Properties = Properties("id")
 }
 
-case class Label(id: LabelId, displayName: DisplayName, keyword: Keyword, color: Option[Color]) {
-  def update(newDisplayName: Option[DisplayName], newColor: Option[Color]): Label =
+case class Label(id: LabelId, displayName: DisplayName, keyword: Keyword, color: Option[Color], documentation: Option[String] ) {
+  def update(newDisplayName: Option[DisplayName], newColor: Option[Color], newDocumentation:Option[String]): Label =
     copy(displayName = newDisplayName.getOrElse(displayName),
-      color = newColor.orElse(color))
+      color = newColor.orElse(color),
+      documentation = newDocumentation.orElse(documentation))
 }
 
 case class LabelNotFoundException(id: LabelId) extends RuntimeException
