@@ -74,6 +74,6 @@ class LabelSetUpdatePerformer @Inject()(val labelRepository: LabelRepository,
       .map(LabelUpdateResults)
 
   private def updateLabel(username: Username, labelId: LabelId, validatedPatch: ValidatedLabelPatchObject): SMono[LabelUpdateResult] =
-    SMono.fromPublisher(labelRepository.updateLabel(username, labelId, validatedPatch.displayNameUpdate, validatedPatch.colorUpdate))
+    SMono.fromPublisher(labelRepository.updateLabel(username, labelId, validatedPatch.displayNameUpdate, validatedPatch.colorUpdate, validatedPatch.documentationUpdate))
       .`then`(SMono.just(LabelUpdateSuccess(labelId)))
 }
