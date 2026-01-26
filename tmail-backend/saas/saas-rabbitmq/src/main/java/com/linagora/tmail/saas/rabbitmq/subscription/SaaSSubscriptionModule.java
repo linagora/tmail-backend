@@ -29,26 +29,26 @@ import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.james.core.healthcheck.HealthCheck;
+import org.apache.james.domainlist.api.DomainList;
+import org.apache.james.mailbox.quota.MaxQuotaManager;
+import org.apache.james.mailbox.quota.UserQuotaRootResolver;
+import org.apache.james.user.api.UsersRepository;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
 import org.apache.james.utils.PropertiesProvider;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
-import com.google.inject.Scopes;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
+import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
+import com.linagora.tmail.saas.api.SaaSAccountRepository;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
 
 public class SaaSSubscriptionModule extends AbstractModule {
 
     @Override
     protected void configure() {
-        bind(SaaSSubscriptionHandler.class).to(SaaSSubscriptionHandlerImpl.class);
-        bind(SaaSSubscriptionHandlerImpl.class).in(Scopes.SINGLETON);
-        bind(SaaSDomainSubscriptionHandler.class).to(SaaSDomainSubscriptionHandlerImpl.class);
-        bind(SaaSDomainSubscriptionHandlerImpl.class).in(Scopes.SINGLETON);
-
         Multibinder.newSetBinder(binder(), HealthCheck.class).addBinding()
             .to(SaaSSubscriptionDeadLetterQueueHealthCheck.class);
         Multibinder.newSetBinder(binder(), HealthCheck.class).addBinding()
@@ -61,9 +61,18 @@ public class SaaSSubscriptionModule extends AbstractModule {
                                                              @Named(TWP_INJECTION_KEY) RabbitMQConfiguration rabbitMQConfiguration,
                                                              TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration,
                                                              SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration,
-                                                             SaaSSubscriptionHandler saasSubscriptionHandler) {
+                                                             UsersRepository usersRepository,
+                                                             SaaSAccountRepository saasAccountRepository,
+                                                             MaxQuotaManager maxQuotaManager,
+                                                             UserQuotaRootResolver userQuotaRootResolver,
+                                                             RateLimitingRepository rateLimitingRepository) {
         return new SaaSSubscriptionConsumer(channelPool, rabbitMQConfiguration, twpCommonRabbitMQConfiguration,
-            saasSubscriptionRabbitMQConfiguration, saasSubscriptionHandler);
+            saasSubscriptionRabbitMQConfiguration,
+            new SaaSSubscriptionHandlerImpl(usersRepository,
+                saasAccountRepository,
+                maxQuotaManager,
+                userQuotaRootResolver,
+                rateLimitingRepository));
     }
 
     @Provides
@@ -72,9 +81,14 @@ public class SaaSSubscriptionModule extends AbstractModule {
                                                                          @Named(TWP_INJECTION_KEY) RabbitMQConfiguration rabbitMQConfiguration,
                                                                          TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration,
                                                                          SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration,
-                                                                         SaaSDomainSubscriptionHandler saaSDomainSubscriptionHandler) {
+                                                                         DomainList domainList,
+                                                                         MaxQuotaManager maxQuotaManager,
+                                                                         RateLimitingRepository rateLimitingRepository) {
         return new SaaSDomainSubscriptionConsumer(channelPool, rabbitMQConfiguration, twpCommonRabbitMQConfiguration,
-            saasSubscriptionRabbitMQConfiguration, saaSDomainSubscriptionHandler);
+            saasSubscriptionRabbitMQConfiguration,
+            new SaaSDomainSubscriptionHandlerImpl(domainList,
+                maxQuotaManager,
+                rateLimitingRepository));
     }
 
     @ProvidesIntoSet

@@ -26,7 +26,6 @@ import java.io.Closeable;
 import java.time.Duration;
 import java.util.Optional;
 
-import jakarta.inject.Inject;
 import jakarta.inject.Named;
 
 import org.apache.james.backends.rabbitmq.QueueArguments;
@@ -65,15 +64,14 @@ public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
     private final RabbitMQConfiguration rabbitMQConfiguration;
     private final TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration;
     private final SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration;
-    private final SaaSDomainSubscriptionHandler saasDomainSubscriptionHandler;
+    private final SaaSMessageHandler saasDomainSubscriptionHandler;
     private Disposable consumeSubscriptionDisposable;
 
-    @Inject
     public SaaSDomainSubscriptionConsumer(@Named(TWP_INJECTION_KEY) ReactorRabbitMQChannelPool channelPool,
                                           @Named(TWP_INJECTION_KEY) RabbitMQConfiguration rabbitMQConfiguration,
                                           TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration,
                                           SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration,
-                                          SaaSDomainSubscriptionHandler saasDomainSubscriptionHandler) {
+                                          SaaSMessageHandler saasDomainSubscriptionHandler) {
         this.receiverProvider = channelPool::createReceiver;
         this.sender = channelPool.getSender();
         this.rabbitMQConfiguration = rabbitMQConfiguration;
@@ -159,8 +157,7 @@ public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
     }
 
     private Mono<Void> consumeDomainSubscriptionUpdate(AcknowledgableDelivery ackDelivery, byte[] messagePayload) {
-        return Mono.fromCallable(() -> SaaSSubscriptionDeserializer.parseAMQPDomainMessage(messagePayload))
-            .flatMap(saasDomainSubscriptionHandler::handleMessage)
+        return saasDomainSubscriptionHandler.handleMessage(messagePayload)
             .doOnSuccess(result -> ackDelivery.ack())
             .onErrorResume(error -> {
                 LOGGER.error("Error when consuming SaaS domain subscription message", error);

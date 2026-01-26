@@ -18,8 +18,6 @@
 
 package com.linagora.tmail.saas.rabbitmq.subscription;
 
-import jakarta.inject.Inject;
-
 import org.apache.james.core.Username;
 import org.apache.james.mailbox.model.QuotaRoot;
 import org.apache.james.mailbox.quota.MaxQuotaManager;
@@ -36,7 +34,7 @@ import com.linagora.tmail.saas.model.SaaSAccount;
 
 import reactor.core.publisher.Mono;
 
-public class SaaSSubscriptionHandlerImpl implements SaaSSubscriptionHandler {
+public class SaaSSubscriptionHandlerImpl implements SaaSMessageHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SaaSSubscriptionHandlerImpl.class);
 
@@ -46,7 +44,6 @@ public class SaaSSubscriptionHandlerImpl implements SaaSSubscriptionHandler {
     private final UserQuotaRootResolver userQuotaRootResolver;
     private final RateLimitingRepository rateLimitingRepository;
 
-    @Inject
     public SaaSSubscriptionHandlerImpl(UsersRepository usersRepository,
                                        SaaSAccountRepository saasAccountRepository,
                                        MaxQuotaManager maxQuotaManager,
@@ -60,6 +57,11 @@ public class SaaSSubscriptionHandlerImpl implements SaaSSubscriptionHandler {
     }
 
     @Override
+    public Mono<Void> handleMessage(byte[] message) {
+        return Mono.fromCallable(() -> SaaSSubscriptionDeserializer.parseAMQPUserMessage(message))
+            .flatMap(this::handleMessage);
+    }
+
     public Mono<Void> handleMessage(SaaSSubscriptionMessage subscriptionMessage) {
         SaaSAccount saaSAccount = new SaaSAccount(subscriptionMessage.canUpgrade(), subscriptionMessage.isPaying());
         return Mono.fromCallable(() -> usersRepository.getUserByName(Username.of(subscriptionMessage.internalEmail())))

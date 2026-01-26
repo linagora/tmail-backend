@@ -18,6 +18,8 @@
 
 package com.linagora.tmail.saas.rabbitmq.subscription;
 
+import jakarta.inject.Inject;
+
 import org.apache.james.core.Domain;
 import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.mailbox.quota.MaxQuotaManager;
@@ -31,7 +33,7 @@ import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition;
 
 import reactor.core.publisher.Mono;
 
-public class SaaSDomainSubscriptionHandlerImpl implements SaaSDomainSubscriptionHandler {
+public class SaaSDomainSubscriptionHandlerImpl implements SaaSMessageHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SaaSDomainSubscriptionHandlerImpl.class);
 
@@ -39,6 +41,7 @@ public class SaaSDomainSubscriptionHandlerImpl implements SaaSDomainSubscription
     private final MaxQuotaManager maxQuotaManager;
     private final RateLimitingRepository rateLimitingRepository;
 
+    @Inject
     public SaaSDomainSubscriptionHandlerImpl(DomainList domainList,
                                              MaxQuotaManager maxQuotaManager,
                                              RateLimitingRepository rateLimitingRepository) {
@@ -48,6 +51,11 @@ public class SaaSDomainSubscriptionHandlerImpl implements SaaSDomainSubscription
     }
 
     @Override
+    public Mono<Void> handleMessage(byte[] message) {
+        return Mono.fromCallable(() -> SaaSSubscriptionDeserializer.parseAMQPDomainMessage(message))
+            .flatMap(this::handleMessage);
+    }
+
     public Mono<Void> handleMessage(SaaSDomainSubscriptionMessage domainSubscriptionMessage) {
         return switch (domainSubscriptionMessage) {
             case SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage message  -> handleDomainValidSubscriptionMessage(message);

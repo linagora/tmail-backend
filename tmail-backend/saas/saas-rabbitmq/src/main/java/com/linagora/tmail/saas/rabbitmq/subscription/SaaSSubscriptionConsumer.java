@@ -64,13 +64,13 @@ public class SaaSSubscriptionConsumer implements Closeable, Startable {
     private final RabbitMQConfiguration rabbitMQConfiguration;
     private final TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration;
     private final SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration;
-    private final SaaSSubscriptionHandler saasSubscriptionHandler;
+    private final SaaSMessageHandler saasSubscriptionHandler;
     private Disposable consumeSubscriptionDisposable;
 
     public SaaSSubscriptionConsumer(@Named(TWP_INJECTION_KEY) ReactorRabbitMQChannelPool channelPool,
                                     @Named(TWP_INJECTION_KEY) RabbitMQConfiguration rabbitMQConfiguration,
                                     TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration,
-                                    SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration, SaaSSubscriptionHandler saasSubscriptionHandler) {
+                                    SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration, SaaSMessageHandler saasSubscriptionHandler) {
         this.receiverProvider = channelPool::createReceiver;
         this.sender = channelPool.getSender();
         this.rabbitMQConfiguration = rabbitMQConfiguration;
@@ -151,8 +151,7 @@ public class SaaSSubscriptionConsumer implements Closeable, Startable {
     }
 
     private Mono<Void> consumeSubscriptionUpdate(AcknowledgableDelivery ackDelivery, byte[] messagePayload) {
-        return Mono.fromCallable(() -> SaaSSubscriptionDeserializer.parseAMQPUserMessage(messagePayload))
-            .flatMap(saasSubscriptionHandler::handleMessage)
+        return saasSubscriptionHandler.handleMessage(messagePayload)
             .doOnSuccess(result -> ackDelivery.ack())
             .onErrorResume(error -> {
                 LOGGER.error("Error when consuming SaaS subscription message", error);
