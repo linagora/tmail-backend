@@ -112,6 +112,28 @@ The listener supports two optional parameters:
 
 This listener requires the LLM configuration from `ai.properties` to be correctly set (API key, model, endpoint, etc.).
 
+** Structured logging for review**
+
+When enabled, the AI classifier emits structured logs containing the following information for each email classification:
+
+- **sender**: Email sender address
+- **user**: Recipient user address
+- **subject**: Email subject line
+- **decision**: Classification result (`YES` if action required, `NO` if not)
+- **preview**: First 255 characters of the email content analyzed
+
+This logging mode is useful for reviewing and auditing the classifier's decisions during testing and production deployment.
+
+=== Enable Review Logging
+
+To enable structured logging, add the following property to `jvm.properties`:
+
+```properties
+# Enable structured logging for AI mail prioritization review
+# Defaults to false
+tmail.ai.needsaction.relevance.review=true
+```
+
 ## Starting the AIBot
 
 ###  Clean Install (In-Memory)
