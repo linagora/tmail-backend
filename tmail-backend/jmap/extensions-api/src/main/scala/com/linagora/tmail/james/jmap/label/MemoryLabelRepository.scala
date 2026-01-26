@@ -47,9 +47,9 @@ class MemoryLabelRepository extends LabelRepository {
     SFlux.fromIterable(labelCreationRequests.asScala)
       .concatMap(creationRequest => addLabel(username, creationRequest))
 
-  override def updateLabel(username: Username, labelId: LabelId, newDisplayName: Option[DisplayName] = None, newColor: Option[Color] = None): Publisher[Void] =
+  override def updateLabel(username: Username, labelId: LabelId, newDisplayName: Option[DisplayName] = None, newColor: Option[Color] = None, newDocumentation: Option[String]): Publisher[Void] =
     SMono.justOrEmpty(labelsTable.get(username, labelId.toKeyword))
-      .doOnNext(oldLabel => labelsTable.put(username, labelId.toKeyword, oldLabel.update(newDisplayName, newColor)))
+      .doOnNext(oldLabel => labelsTable.put(username, labelId.toKeyword, oldLabel.update(newDisplayName, newColor, newDocumentation)))
       .switchIfEmpty(SMono.error(LabelNotFoundException(labelId)))
       .`then`()
 
