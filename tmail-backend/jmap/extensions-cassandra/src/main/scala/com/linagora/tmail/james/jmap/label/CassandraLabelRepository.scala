@@ -46,10 +46,10 @@ class CassandraLabelRepository @Inject()(dao: CassandraLabelDAO) extends LabelRe
     SFlux.fromIterable(labelCreationRequests.asScala)
       .concatMap(addLabel(username, _))
 
-  override def updateLabel(username: Username, labelId: LabelId, newDisplayName: Option[DisplayName], newColor: Option[Color]): Publisher[Void] =
+  override def updateLabel(username: Username, labelId: LabelId, newDisplayName: Option[DisplayName], newColor: Option[Color], newDocumentation: Option[String]): Publisher[Void] =
     dao.selectOne(username, labelId.toKeyword)
       .switchIfEmpty(SMono.error(LabelNotFoundException(labelId)))
-      .flatMap(_ => dao.updateLabel(username, labelId.toKeyword, newDisplayName, newColor))
+      .flatMap(_ => dao.updateLabel(username, labelId.toKeyword, newDisplayName, newColor, newDocumentation))
 
   override def getLabels(username: Username, ids: java.util.Collection[LabelId]): Publisher[Label] =
     dao.selectSome(username = username,
