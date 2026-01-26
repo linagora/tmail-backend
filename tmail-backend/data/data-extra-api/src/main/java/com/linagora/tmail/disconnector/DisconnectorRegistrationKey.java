@@ -22,7 +22,7 @@ import java.util.Objects;
 
 import org.apache.james.events.RegistrationKey;
 
-public class DisconnectorRegistrationKey implements RegistrationKey {
+public record DisconnectorRegistrationKey() implements RegistrationKey {
     public static class Factory implements RegistrationKey.Factory {
         @Override
         public Class<? extends RegistrationKey> forClass() {
@@ -44,15 +44,5 @@ public class DisconnectorRegistrationKey implements RegistrationKey {
     @Override
     public String asString() {
         return VALUE;
-    }
-
-    @Override
-    public final boolean equals(Object o) {
-        return o instanceof DisconnectorRegistrationKey;
-    }
-
-    @Override
-    public final int hashCode() {
-        return Objects.hash(DisconnectorRegistrationKey.class);
     }
 }
