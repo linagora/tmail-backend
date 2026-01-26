@@ -20,8 +20,8 @@ package com.linagora.tmail.saas.rabbitmq.subscription;
 
 import reactor.core.publisher.Mono;
 
-public interface SaaSDomainSubscriptionHandler {
+public interface SaaSMessageHandler {
 
-    Mono<Void> handleMessage(SaaSDomainSubscriptionMessage domainSubscriptionMessage);
+    Mono<Void> handleMessage(byte[] message);
 
 }
