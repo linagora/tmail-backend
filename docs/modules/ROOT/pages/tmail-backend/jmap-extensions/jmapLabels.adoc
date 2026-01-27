@@ -161,7 +161,7 @@ Response:
 
 === Retrieving emails with a given Label
 
-One need to use `Email/query` with the `keyword` associated to the given label:
+Use `Email/query` with the `keyword` associated to the given label:
 
 Request:
 ```json
