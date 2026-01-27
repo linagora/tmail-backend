@@ -158,3 +158,49 @@ Response:
   ]
 }
 ```
+
+=== Retrieving emails with a given Label
+
+One need to use `Email/query` with the `keyword` associated to the given label:
+
+Request:
+```json
+{
+  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail"],
+  "methodCalls": [
+    [
+      "Email/query",
+      {
+        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        "filter": {
+            "hasKeyword": "2c9f1b12-b35a-43e6-9af2-0106fb53a943"
+        }
+      },
+      "c1"
+    ]
+  ]
+}
+```
+
+Similarily a label can be added to an email by setting the corresponding `keyword` using `Email/set`. For instance:
+
+Request:
+```json
+{
+  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail"],
+  "methodCalls": [
+    [
+      "Email/set",
+      {
+        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        "update": {
+          "dddddddd-b35a-43e6-9af2-0106fb53a943": {
+            "keywords/2c9f1b12-b35a-43e6-9af2-0106fb53a943": true
+          }
+        }
+      },
+      "c1"
+    ]
+  ]
+}
+```
