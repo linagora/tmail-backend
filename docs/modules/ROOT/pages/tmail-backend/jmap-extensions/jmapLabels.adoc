@@ -182,7 +182,7 @@ Request:
 }
 ```
 
-Similarily a label can be added to an email by setting the corresponding `keyword` using `Email/set`. For instance:
+Similarly a label can be added to an email by setting the corresponding `keyword` using `Email/set`. For instance:
 
 Request:
 ```json
