@@ -67,6 +67,8 @@ object Color {
 
 case class Color(value: String)
 
+case class DescriptionUpdate(value: Option[String])
+
 object LabelCreationRequest {
   val serverSetProperty = Set("id", "keyword")
   val assignableProperties = Set("displayName", "color", "description")

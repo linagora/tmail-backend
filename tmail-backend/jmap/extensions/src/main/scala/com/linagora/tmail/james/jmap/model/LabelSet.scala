@@ -23,7 +23,7 @@ import org.apache.james.jmap.core.Id.Id
 import org.apache.james.jmap.core.{AccountId, Properties, SetError, UuidState}
 import org.apache.james.jmap.mail.Keyword
 import org.apache.james.jmap.method.WithAccountId
-import play.api.libs.json.{JsObject, JsString, JsValue, Json}
+import play.api.libs.json.{JsObject, JsString, JsValue, Json, JsNull}
 
 case class LabelSetRequest(accountId: AccountId,
                            create: Option[Map[LabelCreationId, JsObject]],
@@ -80,10 +80,11 @@ case class LabelPatchObject(value: Map[String, JsValue]) {
       case None => Right(None)
     }
 
-  private def validateDescription: Either[LabelPatchUpdateValidationException, Option[String]] =
+  private def validateDescription: Either[LabelPatchUpdateValidationException, Option[DescriptionUpdate]] =
     value.get(descriptionProperty) match {
       case Some(jsValue) => jsValue match {
-        case JsString(aString) => Right(Some(aString))
+        case JsString(aString) => Right(Some(DescriptionUpdate(Some(aString))))
+        case JsNull => Right(Some(DescriptionUpdate(None)))
         case _ => Left(LabelPatchUpdateValidationException("Expecting a JSON string as an argument", Some(descriptionProperty)))
       }
       case None => Right(None)
@@ -101,7 +102,7 @@ case class LabelPatchObject(value: Map[String, JsValue]) {
 
 case class ValidatedLabelPatchObject(displayNameUpdate: Option[DisplayName] = None,
                                      colorUpdate: Option[Color] = None,
-                                     descriptionUpdate: Option[String] = None)
+                                     descriptionUpdate: Option[DescriptionUpdate] = None)
 
 case class LabelUpdateResponse(json: JsObject = Json.obj())
 

@@ -36,6 +36,7 @@ import org.jooq.UpdateSetFirstStep;
 import org.jooq.UpdateSetMoreStep;
 
 import com.linagora.tmail.james.jmap.model.Color;
+import com.linagora.tmail.james.jmap.model.DescriptionUpdate;
 import com.linagora.tmail.james.jmap.model.DisplayName;
 import com.linagora.tmail.james.jmap.model.Label;
 import com.linagora.tmail.james.jmap.model.LabelId;
@@ -85,16 +86,17 @@ public class PostgresLabelDAO {
             .map(PostgresLabelDAOUtils::toLabel);
     }
 
-    public Mono<Void> updateLabel(Username username, LabelId labelId, Option<DisplayName> newDisplayName, Option<Color> newColor, Option<String> newDescription) {
+    public Mono<Void> updateLabel(Username username, LabelId labelId, Option<DisplayName> newDisplayName, Option<Color> newColor, Option<DescriptionUpdate> newDescription) {
         return postgresExecutor.executeReturnAffectedRowsCount(dsl -> {
                 UpdateSetFirstStep<Record> originalUpdateStatement = dsl.update(TABLE_NAME);
                 Optional<UpdateSetMoreStep<Record>> updateOnlyDisplayNameStatement = addUpdateDisplayName(newDisplayName, originalUpdateStatement);
                 Optional<UpdateSetMoreStep<Record>> updateColorStatement = addUpdateColor(newColor, originalUpdateStatement, updateOnlyDisplayNameStatement);
 
-                return addUpdateDescription(newDescription, originalUpdateStatement, updateOnlyDisplayNameStatement,updateColorStatement)
+                return addUpdateDescription(newDescription, originalUpdateStatement, updateOnlyDisplayNameStatement, updateColorStatement)
                     .map(executeLabelUpdateStatementMono(username, labelId.toKeyword()))
-                    .orElseGet(() -> updateOnlyDisplayNameStatement.map(executeLabelUpdateStatementMono(username, labelId.toKeyword()))
-                        .orElseGet(Mono::empty));
+                    .orElseGet(() -> updateColorStatement.map(executeLabelUpdateStatementMono(username, labelId.toKeyword()))
+                        .orElseGet(() -> updateOnlyDisplayNameStatement.map(executeLabelUpdateStatementMono(username, labelId.toKeyword()))
+                            .orElseGet(Mono::empty)));
             })
             .handle((updatedLabelCount, sink) -> {
                 if (updatedLabelCount == 0) {
@@ -118,11 +120,15 @@ public class PostgresLabelDAO {
                 .orElseGet(() -> originalUpdateStatement.set(COLOR, color.value())));
     }
 
-    private Optional<UpdateSetMoreStep<Record>> addUpdateDescription(Option<String> newDescription, UpdateSetFirstStep<Record> originalUpdateStatement, Optional<UpdateSetMoreStep<Record>> updateDisplayNameStatement, Optional<UpdateSetMoreStep<Record>> updateColorStatement) {
+    private Optional<UpdateSetMoreStep<Record>> addUpdateDescription(Option<DescriptionUpdate> newDescription, UpdateSetFirstStep<Record> originalUpdateStatement, Optional<UpdateSetMoreStep<Record>> updateDisplayNameStatement, Optional<UpdateSetMoreStep<Record>> updateColorStatement) {
         return OptionConverters.toJava(newDescription)
-            .map(description -> updateColorStatement.map(statement -> statement.set(DESCRIPTION, description))
-                .orElseGet(() -> updateDisplayNameStatement.map(statement -> statement.set(DESCRIPTION, description))
-                    .orElseGet(() -> originalUpdateStatement.set(DESCRIPTION, description))));
+            .map(descUpdate -> OptionConverters.toJava(descUpdate.value())
+                .map(description -> updateColorStatement.map(statement -> statement.set(DESCRIPTION, description))
+                    .orElseGet(() -> updateDisplayNameStatement.map(statement -> statement.set(DESCRIPTION, description))
+                        .orElseGet(() -> originalUpdateStatement.set(DESCRIPTION, description))))
+                .orElseGet(() -> updateColorStatement.map(statement -> statement.setNull(DESCRIPTION))
+                    .orElseGet(() -> updateDisplayNameStatement.map(statement -> statement.setNull(DESCRIPTION))
+                        .orElseGet(() -> originalUpdateStatement.setNull(DESCRIPTION)))));
     }
 
     public Mono<Void> deleteOne(Username username, String keyword) {
