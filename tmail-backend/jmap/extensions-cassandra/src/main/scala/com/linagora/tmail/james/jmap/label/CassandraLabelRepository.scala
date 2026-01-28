@@ -22,7 +22,7 @@ import java.io.FileNotFoundException
 
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Provides, Scopes}
-import com.linagora.tmail.james.jmap.model.{Color, DisplayName, Label, LabelCreationRequest, LabelId, LabelNotFoundException}
+import com.linagora.tmail.james.jmap.model.{Color, DescriptionUpdate, DisplayName, Label, LabelCreationRequest, LabelId, LabelNotFoundException}
 import jakarta.inject.Inject
 import org.apache.james.backends.cassandra.components.CassandraDataDefinition
 import org.apache.james.core.Username
@@ -32,7 +32,9 @@ import org.apache.james.utils.PropertiesProvider
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-import scala.jdk.CollectionConverters._
+import scala.jdk.CollectionConverters.CollectionHasAsScala
+
+
 
 class CassandraLabelRepository @Inject()(dao: CassandraLabelDAO) extends LabelRepository {
   override def addLabel(username: Username, labelCreationRequest: LabelCreationRequest): Publisher[Label] =
@@ -46,7 +48,7 @@ class CassandraLabelRepository @Inject()(dao: CassandraLabelDAO) extends LabelRe
     SFlux.fromIterable(labelCreationRequests.asScala)
       .concatMap(addLabel(username, _))
 
-  override def updateLabel(username: Username, labelId: LabelId, newDisplayName: Option[DisplayName], newColor: Option[Color], newDescription: Option[String]): Publisher[Void] =
+  override def updateLabel(username: Username, labelId: LabelId, newDisplayName: Option[DisplayName], newColor: Option[Color], newDescription: Option[DescriptionUpdate]): Publisher[Void] =
     dao.selectOne(username, labelId.toKeyword)
       .switchIfEmpty(SMono.error(LabelNotFoundException(labelId)))
       .flatMap(_ => dao.updateLabel(username, labelId.toKeyword, newDisplayName, newColor, newDescription))
