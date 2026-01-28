@@ -74,9 +74,15 @@ public class SaaSDomainSubscriptionHandlerImpl implements SaaSMessageHandler {
     }
 
     private Mono<Void> removeDomainIfExists(Domain domain) {
-        return Mono.fromRunnable(Throwing.runnable(() -> domainList.removeDomain(domain)))
-            .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
-            .then();
+        return Mono.from(domainList.containsDomainReactive(domain))
+            .flatMap(alreadyExists -> {
+                if (!alreadyExists) {
+                    return Mono.empty();
+                }
+                return Mono.fromRunnable(Throwing.runnable(() -> domainList.removeDomain(domain)))
+                    .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
+                    .then();
+            });
     }
 
     private Mono<Void> handleDomainValidSubscriptionMessage(SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage message) {
