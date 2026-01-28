@@ -12,6 +12,32 @@ software documentation. Do not follow this guide blindly!
 
 Note: this section is in progress. It will be updated during all the development process until the release.
 
+### Adding description field to labels table
+
+Date: 28/01/2026
+
+Issue: https://github.com/linagora/tmail-backend/issues/2114
+
+Concerned product: Distributed TMail, Postgres TMail
+
+Add the optional `description` field to the `labels` table to allow users to provide clear descriptions for their labels. This enables better frontend synchronization.
+
+**IMPORTANT: These commands must be executed BEFORE deploying the new version.**
+
+#### Cassandra
+
+To add this column, run the following CQL command:
+
+```cql
+ALTER TABLE labels ADD description text;
+```
+#### Postgres
+To add this column, run the following SQL command:
+
+```sql
+ALTER TABLE labels ADD COLUMN description VARCHAR;
+```
+
 ## 1.0.11
 ### Adding rate limiting columns to Cassandra domains table
 
