@@ -18,7 +18,7 @@
 
 package com.linagora.tmail.james.jmap.model
 
-import com.linagora.tmail.james.jmap.model.LabelPatchObject.{colorProperty, displayNameProperty, documentationProperty, updateProperties}
+import com.linagora.tmail.james.jmap.model.LabelPatchObject.{colorProperty, displayNameProperty, descriptionProperty, updateProperties}
 import org.apache.james.jmap.core.Id.Id
 import org.apache.james.jmap.core.{AccountId, Properties, SetError, UuidState}
 import org.apache.james.jmap.mail.Keyword
@@ -48,8 +48,8 @@ case class LabelSetResponse(accountId: AccountId,
 object LabelPatchObject {
   private val displayNameProperty: String = "displayName"
   private val colorProperty: String = "color"
-  private val documentationProperty: String = "documentation"
-  private val updateProperties: Set[String] = Set(displayNameProperty, colorProperty)
+  private val descriptionProperty: String = "description"
+  private val updateProperties: Set[String] = Set(displayNameProperty, colorProperty, descriptionProperty)
 }
 
 case class LabelPatchObject(value: Map[String, JsValue]) {
@@ -58,9 +58,9 @@ case class LabelPatchObject(value: Map[String, JsValue]) {
       _ <- validateProperties
       displayName <- validateDisplayName
       color <- validateColor
-      documentation <- validateDocumentation
+      description <- validateDescription
     } yield {
-      ValidatedLabelPatchObject(displayName, color, documentation)
+      ValidatedLabelPatchObject(displayName, color, description)
     }
 
   def validateProperties: Either[LabelPatchUpdateValidationException, LabelPatchObject] =
@@ -80,11 +80,11 @@ case class LabelPatchObject(value: Map[String, JsValue]) {
       case None => Right(None)
     }
 
-  private def validateDocumentation: Either[LabelPatchUpdateValidationException, Option[String]] =
-    value.get(documentationProperty) match {
+  private def validateDescription: Either[LabelPatchUpdateValidationException, Option[String]] =
+    value.get(descriptionProperty) match {
       case Some(jsValue) => jsValue match {
         case JsString(aString) => Right(Some(aString))
-        case _ => Left(LabelPatchUpdateValidationException("Expecting a JSON string as an argument", Some(documentationProperty)))
+        case _ => Left(LabelPatchUpdateValidationException("Expecting a JSON string as an argument", Some(descriptionProperty)))
       }
       case None => Right(None)
     }
@@ -101,7 +101,7 @@ case class LabelPatchObject(value: Map[String, JsValue]) {
 
 case class ValidatedLabelPatchObject(displayNameUpdate: Option[DisplayName] = None,
                                      colorUpdate: Option[Color] = None,
-                                     documentationUpdate: Option[String] = None)
+                                     descriptionUpdate: Option[String] = None)
 
 case class LabelUpdateResponse(json: JsObject = Json.obj())
 

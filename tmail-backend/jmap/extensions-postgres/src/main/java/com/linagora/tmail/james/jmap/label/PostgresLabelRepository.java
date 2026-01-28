@@ -65,9 +65,9 @@ public class PostgresLabelRepository implements LabelRepository {
     }
 
     @Override
-    public Publisher<Void> updateLabel(Username username, LabelId labelId, Option<DisplayName> newDisplayName, Option<Color> newColor, Option<String> newDocumentation) {
+    public Publisher<Void> updateLabel(Username username, LabelId labelId, Option<DisplayName> newDisplayName, Option<Color> newColor, Option<String> newDescription) {
         return labelDAO(username)
-            .updateLabel(username, labelId, newDisplayName, newColor, newDocumentation);
+            .updateLabel(username, labelId, newDisplayName, newColor, newDescription);
     }
 
     @Override
