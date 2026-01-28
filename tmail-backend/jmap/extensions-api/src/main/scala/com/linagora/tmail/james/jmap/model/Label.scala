@@ -69,11 +69,11 @@ case class Color(value: String)
 
 object LabelCreationRequest {
   val serverSetProperty = Set("id", "keyword")
-  val assignableProperties = Set("displayName", "color", "documentation")
+  val assignableProperties = Set("displayName", "color", "description")
   val knownProperties = assignableProperties ++ serverSetProperty
 }
 
-case class LabelCreationRequest(displayName: DisplayName, color: Option[Color], documentation: Option[String]) {
+case class LabelCreationRequest(displayName: DisplayName, color: Option[Color], description: Option[String]) {
   def toLabel: Label = {
     val keyword: Keyword = KeywordUtil.generate()
 
@@ -81,20 +81,20 @@ case class LabelCreationRequest(displayName: DisplayName, color: Option[Color], 
       displayName = displayName,
       keyword = keyword,
       color = color,
-      documentation = documentation)
+      description = description)
   }
 }
 
 object Label {
-  val allProperties: Properties = Properties("id", "displayName", "keyword", "color", "documentation")
+  val allProperties: Properties = Properties("id", "displayName", "keyword", "color", "description")
   val idProperty: Properties = Properties("id")
 }
 
-case class Label(id: LabelId, displayName: DisplayName, keyword: Keyword, color: Option[Color], documentation: Option[String] ) {
-  def update(newDisplayName: Option[DisplayName], newColor: Option[Color], newDocumentation:Option[String]): Label =
+case class Label(id: LabelId, displayName: DisplayName, keyword: Keyword, color: Option[Color], description: Option[String] ) {
+  def update(newDisplayName: Option[DisplayName], newColor: Option[Color], newDescription:Option[String]): Label =
     copy(displayName = newDisplayName.getOrElse(displayName),
       color = newColor.orElse(color),
-      documentation = newDocumentation.orElse(documentation))
+      description = newDescription.orElse(description))
 }
 
 case class LabelNotFoundException(id: LabelId) extends RuntimeException

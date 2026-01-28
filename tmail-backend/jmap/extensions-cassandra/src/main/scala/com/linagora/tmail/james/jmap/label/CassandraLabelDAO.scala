@@ -39,7 +39,7 @@ object CassandraLabelTable {
   val KEYWORD: CqlIdentifier = CqlIdentifier.fromCql("keyword")
   val DISPLAY_NAME: CqlIdentifier = CqlIdentifier.fromCql("display_name")
   val COLOR: CqlIdentifier = CqlIdentifier.fromCql("color")
-  val DOCUMENTATION: CqlIdentifier = CqlIdentifier.fromCql("documentation")
+  val DESCRIPTION: CqlIdentifier = CqlIdentifier.fromCql("description")
 
   val MODULE: CassandraDataDefinition = CassandraDataDefinition.table(TABLE_NAME)
     .comment("Hold user JMAP labels")
@@ -48,7 +48,7 @@ object CassandraLabelTable {
       .withClusteringColumn(KEYWORD, TEXT)
       .withColumn(DISPLAY_NAME, TEXT)
       .withColumn(COLOR, TEXT)
-      .withColumn(DOCUMENTATION, TEXT))
+      .withColumn(DESCRIPTION, TEXT))
     .build
 
   val LIST_OF_STRINGS_CODEC: TypeCodec[java.util.List[String]] = CodecRegistry.DEFAULT.codecFor(listOf(TEXT))
@@ -64,16 +64,15 @@ class CassandraLabelDAO @Inject()(session: CqlSession) {
     .value(KEYWORD, bindMarker(KEYWORD))
     .value(DISPLAY_NAME, bindMarker(DISPLAY_NAME))
     .value(COLOR, bindMarker(COLOR))
-    .value(DOCUMENTATION, bindMarker(DOCUMENTATION))
+    .value(DESCRIPTION, bindMarker(DESCRIPTION))
     .build())
 
   private val updateStatement: PreparedStatement = session.prepare(update(TABLE_NAME)
     .setColumn(DISPLAY_NAME, bindMarker(DISPLAY_NAME))
     .setColumn(COLOR, bindMarker(COLOR))
-    .setColumn(DOCUMENTATION, bindMarker(DOCUMENTATION))
+    .setColumn(DESCRIPTION, bindMarker(DESCRIPTION))
     .where(column(USER).isEqualTo(bindMarker(USER)))
     .where(column(KEYWORD).isEqualTo(bindMarker(KEYWORD)))
-    .where(column(DOCUMENTATION).isEqualTo(bindMarker(DOCUMENTATION)))
     .build())
 
   private val selectAll: PreparedStatement = session.prepare(selectFrom(TABLE_NAME)
@@ -108,7 +107,7 @@ class CassandraLabelDAO @Inject()(session: CqlSession) {
       .set(KEYWORD, label.keyword.flagName, TypeCodecs.TEXT)
       .set(DISPLAY_NAME, label.displayName.value, TypeCodecs.TEXT)
       .set(COLOR, label.color.map(_.value).orNull, TypeCodecs.TEXT)
-      .set(DOCUMENTATION, label.documentation.orNull, TypeCodecs.TEXT)
+      .set(DESCRIPTION, label.description.orNull, TypeCodecs.TEXT)
 
     SMono.fromPublisher(executor.executeVoid(insertLabel)
       .thenReturn(label))
@@ -139,7 +138,7 @@ class CassandraLabelDAO @Inject()(session: CqlSession) {
       .set(KEYWORD, keyword.flagName, TypeCodecs.TEXT))
       .map(toLabel))
 
-  def updateLabel(username: Username, keyword: Keyword, newDisplayName: Option[DisplayName], newColor: Option[Color], newDocumentaion: Option[String]): SMono[Void] = {
+  def updateLabel(username: Username, keyword: Keyword, newDisplayName: Option[DisplayName], newColor: Option[Color], newDescription: Option[String]): SMono[Void] = {
     val updateStatementBuilder: BoundStatementBuilder = updateStatement.boundStatementBuilder()
     updateStatementBuilder.set(USER, username.asString, TypeCodecs.TEXT)
     updateStatementBuilder.set(KEYWORD, keyword.flagName, TypeCodecs.TEXT)
@@ -152,9 +151,9 @@ class CassandraLabelDAO @Inject()(session: CqlSession) {
       case Some(color) => updateStatementBuilder.set(COLOR, color.value, TypeCodecs.TEXT)
       case None => updateStatementBuilder.unset(COLOR)
     }
-    newDocumentaion match {
-      case Some(documentation) => updateStatementBuilder.set(DOCUMENTATION, documentation, TypeCodecs.TEXT)
-      case None => updateStatementBuilder.unset(DOCUMENTATION)
+    newDescription match {
+      case Some(description) => updateStatementBuilder.set(DESCRIPTION, description, TypeCodecs.TEXT)
+      case None => updateStatementBuilder.unset(DESCRIPTION)
     }
 
     SMono.fromPublisher(executor.executeVoid(updateStatementBuilder.build()))
@@ -177,6 +176,6 @@ class CassandraLabelDAO @Inject()(session: CqlSession) {
       keyword = keyword,
       color = Option(row.get(COLOR, TypeCodecs.TEXT))
         .map(value => Color(value)),
-      documentation = Option(row.get(DOCUMENTATION, TypeCodecs.TEXT)))
+      description = Option(row.get(DESCRIPTION, TypeCodecs.TEXT)))
   }
 }

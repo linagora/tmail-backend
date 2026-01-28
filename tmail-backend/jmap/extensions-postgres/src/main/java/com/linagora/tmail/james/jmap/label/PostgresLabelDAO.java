@@ -19,8 +19,8 @@
 package com.linagora.tmail.james.jmap.label;
 
 import static com.linagora.tmail.james.jmap.label.PostgresLabelModule.LabelTable.COLOR;
+import static com.linagora.tmail.james.jmap.label.PostgresLabelModule.LabelTable.DESCRIPTION;
 import static com.linagora.tmail.james.jmap.label.PostgresLabelModule.LabelTable.DISPLAY_NAME;
-import static com.linagora.tmail.james.jmap.label.PostgresLabelModule.LabelTable.DOCUMENTATION;
 import static com.linagora.tmail.james.jmap.label.PostgresLabelModule.LabelTable.KEYWORD;
 import static com.linagora.tmail.james.jmap.label.PostgresLabelModule.LabelTable.TABLE_NAME;
 import static com.linagora.tmail.james.jmap.label.PostgresLabelModule.LabelTable.USERNAME;
@@ -61,13 +61,13 @@ public class PostgresLabelDAO {
             .set(COLOR, OptionConverters.toJava(label.color())
                 .map(Color::value)
                 .orElse(null))
-            .set(DOCUMENTATION,OptionConverters.toJava(label.documentation())
+            .set(DESCRIPTION,OptionConverters.toJava(label.description())
                 .orElse(null))))
             .thenReturn(label);
     }
 
     public Flux<Label> selectAll(Username username) {
-        return postgresExecutor.executeRows(dsl -> Flux.from(dsl.select(KEYWORD, DISPLAY_NAME, COLOR)
+        return postgresExecutor.executeRows(dsl -> Flux.from(dsl.select(KEYWORD, DISPLAY_NAME, COLOR, DESCRIPTION)
                 .from(TABLE_NAME)
                 .where(USERNAME.eq(username.asString()))))
             .map(PostgresLabelDAOUtils::toLabel);
@@ -78,20 +78,20 @@ public class PostgresLabelDAO {
             return Flux.empty();
         }
 
-        return postgresExecutor.executeRows(dsl -> Flux.from(dsl.select(KEYWORD, DISPLAY_NAME, COLOR, DOCUMENTATION)
+        return postgresExecutor.executeRows(dsl -> Flux.from(dsl.select(KEYWORD, DISPLAY_NAME, COLOR, DESCRIPTION)
                 .from(TABLE_NAME)
                 .where(USERNAME.eq(username.asString()),
                     KEYWORD.in(keywords))))
             .map(PostgresLabelDAOUtils::toLabel);
     }
 
-    public Mono<Void> updateLabel(Username username, LabelId labelId, Option<DisplayName> newDisplayName, Option<Color> newColor, Option<String> newDocumentation) {
+    public Mono<Void> updateLabel(Username username, LabelId labelId, Option<DisplayName> newDisplayName, Option<Color> newColor, Option<String> newDescription) {
         return postgresExecutor.executeReturnAffectedRowsCount(dsl -> {
                 UpdateSetFirstStep<Record> originalUpdateStatement = dsl.update(TABLE_NAME);
                 Optional<UpdateSetMoreStep<Record>> updateOnlyDisplayNameStatement = addUpdateDisplayName(newDisplayName, originalUpdateStatement);
                 Optional<UpdateSetMoreStep<Record>> updateColorStatement = addUpdateColor(newColor, originalUpdateStatement, updateOnlyDisplayNameStatement);
 
-                return addUpdateDocumentation(newDocumentation, originalUpdateStatement, updateOnlyDisplayNameStatement,updateColorStatement)
+                return addUpdateDescription(newDescription, originalUpdateStatement, updateOnlyDisplayNameStatement,updateColorStatement)
                     .map(executeLabelUpdateStatementMono(username, labelId.toKeyword()))
                     .orElseGet(() -> updateOnlyDisplayNameStatement.map(executeLabelUpdateStatementMono(username, labelId.toKeyword()))
                         .orElseGet(Mono::empty));
@@ -118,11 +118,11 @@ public class PostgresLabelDAO {
                 .orElseGet(() -> originalUpdateStatement.set(COLOR, color.value())));
     }
 
-    private Optional<UpdateSetMoreStep<Record>> addUpdateDocumentation(Option<String> newDocumentation, UpdateSetFirstStep<Record> originalUpdateStatement, Optional<UpdateSetMoreStep<Record>> updateDisplayNameStatement, Optional<UpdateSetMoreStep<Record>> updateColorStatement) {
-        return OptionConverters.toJava(newDocumentation)
-            .map(documentation -> updateColorStatement.map(statement -> statement.set(DOCUMENTATION, documentation))
-                .orElseGet(() -> updateDisplayNameStatement.map(statement -> statement.set(DOCUMENTATION, documentation))
-                    .orElseGet(() -> originalUpdateStatement.set(DOCUMENTATION, documentation))));
+    private Optional<UpdateSetMoreStep<Record>> addUpdateDescription(Option<String> newDescription, UpdateSetFirstStep<Record> originalUpdateStatement, Optional<UpdateSetMoreStep<Record>> updateDisplayNameStatement, Optional<UpdateSetMoreStep<Record>> updateColorStatement) {
+        return OptionConverters.toJava(newDescription)
+            .map(description -> updateColorStatement.map(statement -> statement.set(DESCRIPTION, description))
+                .orElseGet(() -> updateDisplayNameStatement.map(statement -> statement.set(DESCRIPTION, description))
+                    .orElseGet(() -> originalUpdateStatement.set(DESCRIPTION, description))));
     }
 
     public Mono<Void> deleteOne(Username username, String keyword) {
