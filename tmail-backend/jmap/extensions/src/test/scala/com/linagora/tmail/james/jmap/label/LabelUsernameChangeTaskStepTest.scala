@@ -28,8 +28,8 @@ import reactor.core.scala.publisher.{SFlux, SMono}
 import scala.jdk.CollectionConverters._
 
 object LabelUsernameChangeTaskStepTest {
-  val LABEL_1: Label = LabelCreationRequest(DisplayName("Label 1"), Some(RED)).toLabel
-  val LABEL_2: Label = LabelCreationRequest(DisplayName("Label 2"), Some(RED)).toLabel
+  val LABEL_1: Label = LabelCreationRequest(DisplayName("Label 1"), Some(RED), None).toLabel
+  val LABEL_2: Label = LabelCreationRequest(DisplayName("Label 2"), Some(RED), None).toLabel
 }
 
 class LabelUsernameChangeTaskStepTest {

@@ -27,6 +27,7 @@ import org.apache.james.core.Username;
 import org.reactivestreams.Publisher;
 
 import com.linagora.tmail.james.jmap.model.Color;
+import com.linagora.tmail.james.jmap.model.DescriptionUpdate;
 import com.linagora.tmail.james.jmap.model.DisplayName;
 import com.linagora.tmail.james.jmap.model.Label;
 import com.linagora.tmail.james.jmap.model.LabelCreationRequest;
@@ -65,9 +66,8 @@ public class PostgresLabelRepository implements LabelRepository {
     }
 
     @Override
-    public Publisher<Void> updateLabel(Username username, LabelId labelId, Option<DisplayName> newDisplayName, Option<Color> newColor, Option<String> newDescription) {
-        return labelDAO(username)
-            .updateLabel(username, labelId, newDisplayName, newColor, newDescription);
+    public Publisher<Void> updateLabel(Username username, LabelId labelId, Option<DisplayName> newDisplayName, Option<Color> newColor, Option<DescriptionUpdate> newDescription) {
+        return labelDAO(username).updateLabel(username, labelId, newDisplayName, newColor, newDescription);
     }
 
     @Override

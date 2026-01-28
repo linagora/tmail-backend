@@ -25,7 +25,7 @@ import com.datastax.oss.driver.api.core.cql.{BoundStatementBuilder, PreparedStat
 import com.datastax.oss.driver.api.core.{CqlIdentifier, CqlSession}
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, deleteFrom, insertInto, selectFrom, update}
 import com.datastax.oss.driver.api.querybuilder.relation.Relation.column
-import com.linagora.tmail.james.jmap.model.{Color, DisplayName, Label, LabelId}
+import com.linagora.tmail.james.jmap.model.{Color, DescriptionUpdate, DisplayName, Label, LabelId}
 import jakarta.inject.Inject
 import org.apache.james.backends.cassandra.components.CassandraDataDefinition
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor
@@ -138,7 +138,7 @@ class CassandraLabelDAO @Inject()(session: CqlSession) {
       .set(KEYWORD, keyword.flagName, TypeCodecs.TEXT))
       .map(toLabel))
 
-  def updateLabel(username: Username, keyword: Keyword, newDisplayName: Option[DisplayName], newColor: Option[Color], newDescription: Option[String]): SMono[Void] = {
+  def updateLabel(username: Username, keyword: Keyword, newDisplayName: Option[DisplayName], newColor: Option[Color], newDescription: Option[DescriptionUpdate]): SMono[Void] = {
     val updateStatementBuilder: BoundStatementBuilder = updateStatement.boundStatementBuilder()
     updateStatementBuilder.set(USER, username.asString, TypeCodecs.TEXT)
     updateStatementBuilder.set(KEYWORD, keyword.flagName, TypeCodecs.TEXT)
@@ -152,7 +152,8 @@ class CassandraLabelDAO @Inject()(session: CqlSession) {
       case None => updateStatementBuilder.unset(COLOR)
     }
     newDescription match {
-      case Some(description) => updateStatementBuilder.set(DESCRIPTION, description, TypeCodecs.TEXT)
+      case Some(DescriptionUpdate(Some(description))) => updateStatementBuilder.set(DESCRIPTION, description, TypeCodecs.TEXT)
+      case Some(DescriptionUpdate(None)) => updateStatementBuilder.setToNull(DESCRIPTION)
       case None => updateStatementBuilder.unset(DESCRIPTION)
     }
 
