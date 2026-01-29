@@ -135,11 +135,11 @@ class SaaSSubscriptionConsumerTest {
             rabbitMQConfiguration,
             twpCommonRabbitMQConfiguration,
             SaaSSubscriptionRabbitMQConfiguration.DEFAULT,
-            usersRepository,
-            saasAccountRepository,
-            maxQuotaManager,
-            userQuotaRootResolver,
-            rateLimitingRepository);
+            new SaaSSubscriptionHandlerImpl(usersRepository,
+                saasAccountRepository,
+                maxQuotaManager,
+                userQuotaRootResolver,
+                rateLimitingRepository));
         testee.init();
     }
 
