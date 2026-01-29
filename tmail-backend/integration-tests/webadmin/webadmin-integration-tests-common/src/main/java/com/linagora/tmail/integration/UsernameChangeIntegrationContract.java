@@ -139,7 +139,7 @@ public abstract class UsernameChangeIntegrationContract {
     void shouldMigrateLabels(GuiceJamesServer server) {
         JmapGuiceLabelProbe labelProbe = server.getProbe(JmapGuiceLabelProbe.class);
 
-        Label label = labelProbe.addLabel(ALICE, new LabelCreationRequest(new DisplayName("Important"), Option.empty()));
+        Label label = labelProbe.addLabel(ALICE, new LabelCreationRequest(new DisplayName("Important"), Option.empty(), Option.empty()));
 
         String taskId = webAdminApi
             .queryParam("action", "rename")
