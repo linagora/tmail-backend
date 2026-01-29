@@ -132,7 +132,7 @@ public abstract class UserDeletionIntegrationContract {
     @Test
     void shouldDeleteLabels(GuiceJamesServer server) {
         JmapGuiceLabelProbe labelProbe = server.getProbe(JmapGuiceLabelProbe.class);
-        labelProbe.addLabel(ALICE, new LabelCreationRequest(new DisplayName("Important"), Option.empty()));
+        labelProbe.addLabel(ALICE, new LabelCreationRequest(new DisplayName("Important"), Option.empty(), Option.empty()));
 
         String taskId = webAdminApi
             .queryParam("action", "deleteData")

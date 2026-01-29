@@ -156,9 +156,9 @@ trait LabelGetMethodContract {
   @Test
   def fetchNullIdsShouldReturnAllLabels(server: GuiceJamesServer): Unit = {
     val label1: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
-      .addLabel(BOB, LabelCreationRequest(DisplayName("Label 1"), Some(RED)))
+      .addLabel(BOB, LabelCreationRequest(DisplayName("Label 1"), Some(RED), Some("Description for label 1")))
     val label2: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
-      .addLabel(BOB, LabelCreationRequest(DisplayName("Label 2"), Some(BLUE)))
+      .addLabel(BOB, LabelCreationRequest(DisplayName("Label 2"), Some(BLUE), Some("Description for label 2")))
 
     val response = `given`
       .body(s"""{
@@ -199,13 +199,15 @@ trait LabelGetMethodContract {
          |						"id": "${label1.id.id.value}",
          |						"displayName": "Label 1",
          |						"keyword": "${label1.keyword.flagName}",
-         |						"color": "${RED.value}"
+         |						"color": "${RED.value}",
+         |                      "description": "Description for label 1"
          |					},
          |					{
          |						"id": "${label2.id.id.value}",
          |						"displayName": "Label 2",
          |						"keyword": "${label2.keyword.flagName}",
-         |						"color": "${BLUE.value}"
+         |						"color": "${BLUE.value}",
+         |                      "description": "Description for label 2"
          |					}
          |				]
          |			},
@@ -265,7 +267,7 @@ trait LabelGetMethodContract {
   @Test
   def mixedFoundAndNotFoundCase(server: GuiceJamesServer): Unit = {
     val createdLabelId: String = server.getProbe(classOf[JmapGuiceLabelProbe])
-      .addLabel(BOB, LabelCreationRequest(DisplayName("Label 1"), Some(RED)))
+      .addLabel(BOB, LabelCreationRequest(DisplayName("Label 1"), Some(RED), Some("Description for label 1")))
       .id.id.value
     val randomLabelId: String = LabelId.generate().id.value
 
@@ -307,7 +309,8 @@ trait LabelGetMethodContract {
          |						"id": "$${json-unit.ignore}",
          |						"displayName": "Label 1",
          |						"keyword": "$${json-unit.ignore}",
-         |						"color": "${RED.value}"
+         |						"color": "${RED.value}",
+         |                      "description": "Description for label 1"
          |					}]
          |			},
          |			"c1"
@@ -320,7 +323,7 @@ trait LabelGetMethodContract {
   @Tag(CategoryTags.BASIC_FEATURE)
   def shouldReturnAllPropertiesByDefault(server: GuiceJamesServer): Unit = {
     val label1: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
-      .addLabel(BOB, LabelCreationRequest(DisplayName("Label 1"), Some(RED)))
+      .addLabel(BOB, LabelCreationRequest(DisplayName("Label 1"), Some(RED), Some("Description for label 1")))
 
     val response = `given`
       .body(s"""{
@@ -360,7 +363,8 @@ trait LabelGetMethodContract {
          |						"id": "${label1.id.id.value}",
          |						"displayName": "Label 1",
          |						"keyword": "${label1.keyword.flagName}",
-         |						"color": "${RED.value}"
+         |						"color": "${RED.value}",
+         |                      "description": "Description for label 1"
          |					}]
          |			},
          |			"c1"
@@ -415,7 +419,7 @@ trait LabelGetMethodContract {
   @Test
   def shouldSupportFilteringByProperties(server: GuiceJamesServer): Unit = {
     val label1: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
-      .addLabel(BOB, LabelCreationRequest(DisplayName("Label 1"), Some(RED)))
+      .addLabel(BOB, LabelCreationRequest(DisplayName("Label 1"), Some(RED), Some("Description for label 1")))
 
     val response = `given`
       .body(s"""{
@@ -467,7 +471,7 @@ trait LabelGetMethodContract {
   def shouldSupportDelegation(server: GuiceJamesServer): Unit = {
     val bobAccountId: String = ACCOUNT_ID
     val label1: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
-      .addLabel(BOB, LabelCreationRequest(DisplayName("Label 1"), Some(RED)))
+      .addLabel(BOB, LabelCreationRequest(DisplayName("Label 1"), Some(RED), Some("Description for label 1")))
 
     server.getProbe(classOf[DelegationProbe])
       .addAuthorizedUser(BOB, ANDRE)
@@ -511,7 +515,8 @@ trait LabelGetMethodContract {
          |						"id": "${label1.id.id.value}",
          |						"displayName": "Label 1",
          |						"keyword": "${label1.keyword.flagName}",
-         |						"color": "${RED.value}"
+         |						"color": "${RED.value}",
+         |                      "description": "Description for label 1"
          |					}]
          |			},
          |			"c1"
@@ -558,7 +563,7 @@ trait LabelGetMethodContract {
 
   @Test
   def labelGetShouldReturnLatestState(): Unit = {
-    createLabel(accountId = ACCOUNT_ID, displayName = "LABEL_NAME", color = RED.value)
+    createLabel(accountId = ACCOUNT_ID, displayName = "LABEL_NAME", color = RED.value, description = "LABEL_DESCRIPTION")
 
     val response = `given`
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
@@ -608,7 +613,7 @@ trait LabelGetMethodContract {
            |}""".stripMargin)
   }
 
-  private def createLabel(accountId: String, displayName: String, color: String): String = {
+  private def createLabel(accountId: String, displayName: String, color: String, description: String): String = {
     `given`()
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(
@@ -620,7 +625,8 @@ trait LabelGetMethodContract {
            |			"create": {
            |				"L13": {
            |					"displayName": "$displayName",
-           |					"color": "$color"
+           |					"color": "$color",
+           |                    "description": "$description"
            |				}
            |			}
            |		}, "c1"]

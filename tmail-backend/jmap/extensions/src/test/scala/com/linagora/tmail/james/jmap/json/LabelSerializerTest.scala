@@ -44,7 +44,8 @@ class LabelSerializerTest {
       .usingRecursiveComparison()
       .isEqualTo(LabelCreationRequest(
         displayName = DisplayName("Label 1"),
-        color = Some(RED)
+        color = Some(RED),
+        description = None
       ))
   }
 
