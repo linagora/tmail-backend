@@ -45,12 +45,10 @@ import com.google.inject.Singleton;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Names;
-import com.linagora.tmail.disconnector.DisconnectionEventListener;
 import com.linagora.tmail.disconnector.DisconnectionRequestedEventSerializer;
+import com.linagora.tmail.disconnector.DisconnectorNotificationRegistration;
 import com.linagora.tmail.disconnector.DisconnectorRegistrationKey;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactListener;
-
-import reactor.core.publisher.Mono;
 
 public class TmailEventModule extends AbstractModule {
     public static final NamingStrategy TMAIL_NAMING_STRATEGY = new NamingStrategy(new EventBusName("tmailEvent"));
@@ -75,13 +73,13 @@ public class TmailEventModule extends AbstractModule {
     @ProvidesIntoSet
     InitializationOperation workQueue(@Named(TMAIL_EVENT_BUS_INJECT_NAME) RabbitMQEventBus instance,
                                       @Named(TMAIL_EVENT_BUS_INJECT_NAME) Set<EventListener.ReactiveGroupEventListener> tmailReactiveGroupEventListeners,
-                                      DisconnectionEventListener disconnectionEventListener) {
+                                      DisconnectorNotificationRegistration disconnectorNotificationRegistration) {
         return InitilizationOperationBuilder
             .forClass(RabbitMQEventBus.class)
             .init(() -> {
                 instance.start();
                 tmailReactiveGroupEventListeners.forEach(instance::register);
-                Mono.from(instance.register(disconnectionEventListener, DisconnectorRegistrationKey.KEY)).block();
+                disconnectorNotificationRegistration.register();
             });
     }
 
