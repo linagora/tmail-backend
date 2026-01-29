@@ -74,12 +74,13 @@ import com.linagora.tmail.OpenPaasContactsConsumerModule;
 import com.linagora.tmail.OpenPaasModule;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
+import com.linagora.tmail.disconnector.EventBusDisconnectorModule;
 import com.linagora.tmail.imap.TMailIMAPModule;
 import com.linagora.tmail.james.app.modules.jmap.MemoryDownloadAllModule;
-import com.linagora.tmail.james.app.modules.jmap.MemoryEmailAddressContactEventBusModule;
 import com.linagora.tmail.james.app.modules.jmap.MemoryFirebaseSubscriptionRepositoryModule;
 import com.linagora.tmail.james.app.modules.jmap.MemoryJmapSettingsRepositoryModule;
 import com.linagora.tmail.james.app.modules.jmap.MemoryLabelRepositoryModule;
+import com.linagora.tmail.james.app.modules.jmap.MemoryTmailEventBusModule;
 import com.linagora.tmail.james.app.modules.jmap.PublicAssetsMemoryModule;
 import com.linagora.tmail.james.jmap.ContactSupportCapabilitiesModule;
 import com.linagora.tmail.james.jmap.TMailJMAPModule;
@@ -188,14 +189,15 @@ public class MemoryServer {
             new MemoryUserQuotaReporterModule(),
             new UserQuotaReporterRoutesModule(),
             new InMemoryEmailAddressContactSearchEngineModule(),
-            new MemoryEmailAddressContactEventBusModule(),
+            new MemoryTmailEventBusModule(),
             new EmailAddressContactRoutesModule(),
             new MemoryLabelRepositoryModule(),
             new MemoryJmapSettingsRepositoryModule(),
             new PublicAssetsMemoryModule(),
             new TMailMailboxSortOrderProviderModule(),
             new TMailIMAPModule(),
-            new MemoryDownloadAllModule());
+            new MemoryDownloadAllModule(),
+            new EventBusDisconnectorModule());
 
     public static void main(String[] args) throws Exception {
         MemoryConfiguration configuration = MemoryConfiguration.builder()

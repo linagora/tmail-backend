@@ -150,12 +150,12 @@ import com.linagora.tmail.NoopGuiceLoader;
 import com.linagora.tmail.OpenPaasContactsConsumerModule;
 import com.linagora.tmail.OpenPaasModule;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
-import com.linagora.tmail.RabbitMQDisconnectorModule;
 import com.linagora.tmail.ScheduledReconnectionHandler;
 import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.blob.guice.BlobStoreCacheModulesChooser;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.blob.guice.BlobStoreModulesChooser;
+import com.linagora.tmail.disconnector.EventBusDisconnectorModule;
 import com.linagora.tmail.event.RabbitMQAndRedisEventBusModule;
 import com.linagora.tmail.event.TMailJMAPListenerModule;
 import com.linagora.tmail.event.TmailEventModule;
@@ -366,7 +366,7 @@ public class DistributedServer {
             new CassandraJmapSettingsRepositoryModule(),
             new CassandraPublicAssetRepositoryModule(),
             new DistributedTaskSerializationModule(),
-            new RabbitMQDisconnectorModule(),
+            new EventBusDisconnectorModule(),
             new RabbitMQEmailAddressContactModule(),
             new RabbitMQModule(),
             new RabbitMQMailQueueModule(),

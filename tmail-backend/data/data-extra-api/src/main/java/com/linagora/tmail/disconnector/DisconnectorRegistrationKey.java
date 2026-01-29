@@ -16,26 +16,33 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail;
+package com.linagora.tmail.disconnector;
 
-import org.apache.james.DisconnectorNotifier;
-import org.apache.james.utils.InitializationOperation;
-import org.apache.james.utils.InitilizationOperationBuilder;
+import java.util.Objects;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.multibindings.ProvidesIntoSet;
+import org.apache.james.events.RegistrationKey;
 
-public class RabbitMQDisconnectorModule extends AbstractModule {
+public record DisconnectorRegistrationKey() implements RegistrationKey {
+    public static class Factory implements RegistrationKey.Factory {
+        @Override
+        public Class<? extends RegistrationKey> forClass() {
+            return DisconnectorRegistrationKey.class;
+        }
 
-    @Override
-    protected void configure() {
-        bind(DisconnectorNotifier.class).to(RabbitMQDisconnectorNotifier.class);
+        @Override
+        public RegistrationKey fromString(String asString) {
+            if (!Objects.equals(VALUE, asString)) {
+                throw new IllegalArgumentException("Invalid DisconnectorRegistrationKey: " + asString);
+            }
+            return KEY;
+        }
     }
 
-    @ProvidesIntoSet
-    InitializationOperation init(RabbitMQDisconnectorOperator operator) {
-        return InitilizationOperationBuilder
-            .forClass(RabbitMQDisconnectorOperator.class)
-            .init(operator::init);
+    public static final DisconnectorRegistrationKey KEY = new DisconnectorRegistrationKey();
+    public static final String VALUE = "tmail-disconnector";
+
+    @Override
+    public String asString() {
+        return VALUE;
     }
 }

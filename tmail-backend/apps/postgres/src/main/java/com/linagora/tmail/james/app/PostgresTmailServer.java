@@ -135,12 +135,13 @@ import com.linagora.tmail.NoopGuiceLoader;
 import com.linagora.tmail.ScheduledReconnectionHandler;
 import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.blob.guice.BlobStoreModulesChooser;
+import com.linagora.tmail.disconnector.EventBusDisconnectorModule;
 import com.linagora.tmail.event.RabbitMQAndRedisEventBusModule;
 import com.linagora.tmail.event.TMailJMAPListenerModule;
 import com.linagora.tmail.event.TmailEventModule;
 import com.linagora.tmail.healthcheck.TasksHeathCheckModule;
 import com.linagora.tmail.imap.TMailIMAPModule;
-import com.linagora.tmail.james.app.modules.jmap.MemoryEmailAddressContactEventBusModule;
+import com.linagora.tmail.james.app.modules.jmap.MemoryTmailEventBusModule;
 import com.linagora.tmail.james.jmap.TMailJMAPModule;
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngineModule;
 import com.linagora.tmail.james.jmap.contact.RabbitMQEmailAddressContactModule;
@@ -374,7 +375,8 @@ public class PostgresTmailServer {
             new TasksHeathCheckModule(),
             chooseQueueModules(configuration),
             new TMailIMAPModule(),
-            QUOTA_USERNAME_SUPPLIER_MODULE);
+            QUOTA_USERNAME_SUPPLIER_MODULE,
+            new EventBusDisconnectorModule());
 
     private static final Module SCANNING_QUOTA_SEARCH_MODULE = new AbstractModule() {
         @Override
@@ -400,7 +402,7 @@ public class PostgresTmailServer {
     }
 
     private static final Module IN_MEMORY_EVENT_BUS_FEATURE_MODULE = Modules.combine(
-        new MemoryEmailAddressContactEventBusModule());
+        new MemoryTmailEventBusModule());
 
     private static final Module RABBITMQ_EVENT_BUS_FEATURE_MODULE = Modules.combine(
         new TmailEventModule(),

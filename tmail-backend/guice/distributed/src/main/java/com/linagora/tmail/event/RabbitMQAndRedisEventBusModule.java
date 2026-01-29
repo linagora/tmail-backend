@@ -78,6 +78,9 @@ import com.google.inject.Scopes;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Names;
+import com.linagora.tmail.disconnector.DisconnectionRequestedEventSerializer;
+import com.linagora.tmail.disconnector.DisconnectorNotificationRegistration;
+import com.linagora.tmail.disconnector.DisconnectorRegistrationKey;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactListener;
 
 public class RabbitMQAndRedisEventBusModule extends AbstractModule {
@@ -110,6 +113,9 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
         Multibinder.newSetBinder(binder(), EventSerializer.class)
             .addBinding()
             .to(TmailEventSerializer.class);
+        Multibinder.newSetBinder(binder(), EventSerializer.class)
+            .addBinding()
+            .to(DisconnectionRequestedEventSerializer.class);
         Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class, Names.named(TMAIL_EVENT_BUS_INJECT_NAME))
             .addBinding()
             .to(EmailAddressContactListener.class);
@@ -219,12 +225,14 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
 
     @ProvidesIntoSet
     InitializationOperation tmailWorkQueue(@Named(TMAIL_EVENT_BUS_INJECT_NAME) RabbitMQAndRedisEventBus instance,
-                                           @Named(TMAIL_EVENT_BUS_INJECT_NAME) Set<EventListener.ReactiveGroupEventListener> tmailReactiveGroupEventListeners) {
+                                           @Named(TMAIL_EVENT_BUS_INJECT_NAME) Set<EventListener.ReactiveGroupEventListener> tmailReactiveGroupEventListeners,
+                                           DisconnectorNotificationRegistration disconnectorNotificationRegistration) {
         return InitilizationOperationBuilder
             .forClass(RabbitMQAndRedisEventBus.class)
             .init(() -> {
                 instance.start();
                 tmailReactiveGroupEventListeners.forEach(instance::register);
+                disconnectorNotificationRegistration.register();
             });
     }
 
@@ -235,7 +243,10 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
                                                   @Named(TMAIL_EVENT_BUS_INJECT_NAME) EventBusId eventBusId,
                                                   EventSerializersAggregator eventSerializersAggregator,
                                                   RabbitMQEventBus.Configurations configurations) {
-        return eventBusFactory.create(eventBusId, TMAIL_NAMING_STRATEGY, new RoutingKeyConverter(ImmutableSet.of(new Factory())), eventSerializersAggregator, configurations);
+        return eventBusFactory.create(eventBusId, TMAIL_NAMING_STRATEGY,
+            new RoutingKeyConverter(ImmutableSet.of(new Factory(), new DisconnectorRegistrationKey.Factory())),
+            eventSerializersAggregator,
+            configurations);
     }
 
     @Provides
