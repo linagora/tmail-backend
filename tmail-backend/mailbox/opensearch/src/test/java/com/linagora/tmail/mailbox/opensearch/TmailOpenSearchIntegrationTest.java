@@ -597,97 +597,94 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
 
     }
 
-    @Disabled("MAILBOX-401 '-' causes address matching to fail")
     @Test
     void localPartShouldBeMatchedWhenHyphen() throws Exception {
         MailboxPath mailboxPath = MailboxPath.forUser(USERNAME, INBOX);
         MailboxSession session = MailboxSessionUtil.create(USERNAME);
         MessageManager messageManager = storeMailboxManager.getMailbox(mailboxPath, session);
 
-        Message.Builder messageBuilder = Message.Builder
-            .of()
-            .setSubject("test")
-            .setBody("testmail", StandardCharsets.UTF_8);
-
         ComposedMessageId messageId1 = messageManager.appendMessage(
             MessageManager.AppendCommand.builder().build(
-                messageBuilder
+                Message.Builder.of()
+                    .setSubject("test")
+                    .setBody("testmail", StandardCharsets.UTF_8)
                     .addField(new RawField("To", "alice-test@domain.tld"))
                     .build()),
             session).getId();
 
-        ComposedMessageId messageId2 = messageManager.appendMessage(
+        messageManager.appendMessage(
             MessageManager.AppendCommand.builder().build(
-                messageBuilder
+                Message.Builder.of()
+                    .setSubject("test")
+                    .setBody("testmail", StandardCharsets.UTF_8)
                     .addField(new RawField("To", "bob@other.tld"))
                     .build()),
             session).getId();
 
-        openSearch.awaitForOpenSearch();
+        awaitForOpenSearch(QueryBuilders.matchAll().build().toQuery(), 15);
+        Thread.sleep(500);
 
         assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.address(SearchQuery.AddressType.To, "alice-test")), session)).toStream())
-            .containsOnly(messageId2.getUid());
+            .containsOnly(messageId1.getUid());
     }
 
-    @Disabled("MAILBOX-401 '-' causes address matching to fail")
     @Test
     void addressShouldBeMatchedWhenHyphen() throws Exception {
         MailboxPath mailboxPath = MailboxPath.forUser(USERNAME, INBOX);
         MailboxSession session = MailboxSessionUtil.create(USERNAME);
         MessageManager messageManager = storeMailboxManager.getMailbox(mailboxPath, session);
 
-        Message.Builder messageBuilder = Message.Builder
-            .of()
-            .setSubject("test")
-            .setBody("testmail", StandardCharsets.UTF_8);
-
         ComposedMessageId messageId1 = messageManager.appendMessage(
             MessageManager.AppendCommand.builder().build(
-                messageBuilder
+                Message.Builder.of()
+                    .setSubject("test")
+                    .setBody("testmail", StandardCharsets.UTF_8)
                     .addField(new RawField("To", "alice-test@domain.tld"))
                     .build()),
             session).getId();
 
-        ComposedMessageId messageId2 = messageManager.appendMessage(
+        messageManager.appendMessage(
             MessageManager.AppendCommand.builder().build(
-                messageBuilder
+                Message.Builder.of()
+                    .setSubject("test")
+                    .setBody("testmail", StandardCharsets.UTF_8)
                     .addField(new RawField("To", "bob@other.tld"))
                     .build()),
             session).getId();
 
-        openSearch.awaitForOpenSearch();
+        awaitForOpenSearch(QueryBuilders.matchAll().build().toQuery(), 15);
+        Thread.sleep(500);
 
         assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.address(SearchQuery.AddressType.To, "alice-test@domain.tld")), session)).toStream())
             .containsOnly(messageId1.getUid());
     }
 
-    @Disabled("MAILBOX-401 '-' causes address matching to fail")
     @Test
     void domainPartShouldBeMatchedWhenHyphen() throws Exception {
         MailboxPath mailboxPath = MailboxPath.forUser(USERNAME, INBOX);
         MailboxSession session = MailboxSessionUtil.create(USERNAME);
         MessageManager messageManager = storeMailboxManager.getMailbox(mailboxPath, session);
 
-        Message.Builder messageBuilder = Message.Builder
-            .of()
-            .setSubject("test")
-            .setBody("testmail", StandardCharsets.UTF_8);
-
         ComposedMessageId messageId1 = messageManager.appendMessage(
             MessageManager.AppendCommand.builder().build(
-                messageBuilder
+                Message.Builder.of()
+                    .setSubject("test")
+                    .setBody("testmail", StandardCharsets.UTF_8)
                     .addField(new RawField("To", "alice@domain-test.tld"))
                     .build()),
             session).getId();
 
-        ComposedMessageId messageId2 = messageManager.appendMessage(
+        messageManager.appendMessage(
             MessageManager.AppendCommand.builder().build(
-                messageBuilder
+                Message.Builder.of()
+                    .setSubject("test")
+                    .setBody("testmail", StandardCharsets.UTF_8)
                     .addField(new RawField("To", "bob@other.tld"))
                     .build()),
             session).getId();
 
-        openSearch.awaitForOpenSearch();
+        awaitForOpenSearch(QueryBuilders.matchAll().build().toQuery(), 15);
+        Thread.sleep(500);
 
         assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.address(SearchQuery.AddressType.To, "domain-test.tld")), session)).toStream())
             .containsOnly(messageId1.getUid());
@@ -853,6 +850,51 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
 
         assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.attachmentFileName(searchInput)), session)).toStream())
             .contains(messageId.getUid());
+    }
+
+    @Test
+    void subjectSearchShouldMatchSubstringWithSpecialCharacters() throws Exception {
+        MailboxPath mailboxPath = MailboxPath.forUser(USERNAME, INBOX);
+        MailboxSession session = MailboxSessionUtil.create(USERNAME);
+        MessageManager messageManager = storeMailboxManager.getMailbox(mailboxPath, session);
+
+        ComposedMessageId messageId = messageManager.appendMessage(messageWithSubject("nas-backup.example.com Backup completed"), session).getId();
+
+        awaitForOpenSearch(QueryBuilders.matchAll().build().toQuery(), 14);
+        Thread.sleep(500);
+
+        assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.subject("example.com")), session)).toStream())
+            .containsOnly(messageId.getUid());
+    }
+
+    @Test
+    void subjectSearchShouldMatchSubstringWithHyphen() throws Exception {
+        MailboxPath mailboxPath = MailboxPath.forUser(USERNAME, INBOX);
+        MailboxSession session = MailboxSessionUtil.create(USERNAME);
+        MessageManager messageManager = storeMailboxManager.getMailbox(mailboxPath, session);
+
+        ComposedMessageId messageId = messageManager.appendMessage(messageWithSubject("nas-backup.example.com Backup completed"), session).getId();
+
+        awaitForOpenSearch(QueryBuilders.matchAll().build().toQuery(), 14);
+        Thread.sleep(500);
+
+        assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.subject("nas-backup")), session)).toStream())
+            .containsOnly(messageId.getUid());
+    }
+
+    @Test
+    void subjectSearchShouldMatchSubstringWithCompoundDottedName() throws Exception {
+        MailboxPath mailboxPath = MailboxPath.forUser(USERNAME, INBOX);
+        MailboxSession session = MailboxSessionUtil.create(USERNAME);
+        MessageManager messageManager = storeMailboxManager.getMailbox(mailboxPath, session);
+
+        ComposedMessageId messageId = messageManager.appendMessage(messageWithSubject("nas-backup.example.com Backup completed"), session).getId();
+
+        awaitForOpenSearch(QueryBuilders.matchAll().build().toQuery(), 14);
+        Thread.sleep(500);
+
+        assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.subject("nas-backup.example.com")), session)).toStream())
+            .containsOnly(messageId.getUid());
     }
 
     private static MessageManager.AppendCommand messageWithSubject(String subject) throws IOException {

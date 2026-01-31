@@ -30,6 +30,8 @@
 
 package com.linagora.tmail.mailbox.opensearch;
 
+import static org.apache.james.backends.opensearch.IndexCreationFactory.RAW;
+
 import jakarta.inject.Inject;
 
 import org.apache.james.mailbox.model.SearchQuery;
@@ -120,7 +122,27 @@ public class TmailCriterionConverter extends DefaultCriterionConverter {
                 .build()
                 .toQuery();
         }
-        return super.manageAddressFields(headerName, value);
+        String fieldName = getFieldNameFromHeaderName(headerName);
+        return new BoolQuery.Builder()
+            .should(new MatchQuery.Builder()
+                .field(fieldName + "." + JsonMessageConstants.EMailer.NAME)
+                .query(new FieldValue.Builder().stringValue(value).build())
+                .operator(Operator.And)
+                .build().toQuery())
+            .should(new MatchQuery.Builder()
+                .field(fieldName + "." + JsonMessageConstants.EMailer.ADDRESS)
+                .query(new FieldValue.Builder().stringValue(value).build())
+                .operator(Operator.And)
+                .build().toQuery())
+            .should(new MatchQuery.Builder()
+                .field(fieldName + "." + JsonMessageConstants.EMailer.DOMAIN)
+                .query(new FieldValue.Builder().stringValue(value).build())
+                .build().toQuery())
+            .should(new MatchQuery.Builder()
+                .field(fieldName + "." + JsonMessageConstants.EMailer.ADDRESS + "." + RAW)
+                .query(new FieldValue.Builder().stringValue(value).build())
+                .build().toQuery())
+            .build().toQuery();
     }
 
     @Override

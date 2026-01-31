@@ -73,6 +73,7 @@ public class TmailMailboxMappingFactory implements MailboxMappingFactory {
     private static final String NGRAM = "ngram";
     private static final String NGRAM_ANALYZER = "ngram_analyzer";
     private static final String FILENAME_ANALYZER = "filename_analyzer";
+    private static final String SUBSTRING_ANALYZER = "substring_analyzer";
     private static final String NGRAM_TOKENIZER = "ngram_tokenizer";
     private static final String WHITESPACE_TOKENIZER = "whitespace";
     private static final String LOWERCASE = "lowercase";
@@ -166,7 +167,7 @@ public class TmailMailboxMappingFactory implements MailboxMappingFactory {
                     .properties(ImmutableMap.of(
                         JsonMessageConstants.EMailer.NAME, new Property.Builder()
                             .text(new TextProperty.Builder()
-                                .analyzer(KEEP_MAIL_AND_URL)
+                                .analyzer(SUBSTRING_ANALYZER)
                                 .fields(RAW, new Property.Builder()
                                     .keyword(new KeywordProperty.Builder().normalizer(CASE_INSENSITIVE).build())
                                     .build())
@@ -180,8 +181,8 @@ public class TmailMailboxMappingFactory implements MailboxMappingFactory {
                             .build(),
                         JsonMessageConstants.EMailer.ADDRESS, new Property.Builder()
                             .text(new TextProperty.Builder()
-                                .analyzer(STANDARD)
-                                .searchAnalyzer(KEEP_MAIL_AND_URL)
+                                .analyzer(SUBSTRING_ANALYZER)
+                                .searchAnalyzer(SUBSTRING_ANALYZER)
                                 .fields(RAW, new Property.Builder()
                                     .keyword(new KeywordProperty.Builder().normalizer(CASE_INSENSITIVE).build())
                                     .build())
@@ -204,7 +205,7 @@ public class TmailMailboxMappingFactory implements MailboxMappingFactory {
                 .build())
             .put(JsonMessageConstants.SUBJECT, new Property.Builder()
                 .text(new TextProperty.Builder()
-                    .analyzer(KEEP_MAIL_AND_URL)
+                    .analyzer(SUBSTRING_ANALYZER)
                     .fields(getSubjectFieds())
                     .build())
                 .build())
@@ -213,7 +214,7 @@ public class TmailMailboxMappingFactory implements MailboxMappingFactory {
                     .properties(ImmutableMap.of(
                         JsonMessageConstants.EMailer.NAME, new Property.Builder()
                             .text(new TextProperty.Builder()
-                                .analyzer(KEEP_MAIL_AND_URL)
+                                .analyzer(SUBSTRING_ANALYZER)
                                 .fields(RAW, new Property.Builder()
                                     .keyword(new KeywordProperty.Builder().normalizer(CASE_INSENSITIVE).build())
                                     .build())
@@ -227,8 +228,8 @@ public class TmailMailboxMappingFactory implements MailboxMappingFactory {
                             .build(),
                         JsonMessageConstants.EMailer.ADDRESS, new Property.Builder()
                             .text(new TextProperty.Builder()
-                                .analyzer(STANDARD)
-                                .searchAnalyzer(KEEP_MAIL_AND_URL)
+                                .analyzer(SUBSTRING_ANALYZER)
+                                .searchAnalyzer(SUBSTRING_ANALYZER)
                                 .fields(RAW, new Property.Builder()
                                     .keyword(new KeywordProperty.Builder().normalizer(CASE_INSENSITIVE).build())
                                     .build())
@@ -242,7 +243,7 @@ public class TmailMailboxMappingFactory implements MailboxMappingFactory {
                     .properties(ImmutableMap.of(
                         JsonMessageConstants.EMailer.NAME, new Property.Builder()
                             .text(new TextProperty.Builder()
-                                .analyzer(KEEP_MAIL_AND_URL)
+                                .analyzer(SUBSTRING_ANALYZER)
                                 .fields(RAW, new Property.Builder()
                                     .keyword(new KeywordProperty.Builder().normalizer(CASE_INSENSITIVE).build())
                                     .build())
@@ -256,8 +257,8 @@ public class TmailMailboxMappingFactory implements MailboxMappingFactory {
                             .build(),
                         JsonMessageConstants.EMailer.ADDRESS, new Property.Builder()
                             .text(new TextProperty.Builder()
-                                .analyzer(STANDARD)
-                                .searchAnalyzer(KEEP_MAIL_AND_URL)
+                                .analyzer(SUBSTRING_ANALYZER)
+                                .searchAnalyzer(SUBSTRING_ANALYZER)
                                 .fields(RAW, new Property.Builder()
                                     .keyword(new KeywordProperty.Builder().normalizer(CASE_INSENSITIVE).build())
                                     .build())
@@ -270,7 +271,7 @@ public class TmailMailboxMappingFactory implements MailboxMappingFactory {
                 .object(new ObjectProperty.Builder()
                     .properties(ImmutableMap.of(
                         JsonMessageConstants.EMailer.NAME, new Property.Builder()
-                            .text(new TextProperty.Builder().analyzer(KEEP_MAIL_AND_URL).build())
+                            .text(new TextProperty.Builder().analyzer(SUBSTRING_ANALYZER).build())
                             .build(),
                         JsonMessageConstants.EMailer.DOMAIN, new Property.Builder()
                             .text(new TextProperty.Builder()
@@ -280,8 +281,8 @@ public class TmailMailboxMappingFactory implements MailboxMappingFactory {
                             .build(),
                         JsonMessageConstants.EMailer.ADDRESS, new Property.Builder()
                             .text(new TextProperty.Builder()
-                                .analyzer(STANDARD)
-                                .searchAnalyzer(KEEP_MAIL_AND_URL)
+                                .analyzer(SUBSTRING_ANALYZER)
+                                .searchAnalyzer(SUBSTRING_ANALYZER)
                                 .fields(RAW, new Property.Builder()
                                     .keyword(new KeywordProperty.Builder().normalizer(CASE_INSENSITIVE).build())
                                     .build())
@@ -395,6 +396,12 @@ public class TmailMailboxMappingFactory implements MailboxMappingFactory {
                         .filter(ASCIIFOLDING, LOWERCASE)
                         .build()))
                     .put(FILENAME_ANALYZER, new Analyzer.Builder()
+                        .custom(new CustomAnalyzer.Builder()
+                            .tokenizer(WHITESPACE_TOKENIZER)
+                            .filter(WORD_DELIMITER_GRAPH, ASCIIFOLDING, LOWERCASE)
+                            .build())
+                        .build())
+                    .put(SUBSTRING_ANALYZER, new Analyzer.Builder()
                         .custom(new CustomAnalyzer.Builder()
                             .tokenizer(WHITESPACE_TOKENIZER)
                             .filter(WORD_DELIMITER_GRAPH, ASCIIFOLDING, LOWERCASE)
