@@ -861,7 +861,7 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
         MailboxSession session = MailboxSessionUtil.create(USERNAME);
         MessageManager messageManager = storeMailboxManager.getMailbox(mailboxPath, session);
 
-        ComposedMessageId messageId = messageManager.appendMessage(messageWithSubject("[nas-backup.example.com] Backup completed"), session).getId();
+        ComposedMessageId messageId = messageManager.appendMessage(messageWithSubject("nas-backup.example.com Backup completed"), session).getId();
 
         awaitForOpenSearch(QueryBuilders.matchAll().build().toQuery(), 14);
         Thread.sleep(500);
@@ -876,7 +876,7 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
         MailboxSession session = MailboxSessionUtil.create(USERNAME);
         MessageManager messageManager = storeMailboxManager.getMailbox(mailboxPath, session);
 
-        ComposedMessageId messageId1 = messageManager.appendMessage(messageWithSubject("[nas-backup.example.com] Backup completed"), session).getId();
+        ComposedMessageId messageId1 = messageManager.appendMessage(messageWithSubject("nas-backup.example.com Backup completed"), session).getId();
         messageManager.appendMessage(messageWithSubject("Regular email about something"), session);
 
         awaitForOpenSearch(QueryBuilders.matchAll().build().toQuery(), 15);
@@ -887,17 +887,17 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
     }
 
     @Test
-    void subjectSearchShouldMatchSubstringWithBrackets() throws Exception {
+    void subjectSearchShouldMatchSubstringWithCompoundDottedName() throws Exception {
         MailboxPath mailboxPath = MailboxPath.forUser(USERNAME, INBOX);
         MailboxSession session = MailboxSessionUtil.create(USERNAME);
         MessageManager messageManager = storeMailboxManager.getMailbox(mailboxPath, session);
 
-        ComposedMessageId messageId = messageManager.appendMessage(messageWithSubject("[nas-backup.example.com] Backup completed"), session).getId();
+        ComposedMessageId messageId = messageManager.appendMessage(messageWithSubject("nas-backup.example.com Backup completed"), session).getId();
 
         awaitForOpenSearch(QueryBuilders.matchAll().build().toQuery(), 14);
         Thread.sleep(500);
 
-        assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.subject("[nas-backup.example.com]")), session)).toStream())
+        assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.subject("nas-backup.example.com")), session)).toStream())
             .containsOnly(messageId.getUid());
     }
 
