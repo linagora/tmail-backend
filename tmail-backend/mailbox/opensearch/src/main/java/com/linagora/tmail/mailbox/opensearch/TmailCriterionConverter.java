@@ -30,6 +30,8 @@
 
 package com.linagora.tmail.mailbox.opensearch;
 
+import static org.apache.james.backends.opensearch.IndexCreationFactory.RAW;
+
 import jakarta.inject.Inject;
 
 import org.apache.james.mailbox.model.SearchQuery;
@@ -45,6 +47,7 @@ import org.opensearch.client.opensearch._types.query_dsl.Operator;
 import org.opensearch.client.opensearch._types.query_dsl.Query;
 import org.opensearch.client.opensearch._types.query_dsl.QueryStringQuery;
 import org.opensearch.client.opensearch._types.query_dsl.TermQuery;
+import org.opensearch.client.opensearch._types.query_dsl.WildcardQuery;
 
 import com.google.common.collect.ImmutableList;
 
@@ -70,8 +73,10 @@ public class TmailCriterionConverter extends DefaultCriterionConverter {
 
     @Override
     protected Query convertSubject(SearchQuery.SubjectCriterion headerCriterion) {
+        String normalizedValue = SearchUtil.getBaseSubject(headerCriterion.getSubject());
+        Query existingQuery;
         if (isNgramSubject(headerCriterion)) {
-            return new BoolQuery.Builder()
+            existingQuery = new BoolQuery.Builder()
                 .should(convertRawSubject(headerCriterion))
                 .should(new MatchQuery.Builder()
                     .field(JsonMessageConstants.SUBJECT + "." + NGRAM)
@@ -83,8 +88,17 @@ public class TmailCriterionConverter extends DefaultCriterionConverter {
                 .build()
                 .toQuery();
         } else {
-            return convertRawSubject(headerCriterion);
+            existingQuery = convertRawSubject(headerCriterion);
         }
+        return new BoolQuery.Builder()
+            .should(existingQuery)
+            .should(new WildcardQuery.Builder()
+                .field(JsonMessageConstants.SUBJECT + "." + RAW)
+                .value("*" + normalizedValue.toLowerCase() + "*")
+                .caseInsensitive(true)
+                .build().toQuery())
+            .build()
+            .toQuery();
     }
 
     private boolean isNgramSubject(SearchQuery.SubjectCriterion headerCriterion) {

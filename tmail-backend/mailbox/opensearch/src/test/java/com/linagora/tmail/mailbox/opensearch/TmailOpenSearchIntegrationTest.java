@@ -739,18 +739,18 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
     }
 
     @Test
-    void subjectWithSpaceShouldNotBePartiallySearchableWhenNgramHeuristicEnabledAndSearchHigherThan6Characters() throws Exception {
+    void subjectWithSpaceShouldBePartiallySearchableViaWildcardWhenNgramHeuristicEnabledAndSearchHigherThan6Characters() throws Exception {
         MailboxPath mailboxPath = MailboxPath.forUser(USERNAME, INBOX);
         MailboxSession session = MailboxSessionUtil.create(USERNAME);
         MessageManager messageManager = storeMailboxManager.getMailbox(mailboxPath, session);
 
-        messageManager.appendMessage(messageWithSubject("abc def ghi"), session).getId();
+        ComposedMessageId messageId = messageManager.appendMessage(messageWithSubject("abc def ghi"), session).getId();
 
         awaitForOpenSearch(QueryBuilders.matchAll().build().toQuery(), 14);
         Thread.sleep(500);
 
-        assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.subject("c ef gh")), session)).toStream())
-            .isEmpty();
+        assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.subject("c def gh")), session)).toStream())
+            .containsOnly(messageId.getUid());
     }
 
     @ParameterizedTest
@@ -853,6 +853,52 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
 
         assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.attachmentFileName(searchInput)), session)).toStream())
             .contains(messageId.getUid());
+    }
+
+    @Test
+    void subjectSearchShouldMatchSubstringWithSpecialCharacters() throws Exception {
+        MailboxPath mailboxPath = MailboxPath.forUser(USERNAME, INBOX);
+        MailboxSession session = MailboxSessionUtil.create(USERNAME);
+        MessageManager messageManager = storeMailboxManager.getMailbox(mailboxPath, session);
+
+        ComposedMessageId messageId = messageManager.appendMessage(messageWithSubject("[nas-backup.example.com] Backup completed"), session).getId();
+
+        awaitForOpenSearch(QueryBuilders.matchAll().build().toQuery(), 14);
+        Thread.sleep(500);
+
+        assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.subject("example.com")), session)).toStream())
+            .containsOnly(messageId.getUid());
+    }
+
+    @Test
+    void subjectSearchShouldMatchSubstringWithHyphen() throws Exception {
+        MailboxPath mailboxPath = MailboxPath.forUser(USERNAME, INBOX);
+        MailboxSession session = MailboxSessionUtil.create(USERNAME);
+        MessageManager messageManager = storeMailboxManager.getMailbox(mailboxPath, session);
+
+        ComposedMessageId messageId1 = messageManager.appendMessage(messageWithSubject("[nas-backup.example.com] Backup completed"), session).getId();
+        messageManager.appendMessage(messageWithSubject("Regular email about something"), session);
+
+        awaitForOpenSearch(QueryBuilders.matchAll().build().toQuery(), 15);
+        Thread.sleep(500);
+
+        assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.subject("nas-backup")), session)).toStream())
+            .containsOnly(messageId1.getUid());
+    }
+
+    @Test
+    void subjectSearchShouldMatchSubstringWithBrackets() throws Exception {
+        MailboxPath mailboxPath = MailboxPath.forUser(USERNAME, INBOX);
+        MailboxSession session = MailboxSessionUtil.create(USERNAME);
+        MessageManager messageManager = storeMailboxManager.getMailbox(mailboxPath, session);
+
+        ComposedMessageId messageId = messageManager.appendMessage(messageWithSubject("[nas-backup.example.com] Backup completed"), session).getId();
+
+        awaitForOpenSearch(QueryBuilders.matchAll().build().toQuery(), 14);
+        Thread.sleep(500);
+
+        assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.subject("[nas-backup.example.com]")), session)).toStream())
+            .containsOnly(messageId.getUid());
     }
 
     private static MessageManager.AppendCommand messageWithSubject(String subject) throws IOException {
