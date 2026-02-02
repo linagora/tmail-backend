@@ -25,7 +25,7 @@ import jakarta.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.mailbox.MailboxManager.{MailboxCapabilities, MailboxRenamedResult, MessageCapabilities, SearchCapabilities}
 import org.apache.james.mailbox.model.search.MailboxQuery
-import org.apache.james.mailbox.model.{Mailbox, MailboxACL, MailboxAnnotation, MailboxAnnotationKey, MailboxId, MailboxMetaData, MailboxPath, MessageId, MessageRange, MultimailboxesSearchQuery, ThreadId}
+import org.apache.james.mailbox.model.{Mailbox, MailboxACL, MailboxAnnotation, MailboxAnnotationKey, MailboxId, MailboxMetaData, MailboxPath, MessageId, MessageRange, MultimailboxesSearchQuery, SearchOptions, ThreadId}
 import org.apache.james.mailbox.{Authorizator, MailboxManager, MailboxSession, MessageManager, SessionProvider}
 import org.reactivestreams.Publisher
 import reactor.core.publisher.Flux
@@ -80,8 +80,8 @@ class EncryptedMailboxManager @Inject()(mailboxManager: MailboxManager,
   override def search(expression: MailboxQuery, fetchType: MailboxManager.MailboxSearchFetchType, session: MailboxSession): Flux[MailboxMetaData] =
     mailboxManager.search(expression, fetchType, session)
 
-  override def search(expression: MultimailboxesSearchQuery, session: MailboxSession, limit: Long): Publisher[MessageId] =
-    mailboxManager.search(expression, session, limit)
+  override def search(expression: MultimailboxesSearchQuery, session: MailboxSession, searchOptions: SearchOptions): Publisher[MessageId] =
+    mailboxManager.search(expression, session, searchOptions)
 
   override def getThread(threadId: ThreadId, session: MailboxSession): Publisher[MessageId] =
     mailboxManager.getThread(threadId, session)
