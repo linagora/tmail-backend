@@ -28,6 +28,7 @@ import static com.linagora.tmail.james.jmap.label.PostgresLabelModule.LabelTable
 import java.util.Collection;
 import java.util.Optional;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 import org.apache.james.backends.postgres.utils.PostgresExecutor;
 import org.apache.james.core.Username;
@@ -123,12 +124,20 @@ public class PostgresLabelDAO {
     private Optional<UpdateSetMoreStep<Record>> addUpdateDescription(Option<DescriptionUpdate> newDescription, UpdateSetFirstStep<Record> originalUpdateStatement, Optional<UpdateSetMoreStep<Record>> updateDisplayNameStatement, Optional<UpdateSetMoreStep<Record>> updateColorStatement) {
         return OptionConverters.toJava(newDescription)
             .map(descUpdate -> OptionConverters.toJava(descUpdate.value())
-                .map(description -> updateColorStatement.map(statement -> statement.set(DESCRIPTION, description))
-                    .orElseGet(() -> updateDisplayNameStatement.map(statement -> statement.set(DESCRIPTION, description))
-                        .orElseGet(() -> originalUpdateStatement.set(DESCRIPTION, description))))
-                .orElseGet(() -> updateColorStatement.map(statement -> statement.setNull(DESCRIPTION))
-                    .orElseGet(() -> updateDisplayNameStatement.map(statement -> statement.setNull(DESCRIPTION))
-                        .orElseGet(() -> originalUpdateStatement.setNull(DESCRIPTION)))));
+                .map(updateDescription(originalUpdateStatement, updateDisplayNameStatement, updateColorStatement))
+                .orElseGet(deleteDescription(originalUpdateStatement, updateDisplayNameStatement, updateColorStatement)));
+    }
+
+    private static Supplier<UpdateSetMoreStep<Record>> deleteDescription(UpdateSetFirstStep<Record> originalUpdateStatement, Optional<UpdateSetMoreStep<Record>> updateDisplayNameStatement, Optional<UpdateSetMoreStep<Record>> updateColorStatement) {
+        return () -> updateColorStatement.map(statement -> statement.setNull(DESCRIPTION))
+            .orElseGet(() -> updateDisplayNameStatement.map(statement -> statement.setNull(DESCRIPTION))
+                .orElseGet(() -> originalUpdateStatement.setNull(DESCRIPTION)));
+    }
+
+    private static Function<String, UpdateSetMoreStep<Record>> updateDescription(UpdateSetFirstStep<Record> originalUpdateStatement, Optional<UpdateSetMoreStep<Record>> updateDisplayNameStatement, Optional<UpdateSetMoreStep<Record>> updateColorStatement) {
+        return description -> updateColorStatement.map(statement -> statement.set(DESCRIPTION, description))
+            .orElseGet(() -> updateDisplayNameStatement.map(statement -> statement.set(DESCRIPTION, description))
+                .orElseGet(() -> originalUpdateStatement.set(DESCRIPTION, description)));
     }
 
     public Mono<Void> deleteOne(Username username, String keyword) {
