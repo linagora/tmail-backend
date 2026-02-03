@@ -60,7 +60,7 @@ import com.linagora.tmail.listener.rag.filter.MessageFilterParser;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-public class LlmMailPrioritizationClassifierListener implements EventListener.ReactiveGroupEventListener {
+public class LlmMailClassifierListener implements EventListener.ReactiveGroupEventListener {
     record ParsedMessage(MessageResult messageResult, Message parsed) {
         static ParsedMessage from(MessageResult messageResult) {
             try (InputStream inputStream = messageResult.getFullContent().getInputStream()) {
@@ -89,12 +89,12 @@ public class LlmMailPrioritizationClassifierListener implements EventListener.Re
     private final MessageFilter messageFilter;
 
     @Inject
-    public LlmMailPrioritizationClassifierListener(MailboxManager mailboxManager,
-                                                   MessageIdManager messageIdManager,
-                                                   SystemMailboxesProvider systemMailboxesProvider,
-                                                   JmapSettingsRepository jmapSettingsRepository,
-                                                   @Named(TMAIL_EVENT_BUS_INJECT_NAME) EventBus tmailEventBus,
-                                                   HierarchicalConfiguration<ImmutableNode> configuration) {
+    public LlmMailClassifierListener(MailboxManager mailboxManager,
+                                     MessageIdManager messageIdManager,
+                                     SystemMailboxesProvider systemMailboxesProvider,
+                                     JmapSettingsRepository jmapSettingsRepository,
+                                     @Named(TMAIL_EVENT_BUS_INJECT_NAME) EventBus tmailEventBus,
+                                     HierarchicalConfiguration<ImmutableNode> configuration) {
         this.mailboxManager = mailboxManager;
         this.messageIdManager = messageIdManager;
         this.jmapSettingsRepository = jmapSettingsRepository;

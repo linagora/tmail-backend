@@ -10,24 +10,29 @@ When an email is classified as needing action, it is automatically tagged with t
 Example:
 
 ```xml
+
 <listener>
-   <class>com.linagora.tmail.listener.rag.LlmMailPrioritizationClassifierListener</class>
-   <configuration>
-      <filter>
-         <and>
-            <isInINBOX/>
-            <isMainRecipient/>
-            <not><isAutoSubmitted/></not>
-            <not><isSpam/></not>
-         </and>
-      </filter>
-      <systemPrompt>
-         You are an email assistant that determines if emails require user action.
-         Consider: urgency, deadlines, direct questions, and required responses.
-         Respond only with 'YES' (needs action) or 'NO' (informational).
-      </systemPrompt>
-      <maxBodyLength>5000</maxBodyLength>
-   </configuration>
+    <class>com.linagora.tmail.listener.rag.LlmMailClassifierListenercom.linagora.tmail.listener.rag.LlmMailClassifierListener</class>
+    <configuration>
+        <filter>
+            <and>
+                <isInINBOX/>
+                <isMainRecipient/>
+                <not>
+                    <isAutoSubmitted/>
+                </not>
+                <not>
+                    <isSpam/>
+                </not>
+            </and>
+        </filter>
+        <systemPrompt>
+            You are an email assistant that determines if emails require user action.
+            Consider: urgency, deadlines, direct questions, and required responses.
+            Respond only with 'YES' (needs action) or 'NO' (informational).
+        </systemPrompt>
+        <maxBodyLength>5000</maxBodyLength>
+    </configuration>
 </listener>
 ```
 
