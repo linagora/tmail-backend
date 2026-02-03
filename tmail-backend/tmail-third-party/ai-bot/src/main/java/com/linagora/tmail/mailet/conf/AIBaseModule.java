@@ -19,7 +19,7 @@
 package com.linagora.tmail.mailet.conf;
 
 import static com.linagora.tmail.event.TmailEventModule.TMAIL_EVENT_BUS_INJECT_NAME;
-import static com.linagora.tmail.listener.rag.LlmMailPrioritizationBackendClassifierListener.LLM_MAIL_CLASSIFIER_CONFIGURATION;
+import static com.linagora.tmail.listener.rag.LlmMailBackendClassifierListener.LLM_MAIL_CLASSIFIER_CONFIGURATION;
 import static org.apache.james.events.EventDeadLettersHealthCheck.DEAD_LETTERS_IGNORED_GROUPS;
 
 import java.io.FileNotFoundException;
@@ -44,8 +44,8 @@ import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Named;
 import com.google.inject.name.Names;
-import com.linagora.tmail.listener.rag.LlmMailPrioritizationBackendClassifierListener;
-import com.linagora.tmail.listener.rag.LlmMailPrioritizationClassifierListener;
+import com.linagora.tmail.listener.rag.LlmMailBackendClassifierListener;
+import com.linagora.tmail.listener.rag.LlmMailClassifierListener;
 import com.linagora.tmail.listener.rag.event.AIAnalysisNeededEventSerializer;
 import com.linagora.tmail.mailet.AIBotConfig;
 import com.linagora.tmail.mailet.AIRedactionalHelper;
@@ -65,12 +65,12 @@ public class AIBaseModule extends AbstractModule {
 
         Multibinder<Group> deadLetterIgnoredGroups = Multibinder.newSetBinder(binder(), Group.class, Names.named(DEAD_LETTERS_IGNORED_GROUPS));
         deadLetterIgnoredGroups.addBinding().toInstance(RagListener.GROUP);
-        deadLetterIgnoredGroups.addBinding().toInstance(LlmMailPrioritizationClassifierListener.GROUP);
-        deadLetterIgnoredGroups.addBinding().toInstance(LlmMailPrioritizationBackendClassifierListener.GROUP);
+        deadLetterIgnoredGroups.addBinding().toInstance(LlmMailClassifierListener.GROUP);
+        deadLetterIgnoredGroups.addBinding().toInstance(LlmMailBackendClassifierListener.GROUP);
 
         Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class, Names.named(TMAIL_EVENT_BUS_INJECT_NAME))
             .addBinding()
-            .to(LlmMailPrioritizationBackendClassifierListener.class);
+            .to(LlmMailBackendClassifierListener.class);
     }
 
     @Provides
@@ -86,7 +86,7 @@ public class AIBaseModule extends AbstractModule {
     public HierarchicalConfiguration<ImmutableNode> provideLlmMailPrioritizationListenerConfiguration(ListenersConfiguration listenersConfiguration) {
         return listenersConfiguration.getListenersConfiguration()
             .stream()
-            .filter(listener -> listener.getClazz().equals(LlmMailPrioritizationClassifierListener.class.getCanonicalName()))
+            .filter(listener -> listener.getClazz().equals(LlmMailClassifierListener.class.getCanonicalName()))
             .map(ListenerConfiguration::getConfiguration)
             .flatMap(Optional::stream)
             .findFirst()

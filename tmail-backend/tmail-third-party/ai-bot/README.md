@@ -99,7 +99,7 @@ The listener supports two optional parameters:
 ```xml
 <listeners>
     <listener>
-        <class>com.linagora.tmail.listener.rag.LlmMailPrioritizationClassifierListener</class>
+        <class>com.linagora.tmail.listener.rag.LlmMailClassifierListenercom.linagora.tmail.listener.rag.LlmMailClassifierListener</class>
         <configuration>
             <!-- Optional custom system prompt -->
             <systemPrompt>You are an email triage assistant. Return YES or NO only.</systemPrompt>
