@@ -60,6 +60,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mockito;
 
 import com.google.common.collect.ImmutableMap;
+import com.linagora.tmail.james.jmap.label.LabelRepository;
+import com.linagora.tmail.james.jmap.label.MemoryLabelRepository;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
 import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
@@ -73,7 +75,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scala.publisher.SMono;
 
-public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailPrioritizationClassifierListenerContract {
+public class MockLlmMailClassifierListenerTest implements LlmMailClassifierListenerContract {
 
     static class StubModel implements StreamingChatLanguageModel {
         volatile String llOutput;
@@ -96,8 +98,9 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
     private IdentityRepository identityRepository;
     private JmapSettingsRepository jmapSettingsRepository;
     private JmapSettingsRepositoryJavaUtils jmapSettingsRepositoryUtils;
-    private LlmMailPrioritizationClassifierListener listener;
-    private LlmMailPrioritizationBackendClassifierListener backendListener;
+    private LlmMailClassifierListener listener;
+    private LlmMailBackendClassifierListener backendListener;
+    private LabelRepository labelRepository;
     private EventBus tmailEventBus;
 
     @BeforeEach
@@ -140,21 +143,23 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
         identityRepository = setUpIdentityRepository();
         jmapSettingsRepository = new MemoryJmapSettingsRepository();
         jmapSettingsRepositoryUtils = new JmapSettingsRepositoryJavaUtils(jmapSettingsRepository);
+        labelRepository = new MemoryLabelRepository();
 
-        listener = new LlmMailPrioritizationClassifierListener(
+        listener = new LlmMailClassifierListener(
             mailboxManager,
             messageIdManager,
             new SystemMailboxesProviderImpl(mailboxManager),
             jmapSettingsRepository,
             tmailEventBus,
             listenerConfig);
-        backendListener = new LlmMailPrioritizationBackendClassifierListener(
+        backendListener = new LlmMailBackendClassifierListener(
             mailboxManager,
             messageIdManager,
             model,
             htmlTextExtractor,
             identityRepository,
             metricFactory,
+            labelRepository,
             listenerConfig);
 
         jmapSettingsRepositoryUtils().reset(ALICE, ImmutableMap.of("ai.needs-action.enabled", "true"));
@@ -221,20 +226,21 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
 
     @Override
     public void resetListenerWithConfig(HierarchicalConfiguration<ImmutableNode> overrideConfig) {
-        listener = new LlmMailPrioritizationClassifierListener(
+        listener = new LlmMailClassifierListener(
             mailboxManager,
             messageIdManager,
             new SystemMailboxesProviderImpl(mailboxManager),
             jmapSettingsRepository,
             tmailEventBus,
             overrideConfig);
-        backendListener = new LlmMailPrioritizationBackendClassifierListener(
+        backendListener = new LlmMailBackendClassifierListener(
             mailboxManager,
             messageIdManager,
             model,
             new JsoupHtmlTextExtractor(),
             identityRepository,
             new RecordingMetricFactory(),
+            labelRepository,
             overrideConfig);
     }
 
@@ -251,12 +257,12 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
 
     @Override
     public void needActionsLlmHook() {
-        this.model.llOutput = "YES";
+        this.model.llOutput = "YES, label1Id, label2Id";
     }
 
     @Override
     public void noNeedActionsLlmHook() {
-        this.model.llOutput = "NO";
+        this.model.llOutput = "NO, label3Id";
     }
 
     @Override
