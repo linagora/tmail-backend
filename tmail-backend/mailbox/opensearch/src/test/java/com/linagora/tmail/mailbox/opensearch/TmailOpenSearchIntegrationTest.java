@@ -727,6 +727,34 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
             .containsOnly(messageId1.getUid());
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "example.com",
+        "nas-backup.example.com",
+        "[nas-backup.example.com]",
+        "nas",
+        "backup",
+    })
+    void mailingListPrefixShouldBePreservedInSearch(String subject) throws Exception {
+        MailboxPath mailboxPath = MailboxPath.forUser(USERNAME, INBOX);
+        MailboxSession session = MailboxSessionUtil.create(USERNAME);
+        MessageManager messageManager = storeMailboxManager.getMailbox(mailboxPath, session);
+
+        ComposedMessageId messageId1 = messageManager.appendMessage(
+            MessageManager.AppendCommand.builder().build(
+                Message.Builder
+                    .of()
+                    .setBody("testmail", StandardCharsets.UTF_8)
+                    .setSubject("[nas-backup.example.com] Backup completed successfully")
+                    .build()),
+            session).getId();
+
+        awaitForOpenSearch(QueryBuilders.matchAll().build().toQuery(), 14);
+
+        assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.subject(subject)), session)).toStream())
+            .containsOnly(messageId1.getUid());
+    }
+
     @Test
     void domainPartShouldBeMatchedWhenHyphen() throws Exception {
         MailboxPath mailboxPath = MailboxPath.forUser(USERNAME, INBOX);
