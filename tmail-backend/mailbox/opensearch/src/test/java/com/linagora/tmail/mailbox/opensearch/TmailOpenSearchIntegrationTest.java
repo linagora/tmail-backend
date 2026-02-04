@@ -759,7 +759,7 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
     @ValueSource(strings = {
         "\"nas backup\""
     })
-    void issue_2130_2(String subject) throws Exception {
+    void queryStringShouldFilterOutDistantMatchedInSubject(String subject) throws Exception {
         MailboxPath mailboxPath = MailboxPath.forUser(USERNAME, INBOX);
         MailboxSession session = MailboxSessionUtil.create(USERNAME);
         MessageManager messageManager = storeMailboxManager.getMailbox(mailboxPath, session);
