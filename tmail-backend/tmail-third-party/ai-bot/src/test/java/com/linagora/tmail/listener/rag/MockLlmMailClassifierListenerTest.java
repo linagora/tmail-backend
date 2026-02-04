@@ -62,6 +62,10 @@ import org.mockito.Mockito;
 import com.google.common.collect.ImmutableMap;
 import com.linagora.tmail.james.jmap.label.LabelRepository;
 import com.linagora.tmail.james.jmap.label.MemoryLabelRepository;
+import com.linagora.tmail.james.jmap.model.Color;
+import com.linagora.tmail.james.jmap.model.DisplayName;
+import com.linagora.tmail.james.jmap.model.Label;
+import com.linagora.tmail.james.jmap.model.LabelCreationRequest;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
 import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
@@ -102,6 +106,9 @@ public class MockLlmMailClassifierListenerTest implements LlmMailClassifierListe
     private LlmMailBackendClassifierListener backendListener;
     private LabelRepository labelRepository;
     private EventBus tmailEventBus;
+    private String label1Id;
+    private String label2Id;
+    private String label3Id;
 
     @BeforeEach
     void setup() throws Exception {
@@ -144,6 +151,12 @@ public class MockLlmMailClassifierListenerTest implements LlmMailClassifierListe
         jmapSettingsRepository = new MemoryJmapSettingsRepository();
         jmapSettingsRepositoryUtils = new JmapSettingsRepositoryJavaUtils(jmapSettingsRepository);
         labelRepository = new MemoryLabelRepository();
+        Label label1 = Mono.from(labelRepository.addLabel(ALICE,new LabelCreationRequest(new DisplayName("label1"), scala.Option.apply(new Color("#0000")), scala.Option.apply("label1 description") ))).block();
+        label1Id = label1.keyword();
+        Label label2 =Mono.from(labelRepository.addLabel(ALICE,new LabelCreationRequest(new DisplayName("label2"), scala.Option.apply(new Color("#0000")), scala.Option.apply("label2 description") ))).block();
+        label2Id = label2.keyword();
+        Label label3 =Mono.from(labelRepository.addLabel(ALICE,new LabelCreationRequest(new DisplayName("label3"), scala.Option.apply(new Color("#0000")), scala.Option.apply("label3 description") ))).block();
+        label3Id = label3.keyword();
 
         listener = new LlmMailClassifierListener(
             mailboxManager,
@@ -257,17 +270,34 @@ public class MockLlmMailClassifierListenerTest implements LlmMailClassifierListe
 
     @Override
     public void needActionsLlmHook() {
-        this.model.llOutput = "YES, label1Id, label2Id";
+        this.model.llOutput = """
+            YES, %s, %s""".formatted(label1Id, label2Id);
     }
 
     @Override
     public void noNeedActionsLlmHook() {
-        this.model.llOutput = "NO, label3Id";
+        this.model.llOutput = """
+            NO, %s""".formatted(label3Id);
     }
 
     @Override
     public Mono<Flags> readFlags(MessageId messageId, MailboxSession userSession) {
         return Mono.from(messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.MINIMAL, userSession))
             .map(MessageResult::getFlags);
+    }
+
+    @Override
+    public String getLabel1Id() {
+        return label1Id;
+    }
+
+    @Override
+    public String getLabel2Id() {
+        return label2Id;
+    }
+
+    @Override
+    public String getLabel3Id() {
+        return label3Id;
     }
 }
