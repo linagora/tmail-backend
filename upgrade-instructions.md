@@ -12,6 +12,26 @@ software documentation. Do not follow this guide blindly!
 
 Note: this section is in progress. It will be updated during all the development process until the release.
 
+### LLM Mail Classifier Listener renamed
+Date: 04/02/2026
+
+Issue: https://github.com/linagora/tmail-backend/issues/2115
+
+**Listener's name change**: The listener `LlmMailPrioritizationClassifierListener` has been renamed to `LlmMailBackendClassifierListener`.
+
+**Before:**
+```xml
+<listener>
+  <class>com.linagora.tmail.james.jmap.llm.LlmMailPrioritizationClassifierListener</class>
+</listener>
+```
+**After:**
+```xml
+<listener>
+    <class>com.linagora.tmail.james.jmap.llm.LlmMailBackendClassifierListener</class>
+</listener>
+```
+
 ### Adding description field to labels table
 
 Date: 28/01/2026
