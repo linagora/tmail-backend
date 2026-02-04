@@ -226,18 +226,22 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
     private Mono<Void> classifyMail(LlmMailClassifierListener.ParsedMessage message, MailboxSession session) {
         return getUserDisplayName(session.getUser())
             .zipWith(getUserLabels(session.getUser()))
-            .flatMap(tuple -> Mono.fromCallable(() -> buildUserPrompt(message, session.getUser(), tuple.getT1(), tuple.getT2())))
-            .flatMap(userPrompt -> {
-                return Mono.from(metricFactory.decoratePublisherWithTimerMetric("llm-mail-prioritization-classifier",
-                        callLlm(systemPrompt, userPrompt.correspondingUserPrompt())))
-                    .map(LlmOutput::parse)
-                    .doOnNext(llmOutput -> {
-                        if (reviewModeEnabled) {
-                            emitStructureLog(userPrompt, llmOutput);
-                        }
-                    })
-                    .filter(llmOutput -> llmOutput.action)
-                    .flatMap(llmOutput -> addNeedsActionKeyword(message.messageResult(), session, llmOutput.labels));
+            .flatMap(tuple -> {
+                List<Label> userLabels = tuple.getT2();
+                return Mono.fromCallable(() -> buildUserPrompt(message, session.getUser(), tuple.getT1(), userLabels))
+                    .flatMap(userPrompt -> {
+                        return Mono.from(metricFactory.decoratePublisherWithTimerMetric("llm-mail-prioritization-classifier",
+                                callLlm(systemPrompt, userPrompt.correspondingUserPrompt())))
+                            .map(LlmOutput::parse)
+                            .doOnNext(llmOutput -> {
+                                 if (reviewModeEnabled) {
+                                     emitStructureLog(userPrompt, llmOutput);
+                                 }
+                            })
+                            .filter(llmOutput -> llmOutput.action)
+                            .flatMap(llmOutput ->
+                                addNeedsActionKeyword(message.messageResult(), session, validateLabelIds(userLabels, llmOutput.labels)));
+                    });
             })
             .doOnError(e -> LOGGER.error("LLM call failed for messageId {} in mailboxId {} of user {}",
                 message.messageResult().getMessageId().serialize(), message.messageResult().getMailboxId().serialize(), session.getUser(), e));
@@ -254,6 +258,13 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
                 .field("labels suggested", llmOutput.labels().stream().collect(Collectors.joining(",")))
                 .field("preview", truncatePreview(llmUserPrompt.textContent()))
                 .log(logger -> logger.info("Email successfully classified"));
+    }
+
+    private List<String> validateLabelIds(List<Label> labels, List<String> labelIds) {
+        return labels.stream()
+            .filter(label -> labelIds.contains(label.keyword()))
+            .map(Label::keyword)
+            .collect(Collectors.toList());
     }
 
     private Mono<Void> addNeedsActionKeyword(MessageResult messageResult, MailboxSession session, List<String> labelsSuggested) {

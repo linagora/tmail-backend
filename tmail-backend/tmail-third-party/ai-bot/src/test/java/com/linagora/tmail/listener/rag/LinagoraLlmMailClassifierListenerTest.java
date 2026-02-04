@@ -26,6 +26,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
+import com.linagora.tmail.james.jmap.model.Label;
 import jakarta.mail.Flags;
 
 import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
@@ -88,6 +89,9 @@ public class LinagoraLlmMailClassifierListenerTest implements LlmMailClassifierL
     private LlmMailBackendClassifierListener backendListener;
     private LabelRepository labelRepository;
     private EventBus tmailEventBus;
+    private String label1Id;
+    private String label2Id;
+    private String label3Id;
 
     @BeforeEach
     void setup() throws Exception {
@@ -137,8 +141,12 @@ public class LinagoraLlmMailClassifierListenerTest implements LlmMailClassifierL
         identityRepository = setUpIdentityRepository();
         jmapSettingsRepository = new MemoryJmapSettingsRepository();
         labelRepository = new MemoryLabelRepository();
-        Mono.from(labelRepository.addLabel(ALICE,new LabelCreationRequest(new DisplayName("Production-Incident"), scala.Option.apply(new Color("#0000")), scala.Option.apply("work or production incident") ))).block();
-        Mono.from(labelRepository.addLabel(ALICE,new LabelCreationRequest(new DisplayName("Payment-Alert"), scala.Option.apply(new Color("#0000")), scala.Option.apply("This is a payment reminder alert") ))).block();
+        Label label1 = Mono.from(labelRepository.addLabel(ALICE,new LabelCreationRequest(new DisplayName("Production-Incident"), scala.Option.apply(new Color("#0000")), scala.Option.apply("work or production incident") ))).block();
+        Label label2 =Mono.from(labelRepository.addLabel(ALICE,new LabelCreationRequest(new DisplayName("Payment-Alert"), scala.Option.apply(new Color("#0000")), scala.Option.apply("This is a payment reminder alert") ))).block();
+        Label label3 =Mono.from(labelRepository.addLabel(ALICE,new LabelCreationRequest(new DisplayName("Hiring"), scala.Option.apply(new Color("#0000")), scala.Option.apply("This is a recruitment process related email") ))).block();
+        label1Id = label1.keyword();
+        label2Id = label2.keyword();
+        label3Id = label3.keyword();
 
         jmapSettingsRepositoryUtils = new JmapSettingsRepositoryJavaUtils(jmapSettingsRepository);
 
@@ -222,5 +230,20 @@ public class LinagoraLlmMailClassifierListenerTest implements LlmMailClassifierL
     public Mono<Flags> readFlags(MessageId messageId, MailboxSession userSession) {
         return Mono.from(messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.MINIMAL, userSession))
             .map(MessageResult::getFlags);
+    }
+
+    @Override
+    public String getLabel1Id() {
+        return label1Id;
+    }
+
+    @Override
+    public String getLabel2Id() {
+        return label2Id;
+    }
+
+    @Override
+    public String getLabel3Id() {
+        return label3Id;
     }
 }
