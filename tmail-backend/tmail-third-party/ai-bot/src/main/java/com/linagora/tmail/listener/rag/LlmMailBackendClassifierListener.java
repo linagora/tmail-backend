@@ -322,7 +322,8 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
             String subject = Strings.nullToEmpty(message.parsed().getSubject());
             String labelsInfo = labels.isEmpty() ? "No labels." :
                 labels.stream()
-                    .map(label -> String.format("'%s' : %s", label.id(), label.description()))
+                    .filter(label -> label.description().isDefined())
+                    .map(label -> String.format("'%s' : %s", label.id(), label.description().get()))
                     .collect(Collectors.joining(", ")) + ".";
             MessageContentExtractor.MessageContent messageContent = new MessageContentExtractor().extract(message.parsed());
             Optional<String> maybeBody = messageContent.extractMainTextContent(htmlTextExtractor);
