@@ -210,7 +210,7 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
                 return new LlmOutput(false, List.of());
             }
 
-            boolean needsAction = parts.get(0).equalsIgnoreCase("YES");
+            boolean needsAction = parts.getFirst().equalsIgnoreCase("YES");
             List<String> labelIds = parts.size() > 1
                 ? parts.subList(1, parts.size())
                 : List.of();
@@ -218,65 +218,90 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
             return new LlmOutput(needsAction, labelIds);
         }
 
+        List<String> validateLabelIds(List<Label> labels, List<String> labelIds) {
+            return labels.stream()
+                .filter(label -> labelIds.contains(label.keyword()))
+                .map(Label::keyword)
+                .collect(Collectors.toList());
+        }
+
+        Optional<Flags> flagsToSet(UserContext context) {
+            if (isEmpty()) {
+                return Optional.empty();
+            }
+
+            Flags flags = new Flags();
+            if (action) {
+                flags.add(NEEDS_ACTION);
+            }
+
+            validateLabelIds(context.labels(), labels).forEach(flags::add);
+
+            return Optional.of(flags);
+        }
+
         boolean isEmpty() {
             return !action && labels.isEmpty();
         }
     }
 
+    record UserContext(String displayName, List<Label> labels) {
+    }
+
+    private Mono<UserContext> retrieveUserContext(Username username) {
+        return getUserDisplayName(username)
+            .zipWith(getUserLabels(username))
+            .map(tuple -> new UserContext(tuple.getT1(), tuple.getT2()));
+    }
+
     private Mono<Void> classifyMail(LlmMailClassifierListener.ParsedMessage message, MailboxSession session) {
-        return getUserDisplayName(session.getUser())
-            .zipWith(getUserLabels(session.getUser()))
-            .flatMap(tuple -> {
-                List<Label> userLabels = tuple.getT2();
-                return Mono.fromCallable(() -> buildUserPrompt(message, session.getUser(), tuple.getT1(), userLabels))
-                    .flatMap(userPrompt -> {
-                        return Mono.from(metricFactory.decoratePublisherWithTimerMetric("llm-mail-prioritization-classifier",
-                                callLlm(systemPrompt, userPrompt.correspondingUserPrompt())))
-                            .map(LlmOutput::parse)
-                            .doOnNext(llmOutput -> {
-                                 if (reviewModeEnabled) {
-                                     emitStructureLog(userPrompt, llmOutput);
-                                 }
-                            })
-                            .filter(llmOutput -> llmOutput.action)
-                            .flatMap(llmOutput ->
-                                addNeedsActionKeyword(message.messageResult(), session, validateLabelIds(userLabels, llmOutput.labels)));
-                    });
-            })
+        return retrieveUserContext(session.getUser())
+            .flatMap(userContext -> Mono.fromCallable(() -> buildUserPrompt(message, session.getUser(), userContext))
+                .flatMap(userPrompt -> performLlmClassification(message, session, userPrompt, userContext)))
             .doOnError(e -> LOGGER.error("LLM call failed for messageId {} in mailboxId {} of user {}",
                 message.messageResult().getMessageId().serialize(), message.messageResult().getMailboxId().serialize(), session.getUser(), e));
     }
 
+    private Mono<Void> performLlmClassification(LlmMailClassifierListener.ParsedMessage message, MailboxSession session, LlmUserPrompt userPrompt, UserContext userContext) {
+        return Mono.from(metricFactory.decoratePublisherWithTimerMetric("llm-mail-prioritization-classifier",
+                callLlm(systemPrompt, userPrompt.correspondingUserPrompt())))
+            .doOnNext(llmOutput -> emitStructureLog(userPrompt, llmOutput))
+            .flatMap(llmOutput -> addFlags(message.messageResult(), session, llmOutput.flagsToSet(userContext)));
+    }
 
 
     private void emitStructureLog(LlmUserPrompt llmUserPrompt, LlmOutput llmOutput) {
-            MDCStructuredLogger.forLogger(LOGGER)
-                .field("sender", llmUserPrompt.sender())
-                .field("user", llmUserPrompt.user())
-                .field("subject", llmUserPrompt.subject())
-                .field("decision", llmOutput.action() ? "YES" : "NO")
-                .field("labels suggested", llmOutput.labels().stream().collect(Collectors.joining(",")))
-                .field("preview", truncatePreview(llmUserPrompt.textContent()))
-                .log(logger -> logger.info("Email successfully classified"));
+            if (reviewModeEnabled) {
+                MDCStructuredLogger.forLogger(LOGGER)
+                    .field("sender", llmUserPrompt.sender())
+                    .field("user", llmUserPrompt.user())
+                    .field("subject", llmUserPrompt.subject())
+                    .field("decision", llmOutput.action() ? "YES" : "NO")
+                    .field("labels suggested", llmOutput.labels().stream().collect(Collectors.joining(",")))
+                    .field("preview", truncatePreview(llmUserPrompt.textContent()))
+                    .log(logger -> logger.info("Email successfully classified"));
+            }
     }
 
-    private List<String> validateLabelIds(List<Label> labels, List<String> labelIds) {
-        return labels.stream()
-            .filter(label -> labelIds.contains(label.keyword()))
-            .map(Label::keyword)
-            .collect(Collectors.toList());
-    }
-
-    private Mono<Void> addNeedsActionKeyword(MessageResult messageResult, MailboxSession session, List<String> labelsSuggested) {
-        Flags suggestedFlags = new Flags(NEEDS_ACTION);
-        labelsSuggested.forEach(suggestedFlags::add);
-
-        return Mono.from(messageIdManager.setFlagsReactive(suggestedFlags, MessageManager.FlagsUpdateMode.ADD,
-                messageResult.getMessageId(), List.of(messageResult.getMailboxId()), session))
-            .doOnSuccess(ignored -> LOGGER.info("Added '{}' keyword to message {} in mailbox {} of user {}", NEEDS_ACTION,
-                messageResult.getMessageId().serialize(), messageResult.getMailboxId().serialize(), session.getUser().asString()))
-            .doOnError(e -> LOGGER.error("Failed adding '{}' keyword to message {} in mailbox {} of user {}", NEEDS_ACTION,
-                messageResult.getMessageId().serialize(), messageResult.getMailboxId().serialize(), session.getUser().asString(), e));
+    private Mono<Void> addFlags(MessageResult messageResult, MailboxSession session, Optional<Flags> flags) {
+        return flags.map(actualFlags ->
+            Mono.from(messageIdManager.setFlagsReactive(actualFlags, MessageManager.FlagsUpdateMode.ADD,
+                    messageResult.getMessageId(), List.of(messageResult.getMailboxId()), session))
+                .doOnSuccess(ignored -> {
+                    String flagsList = Arrays.stream(actualFlags.getUserFlags())
+                        .collect(Collectors.joining(", "));
+                    LOGGER.info("Added flags [{}] to message {} in mailbox {} of user {}",
+                        flagsList,
+                        messageResult.getMessageId().serialize(),
+                        messageResult.getMailboxId().serialize(),
+                        session.getUser().asString());
+                })
+                .doOnError(e -> LOGGER.error("Failed adding flags to message {} in mailbox {} of user {}",
+                    messageResult.getMessageId().serialize(),
+                    messageResult.getMailboxId().serialize(),
+                    session.getUser().asString(), e))
+                .then()
+        ).orElseGet(Mono::empty);
     }
 
     private Mono<List<Label>> getUserLabels(Username username) {
@@ -306,7 +331,7 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
         }
     }
 
-    private LlmUserPrompt buildUserPrompt(LlmMailClassifierListener.ParsedMessage message, Username username, String userDisplayName, List<Label> labels) throws IOException {
+    private LlmUserPrompt buildUserPrompt(LlmMailClassifierListener.ParsedMessage message, Username username, UserContext userContext) throws IOException {
 
             String from = Optional.ofNullable(message.parsed().getFrom())
                 .map(mailboxList -> mailboxList.stream()
@@ -320,15 +345,15 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
                     .collect(Collectors.joining(", ")))
                 .orElse("");
             String subject = Strings.nullToEmpty(message.parsed().getSubject());
-            String labelsInfo = labels.isEmpty() ? "No labels." :
-                labels.stream()
+            String labelsInfo = userContext.labels().isEmpty() ? "No labels." :
+                userContext.labels().stream()
                     .filter(label -> label.description().isDefined())
                     .map(label -> String.format("'%s' : %s", label.id(), label.description().get()))
                     .collect(Collectors.joining(", ")) + ".";
             MessageContentExtractor.MessageContent messageContent = new MessageContentExtractor().extract(message.parsed());
             Optional<String> maybeBody = messageContent.extractMainTextContent(htmlTextExtractor);
 
-            return new LlmUserPrompt(userDisplayName, username.asString(), truncateBody(maybeBody.orElse("")), from, to, subject, labelsInfo);
+            return new LlmUserPrompt(userContext.displayName(), username.asString(), truncateBody(maybeBody.orElse("")), from, to, subject, labelsInfo);
     }
 
     private Mono<String> getUserDisplayName(Username username) {
@@ -354,7 +379,7 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
         return body.substring(0, maxBodyLength) + "... [truncated]";
     }
 
-    private Mono<String> callLlm(String systemPrompt, String userPrompt) {
+    private Mono<LlmOutput> callLlm(String systemPrompt, String userPrompt) {
         ChatMessage systemMessage = new SystemMessage(systemPrompt);
         ChatMessage userMessage = new UserMessage(userPrompt);
         List<ChatMessage> messages = List.of(systemMessage, userMessage);
@@ -364,7 +389,7 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
 
             @Override
             public void onComplete(Response response) {
-                sink.success(result.toString());
+                sink.success(LlmOutput.parse(result.toString()));
             }
 
             @Override
