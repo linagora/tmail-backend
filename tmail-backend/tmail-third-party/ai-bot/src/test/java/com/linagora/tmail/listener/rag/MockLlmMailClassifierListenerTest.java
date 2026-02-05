@@ -18,25 +18,30 @@
 
 package com.linagora.tmail.listener.rag;
 
-import static com.linagora.tmail.listener.rag.MockLlmMailPrioritizationClassifierListenerTest.setUpIdentityRepository;
-import static com.linagora.tmail.mailet.AIBotConfig.DEFAULT_TIMEOUT;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.mock;
 
-import java.net.URI;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
 import jakarta.mail.Flags;
+import jakarta.mail.internet.AddressException;
 
 import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
 import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.tree.ImmutableNode;
+import org.apache.james.core.MailAddress;
 import org.apache.james.events.EventBus;
 import org.apache.james.events.InVMEventBus;
 import org.apache.james.events.MemoryEventDeadLetters;
 import org.apache.james.events.RetryBackoffConfiguration;
 import org.apache.james.events.delivery.InVmEventDelivery;
+import org.apache.james.jmap.api.identity.DefaultIdentitySupplier;
+import org.apache.james.jmap.api.identity.IdentityCreationRequest;
 import org.apache.james.jmap.api.identity.IdentityRepository;
+import org.apache.james.jmap.api.model.EmailAddress;
+import org.apache.james.jmap.memory.identity.MemoryCustomIdentityDAO;
 import org.apache.james.jmap.utils.JsoupHtmlTextExtractor;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageIdManager;
@@ -52,36 +57,58 @@ import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.apache.james.util.html.HtmlTextExtractor;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Disabled;
+import org.mockito.Mockito;
 
 import com.google.common.collect.ImmutableMap;
+import com.linagora.tmail.james.jmap.label.LabelRepository;
+import com.linagora.tmail.james.jmap.label.MemoryLabelRepository;
+import com.linagora.tmail.james.jmap.model.Color;
+import com.linagora.tmail.james.jmap.model.DisplayName;
+import com.linagora.tmail.james.jmap.model.Label;
+import com.linagora.tmail.james.jmap.model.LabelCreationRequest;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
 import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
-import com.linagora.tmail.mailet.AIBotConfig;
-import com.linagora.tmail.mailet.LlmModel;
-import com.linagora.tmail.mailet.StreamChatLanguageModelFactory;
 
+import dev.langchain4j.data.message.AiMessage;
+import dev.langchain4j.data.message.ChatMessage;
+import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.output.Response;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scala.publisher.SMono;
 
-@Disabled("Manual run. Requires a valid Linagora AI's API key to be run")
-public class LinagoraLlmMailPrioritizationClassifierListenerTest implements LlmMailPrioritizationClassifierListenerContract {
+public class MockLlmMailClassifierListenerTest implements LlmMailClassifierListenerContract {
+
+    static class StubModel implements StreamingChatLanguageModel {
+        volatile String llOutput;
+
+        @Override
+        public void generate(java.util.List<ChatMessage> messages, StreamingResponseHandler<AiMessage> handler) {
+            handler.onNext(llOutput);
+            handler.onComplete(Response.from(AiMessage.from(llOutput)));
+        }
+    }
 
     private MessageIdManager messageIdManager;
+    private StubModel model;
     private MailboxSession aliceSession;
     private MessageManager aliceInbox;
     private MessageManager aliceSpam;
     private MessageManager aliceCustomMailbox;
     private HierarchicalConfiguration<ImmutableNode> listenerConfig;
     private StoreMailboxManager mailboxManager;
-    private StreamingChatLanguageModel chatLanguageModel;
     private IdentityRepository identityRepository;
     private JmapSettingsRepository jmapSettingsRepository;
     private JmapSettingsRepositoryJavaUtils jmapSettingsRepositoryUtils;
-    private LlmMailPrioritizationClassifierListener listener;
-    private LlmMailPrioritizationBackendClassifierListener backendListener;
+    private LlmMailClassifierListener listener;
+    private LlmMailBackendClassifierListener backendListener;
+    private LabelRepository labelRepository;
     private EventBus tmailEventBus;
+    private String label1Id;
+    private String label2Id;
+    private String label3Id;
 
     @BeforeEach
     void setup() throws Exception {
@@ -107,48 +134,82 @@ public class LinagoraLlmMailPrioritizationClassifierListenerTest implements LlmM
         messageIdManager = resources.getMessageIdManager();
         MetricFactory metricFactory = new RecordingMetricFactory();
         HtmlTextExtractor htmlTextExtractor = new JsoupHtmlTextExtractor();
+        model = new StubModel();
         tmailEventBus = new InVMEventBus(new InVmEventDelivery(metricFactory), backoffConfiguration, eventDeadLetters);
 
         aliceSession = mailboxManager.createSystemSession(ALICE);
         MailboxPath aliceInboxPath = MailboxPath.inbox(ALICE);
-        MailboxPath spamMailboxPath = MailboxPath.forUser(ALICE, "Spam");
         mailboxManager.createMailbox(aliceInboxPath, aliceSession);
-        mailboxManager.createMailbox(spamMailboxPath, aliceSession);
         aliceInbox = mailboxManager.getMailbox(aliceInboxPath, aliceSession);
+        MailboxPath spamMailboxPath = MailboxPath.forUser(ALICE, "Spam");
+        mailboxManager.createMailbox(spamMailboxPath, aliceSession);
         aliceSpam = mailboxManager.getMailbox(spamMailboxPath, aliceSession);
-        mailboxManager.createMailbox(MailboxPath.forUser(ALICE, "customMailbox"), aliceSession);
-        aliceCustomMailbox = mailboxManager.getMailbox(MailboxPath.forUser(ALICE, "customMailbox"), aliceSession);
+        aliceCustomMailbox = mailboxManager.getMailbox(spamMailboxPath, aliceSession);
 
         listenerConfig = new BaseHierarchicalConfiguration();
-
-        AIBotConfig aiBotConfig = new AIBotConfig(
-            Optional.ofNullable(System.getenv("LLM_API_KEY")).orElse("change-me"),
-            new LlmModel("openai/gpt-oss-120b"),
-            Optional.of(URI.create("https://ai.linagora.com/api/v1/").toURL()),
-            DEFAULT_TIMEOUT);
-        StreamChatLanguageModelFactory streamChatLanguageModelFactory = new StreamChatLanguageModelFactory();
-        chatLanguageModel = streamChatLanguageModelFactory.createChatLanguageModel(aiBotConfig);
         identityRepository = setUpIdentityRepository();
         jmapSettingsRepository = new MemoryJmapSettingsRepository();
         jmapSettingsRepositoryUtils = new JmapSettingsRepositoryJavaUtils(jmapSettingsRepository);
+        labelRepository = new MemoryLabelRepository();
+        Label label1 = Mono.from(labelRepository.addLabel(ALICE,new LabelCreationRequest(new DisplayName("label1"), scala.Option.apply(new Color("#0000")), scala.Option.apply("label1 description") ))).block();
+        label1Id = label1.keyword();
+        Label label2 =Mono.from(labelRepository.addLabel(ALICE,new LabelCreationRequest(new DisplayName("label2"), scala.Option.apply(new Color("#0000")), scala.Option.apply("label2 description") ))).block();
+        label2Id = label2.keyword();
+        Label label3 =Mono.from(labelRepository.addLabel(ALICE,new LabelCreationRequest(new DisplayName("label3"), scala.Option.apply(new Color("#0000")), scala.Option.apply("label3 description") ))).block();
+        label3Id = label3.keyword();
 
-        listener = new LlmMailPrioritizationClassifierListener(
+        listener = new LlmMailClassifierListener(
             mailboxManager,
             messageIdManager,
             new SystemMailboxesProviderImpl(mailboxManager),
             jmapSettingsRepository,
             tmailEventBus,
             listenerConfig);
-        backendListener = new LlmMailPrioritizationBackendClassifierListener(
+        backendListener = new LlmMailBackendClassifierListener(
             mailboxManager,
             messageIdManager,
-            chatLanguageModel,
+            model,
             htmlTextExtractor,
             identityRepository,
             metricFactory,
+            labelRepository,
             listenerConfig);
 
         jmapSettingsRepositoryUtils().reset(ALICE, ImmutableMap.of("ai.needs-action.enabled", "true"));
+    }
+
+    public static IdentityRepository setUpIdentityRepository() throws AddressException {
+        DefaultIdentitySupplier identityFactory = mock(DefaultIdentitySupplier.class);
+        Mockito.when(identityFactory.listIdentities(ALICE))
+            .thenReturn(Flux.just(IdentityFixture.ALICE_SERVER_SET_IDENTITY()));
+        Mockito.when(identityFactory.userCanSendFrom(any(), any()))
+            .thenReturn(SMono.just(true));
+        IdentityRepository identityRepository = new IdentityRepository(new MemoryCustomIdentityDAO(), identityFactory);
+
+        Integer highPriorityOrder = 1;
+        Integer lowPriorityOrder = 2;
+        IdentityCreationRequest creationRequest1 = IdentityCreationRequest.fromJava(
+            ALICE.asMailAddress(),
+            Optional.of("Alice in wonderland"),
+            Optional.of(List.of(EmailAddress.from(Optional.of("reply name 1"), new MailAddress("reply1@domain.org")))),
+            Optional.of(List.of(EmailAddress.from(Optional.of("bcc name 1"), new MailAddress("bcc1@domain.org")))),
+            Optional.of(highPriorityOrder),
+            Optional.of("textSignature 1"),
+            Optional.of("htmlSignature 1"));
+
+        IdentityCreationRequest creationRequest2 = IdentityCreationRequest.fromJava(
+            ALICE.asMailAddress(),
+            Optional.of("Alice in borderland"),
+            Optional.of(List.of(EmailAddress.from(Optional.of("reply name 2"), new MailAddress("reply2@domain.org")))),
+            Optional.of(List.of(EmailAddress.from(Optional.of("bcc name 2"), new MailAddress("bcc2@domain.org")))),
+            Optional.of(lowPriorityOrder),
+            Optional.of("textSignature 2"),
+            Optional.of("htmlSignature 2"));
+
+        Mono.from(identityRepository.save(ALICE, creationRequest1)).block();
+        Mono.from(identityRepository.save(ALICE, creationRequest2)).block();
+
+        return identityRepository;
     }
 
     @Override
@@ -178,20 +239,21 @@ public class LinagoraLlmMailPrioritizationClassifierListenerTest implements LlmM
 
     @Override
     public void resetListenerWithConfig(HierarchicalConfiguration<ImmutableNode> overrideConfig) {
-        listener = new LlmMailPrioritizationClassifierListener(
+        listener = new LlmMailClassifierListener(
             mailboxManager,
             messageIdManager,
             new SystemMailboxesProviderImpl(mailboxManager),
             jmapSettingsRepository,
             tmailEventBus,
             overrideConfig);
-        backendListener = new LlmMailPrioritizationBackendClassifierListener(
+        backendListener = new LlmMailBackendClassifierListener(
             mailboxManager,
             messageIdManager,
-            chatLanguageModel,
+            model,
             new JsoupHtmlTextExtractor(),
             identityRepository,
             new RecordingMetricFactory(),
+            labelRepository,
             overrideConfig);
     }
 
@@ -207,8 +269,35 @@ public class LinagoraLlmMailPrioritizationClassifierListenerTest implements LlmM
     }
 
     @Override
+    public void needActionsLlmHook() {
+        this.model.llOutput = """
+            YES, %s, %s""".formatted(label1Id, label2Id);
+    }
+
+    @Override
+    public void noNeedActionsLlmHook() {
+        this.model.llOutput = """
+            NO, %s""".formatted(label3Id);
+    }
+
+    @Override
     public Mono<Flags> readFlags(MessageId messageId, MailboxSession userSession) {
         return Mono.from(messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.MINIMAL, userSession))
             .map(MessageResult::getFlags);
+    }
+
+    @Override
+    public String getLabel1Id() {
+        return label1Id;
+    }
+
+    @Override
+    public String getLabel2Id() {
+        return label2Id;
+    }
+
+    @Override
+    public String getLabel3Id() {
+        return label3Id;
     }
 }

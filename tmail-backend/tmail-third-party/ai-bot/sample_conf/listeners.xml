@@ -28,7 +28,7 @@
     </listener>
 
     <listener>
-        <class>com.linagora.tmail.listener.rag.LlmMailPrioritizationClassifierListener</class>
+        <class>com.linagora.tmail.listener.rag.LlmMailClassifierListener</class>
         <configuration>
             <!-- Optional: override the default system prompt -->
             <systemPrompt>Custom LLM classifier instruction</systemPrompt>

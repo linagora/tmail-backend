@@ -18,7 +18,7 @@
 
 package com.linagora.tmail.listener.rag
 
-import com.linagora.tmail.listener.rag.LlmMailPrioritizationClassifierListenerContract.ALICE
+import LlmMailClassifierListenerContract.ALICE
 import org.apache.james.core.MailAddress
 import org.apache.james.jmap.api.model.{EmailAddress, EmailerName, HtmlSignature, Identity, IdentityId, IdentityName, MayDeleteIdentity, TextSignature}
 
