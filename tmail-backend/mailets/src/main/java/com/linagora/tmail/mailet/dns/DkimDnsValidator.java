@@ -21,11 +21,14 @@ package com.linagora.tmail.mailet.dns;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import org.apache.james.core.Domain;
 import org.apache.james.dnsservice.api.DNSService;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Splitter;
 
 /**
  * Validates DKIM DNS records for a given domain and selector.
@@ -37,6 +40,7 @@ import com.google.common.annotations.VisibleForTesting;
  * </p>
  */
 public class DkimDnsValidator {
+    public static final Pattern LONG_DKIM_PATTRN = Pattern.compile("\"\\s*\"");
     private final DNSService dnsService;
     private final List<String> acceptedDkimKeys;
 
@@ -91,12 +95,12 @@ public class DkimDnsValidator {
     boolean isValidDkimRecord(String txtRecord) {
         // Use regex to allow flexible whitespace around version tag
         // Matches: "v=DKIM1", "v = DKIM1", " v=DKIM1 ", etc.
-        return txtRecord.trim().matches("(?i)^v\\s*=\\s*DKIM1.*");
+        return txtRecord.trim().matches("(?i).*v\\s*=\\s*DKIM1.*");
     }
 
     @VisibleForTesting
     boolean hasDkimPublicKey(String txtRecord) {
-        String trimmedTxtRecord = txtRecord.trim();
+        String trimmedTxtRecord = Splitter.on(LONG_DKIM_PATTRN).splitToStream(txtRecord.trim()).collect(Collectors.joining());
         return acceptedDkimKeys.stream()
             .anyMatch(dkimKey -> trimmedTxtRecord.matches(".*p\\s*=\\s*" + dkimKey + ".*"));
     }
