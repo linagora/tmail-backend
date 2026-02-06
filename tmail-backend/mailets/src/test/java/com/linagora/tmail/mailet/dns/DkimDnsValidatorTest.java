@@ -86,6 +86,7 @@ class DkimDnsValidatorTest {
 
         assertThat(result).isEmpty();
     }
+
     @Test
     void shouldPassWhenLongKeyUsers() {
         dnsService.registerRecord("s1._domainkey.example.com", ImmutableList.of(), ImmutableList.of(),
