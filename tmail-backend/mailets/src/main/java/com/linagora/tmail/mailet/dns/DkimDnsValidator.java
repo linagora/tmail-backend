@@ -106,7 +106,7 @@ public class DkimDnsValidator {
             .map(s -> s.replace(" ", ""))
             .flatMap(tag -> {
                 int eqIdx = tag.indexOf('=');
-                if (eqIdx <=0 || eqIdx == tag.length() - 1) {
+                if (eqIdx <= 0 || eqIdx == tag.length() - 1) {
                     // Remove invalid tags
                     return Stream.empty();
                 }
