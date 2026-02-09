@@ -41,6 +41,7 @@ import org.apache.james.utils.ExtensionConfiguration;
 import org.apache.james.utils.PropertiesProvider;
 
 import com.github.fge.lambdas.Throwing;
+import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
@@ -56,6 +57,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
                                          MailQueueViewChoice mailQueueViewChoice,
                                          FirebaseModuleChooserConfiguration firebaseModuleChooserConfiguration,
                                          LinagoraServicesDiscoveryModuleChooserConfiguration linagoraServicesDiscoveryModuleChooserConfiguration,
+                                         OpenPaasModuleChooserConfiguration openPaasModuleChooserConfiguration,
                                          TWPSettingsModuleChooserConfiguration twpSettingsModuleChooserConfiguration,
                                          boolean jmapEnabled,
                                          boolean rlsEnabled,
@@ -117,6 +119,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
         private Optional<MailQueueViewChoice> mailQueueViewChoice;
         private Optional<FirebaseModuleChooserConfiguration> firebaseModuleChooserConfiguration;
         private Optional<LinagoraServicesDiscoveryModuleChooserConfiguration> linagoraServicesDiscoveryModuleChooserConfiguration;
+        private Optional<OpenPaasModuleChooserConfiguration> openPaasModuleChooserConfiguration;
         private Optional<TWPSettingsModuleChooserConfiguration> twpSettingsModuleChooserConfiguration;
         private Optional<Boolean> jmapEnabled;
         private Optional<Boolean> rlsEnabled;
@@ -134,6 +137,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
             mailQueueViewChoice = Optional.empty();
             firebaseModuleChooserConfiguration = Optional.empty();
             linagoraServicesDiscoveryModuleChooserConfiguration = Optional.empty();
+            openPaasModuleChooserConfiguration = Optional.empty();
             twpSettingsModuleChooserConfiguration = Optional.empty();
             jmapEnabled = Optional.empty();
             rlsEnabled = Optional.empty();
@@ -198,6 +202,11 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
 
         public Builder linagoraServicesDiscoveryModuleChooserConfiguration(LinagoraServicesDiscoveryModuleChooserConfiguration servicesDiscoveryModuleChooserConfiguration) {
             this.linagoraServicesDiscoveryModuleChooserConfiguration = Optional.of(servicesDiscoveryModuleChooserConfiguration);
+            return this;
+        }
+
+        public Builder openPaasModuleChooserConfiguration(OpenPaasModuleChooserConfiguration openPaasModuleChooserConfiguration) {
+            this.openPaasModuleChooserConfiguration = Optional.of(openPaasModuleChooserConfiguration);
             return this;
         }
 
@@ -275,6 +284,9 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
             LinagoraServicesDiscoveryModuleChooserConfiguration servicesDiscoveryModuleChooserConfiguration = this.linagoraServicesDiscoveryModuleChooserConfiguration
                 .orElseGet(Throwing.supplier(() -> LinagoraServicesDiscoveryModuleChooserConfiguration.parse(propertiesProvider)));
 
+            OpenPaasModuleChooserConfiguration openPaasModuleChooserConfiguration = this.openPaasModuleChooserConfiguration
+                .orElseGet(Throwing.supplier(() -> OpenPaasModuleChooserConfiguration.parse(propertiesProvider)));
+
             TWPSettingsModuleChooserConfiguration twpSettingsModuleChooserConfiguration = this.twpSettingsModuleChooserConfiguration
                 .orElseGet(Throwing.supplier(() -> TWPSettingsModuleChooserConfiguration.parse(propertiesProvider)));
 
@@ -314,6 +326,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
                 mailQueueViewChoice,
                 firebaseModuleChooserConfiguration,
                 servicesDiscoveryModuleChooserConfiguration,
+                openPaasModuleChooserConfiguration,
                 twpSettingsModuleChooserConfiguration,
                 jmapEnabled,
                 rlsEnabled,

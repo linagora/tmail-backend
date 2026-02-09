@@ -122,6 +122,7 @@ import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
 import com.google.inject.Module;
 import com.google.inject.Scopes;
@@ -132,6 +133,9 @@ import com.google.inject.util.Modules;
 import com.linagora.tmail.DatabaseCombinedUserRequireModule;
 import com.linagora.tmail.ExtensionModuleProvider;
 import com.linagora.tmail.NoopGuiceLoader;
+import com.linagora.tmail.OpenPaasContactsConsumerModule;
+import com.linagora.tmail.OpenPaasModule;
+import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.ScheduledReconnectionHandler;
 import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.blob.guice.BlobStoreModulesChooser;
@@ -261,10 +265,10 @@ public class PostgresTmailServer {
                 binder.bind(GuiceLoader.class).to(NoopGuiceLoader.class);
                 binder.bind(NoopGuiceLoader.class).in(Scopes.SINGLETON);
             })
+            .overrideWith(chooseOpenPaasModule(configuration.openPaasModuleChooserConfiguration()))
             .overrideWith(chooseJmapModule(configuration))
             .overrideWith(chooseTaskManagerModules(configuration))
             .overrideWith(chooseJmapOidc(configuration))
-            .overrideWith(CALDAV_SUPPORT_MODULE_PROVIDER.apply(!CALDAV_SUPPORTED))
             .overrideWith(chooseTWPSettingsModule(configuration.twpSettingsModuleChooserConfiguration()))
             .overrideWith(chooseEventBusModules(configuration.eventBusImpl()));
     }
@@ -545,6 +549,21 @@ public class PostgresTmailServer {
         return binder -> {
 
         };
+    }
+
+    private static List<Module> chooseOpenPaasModule(OpenPaasModuleChooserConfiguration openPaasModuleChooserConfiguration) {
+        if (openPaasModuleChooserConfiguration.enabled()) {
+            ImmutableList.Builder<Module> moduleBuilder = ImmutableList.<Module>builder().add(new OpenPaasModule());
+            if (openPaasModuleChooserConfiguration.shouldEnableDavServerInteraction()) {
+                moduleBuilder.add(new OpenPaasModule.DavModule());
+            }
+            moduleBuilder.add(CALDAV_SUPPORT_MODULE_PROVIDER.apply(openPaasModuleChooserConfiguration.shouldEnableDavServerInteraction()));
+            if (openPaasModuleChooserConfiguration.contactsConsumerEnabled()) {
+                moduleBuilder.add(new OpenPaasContactsConsumerModule());
+            }
+            return moduleBuilder.build();
+        }
+        return List.of(CALDAV_SUPPORT_MODULE_PROVIDER.apply(!CALDAV_SUPPORTED));
     }
 
     private static List<Module> chooseTWPSettingsModule(TWPSettingsModuleChooserConfiguration twpSettingsModuleChooserConfiguration) {
