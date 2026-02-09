@@ -271,13 +271,13 @@ public class MockLlmMailClassifierListenerTest implements LlmMailClassifierListe
     @Override
     public void needActionsLlmHook() {
         this.model.llOutput = """
-            YES, %s, %s""".formatted(label1Id, label2Id);
+            %s, %s, %s""".formatted(NEES_ACTION_FLAG, label1Id, label2Id);
     }
 
     @Override
     public void noNeedActionsLlmHook() {
         this.model.llOutput = """
-            NO, %s""".formatted(label3Id);
+            %s""".formatted(label3Id);
     }
 
     @Override

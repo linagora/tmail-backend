@@ -27,9 +27,12 @@ Example:
             </and>
         </filter>
         <systemPrompt>
-            You are an email assistant that determines if emails require user action.
-            Consider: urgency, deadlines, direct questions, and required responses.
-            Respond only with 'YES' (needs action) or 'NO' (informational).
+            Classify emails by selecting relevant labels from the provided list.
+            Match labels whose descriptions or name align with the email's content, topic, and intent.
+            Prioritize specific over generic labels.
+
+            OUTPUT: Comma-separated labelIds (e.g., "needs-action,work" or "personal" or empty).
+            Return ONLY label names. No explanations.
         </systemPrompt>
         <maxBodyLength>5000</maxBodyLength>
     </configuration>
