@@ -20,6 +20,7 @@ package com.linagora.tmail.james.jmap.perfs
 
 import java.io.InputStream
 import java.util
+
 import com.google.common.io.ByteSource
 import jakarta.inject.Inject
 import org.apache.commons.io.output.UnsynchronizedByteArrayOutputStream
