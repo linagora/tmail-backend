@@ -20,12 +20,12 @@ package com.linagora.tmail.james.jmap.perfs
 
 import java.io.InputStream
 import java.util
-
 import com.google.common.io.ByteSource
 import jakarta.inject.Inject
 import org.apache.commons.io.output.UnsynchronizedByteArrayOutputStream
 import org.apache.james.jmap.mail.{BlobId, Disposition, EmailBodyPart}
 import org.apache.james.jmap.method.ZoneIdProvider
+import org.apache.james.lifecycle.api.Disposable
 import org.apache.james.mailbox.model.{Cid, MessageId, ParsedAttachment}
 import org.apache.james.mailbox.store.mail.model.impl.{FileBufferedBodyFactory, MessageParser}
 import org.apache.james.mime4j.codec.DecodeMonitor
@@ -69,6 +69,7 @@ object TMailCleverParsedAttachment {
 
 class TMailCleverMessageParser @Inject() (zoneIdProvider: ZoneIdProvider) extends MessageParser {
   override def retrieveAttachments(fullContent: InputStream): MessageParser.ParsingResult = {
+    Disposable.LeakAware.track();
     val defaultMessageBuilder = new DefaultMessageBuilder
     defaultMessageBuilder.setMimeEntityConfig(MimeConfig.PERMISSIVE)
     defaultMessageBuilder.setDecodeMonitor(DecodeMonitor.SILENT)
