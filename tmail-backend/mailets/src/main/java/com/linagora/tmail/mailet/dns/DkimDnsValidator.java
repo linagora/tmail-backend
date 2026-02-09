@@ -21,11 +21,13 @@ package com.linagora.tmail.mailet.dns;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import org.apache.james.core.Domain;
 import org.apache.james.dnsservice.api.DNSService;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Splitter;
 
 /**
  * Validates DKIM DNS records for a given domain and selector.
@@ -91,13 +93,29 @@ public class DkimDnsValidator {
     boolean isValidDkimRecord(String txtRecord) {
         // Use regex to allow flexible whitespace around version tag
         // Matches: "v=DKIM1", "v = DKIM1", " v=DKIM1 ", etc.
-        return txtRecord.trim().matches("(?i)^v\\s*=\\s*DKIM1.*");
+        return txtRecord.trim().matches("(?i).*v\\s*=\\s*DKIM1.*");
     }
 
     @VisibleForTesting
     boolean hasDkimPublicKey(String txtRecord) {
-        String trimmedTxtRecord = txtRecord.trim();
-        return acceptedDkimKeys.stream()
-            .anyMatch(dkimKey -> trimmedTxtRecord.matches(".*p\\s*=\\s*" + dkimKey + ".*"));
+        // Handle multi-string DNS records by removing quotes, then parse DKIM tags
+        String normalized = txtRecord.replace("\"", "");
+
+        return Splitter.on(';').splitToStream(normalized)
+            .map(String::trim)
+            .map(s -> s.replace(" ", ""))
+            .flatMap(tag -> {
+                int eqIdx = tag.indexOf('=');
+                if (eqIdx <= 0 || eqIdx == tag.length() - 1) {
+                    // Remove invalid tags
+                    return Stream.empty();
+                }
+                if (!tag.substring(0, eqIdx).equalsIgnoreCase("p")) {
+                    // Discard tags other than 'p'
+                    return Stream.empty();
+                }
+                return Stream.of(tag.substring(eqIdx + 1));
+            })
+            .anyMatch(acceptedDkimKeys::contains);
     }
 }

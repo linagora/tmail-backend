@@ -88,6 +88,16 @@ class DkimDnsValidatorTest {
     }
 
     @Test
+    void shouldPassWhenLongKeyUsers() {
+        dnsService.registerRecord("s1._domainkey.example.com", ImmutableList.of(), ImmutableList.of(),
+            ImmutableList.of("\"v=DKIM1; k=rsa; p=key\" \"2\""));
+
+        Optional<DkimValidationFailure> result = validator.validate(Domain.of("example.com"), "s1");
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
     void shouldFailWhenNotAcceptedKey() {
         dnsService.registerRecord("s1._domainkey.example.com", ImmutableList.of(), ImmutableList.of(),
             ImmutableList.of("v=DKIM1; k=rsa; p=key3"));
