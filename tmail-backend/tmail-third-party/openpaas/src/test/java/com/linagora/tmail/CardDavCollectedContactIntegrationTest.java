@@ -18,6 +18,7 @@
 
 package com.linagora.tmail;
 
+import static com.linagora.tmail.listener.CollectTrustedContactsListener.TO_BE_COLLECTED_FLAG;
 import static org.apache.james.mailets.configuration.Constants.DEFAULT_DOMAIN;
 import static org.apache.james.mailets.configuration.Constants.LOCALHOST_IP;
 import static org.apache.james.mailets.configuration.Constants.PASSWORD;
@@ -25,22 +26,30 @@ import static org.apache.james.mailets.configuration.Constants.awaitAtMostOneMin
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.UUID;
 
 import jakarta.inject.Singleton;
+import jakarta.mail.Flags;
 import jakarta.mail.MessagingException;
 
 import org.apache.james.MemoryJamesServerMain;
 import org.apache.james.core.Username;
 import org.apache.james.core.builder.MimeMessageBuilder;
 import org.apache.james.jmap.routes.BlobResolver;
+import org.apache.james.mailbox.DefaultMailboxes;
+import org.apache.james.mailbox.MessageManager;
+import org.apache.james.mailbox.model.ComposedMessageId;
+import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailets.TemporaryJamesServer;
 import org.apache.james.mailets.configuration.CommonProcessors;
 import org.apache.james.mailets.configuration.MailetConfiguration;
 import org.apache.james.mailets.configuration.ProcessorConfiguration;
+import org.apache.james.mime4j.dom.Message;
+import org.apache.james.modules.MailboxProbeImpl;
 import org.apache.james.modules.protocols.ImapGuiceProbe;
 import org.apache.james.modules.protocols.SmtpGuiceProbe;
 import org.apache.james.probe.DataProbe;
@@ -64,6 +73,7 @@ import com.linagora.tmail.dav.CardDavUtils;
 import com.linagora.tmail.dav.DavServerExtension;
 import com.linagora.tmail.dav.WireMockOpenPaaSServerExtension;
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngineModule;
+import com.linagora.tmail.listener.CollectTrustedContactsListenerModule;
 import com.linagora.tmail.mailet.CardDavCollectedContact;
 
 import reactor.core.publisher.Mono;
@@ -73,6 +83,7 @@ public class CardDavCollectedContactIntegrationTest {
     private static final Username BOB = Username.of("bob@" + DEFAULT_DOMAIN);
     private static final Username CEDRIC = Username.of("cedric@" + DEFAULT_DOMAIN);
     private static final String ALICE_OPENPAAS_USER_NAME = ALICE.asString();
+    private static final String BOB_OPENPAAS_USER_NAME = BOB.asString();
     private static final boolean COLLECTED_CONTACT_EXISTS = true;
 
     @RegisterExtension
@@ -98,7 +109,8 @@ public class CardDavCollectedContactIntegrationTest {
             .withOverrides(new AbstractModule() {
                 @Override
                 protected void configure() {
-                   install(new OpenPaasModule.DavModule());
+                    install(new OpenPaasModule.DavModule());
+                    install(new CollectTrustedContactsListenerModule());
                 }
 
                 @Provides
@@ -310,6 +322,51 @@ public class CardDavCollectedContactIntegrationTest {
         davServerExtension.assertCreateCollectedContactWasCalled(ALICE_OPENPAAS_USER_NAME, aliceOpenPassId, bobContactUid, 1);
     }
 
+    @Test
+    void shouldCollectContactsWhenAddedEventContainsToBeCollectedFlag() throws Exception {
+        String aliceContactUid = CardDavUtils.createContactUid(ALICE.asMailAddress());
+        String bobOpenPassId = UUID.randomUUID().toString();
+        openPaasServerExtension.setSearchEmailExist(BOB.asString(), bobOpenPassId);
+        davServerExtension.setCollectedContactExists(BOB_OPENPAAS_USER_NAME, bobOpenPassId, aliceContactUid, !COLLECTED_CONTACT_EXISTS);
+        davServerExtension.setCreateCollectedContact(BOB_OPENPAAS_USER_NAME, bobOpenPassId, aliceContactUid);
+
+        appendMessageToInbox(BOB, MessageManager.AppendCommand.builder()
+            .withFlags(new Flags(TO_BE_COLLECTED_FLAG))
+            .build(Message.Builder.of()
+                .setFrom(ALICE.asString())
+                .setTo(BOB.asString())
+                .setSubject("trusted contacts")
+                .setBody("Body", StandardCharsets.UTF_8)
+                .build()));
+
+        awaitAtMostOneMinute.untilAsserted(() ->
+            davServerExtension.assertCreateCollectedContactWasCalled(BOB_OPENPAAS_USER_NAME, bobOpenPassId, aliceContactUid, 1));
+    }
+
+    @Test
+    void shouldCollectContactsWhenFlagsUpdatedAddsToBeCollectedFlag() throws Exception {
+        String aliceContactUid = CardDavUtils.createContactUid(ALICE.asMailAddress());
+        String bobOpenPassId = UUID.randomUUID().toString();
+        openPaasServerExtension.setSearchEmailExist(BOB.asString(), bobOpenPassId);
+        davServerExtension.setCollectedContactExists(BOB_OPENPAAS_USER_NAME, bobOpenPassId, aliceContactUid, !COLLECTED_CONTACT_EXISTS);
+        davServerExtension.setCreateCollectedContact(BOB_OPENPAAS_USER_NAME, bobOpenPassId, aliceContactUid);
+
+        ComposedMessageId composedMessageId = appendMessageToInbox(BOB, MessageManager.AppendCommand.builder()
+            .withFlags(new Flags())
+            .build(Message.Builder.of()
+                .setFrom(ALICE.asString())
+                .setTo(BOB.asString())
+                .setSubject("trusted contacts")
+                .setBody("Body", StandardCharsets.UTF_8)
+                .build()));
+
+        jamesServer.getProbe(MailboxProbeImpl.class)
+            .setFlags(BOB, MailboxPath.inbox(BOB), composedMessageId.getUid(), new Flags(TO_BE_COLLECTED_FLAG));
+
+        awaitAtMostOneMinute.untilAsserted(() ->
+            davServerExtension.assertCreateCollectedContactWasCalled(BOB_OPENPAAS_USER_NAME, bobOpenPassId, aliceContactUid, 1));
+    }
+
     private void aliceSendAnEmailToBob() throws MessagingException, IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidKeySpecException {
         messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
             .authenticate(ALICE.asString(), PASSWORD)
@@ -327,5 +384,15 @@ public class CardDavCollectedContactIntegrationTest {
             .login(BOB, PASSWORD)
             .select(TestIMAPClient.INBOX)
             .awaitMessage(awaitAtMostOneMinute);
+    }
+
+    private ComposedMessageId appendMessageToInbox(Username recipient, MessageManager.AppendCommand appendCommand) throws Exception {
+        MailboxProbeImpl mailboxProbe = jamesServer.getProbe(MailboxProbeImpl.class);
+        mailboxProbe.createMailbox("#private", recipient.asString(), DefaultMailboxes.INBOX);
+        return mailboxProbe
+            .appendMessage(
+                recipient.asString(),
+                MailboxPath.inbox(recipient),
+                appendCommand);
     }
 }
