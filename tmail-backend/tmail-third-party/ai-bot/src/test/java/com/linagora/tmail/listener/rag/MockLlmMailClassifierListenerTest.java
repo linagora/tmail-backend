@@ -175,7 +175,7 @@ public class MockLlmMailClassifierListenerTest implements LlmMailClassifierListe
             labelRepository,
             listenerConfig);
 
-        jmapSettingsRepositoryUtils().reset(ALICE, ImmutableMap.of("ai.needs-action.enabled", "true"));
+        jmapSettingsRepositoryUtils().reset(ALICE, ImmutableMap.of("ai.label-categorization.enabled", "true"));
     }
 
     public static IdentityRepository setUpIdentityRepository() throws AddressException {

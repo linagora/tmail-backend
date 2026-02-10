@@ -1,7 +1,7 @@
 # LLM Mail Prioritization Classifier Listener
 
 The `LlmMailPrioritizationClassifierListener` is an event-driven listener that automatically analyzes incoming emails
-using a Large Language Model (LLM) to determine if they require user action. 
+using a Large Language Model (LLM) and assign the most relevant labels. 
 
 When an email is classified as needing action, it is automatically tagged with the `needs-action` flag.
 
@@ -99,9 +99,9 @@ The default system prompt instructs the LLM to:
 
 ## User Settings
 
-Users can enable or disable the AI needs-action feature through JMAP settings:
+Users can enable or disable the AI label-categorization feature through JMAP settings:
 
-- **Setting Key**: `ai.needs-action.enabled`
+- **Setting Key**: `ai.label-categorization.enabled`
 - **Values**: `true` (enabled) or `false` (disabled)
 - **Default**: `false` (disabled by default in order to collect explicit user consent)
 

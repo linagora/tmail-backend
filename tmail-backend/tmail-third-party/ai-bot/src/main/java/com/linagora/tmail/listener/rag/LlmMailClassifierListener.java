@@ -125,7 +125,7 @@ public class LlmMailClassifierListener implements EventListener.ReactiveGroupEve
         Username username = addedEvent.getUsername();
         MailboxSession session = mailboxManager.createSystemSession(username);
 
-        return aiNeedActionsSettingEnabled(username)
+        return aiLabelCategorizationSettingEnabled(username)
             .flatMap(any -> dispatchAiAnalysisIfNeeded(addedEvent, session));
     }
 
@@ -147,10 +147,10 @@ public class LlmMailClassifierListener implements EventListener.ReactiveGroupEve
             message.messageResult().getMailboxId(), message.messageResult().getMessageId());
     }
 
-    private Mono<Boolean> aiNeedActionsSettingEnabled(Username username) {
+    private Mono<Boolean> aiLabelCategorizationSettingEnabled(Username username) {
         return Mono.from(jmapSettingsRepository.get(username))
-            .map(JmapSettings::aiNeedsActionEnable)
-            .defaultIfEmpty(JmapSettings.AI_NEEDS_ACTION_DISABLE_DEFAULT_VALUE())
+            .map(JmapSettings::aiLabelCategorizationEnable)
+            .defaultIfEmpty(JmapSettings.AI_LABEL_CATEGORIZATION_DISABLE_DEFAULT_VALUE())
             .filter(Boolean::booleanValue);
     }
 }

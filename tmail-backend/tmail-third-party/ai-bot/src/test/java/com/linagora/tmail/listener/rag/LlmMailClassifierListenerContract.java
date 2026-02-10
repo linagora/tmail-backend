@@ -555,7 +555,7 @@ public interface LlmMailClassifierListenerContract {
 
     @Test
     default void urgentEmailShouldBeTaggedNeedsActionWhenUserEnabledNeedsActionSetting() throws Exception {
-        jmapSettingsRepositoryUtils().reset(ALICE, Map.of("ai.needs-action.enabled", "true"));
+        jmapSettingsRepositoryUtils().reset(ALICE, Map.of("ai.label-categorization.enabled", "true"));
         registerListenerToEventBus();
         needActionsLlmHook();
 
@@ -586,7 +586,7 @@ public interface LlmMailClassifierListenerContract {
 
     @Test
     default void urgentEmailShouldNotBeTaggedNeedsActionWhenUserDisabledNeedsActionSetting() throws Exception {
-        jmapSettingsRepositoryUtils().reset(ALICE, Map.of("ai.needs-action.enabled", "false"));
+        jmapSettingsRepositoryUtils().reset(ALICE, Map.of("ai.label-categorization.enabled", "false"));
         registerListenerToEventBus();
         needActionsLlmHook();
 

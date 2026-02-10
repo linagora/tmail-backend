@@ -167,7 +167,7 @@ public class LinagoraLlmMailClassifierListenerTest implements LlmMailClassifierL
             labelRepository,
             listenerConfig);
 
-        jmapSettingsRepositoryUtils().reset(ALICE, ImmutableMap.of("ai.needs-action.enabled", "true"));
+        jmapSettingsRepositoryUtils().reset(ALICE, ImmutableMap.of("ai.label-categorization.enabled", "true"));
     }
 
     @Override
