@@ -184,6 +184,7 @@ import com.linagora.tmail.james.jmap.settings.TWPSettingsModuleChooserConfigurat
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.PostgresTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
+import com.linagora.tmail.listener.CollectTrustedContactsListenerModule;
 import com.linagora.tmail.mailbox.opensearch.TmailOpenSearchMailboxMappingModule;
 import com.linagora.tmail.mailbox.quota.postgres.PostgresUserQuotaReporterModule;
 import com.linagora.tmail.modules.data.TMailPostgresDataModule;
@@ -199,6 +200,7 @@ import com.linagora.tmail.webadmin.RateLimitsRoutesModule;
 import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 import com.linagora.tmail.webadmin.archival.InboxArchivalTaskModule;
 import com.linagora.tmail.webadmin.cleanup.MailboxesCleanupModule;
+import com.linagora.tmail.webadmin.contact.aucomplete.ContactIndexingModule;
 import com.linagora.tmail.webadmin.quota.UserQuotaReporterRoutesModule;
 
 import reactor.core.publisher.Mono;
@@ -295,6 +297,7 @@ public class PostgresTmailServer {
         new TeamMailboxModule(),
         new TeamMailboxRoutesModule(),
         new UserIdentityModule(),
+        new ContactIndexingModule(),
         new WebAdminMailOverWebModule(),
         new WebAdminReIndexingTaskSerializationModule(),
         new WebAdminServerModule());
@@ -380,7 +383,8 @@ public class PostgresTmailServer {
             chooseQueueModules(configuration),
             new TMailIMAPModule(),
             QUOTA_USERNAME_SUPPLIER_MODULE,
-            new EventBusDisconnectorModule());
+            new EventBusDisconnectorModule(),
+            new CollectTrustedContactsListenerModule());
 
     private static final Module SCANNING_QUOTA_SEARCH_MODULE = new AbstractModule() {
         @Override
