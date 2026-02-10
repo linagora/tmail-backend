@@ -91,8 +91,18 @@ public class SpfDnsValidator {
 
     @VisibleForTesting
     boolean isSpfRecord(String txtRecord) {
-        String normalized = txtRecord.trim();
+        String normalized = unquote(txtRecord.trim());
         return normalized.startsWith(SPF_PREFIX);
+    }
+
+    private static String unquote(String txtRecord) {
+        if (txtRecord.startsWith("\"")) {
+            return unquote(txtRecord.substring(1).trim());
+        }
+        if (txtRecord.endsWith("\"")) {
+            return unquote(txtRecord.substring(0, txtRecord.length() - 1).trim());
+        }
+        return txtRecord;
     }
 
     @VisibleForTesting
