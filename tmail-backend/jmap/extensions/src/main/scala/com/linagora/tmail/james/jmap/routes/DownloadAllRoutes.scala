@@ -51,6 +51,7 @@ import org.apache.james.jmap.{Endpoint, JMAPRoute, JMAPRoutes}
 import org.apache.james.mailbox.model.{AttachmentId, AttachmentMetadata, FetchGroup, MessageId, MessageResult, ParsedAttachment}
 import org.apache.james.mailbox.store.mail.AttachmentIdAssignationStrategy
 import org.apache.james.mailbox.store.mail.model.impl.MessageParser
+import org.apache.james.mailbox.store.mail.model.impl.MessageParser.ParsingResult
 import org.apache.james.mailbox.{AttachmentManager, MailboxSession, MessageIdManager}
 import org.apache.james.metrics.api.MetricFactory
 import org.apache.james.mime4j.codec.EncoderUtil
@@ -164,26 +165,39 @@ class DownloadAllRoutes @Inject()(@Named(InjectionKeys.RFC_8621) val authenticat
       .flatMap(messageId => SFlux(messageIdManager.getMessagesReactive(ImmutableList.of(messageId), FetchGroup.FULL_CONTENT, mailboxSession))
         .singleOrEmpty()
         .switchIfEmpty(SMono.error(MessageNotFoundException(id)))
-        .flatMapMany(messageResult => SFlux.fromIterable(messageResult.getLoadedAttachments.asScala)
-          .filter(attachment => !attachment.isInline)
-          .flatMap(attachment => getBlob(attachment.getAttachmentId, mailboxSession)
-            .map(blob => BlobWithName(blob, attachment.getName.orElse(DEFAULT_FILE_NAME))))
-          .switchIfEmpty(getAttachments(messageResult)
-            .filter(attachment => !attachment.isInline)
-            .flatMap(attachment => getBlob(attachment, messageId)
-            .map(blob => BlobWithName(blob, attachment.getName.orElse(DEFAULT_FILE_NAME))))))
-        .collectSeq()
-        .flatMap(blobs => downloadBlobs(
-            optionalName = queryParam(request, nameParam),
-            response = response,
-            blobs)
-          .`then`()))
+        .flatMap(messageResult => handleMessageResult(request, response, messageResult, mailboxSession)))
   }
 
-  private def getAttachments(messageResult: MessageResult): SFlux[ParsedAttachment] =
-    SFlux.fromIterable(messageParser.retrieveAttachments(messageResult.getFullContent.getInputStream)
-      .getAttachments
-      .asScala)
+  private def handleMessageResult(request: HttpServerRequest, response: HttpServerResponse, messageResult: MessageResult, mailboxSession: MailboxSession) = {
+    SFlux.fromIterable(messageResult.getLoadedAttachments.asScala)
+      .filter(attachment => !attachment.isInline)
+      .flatMap(attachment => getBlob(attachment.getAttachmentId, mailboxSession)
+        .map(blob => BlobWithName(blob, attachment.getName.orElse(DEFAULT_FILE_NAME))))
+      .collectSeq()
+      .flatMap(blobs => downloadBlobsWithFallback(request, response, blobs, messageResult))
+  }
+
+  private def downloadBlobsWithFallback(request: HttpServerRequest, response: HttpServerResponse, blobs: Seq[BlobWithName], messageResult: MessageResult): SMono[Unit] =
+    if (blobs.isEmpty) {
+      SMono.fromPublisher(Mono.usingWhen(getAttachments(messageResult),
+        (parsingResult: ParsingResult) => parsingFallback(request, response, parsingResult, messageResult.getMessageId),
+        (parsingResult: ParsingResult) => Mono.fromRunnable(() => parsingResult.dispose())))
+    } else {
+      downloadBlobs(optionalName = queryParam(request, nameParam), response = response, blobs)
+        .`then`()
+    }
+
+  private def parsingFallback(request: HttpServerRequest, response: HttpServerResponse, parsingResult: ParsingResult, messageId: MessageId) =
+    Mono.from(SFlux.fromIterable(parsingResult.getAttachments.asScala)
+      .filter(attachment => !attachment.isInline)
+      .flatMap(attachment => getBlob(attachment, messageId)
+        .map(blob => BlobWithName(blob, attachment.getName.orElse(DEFAULT_FILE_NAME))))
+      .collectSeq()
+      .flatMap(parsedBlobs => downloadBlobs(optionalName = queryParam(request, nameParam), response = response, parsedBlobs))
+      .`then`())
+
+  private def getAttachments(messageResult: MessageResult): SMono[MessageParser.ParsingResult] =
+    SMono.fromCallable(() => messageParser.retrieveAttachments(messageResult.getFullContent.getInputStream))
 
   private def getBlob(attachmentId: AttachmentId, mailboxSession: MailboxSession): SMono[Blob] =
     SMono(attachmentManager.getAttachmentReactive(attachmentId, mailboxSession))
