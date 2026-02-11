@@ -36,6 +36,16 @@ import com.google.common.annotations.VisibleForTesting;
  * </p>
  */
 public class SpfDnsValidator {
+    static String unquote(String txtRecord) {
+        if (txtRecord.startsWith("\"")) {
+            return unquote(txtRecord.substring(1).trim());
+        }
+        if (txtRecord.endsWith("\"")) {
+            return unquote(txtRecord.substring(0, txtRecord.length() - 1).trim());
+        }
+        return txtRecord;
+    }
+
     private static final String SPF_PREFIX = "v=spf1";
 
     private final DNSService dnsService;
@@ -91,7 +101,7 @@ public class SpfDnsValidator {
 
     @VisibleForTesting
     boolean isSpfRecord(String txtRecord) {
-        String normalized = txtRecord.trim();
+        String normalized = unquote(txtRecord.trim());
         return normalized.startsWith(SPF_PREFIX);
     }
 

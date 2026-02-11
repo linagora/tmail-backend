@@ -133,7 +133,7 @@ public class DmarcDnsValidator {
     boolean isDmarcRecord(String txtRecord) {
         // Use regex to allow flexible whitespace around version tag
         // Matches: "v=DMARC1", "v = DMARC1", " v=DMARC1 ", etc.
-        return txtRecord.trim().matches("(?i)^v\\s*=\\s*DMARC1.*");
+        return SpfDnsValidator.unquote(txtRecord.trim()).matches("(?i)^v\\s*=\\s*DMARC1.*");
     }
 
     @VisibleForTesting
@@ -143,7 +143,7 @@ public class DmarcDnsValidator {
             return Optional.empty();
         }
 
-        String policyValue = matcher.group(1);
+        String policyValue = SpfDnsValidator.unquote(matcher.group(1));
         return DmarcPolicy.fromString(policyValue);
     }
 }

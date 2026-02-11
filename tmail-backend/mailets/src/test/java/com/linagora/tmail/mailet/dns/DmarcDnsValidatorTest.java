@@ -59,6 +59,7 @@ class DmarcDnsValidatorTest {
         assertThat(validator.isDmarcRecord(" v =DMARC1 ")).isTrue();
         // Test case insensitive
         assertThat(validator.isDmarcRecord("V=DMARC1; p=none")).isTrue();
+        assertThat(validator.isDmarcRecord("\"V=DMARC1; p=none\"")).isTrue();
         // Invalid records
         assertThat(validator.isDmarcRecord("v=spf1 include:example.com")).isFalse();
         assertThat(validator.isDmarcRecord("p=quarantine")).isFalse();
@@ -73,6 +74,10 @@ class DmarcDnsValidatorTest {
             .contains(DmarcPolicy.QUARANTINE);
 
         assertThat(validator.extractPolicy("v=DMARC1; p=reject"))
+            .isPresent()
+            .contains(DmarcPolicy.REJECT);
+
+        assertThat(validator.extractPolicy("\"v=DMARC1; p=reject\""))
             .isPresent()
             .contains(DmarcPolicy.REJECT);
 

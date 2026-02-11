@@ -43,8 +43,11 @@ class SpfDnsValidatorTest {
         SpfDnsValidator validator = new SpfDnsValidator(dnsService, "_spf.twake.app");
 
         assertThat(validator.isSpfRecord("v=spf1 ip4:192.0.2.10 ~all")).isTrue();
+        assertThat(validator.isSpfRecord("\"v=spf1 ip4:192.0.2.10 ~all\"")).isTrue();
         assertThat(validator.isSpfRecord("v=spf1 include:_spf.google.com ~all")).isTrue();
         assertThat(validator.isSpfRecord("  v=spf1 ip4:192.0.2.10")).isTrue();
+        assertThat(validator.isSpfRecord("\"  v=spf1 ip4:192.0.2.10\"")).isTrue();
+        assertThat(validator.isSpfRecord(" \"  v=spf1 ip4:192.0.2.10\"")).isTrue();
         assertThat(validator.isSpfRecord("v=DKIM1; k=rsa")).isFalse();
         assertThat(validator.isSpfRecord("random text")).isFalse();
     }
