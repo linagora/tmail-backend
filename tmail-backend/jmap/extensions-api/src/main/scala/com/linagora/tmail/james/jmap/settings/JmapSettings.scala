@@ -120,6 +120,7 @@ object JmapSettings {
   val INBOX_ARCHIVAL_PERIOD_KEY = "inbox.archival.period"
   val INBOX_ARCHIVAL_FORMAT_KEY = "inbox.archival.format"
   val LANGUAGE_KEY = "language"
+  @Deprecated
   val AI_NEEDS_ACTION_ENABLE_KEY = "ai.needs-action.enabled"
   val AI_LABEL_CATEGORIZATION_ENABLE_KEY = "ai.label-categorization.enabled"
   val AI_RAG_ENABLE_KEY = "ai.rag.enabled"

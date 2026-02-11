@@ -101,7 +101,8 @@ The default system prompt instructs the LLM to:
 
 Users can enable or disable the AI label-categorization feature through JMAP settings:
 
-- **Setting Key**: `ai.label-categorization.enabled`
+- **[New]Setting Key**: `ai.label-categorization.enabled`
+- **[Old]Setting Key**: `ai.needs-action.enabled`
 - **Values**: `true` (enabled) or `false` (disabled)
 - **Default**: `false` (disabled by default in order to collect explicit user consent)
 

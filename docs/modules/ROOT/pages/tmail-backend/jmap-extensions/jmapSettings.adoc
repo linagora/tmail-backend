@@ -272,4 +272,11 @@ Optional. String. One in these values (`single`, `monthly`, `yearly`). Default v
 Setting key: `ai.label-categorization.enabled`.
 Setting value: Boolean (`true`, `false`). Optional. Default value to `true`.
 
+For compatibility with older mobile clients, the legacy setting key `ai.needs-action.enabled`
+is still supported. The system prioritizes the new setting if both are present:
+
+1. If `ai.label-categorization.enabled` exists → uses this value
+2. Otherwise, if `ai.needs-action.enabled` exists → uses this value (legacy)
+3. Otherwise → uses default value (`false`)
+
 This setting is used to enable/disable the needs-action classification on mails using AI.
