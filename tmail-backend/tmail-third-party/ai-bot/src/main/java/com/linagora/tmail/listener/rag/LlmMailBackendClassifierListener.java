@@ -19,7 +19,6 @@
 package com.linagora.tmail.listener.rag;
 
 import java.io.IOException;
-import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -186,21 +185,19 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
 
     record LlmOutput(ImmutableSet<String> labels) {
         static LlmOutput parse(String llmOutput) {
-            ImmutableSet<String> labelIds = Splitter.on(',')
+            return new LlmOutput(Splitter.on(',')
                 .omitEmptyStrings()
                 .trimResults()
                 .splitToStream(llmOutput)
-                .collect(ImmutableSet.toImmutableSet());
-
-            return new LlmOutput(labelIds);
+                .collect(ImmutableSet.toImmutableSet()));
         }
 
-        Set<String> validateLabelIds(List<Label> userLabels) {
+        Set<String> validateLabelIds(Set<Label> userLabels) {
             Set<String> allAvailableLabels = Stream.concat(userLabels.stream(), SYSTEM_LABELS.values().stream())
                 .map(Label::keyword)
                 .collect(Collectors.toSet());
 
-            return Sets.intersection(allAvailableLabels, labels.stream().collect(Collectors.toSet()));
+            return Sets.intersection(allAvailableLabels, labels);
         }
 
         Optional<Flags> flagsToSet(UserContext context) {
@@ -219,17 +216,11 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
         }
     }
 
-    record UserContext(String displayName, List<Label> labels) {
-    }
-
-    private Mono<UserContext> retrieveUserContext(Username username) {
-        return getUserDisplayName(username)
-            .zipWith(getUserLabels(username))
-            .map(tuple -> new UserContext(tuple.getT1(), tuple.getT2()));
+    record UserContext(String displayName, Set<Label> labels) {
     }
 
     private Mono<Void> classifyMail(LlmMailClassifierListener.ParsedMessage message, MailboxSession session) {
-        return retrieveUserContext(session.getUser())
+        return Mono.zip(getUserDisplayName(session.getUser()), getUserLabels(session.getUser()), UserContext::new)
             .flatMap(userContext -> Mono.fromCallable(() -> buildUserPrompt(message, session.getUser(), userContext))
                 .flatMap(userPrompt -> performLlmClassification(message, session, userPrompt, userContext)))
             .doOnError(e -> LOGGER.error("LLM call failed for messageId {} in mailboxId {} of user {}",
@@ -239,48 +230,42 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
     private Mono<Void> performLlmClassification(LlmMailClassifierListener.ParsedMessage message, MailboxSession session, LlmUserPrompt userPrompt, UserContext userContext) {
         return Mono.from(metricFactory.decoratePublisherWithTimerMetric("llm-mail-prioritization-classifier",
                 callLlm(systemPrompt, userPrompt.correspondingUserPrompt())))
-            .doOnNext(llmOutput -> emitStructureLog(userPrompt, llmOutput))
+            .doOnNext(llmOutput -> emitStructureLog(userPrompt, llmOutput, userContext))
             .flatMap(llmOutput -> addFlags(message.messageResult(), session, llmOutput.flagsToSet(userContext)));
     }
 
-
-    private void emitStructureLog(LlmUserPrompt llmUserPrompt, LlmOutput llmOutput) {
+    private void emitStructureLog(LlmUserPrompt llmUserPrompt, LlmOutput llmOutput, UserContext userContext) {
             if (reviewModeEnabled) {
                 MDCStructuredLogger.forLogger(LOGGER)
                     .field("sender", llmUserPrompt.sender())
                     .field("user", llmUserPrompt.user())
                     .field("subject", llmUserPrompt.subject())
                     .field("decision", llmOutput.labels.contains(SYSTEM_LABELS.get(NEEDS_ACTION).keyword()) ? "YES" : "NO")
-                    .field("labels suggested", llmOutput.labels().stream().collect(Collectors.joining(",")))
+                    .field("labels suggested", getLabelsNamesFromIds(llmOutput.labels, userContext.labels()))
                     .field("preview", truncatePreview(llmUserPrompt.textContent()))
                     .log(logger -> logger.info("Email successfully classified"));
             }
     }
 
+    private String getLabelsNamesFromIds(Set<String> labelIds, Set<Label> userLabels) {
+        Set<String> guessedLabelNames = Stream.concat(userLabels.stream(), SYSTEM_LABELS.values().stream())
+            .filter(label -> labelIds.contains(label.keyword()))
+            .map(Label::displayName)
+            .map(DisplayName::value)
+            .collect(Collectors.toSet());
+        return String.join(", ", guessedLabelNames);
+    }
+
     private Mono<Void> addFlags(MessageResult messageResult, MailboxSession session, Optional<Flags> flags) {
         return flags.map(actualFlags ->
             Mono.from(messageIdManager.setFlagsReactive(actualFlags, MessageManager.FlagsUpdateMode.ADD,
-                    messageResult.getMessageId(), List.of(messageResult.getMailboxId()), session))
-                .doOnSuccess(ignored -> {
-                    String flagsList = Arrays.stream(actualFlags.getUserFlags())
-                        .collect(Collectors.joining(", "));
-                    LOGGER.info("Added flags [{}] to message {} in mailbox {} of user {}",
-                        flagsList,
-                        messageResult.getMessageId().serialize(),
-                        messageResult.getMailboxId().serialize(),
-                        session.getUser().asString());
-                })
-                .doOnError(e -> LOGGER.error("Failed adding flags to message {} in mailbox {} of user {}",
-                    messageResult.getMessageId().serialize(),
-                    messageResult.getMailboxId().serialize(),
-                    session.getUser().asString(), e))
-                .then()
-        ).orElseGet(Mono::empty);
+                    messageResult.getMessageId(), List.of(messageResult.getMailboxId()), session)))
+            .orElseGet(Mono::empty);
     }
 
-    private Mono<List<Label>> getUserLabels(Username username) {
+    private Mono<Set<Label>> getUserLabels(Username username) {
         return Flux.from(labelRepository.listLabels(username))
-            .collectList()
+            .collect(Collectors.toSet())
             .doOnNext(labels -> LOGGER.debug("Retrieved {} labels for user {}", labels.size(), username.asString()));
     }
 
@@ -326,7 +311,7 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
             return new LlmUserPrompt(userContext.displayName(), username.asString(), truncateBody(maybeBody.orElse("")), from, to, subject, labelsInfo);
     }
 
-    private String buildLabelsInfo(List<Label> userLabels) {
+    private String buildLabelsInfo(Set<Label> userLabels) {
         return  Stream.concat(SYSTEM_LABELS.values().stream(), userLabels.stream())
             .map(label -> "labelId : " + label.keyword() + " - Label name :" + label.displayName() + " - label description :" + OptionConverters.toJava(label.description()).orElse("No description"))
             .collect(Collectors.joining("\n- ", "- ", ""));
