@@ -32,6 +32,21 @@ Issue: https://github.com/linagora/tmail-backend/issues/2115
 </listener>
 ```
 
+### RabbitMQ Queue Cleanup
+
+Date: 12/02/2026
+
+Issue: https://github.com/linagora/tmail-backend/issues/2115
+
+**Action Required**
+
+After upgrading LlmMailPrioritizationClassifierListener to LlmMailClassifierListener, we **must delete** the old RabbitMQ queue to avoid resource leaks and prevent
+the old listener from processing messages.
+
+**Queue to Delete:** `mailboxEvent-workQueue-com.linagora.tmail.listener.rag.LlmMailPrioritizationClassifierListener$LlmMailPrioritizationClassifierGroup`
+
+
+
 ### Adding description field to labels table
 
 Date: 28/01/2026
