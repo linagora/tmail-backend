@@ -32,13 +32,7 @@ Issue: https://github.com/linagora/tmail-backend/issues/2115
 </listener>
 ```
 
-### RabbitMQ Queue Cleanup
-
-Date: 12/02/2026
-
-Issue: https://github.com/linagora/tmail-backend/issues/2115
-
-**Action Required**
+#### RabbitMQ Queue Cleanup
 
 After upgrading LlmMailPrioritizationClassifierListener to LlmMailClassifierListener, we **must delete** the old RabbitMQ queue to avoid resource leaks and prevent
 the old listener from processing messages.
