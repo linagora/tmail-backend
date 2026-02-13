@@ -151,11 +151,11 @@ public class MockLlmMailClassifierListenerTest implements LlmMailClassifierListe
         jmapSettingsRepository = new MemoryJmapSettingsRepository();
         jmapSettingsRepositoryUtils = new JmapSettingsRepositoryJavaUtils(jmapSettingsRepository);
         labelRepository = new MemoryLabelRepository();
-        Label label1 = Mono.from(labelRepository.addLabel(ALICE,new LabelCreationRequest(new DisplayName("label1"), scala.Option.apply(new Color("#0000")), scala.Option.apply("label1 description")))).block();
+        Label label1 = Mono.from(labelRepository.addLabel(ALICE, new LabelCreationRequest(new DisplayName("label1"), scala.Option.apply(new Color("#0000")), scala.Option.apply("label1 description")))).block();
         label1Id = label1.keyword();
-        Label label2 =Mono.from(labelRepository.addLabel(ALICE,new LabelCreationRequest(new DisplayName("label2"), scala.Option.apply(new Color("#0000")), scala.Option.apply("label2 description")))).block();
+        Label label2 =Mono.from(labelRepository.addLabel(ALICE, new LabelCreationRequest(new DisplayName("label2"), scala.Option.apply(new Color("#0000")), scala.Option.apply("label2 description")))).block();
         label2Id = label2.keyword();
-        Label label3 =Mono.from(labelRepository.addLabel(ALICE,new LabelCreationRequest(new DisplayName("label3"), scala.Option.apply(new Color("#0000")), scala.Option.apply("label3 description")))).block();
+        Label label3 =Mono.from(labelRepository.addLabel(ALICE, new LabelCreationRequest(new DisplayName("label3"), scala.Option.apply(new Color("#0000")), scala.Option.apply("label3 description")))).block();
         label3Id = label3.keyword();
 
         listener = new LlmMailClassifierListener(
