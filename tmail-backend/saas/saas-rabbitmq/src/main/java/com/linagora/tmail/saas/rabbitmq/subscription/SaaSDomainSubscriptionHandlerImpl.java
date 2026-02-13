@@ -53,7 +53,7 @@ public class SaaSDomainSubscriptionHandlerImpl implements SaaSMessageHandler {
     @Override
     public Mono<Void> handleMessage(byte[] message) {
         return Mono.fromCallable(() -> SaaSSubscriptionDeserializer.parseAMQPDomainMessage(message))
-            .doOnNext(parsed -> LOGGER.info("Received SaaS domain subscription message: {}", parsed))
+            .doOnNext(parsed -> LOGGER.debug("Received SaaS domain subscription message: {}", parsed))
             .flatMap(this::handleMessage);
     }
 
@@ -140,7 +140,7 @@ public class SaaSDomainSubscriptionHandlerImpl implements SaaSMessageHandler {
                 LOGGER.info("Creating domain: {}", domain);
                 return Mono.fromRunnable(Throwing.runnable(() -> domainList.addDomain(domain)))
                     .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
-                    .doOnSuccess(v -> LOGGER.info("Successfully created domain: {}", domain))
+                    .doOnSuccess(any -> LOGGER.info("Successfully created domain: {}", domain))
                     .then();
             });
     }
