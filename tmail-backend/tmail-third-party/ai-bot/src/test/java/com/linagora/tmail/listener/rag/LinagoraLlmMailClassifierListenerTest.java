@@ -141,9 +141,9 @@ public class LinagoraLlmMailClassifierListenerTest implements LlmMailClassifierL
         identityRepository = setUpIdentityRepository();
         jmapSettingsRepository = new MemoryJmapSettingsRepository();
         labelRepository = new MemoryLabelRepository();
-        Label label1 = Mono.from(labelRepository.addLabel(ALICE,new LabelCreationRequest(new DisplayName("Production-Incident"), scala.Option.apply(new Color("#0000")), scala.Option.apply("work or production incident") ))).block();
-        Label label2 =Mono.from(labelRepository.addLabel(ALICE,new LabelCreationRequest(new DisplayName("Payment-Alert"), scala.Option.apply(new Color("#0000")), scala.Option.apply("This is a payment reminder alert") ))).block();
-        Label label3 =Mono.from(labelRepository.addLabel(ALICE,new LabelCreationRequest(new DisplayName("Hiring"), scala.Option.apply(new Color("#0000")), scala.Option.apply("This is a recruitment process related email") ))).block();
+        Label label1 = Mono.from(labelRepository.addLabel(ALICE, new LabelCreationRequest(new DisplayName("Production-Incident"), scala.Option.apply(new Color("#0000")), scala.Option.apply("work or production incident")))).block();
+        Label label2 =Mono.from(labelRepository.addLabel(ALICE, new LabelCreationRequest(new DisplayName("Payment-Alert"), scala.Option.apply(new Color("#0000")), scala.Option.apply("This is a payment reminder alert")))).block();
+        Label label3 =Mono.from(labelRepository.addLabel(ALICE, new LabelCreationRequest(new DisplayName("Hiring"), scala.Option.apply(new Color("#0000")), scala.Option.apply("This is a recruitment process related email")))).block();
         label1Id = label1.keyword();
         label2Id = label2.keyword();
         label3Id = label3.keyword();
