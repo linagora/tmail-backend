@@ -137,7 +137,6 @@ public class SaaSDomainSubscriptionHandlerImpl implements SaaSMessageHandler {
                     LOGGER.info("Domain {} already exists, skipping creation", domain);
                     return Mono.empty();
                 }
-                LOGGER.info("Creating domain: {}", domain);
                 return Mono.fromRunnable(Throwing.runnable(() -> domainList.addDomain(domain)))
                     .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
                     .doOnSuccess(any -> LOGGER.info("Successfully created domain: {}", domain))
