@@ -137,7 +137,7 @@ class AIIntegrationTest {
             .addUser(BOT_ADDRESS, PASSWORD);
 
         jamesServer.getProbe(JmapSettingsProbe.class)
-            .reset(Username.of(ALICE), Map.of("ai.needs-action.enabled", "true"));
+            .reset(Username.of(ALICE), Map.of("ai.label-categorization.enabled", "true"));
     }
 
     @AfterEach

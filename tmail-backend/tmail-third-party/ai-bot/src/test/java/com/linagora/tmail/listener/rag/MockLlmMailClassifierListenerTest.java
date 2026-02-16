@@ -60,6 +60,12 @@ import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mockito;
 
 import com.google.common.collect.ImmutableMap;
+import com.linagora.tmail.james.jmap.label.LabelRepository;
+import com.linagora.tmail.james.jmap.label.MemoryLabelRepository;
+import com.linagora.tmail.james.jmap.model.Color;
+import com.linagora.tmail.james.jmap.model.DisplayName;
+import com.linagora.tmail.james.jmap.model.Label;
+import com.linagora.tmail.james.jmap.model.LabelCreationRequest;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
 import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
@@ -73,7 +79,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scala.publisher.SMono;
 
-public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailPrioritizationClassifierListenerContract {
+public class MockLlmMailClassifierListenerTest implements LlmMailClassifierListenerContract {
 
     static class StubModel implements StreamingChatLanguageModel {
         volatile String llOutput;
@@ -96,9 +102,13 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
     private IdentityRepository identityRepository;
     private JmapSettingsRepository jmapSettingsRepository;
     private JmapSettingsRepositoryJavaUtils jmapSettingsRepositoryUtils;
-    private LlmMailPrioritizationClassifierListener listener;
-    private LlmMailPrioritizationBackendClassifierListener backendListener;
+    private LlmMailClassifierListener listener;
+    private LlmMailBackendClassifierListener backendListener;
+    private LabelRepository labelRepository;
     private EventBus tmailEventBus;
+    private String label1Id;
+    private String label2Id;
+    private String label3Id;
 
     @BeforeEach
     void setup() throws Exception {
@@ -140,24 +150,32 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
         identityRepository = setUpIdentityRepository();
         jmapSettingsRepository = new MemoryJmapSettingsRepository();
         jmapSettingsRepositoryUtils = new JmapSettingsRepositoryJavaUtils(jmapSettingsRepository);
+        labelRepository = new MemoryLabelRepository();
+        Label label1 = Mono.from(labelRepository.addLabel(ALICE, new LabelCreationRequest(new DisplayName("label1"), scala.Option.apply(new Color("#0000")), scala.Option.apply("label1 description")))).block();
+        label1Id = label1.keyword();
+        Label label2 =Mono.from(labelRepository.addLabel(ALICE, new LabelCreationRequest(new DisplayName("label2"), scala.Option.apply(new Color("#0000")), scala.Option.apply("label2 description")))).block();
+        label2Id = label2.keyword();
+        Label label3 =Mono.from(labelRepository.addLabel(ALICE, new LabelCreationRequest(new DisplayName("label3"), scala.Option.apply(new Color("#0000")), scala.Option.apply("label3 description")))).block();
+        label3Id = label3.keyword();
 
-        listener = new LlmMailPrioritizationClassifierListener(
+        listener = new LlmMailClassifierListener(
             mailboxManager,
             messageIdManager,
             new SystemMailboxesProviderImpl(mailboxManager),
             jmapSettingsRepository,
             tmailEventBus,
             listenerConfig);
-        backendListener = new LlmMailPrioritizationBackendClassifierListener(
+        backendListener = new LlmMailBackendClassifierListener(
             mailboxManager,
             messageIdManager,
             model,
             htmlTextExtractor,
             identityRepository,
             metricFactory,
+            labelRepository,
             listenerConfig);
 
-        jmapSettingsRepositoryUtils().reset(ALICE, ImmutableMap.of("ai.needs-action.enabled", "true"));
+        jmapSettingsRepositoryUtils().reset(ALICE, ImmutableMap.of("ai.label-categorization.enabled", "true"));
     }
 
     public static IdentityRepository setUpIdentityRepository() throws AddressException {
@@ -221,20 +239,21 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
 
     @Override
     public void resetListenerWithConfig(HierarchicalConfiguration<ImmutableNode> overrideConfig) {
-        listener = new LlmMailPrioritizationClassifierListener(
+        listener = new LlmMailClassifierListener(
             mailboxManager,
             messageIdManager,
             new SystemMailboxesProviderImpl(mailboxManager),
             jmapSettingsRepository,
             tmailEventBus,
             overrideConfig);
-        backendListener = new LlmMailPrioritizationBackendClassifierListener(
+        backendListener = new LlmMailBackendClassifierListener(
             mailboxManager,
             messageIdManager,
             model,
             new JsoupHtmlTextExtractor(),
             identityRepository,
             new RecordingMetricFactory(),
+            labelRepository,
             overrideConfig);
     }
 
@@ -251,17 +270,34 @@ public class MockLlmMailPrioritizationClassifierListenerTest implements LlmMailP
 
     @Override
     public void needActionsLlmHook() {
-        this.model.llOutput = "YES";
+        this.model.llOutput = """
+            %s, %s, %s""".formatted(NEES_ACTION_FLAG, label1Id, label2Id);
     }
 
     @Override
     public void noNeedActionsLlmHook() {
-        this.model.llOutput = "NO";
+        this.model.llOutput = """
+            %s""".formatted(label3Id);
     }
 
     @Override
     public Mono<Flags> readFlags(MessageId messageId, MailboxSession userSession) {
         return Mono.from(messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.MINIMAL, userSession))
             .map(MessageResult::getFlags);
+    }
+
+    @Override
+    public String getLabel1Id() {
+        return label1Id;
+    }
+
+    @Override
+    public String getLabel2Id() {
+        return label2Id;
+    }
+
+    @Override
+    public String getLabel3Id() {
+        return label3Id;
     }
 }

@@ -1,7 +1,7 @@
 # LLM Mail Prioritization Classifier Listener
 
 The `LlmMailPrioritizationClassifierListener` is an event-driven listener that automatically analyzes incoming emails
-using a Large Language Model (LLM) to determine if they require user action. 
+using a Large Language Model (LLM) and assign the most relevant labels. 
 
 When an email is classified as needing action, it is automatically tagged with the `needs-action` flag.
 
@@ -10,24 +10,32 @@ When an email is classified as needing action, it is automatically tagged with t
 Example:
 
 ```xml
+
 <listener>
-   <class>com.linagora.tmail.listener.rag.LlmMailPrioritizationClassifierListener</class>
-   <configuration>
-      <filter>
-         <and>
-            <isInINBOX/>
-            <isMainRecipient/>
-            <not><isAutoSubmitted/></not>
-            <not><isSpam/></not>
-         </and>
-      </filter>
-      <systemPrompt>
-         You are an email assistant that determines if emails require user action.
-         Consider: urgency, deadlines, direct questions, and required responses.
-         Respond only with 'YES' (needs action) or 'NO' (informational).
-      </systemPrompt>
-      <maxBodyLength>5000</maxBodyLength>
-   </configuration>
+    <class>com.linagora.tmail.listener.rag.LlmMailClassifierListener</class>
+    <configuration>
+        <filter>
+            <and>
+                <isInINBOX/>
+                <isMainRecipient/>
+                <not>
+                    <isAutoSubmitted/>
+                </not>
+                <not>
+                    <isSpam/>
+                </not>
+            </and>
+        </filter>
+        <systemPrompt>
+            Classify emails by selecting relevant labels from the provided list.
+            Match labels whose descriptions or name align with the email's content, topic, and intent.
+            Prioritize specific over generic labels.
+
+            OUTPUT: Comma-separated labelIds (e.g., "needs-action,work" or "personal" or empty).
+            Return ONLY label names. No explanations.
+        </systemPrompt>
+        <maxBodyLength>5000</maxBodyLength>
+    </configuration>
 </listener>
 ```
 
@@ -91,9 +99,10 @@ The default system prompt instructs the LLM to:
 
 ## User Settings
 
-Users can enable or disable the AI needs-action feature through JMAP settings:
+Users can enable or disable the AI label-categorization feature through JMAP settings:
 
-- **Setting Key**: `ai.needs-action.enabled`
+- **[New]Setting Key**: `ai.label-categorization.enabled`
+- **[Old]Setting Key**: `ai.needs-action.enabled`
 - **Values**: `true` (enabled) or `false` (disabled)
 - **Default**: `false` (disabled by default in order to collect explicit user consent)
 

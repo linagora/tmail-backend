@@ -48,7 +48,7 @@ import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
 
 import reactor.core.publisher.Mono;
 
-public interface LlmMailPrioritizationClassifierListenerContract {
+public interface LlmMailClassifierListenerContract {
     ConditionFactory CALMLY_AWAIT = Awaitility
         .with().pollInterval(ONE_HUNDRED_MILLISECONDS)
         .and().pollDelay(ONE_HUNDRED_MILLISECONDS)
@@ -56,6 +56,10 @@ public interface LlmMailPrioritizationClassifierListenerContract {
     Username BOB = Username.of("bob@example.com");
     Username ALICE = Username.of("alice@example.com");
     Username ANDRE = Username.of("andre@example.com");
+    String getLabel1Id();
+    String getLabel2Id();
+    String getLabel3Id();
+    String NEES_ACTION_FLAG = LlmMailBackendClassifierListener.SYSTEM_LABELS.get("needs-action").keyword();
 
     MessageManager aliceInbox();
     MessageManager aliceSpam();
@@ -102,7 +106,7 @@ public interface LlmMailPrioritizationClassifierListenerContract {
             .untilAsserted(() -> {
                 assertThat(readFlags(messageId, aliceSession()).block()).isNotNull();
                 assertThat(readFlags(messageId, aliceSession()).block().getUserFlags())
-                    .contains("needs-action");
+                    .contains(NEES_ACTION_FLAG, getLabel1Id(), getLabel2Id());
             });
     }
 
@@ -132,7 +136,7 @@ public interface LlmMailPrioritizationClassifierListenerContract {
             .untilAsserted(() -> {
                 assertThat(readFlags(messageId, aliceSession()).block()).isNotNull();
                 assertThat(readFlags(messageId, aliceSession()).block().getUserFlags())
-                    .contains("needs-action");
+                    .contains(NEES_ACTION_FLAG, getLabel1Id(), getLabel2Id());
             });
     }
 
@@ -190,7 +194,7 @@ public interface LlmMailPrioritizationClassifierListenerContract {
             .untilAsserted(() -> {
                 assertThat(readFlags(messageId, aliceSession()).block()).isNotNull();
                 assertThat(readFlags(messageId, aliceSession()).block().getUserFlags())
-                    .contains("needs-action");
+                    .contains(NEES_ACTION_FLAG, getLabel1Id(), getLabel2Id());
             });
     }
 
@@ -221,7 +225,8 @@ public interface LlmMailPrioritizationClassifierListenerContract {
             .untilAsserted(() -> {
                 assertThat(readFlags(messageId, aliceSession()).block()).isNotNull();
                 assertThat(readFlags(messageId, aliceSession()).block().getUserFlags())
-                    .doesNotContain("needs-action");
+                    .doesNotContain(NEES_ACTION_FLAG)
+                    .contains(getLabel3Id());
             });
     }
 
@@ -258,7 +263,8 @@ public interface LlmMailPrioritizationClassifierListenerContract {
             .untilAsserted(() -> {
                 assertThat(readFlags(messageId, aliceSession()).block()).isNotNull();
                 assertThat(readFlags(messageId, aliceSession()).block().getUserFlags())
-                    .doesNotContain("needs-action");
+                    .doesNotContain(NEES_ACTION_FLAG)
+                    .contains(getLabel3Id());
             });
     }
 
@@ -285,7 +291,7 @@ public interface LlmMailPrioritizationClassifierListenerContract {
             .untilAsserted(() -> {
                 assertThat(readFlags(messageId, aliceSession()).block()).isNotNull();
                 assertThat(readFlags(messageId, aliceSession()).block().getUserFlags())
-                    .doesNotContain("needs-action");
+                    .doesNotContain(NEES_ACTION_FLAG);
             });
     }
 
@@ -315,7 +321,7 @@ public interface LlmMailPrioritizationClassifierListenerContract {
             .untilAsserted(() -> {
                 assertThat(readFlags(messageId, aliceSession()).block()).isNotNull();
                 assertThat(readFlags(messageId, aliceSession()).block().getUserFlags())
-                    .doesNotContain("needs-action");
+                    .doesNotContain(NEES_ACTION_FLAG);
             });
     }
 
@@ -350,7 +356,7 @@ public interface LlmMailPrioritizationClassifierListenerContract {
             .untilAsserted(() -> {
                 assertThat(readFlags(messageId, aliceSession()).block()).isNotNull();
                 assertThat(readFlags(messageId, aliceSession()).block().getUserFlags())
-                    .doesNotContain("needs-action");
+                    .doesNotContain(NEES_ACTION_FLAG);
             });
     }
 
@@ -381,7 +387,8 @@ public interface LlmMailPrioritizationClassifierListenerContract {
             .untilAsserted(() -> {
                 assertThat(readFlags(messageId, aliceSession()).block()).isNotNull();
                 assertThat(readFlags(messageId, aliceSession()).block().getUserFlags())
-                    .doesNotContain("needs-action");
+                    .doesNotContain(NEES_ACTION_FLAG)
+                    .contains(getLabel3Id());
             });
     }
 
@@ -413,7 +420,7 @@ public interface LlmMailPrioritizationClassifierListenerContract {
             .untilAsserted(() -> {
                 assertThat(readFlags(messageId, aliceSession()).block()).isNotNull();
                 assertThat(readFlags(messageId, aliceSession()).block().getUserFlags())
-                    .contains("needs-action");
+                    .contains(NEES_ACTION_FLAG, getLabel1Id(), getLabel2Id());
             });
     }
 
@@ -444,7 +451,7 @@ public interface LlmMailPrioritizationClassifierListenerContract {
             .untilAsserted(() -> {
                 assertThat(readFlags(messageId, aliceSession()).block()).isNotNull();
                 assertThat(readFlags(messageId, aliceSession()).block().getUserFlags())
-                    .contains("needs-action");
+                    .contains(NEES_ACTION_FLAG, getLabel1Id(), getLabel2Id());
             });
     }
 
@@ -475,7 +482,8 @@ public interface LlmMailPrioritizationClassifierListenerContract {
             .untilAsserted(() -> {
                 assertThat(readFlags(messageId, aliceSession()).block()).isNotNull();
                 assertThat(readFlags(messageId, aliceSession()).block().getUserFlags())
-                    .doesNotContain("needs-action");
+                    .doesNotContain(NEES_ACTION_FLAG)
+                    .contains(getLabel3Id());
             });
     }
 
@@ -510,7 +518,7 @@ public interface LlmMailPrioritizationClassifierListenerContract {
             .untilAsserted(() -> {
                 assertThat(readFlags(messageId, aliceSession()).block()).isNotNull();
                 assertThat(readFlags(messageId, aliceSession()).block().getUserFlags())
-                    .contains("needs-action");
+                    .contains(NEES_ACTION_FLAG, getLabel1Id(), getLabel2Id());
             });
     }
 
@@ -541,13 +549,13 @@ public interface LlmMailPrioritizationClassifierListenerContract {
             .untilAsserted(() -> {
                 assertThat(readFlags(messageId, aliceSession()).block()).isNotNull();
                 assertThat(readFlags(messageId, aliceSession()).block().getUserFlags())
-                    .doesNotContain("needs-action");
+                    .doesNotContain(NEES_ACTION_FLAG);
             });
     }
 
     @Test
     default void urgentEmailShouldBeTaggedNeedsActionWhenUserEnabledNeedsActionSetting() throws Exception {
-        jmapSettingsRepositoryUtils().reset(ALICE, Map.of("ai.needs-action.enabled", "true"));
+        jmapSettingsRepositoryUtils().reset(ALICE, Map.of("ai.label-categorization.enabled", "true"));
         registerListenerToEventBus();
         needActionsLlmHook();
 
@@ -572,13 +580,13 @@ public interface LlmMailPrioritizationClassifierListenerContract {
             .untilAsserted(() -> {
                 assertThat(readFlags(messageId, aliceSession()).block()).isNotNull();
                 assertThat(readFlags(messageId, aliceSession()).block().getUserFlags())
-                    .contains("needs-action");
+                    .contains(NEES_ACTION_FLAG, getLabel1Id(), getLabel2Id());
             });
     }
 
     @Test
     default void urgentEmailShouldNotBeTaggedNeedsActionWhenUserDisabledNeedsActionSetting() throws Exception {
-        jmapSettingsRepositoryUtils().reset(ALICE, Map.of("ai.needs-action.enabled", "false"));
+        jmapSettingsRepositoryUtils().reset(ALICE, Map.of("ai.label-categorization.enabled", "false"));
         registerListenerToEventBus();
         needActionsLlmHook();
 
@@ -603,7 +611,7 @@ public interface LlmMailPrioritizationClassifierListenerContract {
             .untilAsserted(() -> {
                 assertThat(readFlags(messageId, aliceSession()).block()).isNotNull();
                 assertThat(readFlags(messageId, aliceSession()).block().getUserFlags())
-                    .doesNotContain("needs-action");
+                    .doesNotContain(NEES_ACTION_FLAG);
             });
     }
 
@@ -670,13 +678,13 @@ public interface LlmMailPrioritizationClassifierListenerContract {
                 SoftAssertions softly = new SoftAssertions();
                 softly.assertThat(readFlags(autoRepliedMessageId, aliceSession()).block().getUserFlags())
                     .as("Auto-replied messages should be excluded")
-                    .doesNotContain("needs-action");
+                    .doesNotContain(NEES_ACTION_FLAG);
                 softly.assertThat(readFlags(autoSubmittedNoMessageId, aliceSession()).block().getUserFlags())
                     .as("Auto-Submitted: no messages should be allowed")
-                    .contains("needs-action");
+                    .contains(NEES_ACTION_FLAG, getLabel1Id(), getLabel2Id());
                 softly.assertThat(readFlags(noHeaderMessageId, aliceSession()).block().getUserFlags())
                     .as("Messages without Auto-Submitted header should be allowed")
-                    .contains("needs-action");
+                    .contains(NEES_ACTION_FLAG, getLabel1Id(), getLabel2Id());
                 softly.assertAll();
             });
     }
@@ -727,10 +735,10 @@ public interface LlmMailPrioritizationClassifierListenerContract {
                 SoftAssertions softly = new SoftAssertions();
                 softly.assertThat(readFlags(withHeaderMessageId, aliceSession()).block().getUserFlags())
                     .as("Messages with the specific header should match")
-                    .contains("needs-action");
+                    .contains(NEES_ACTION_FLAG, getLabel1Id(), getLabel2Id());
                 softly.assertThat(readFlags(withoutHeaderMessageId, aliceSession()).block().getUserFlags())
                     .as("Messages without the specific header should not match")
-                    .doesNotContain("needs-action");
+                    .doesNotContain(NEES_ACTION_FLAG);
                 softly.assertAll();
             });
     }
@@ -783,10 +791,10 @@ public interface LlmMailPrioritizationClassifierListenerContract {
                 SoftAssertions softly = new SoftAssertions();
                 softly.assertThat(readFlags(correctValueMessageId, aliceSession()).block().getUserFlags())
                     .as("Messages with correct header value should match")
-                    .contains("needs-action");
+                    .contains(NEES_ACTION_FLAG, getLabel1Id(), getLabel2Id());
                 softly.assertThat(readFlags(differentValueMessageId, aliceSession()).block().getUserFlags())
                     .as("Messages with different header value should not match")
-                    .doesNotContain("needs-action");
+                    .doesNotContain(NEES_ACTION_FLAG);
                 softly.assertAll();
             });
     }
@@ -837,10 +845,10 @@ public interface LlmMailPrioritizationClassifierListenerContract {
                 SoftAssertions softly = new SoftAssertions();
                 softly.assertThat(readFlags(mainRecipientMessageId, aliceSession()).block().getUserFlags())
                     .as("Messages where user is main recipient should match")
-                    .contains("needs-action");
+                    .contains(NEES_ACTION_FLAG, getLabel1Id(), getLabel2Id());
                 softly.assertThat(readFlags(notMainRecipientMessageId, aliceSession()).block().getUserFlags())
                     .as("Messages where user is not main recipient should not match")
-                    .doesNotContain("needs-action");
+                    .doesNotContain(NEES_ACTION_FLAG);
                 softly.assertAll();
             });
     }
@@ -890,10 +898,10 @@ public interface LlmMailPrioritizationClassifierListenerContract {
                 SoftAssertions softly = new SoftAssertions();
                 softly.assertThat(readFlags(inboxMessageId, aliceSession()).block().getUserFlags())
                     .as("Messages in inbox should match")
-                    .contains("needs-action");
+                    .contains(NEES_ACTION_FLAG, getLabel1Id(), getLabel2Id());
                 softly.assertThat(readFlags(customMailboxMessageId, aliceSession()).block().getUserFlags())
                     .as("Messages not in inbox should not match")
-                    .doesNotContain("needs-action");
+                    .doesNotContain(NEES_ACTION_FLAG);
                 softly.assertAll();
             });
     }
@@ -943,10 +951,10 @@ public interface LlmMailPrioritizationClassifierListenerContract {
                 SoftAssertions softly = new SoftAssertions();
                 softly.assertThat(readFlags(inboxMessageId, aliceSession()).block().getUserFlags())
                     .as("Non-spam messages should not be processed")
-                    .doesNotContain("needs-action");
+                    .doesNotContain(NEES_ACTION_FLAG);
                 softly.assertThat(readFlags(spamMessageId, aliceSession()).block().getUserFlags())
                     .as("Spam messages should be processed")
-                    .contains("needs-action");
+                    .contains(NEES_ACTION_FLAG, getLabel1Id(), getLabel2Id());
                 softly.assertAll();
             });
     }
@@ -999,10 +1007,10 @@ public interface LlmMailPrioritizationClassifierListenerContract {
                 SoftAssertions softly = new SoftAssertions();
                 softly.assertThat(readFlags(allConditionsMetMessageId, aliceSession()).block().getUserFlags())
                     .as("AND filter should match when all conditions are met")
-                    .contains("needs-action");
+                    .contains(NEES_ACTION_FLAG, getLabel1Id(), getLabel2Id());
                 softly.assertThat(readFlags(oneConditionFailsMessageId, aliceSession()).block().getUserFlags())
                     .as("AND filter should not match when one condition fails")
-                    .doesNotContain("needs-action");
+                    .doesNotContain(NEES_ACTION_FLAG);
                 softly.assertAll();
             });
     }
@@ -1056,10 +1064,10 @@ public interface LlmMailPrioritizationClassifierListenerContract {
                 SoftAssertions softly = new SoftAssertions();
                 softly.assertThat(readFlags(oneConditionMetMessageId, aliceSession()).block().getUserFlags())
                     .as("OR filter should match when at least one condition is met")
-                    .contains("needs-action");
+                    .contains(NEES_ACTION_FLAG, getLabel1Id(), getLabel2Id());
                 softly.assertThat(readFlags(noConditionMetMessageId, aliceSession()).block().getUserFlags())
                     .as("OR filter should not match when no conditions are met")
-                    .doesNotContain("needs-action");
+                    .doesNotContain(NEES_ACTION_FLAG);
                 softly.assertAll();
             });
     }
