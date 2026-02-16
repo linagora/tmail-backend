@@ -53,13 +53,22 @@ public class SaaSDomainSubscriptionHandlerImpl implements SaaSMessageHandler {
     @Override
     public Mono<Void> handleMessage(byte[] message) {
         return Mono.fromCallable(() -> SaaSSubscriptionDeserializer.parseAMQPDomainMessage(message))
+            .doOnNext(parsed -> LOGGER.debug("Received SaaS domain subscription message: {}", parsed))
             .flatMap(this::handleMessage);
     }
 
     public Mono<Void> handleMessage(SaaSDomainSubscriptionMessage domainSubscriptionMessage) {
         return switch (domainSubscriptionMessage) {
-            case SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage message  -> handleDomainValidSubscriptionMessage(message);
-            case SaaSDomainSubscriptionMessage.SaaSDomainCancelSubscriptionMessage message -> handleDomainCancelSubscriptionMessage(message);
+            case SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage message  -> {
+                LOGGER.info("Processing valid subscription message for domain: {}, mailDnsConfigurationValidated: {}, hasFeatures: {}",
+                    message.domain(), message.mailDnsConfigurationValidated().orElse(null), message.features().isPresent());
+                yield handleDomainValidSubscriptionMessage(message);
+            }
+            case SaaSDomainSubscriptionMessage.SaaSDomainCancelSubscriptionMessage message -> {
+                LOGGER.info("Processing cancel subscription message for domain: {}, enabled: {}",
+                    message.domain(), message.enabled());
+                yield handleDomainCancelSubscriptionMessage(message);
+            }
             default -> throw new IllegalArgumentException("Unrecognized SaaS domain subscription message");
         };
     }
@@ -67,9 +76,11 @@ public class SaaSDomainSubscriptionHandlerImpl implements SaaSMessageHandler {
     private Mono<Void> handleDomainCancelSubscriptionMessage(SaaSDomainSubscriptionMessage.SaaSDomainCancelSubscriptionMessage domainCancelSubscriptionMessage) {
         if (!domainCancelSubscriptionMessage.enabled()) {
             Domain domain = Domain.of(domainCancelSubscriptionMessage.domain());
+            LOGGER.info("Processing domain cancellation for domain: {}", domain);
             return removeDomainIfExists(domain)
                 .doOnSuccess(success -> LOGGER.info("Cancelled SaaS subscription for domain: {}", domain));
         }
+        LOGGER.info("Skipping domain cancellation for domain: {} because enabled is true", domainCancelSubscriptionMessage.domain());
         return Mono.empty();
     }
 
@@ -77,8 +88,10 @@ public class SaaSDomainSubscriptionHandlerImpl implements SaaSMessageHandler {
         return Mono.from(domainList.containsDomainReactive(domain))
             .flatMap(alreadyExists -> {
                 if (!alreadyExists) {
+                    LOGGER.info("Domain {} does not exist, skipping removal", domain);
                     return Mono.empty();
                 }
+                LOGGER.info("Removing domain: {}", domain);
                 return Mono.fromRunnable(Throwing.runnable(() -> domainList.removeDomain(domain)))
                     .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
                     .then();
@@ -93,8 +106,10 @@ public class SaaSDomainSubscriptionHandlerImpl implements SaaSMessageHandler {
     private Mono<Void> createDomainIfValidated(SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage message) {
         Domain domain = Domain.of(message.domain());
         if (message.mailDnsConfigurationValidated().orElse(false)) {
+            LOGGER.info("mailDnsConfigurationValidated is true for domain: {}, attempting to create domain", domain);
             return addDomainIfNotExist(domain);
         }
+        LOGGER.info("Skipping domain creation for domain: {} because mailDnsConfigurationValidated is false or missing", domain);
         return Mono.empty();
     }
 
@@ -103,20 +118,28 @@ public class SaaSDomainSubscriptionHandlerImpl implements SaaSMessageHandler {
 
         return message.features()
             .flatMap(SaasFeatures::mail)
-            .map(mailSettings -> updateStorageDomainQuota(domain, mailSettings.storageQuota())
-                .then(updateRateLimiting(domain, mailSettings.rateLimitingDefinition()))
-                .doOnSuccess(success -> LOGGER.info("Updated SaaS subscription for domain: {}, storageQuota: {}, rateLimiting: {}",
-                    domain, mailSettings.storageQuota(), mailSettings.rateLimitingDefinition()))).orElse(Mono.empty());
+            .map(mailSettings -> {
+                LOGGER.info("Applying domain settings for domain: {}, storageQuota: {}, rateLimiting: {}",
+                    domain, mailSettings.storageQuota(), mailSettings.rateLimitingDefinition());
+                return updateStorageDomainQuota(domain, mailSettings.storageQuota())
+                    .then(updateRateLimiting(domain, mailSettings.rateLimitingDefinition()))
+                    .doOnSuccess(success -> LOGGER.info("Successfully updated SaaS subscription for domain: {}", domain));
+            }).orElseGet(() -> {
+                LOGGER.info("Skipping domain settings for domain: {} because features.mail is missing", domain);
+                return Mono.empty();
+            });
     }
 
     private Mono<Void> addDomainIfNotExist(Domain domain) {
         return Mono.from(domainList.containsDomainReactive(domain))
             .flatMap(alreadyExists -> {
                 if (alreadyExists) {
+                    LOGGER.info("Domain {} already exists, skipping creation", domain);
                     return Mono.empty();
                 }
                 return Mono.fromRunnable(Throwing.runnable(() -> domainList.addDomain(domain)))
                     .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
+                    .doOnSuccess(any -> LOGGER.info("Successfully created domain: {}", domain))
                     .then();
             });
     }
