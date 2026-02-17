@@ -271,7 +271,7 @@ public class MockLlmMailClassifierListenerTest implements LlmMailClassifierListe
     @Override
     public void needActionsLlmHook() {
         this.model.llOutput = """
-            %s, %s, %s""".formatted(NEES_ACTION_FLAG, label1Id, label2Id);
+            %s, %s, %s""".formatted(NEEDS_ACTION_FLAG, label1Id, label2Id);
     }
 
     @Override
@@ -299,5 +299,10 @@ public class MockLlmMailClassifierListenerTest implements LlmMailClassifierListe
     @Override
     public String getLabel3Id() {
         return label3Id;
+    }
+
+    @Override
+    public String markLabelAsSave(String labelKeyword){
+        return labelKeyword + "-save";
     }
 }

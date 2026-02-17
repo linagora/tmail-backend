@@ -246,4 +246,9 @@ public class LinagoraLlmMailClassifierListenerTest implements LlmMailClassifierL
     public String getLabel3Id() {
         return label3Id;
     }
+
+    @Override
+    public String markLabelAsSave(String labelKeyword){
+        return labelKeyword + "-save";
+    }
 }
