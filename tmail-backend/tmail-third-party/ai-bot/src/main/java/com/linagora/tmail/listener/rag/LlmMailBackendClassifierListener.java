@@ -97,6 +97,7 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
     private static final String MAX_BODY_LENGTH_PARAM = "maxBodyLength";
     private static final int DEFAULT_MAX_BODY_LENGTH = 4000;
     private static final int MAX_PREVIEW_LENGTH = 255;
+    public static final String GUESSED_LABEL_SUFFIX = "-save";
     private static final String DEFAULT_SYSTEM_PROMPT = """
     Analyze the email and select labels that best match its content and intent.
     
@@ -206,7 +207,10 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
             }
 
             Flags flags = new Flags();
-            validateLabelIds(context.labels()).forEach(flags::add);
+            validateLabelIds(context.labels()).forEach(label -> {
+                flags.add(label);
+                flags.add(label + GUESSED_LABEL_SUFFIX);
+            });
 
             return Optional.of(flags);
         }
