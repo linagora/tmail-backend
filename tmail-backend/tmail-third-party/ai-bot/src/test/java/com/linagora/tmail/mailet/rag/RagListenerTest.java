@@ -377,7 +377,7 @@ class RagListenerTest {
 
         verify(2, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
 
-        verify(postRequestedFor(urlMatching("/indexer/partition/.*/file/tmail_1"))
+        verify(postRequestedFor(urlMatching("/indexer/partition/.*/file/1"))
             .withHeader("Authorization", equalTo("Bearer dummy-token"))
             .withHeader("Content-Type", containing("multipart/form-data"))
             .withRequestBodyPart(aMultipart()
@@ -407,7 +407,7 @@ class RagListenerTest {
                     "Body of the email"))
                 .build()));
 
-        verify(postRequestedFor(urlMatching("/indexer/partition/.*/file/tmail_2"))
+        verify(postRequestedFor(urlMatching("/indexer/partition/.*/file/2"))
             .withHeader("Authorization", equalTo("Bearer dummy-token"))
             .withHeader("Content-Type", containing("multipart/form-data"))
             .withRequestBodyPart(aMultipart()
@@ -467,7 +467,7 @@ class RagListenerTest {
 
         verify(1, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
 
-        verify(postRequestedFor(urlMatching("/indexer/partition/.*/file/tmail_1"))
+        verify(postRequestedFor(urlMatching("/indexer/partition/.*/file/1"))
             .withHeader("Authorization", equalTo("Bearer dummy-token"))
             .withHeader("Content-Type", containing("multipart/form-data"))
             .withRequestBodyPart(aMultipart()

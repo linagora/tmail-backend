@@ -21,6 +21,6 @@ import org.apache.james.mailbox.model.MessageId;
 
 public record DocumentId(MessageId id) {
     public String asString() {
-        return "tmail_" + id.serialize();
+        return id.serialize();
     }
 }
