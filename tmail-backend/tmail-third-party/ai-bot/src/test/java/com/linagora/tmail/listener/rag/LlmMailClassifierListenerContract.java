@@ -1074,4 +1074,36 @@ public interface LlmMailClassifierListenerContract {
                 softly.assertAll();
             });
     }
+
+    @Test
+    default void dualLabelClassificationWhenDisabled() throws Exception {
+        System.setProperty("tmail.ai.label.relevance.audit.track", "false");
+        registerListenerToEventBus();
+        needActionsLlmHook();
+
+        MessageId messageId = aliceInbox().appendMessage(MessageManager.AppendCommand.builder()
+                    .isDelivery(true)
+                    .build(Message.Builder.of()
+                        .setSubject("URGENT – Production API Failure")
+                        .setMessageId("Message-ID")
+                        .setFrom(BOB.asString())
+                        .setTo(ALICE.asString())
+                        .setBody("""
+                            Hi team,
+                            Our payment gateway API has been failing since 03:12 AM UTC. All customer transactions are currently being rejected. We need an immediate fix or rollback before peak traffic starts in 2 hours.
+                            Please acknowledge as soon as possible.
+                            Thanks,
+                            Robert
+                            """, StandardCharsets.UTF_8)),
+                aliceSession())
+            .getId().getMessageId();
+
+        CALMLY_AWAIT.atMost(Durations.TEN_SECONDS)
+            .untilAsserted(() -> {
+                assertThat(readFlags(messageId, aliceSession()).block()).isNotNull();
+                assertThat(readFlags(messageId, aliceSession()).block().getUserFlags())
+                    .contains(NEEDS_ACTION_FLAG, getLabel1Id(), getLabel2Id())
+                    .doesNotContain(markLabelAsSave(NEEDS_ACTION_FLAG), markLabelAsSave(getLabel1Id()), markLabelAsSave(getLabel2Id()));
+            });
+    }
 }
