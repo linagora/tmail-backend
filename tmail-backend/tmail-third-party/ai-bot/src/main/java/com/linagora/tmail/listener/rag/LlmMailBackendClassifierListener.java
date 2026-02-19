@@ -97,6 +97,9 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
     private static final String MAX_BODY_LENGTH_PARAM = "maxBodyLength";
     private static final int DEFAULT_MAX_BODY_LENGTH = 4000;
     private static final int MAX_PREVIEW_LENGTH = 255;
+    private static final String DUAL_LABELING_PROPERTY = "tmail.ai.label.relevance.audit.track";
+    private static final Boolean DUAL_LABELING_ENABLED = Boolean.parseBoolean(System.getProperty(DUAL_LABELING_PROPERTY, "false"));
+    public static final String GUESSED_LABEL_SUFFIX = "-save";
     private static final String DEFAULT_SYSTEM_PROMPT = """
     Analyze the email and select labels that best match its content and intent.
     
@@ -206,7 +209,12 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
             }
 
             Flags flags = new Flags();
-            validateLabelIds(context.labels()).forEach(flags::add);
+            validateLabelIds(context.labels()).forEach(label -> {
+                flags.add(label);
+                if (DUAL_LABELING_ENABLED) {
+                    flags.add(label + GUESSED_LABEL_SUFFIX);
+                }
+            });
 
             return Optional.of(flags);
         }

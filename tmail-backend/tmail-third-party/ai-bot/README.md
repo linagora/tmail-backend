@@ -134,6 +134,40 @@ To enable structured logging, add the following property to `jvm.properties`:
 tmail.ai.needsaction.relevance.review=true
 ```
 
+### Dual Labeling for LLM Predictions Audit
+
+The LLM classifier supports an optional dual labeling mode for tracking classification accuracy. When enabled, each predicted label is applied twice:
+- Once with the original label name (e.g., `needs-action`)
+- Once with a `-save` suffix (e.g., `needs-action-save`)
+
+This allows you to:
+- Compare LLM predictions against user corrections
+- Track classification accuracy over time
+- Audit LLM performance in production
+
+#### Enable Dual Labeling
+
+To enable dual labeling, add the following property to `jvm.properties`:
+
+```properties
+tmail.ai.dual.labeling.enabled=true
+```
+
+#### How It Works
+
+When dual labeling is **disabled** (default):
+1. LLM predicts labels: `["needs-action", "urgent"]`
+2. System applies: `["needs-action", "urgent"]` as flags on the email
+
+When dual labeling is **enabled**:
+1. LLM predicts labels: `["needs-action", "urgent"]`
+2. System applies: `["needs-action", "needs-action-save", "urgent", "urgent-save"]`
+3. Users can modify the original labels in their email client
+4. The `-save` labels remain unchanged as the original predictions
+5. Later analysis can compare predictions vs. user corrections
+
+This enables post-hoc analysis of prediction accuracy without affecting the user experience.
+
 ## Starting the AIBot
 
 ###  Clean Install (In-Memory)

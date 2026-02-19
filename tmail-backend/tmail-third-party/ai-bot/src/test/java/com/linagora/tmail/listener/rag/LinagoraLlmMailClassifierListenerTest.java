@@ -52,6 +52,7 @@ import org.apache.james.mailbox.store.SystemMailboxesProviderImpl;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.apache.james.util.html.HtmlTextExtractor;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;
 
@@ -168,6 +169,12 @@ public class LinagoraLlmMailClassifierListenerTest implements LlmMailClassifierL
             listenerConfig);
 
         jmapSettingsRepositoryUtils().reset(ALICE, ImmutableMap.of("ai.label-categorization.enabled", "true"));
+        System.setProperty("tmail.ai.label.relevance.audit.track", "true");
+    }
+
+    @AfterEach
+    void tearDown() {
+        System.clearProperty("tmail.ai.label.relevance.audit.track");
     }
 
     @Override
@@ -245,5 +252,10 @@ public class LinagoraLlmMailClassifierListenerTest implements LlmMailClassifierL
     @Override
     public String getLabel3Id() {
         return label3Id;
+    }
+
+    @Override
+    public String markLabelAsSave(String labelKeyword){
+        return labelKeyword + "-save";
     }
 }
