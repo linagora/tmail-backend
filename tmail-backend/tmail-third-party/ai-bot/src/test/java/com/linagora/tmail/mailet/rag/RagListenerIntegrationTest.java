@@ -141,7 +141,7 @@ public class RagListenerIntegrationTest {
                 .build())
             .withRequestBodyPart(aMultipart()
                 .withName("file")
-                .withFileName("tmail_" + message1.getId().getMessageId().serialize() + ".txt")
+                .withFileName(message1.getId().getMessageId().serialize() + ".txt")
                 .withHeader("Content-Type", containing("text/plain"))
                 .withBody(containing("# Email Headers\n" +
                     "\n" +
@@ -202,7 +202,7 @@ public class RagListenerIntegrationTest {
                 .build())
             .withRequestBodyPart(aMultipart()
                 .withName("file")
-                .withFileName("tmail_" + messageResponse.getId().getMessageId().serialize() + ".txt")
+                .withFileName(messageResponse.getId().getMessageId().serialize() + ".txt")
                 .withHeader("Content-Type", containing("text/plain"))
                 .build()));
     }
@@ -238,7 +238,7 @@ public class RagListenerIntegrationTest {
                 .build())
             .withRequestBodyPart(aMultipart()
                 .withName("file")
-                .withFileName("tmail_" + message1.getId().getMessageId().serialize() + ".txt")
+                .withFileName(message1.getId().getMessageId().serialize() + ".txt")
                 .withHeader("Content-Type", containing("text/plain"))
                 .withBody(containing("# Email Headers\n" +
                     "\n" +
