@@ -131,6 +131,8 @@ public class TeamMailboxManagementRoutes implements Routes {
         service.get(MAILBOX_BASE_PATH, getMailboxFolders(), jsonTransformer);
         service.put(MAILBOX_BASE_PATH + Constants.SEPARATOR + FOLDER_NAME_PARAM, createMailboxFolder(), jsonTransformer);
         service.delete(MAILBOX_BASE_PATH + Constants.SEPARATOR + FOLDER_NAME_PARAM, deleteMailboxFolder(), jsonTransformer);
+        service.get(MAILBOX_BASE_PATH + Constants.SEPARATOR + FOLDER_NAME_PARAM + "/messageCount", messageCount());
+        service.get(MAILBOX_BASE_PATH + Constants.SEPARATOR + FOLDER_NAME_PARAM + "/unseenMessageCount", unseenMessageCount());
 
         service.get(MEMBER_BASE_PATH, getMembers(), jsonTransformer);
         service.delete(MEMBER_BASE_PATH + Constants.SEPARATOR + MEMBER_USERNAME_PARAM, deleteMember(), jsonTransformer);
@@ -288,6 +290,57 @@ public class TeamMailboxManagementRoutes implements Routes {
                 // Idempotent - folder does not exist
             }
             return Responses.returnNoContent(response);
+        };
+    }
+
+    public Route messageCount() {
+        return (request, response) -> {
+            TeamMailbox teamMailbox = new TeamMailbox(extractDomain(request), extractName(request));
+
+            boolean exists = Mono.from(teamMailboxRepository.exists(teamMailbox)).map(Boolean.TRUE::equals).block();
+            if (!exists) {
+                throw teamMailboxNotFoundException(teamMailbox, new TeamMailboxNotFoundException(teamMailbox));
+            }
+
+            String folderName = request.params(FOLDER_NAME_PARAM);
+            MailboxSession session = mailboxManager.createSystemSession(teamMailbox.owner());
+            try {
+                return mailboxManager.getMailbox(teamMailbox.mailboxPath(folderName), session)
+                    .getMessageCount(session);
+            } catch (MailboxNotFoundException e) {
+                throw ErrorResponder.builder()
+                    .statusCode(HttpStatus.NOT_FOUND_404)
+                    .type(ErrorResponder.ErrorType.NOT_FOUND)
+                    .message("The requested mailbox folder does not exist")
+                    .cause(e)
+                    .haltError();
+            }
+        };
+    }
+
+    public Route unseenMessageCount() {
+        return (request, response) -> {
+            TeamMailbox teamMailbox = new TeamMailbox(extractDomain(request), extractName(request));
+
+            boolean exists = Mono.from(teamMailboxRepository.exists(teamMailbox)).map(Boolean.TRUE::equals).block();
+            if (!exists) {
+                throw teamMailboxNotFoundException(teamMailbox, new TeamMailboxNotFoundException(teamMailbox));
+            }
+
+            String folderName = request.params(FOLDER_NAME_PARAM);
+            MailboxSession session = mailboxManager.createSystemSession(teamMailbox.owner());
+            try {
+                return mailboxManager.getMailbox(teamMailbox.mailboxPath(folderName), session)
+                    .getMailboxCounters(session)
+                    .getUnseen();
+            } catch (MailboxNotFoundException e) {
+                throw ErrorResponder.builder()
+                    .statusCode(HttpStatus.NOT_FOUND_404)
+                    .type(ErrorResponder.ErrorType.NOT_FOUND)
+                    .message("The requested mailbox folder does not exist")
+                    .cause(e)
+                    .haltError();
+            }
         };
     }
 
