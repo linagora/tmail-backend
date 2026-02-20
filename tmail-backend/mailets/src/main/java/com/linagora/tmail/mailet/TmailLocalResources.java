@@ -24,6 +24,7 @@ import java.util.List;
 import org.apache.james.core.Domain;
 import org.apache.james.core.MailAddress;
 import org.apache.james.mailetcontainer.api.LocalResources;
+import org.apache.james.user.api.UsersRepository;
 
 import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.team.TeamMailbox;
@@ -60,7 +61,8 @@ public class TmailLocalResources implements LocalResources {
         if (mailAddress == null) {
             return false;
         }
-        return TeamMailbox.asTeamMailbox(mailAddress)
+        MailAddress strippedAddress = mailAddress.stripDetails(UsersRepository.LOCALPART_DETAIL_DELIMITER);
+        return TeamMailbox.asTeamMailbox(strippedAddress)
             .map(tm -> Mono.from(teamMailboxRepository.exists(tm)).block())
             .getOrElse(() -> false);
     }
@@ -73,10 +75,12 @@ public class TmailLocalResources implements LocalResources {
             .toList();
 
         List<MailAddress> teamMailboxesMailAddresses = Flux.fromIterable(mailAddressesLeft)
-            .<TeamMailbox>handle((mailAddress, sink) -> OptionConverters.toJava(TeamMailbox.asTeamMailbox(mailAddress)).ifPresent(sink::next))
-            .filterWhen(teamMailbox -> Mono.from(teamMailboxRepository.exists(teamMailbox))
-                .map(Boolean.TRUE::equals))
-            .map(TeamMailbox::asMailAddress)
+            .filterWhen(mailAddress -> {
+                MailAddress strippedAddress = mailAddress.stripDetails(UsersRepository.LOCALPART_DETAIL_DELIMITER);
+                return OptionConverters.toJava(TeamMailbox.asTeamMailbox(strippedAddress))
+                    .map(teamMailbox -> Mono.from(teamMailboxRepository.exists(teamMailbox)).map(Boolean.TRUE::equals))
+                    .orElse(Mono.just(false));
+            })
             .collectList()
             .block();
 
