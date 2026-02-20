@@ -54,6 +54,7 @@ import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.SubscriptionManager;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
+import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.james.mailbox.store.StoreSubscriptionManager;
 import org.apache.james.rrt.api.MappingConflictException;
 import org.apache.james.rrt.api.RecipientRewriteTableConfiguration;
@@ -1760,6 +1761,143 @@ public class TeamMailboxManagementRoutesTest {
 
             given().delete("/extraAcl").then().statusCode(NO_CONTENT_204);
             given().delete("/extraAcl").then().statusCode(NO_CONTENT_204);
+        }
+    }
+
+    @Nested
+    class RepositionSystemRightsTest {
+
+        @Test
+        void repositionSystemRightsShouldReturn400WhenNoAction() {
+            given()
+                .basePath(TeamMailboxManagementRoutes.TEAM_MAILBOXES_BASE_PATH)
+                .post()
+            .then()
+                .statusCode(BAD_REQUEST_400);
+        }
+
+        @Test
+        void repositionSystemRightsShouldReturn400WhenInvalidAction() {
+            given()
+                .basePath(TeamMailboxManagementRoutes.TEAM_MAILBOXES_BASE_PATH)
+                .queryParam("action", "unknownAction")
+                .post()
+            .then()
+                .statusCode(BAD_REQUEST_400);
+        }
+
+        @Test
+        void repositionSystemRightsShouldReturn204WhenNoTeamMailboxes() {
+            given()
+                .basePath(TeamMailboxManagementRoutes.TEAM_MAILBOXES_BASE_PATH)
+                .queryParam("action", "repositionSystemRights")
+                .post()
+            .then()
+                .statusCode(NO_CONTENT_204);
+        }
+
+        @Test
+        void repositionSystemRightsShouldReturn204WhenTeamMailboxesExist() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given()
+                .basePath(TeamMailboxManagementRoutes.TEAM_MAILBOXES_BASE_PATH)
+                .queryParam("action", "repositionSystemRights")
+                .post()
+            .then()
+                .statusCode(NO_CONTENT_204);
+        }
+
+        @Test
+        void repositionSystemRightsShouldRestoreAdminFullRights() throws Exception {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            MailboxSession session = mailboxManager.createSystemSession(TEAM_MAILBOX.owner());
+            mailboxManager.applyRightsCommand(TEAM_MAILBOX.mailboxPath(),
+                MailboxACL.command().forUser(TEAM_MAILBOX.admin())
+                    .rights(MailboxACL.Rfc4314Rights.deserialize("lr")).asReplacement(),
+                session);
+
+            given()
+                .basePath(TeamMailboxManagementRoutes.TEAM_MAILBOXES_BASE_PATH)
+                .queryParam("action", "repositionSystemRights")
+                .post()
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(mailboxManager.listRights(TEAM_MAILBOX.mailboxPath(), session)
+                .getEntries().get(MailboxACL.EntryKey.createUserEntryKey(TEAM_MAILBOX.admin())))
+                .isEqualTo(MailboxACL.FULL_RIGHTS);
+        }
+
+        @Test
+        void repositionSystemRightsShouldRestoreSelfFullRights() throws Exception {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            MailboxSession session = mailboxManager.createSystemSession(TEAM_MAILBOX.owner());
+            mailboxManager.applyRightsCommand(TEAM_MAILBOX.mailboxPath(),
+                MailboxACL.command().forUser(TEAM_MAILBOX.self())
+                    .rights(MailboxACL.Rfc4314Rights.deserialize("lr")).asReplacement(),
+                session);
+
+            given()
+                .basePath(TeamMailboxManagementRoutes.TEAM_MAILBOXES_BASE_PATH)
+                .queryParam("action", "repositionSystemRights")
+                .post()
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(mailboxManager.listRights(TEAM_MAILBOX.mailboxPath(), session)
+                .getEntries().get(MailboxACL.EntryKey.createUserEntryKey(TEAM_MAILBOX.self())))
+                .isEqualTo(MailboxACL.FULL_RIGHTS);
+        }
+
+        @Test
+        void repositionSystemRightsShouldApplyToAllSubFolders() throws Exception {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            MailboxSession session = mailboxManager.createSystemSession(TEAM_MAILBOX.owner());
+            mailboxManager.applyRightsCommand(TEAM_MAILBOX.inboxPath(),
+                MailboxACL.command().forUser(TEAM_MAILBOX.admin())
+                    .rights(MailboxACL.Rfc4314Rights.deserialize("lr")).asReplacement(),
+                session);
+
+            given()
+                .basePath(TeamMailboxManagementRoutes.TEAM_MAILBOXES_BASE_PATH)
+                .queryParam("action", "repositionSystemRights")
+                .post()
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(mailboxManager.listRights(TEAM_MAILBOX.inboxPath(), session)
+                .getEntries().get(MailboxACL.EntryKey.createUserEntryKey(TEAM_MAILBOX.admin())))
+                .isEqualTo(MailboxACL.FULL_RIGHTS);
+        }
+
+        @Test
+        void repositionSystemRightsShouldWorkAcrossMultipleTeamMailboxes() throws Exception {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX_2)).block();
+            MailboxSession session = mailboxManager.createSystemSession(TEAM_MAILBOX.owner());
+            mailboxManager.applyRightsCommand(TEAM_MAILBOX.mailboxPath(),
+                MailboxACL.command().forUser(TEAM_MAILBOX.admin())
+                    .rights(MailboxACL.Rfc4314Rights.deserialize("lr")).asReplacement(),
+                session);
+            mailboxManager.applyRightsCommand(TEAM_MAILBOX_2.mailboxPath(),
+                MailboxACL.command().forUser(TEAM_MAILBOX_2.admin())
+                    .rights(MailboxACL.Rfc4314Rights.deserialize("lr")).asReplacement(),
+                session);
+
+            given()
+                .basePath(TeamMailboxManagementRoutes.TEAM_MAILBOXES_BASE_PATH)
+                .queryParam("action", "repositionSystemRights")
+                .post()
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(mailboxManager.listRights(TEAM_MAILBOX.mailboxPath(), session)
+                .getEntries().get(MailboxACL.EntryKey.createUserEntryKey(TEAM_MAILBOX.admin())))
+                .isEqualTo(MailboxACL.FULL_RIGHTS);
+            assertThat(mailboxManager.listRights(TEAM_MAILBOX_2.mailboxPath(), session)
+                .getEntries().get(MailboxACL.EntryKey.createUserEntryKey(TEAM_MAILBOX_2.admin())))
+                .isEqualTo(MailboxACL.FULL_RIGHTS);
         }
     }
 

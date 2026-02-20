@@ -304,6 +304,20 @@ Return codes:
 - `400` invalid domain or team mailbox name
 - `404` the domain was not found, the team mailbox cannot be found, or the folder does not exist
 
+=== Repositioning system rights on all Team Mailbox folders
+
+....
+curl -XPOST http://ip:port/team-mailboxes?action=repositionSystemRights
+....
+
+Ensures that the `admin` and `self` system users have full rights (`FULL_RIGHTS`) on all folders of all team mailboxes across all domains.
+Intended for migration purposes. Processes all team mailboxes in a single synchronous call with no task manager wrapping.
+
+Return codes:
+
+- `204` system rights have been repositioned successfully
+- `400` missing or invalid `action` query parameter
+
 == Rate limiting
 
 === Update rate limits of a user
