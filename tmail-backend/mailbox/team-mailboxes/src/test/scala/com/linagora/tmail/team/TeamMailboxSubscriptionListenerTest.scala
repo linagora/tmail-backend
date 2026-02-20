@@ -21,11 +21,11 @@ package com.linagora.tmail.team
 import com.linagora.tmail.team.TeamMailboxSubscriptionListenerTest._
 import eu.timepit.refined.auto._
 import org.apache.james.core.{Domain, Username}
+import org.apache.james.mailbox.SubscriptionManager
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources
 import org.apache.james.mailbox.model.{MailboxACL, MailboxPath}
 import org.apache.james.mailbox.store.StoreSubscriptionManager
-import org.apache.james.mailbox.SubscriptionManager
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
 import reactor.core.scala.publisher.{SFlux, SMono}

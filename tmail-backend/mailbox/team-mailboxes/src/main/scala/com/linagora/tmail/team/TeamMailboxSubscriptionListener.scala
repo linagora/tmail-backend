@@ -23,10 +23,10 @@ import jakarta.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.events.EventListener.ReactiveGroupEventListener
 import org.apache.james.events.{Event, Group}
-import org.apache.james.mailbox.{MailboxManager, SubscriptionManager}
 import org.apache.james.mailbox.events.MailboxEvents.{MailboxACLUpdated, MailboxAdded}
 import org.apache.james.mailbox.model.MailboxACL.NameType
 import org.apache.james.mailbox.model.MailboxPath
+import org.apache.james.mailbox.{MailboxManager, SubscriptionManager}
 import org.reactivestreams.Publisher
 import org.slf4j.LoggerFactory
 import reactor.core.scala.publisher.{SFlux, SMono}
