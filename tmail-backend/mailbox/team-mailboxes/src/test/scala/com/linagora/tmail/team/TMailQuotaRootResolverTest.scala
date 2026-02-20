@@ -118,7 +118,8 @@ class TMailQuotaRootResolverTest {
         .collectList()
         .block())
       .containsOnly(teamMailbox.mailboxPath, teamMailbox.inboxPath, teamMailbox.sentPath,
-        teamMailbox.mailboxPath("Drafts"), teamMailbox.mailboxPath("Outbox"), teamMailbox.mailboxPath("Trash"))
+        teamMailbox.mailboxPath("Drafts"), teamMailbox.mailboxPath("Outbox"), teamMailbox.mailboxPath("Trash"),
+        teamMailbox.mailboxPath("Templates"))
   }
 
   @Test
