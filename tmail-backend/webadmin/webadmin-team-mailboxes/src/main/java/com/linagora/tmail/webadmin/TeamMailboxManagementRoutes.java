@@ -102,11 +102,14 @@ public class TeamMailboxManagementRoutes implements Routes {
     private static final String MEMBER_USERNAME_PARAM = ":username";
     private static final String FOLDER_NAME_PARAM = ":folderName";
     private static final String ACL_USER_PARAM = ":aclUser";
+    private static final String EXTRA_SENDER_USERNAME_PARAM = ":senderUsername";
     private static final String ROLE_PARAM = "role";
     public static final String TEAM_MAILBOXES_BASE_PATH = "/team-mailboxes";
     public static final String BASE_PATH = Constants.SEPARATOR + "domains" + Constants.SEPARATOR + TEAM_MAILBOX_DOMAIN_PARAM + Constants.SEPARATOR + "team-mailboxes";
     public static final String MEMBER_BASE_PATH = BASE_PATH + Constants.SEPARATOR + TEAM_MAILBOX_NAME_PARAM + Constants.SEPARATOR + "members";
     public static final String MAILBOX_BASE_PATH = BASE_PATH + Constants.SEPARATOR + TEAM_MAILBOX_NAME_PARAM + Constants.SEPARATOR + "mailboxes";
+    public static final String EXTRA_SENDERS_BASE_PATH = BASE_PATH + Constants.SEPARATOR + TEAM_MAILBOX_NAME_PARAM + "/extraSenders";
+    public static final String EXTRA_SENDER_USER_PATH = EXTRA_SENDERS_BASE_PATH + Constants.SEPARATOR + EXTRA_SENDER_USERNAME_PARAM;
 
     private final TeamMailboxRepository teamMailboxRepository;
     private final DomainList domainList;
@@ -150,6 +153,10 @@ public class TeamMailboxManagementRoutes implements Routes {
         service.get(MEMBER_BASE_PATH, getMembers(), jsonTransformer);
         service.delete(MEMBER_BASE_PATH + Constants.SEPARATOR + MEMBER_USERNAME_PARAM, deleteMember(), jsonTransformer);
         service.put(MEMBER_BASE_PATH + Constants.SEPARATOR + MEMBER_USERNAME_PARAM, addMember(), jsonTransformer);
+
+        service.get(EXTRA_SENDERS_BASE_PATH, getExtraSenders(), jsonTransformer);
+        service.put(EXTRA_SENDER_USER_PATH, addExtraSender(), jsonTransformer);
+        service.delete(EXTRA_SENDER_USER_PATH, deleteExtraSender(), jsonTransformer);
     }
 
     private Domain extractDomain(Request request) {
@@ -595,6 +602,85 @@ public class TeamMailboxManagementRoutes implements Routes {
             Mono.from(teamMailboxRepository.removeMember(teamMailbox, removeUser))
                 .onErrorMap(TeamMailboxNotFoundException.class, e -> teamMailboxNotFoundException(teamMailbox, e))
                 .block();
+            return Responses.returnNoContent(response);
+        };
+    }
+
+    public Route getExtraSenders() {
+        return (request, response) -> {
+            TeamMailbox teamMailbox = new TeamMailbox(extractDomain(request), extractName(request));
+
+            boolean exists = Mono.from(teamMailboxRepository.exists(teamMailbox)).map(Boolean.TRUE::equals).block();
+            if (!exists) {
+                throw teamMailboxNotFoundException(teamMailbox, new TeamMailboxNotFoundException(teamMailbox));
+            }
+
+            MailboxSession session = mailboxManager.createSystemSession(teamMailbox.admin());
+
+            Set<String> systemUsernames = Set.of(teamMailbox.owner().asString(), teamMailbox.admin().asString(), teamMailbox.self().asString());
+            Set<String> memberUsernames = Flux.from(teamMailboxRepository.listMembers(teamMailbox))
+                .map(member -> member.username().asString())
+                .collect(Collectors.toSet())
+                .block();
+
+            try {
+                MailboxACL acl = mailboxManager.listRights(teamMailbox.mailboxPath(), session);
+                return acl.getEntries().entrySet().stream()
+                    .filter(e -> !e.getKey().isNegative())
+                    .filter(e -> MailboxACL.NameType.user.equals(e.getKey().getNameType()))
+                    .filter(e -> !systemUsernames.contains(e.getKey().getName()))
+                    .filter(e -> !memberUsernames.contains(e.getKey().getName()))
+                    .filter(e -> e.getValue().contains(MailboxACL.Right.Post))
+                    .map(e -> e.getKey().getName())
+                    .collect(Collectors.toList());
+            } catch (MailboxNotFoundException e) {
+                return java.util.Collections.emptyList();
+            }
+        };
+    }
+
+    public Route addExtraSender() {
+        return (request, response) -> {
+            TeamMailbox teamMailbox = new TeamMailbox(extractDomain(request), extractName(request));
+
+            boolean exists = Mono.from(teamMailboxRepository.exists(teamMailbox)).map(Boolean.TRUE::equals).block();
+            if (!exists) {
+                throw teamMailboxNotFoundException(teamMailbox, new TeamMailboxNotFoundException(teamMailbox));
+            }
+
+            Username senderUser = Username.of(request.params(EXTRA_SENDER_USERNAME_PARAM));
+            assertNotProtectedAclUser(senderUser, teamMailbox);
+
+            MailboxSession session = mailboxManager.createSystemSession(teamMailbox.admin());
+            mailboxManager.applyRightsCommand(
+                teamMailbox.mailboxPath(),
+                MailboxACL.command().forUser(senderUser).rights(MailboxACL.Right.Post).asAddition(),
+                session);
+            return Responses.returnNoContent(response);
+        };
+    }
+
+    public Route deleteExtraSender() {
+        return (request, response) -> {
+            TeamMailbox teamMailbox = new TeamMailbox(extractDomain(request), extractName(request));
+
+            boolean exists = Mono.from(teamMailboxRepository.exists(teamMailbox)).map(Boolean.TRUE::equals).block();
+            if (!exists) {
+                throw teamMailboxNotFoundException(teamMailbox, new TeamMailboxNotFoundException(teamMailbox));
+            }
+
+            Username senderUser = Username.of(request.params(EXTRA_SENDER_USERNAME_PARAM));
+            assertNotProtectedAclUser(senderUser, teamMailbox);
+
+            MailboxSession session = mailboxManager.createSystemSession(teamMailbox.admin());
+            try {
+                mailboxManager.applyRightsCommand(
+                    teamMailbox.mailboxPath(),
+                    MailboxACL.command().forUser(senderUser).rights(MailboxACL.Right.Post).asRemoval(),
+                    session);
+            } catch (MailboxNotFoundException e) {
+                // Idempotent - treat as success
+            }
             return Responses.returnNoContent(response);
         };
     }
