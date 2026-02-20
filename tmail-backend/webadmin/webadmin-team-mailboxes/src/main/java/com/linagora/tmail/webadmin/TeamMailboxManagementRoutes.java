@@ -242,7 +242,7 @@ public class TeamMailboxManagementRoutes implements Routes {
                 throw teamMailboxNotFoundException(teamMailbox, new TeamMailboxNotFoundException(teamMailbox));
             }
 
-            MailboxSession session = mailboxManager.createSystemSession(teamMailbox.admin());
+            MailboxSession session = mailboxManager.createSystemSession(teamMailbox.self());
             String teamMailboxNameStr = teamMailbox.mailboxName().asString();
             String folderPrefix = teamMailboxNameStr + MailboxConstants.FOLDER_DELIMITER;
 
@@ -359,7 +359,7 @@ public class TeamMailboxManagementRoutes implements Routes {
     }
 
     private void assertNotProtectedAclUser(Username aclUser, TeamMailbox teamMailbox) {
-        Set<String> systemUsernames = Set.of(teamMailbox.owner().asString(), teamMailbox.admin().asString());
+        Set<String> systemUsernames = Set.of(teamMailbox.owner().asString(), teamMailbox.admin().asString(), teamMailbox.self().asString());
         if (systemUsernames.contains(aclUser.asString())) {
             throw ErrorResponder.builder()
                 .statusCode(HttpStatus.BAD_REQUEST_400)
@@ -392,7 +392,7 @@ public class TeamMailboxManagementRoutes implements Routes {
             String folderName = request.params(FOLDER_NAME_PARAM);
             MailboxSession session = mailboxManager.createSystemSession(teamMailbox.admin());
 
-            Set<String> systemUsernames = Set.of(teamMailbox.owner().asString(), teamMailbox.admin().asString());
+            Set<String> systemUsernames = Set.of(teamMailbox.owner().asString(), teamMailbox.admin().asString(), teamMailbox.self().asString());
             Set<String> memberUsernames = Flux.from(teamMailboxRepository.listMembers(teamMailbox))
                 .map(member -> member.username().asString())
                 .collect(Collectors.toSet())
@@ -506,7 +506,7 @@ public class TeamMailboxManagementRoutes implements Routes {
             String folderName = request.params(FOLDER_NAME_PARAM);
             MailboxSession session = mailboxManager.createSystemSession(teamMailbox.admin());
 
-            Set<String> systemUsernames = Set.of(teamMailbox.owner().asString(), teamMailbox.admin().asString());
+            Set<String> systemUsernames = Set.of(teamMailbox.owner().asString(), teamMailbox.self().asString(), teamMailbox.admin().asString());
             Set<String> memberUsernames = Flux.from(teamMailboxRepository.listMembers(teamMailbox))
                 .map(member -> member.username().asString())
                 .collect(Collectors.toSet())
