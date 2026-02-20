@@ -1299,6 +1299,471 @@ public class TeamMailboxManagementRoutesTest {
     }
 
     @Nested
+    class GetExtraAclTest {
+
+        @BeforeEach
+        void setUp() {
+            RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
+                .setBasePath(String.format(TEAM_MAILBOX_FOLDER_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString(), "INBOX"))
+                .build();
+        }
+
+        @Test
+        void getExtraAclShouldReturn404WhenTeamMailboxDoesNotExist() {
+            Map<String, Object> errors = given()
+                .get("/extraAcl")
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The requested team mailbox does not exists");
+        }
+
+        @ParameterizedTest
+        @MethodSource("com.linagora.tmail.webadmin.TeamMailboxManagementRoutesTest#namespaceInvalidSource")
+        void getExtraAclShouldReturn400WhenTeamMailboxNameIsInvalid(String teamMailboxName) {
+            Map<String, Object> errors = given()
+                .basePath(String.format(TEAM_MAILBOX_FOLDER_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), teamMailboxName, "INBOX"))
+                .get("/extraAcl")
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument");
+        }
+
+        @Test
+        void getExtraAclShouldReturn404WhenFolderDoesNotExist() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            Map<String, Object> errors = given()
+                .basePath(String.format(TEAM_MAILBOX_FOLDER_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString(), "NonExistent"))
+                .get("/extraAcl")
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The requested mailbox folder does not exist");
+        }
+
+        @Test
+        void getExtraAclShouldReturnEmptyWhenNoExtraEntries() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            Map<String, Object> body = given()
+                .get("/extraAcl")
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(body).isEmpty();
+        }
+
+        @Test
+        void getExtraAclShouldFilterTeamMailboxMembers() throws Exception {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, com.linagora.tmail.team.TeamMailboxMember.asMember(BOB))).block();
+
+            Map<String, Object> body = given()
+                .get("/extraAcl")
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(body).doesNotContainKey(BOB.asString());
+        }
+
+        @Test
+        void getExtraAclShouldReturnExtraEntryAfterSetExtraAcl() throws Exception {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given()
+                .body("lr")
+                .put("/extraAcl/" + ANDRE.asString())
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            Map<String, Object> body = given()
+                .get("/extraAcl")
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(body).containsEntry(ANDRE.asString(), "lr");
+        }
+    }
+
+    @Nested
+    class SetExtraAclUserTest {
+
+        @BeforeEach
+        void setUp() {
+            RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
+                .setBasePath(String.format(TEAM_MAILBOX_FOLDER_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString(), "INBOX"))
+                .build();
+        }
+
+        @Test
+        void setExtraAclUserShouldReturn404WhenTeamMailboxDoesNotExist() {
+            Map<String, Object> errors = given()
+                .body("lr")
+                .put("/extraAcl/" + BOB.asString())
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The requested team mailbox does not exists");
+        }
+
+        @Test
+        void setExtraAclUserShouldReturn404WhenFolderDoesNotExist() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            Map<String, Object> errors = given()
+                .basePath(String.format(TEAM_MAILBOX_FOLDER_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString(), "NonExistent"))
+                .body("lr")
+                .put("/extraAcl/" + BOB.asString())
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The requested mailbox folder does not exist");
+        }
+
+        @Test
+        void setExtraAclUserShouldReturn400WhenRightsAreInvalid() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            Map<String, Object> errors = given()
+                .body("INVALID")
+                .put("/extraAcl/" + BOB.asString())
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument");
+        }
+
+        @Test
+        void setExtraAclUserShouldReturn204AndStoreRights() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given()
+                .body("lr")
+                .put("/extraAcl/" + BOB.asString())
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            Map<String, Object> acl = given()
+                .get("/extraAcl")
+            .then()
+                .statusCode(OK_200)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(acl).containsEntry(BOB.asString(), "lr");
+        }
+
+        @Test
+        void setExtraAclUserShouldReplaceExistingRights() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given().body("lr").put("/extraAcl/" + BOB.asString()).then().statusCode(NO_CONTENT_204);
+            given().body("lrs").put("/extraAcl/" + BOB.asString()).then().statusCode(NO_CONTENT_204);
+
+            Map<String, Object> acl = given()
+                .get("/extraAcl")
+            .then()
+                .statusCode(OK_200)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(acl).containsEntry(BOB.asString(), "lrs");
+        }
+
+        @Test
+        void setExtraAclUserShouldReturn400WhenTargetIsTeamMailboxMember() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, TeamMailboxMember.asMember(BOB))).block();
+
+            Map<String, Object> errors = given()
+                .body("lr")
+                .put("/extraAcl/" + BOB.asString())
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", BOB.asString() + " is a team mailbox member and cannot be managed via extraAcl");
+        }
+
+        @Test
+        void setExtraAclUserShouldReturn400WhenTargetIsSystemUser() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            String ownerUsername = TEAM_MAILBOX.owner().asString();
+            Map<String, Object> errors = given()
+                .body("lr")
+                .put("/extraAcl/" + ownerUsername)
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", ownerUsername + " is a system user and cannot be managed via extraAcl");
+        }
+    }
+
+    @Nested
+    class DeleteExtraAclUserTest {
+
+        @BeforeEach
+        void setUp() {
+            RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
+                .setBasePath(String.format(TEAM_MAILBOX_FOLDER_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString(), "INBOX"))
+                .build();
+        }
+
+        @Test
+        void deleteExtraAclUserShouldReturn404WhenTeamMailboxDoesNotExist() {
+            Map<String, Object> errors = given()
+                .delete("/extraAcl/" + BOB.asString())
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The requested team mailbox does not exists");
+        }
+
+        @Test
+        void deleteExtraAclUserShouldReturn404WhenFolderDoesNotExist() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            Map<String, Object> errors = given()
+                .basePath(String.format(TEAM_MAILBOX_FOLDER_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString(), "NonExistent"))
+                .delete("/extraAcl/" + BOB.asString())
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The requested mailbox folder does not exist");
+        }
+
+        @Test
+        void deleteExtraAclUserShouldReturn204AndRemoveEntry() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given().body("lr").put("/extraAcl/" + BOB.asString()).then().statusCode(NO_CONTENT_204);
+
+            given()
+                .delete("/extraAcl/" + BOB.asString())
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            Map<String, Object> acl = given()
+                .get("/extraAcl")
+            .then()
+                .statusCode(OK_200)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(acl).doesNotContainKey(BOB.asString());
+        }
+
+        @Test
+        void deleteExtraAclUserShouldBeIdempotent() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given().delete("/extraAcl/" + BOB.asString()).then().statusCode(NO_CONTENT_204);
+            given().delete("/extraAcl/" + BOB.asString()).then().statusCode(NO_CONTENT_204);
+        }
+
+        @Test
+        void deleteExtraAclUserShouldNotRemoveOtherEntries() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given().body("lr").put("/extraAcl/" + BOB.asString()).then().statusCode(NO_CONTENT_204);
+            given().body("lrs").put("/extraAcl/" + ANDRE.asString()).then().statusCode(NO_CONTENT_204);
+
+            given().delete("/extraAcl/" + BOB.asString()).then().statusCode(NO_CONTENT_204);
+
+            Map<String, Object> acl = given()
+                .get("/extraAcl")
+            .then()
+                .statusCode(OK_200)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(acl)
+                .doesNotContainKey(BOB.asString())
+                .containsEntry(ANDRE.asString(), "lrs");
+        }
+
+        @Test
+        void deleteExtraAclUserShouldReturn400WhenTargetIsTeamMailboxMember() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, TeamMailboxMember.asMember(BOB))).block();
+
+            Map<String, Object> errors = given()
+                .delete("/extraAcl/" + BOB.asString())
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", BOB.asString() + " is a team mailbox member and cannot be managed via extraAcl");
+        }
+
+        @Test
+        void deleteExtraAclUserShouldReturn400WhenTargetIsSystemUser() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            String adminUsername = TEAM_MAILBOX.admin().asString();
+            Map<String, Object> errors = given()
+                .delete("/extraAcl/" + adminUsername)
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", adminUsername + " is a system user and cannot be managed via extraAcl");
+        }
+    }
+
+    @Nested
+    class DeleteExtraAclTest {
+
+        @BeforeEach
+        void setUp() {
+            RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
+                .setBasePath(String.format(TEAM_MAILBOX_FOLDER_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString(), "INBOX"))
+                .build();
+        }
+
+        @Test
+        void deleteExtraAclShouldReturn404WhenTeamMailboxDoesNotExist() {
+            Map<String, Object> errors = given()
+                .delete("/extraAcl")
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The requested team mailbox does not exists");
+        }
+
+        @Test
+        void deleteExtraAclShouldReturn404WhenFolderDoesNotExist() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            Map<String, Object> errors = given()
+                .basePath(String.format(TEAM_MAILBOX_FOLDER_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString(), "NonExistent"))
+                .delete("/extraAcl")
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The requested mailbox folder does not exist");
+        }
+
+        @Test
+        void deleteExtraAclShouldReturn204AndRemoveAllExtraEntries() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given().body("lr").put("/extraAcl/" + BOB.asString()).then().statusCode(NO_CONTENT_204);
+            given().body("lrs").put("/extraAcl/" + ANDRE.asString()).then().statusCode(NO_CONTENT_204);
+
+            given()
+                .delete("/extraAcl")
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            Map<String, Object> acl = given()
+                .get("/extraAcl")
+            .then()
+                .statusCode(OK_200)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(acl).isEmpty();
+        }
+
+        @Test
+        void deleteExtraAclShouldPreserveTeamMailboxMembers() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, com.linagora.tmail.team.TeamMailboxMember.asMember(BOB))).block();
+
+            given().body("lrs").put("/extraAcl/" + ANDRE.asString()).then().statusCode(NO_CONTENT_204);
+
+            given().delete("/extraAcl").then().statusCode(NO_CONTENT_204);
+
+            // Extra entry removed
+            Map<String, Object> acl = given()
+                .get("/extraAcl")
+            .then()
+                .statusCode(OK_200)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(acl).doesNotContainKey(ANDRE.asString());
+        }
+
+        @Test
+        void deleteExtraAclShouldBeIdempotent() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given().delete("/extraAcl").then().statusCode(NO_CONTENT_204);
+            given().delete("/extraAcl").then().statusCode(NO_CONTENT_204);
+        }
+    }
+
+    @Nested
     class DeleteMemberTest {
 
         @BeforeEach

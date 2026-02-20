@@ -18,7 +18,10 @@
 
 package com.linagora.tmail.webadmin;
 
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 import jakarta.inject.Inject;
 
@@ -29,6 +32,8 @@ import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.exception.MailboxExistsException;
 import org.apache.james.mailbox.exception.MailboxNotFoundException;
+import org.apache.james.mailbox.exception.UnsupportedRightException;
+import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailbox.model.search.MailboxQuery;
 import org.apache.james.mailbox.model.search.PrefixedWildcard;
@@ -96,6 +101,7 @@ public class TeamMailboxManagementRoutes implements Routes {
     private static final String TEAM_MAILBOX_NAME_PARAM = ":name";
     private static final String MEMBER_USERNAME_PARAM = ":username";
     private static final String FOLDER_NAME_PARAM = ":folderName";
+    private static final String ACL_USER_PARAM = ":aclUser";
     private static final String ROLE_PARAM = "role";
     public static final String BASE_PATH = Constants.SEPARATOR + "domains" + Constants.SEPARATOR + TEAM_MAILBOX_DOMAIN_PARAM + Constants.SEPARATOR + "team-mailboxes";
     public static final String MEMBER_BASE_PATH = BASE_PATH + Constants.SEPARATOR + TEAM_MAILBOX_NAME_PARAM + Constants.SEPARATOR + "members";
@@ -133,6 +139,10 @@ public class TeamMailboxManagementRoutes implements Routes {
         service.delete(MAILBOX_BASE_PATH + Constants.SEPARATOR + FOLDER_NAME_PARAM, deleteMailboxFolder(), jsonTransformer);
         service.get(MAILBOX_BASE_PATH + Constants.SEPARATOR + FOLDER_NAME_PARAM + "/messageCount", messageCount());
         service.get(MAILBOX_BASE_PATH + Constants.SEPARATOR + FOLDER_NAME_PARAM + "/unseenMessageCount", unseenMessageCount());
+        service.get(MAILBOX_BASE_PATH + Constants.SEPARATOR + FOLDER_NAME_PARAM + "/extraAcl", getExtraAcl(), jsonTransformer);
+        service.put(MAILBOX_BASE_PATH + Constants.SEPARATOR + FOLDER_NAME_PARAM + "/extraAcl" + Constants.SEPARATOR + ACL_USER_PARAM, setExtraAclUser(), jsonTransformer);
+        service.delete(MAILBOX_BASE_PATH + Constants.SEPARATOR + FOLDER_NAME_PARAM + "/extraAcl" + Constants.SEPARATOR + ACL_USER_PARAM, deleteExtraAclUser(), jsonTransformer);
+        service.delete(MAILBOX_BASE_PATH + Constants.SEPARATOR + FOLDER_NAME_PARAM + "/extraAcl", deleteExtraAcl(), jsonTransformer);
 
         service.get(MEMBER_BASE_PATH, getMembers(), jsonTransformer);
         service.delete(MEMBER_BASE_PATH + Constants.SEPARATOR + MEMBER_USERNAME_PARAM, deleteMember(), jsonTransformer);
@@ -341,6 +351,185 @@ public class TeamMailboxManagementRoutes implements Routes {
                     .cause(e)
                     .haltError();
             }
+        };
+    }
+
+    private Username extractAclUser(Request request) {
+        return Username.of(request.params(ACL_USER_PARAM));
+    }
+
+    private void assertNotProtectedAclUser(Username aclUser, TeamMailbox teamMailbox) {
+        Set<String> systemUsernames = Set.of(teamMailbox.owner().asString(), teamMailbox.admin().asString());
+        if (systemUsernames.contains(aclUser.asString())) {
+            throw ErrorResponder.builder()
+                .statusCode(HttpStatus.BAD_REQUEST_400)
+                .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+                .message(aclUser.asString() + " is a system user and cannot be managed via extraAcl")
+                .haltError();
+        }
+        boolean isMember = Flux.from(teamMailboxRepository.listMembers(teamMailbox))
+            .map(member -> member.username().asString())
+            .any(aclUser.asString()::equals)
+            .block();
+        if (isMember) {
+            throw ErrorResponder.builder()
+                .statusCode(HttpStatus.BAD_REQUEST_400)
+                .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+                .message(aclUser.asString() + " is a team mailbox member and cannot be managed via extraAcl")
+                .haltError();
+        }
+    }
+
+    public Route getExtraAcl() {
+        return (request, response) -> {
+            TeamMailbox teamMailbox = new TeamMailbox(extractDomain(request), extractName(request));
+
+            boolean exists = Mono.from(teamMailboxRepository.exists(teamMailbox)).map(Boolean.TRUE::equals).block();
+            if (!exists) {
+                throw teamMailboxNotFoundException(teamMailbox, new TeamMailboxNotFoundException(teamMailbox));
+            }
+
+            String folderName = request.params(FOLDER_NAME_PARAM);
+            MailboxSession session = mailboxManager.createSystemSession(teamMailbox.admin());
+
+            Set<String> systemUsernames = Set.of(teamMailbox.owner().asString(), teamMailbox.admin().asString());
+            Set<String> memberUsernames = Flux.from(teamMailboxRepository.listMembers(teamMailbox))
+                .map(member -> member.username().asString())
+                .collect(Collectors.toSet())
+                .block();
+
+            try {
+                MailboxACL acl = mailboxManager.listRights(teamMailbox.mailboxPath(folderName), session);
+                return acl.getEntries().entrySet().stream()
+                    .filter(e -> !e.getKey().isNegative())
+                    .filter(e -> MailboxACL.NameType.user.equals(e.getKey().getNameType()))
+                    .filter(e -> !systemUsernames.contains(e.getKey().getName()))
+                    .filter(e -> !memberUsernames.contains(e.getKey().getName()))
+                    .collect(Collectors.toMap(e -> e.getKey().getName(), e -> e.getValue().serialize()));
+            } catch (MailboxNotFoundException e) {
+                throw ErrorResponder.builder()
+                    .statusCode(HttpStatus.NOT_FOUND_404)
+                    .type(ErrorResponder.ErrorType.NOT_FOUND)
+                    .message("The requested mailbox folder does not exist")
+                    .cause(e)
+                    .haltError();
+            }
+        };
+    }
+
+    public Route setExtraAclUser() {
+        return (request, response) -> {
+            TeamMailbox teamMailbox = new TeamMailbox(extractDomain(request), extractName(request));
+
+            boolean exists = Mono.from(teamMailboxRepository.exists(teamMailbox)).map(Boolean.TRUE::equals).block();
+            if (!exists) {
+                throw teamMailboxNotFoundException(teamMailbox, new TeamMailboxNotFoundException(teamMailbox));
+            }
+
+            String folderName = request.params(FOLDER_NAME_PARAM);
+            Username aclUser = extractAclUser(request);
+            assertNotProtectedAclUser(aclUser, teamMailbox);
+
+            MailboxACL.Rfc4314Rights rights;
+            try {
+                rights = MailboxACL.Rfc4314Rights.deserialize(request.body().trim());
+            } catch (UnsupportedRightException e) {
+                throw ErrorResponder.builder()
+                    .statusCode(HttpStatus.BAD_REQUEST_400)
+                    .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+                    .message("Invalid rights: " + request.body())
+                    .cause(e)
+                    .haltError();
+            }
+
+            MailboxSession session = mailboxManager.createSystemSession(teamMailbox.admin());
+            try {
+                mailboxManager.getMailbox(teamMailbox.mailboxPath(folderName), session);
+                mailboxManager.applyRightsCommand(
+                    teamMailbox.mailboxPath(folderName),
+                    MailboxACL.command().forUser(aclUser).rights(rights).asReplacement(),
+                    session);
+            } catch (MailboxNotFoundException e) {
+                throw ErrorResponder.builder()
+                    .statusCode(HttpStatus.NOT_FOUND_404)
+                    .type(ErrorResponder.ErrorType.NOT_FOUND)
+                    .message("The requested mailbox folder does not exist")
+                    .cause(e)
+                    .haltError();
+            }
+            return Responses.returnNoContent(response);
+        };
+    }
+
+    public Route deleteExtraAclUser() {
+        return (request, response) -> {
+            TeamMailbox teamMailbox = new TeamMailbox(extractDomain(request), extractName(request));
+
+            boolean exists = Mono.from(teamMailboxRepository.exists(teamMailbox)).map(Boolean.TRUE::equals).block();
+            if (!exists) {
+                throw teamMailboxNotFoundException(teamMailbox, new TeamMailboxNotFoundException(teamMailbox));
+            }
+
+            String folderName = request.params(FOLDER_NAME_PARAM);
+            Username aclUser = extractAclUser(request);
+            assertNotProtectedAclUser(aclUser, teamMailbox);
+            MailboxSession session = mailboxManager.createSystemSession(teamMailbox.admin());
+
+            try {
+                MailboxACL currentAcl = mailboxManager.listRights(teamMailbox.mailboxPath(folderName), session);
+                MailboxACL.EntryKey userKey = MailboxACL.EntryKey.createUserEntryKey(aclUser);
+                MailboxACL.Rfc4314Rights userRights = currentAcl.getEntries().get(userKey);
+                if (userRights != null) {
+                    mailboxManager.setRights(teamMailbox.mailboxPath(folderName), currentAcl.except(userKey, userRights), session);
+                }
+            } catch (MailboxNotFoundException e) {
+                throw ErrorResponder.builder()
+                    .statusCode(HttpStatus.NOT_FOUND_404)
+                    .type(ErrorResponder.ErrorType.NOT_FOUND)
+                    .message("The requested mailbox folder does not exist")
+                    .cause(e)
+                    .haltError();
+            }
+            return Responses.returnNoContent(response);
+        };
+    }
+
+    public Route deleteExtraAcl() {
+        return (request, response) -> {
+            TeamMailbox teamMailbox = new TeamMailbox(extractDomain(request), extractName(request));
+
+            boolean exists = Mono.from(teamMailboxRepository.exists(teamMailbox)).map(Boolean.TRUE::equals).block();
+            if (!exists) {
+                throw teamMailboxNotFoundException(teamMailbox, new TeamMailboxNotFoundException(teamMailbox));
+            }
+
+            String folderName = request.params(FOLDER_NAME_PARAM);
+            MailboxSession session = mailboxManager.createSystemSession(teamMailbox.admin());
+
+            Set<String> systemUsernames = Set.of(teamMailbox.owner().asString(), teamMailbox.admin().asString());
+            Set<String> memberUsernames = Flux.from(teamMailboxRepository.listMembers(teamMailbox))
+                .map(member -> member.username().asString())
+                .collect(Collectors.toSet())
+                .block();
+
+            try {
+                MailboxACL currentAcl = mailboxManager.listRights(teamMailbox.mailboxPath(folderName), session);
+                Map<MailboxACL.EntryKey, MailboxACL.Rfc4314Rights> standardEntries = currentAcl.getEntries().entrySet().stream()
+                    .filter(e -> !MailboxACL.NameType.user.equals(e.getKey().getNameType())
+                        || e.getKey().isNegative()
+                        || systemUsernames.contains(e.getKey().getName())
+                        || memberUsernames.contains(e.getKey().getName()))
+                    .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
+                mailboxManager.setRights(teamMailbox.mailboxPath(folderName), new MailboxACL(standardEntries), session);
+            } catch (MailboxNotFoundException e) {
+                throw ErrorResponder.builder()
+                    .statusCode(HttpStatus.NOT_FOUND_404)
+                    .type(ErrorResponder.ErrorType.NOT_FOUND)
+                    .message("The requested mailbox folder does not exist")
+                    .cause(e)
+                    .haltError();
+            }
+            return Responses.returnNoContent(response);
         };
     }
 
