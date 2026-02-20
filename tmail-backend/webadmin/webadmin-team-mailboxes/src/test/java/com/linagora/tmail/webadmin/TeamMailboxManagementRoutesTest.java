@@ -92,6 +92,7 @@ public class TeamMailboxManagementRoutesTest {
     private static final String TEAM_MEMBER_BASE_PATH = BASE_PATH + "/%s/members";
     private static final String TEAM_MAILBOX_FOLDERS_BASE_PATH = BASE_PATH + "/%s/mailboxes";
     private static final String TEAM_MAILBOX_FOLDER_BASE_PATH = TEAM_MAILBOX_FOLDERS_BASE_PATH + "/%s";
+    private static final String TEAM_MAILBOX_EXTRA_SENDERS_BASE_PATH = BASE_PATH + "/%s/extraSenders";
 
     private static Stream<Arguments> namespaceInvalidSource() {
         return Stream.of(
@@ -1983,6 +1984,253 @@ public class TeamMailboxManagementRoutesTest {
             assertThat(Flux.from(teamMailboxRepository.listMembers(TEAM_MAILBOX)).collectList().block())
                 .contains(TeamMailboxMember.asMember(ANDRE))
                 .doesNotContain(TeamMailboxMember.asMember(BOB));
+        }
+    }
+
+    @Nested
+    class GetExtraSendersTest {
+
+        @BeforeEach
+        void setUp() {
+            RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
+                .setBasePath(String.format(TEAM_MAILBOX_EXTRA_SENDERS_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString()))
+                .build();
+        }
+
+        @Test
+        void getExtraSendersShouldReturn404WhenTeamMailboxDoesNotExist() {
+            Map<String, Object> errors = given()
+                .get()
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The requested team mailbox does not exists");
+        }
+
+        @Test
+        void getExtraSendersShouldReturnEmptyListWhenNoExtraSenders() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            List<String> senders = given()
+                .get()
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract().jsonPath().getList(".");
+
+            assertThat(senders).isEmpty();
+        }
+
+        @Test
+        void getExtraSendersShouldReturnSenderAfterAdd() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given()
+                .put("/" + ANDRE.asString())
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            List<String> senders = given()
+                .get()
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract().jsonPath().getList(".");
+
+            assertThat(senders).containsExactly(ANDRE.asString());
+        }
+
+        @Test
+        void getExtraSendersShouldNotReturnTeamMailboxMembers() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, TeamMailboxMember.asMember(BOB))).block();
+
+            List<String> senders = given()
+                .get()
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract().jsonPath().getList(".");
+
+            assertThat(senders).doesNotContain(BOB.asString());
+        }
+    }
+
+    @Nested
+    class AddExtraSenderTest {
+
+        @BeforeEach
+        void setUp() {
+            RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
+                .setBasePath(String.format(TEAM_MAILBOX_EXTRA_SENDERS_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString()))
+                .build();
+        }
+
+        @Test
+        void addExtraSenderShouldReturn204OnSuccess() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given()
+                .put("/" + ANDRE.asString())
+            .then()
+                .statusCode(NO_CONTENT_204);
+        }
+
+        @Test
+        void addExtraSenderShouldReturn404WhenTeamMailboxDoesNotExist() {
+            Map<String, Object> errors = given()
+                .put("/" + ANDRE.asString())
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The requested team mailbox does not exists");
+        }
+
+        @Test
+        void addExtraSenderShouldReturn400WhenTargetIsSystemUser() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            String ownerUsername = TEAM_MAILBOX.owner().asString();
+            Map<String, Object> errors = given()
+                .put("/" + ownerUsername)
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", ownerUsername + " is a system user and cannot be managed via extraAcl");
+        }
+
+        @Test
+        void addExtraSenderShouldReturn400WhenTargetIsTeamMailboxMember() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, TeamMailboxMember.asMember(BOB))).block();
+
+            Map<String, Object> errors = given()
+                .put("/" + BOB.asString())
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", BOB.asString() + " is a team mailbox member and cannot be managed via extraAcl");
+        }
+
+        @Test
+        void addExtraSenderShouldBeIdempotent() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given().put("/" + ANDRE.asString()).then().statusCode(NO_CONTENT_204);
+            given().put("/" + ANDRE.asString()).then().statusCode(NO_CONTENT_204);
+        }
+    }
+
+    @Nested
+    class DeleteExtraSenderTest {
+
+        @BeforeEach
+        void setUp() {
+            RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
+                .setBasePath(String.format(TEAM_MAILBOX_EXTRA_SENDERS_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString()))
+                .build();
+        }
+
+        @Test
+        void deleteExtraSenderShouldReturn204OnSuccess() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given().put("/" + ANDRE.asString()).then().statusCode(NO_CONTENT_204);
+
+            given()
+                .delete("/" + ANDRE.asString())
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            List<String> senders = given()
+                .get()
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract().jsonPath().getList(".");
+
+            assertThat(senders).doesNotContain(ANDRE.asString());
+        }
+
+        @Test
+        void deleteExtraSenderShouldBeIdempotentWhenUserNeverHadRight() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given()
+                .delete("/" + ANDRE.asString())
+            .then()
+                .statusCode(NO_CONTENT_204);
+        }
+
+        @Test
+        void deleteExtraSenderShouldReturn404WhenTeamMailboxDoesNotExist() {
+            Map<String, Object> errors = given()
+                .delete("/" + ANDRE.asString())
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The requested team mailbox does not exists");
+        }
+
+        @Test
+        void deleteExtraSenderShouldReturn400WhenTargetIsSystemUser() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            String adminUsername = TEAM_MAILBOX.admin().asString();
+            Map<String, Object> errors = given()
+                .delete("/" + adminUsername)
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", adminUsername + " is a system user and cannot be managed via extraAcl");
+        }
+
+        @Test
+        void deleteExtraSenderShouldReturn400WhenTargetIsTeamMailboxMember() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, TeamMailboxMember.asMember(BOB))).block();
+
+            Map<String, Object> errors = given()
+                .delete("/" + BOB.asString())
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", BOB.asString() + " is a team mailbox member and cannot be managed via extraAcl");
         }
     }
 }

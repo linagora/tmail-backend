@@ -489,6 +489,51 @@ Return codes:
 - `400` invalid domain or team mailbox name
 - `404` the domain was not found or the team mailbox does not exist
 
+=== Listing extra senders for a Team Mailbox
+
+....
+curl -XGET http://ip:port/domains/domain.tld/team-mailboxes/marketing/extraSenders
+....
+
+Returns the list of non-member users who have been granted the right to send emails as this team mailbox address.
+
+Response:
+
+....
+["alice@linagora.com", "bob@linagora.com"]
+....
+
+- `200` the list of extra senders is returned
+- `404` the team mailbox does not exist
+
+=== Adding an extra sender to a Team Mailbox
+
+....
+curl -XPUT http://ip:port/domains/domain.tld/team-mailboxes/marketing/extraSenders/alice@linagora.com
+....
+
+Grants the given non-member user the right to send emails as the team mailbox address. Idempotent.
+
+Return codes:
+
+- `204` the extra sender has been added successfully
+- `400` the target user is a system user or a team mailbox member
+- `404` the team mailbox does not exist
+
+=== Removing an extra sender from a Team Mailbox
+
+....
+curl -XDELETE http://ip:port/domains/domain.tld/team-mailboxes/marketing/extraSenders/alice@linagora.com
+....
+
+Revokes the send-as right previously granted to the given user. Idempotent (returns 204 even if the user did not have the right).
+
+Return codes:
+
+- `204` the extra sender has been removed successfully
+- `400` the target user is a system user or a team mailbox member
+- `404` the team mailbox does not exist
+
 == Rate limiting
 
 === Update rate limits of a user
