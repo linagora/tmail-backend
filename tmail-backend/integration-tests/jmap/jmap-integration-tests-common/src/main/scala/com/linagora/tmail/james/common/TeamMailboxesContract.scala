@@ -4180,6 +4180,105 @@ trait TeamMailboxesContract {
     })
   }
 
+  @Test
+  def subAddressedEmailToTeamMailboxShouldBeDeliveredToTeamMailboxInbox(server: GuiceJamesServer): Unit = {
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(teamMailbox)
+      .addMember(teamMailbox, BOB)
+
+    `given`
+      .spec(webAdminApi)
+    .when()
+      .put(s"/domains/${DOMAIN.asString()}/team-mailboxes/marketing/mailboxes/abc")
+    .`then`()
+      .statusCode(HttpStatus.SC_NO_CONTENT)
+
+    `given`
+      .spec(webAdminApi)
+      .body("""{"enabled": true}""")
+    .when()
+      .put(s"/domains/${DOMAIN.asString()}/team-mailboxes/marketing/mailboxes/abc/subaddressing")
+    .`then`()
+      .statusCode(HttpStatus.SC_NO_CONTENT)
+
+    val message: Message = Message.Builder
+      .of
+      .setSubject("test subaddressing")
+      .setSender(BOB.asString())
+      .setFrom(BOB.asString())
+      .setTo(s"marketing+abc@${DOMAIN.asString()}")
+      .setBody("testmail", StandardCharsets.UTF_8)
+      .build
+
+    val bobDraftsPath = MailboxPath.forUser(BOB, DefaultMailboxes.DRAFTS)
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(bobDraftsPath)
+    val messageId = server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessage(BOB.asString(), bobDraftsPath, AppendCommand.builder().build(message))
+      .getMessageId
+
+    val submissionRequest =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:ietf:params:jmap:submission"],
+         |  "methodCalls": [
+         |    ["EmailSubmission/set", {
+         |      "accountId": "$BOB_ACCOUNT_ID",
+         |      "create": {
+         |        "k1": {
+         |          "emailId": "${messageId.serialize}",
+         |          "envelope": {
+         |            "mailFrom": {"email": "${BOB.asString()}"},
+         |            "rcptTo": [{"email": "marketing+abc@${DOMAIN.asString()}"}]
+         |          }
+         |        }
+         |      }
+         |    }, "c1"]
+         |  ]
+         |}""".stripMargin
+
+    `given`
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(submissionRequest)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+
+    val teamMailboxInboxId = server.getProbe(classOf[MailboxProbeImpl])
+      .getMailboxId(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", DOMAIN).asString(), s"marketing.abc")
+
+    val queryRequest =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "urn:ietf:params:jmap:mail",
+         |    "urn:apache:james:params:jmap:mail:shares"
+         |  ],
+         |  "methodCalls": [["Email/query", {
+         |    "accountId": "$BOB_ACCOUNT_ID",
+         |    "filter": {"inMailbox": "${teamMailboxInboxId.serialize()}"}
+         |  }, "c1"]]
+         |}""".stripMargin
+
+    awaitAtMostTenSeconds.untilAsserted(() => {
+      val response: String = `given`
+        .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+        .body(queryRequest)
+      .when
+        .post
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .extract
+        .body
+        .asString
+
+      assertThatJson(response)
+        .inPath("methodResponses[0][1].ids")
+        .isNotEqualTo("[]")
+    })
+  }
+
   private def authenticatedRequest(server: GuiceJamesServer): RequestT[Identity, Either[String, String], Any] = {
     val port = server.getProbe(classOf[JmapGuiceProbe])
       .getJmapPort
