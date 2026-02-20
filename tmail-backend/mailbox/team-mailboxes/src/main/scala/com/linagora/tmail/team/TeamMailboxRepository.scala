@@ -19,8 +19,8 @@
 package com.linagora.tmail.team
 
 import java.util.{Set => JavaSet}
-
 import com.google.common.collect.ImmutableSet
+import com.linagora.tmail.team.TeamMailbox.TEAM_MAILBOX_ADMIN_LOCAL_PART
 import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
 import com.linagora.tmail.team.TeamMailboxRepositoryImpl.{BASIC_TEAM_MAILBOX_RIGHTS, TEAM_MAILBOX_MANAGER_RIGHTS, TEAM_MAILBOX_MEMBER_RIGHTS, TEAM_MAILBOX_MEMBER_RIGHTS_DELETE, TEAM_MAILBOX_QUERY}
 import com.linagora.tmail.team.TeamMailboxUserEntityValidator.TEAM_MAILBOX
@@ -29,7 +29,7 @@ import jakarta.inject.Inject
 import org.apache.james.UserEntityValidator
 import org.apache.james.core.{Domain, Username}
 import org.apache.james.mailbox.exception.{MailboxExistsException, MailboxNotFoundException}
-import org.apache.james.mailbox.model.MailboxACL.{NameType, Right}
+import org.apache.james.mailbox.model.MailboxACL.{EntryKey, NameType, Rfc4314Rights, Right}
 import org.apache.james.mailbox.model.search.{MailboxQuery, PrefixedWildcard}
 import org.apache.james.mailbox.model.{MailboxACL, MailboxPath}
 import org.apache.james.mailbox.store.MailboxSessionMapperFactory
@@ -120,11 +120,12 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
 
   private def createDefaultMailboxReliably(teamMailbox: TeamMailbox, session: MailboxSession) =
     SFlux.fromIterable(teamMailbox.defaultMailboxPaths)
-      .flatMap(mailboxPath => createMailboxReliably(mailboxPath, session), ReactorUtils.DEFAULT_CONCURRENCY)
+      .flatMap(mailboxPath => createMailboxReliably(mailboxPath, teamMailbox, session), ReactorUtils.DEFAULT_CONCURRENCY)
       .`then`()
 
-  private def createMailboxReliably(path: MailboxPath, session: MailboxSession) =
+  private def createMailboxReliably(path: MailboxPath, teamMailbox: TeamMailbox, session: MailboxSession) =
     SMono(mailboxManager.createMailboxReactive(path, session))
+      .`then`(SMono(mailboxManager.applyRightsCommandReactive(path, MailboxACL.command.key(EntryKey.createUserEntryKey(teamMailbox.admin, false)).rights(MailboxACL.FULL_RIGHTS).asAddition(), session)))
       .onErrorResume {
         case _: MailboxExistsException => SMono.empty
         case e => SMono.error(e)
@@ -152,10 +153,12 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
   private def createSession(teamMailbox: TeamMailbox): MailboxSession =
     mailboxManager.createSystemSession(teamMailbox.owner)
 
-  override def listTeamMailboxes(domain: Domain): Publisher[TeamMailbox] =
-    listTeamMailboxes()
-      .filter(teamMailbox => teamMailbox.domain.equals(domain))
+  override def listTeamMailboxes(domain: Domain): Publisher[TeamMailbox] = {
+    val session = mailboxManager.createSystemSession(Username.fromLocalPartWithDomain(TEAM_MAILBOX_ADMIN_LOCAL_PART, domain))
+    SFlux.fromPublisher(mailboxManager.search(TEAM_MAILBOX_QUERY, session))
+      .flatMapIterable(mailboxMetaData => TeamMailbox.from(mailboxMetaData.getPath))
       .distinct()
+  }
 
   override def listTeamMailboxes(username: Username): Publisher[TeamMailbox] =
     SFlux.fromPublisher(mailboxManager.search(TEAM_MAILBOX_QUERY, mailboxManager.createSystemSession(username)))
@@ -260,6 +263,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       .filter(entryKeyAndRights => NameType.user.equals(entryKeyAndRights._1.getNameType))
       .map(entryKeyAndRights => Username.of(entryKeyAndRights._1.getName) -> entryKeyAndRights._2)
       .distinct(usernameAndRights => usernameAndRights._1)
+      .filter(usernameAndRights => !usernameAndRights._1.equals(teamMailbox.admin))
       .filter(usernameAndRights => usernameAndRights._2.list().containsAll(BASIC_TEAM_MAILBOX_RIGHTS))
       .map(usernameAndRights => TeamMailboxMember(username = usernameAndRights._1, role = getTeamMemberRole(usernameAndRights._2)))
   }
