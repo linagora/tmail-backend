@@ -230,7 +230,7 @@ public class IdentityProvisionListenerTest {
         rrt.setUsersRepository(ldapUserRepository);
         rrt.setDomainList(domainList);
         rrt.setConfiguration(RecipientRewriteTableConfiguration.DEFAULT_ENABLED);
-        CanSendFrom canSendFrom = new TMailCanSendFrom(new AliasReverseResolverImpl(rrt), teamMailboxRepository);
+        CanSendFrom canSendFrom = new TMailCanSendFrom(new AliasReverseResolverImpl(rrt), teamMailboxRepository, mailboxManager);
 
         return new DefaultIdentitySupplier(canSendFrom, ldapUserRepository);
     }
