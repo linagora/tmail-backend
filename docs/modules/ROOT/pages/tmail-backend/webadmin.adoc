@@ -304,6 +304,51 @@ Return codes:
 - `400` invalid domain or team mailbox name
 - `404` the domain was not found, the team mailbox cannot be found, or the folder does not exist
 
+=== Getting sub-addressing status for a Team Mailbox folder
+
+....
+curl -XGET http://ip:port/domains/domain.tld/team-mailboxes/marketing/mailboxes/INBOX/subaddressing
+....
+
+Returns whether sub-addressing is enabled for the `INBOX` folder of the `marketing@domain.tld` team mailbox.
+Sub-addressing is considered enabled when any sender (anonymous or authenticated) has the `Post` right on the folder,
+meaning emails addressed to `marketing+INBOX@domain.tld` can be delivered directly to that folder.
+
+Response body:
+
+....
+{
+  "enabled": true
+}
+....
+
+Return codes:
+
+- `200` the sub-addressing status was retrieved successfully
+- `400` invalid domain or team mailbox name
+- `404` the domain was not found, the team mailbox cannot be found, or the folder does not exist
+
+=== Setting sub-addressing status for a Team Mailbox folder
+
+....
+curl -XPUT http://ip:port/domains/domain.tld/team-mailboxes/marketing/mailboxes/INBOX/subaddressing \
+  -H "Content-Type: application/json" \
+  -d '{"enabled": true}'
+....
+
+Enables or disables sub-addressing for the `INBOX` folder of the `marketing@domain.tld` team mailbox.
+
+- `enabled: true` grants the `Post` right to all senders (the `anyone` ACL entry), allowing emails sent to
+  `marketing+INBOX@domain.tld` to be delivered to that folder regardless of the sender identity.
+- `enabled: false` removes the `Post` right from the `anyone` ACL entry, preventing sub-addressing delivery
+  to that folder.
+
+Return codes:
+
+- `204` the sub-addressing status was updated successfully
+- `400` invalid domain, team mailbox name, or request body
+- `404` the domain was not found, the team mailbox cannot be found, or the folder does not exist
+
 === Repositioning system rights on all Team Mailbox folders
 
 ....
