@@ -101,6 +101,7 @@
             <mailet match="SenderIsLocal" class="com.linagora.tmail.mailets.IndexContacts">
                 <attribute>ContactAttribute1</attribute>
             </mailet>
+            <mailet match="All" class="com.linagora.tmail.mailet.TMailSubAdressing"/>
             <mailet match="All" class="com.linagora.tmail.mailets.TmailLocalDelivery"/>
         </processor>
 
