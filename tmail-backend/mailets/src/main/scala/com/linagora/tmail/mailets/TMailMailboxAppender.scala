@@ -18,14 +18,14 @@
 
 package com.linagora.tmail.mailets
 
-import java.util.Optional
-
+import com.google.common.base.Strings
 import com.linagora.tmail.team.{TeamMailbox, TeamMailboxRepository}
+import jakarta.mail.MessagingException
 import jakarta.mail.internet.MimeMessage
 import org.apache.james.core.Username
 import org.apache.james.mailbox.MailboxManager
 import org.apache.james.mailbox.MessageManager.AppendResult
-import org.apache.james.mailbox.model.ComposedMessageId
+import org.apache.james.mailbox.model.{ComposedMessageId, MailboxConstants}
 import org.apache.james.transport.mailets.delivery.MailboxAppenderImpl
 import org.apache.mailet.StorageDirective
 import reactor.core.publisher.Mono
@@ -40,12 +40,26 @@ class TMailMailboxAppender(teamMailboxRepository: TeamMailboxRepository, mailbox
   def appendTeamMailbox(mail: MimeMessage, teamMailbox: TeamMailbox, user: Username, storageDirective: StorageDirective): Mono[ComposedMessageId] =
     Mono.from(teamMailboxRepository.exists(teamMailbox))
       .filter(isTeamMailbox => isTeamMailbox)
-      .flatMap(_ => appendMessageToTeamMailbox(mail, teamMailbox)
+      .flatMap(_ => appendMessageToTeamMailbox(mail, teamMailbox, storageDirective)
         .map(_.getId))
       .cast(classOf[ComposedMessageId])
       .switchIfEmpty(super.append(mail, user, storageDirective))
 
-  def appendMessageToTeamMailbox(mail: MimeMessage, teamMailbox: TeamMailbox): Mono[AppendResult] =
-    super.appendMessageToMailbox(mail, mailboxManager.createSystemSession(teamMailbox.owner),
-      teamMailbox.inboxPath, Optional.empty())
+  def appendMessageToTeamMailbox(mail: MimeMessage, teamMailbox: TeamMailbox, storageDirective: StorageDirective): Mono[AppendResult] = {
+    val urlPath: String = storageDirective.getTargetFolders().flatMap(collection => collection.stream().findFirst()).get();
+    val targetFolder: String = useSlashAsSeparator(urlPath)
+    val mailboxPath = teamMailbox.mailboxPath(targetFolder)
+
+    super.appendMessageToMailbox(mail, mailboxManager.createSystemSession(teamMailbox.owner), mailboxPath, storageDirective.getFlags)
+  }
+
+  private def useSlashAsSeparator(urlPath: String): String = {
+    val destination = urlPath.replace('/', MailboxConstants.FOLDER_DELIMITER)
+    if (Strings.isNullOrEmpty(destination)) throw new MessagingException("Mail can not be delivered to empty folder")
+    if (destination.charAt(0) == MailboxConstants.FOLDER_DELIMITER) {
+      destination.substring(1)
+    } else {
+      destination
+    }
+  }
 }
