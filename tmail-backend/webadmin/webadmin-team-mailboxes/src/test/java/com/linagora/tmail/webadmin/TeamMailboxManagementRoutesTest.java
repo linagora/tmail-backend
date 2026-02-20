@@ -860,6 +860,187 @@ public class TeamMailboxManagementRoutesTest {
     }
 
     @Nested
+    class CreateMailboxFolderTest {
+
+        @BeforeEach
+        void setUp() {
+            RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
+                .setBasePath(String.format(TEAM_MAILBOX_FOLDERS_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString()))
+                .build();
+        }
+
+        @Test
+        void createMailboxFolderShouldReturn404WhenTeamMailboxDoesNotExist() {
+            Map<String, Object> errors = given()
+                .put("/MyFolder")
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The requested team mailbox does not exists")
+                .containsEntry("details", TEAM_MAILBOX.mailboxPath().asString() + " can not be found");
+        }
+
+        @ParameterizedTest
+        @MethodSource("com.linagora.tmail.webadmin.TeamMailboxManagementRoutesTest#namespaceInvalidSource")
+        void createMailboxFolderShouldReturn400WhenTeamMailboxNameIsInvalid(String teamMailboxName) {
+            Map<String, Object> errors = given()
+                .basePath(String.format(TEAM_MAILBOX_FOLDERS_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), teamMailboxName))
+                .put("/MyFolder")
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", "Invalid arguments supplied in the user request")
+                .containsEntry("details", String.format("Predicate failed: '%s' contains some invalid characters. Should be [#a-zA-Z0-9-_] and no longer than 255 chars.", teamMailboxName));
+        }
+
+        @Test
+        void createMailboxFolderShouldReturn204AndCreateFolder() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given()
+                .put("/MyFolder")
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            List<String> mailboxNames = given()
+                .get()
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getList("mailboxName");
+
+            assertThat(mailboxNames).contains("MyFolder");
+        }
+
+        @Test
+        void createMailboxFolderShouldBeIdempotent() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given()
+                .put("/MyFolder")
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            given()
+                .put("/MyFolder")
+            .then()
+                .statusCode(NO_CONTENT_204);
+        }
+    }
+
+    @Nested
+    class DeleteMailboxFolderTest {
+
+        @BeforeEach
+        void setUp() {
+            RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
+                .setBasePath(String.format(TEAM_MAILBOX_FOLDERS_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString()))
+                .build();
+        }
+
+        @Test
+        void deleteMailboxFolderShouldReturn404WhenTeamMailboxDoesNotExist() {
+            Map<String, Object> errors = given()
+                .delete("/MyFolder")
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The requested team mailbox does not exists")
+                .containsEntry("details", TEAM_MAILBOX.mailboxPath().asString() + " can not be found");
+        }
+
+        @ParameterizedTest
+        @MethodSource("com.linagora.tmail.webadmin.TeamMailboxManagementRoutesTest#namespaceInvalidSource")
+        void deleteMailboxFolderShouldReturn400WhenTeamMailboxNameIsInvalid(String teamMailboxName) {
+            Map<String, Object> errors = given()
+                .basePath(String.format(TEAM_MAILBOX_FOLDERS_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), teamMailboxName))
+                .delete("/MyFolder")
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", "Invalid arguments supplied in the user request")
+                .containsEntry("details", String.format("Predicate failed: '%s' contains some invalid characters. Should be [#a-zA-Z0-9-_] and no longer than 255 chars.", teamMailboxName));
+        }
+
+        @Test
+        void deleteMailboxFolderShouldReturn204AndDeleteFolder() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given()
+                .put("/MyFolder")
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            given()
+                .delete("/MyFolder")
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            List<String> mailboxNames = given()
+                .get()
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getList("mailboxName");
+
+            assertThat(mailboxNames).doesNotContain("MyFolder");
+        }
+
+        @Test
+        void deleteMailboxFolderShouldBeIdempotent() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given()
+                .delete("/MyFolder")
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            given()
+                .delete("/MyFolder")
+            .then()
+                .statusCode(NO_CONTENT_204);
+        }
+    }
+
+    @Nested
     class DeleteMemberTest {
 
         @BeforeEach

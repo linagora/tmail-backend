@@ -27,6 +27,8 @@ import org.apache.james.core.Username;
 import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.mailbox.exception.MailboxExistsException;
+import org.apache.james.mailbox.exception.MailboxNotFoundException;
 import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailbox.model.search.MailboxQuery;
 import org.apache.james.mailbox.model.search.PrefixedWildcard;
@@ -93,6 +95,7 @@ public class TeamMailboxManagementRoutes implements Routes {
     private static final String TEAM_MAILBOX_DOMAIN_PARAM = ":dom";
     private static final String TEAM_MAILBOX_NAME_PARAM = ":name";
     private static final String MEMBER_USERNAME_PARAM = ":username";
+    private static final String FOLDER_NAME_PARAM = ":folderName";
     private static final String ROLE_PARAM = "role";
     public static final String BASE_PATH = Constants.SEPARATOR + "domains" + Constants.SEPARATOR + TEAM_MAILBOX_DOMAIN_PARAM + Constants.SEPARATOR + "team-mailboxes";
     public static final String MEMBER_BASE_PATH = BASE_PATH + Constants.SEPARATOR + TEAM_MAILBOX_NAME_PARAM + Constants.SEPARATOR + "members";
@@ -126,6 +129,8 @@ public class TeamMailboxManagementRoutes implements Routes {
         service.put(BASE_PATH + Constants.SEPARATOR + TEAM_MAILBOX_NAME_PARAM, addTeamMailbox(), jsonTransformer);
 
         service.get(MAILBOX_BASE_PATH, getMailboxFolders(), jsonTransformer);
+        service.put(MAILBOX_BASE_PATH + Constants.SEPARATOR + FOLDER_NAME_PARAM, createMailboxFolder(), jsonTransformer);
+        service.delete(MAILBOX_BASE_PATH + Constants.SEPARATOR + FOLDER_NAME_PARAM, deleteMailboxFolder(), jsonTransformer);
 
         service.get(MEMBER_BASE_PATH, getMembers(), jsonTransformer);
         service.delete(MEMBER_BASE_PATH + Constants.SEPARATOR + MEMBER_USERNAME_PARAM, deleteMember(), jsonTransformer);
@@ -243,6 +248,46 @@ public class TeamMailboxManagementRoutes implements Routes {
                 })
                 .collectList()
                 .block();
+        };
+    }
+
+    public Route createMailboxFolder() {
+        return (request, response) -> {
+            TeamMailbox teamMailbox = new TeamMailbox(extractDomain(request), extractName(request));
+
+            boolean exists = Mono.from(teamMailboxRepository.exists(teamMailbox)).map(Boolean.TRUE::equals).block();
+            if (!exists) {
+                throw teamMailboxNotFoundException(teamMailbox, new TeamMailboxNotFoundException(teamMailbox));
+            }
+
+            String folderName = request.params(FOLDER_NAME_PARAM);
+            MailboxSession session = mailboxManager.createSystemSession(teamMailbox.owner());
+            try {
+                mailboxManager.createMailbox(teamMailbox.mailboxPath(folderName), session);
+            } catch (MailboxExistsException e) {
+                // Idempotent
+            }
+            return Responses.returnNoContent(response);
+        };
+    }
+
+    public Route deleteMailboxFolder() {
+        return (request, response) -> {
+            TeamMailbox teamMailbox = new TeamMailbox(extractDomain(request), extractName(request));
+
+            boolean exists = Mono.from(teamMailboxRepository.exists(teamMailbox)).map(Boolean.TRUE::equals).block();
+            if (!exists) {
+                throw teamMailboxNotFoundException(teamMailbox, new TeamMailboxNotFoundException(teamMailbox));
+            }
+
+            String folderName = request.params(FOLDER_NAME_PARAM);
+            MailboxSession session = mailboxManager.createSystemSession(teamMailbox.owner());
+            try {
+                mailboxManager.deleteMailbox(teamMailbox.mailboxPath(folderName), session);
+            } catch (MailboxNotFoundException e) {
+                // Idempotent - folder does not exist
+            }
+            return Responses.returnNoContent(response);
         };
     }
 
