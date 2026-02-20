@@ -86,6 +86,7 @@ import reactor.core.publisher.Mono;
 public class TeamMailboxManagementRoutesTest {
     private static final String BASE_PATH = "/domains/%s/team-mailboxes";
     private static final String TEAM_MEMBER_BASE_PATH = BASE_PATH + "/%s/members";
+    private static final String TEAM_MAILBOX_FOLDERS_BASE_PATH = BASE_PATH + "/%s/mailboxes";
 
     private static Stream<Arguments> namespaceInvalidSource() {
         return Stream.of(
@@ -147,7 +148,7 @@ public class TeamMailboxManagementRoutesTest {
         teamMailboxRepository.setValidator(validator);
 
         TeamMailboxManagementRoutes teamMailboxManagementRoutes = new TeamMailboxManagementRoutes(teamMailboxRepository,
-            domainList, new JsonTransformer());
+            domainList, mailboxManager, new JsonTransformer());
         webAdminServer = WebAdminUtils.createWebAdminServer(teamMailboxManagementRoutes).start();
 
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
@@ -749,6 +750,112 @@ public class TeamMailboxManagementRoutesTest {
 
             assertThat(Flux.from(teamMailboxRepository.listMembers(TEAM_MAILBOX)).collectList().block())
                 .containsExactlyInAnyOrder(TeamMailboxMember.asManager(BOB));
+        }
+    }
+
+    @Nested
+    class GetTeamMailboxFoldersTest {
+
+        @BeforeEach
+        void setUp() {
+            RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
+                .setBasePath(String.format(TEAM_MAILBOX_FOLDERS_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString()))
+                .build();
+        }
+
+        @Test
+        void getTeamMailboxFoldersShouldReturn404WhenTeamMailboxDoesNotExist() {
+            Map<String, Object> errors = given()
+                .get()
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The requested team mailbox does not exists")
+                .containsEntry("details", TEAM_MAILBOX.mailboxPath().asString() + " can not be found");
+        }
+
+        @ParameterizedTest
+        @MethodSource("com.linagora.tmail.webadmin.TeamMailboxManagementRoutesTest#namespaceInvalidSource")
+        void getTeamMailboxFoldersShouldReturn400WhenNameIsInvalid(String teamMailboxName) {
+            Map<String, Object> errors = given()
+                .basePath(String.format(TEAM_MAILBOX_FOLDERS_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), teamMailboxName))
+                .get()
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", "Invalid arguments supplied in the user request")
+                .containsEntry("details", String.format("Predicate failed: '%s' contains some invalid characters. Should be [#a-zA-Z0-9-_] and no longer than 255 chars.", teamMailboxName));
+        }
+
+        @Test
+        void getTeamMailboxFoldersShouldReturnDefaultMailboxesAfterCreation() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            List<String> mailboxNames = given()
+                .get()
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getList("mailboxName");
+
+            assertThat(mailboxNames)
+                .containsExactlyInAnyOrder("marketing", "INBOX", "Sent", "Trash", "Outbox", "Drafts");
+        }
+
+        @Test
+        void getTeamMailboxFoldersShouldReturnMailboxIdForEachFolder() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            List<String> mailboxIds = given()
+                .get()
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getList("mailboxId");
+
+            assertThat(mailboxIds)
+                .hasSize(6)
+                .allSatisfy(id -> assertThat(id).isNotBlank());
+        }
+
+        @Test
+        void getTeamMailboxFoldersShouldNotReturnFoldersOfAnotherTeamMailbox() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX_2)).block();
+
+            List<String> mailboxNames = given()
+                .get()
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getList("mailboxName");
+
+            assertThat(mailboxNames).noneMatch(name -> name.startsWith("sale"));
         }
     }
 
