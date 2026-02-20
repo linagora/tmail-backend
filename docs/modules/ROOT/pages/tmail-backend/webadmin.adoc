@@ -138,6 +138,172 @@ Return codes:
 - `400` Invalid user
 - `404` User not found
 
+=== Listing folders of a Team Mailbox
+
+....
+curl -XGET http://ip:port/domains/domain.tld/team-mailboxes/marketing/mailboxes
+....
+
+Returns the list of folders of the `marketing@domain.tld` team mailbox, including default folders created at provisioning time:
+
+....
+[
+  {
+    "mailboxName": "marketing",
+    "mailboxId": "15b47950-5799-11ef-91ef-0242ac120002"
+  },
+  {
+    "mailboxName": "INBOX",
+    "mailboxId": "23c58061-5799-11ef-91ef-0242ac120002"
+  },
+  {
+    "mailboxName": "Sent",
+    "mailboxId": "31d69172-5799-11ef-91ef-0242ac120002"
+  }
+]
+....
+
+Return codes:
+
+- `400` invalid domain or team mailbox name
+- `404` the domain was not found, the team mailbox cannot be found
+
+=== Creating a folder in a Team Mailbox
+
+....
+curl -XPUT http://ip:port/domains/domain.tld/team-mailboxes/marketing/mailboxes/MyFolder
+....
+
+Creates the `MyFolder` folder inside the `marketing@domain.tld` team mailbox.
+
+Return codes:
+
+- `204` the folder now exists (was already present or was created)
+- `400` invalid domain or team mailbox name
+- `404` the domain was not found, the team mailbox cannot be found
+
+=== Deleting a folder in a Team Mailbox
+
+....
+curl -XDELETE http://ip:port/domains/domain.tld/team-mailboxes/marketing/mailboxes/MyFolder
+....
+
+Deletes the `MyFolder` folder from the `marketing@domain.tld` team mailbox.
+
+Return codes:
+
+- `204` the folder no longer exists (was already absent or was deleted)
+- `400` invalid domain or team mailbox name
+- `404` the domain was not found, the team mailbox cannot be found
+
+=== Getting the message count of a Team Mailbox folder
+
+....
+curl -XGET http://ip:port/domains/domain.tld/team-mailboxes/marketing/mailboxes/INBOX/messageCount
+....
+
+Returns the total number of messages in the `INBOX` folder of the `marketing@domain.tld` team mailbox as a plain integer:
+
+....
+32
+....
+
+Return codes:
+
+- `400` invalid domain or team mailbox name
+- `404` the domain was not found, the team mailbox cannot be found, or the folder does not exist
+
+=== Getting the unseen message count of a Team Mailbox folder
+
+....
+curl -XGET http://ip:port/domains/domain.tld/team-mailboxes/marketing/mailboxes/INBOX/unseenMessageCount
+....
+
+Returns the number of unseen (unread) messages in the `INBOX` folder of the `marketing@domain.tld` team mailbox as a plain integer:
+
+....
+18
+....
+
+Return codes:
+
+- `400` invalid domain or team mailbox name
+- `404` the domain was not found, the team mailbox cannot be found, or the folder does not exist
+
+=== Listing extra ACL entries of a Team Mailbox folder
+
+....
+curl -XGET http://ip:port/domains/domain.tld/team-mailboxes/marketing/mailboxes/INBOX/extraAcl
+....
+
+Returns the extra ACL entries of the `INBOX` folder of the `marketing@domain.tld` team mailbox.
+Team mailbox members and system users are excluded from the result; only entries granted outside of the standard team membership are returned.
+
+Rights are expressed as an RFC 4314 string where each character represents a right:
+`l` (Lookup), `r` (Read), `s` (WriteSeenFlag), `w` (Write), `i` (Insert), `k` (CreateMailbox),
+`t` (DeleteMessages), `e` (PerformExpunge), `x` (DeleteMailbox), `a` (Administer).
+
+....
+{
+  "usera@domain.tld": "lr",
+  "userb@domain.tld": "lrwi"
+}
+....
+
+Return codes:
+
+- `400` invalid domain or team mailbox name
+- `404` the domain was not found, the team mailbox cannot be found, or the folder does not exist
+
+=== Setting an extra ACL entry on a Team Mailbox folder
+
+....
+curl -XPUT http://ip:port/domains/domain.tld/team-mailboxes/marketing/mailboxes/INBOX/extraAcl/usera@domain.tld \
+  -d 'lr'
+....
+
+Grants the specified RFC 4314 rights to `usera@domain.tld` on the `INBOX` folder of the `marketing@domain.tld` team mailbox.
+If the user already has an entry, it is replaced entirely.
+
+This endpoint cannot be used to manage rights of existing team mailbox members or system users.
+
+Return codes:
+
+- `204` the rights have been set
+- `400` invalid domain, team mailbox name, rights string, or the target user is a team mailbox member or a system user
+- `404` the domain was not found, the team mailbox cannot be found, or the folder does not exist
+
+=== Removing an extra ACL entry from a Team Mailbox folder
+
+....
+curl -XDELETE http://ip:port/domains/domain.tld/team-mailboxes/marketing/mailboxes/INBOX/extraAcl/usera@domain.tld
+....
+
+Removes all rights of `usera@domain.tld` on the `INBOX` folder of the `marketing@domain.tld` team mailbox.
+
+This endpoint cannot be used to manage rights of existing team mailbox members or system users.
+
+Return codes:
+
+- `204` the entry no longer exists (was already absent or was removed)
+- `400` invalid domain, team mailbox name, or the target user is a team mailbox member or a system user
+- `404` the domain was not found, the team mailbox cannot be found, or the folder does not exist
+
+=== Removing all extra ACL entries from a Team Mailbox folder
+
+....
+curl -XDELETE http://ip:port/domains/domain.tld/team-mailboxes/marketing/mailboxes/INBOX/extraAcl
+....
+
+Removes all extra ACL entries from the `INBOX` folder of the `marketing@domain.tld` team mailbox,
+restoring it to its standard ACL (team mailbox members and system users only).
+
+Return codes:
+
+- `204` extra ACL entries have been cleared
+- `400` invalid domain or team mailbox name
+- `404` the domain was not found, the team mailbox cannot be found, or the folder does not exist
+
 == Rate limiting
 
 === Update rate limits of a user
