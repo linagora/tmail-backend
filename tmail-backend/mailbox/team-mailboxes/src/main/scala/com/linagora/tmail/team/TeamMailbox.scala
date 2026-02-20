@@ -19,7 +19,7 @@
 package com.linagora.tmail.team
 
 import com.google.common.base.CharMatcher
-import com.linagora.tmail.team.TeamMailbox.TEAM_MAILBOX_LOCAL_PART
+import com.linagora.tmail.team.TeamMailbox.{TEAM_MAILBOX_ADMIN_LOCAL_PART, TEAM_MAILBOX_LOCAL_PART}
 import com.linagora.tmail.team.TeamMailboxName.TeamMailboxNameType
 import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
 import com.linagora.tmail.team.TeamMemberRole.{ManagerRole, MemberRole, Role}
@@ -71,6 +71,7 @@ case class TeamMailboxName(value: TeamMailboxNameType) {
 
 object TeamMailbox {
   val TEAM_MAILBOX_LOCAL_PART = "team-mailbox"
+  val TEAM_MAILBOX_ADMIN_LOCAL_PART = "team-mailbox-admin"
   private val MAXIMUM_CHARACTERS_OF_MAIL_ADDRESS = 320
   type TeamMailboxType = String Refined TeamMailboxConstraint
   private val charMatcher: CharMatcher = CharMatcher.inRange('a', 'z')
@@ -146,6 +147,7 @@ object TeamMailbox {
 
 case class TeamMailbox(domain: Domain, mailboxName: TeamMailboxName) {
   def owner: Username = Username.fromLocalPartWithDomain(TEAM_MAILBOX_LOCAL_PART, domain)
+  def admin: Username = Username.fromLocalPartWithDomain(TEAM_MAILBOX_ADMIN_LOCAL_PART, domain)
 
   def asMailAddress: MailAddress = MailAddress.of(mailboxName.value.value, domain)
 
