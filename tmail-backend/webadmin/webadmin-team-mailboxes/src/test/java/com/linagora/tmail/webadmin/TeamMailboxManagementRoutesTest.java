@@ -36,6 +36,7 @@ import static org.eclipse.jetty.http.HttpStatus.NO_CONTENT_204;
 import static org.eclipse.jetty.http.HttpStatus.OK_200;
 import static org.mockito.Mockito.mock;
 
+import java.io.ByteArrayInputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;
@@ -48,6 +49,8 @@ import org.apache.james.core.Username;
 import org.apache.james.dnsservice.api.DNSService;
 import org.apache.james.domainlist.lib.DomainListConfiguration;
 import org.apache.james.domainlist.memory.MemoryDomainList;
+import org.apache.james.mailbox.MessageManager;
+import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.SubscriptionManager;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
@@ -79,6 +82,7 @@ import com.linagora.tmail.team.TeamMailboxUserEntityValidator;
 
 import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
+import jakarta.mail.Flags;
 import net.javacrumbs.jsonunit.core.Option;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -87,6 +91,7 @@ public class TeamMailboxManagementRoutesTest {
     private static final String BASE_PATH = "/domains/%s/team-mailboxes";
     private static final String TEAM_MEMBER_BASE_PATH = BASE_PATH + "/%s/members";
     private static final String TEAM_MAILBOX_FOLDERS_BASE_PATH = BASE_PATH + "/%s/mailboxes";
+    private static final String TEAM_MAILBOX_FOLDER_BASE_PATH = TEAM_MAILBOX_FOLDERS_BASE_PATH + "/%s";
 
     private static Stream<Arguments> namespaceInvalidSource() {
         return Stream.of(
@@ -114,6 +119,7 @@ public class TeamMailboxManagementRoutesTest {
 
     private WebAdminServer webAdminServer;
     private TeamMailboxRepositoryImpl teamMailboxRepository;
+    private InMemoryMailboxManager mailboxManager;
     private MemoryUsersRepository usersRepository;
     private MemoryRecipientRewriteTable recipientRewriteTable;
     private InMemoryEmailAddressContactSearchEngine emailAddressContactSearchEngine;
@@ -130,7 +136,7 @@ public class TeamMailboxManagementRoutesTest {
         usersRepository = MemoryUsersRepository.withVirtualHosting(domainList);
 
         InMemoryIntegrationResources resources = InMemoryIntegrationResources.defaultResources();
-        InMemoryMailboxManager mailboxManager = resources.getMailboxManager();
+        mailboxManager = resources.getMailboxManager();
         SubscriptionManager subscriptionManager = new StoreSubscriptionManager(resources.getMailboxManager().getMapperFactory(),
                 resources.getMailboxManager().getMapperFactory(), resources.getMailboxManager().getEventBus());
         emailAddressContactSearchEngine = new InMemoryEmailAddressContactSearchEngine();
@@ -1037,6 +1043,258 @@ public class TeamMailboxManagementRoutesTest {
                 .delete("/MyFolder")
             .then()
                 .statusCode(NO_CONTENT_204);
+        }
+    }
+
+    @Nested
+    class MessageCountTest {
+
+        @BeforeEach
+        void setUp() {
+            RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
+                .setBasePath(String.format(TEAM_MAILBOX_FOLDER_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString(), "INBOX"))
+                .build();
+        }
+
+        @Test
+        void messageCountShouldReturn404WhenTeamMailboxDoesNotExist() {
+            Map<String, Object> errors = given()
+                .get("/messageCount")
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The requested team mailbox does not exists")
+                .containsEntry("details", TEAM_MAILBOX.mailboxPath().asString() + " can not be found");
+        }
+
+        @ParameterizedTest
+        @MethodSource("com.linagora.tmail.webadmin.TeamMailboxManagementRoutesTest#namespaceInvalidSource")
+        void messageCountShouldReturn400WhenTeamMailboxNameIsInvalid(String teamMailboxName) {
+            Map<String, Object> errors = given()
+                .basePath(String.format(TEAM_MAILBOX_FOLDER_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), teamMailboxName, "INBOX"))
+                .get("/messageCount")
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", "Invalid arguments supplied in the user request")
+                .containsEntry("details", String.format("Predicate failed: '%s' contains some invalid characters. Should be [#a-zA-Z0-9-_] and no longer than 255 chars.", teamMailboxName));
+        }
+
+        @Test
+        void messageCountShouldReturn404WhenFolderDoesNotExist() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            Map<String, Object> errors = given()
+                .basePath(String.format(TEAM_MAILBOX_FOLDER_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString(), "NonExistentFolder"))
+                .get("/messageCount")
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The requested mailbox folder does not exist");
+        }
+
+        @Test
+        void messageCountShouldReturnZeroWhenFolderIsEmpty() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            String body = given()
+                .get("/messageCount")
+            .then()
+                .statusCode(OK_200)
+                .extract()
+                .body()
+                .asString();
+
+            assertThat(Long.parseLong(body.trim())).isEqualTo(0L);
+        }
+
+        @Test
+        void messageCountShouldReturnCorrectCountAfterAppend() throws Exception {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            MailboxSession session = mailboxManager.createSystemSession(TEAM_MAILBOX.owner());
+            mailboxManager.getMailbox(TEAM_MAILBOX.inboxPath(), session)
+                .appendMessage(MessageManager.AppendCommand.builder()
+                    .build("Subject: test\r\n\r\nbody"), session);
+
+            String body = given()
+                .get("/messageCount")
+            .then()
+                .statusCode(OK_200)
+                .extract()
+                .body()
+                .asString();
+
+            assertThat(Long.parseLong(body.trim())).isEqualTo(1L);
+        }
+
+        @Test
+        void messageCountShouldReturnCorrectCountAfterAppendWithSeen() throws Exception {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            MailboxSession session = mailboxManager.createSystemSession(TEAM_MAILBOX.owner());
+            mailboxManager.getMailbox(TEAM_MAILBOX.inboxPath(), session)
+                .appendMessage(MessageManager.AppendCommand.builder()
+                    .withFlags(new Flags(Flags.Flag.SEEN))
+                    .build("Subject: test\r\n\r\nbody"), session);
+
+            String body = given()
+                .get("/messageCount")
+            .then()
+                .statusCode(OK_200)
+                .extract()
+                .body()
+                .asString();
+
+            assertThat(Long.parseLong(body.trim())).isEqualTo(1L);
+        }
+    }
+
+    @Nested
+    class UnseenMessageCountTest {
+
+        @BeforeEach
+        void setUp() {
+            RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
+                .setBasePath(String.format(TEAM_MAILBOX_FOLDER_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString(), "INBOX"))
+                .build();
+        }
+
+        @Test
+        void unseenMessageCountShouldReturn404WhenTeamMailboxDoesNotExist() {
+            Map<String, Object> errors = given()
+                .get("/unseenMessageCount")
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The requested team mailbox does not exists")
+                .containsEntry("details", TEAM_MAILBOX.mailboxPath().asString() + " can not be found");
+        }
+
+        @ParameterizedTest
+        @MethodSource("com.linagora.tmail.webadmin.TeamMailboxManagementRoutesTest#namespaceInvalidSource")
+        void unseenMessageCountShouldReturn400WhenTeamMailboxNameIsInvalid(String teamMailboxName) {
+            Map<String, Object> errors = given()
+                .basePath(String.format(TEAM_MAILBOX_FOLDER_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), teamMailboxName, "INBOX"))
+                .get("/unseenMessageCount")
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", "Invalid arguments supplied in the user request")
+                .containsEntry("details", String.format("Predicate failed: '%s' contains some invalid characters. Should be [#a-zA-Z0-9-_] and no longer than 255 chars.", teamMailboxName));
+        }
+
+        @Test
+        void unseenMessageCountShouldReturn404WhenFolderDoesNotExist() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            Map<String, Object> errors = given()
+                .basePath(String.format(TEAM_MAILBOX_FOLDER_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString(), "NonExistentFolder"))
+                .get("/unseenMessageCount")
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The requested mailbox folder does not exist");
+        }
+
+        @Test
+        void unseenMessageCountShouldReturnZeroWhenFolderIsEmpty() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            String body = given()
+                .get("/unseenMessageCount")
+            .then()
+                .statusCode(OK_200)
+                .extract()
+                .body()
+                .asString();
+
+            assertThat(Long.parseLong(body.trim())).isEqualTo(0L);
+        }
+
+        @Test
+        void unseenMessageCountShouldReturnCorrectCountAfterAppend() throws Exception {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            MailboxSession session = mailboxManager.createSystemSession(TEAM_MAILBOX.owner());
+            mailboxManager.getMailbox(TEAM_MAILBOX.inboxPath(), session)
+                .appendMessage(MessageManager.AppendCommand.builder()
+                    .build("Subject: test\r\n\r\nbody"), session);
+
+            String body = given()
+                .get("/unseenMessageCount")
+            .then()
+                .statusCode(OK_200)
+                .extract()
+                .body()
+                .asString();
+
+            assertThat(Long.parseLong(body.trim())).isEqualTo(1L);
+        }
+
+        @Test
+        void unseenMessageCountShouldReturnCorrectCountAfterAppendWithSeen() throws Exception {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            MailboxSession session = mailboxManager.createSystemSession(TEAM_MAILBOX.owner());
+            mailboxManager.getMailbox(TEAM_MAILBOX.inboxPath(), session)
+                .appendMessage(MessageManager.AppendCommand.builder()
+                    .withFlags(new Flags(Flags.Flag.SEEN))
+                    .build("Subject: test\r\n\r\nbody"), session);
+
+            String body = given()
+                .get("/unseenMessageCount")
+            .then()
+                .statusCode(OK_200)
+                .extract()
+                .body()
+                .asString();
+
+            assertThat(Long.parseLong(body.trim())).isEqualTo(0L);
         }
     }
 
