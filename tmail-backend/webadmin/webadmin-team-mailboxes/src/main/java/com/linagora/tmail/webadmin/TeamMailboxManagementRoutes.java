@@ -56,7 +56,6 @@ import com.linagora.tmail.team.TeamMemberRole;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import scala.Option;
 import scala.jdk.javaapi.OptionConverters;
 import spark.HaltException;
 import spark.Request;
