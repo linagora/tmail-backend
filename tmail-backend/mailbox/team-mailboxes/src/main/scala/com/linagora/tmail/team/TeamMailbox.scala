@@ -148,6 +148,7 @@ object TeamMailbox {
 case class TeamMailbox(domain: Domain, mailboxName: TeamMailboxName) {
   def owner: Username = Username.fromLocalPartWithDomain(TEAM_MAILBOX_LOCAL_PART, domain)
   def admin: Username = Username.fromLocalPartWithDomain(TEAM_MAILBOX_ADMIN_LOCAL_PART, domain)
+  def self: Username = Username.fromLocalPartWithDomain(mailboxName.asString(), domain)
 
   def asMailAddress: MailAddress = MailAddress.of(mailboxName.value.value, domain)
 

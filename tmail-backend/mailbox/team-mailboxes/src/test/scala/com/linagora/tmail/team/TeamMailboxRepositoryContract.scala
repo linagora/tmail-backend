@@ -164,7 +164,7 @@ trait TeamMailboxRepositoryContract {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
     SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
     val bobSession: MailboxSession = mailboxManager.createSystemSession(BOB)
-    val entriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = sanitizeACL(mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath, bobSession).getEntries)
+    val entriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = sanitizeACL(mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath, bobSession).getEntries, TEAM_MAILBOX_MARKETING)
 
     SoftAssertions.assertSoftly(softly => {
       softly.assertThat(entriesRights)
@@ -178,7 +178,7 @@ trait TeamMailboxRepositoryContract {
   def addMemberShouldNotAddAdministerRight(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
     SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
-    val entriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = sanitizeACL(mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath, mailboxManager.createSystemSession(BOB)).getEntries)
+    val entriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = sanitizeACL(mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath, mailboxManager.createSystemSession(BOB)).getEntries, TEAM_MAILBOX_MARKETING)
 
     assertThat(entriesRights.asScala.head._2.contains(MailboxACL.Right.Administer))
       .isFalse
@@ -191,7 +191,7 @@ trait TeamMailboxRepositoryContract {
 
     SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
 
-    val entriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = sanitizeACL(mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath, mailboxManager.createSystemSession(BOB)).getEntries)
+    val entriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = sanitizeACL(mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath, mailboxManager.createSystemSession(BOB)).getEntries, TEAM_MAILBOX_MARKETING)
 
     SoftAssertions.assertSoftly(softly => {
       softly.assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)
@@ -223,7 +223,7 @@ trait TeamMailboxRepositoryContract {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
     SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asManager(BOB))).block()
     val bobSession: MailboxSession = mailboxManager.createSystemSession(BOB)
-    val entriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = sanitizeACL(mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath, bobSession).getEntries)
+    val entriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = sanitizeACL(mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath, bobSession).getEntries, TEAM_MAILBOX_MARKETING)
 
     SoftAssertions.assertSoftly(softly => {
       softly.assertThat(entriesRights)
@@ -235,9 +235,10 @@ trait TeamMailboxRepositoryContract {
     })
   }
 
-  def sanitizeACL(acl: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights]): JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = {
+  def sanitizeACL(acl: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights], teamMailbox: TeamMailbox): JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = {
     acl.asScala
       .filter(entry => !entry._1.getName.contains("team-mailbox-admin"))
+      .filter(entry => !entry._1.getName.equals(teamMailbox.self.asString()))
       .asJava
   }
 
@@ -248,7 +249,7 @@ trait TeamMailboxRepositoryContract {
 
     SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asManager(BOB))).block()
 
-    val entriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = sanitizeACL(mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath, mailboxManager.createSystemSession(BOB)).getEntries)
+    val entriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = sanitizeACL(mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath, mailboxManager.createSystemSession(BOB)).getEntries, TEAM_MAILBOX_MARKETING)
 
     SoftAssertions.assertSoftly(softly => {
       softly.assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)
@@ -265,7 +266,7 @@ trait TeamMailboxRepositoryContract {
 
     SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
 
-    val entriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = sanitizeACL(mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath, mailboxManager.createSystemSession(BOB)).getEntries)
+    val entriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = sanitizeACL(mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath, mailboxManager.createSystemSession(BOB)).getEntries, TEAM_MAILBOX_MARKETING)
 
     SoftAssertions.assertSoftly(softly => {
       softly.assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)
@@ -280,11 +281,11 @@ trait TeamMailboxRepositoryContract {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
     SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
     val bobSession: MailboxSession = mailboxManager.createSystemSession(BOB)
-    val inboxEntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = sanitizeACL(mailboxManager.listRights(TEAM_MAILBOX_MARKETING.inboxPath, bobSession).getEntries)
-    val sentEntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = sanitizeACL(mailboxManager.listRights(TEAM_MAILBOX_MARKETING.sentPath, bobSession).getEntries)
-    val outboxEntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = sanitizeACL(mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath("Outbox"), bobSession).getEntries)
-    val draftsEntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = sanitizeACL(mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath("Drafts"), bobSession).getEntries)
-    val trashEntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = sanitizeACL(mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath("Trash"), bobSession).getEntries)
+    val inboxEntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = sanitizeACL(mailboxManager.listRights(TEAM_MAILBOX_MARKETING.inboxPath, bobSession).getEntries, TEAM_MAILBOX_MARKETING)
+    val sentEntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = sanitizeACL(mailboxManager.listRights(TEAM_MAILBOX_MARKETING.sentPath, bobSession).getEntries, TEAM_MAILBOX_MARKETING)
+    val outboxEntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = sanitizeACL(mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath("Outbox"), bobSession).getEntries, TEAM_MAILBOX_MARKETING)
+    val draftsEntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = sanitizeACL(mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath("Drafts"), bobSession).getEntries, TEAM_MAILBOX_MARKETING)
+    val trashEntriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = sanitizeACL(mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath("Trash"), bobSession).getEntries, TEAM_MAILBOX_MARKETING)
 
     SoftAssertions.assertSoftly(softly => {
       softly.assertThat(inboxEntriesRights)
@@ -492,7 +493,7 @@ trait TeamMailboxRepositoryContract {
     SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
     SMono.fromPublisher(testee.removeMember(TEAM_MAILBOX_MARKETING, BOB)).block()
 
-    val entriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = sanitizeACL(mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath, mailboxManager.createSystemSession(BOB)).getEntries)
+    val entriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = sanitizeACL(mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath, mailboxManager.createSystemSession(BOB)).getEntries, TEAM_MAILBOX_MARKETING)
 
     SoftAssertions.assertSoftly(softly => {
       softly.assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)
@@ -508,7 +509,7 @@ trait TeamMailboxRepositoryContract {
     SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asManager(BOB))).block()
     SMono.fromPublisher(testee.removeMember(TEAM_MAILBOX_MARKETING, BOB)).block()
 
-    val entriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = sanitizeACL(mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath, mailboxManager.createSystemSession(BOB)).getEntries)
+    val entriesRights: JavaMap[MailboxACL.EntryKey, MailboxACL.Rfc4314Rights] = sanitizeACL(mailboxManager.listRights(TEAM_MAILBOX_MARKETING.mailboxPath, mailboxManager.createSystemSession(BOB)).getEntries, TEAM_MAILBOX_MARKETING)
 
     SoftAssertions.assertSoftly(softly => {
       softly.assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)

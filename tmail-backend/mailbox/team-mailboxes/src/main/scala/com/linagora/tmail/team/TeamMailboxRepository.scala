@@ -126,6 +126,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
   private def createMailboxReliably(path: MailboxPath, teamMailbox: TeamMailbox, session: MailboxSession) =
     SMono(mailboxManager.createMailboxReactive(path, session))
       .`then`(SMono(mailboxManager.applyRightsCommandReactive(path, MailboxACL.command.key(EntryKey.createUserEntryKey(teamMailbox.admin, false)).rights(MailboxACL.FULL_RIGHTS).asAddition(), session)))
+      .`then`(SMono(mailboxManager.applyRightsCommandReactive(path, MailboxACL.command.key(EntryKey.createUserEntryKey(teamMailbox.self, false)).rights(MailboxACL.FULL_RIGHTS).asAddition(), session)))
       .onErrorResume {
         case _: MailboxExistsException => SMono.empty
         case e => SMono.error(e)
@@ -264,6 +265,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       .map(entryKeyAndRights => Username.of(entryKeyAndRights._1.getName) -> entryKeyAndRights._2)
       .distinct(usernameAndRights => usernameAndRights._1)
       .filter(usernameAndRights => !usernameAndRights._1.equals(teamMailbox.admin))
+      .filter(usernameAndRights => !usernameAndRights._1.equals(teamMailbox.self))
       .filter(usernameAndRights => usernameAndRights._2.list().containsAll(BASIC_TEAM_MAILBOX_RIGHTS))
       .map(usernameAndRights => TeamMailboxMember(username = usernameAndRights._1, role = getTeamMemberRole(usernameAndRights._2)))
   }
