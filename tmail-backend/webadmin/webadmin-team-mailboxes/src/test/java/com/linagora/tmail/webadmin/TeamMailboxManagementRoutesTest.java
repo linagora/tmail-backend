@@ -36,7 +36,6 @@ import static org.eclipse.jetty.http.HttpStatus.NO_CONTENT_204;
 import static org.eclipse.jetty.http.HttpStatus.OK_200;
 import static org.mockito.Mockito.mock;
 
-import java.io.ByteArrayInputStream;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Stream;

@@ -19,6 +19,7 @@
 package com.linagora.tmail.team
 
 import java.util.{Set => JavaSet}
+
 import com.google.common.collect.ImmutableSet
 import com.linagora.tmail.team.TeamMailbox.TEAM_MAILBOX_ADMIN_LOCAL_PART
 import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
