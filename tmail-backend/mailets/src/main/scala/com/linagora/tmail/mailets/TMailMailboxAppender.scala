@@ -18,6 +18,8 @@
 
 package com.linagora.tmail.mailets
 
+import java.util.Optional
+
 import com.google.common.base.Strings
 import com.linagora.tmail.team.{TeamMailbox, TeamMailboxRepository}
 import jakarta.mail.MessagingException
@@ -46,8 +48,8 @@ class TMailMailboxAppender(teamMailboxRepository: TeamMailboxRepository, mailbox
       .switchIfEmpty(super.append(mail, user, storageDirective))
 
   def appendMessageToTeamMailbox(mail: MimeMessage, teamMailbox: TeamMailbox, storageDirective: StorageDirective): Mono[AppendResult] = {
-    val urlPath: String = storageDirective.getTargetFolders().flatMap(collection => collection.stream().findFirst()).get();
-    val targetFolder: String = useSlashAsSeparator(urlPath)
+    val urlPath: Optional[String] = storageDirective.getTargetFolders().flatMap(collection => collection.stream().findFirst())
+    val targetFolder: String = useSlashAsSeparator(urlPath.orElse(MailboxConstants.INBOX))
     val mailboxPath = teamMailbox.mailboxPath(targetFolder)
 
     super.appendMessageToMailbox(mail, mailboxManager.createSystemSession(teamMailbox.owner), mailboxPath, storageDirective.getFlags)

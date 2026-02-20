@@ -97,7 +97,7 @@ class TMailSubAdressingTest {
         testee.service(mail);
 
         assertThat(mail.attributes().map(this::unbox))
-            .doesNotContain(Pair.of(RECIPIENT_ATTRIBUTE, "marketing." + TARGET_NONEXISTENT));
+            .doesNotContain(Pair.of(RECIPIENT_ATTRIBUTE, TARGET_NONEXISTENT));
     }
 
     @Test
