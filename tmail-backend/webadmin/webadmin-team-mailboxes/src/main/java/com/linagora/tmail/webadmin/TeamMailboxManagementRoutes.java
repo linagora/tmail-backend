@@ -20,6 +20,7 @@ package com.linagora.tmail.webadmin;
 
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -40,6 +41,8 @@ import org.apache.james.mailbox.model.search.PrefixedWildcard;
 import org.apache.james.webadmin.Constants;
 import org.apache.james.webadmin.Routes;
 import org.apache.james.webadmin.utils.ErrorResponder;
+import org.apache.james.webadmin.utils.JsonExtractor;
+import org.apache.james.webadmin.utils.JsonExtractException;
 import org.apache.james.webadmin.utils.JsonTransformer;
 import org.apache.james.webadmin.utils.Responses;
 import org.eclipse.jetty.http.HttpStatus;
@@ -79,6 +82,20 @@ public class TeamMailboxManagementRoutes implements Routes {
 
     }
 
+    public record SubAddressingResponse(boolean enabled) {}
+
+    static class SubAddressingDTO {
+        private Boolean enabled;
+
+        public Boolean getEnabled() {
+            return enabled;
+        }
+
+        public void setEnabled(Boolean enabled) {
+            this.enabled = enabled;
+        }
+    }
+
     static class TeamMailboxMemberResponse {
         private final Username username;
         private final String role;
@@ -110,6 +127,8 @@ public class TeamMailboxManagementRoutes implements Routes {
     public static final String MAILBOX_BASE_PATH = BASE_PATH + Constants.SEPARATOR + TEAM_MAILBOX_NAME_PARAM + Constants.SEPARATOR + "mailboxes";
     public static final String EXTRA_SENDERS_BASE_PATH = BASE_PATH + Constants.SEPARATOR + TEAM_MAILBOX_NAME_PARAM + "/extraSenders";
     public static final String EXTRA_SENDER_USER_PATH = EXTRA_SENDERS_BASE_PATH + Constants.SEPARATOR + EXTRA_SENDER_USERNAME_PARAM;
+
+    private static final JsonExtractor<SubAddressingDTO> SUB_ADDRESSING_JSON_EXTRACTOR = new JsonExtractor<>(SubAddressingDTO.class);
 
     private final TeamMailboxRepository teamMailboxRepository;
     private final DomainList domainList;
@@ -149,6 +168,8 @@ public class TeamMailboxManagementRoutes implements Routes {
         service.put(MAILBOX_BASE_PATH + Constants.SEPARATOR + FOLDER_NAME_PARAM + "/extraAcl" + Constants.SEPARATOR + ACL_USER_PARAM, setExtraAclUser(), jsonTransformer);
         service.delete(MAILBOX_BASE_PATH + Constants.SEPARATOR + FOLDER_NAME_PARAM + "/extraAcl" + Constants.SEPARATOR + ACL_USER_PARAM, deleteExtraAclUser(), jsonTransformer);
         service.delete(MAILBOX_BASE_PATH + Constants.SEPARATOR + FOLDER_NAME_PARAM + "/extraAcl", deleteExtraAcl(), jsonTransformer);
+        service.get(MAILBOX_BASE_PATH + Constants.SEPARATOR + FOLDER_NAME_PARAM + "/subaddressing", getSubAddressing(), jsonTransformer);
+        service.put(MAILBOX_BASE_PATH + Constants.SEPARATOR + FOLDER_NAME_PARAM + "/subaddressing", setSubAddressing(), jsonTransformer);
 
         service.get(MEMBER_BASE_PATH, getMembers(), jsonTransformer);
         service.delete(MEMBER_BASE_PATH + Constants.SEPARATOR + MEMBER_USERNAME_PARAM, deleteMember(), jsonTransformer);
@@ -560,6 +581,90 @@ public class TeamMailboxManagementRoutes implements Routes {
                         || memberUsernames.contains(e.getKey().getName()))
                     .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue));
                 mailboxManager.setRights(teamMailbox.mailboxPath(folderName), new MailboxACL(standardEntries), session);
+            } catch (MailboxNotFoundException e) {
+                throw ErrorResponder.builder()
+                    .statusCode(HttpStatus.NOT_FOUND_404)
+                    .type(ErrorResponder.ErrorType.NOT_FOUND)
+                    .message("The requested mailbox folder does not exist")
+                    .cause(e)
+                    .haltError();
+            }
+            return Responses.returnNoContent(response);
+        };
+    }
+
+    public Route getSubAddressing() {
+        return (request, response) -> {
+            TeamMailbox teamMailbox = new TeamMailbox(extractDomain(request), extractName(request));
+
+            boolean exists = Mono.from(teamMailboxRepository.exists(teamMailbox)).map(Boolean.TRUE::equals).block();
+            if (!exists) {
+                throw teamMailboxNotFoundException(teamMailbox, new TeamMailboxNotFoundException(teamMailbox));
+            }
+
+            String folderName = request.params(FOLDER_NAME_PARAM);
+            MailboxSession session = mailboxManager.createSystemSession(teamMailbox.owner());
+            try {
+                MailboxACL acl = mailboxManager.listRights(teamMailbox.mailboxPath(folderName), session);
+                boolean enabled = Optional.ofNullable(acl.getEntries().get(MailboxACL.ANYONE_KEY))
+                    .map(rights -> rights.contains(MailboxACL.Right.Post))
+                    .orElse(false);
+                return new SubAddressingResponse(enabled);
+            } catch (MailboxNotFoundException e) {
+                throw ErrorResponder.builder()
+                    .statusCode(HttpStatus.NOT_FOUND_404)
+                    .type(ErrorResponder.ErrorType.NOT_FOUND)
+                    .message("The requested mailbox folder does not exist")
+                    .cause(e)
+                    .haltError();
+            }
+        };
+    }
+
+    public Route setSubAddressing() {
+        return (request, response) -> {
+            TeamMailbox teamMailbox = new TeamMailbox(extractDomain(request), extractName(request));
+
+            boolean exists = Mono.from(teamMailboxRepository.exists(teamMailbox)).map(Boolean.TRUE::equals).block();
+            if (!exists) {
+                throw teamMailboxNotFoundException(teamMailbox, new TeamMailboxNotFoundException(teamMailbox));
+            }
+
+            SubAddressingDTO dto;
+            try {
+                dto = SUB_ADDRESSING_JSON_EXTRACTOR.parse(request.body());
+            } catch (JsonExtractException e) {
+                throw ErrorResponder.builder()
+                    .statusCode(HttpStatus.BAD_REQUEST_400)
+                    .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+                    .message("Invalid JSON body: " + e.getMessage())
+                    .cause(e)
+                    .haltError();
+            }
+
+            if (dto.getEnabled() == null) {
+                throw ErrorResponder.builder()
+                    .statusCode(HttpStatus.BAD_REQUEST_400)
+                    .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+                    .message("'enabled' field is mandatory")
+                    .haltError();
+            }
+
+            String folderName = request.params(FOLDER_NAME_PARAM);
+            MailboxSession session = mailboxManager.createSystemSession(teamMailbox.owner());
+            try {
+                mailboxManager.getMailbox(teamMailbox.mailboxPath(folderName), session);
+                if (dto.getEnabled()) {
+                    mailboxManager.applyRightsCommand(
+                        teamMailbox.mailboxPath(folderName),
+                        MailboxACL.command().key(MailboxACL.ANYONE_KEY).rights(MailboxACL.Right.Post).asAddition(),
+                        session);
+                } else {
+                    mailboxManager.applyRightsCommand(
+                        teamMailbox.mailboxPath(folderName),
+                        MailboxACL.command().key(MailboxACL.ANYONE_KEY).rights(MailboxACL.Right.Post).asRemoval(),
+                        session);
+                }
             } catch (MailboxNotFoundException e) {
                 throw ErrorResponder.builder()
                     .statusCode(HttpStatus.NOT_FOUND_404)

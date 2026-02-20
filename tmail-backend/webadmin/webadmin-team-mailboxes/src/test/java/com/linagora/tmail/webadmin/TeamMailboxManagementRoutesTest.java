@@ -2252,4 +2252,316 @@ public class TeamMailboxManagementRoutesTest {
                 .containsEntry("message", BOB.asString() + " is a team mailbox member and cannot be managed via extraAcl");
         }
     }
+
+    @Nested
+    class GetSubAddressingTest {
+
+        @BeforeEach
+        void setUp() {
+            RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
+                .setBasePath(String.format(TEAM_MAILBOX_FOLDER_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString(), "INBOX"))
+                .build();
+        }
+
+        @Test
+        void getSubAddressingShouldReturn404WhenTeamMailboxDoesNotExist() {
+            Map<String, Object> errors = given()
+                .get("/subaddressing")
+                .then()
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The requested team mailbox does not exists");
+        }
+
+        @Test
+        void getSubAddressingShouldReturn404WhenFolderDoesNotExist() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            Map<String, Object> errors = given()
+                .basePath(String.format(TEAM_MAILBOX_FOLDER_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString(), "NonExistent"))
+                .get("/subaddressing")
+                .then()
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The requested mailbox folder does not exist");
+        }
+
+        @Test
+        void getSubAddressingShouldReturnFalseByDefault() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            Boolean enabled = given()
+                .get("/subaddressing")
+                .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract().body().jsonPath().getBoolean("enabled");
+
+            assertThat(enabled).isFalse();
+        }
+
+        @Test
+        void getSubAddressingShouldReturnTrueWhenEnabled() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given()
+                .contentType(JSON)
+                .body("{\"enabled\": true}")
+                .put("/subaddressing")
+                .then()
+                .statusCode(NO_CONTENT_204);
+
+            Boolean enabled = given()
+                .get("/subaddressing")
+                .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract().body().jsonPath().getBoolean("enabled");
+
+            assertThat(enabled).isTrue();
+        }
+
+        @Test
+        void getSubAddressingShouldReturnFalseAfterDisabling() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given()
+                .contentType(JSON)
+                .body("{\"enabled\": true}")
+                .put("/subaddressing")
+                .then()
+                .statusCode(NO_CONTENT_204);
+
+            given()
+                .contentType(JSON)
+                .body("{\"enabled\": false}")
+                .put("/subaddressing")
+                .then()
+                .statusCode(NO_CONTENT_204);
+
+            Boolean enabled = given()
+                .get("/subaddressing")
+                .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract().body().jsonPath().getBoolean("enabled");
+
+            assertThat(enabled).isFalse();
+        }
+    }
+
+    @Nested
+    class SetSubAddressingTest {
+
+        @BeforeEach
+        void setUp() {
+            RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
+                .setBasePath(String.format(TEAM_MAILBOX_FOLDER_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString(), "INBOX"))
+                .build();
+        }
+
+        @Test
+        void setSubAddressingShouldReturn404WhenTeamMailboxDoesNotExist() {
+            Map<String, Object> errors = given()
+                .contentType(JSON)
+                .body("{\"enabled\": true}")
+                .put("/subaddressing")
+                .then()
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The requested team mailbox does not exists");
+        }
+
+        @Test
+        void setSubAddressingShouldReturn404WhenFolderDoesNotExist() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            Map<String, Object> errors = given()
+                .basePath(String.format(TEAM_MAILBOX_FOLDER_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString(), "NonExistent"))
+                .contentType(JSON)
+                .body("{\"enabled\": true}")
+                .put("/subaddressing")
+                .then()
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The requested mailbox folder does not exist");
+        }
+
+        @Test
+        void setSubAddressingShouldReturn400WhenBodyIsInvalidJson() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            Map<String, Object> errors = given()
+                .contentType(JSON)
+                .body("not-json")
+                .put("/subaddressing")
+                .then()
+                .statusCode(BAD_REQUEST_400)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument");
+        }
+
+        @Test
+        void setSubAddressingShouldReturn400WhenEnabledFieldIsMissing() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            Map<String, Object> errors = given()
+                .contentType(JSON)
+                .body("{}")
+                .put("/subaddressing")
+                .then()
+                .statusCode(BAD_REQUEST_400)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", "'enabled' field is mandatory");
+        }
+
+        @Test
+        void setSubAddressingShouldReturn204WhenEnablingSubAddressing() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given()
+                .contentType(JSON)
+                .body("{\"enabled\": true}")
+                .put("/subaddressing")
+                .then()
+                .statusCode(NO_CONTENT_204);
+        }
+
+        @Test
+        void setSubAddressingShouldReturn204WhenDisablingSubAddressing() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given()
+                .contentType(JSON)
+                .body("{\"enabled\": false}")
+                .put("/subaddressing")
+                .then()
+                .statusCode(NO_CONTENT_204);
+        }
+
+        @Test
+        void setSubAddressingShouldGrantAnyonePostRightWhenEnabled() throws Exception {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given()
+                .contentType(JSON)
+                .body("{\"enabled\": true}")
+                .put("/subaddressing")
+                .then()
+                .statusCode(NO_CONTENT_204);
+
+            MailboxSession session = mailboxManager.createSystemSession(TEAM_MAILBOX.owner());
+            MailboxACL acl = mailboxManager.listRights(TEAM_MAILBOX.inboxPath(), session);
+            assertThat(acl.getEntries().get(MailboxACL.ANYONE_KEY).contains(MailboxACL.Right.Post)).isTrue();
+        }
+
+        @Test
+        void setSubAddressingShouldRevokeAnyonePostRightWhenDisabled() throws Exception {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given()
+                .contentType(JSON)
+                .body("{\"enabled\": true}")
+                .put("/subaddressing")
+                .then()
+                .statusCode(NO_CONTENT_204);
+
+            given()
+                .contentType(JSON)
+                .body("{\"enabled\": false}")
+                .put("/subaddressing")
+                .then()
+                .statusCode(NO_CONTENT_204);
+
+            MailboxSession session = mailboxManager.createSystemSession(TEAM_MAILBOX.owner());
+            MailboxACL acl = mailboxManager.listRights(TEAM_MAILBOX.inboxPath(), session);
+            MailboxACL.Rfc4314Rights anyoneRights = acl.getEntries().get(MailboxACL.ANYONE_KEY);
+            assertThat(anyoneRights == null || !anyoneRights.contains(MailboxACL.Right.Post)).isTrue();
+        }
+
+        @Test
+        void setSubAddressingShouldBeIdempotentWhenEnablingTwice() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given()
+                .contentType(JSON)
+                .body("{\"enabled\": true}")
+                .put("/subaddressing")
+                .then()
+                .statusCode(NO_CONTENT_204);
+
+            given()
+                .contentType(JSON)
+                .body("{\"enabled\": true}")
+                .put("/subaddressing")
+                .then()
+                .statusCode(NO_CONTENT_204);
+
+            Boolean enabled = given()
+                .get("/subaddressing")
+                .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract().body().jsonPath().getBoolean("enabled");
+
+            assertThat(enabled).isTrue();
+        }
+
+        @Test
+        void setSubAddressingShouldBeIdempotentWhenDisablingTwice() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given()
+                .contentType(JSON)
+                .body("{\"enabled\": false}")
+                .put("/subaddressing")
+                .then()
+                .statusCode(NO_CONTENT_204);
+
+            given()
+                .contentType(JSON)
+                .body("{\"enabled\": false}")
+                .put("/subaddressing")
+                .then()
+                .statusCode(NO_CONTENT_204);
+
+            Boolean enabled = given()
+                .get("/subaddressing")
+                .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract().body().jsonPath().getBoolean("enabled");
+
+            assertThat(enabled).isFalse();
+        }
+    }
 }
