@@ -318,6 +318,177 @@ Return codes:
 - `204` system rights have been repositioned successfully
 - `400` missing or invalid `action` query parameter
 
+=== Getting the quota for a Team Mailbox
+
+....
+curl -XGET http://ip:port/domains/domain.tld/team-mailboxes/marketing/quota
+....
+
+Returns the quota details for the `marketing@domain.tld` team mailbox, including limits at each scope and current occupation:
+
+....
+{
+  "global": {
+    "count": 252,
+    "size": 242
+  },
+  "domain": {
+    "count": 152,
+    "size": 142
+  },
+  "teamMailbox": {
+    "count": 52,
+    "size": 42
+  },
+  "computed": {
+    "count": 52,
+    "size": 42
+  },
+  "occupation": {
+    "size": 13,
+    "count": 21,
+    "ratio": {
+      "size": 0.25,
+      "count": 0.5,
+      "max": 0.5
+    }
+  }
+}
+....
+
+- `global`: the global default quota limit
+- `domain`: the domain-level default quota limit
+- `teamMailbox`: the team-mailbox-specific quota limit (set at the user scope internally)
+- `computed`: the effective quota limit after applying scope precedence (teamMailbox > domain > global)
+- `occupation`: current usage, with `size` in bytes, `count` in messages, and `ratio` as fractions of the computed limit (0.0 when unlimited)
+
+A field value of `{"count": null, "size": null}` means no limit is set at that scope. A value of `-1` means unlimited.
+
+Return codes:
+
+- `200` quota details returned
+- `400` invalid domain or team mailbox name
+- `404` the domain was not found or the team mailbox does not exist
+
+=== Updating the quota for a Team Mailbox
+
+....
+curl -XPUT http://ip:port/domains/domain.tld/team-mailboxes/marketing/quota/limit
+ -H "Content-Type: application/json"
+ -d '{"count": 52, "size": 42}'
+....
+
+Sets the team-mailbox-specific quota limit for both count and size in a single call.
+Each field can hold:
+
+- a positive integer to set a finite limit
+- `-1` to set an unlimited quota
+- `null` to leave the current value unchanged
+
+Examples:
+
+....
+{"count": 52, "size": 42}
+
+{"count": null, "size": null}
+
+{"count": 52, "size": -1}
+....
+
+Return codes:
+
+- `204` the quota has been updated
+- `400` invalid domain, team mailbox name, or quota value
+- `404` the domain was not found or the team mailbox does not exist
+
+=== Getting the message count quota for a Team Mailbox
+
+....
+curl -XGET http://ip:port/domains/domain.tld/team-mailboxes/marketing/quota/limit/count
+....
+
+Returns the team-mailbox-specific message count quota limit as a plain number, or `-1` for unlimited.
+
+Return codes:
+
+- `200` the count quota value
+- `204` no count quota is set at the team mailbox scope
+- `400` invalid domain or team mailbox name
+- `404` the domain was not found or the team mailbox does not exist
+
+=== Setting the message count quota for a Team Mailbox
+
+....
+curl -XPUT http://ip:port/domains/domain.tld/team-mailboxes/marketing/quota/limit/count
+ -d '52'
+....
+
+Sets the team-mailbox-specific message count quota. Use `-1` for unlimited.
+
+Return codes:
+
+- `204` the count quota has been updated
+- `400` invalid domain, team mailbox name, or quota value
+- `404` the domain was not found or the team mailbox does not exist
+
+=== Deleting the message count quota for a Team Mailbox
+
+....
+curl -XDELETE http://ip:port/domains/domain.tld/team-mailboxes/marketing/quota/limit/count
+....
+
+Removes the team-mailbox-specific message count quota, reverting to the domain or global default.
+
+Return codes:
+
+- `204` the count quota has been removed
+- `400` invalid domain or team mailbox name
+- `404` the domain was not found or the team mailbox does not exist
+
+=== Getting the storage size quota for a Team Mailbox
+
+....
+curl -XGET http://ip:port/domains/domain.tld/team-mailboxes/marketing/quota/limit/size
+....
+
+Returns the team-mailbox-specific storage size quota limit in bytes as a plain number, or `-1` for unlimited.
+
+Return codes:
+
+- `200` the size quota value
+- `204` no size quota is set at the team mailbox scope
+- `400` invalid domain or team mailbox name
+- `404` the domain was not found or the team mailbox does not exist
+
+=== Setting the storage size quota for a Team Mailbox
+
+....
+curl -XPUT http://ip:port/domains/domain.tld/team-mailboxes/marketing/quota/limit/size
+ -d '42'
+....
+
+Sets the team-mailbox-specific storage size quota in bytes. Use `-1` for unlimited.
+
+Return codes:
+
+- `204` the size quota has been updated
+- `400` invalid domain, team mailbox name, or quota value
+- `404` the domain was not found or the team mailbox does not exist
+
+=== Deleting the storage size quota for a Team Mailbox
+
+....
+curl -XDELETE http://ip:port/domains/domain.tld/team-mailboxes/marketing/quota/limit/size
+....
+
+Removes the team-mailbox-specific storage size quota, reverting to the domain or global default.
+
+Return codes:
+
+- `204` the size quota has been removed
+- `400` invalid domain or team mailbox name
+- `404` the domain was not found or the team mailbox does not exist
+
 == Rate limiting
 
 === Update rate limits of a user
