@@ -1586,6 +1586,10 @@ trait TeamMailboxesContract {
            |                        "type": "invalidArguments",
            |                        "description": "user 'bob@domain.tld' is not allowed to delete the mailbox '#TeamMailbox:team-mailbox@domain.tld:marketing.Trash'"
            |                    },
+           |                    "${mailboxSystemIdMap("marketing.Templates")}": {
+           |                        "type": "invalidArguments",
+           |                        "description": "user 'bob@domain.tld' is not allowed to delete the mailbox '#TeamMailbox:team-mailbox@domain.tld:marketing.Templates'"
+           |                    },
            |                    "${mailboxSystemIdMap("marketing.Outbox")}": {
            |                        "type": "invalidArguments",
            |                        "description": "user 'bob@domain.tld' is not allowed to delete the mailbox '#TeamMailbox:team-mailbox@domain.tld:marketing.Outbox'"
@@ -1926,16 +1930,12 @@ trait TeamMailboxesContract {
       .addMember(teamMailbox, BOB)
 
     val id1 = mailboxId(server, teamMailbox.mailboxPath)
-
     val id2 = mailboxId(server, teamMailbox.inboxPath)
-
     val id3 = mailboxId(server, teamMailbox.sentPath)
-
     val id4 = mailboxId(server, teamMailbox.mailboxPath("Outbox"))
-
     val id5 = mailboxId(server, teamMailbox.mailboxPath("Drafts"))
-
     val id6 = mailboxId(server, teamMailbox.mailboxPath("Trash"))
+    val id7 = mailboxId(server, teamMailbox.mailboxPath("Templates"))
 
     val request =
       s"""{
@@ -1975,7 +1975,7 @@ trait TeamMailboxesContract {
            |                "hasMoreChanges": false,
            |                "updatedProperties": null,
            |                "created": [],
-           |                "updated": ["$id1", "$id2", "$id3", "$id4", "$id5", "$id6"],
+           |                "updated": ["$id1", "$id2", "$id3", "$id4", "$id5", "$id6", "$id7"],
            |                "destroyed": []
            |            },
            |            "c1"
