@@ -23,7 +23,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.Optional;
 
-import com.google.common.collect.ImmutableList;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 
@@ -44,6 +43,7 @@ import org.apache.mailet.StorageDirective;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.team.TeamMailbox;
 
 import scala.jdk.javaapi.OptionConverters;
@@ -91,7 +91,12 @@ public class TMailSubAdressing extends SubAddressing {
             .findFirst();
     }
 
+    @Override
     protected void postIfHasRight(Mail mail, MailAddress recipient, Optional<MailboxPath> targetFolderPath) throws UsersRepositoryException, MailboxException {
+        if (targetFolderPath.isPresent() && !TEAM_MAILBOX_NAMESPACE.equals(targetFolderPath.get().getNamespace())) {
+           super.postIfHasRight(mail, recipient, targetFolderPath);
+           return;
+        }
         if (hasPostRight(mail, recipient, targetFolderPath)) {
             StorageDirective.builder().targetFolders(ImmutableList.of(extractTeamMailboxSubpart(targetFolderPath.get().getName()))).build()
                 .encodeAsAttributes(usersRepository.getUsername(recipient))
