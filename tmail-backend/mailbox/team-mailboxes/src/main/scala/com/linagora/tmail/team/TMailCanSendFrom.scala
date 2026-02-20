@@ -20,15 +20,22 @@ package com.linagora.tmail.team
 
 import java.lang
 
-import jakarta.inject.Inject
+import jakarta.inject.{Inject, Named}
 import org.apache.james.core.{MailAddress, Username}
+import org.apache.james.mailbox.MailboxManager
+import org.apache.james.mailbox.model.MailboxACL
+import org.apache.james.mailbox.model.MailboxACL.Right
 import org.apache.james.rrt.api.AliasReverseResolver
 import org.apache.james.rrt.lib.CanSendFromImpl
 import org.reactivestreams.Publisher
 import reactor.core.publisher.Flux
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-class TMailCanSendFrom @Inject()(aliasReverseResolver: AliasReverseResolver, teamMailboxRepository: TeamMailboxRepository) extends CanSendFromImpl(aliasReverseResolver) {
+import scala.util.Try
+
+class TMailCanSendFrom @Inject()(aliasReverseResolver: AliasReverseResolver,
+                                 teamMailboxRepository: TeamMailboxRepository,
+                                 @Named("mailboxmanager") mailboxManager: MailboxManager) extends CanSendFromImpl(aliasReverseResolver) {
   override def userCanSendFrom(connectedUser: Username, fromUser: Username): Boolean =
     super.userCanSendFrom(connectedUser, fromUser) || validTeamMailbox(connectedUser, fromUser)
 
@@ -38,28 +45,39 @@ class TMailCanSendFrom @Inject()(aliasReverseResolver: AliasReverseResolver, tea
       validTeamMailboxReactive(connectedUser, fromUser).map(boolean2Boolean)))
       .reduce((bool1: lang.Boolean, bool2: lang.Boolean) => bool1 || bool2)
 
+  private def isExtraSender(user: Username, teamMailbox: TeamMailbox): Boolean = {
+    val session = mailboxManager.createSystemSession(teamMailbox.admin)
+    val userKey = MailboxACL.EntryKey.createUserEntryKey(user)
+    Try(mailboxManager.listRights(teamMailbox.mailboxPath, session))
+      .map(acl => Option(acl.getEntries.get(userKey)).exists(_.contains(Right.Post)))
+      .getOrElse(false)
+  }
+
   private def validTeamMailbox(connectedUser: Username, fromUser: Username): Boolean =
     TeamMailbox.asTeamMailbox(fromUser.asMailAddress()) match {
-      case Some(teamMailbox) => SFlux(teamMailboxRepository.listMembers(teamMailbox))
-        .filter(teamMailboxMember => connectedUser.equals(teamMailboxMember.username))
-        .hasElements
-        .onErrorResume {
-          case _: TeamMailboxNotFoundException => SMono.just(false)
-          case e => SMono.error(e)
-        }
-        .block()
+      case Some(teamMailbox) =>
+        SFlux(teamMailboxRepository.listMembers(teamMailbox))
+          .filter(teamMailboxMember => connectedUser.equals(teamMailboxMember.username))
+          .hasElements
+          .onErrorResume {
+            case _: TeamMailboxNotFoundException => SMono.just(false)
+            case e => SMono.error(e)
+          }
+          .block() || isExtraSender(connectedUser, teamMailbox)
       case None => false
     }
 
   private def validTeamMailboxReactive(connectedUser: Username, fromUser: Username): SMono[Boolean] =
     TeamMailbox.asTeamMailbox(fromUser.asMailAddress()) match {
-      case Some(teamMailbox) => SFlux(teamMailboxRepository.listMembers(teamMailbox))
-        .filter(teamMailboxMember => connectedUser.equals(teamMailboxMember.username))
-        .hasElements
-        .onErrorResume {
-          case _: TeamMailboxNotFoundException => SMono.just(false)
-          case e => SMono.error(e)
-        }
+      case Some(teamMailbox) =>
+        SFlux(teamMailboxRepository.listMembers(teamMailbox))
+          .filter(teamMailboxMember => connectedUser.equals(teamMailboxMember.username))
+          .hasElements
+          .onErrorResume {
+            case _: TeamMailboxNotFoundException => SMono.just(false)
+            case e => SMono.error(e)
+          }
+          .map(_ || isExtraSender(connectedUser, teamMailbox))
       case None => SMono.just(false)
     }
 
