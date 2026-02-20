@@ -56,6 +56,7 @@ import com.linagora.tmail.team.TeamMemberRole;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import scala.Option;
 import scala.jdk.javaapi.OptionConverters;
 import spark.HaltException;
 import spark.Request;
@@ -103,6 +104,7 @@ public class TeamMailboxManagementRoutes implements Routes {
     private static final String FOLDER_NAME_PARAM = ":folderName";
     private static final String ACL_USER_PARAM = ":aclUser";
     private static final String ROLE_PARAM = "role";
+    public static final String TEAM_MAILBOXES_BASE_PATH = "/team-mailboxes";
     public static final String BASE_PATH = Constants.SEPARATOR + "domains" + Constants.SEPARATOR + TEAM_MAILBOX_DOMAIN_PARAM + Constants.SEPARATOR + "team-mailboxes";
     public static final String MEMBER_BASE_PATH = BASE_PATH + Constants.SEPARATOR + TEAM_MAILBOX_NAME_PARAM + Constants.SEPARATOR + "members";
     public static final String MAILBOX_BASE_PATH = BASE_PATH + Constants.SEPARATOR + TEAM_MAILBOX_NAME_PARAM + Constants.SEPARATOR + "mailboxes";
@@ -130,6 +132,8 @@ public class TeamMailboxManagementRoutes implements Routes {
 
     @Override
     public void define(Service service) {
+        service.post(TEAM_MAILBOXES_BASE_PATH, repositionSystemRights(), jsonTransformer);
+
         service.get(BASE_PATH, getTeamMailboxesByDomain(), jsonTransformer);
         service.delete(BASE_PATH + Constants.SEPARATOR + TEAM_MAILBOX_NAME_PARAM, deleteTeamMailbox(), jsonTransformer);
         service.put(BASE_PATH + Constants.SEPARATOR + TEAM_MAILBOX_NAME_PARAM, addTeamMailbox(), jsonTransformer);
@@ -183,6 +187,35 @@ public class TeamMailboxManagementRoutes implements Routes {
             .message("The requested team mailbox does not exists")
             .cause(exception)
             .haltError();
+    }
+
+    public Route repositionSystemRights() {
+        return (request, response) -> {
+            String action = request.queryParams("action");
+            if (!"repositionSystemRights".equals(action)) {
+                throw ErrorResponder.builder()
+                    .statusCode(HttpStatus.BAD_REQUEST_400)
+                    .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+                    .message("Invalid action supplied: " + action + ". Supported actions: [repositionSystemRights]")
+                    .haltError();
+            }
+            MailboxSession session = mailboxManager.createSystemSession(Username.of("repositionSystemRights"));
+
+            Flux.fromIterable(mailboxManager.list(session))
+                .filter(mailboxPath -> mailboxPath.getNamespace().equals("#TeamMailbox"))
+
+                .flatMap(mailboxPath -> {
+                    TeamMailbox teamMailbox = TeamMailbox.from(mailboxPath).get();
+                    MailboxSession ownerSession = mailboxManager.createSystemSession(teamMailbox.owner());
+
+                    return Mono.from(mailboxManager.applyRightsCommandReactive(mailboxPath, MailboxACL.command().forUser(teamMailbox.admin()).rights(MailboxACL.FULL_RIGHTS).asReplacement(), ownerSession))
+                        .then(Mono.from(mailboxManager.applyRightsCommandReactive(mailboxPath, MailboxACL.command().forUser(teamMailbox.self()).rights(MailboxACL.FULL_RIGHTS).asReplacement(), ownerSession)));
+                })
+                .then()
+                .block();
+
+            return Responses.returnNoContent(response);
+        };
     }
 
     public Route getTeamMailboxesByDomain() {
