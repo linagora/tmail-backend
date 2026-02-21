@@ -49,6 +49,10 @@ public class TeamMailboxModule extends AbstractModule {
             .addBinding()
             .to(PropagateDeleteRightTeamMailboxListener.class);
 
+        Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class)
+            .addBinding()
+            .to(TeamMailboxSubscriptionListener.class);
+
         install(new TmailLocalResourcesModule());
     }
 }
