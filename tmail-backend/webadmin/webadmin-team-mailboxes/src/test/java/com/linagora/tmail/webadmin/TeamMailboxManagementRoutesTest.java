@@ -100,15 +100,13 @@ public class TeamMailboxManagementRoutesTest {
             Arguments.of(".namespace"),
             Arguments.of("."),
             Arguments.of(".."),
-            Arguments.of("marketing.team")
-        );
+            Arguments.of("marketing.team"));
     }
 
     private static Stream<Arguments> domainInvalidSource() {
         return Stream.of(
             Arguments.of("Dom@in"),
-            Arguments.of("@")
-        );
+            Arguments.of("@"));
     }
 
     private static Stream<Arguments> usernameInvalidSource() {
@@ -624,6 +622,27 @@ public class TeamMailboxManagementRoutesTest {
             assertThatJson(response)
                 .withOptions(Option.IGNORING_ARRAY_ORDER)
                 .isEqualTo("[]");
+        }
+
+        @Test
+        void getTeamMailboxMembersShouldNotReturnExtraSenders() throws Exception {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            MailboxSession session = mailboxManager.createSystemSession(TEAM_MAILBOX.admin());
+            mailboxManager.applyRightsCommand(
+                TEAM_MAILBOX.mailboxPath(),
+                MailboxACL.command().forUser(ANDRE).rights(MailboxACL.Right.Post).asAddition(),
+                session);
+
+            String response = given()
+                .get()
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .asString();
+
+            assertThatJson(response).isEqualTo("[]");
         }
     }
 
