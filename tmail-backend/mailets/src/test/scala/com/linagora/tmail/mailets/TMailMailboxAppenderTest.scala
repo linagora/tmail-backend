@@ -90,7 +90,7 @@ class TMailMailboxAppenderTest {
   def appendShouldAddMessageToDesiredTeamMailbox(): Unit = {
     SMono.fromPublisher(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block()
     testee.append(mimeMessage, USER, STORAGE_DIRECTIVE).block()
-    val messages = mailboxManager.getMailbox(TEAM_MAILBOX.inboxPath, tmSession)
+    val messages = mailboxManager.getMailbox(TEAM_MAILBOX.mailboxPath("folder"), tmSession)
       .getMessages(MessageRange.all, FetchGroup.FULL_CONTENT, tmSession)
 
     assertThat(messages).toIterable.hasSize(1)
@@ -100,7 +100,7 @@ class TMailMailboxAppenderTest {
   def appendShouldAddMessageToDesiredTeamMailboxOmittingFolderValue(): Unit = {
     SMono.fromPublisher(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block()
     testee.append(mimeMessage, USER, STORAGE_DIRECTIVE).block()
-    val messages = mailboxManager.getMailbox(TEAM_MAILBOX.inboxPath, tmSession)
+    val messages = mailboxManager.getMailbox(TEAM_MAILBOX.mailboxPath("folder"), tmSession)
       .getMessages(MessageRange.all, FetchGroup.FULL_CONTENT, tmSession)
 
     assertThat(messages).toIterable.hasSize(1)
