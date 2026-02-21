@@ -43,9 +43,11 @@ import org.apache.james.jmap.api.identity.IdentityCreationRequest;
 import org.apache.james.jmap.api.identity.IdentityRepository;
 import org.apache.james.jmap.api.model.Identity;
 import org.apache.james.jmap.memory.identity.MemoryCustomIdentityDAO;
+import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.SubscriptionManager;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
+import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.store.StoreSubscriptionManager;
 import org.apache.james.metrics.api.NoopGaugeRegistry;
@@ -65,6 +67,7 @@ import org.junit.jupiter.api.Test;
 
 import com.linagora.tmail.team.TMailCanSendFrom;
 import com.linagora.tmail.team.TeamMailbox;
+import com.linagora.tmail.team.TeamMailboxMember;
 import com.linagora.tmail.team.TeamMailboxRepository;
 import com.linagora.tmail.team.TeamMailboxRepositoryImpl;
 
@@ -218,6 +221,158 @@ public class IdentityProvisionListenerTest {
         configuration.addProperty("[@connectionTimeout]", "2000");
         configuration.addProperty("[@readTimeout]", "2000");
         return configuration;
+    }
+
+    @Test
+    void shouldProvisionTeamMailboxIdentityWhenMemberAdded() throws AddressException {
+        TeamMailbox teamMailbox = TeamMailbox.asTeamMailbox(new MailAddress("marketing@james.org")).get();
+        Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox)).block();
+
+        Mono.from(teamMailboxRepository.addMember(teamMailbox, TeamMailboxMember.asMember(USER1)))
+            .subscribeOn(Schedulers.boundedElastic())
+            .block();
+
+        List<Identity> identities = Flux.from(identityRepository.list(USER1))
+            .filter(identity -> identity.email().equals(teamMailbox.asMailAddress()))
+            .filter(Identity::mayDelete)
+            .collectList()
+            .block();
+
+        SoftAssertions.assertSoftly(softly -> {
+            softly.assertThat(identities).hasSize(1);
+            softly.assertThat(identities.getFirst().name()).isEqualTo("marketing");
+            softly.assertThat(identities.getFirst().email()).isEqualTo(teamMailbox.asMailAddress());
+            softly.assertThat(identities.getFirst().mayDelete()).isEqualTo(true);
+        });
+    }
+
+    @Test
+    void shouldProvisionTeamMailboxIdentityWhenExtraSenderAdded() throws Exception {
+        TeamMailbox teamMailbox = TeamMailbox.asTeamMailbox(new MailAddress("marketing@james.org")).get();
+        Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox)).block();
+
+        MailboxSession session = mailboxManager.createSystemSession(teamMailbox.admin());
+        mailboxManager.applyRightsCommand(
+            teamMailbox.mailboxPath(),
+            MailboxACL.command().forUser(USER1).rights(MailboxACL.Right.Post).asAddition(),
+            session);
+
+        List<Identity> identities = Flux.from(identityRepository.list(USER1))
+            .filter(identity -> identity.email().equals(teamMailbox.asMailAddress()))
+            .filter(Identity::mayDelete)
+            .collectList()
+            .block();
+
+        SoftAssertions.assertSoftly(softly -> {
+            softly.assertThat(identities).hasSize(1);
+            softly.assertThat(identities.getFirst().name()).isEqualTo("marketing");
+            softly.assertThat(identities.getFirst().email()).isEqualTo(teamMailbox.asMailAddress());
+            softly.assertThat(identities.getFirst().mayDelete()).isEqualTo(true);
+        });
+    }
+
+    @Test
+    void shouldRemoveTeamMailboxIdentityWhenMemberRemoved() throws AddressException {
+        TeamMailbox teamMailbox = TeamMailbox.asTeamMailbox(new MailAddress("marketing@james.org")).get();
+        Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox)).block();
+        Mono.from(teamMailboxRepository.addMember(teamMailbox, TeamMailboxMember.asMember(USER1)))
+            .subscribeOn(Schedulers.boundedElastic())
+            .block();
+
+        Mono.from(teamMailboxRepository.removeMember(teamMailbox, USER1))
+            .subscribeOn(Schedulers.boundedElastic())
+            .block();
+
+        List<Identity> identities = Flux.from(identityRepository.list(USER1))
+            .filter(identity -> identity.email().equals(teamMailbox.asMailAddress()))
+            .collectList()
+            .block();
+
+        assertThat(identities).isEmpty();
+    }
+
+    @Test
+    void shouldRemoveTeamMailboxIdentityWhenExtraSenderRemoved() throws Exception {
+        TeamMailbox teamMailbox = TeamMailbox.asTeamMailbox(new MailAddress("marketing@james.org")).get();
+        Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox)).block();
+
+        MailboxSession session = mailboxManager.createSystemSession(teamMailbox.admin());
+        mailboxManager.applyRightsCommand(
+            teamMailbox.mailboxPath(),
+            MailboxACL.command().forUser(USER1).rights(MailboxACL.Right.Post).asAddition(),
+            session);
+        mailboxManager.applyRightsCommand(
+            teamMailbox.mailboxPath(),
+            MailboxACL.command().forUser(USER1).rights(MailboxACL.Right.Post).asRemoval(),
+            session);
+
+        List<Identity> identities = Flux.from(identityRepository.list(USER1))
+            .filter(identity -> identity.email().equals(teamMailbox.asMailAddress()))
+            .collectList()
+            .block();
+
+        assertThat(identities).isEmpty();
+    }
+
+    @Test
+    void shouldNotProvisionDuplicateTeamMailboxIdentityOnIdempotentAdd() throws Exception {
+        TeamMailbox teamMailbox = TeamMailbox.asTeamMailbox(new MailAddress("marketing@james.org")).get();
+        Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox)).block();
+
+        MailboxSession session = mailboxManager.createSystemSession(teamMailbox.admin());
+        mailboxManager.applyRightsCommand(
+            teamMailbox.mailboxPath(),
+            MailboxACL.command().forUser(USER1).rights(MailboxACL.Right.Post).asAddition(),
+            session);
+        // second time: idempotent, should not create a second identity
+        mailboxManager.applyRightsCommand(
+            teamMailbox.mailboxPath(),
+            MailboxACL.command().forUser(USER1).rights(MailboxACL.Right.Post).asAddition(),
+            session);
+
+        List<Identity> identities = Flux.from(identityRepository.list(USER1))
+            .filter(identity -> identity.email().equals(teamMailbox.asMailAddress()))
+            .filter(Identity::mayDelete)
+            .collectList()
+            .block();
+
+        assertThat(identities).hasSize(1);
+    }
+
+    @Test
+    void shouldNotProvisionTeamMailboxIdentityForSystemUsers() throws AddressException {
+        TeamMailbox teamMailbox = TeamMailbox.asTeamMailbox(new MailAddress("marketing@james.org")).get();
+        Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox)).block();
+
+        List<Identity> adminIdentities = Flux.from(identityRepository.list(teamMailbox.admin()))
+            .filter(identity -> identity.email().equals(teamMailbox.asMailAddress()))
+            .filter(Identity::mayDelete)
+            .collectList()
+            .block();
+        List<Identity> selfIdentities = Flux.from(identityRepository.list(teamMailbox.self()))
+            .filter(identity -> identity.email().equals(teamMailbox.asMailAddress()))
+            .filter(Identity::mayDelete)
+            .collectList()
+            .block();
+
+        assertThat(adminIdentities).isEmpty();
+        assertThat(selfIdentities).isEmpty();
+    }
+
+    @Test
+    void shouldNotImpactOtherUserTeamMailboxIdentity() throws AddressException {
+        TeamMailbox teamMailbox = TeamMailbox.asTeamMailbox(new MailAddress("marketing@james.org")).get();
+        Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox)).block();
+        Mono.from(teamMailboxRepository.addMember(teamMailbox, TeamMailboxMember.asMember(USER1)))
+            .subscribeOn(Schedulers.boundedElastic())
+            .block();
+
+        List<Identity> user2Identities = Flux.from(identityRepository.list(USER2))
+            .filter(identity -> identity.email().equals(teamMailbox.asMailAddress()))
+            .collectList()
+            .block();
+
+        assertThat(user2Identities).isEmpty();
     }
 
     private DefaultIdentitySupplier createDefaultIdentitySupplier(LdapRepositoryConfiguration ldapRepositoryConfiguration) throws Exception {
