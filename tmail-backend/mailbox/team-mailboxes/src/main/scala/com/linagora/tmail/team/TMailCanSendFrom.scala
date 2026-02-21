@@ -89,8 +89,19 @@ class TMailCanSendFrom @Inject()(aliasReverseResolver: AliasReverseResolver,
       case None => SMono.just(false)
     }
 
-  override def allValidFromAddressesForUser(user: Username): Flux[MailAddress] =
-    Flux.merge(super.allValidFromAddressesForUser(user),
-      Flux.from(teamMailboxRepository.listTeamMailboxes(user))
-        .map(_.asMailAddress))
+  override def allValidFromAddressesForUser(user: Username): Flux[MailAddress] = {
+    val extraSenderAddresses: Flux[MailAddress] =
+      if (user.getDomainPart.isPresent) {
+        Flux.from(SFlux.fromPublisher(teamMailboxRepository.listTeamMailboxes(user.getDomainPart.get))
+          .filterWhen(teamMailbox => isExtraSenderReactive(user, teamMailbox))
+          .map(_.asMailAddress))
+      } else {
+        Flux.empty[MailAddress]()
+      }
+    Flux.merge(
+      super.allValidFromAddressesForUser(user),
+      Flux.from(teamMailboxRepository.listTeamMailboxes(user)).map(_.asMailAddress),
+      extraSenderAddresses)
+      .distinct()
+  }
 }
