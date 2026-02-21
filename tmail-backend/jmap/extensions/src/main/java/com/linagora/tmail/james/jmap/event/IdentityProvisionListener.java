@@ -18,7 +18,9 @@
 
 package com.linagora.tmail.james.jmap.event;
 
+import java.util.HashSet;
 import java.util.Optional;
+import java.util.Set;
 
 import jakarta.inject.Inject;
 import jakarta.mail.internet.AddressException;
@@ -34,7 +36,10 @@ import org.apache.james.events.Group;
 import org.apache.james.jmap.api.identity.IdentityCreationRequest;
 import org.apache.james.jmap.api.identity.IdentityRepository;
 import org.apache.james.jmap.api.model.Identity;
+import org.apache.james.jmap.api.model.IdentityId;
+import org.apache.james.mailbox.acl.ACLDiff;
 import org.apache.james.mailbox.events.MailboxEvents;
+import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.user.ldap.LDAPConnectionFactory;
 import org.apache.james.user.ldap.LdapRepositoryConfiguration;
@@ -46,6 +51,7 @@ import org.slf4j.LoggerFactory;
 
 import com.github.fge.lambdas.Throwing;
 import com.google.common.annotations.VisibleForTesting;
+import com.linagora.tmail.team.TeamMailbox;
 import com.unboundid.ldap.sdk.Filter;
 import com.unboundid.ldap.sdk.LDAPConnectionPool;
 import com.unboundid.ldap.sdk.LDAPException;
@@ -56,6 +62,8 @@ import com.unboundid.ldap.sdk.SearchScope;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import scala.jdk.javaapi.CollectionConverters;
+import scala.jdk.javaapi.OptionConverters;
 
 public class IdentityProvisionListener implements EventListener.ReactiveGroupEventListener {
     public static class IdentityProvisionerListenerGroup extends Group {
@@ -112,7 +120,7 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
 
     @Override
     public boolean isHandling(Event event) {
-        return isInboxCreated(event);
+        return isInboxCreated(event) || isBaseTeamMailboxACLUpdated(event);
     }
 
     private boolean isInboxCreated(Event event) {
@@ -123,12 +131,27 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
         return false;
     }
 
+    private boolean isBaseTeamMailboxACLUpdated(Event event) {
+        if (event instanceof MailboxEvents.MailboxACLUpdated aclUpdated) {
+            return OptionConverters.toJava(TeamMailbox.from(aclUpdated.getMailboxPath()))
+                .map(teamMailbox -> teamMailbox.mailboxPath().equals(aclUpdated.getMailboxPath()))
+                .orElse(false);
+        }
+        return false;
+    }
+
     @Override
     public Publisher<Void> reactiveEvent(Event event) {
-        if (!isHandling(event)) {
-            return Mono.empty();
+        if (event instanceof MailboxEvents.MailboxACLUpdated aclUpdated && isBaseTeamMailboxACLUpdated(aclUpdated)) {
+            return handleTeamMailboxACLUpdated(aclUpdated);
         }
+        if (isInboxCreated(event)) {
+            return handleInboxCreated(event);
+        }
+        return Mono.empty();
+    }
 
+    private Publisher<Void> handleInboxCreated(Event event) {
         Username username = event.getUsername();
         return Mono.fromCallable(() -> searchLdap(username))
             .map(Throwing.function(this::asIdentityCreationRequest))
@@ -141,6 +164,84 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
                 return Mono.empty();
             })
             .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER);
+    }
+
+    private Publisher<Void> handleTeamMailboxACLUpdated(MailboxEvents.MailboxACLUpdated event) {
+        TeamMailbox teamMailbox = OptionConverters.toJava(TeamMailbox.from(event.getMailboxPath())).orElseThrow();
+        Set<String> systemUsernames = Set.of(
+            teamMailbox.owner().asString(),
+            teamMailbox.admin().asString(),
+            teamMailbox.self().asString());
+        ACLDiff aclDiff = event.getAclDiff();
+
+        Flux<Void> provisions = usersWhoGainedPostRight(aclDiff, systemUsernames)
+            .flatMap(user -> provisionTeamMailboxIdentity(user, teamMailbox));
+        Flux<Void> removals = usersWhoLostPostRight(aclDiff, systemUsernames)
+            .flatMap(user -> removeTeamMailboxIdentity(user, teamMailbox));
+
+        return Flux.merge(provisions, removals)
+            .then()
+            .onErrorResume(e -> {
+                LOGGER.error("Unexpected error during team mailbox identity provisioning for {}", teamMailbox.asString(), e);
+                return Mono.empty();
+            });
+    }
+
+    private Flux<Username> usersWhoGainedPostRight(ACLDiff aclDiff, Set<String> systemUsernames) {
+        MailboxACL oldACL = aclDiff.getOldACL();
+        return Flux.fromIterable(aclDiff.getNewACL().getEntries().entrySet())
+            .filter(e -> !e.getKey().isNegative())
+            .filter(e -> MailboxACL.NameType.user.equals(e.getKey().getNameType()))
+            .filter(e -> !systemUsernames.contains(e.getKey().getName()))
+            .filter(e -> e.getValue().contains(MailboxACL.Right.Post))
+            .filter(e -> {
+                MailboxACL.Rfc4314Rights oldRights = oldACL.getEntries().get(e.getKey());
+                return oldRights == null || !oldRights.contains(MailboxACL.Right.Post);
+            })
+            .map(e -> Username.of(e.getKey().getName()));
+    }
+
+    private Flux<Username> usersWhoLostPostRight(ACLDiff aclDiff, Set<String> systemUsernames) {
+        MailboxACL newACL = aclDiff.getNewACL();
+        return Flux.fromIterable(aclDiff.getOldACL().getEntries().entrySet())
+            .filter(e -> !e.getKey().isNegative())
+            .filter(e -> MailboxACL.NameType.user.equals(e.getKey().getNameType()))
+            .filter(e -> !systemUsernames.contains(e.getKey().getName()))
+            .filter(e -> e.getValue().contains(MailboxACL.Right.Post))
+            .filter(e -> {
+                MailboxACL.Rfc4314Rights newRights = newACL.getEntries().get(e.getKey());
+                return newRights == null || !newRights.contains(MailboxACL.Right.Post);
+            })
+            .map(e -> Username.of(e.getKey().getName()));
+    }
+
+    private Mono<Void> provisionTeamMailboxIdentity(Username user, TeamMailbox teamMailbox) {
+        MailAddress teamMailboxAddress = teamMailbox.asMailAddress();
+        String identityName = teamMailbox.mailboxName().asString();
+        return Flux.from(identityRepository.list(user))
+            .filter(identity -> identity.email().equals(teamMailboxAddress))
+            .filter(Identity::mayDelete)
+            .hasElements()
+            .filter(FunctionalUtils.identityPredicate().negate())
+            .flatMap(noIdentity -> Mono.from(identityRepository.save(user, asIdentityRequest(teamMailboxAddress, identityName)))
+                .doOnSuccess(identity -> LOGGER.info("Created team mailbox identity for user {} with email {}", user.asString(), teamMailboxAddress.asString())))
+            .then();
+    }
+
+    private Mono<Void> removeTeamMailboxIdentity(Username user, TeamMailbox teamMailbox) {
+        MailAddress teamMailboxAddress = teamMailbox.asMailAddress();
+        return Flux.from(identityRepository.list(user))
+            .filter(identity -> identity.email().equals(teamMailboxAddress))
+            .map(Identity::id)
+            .collect(java.util.stream.Collectors.toCollection(HashSet::new))
+            .flatMap(javaIds -> {
+                if (javaIds.isEmpty()) {
+                    return Mono.empty();
+                }
+                scala.collection.immutable.Set<IdentityId> scalaIds = CollectionConverters.asScala(javaIds).toSet();
+                return Mono.from(identityRepository.delete(user, scalaIds));
+            })
+            .then();
     }
 
     private SearchResultEntry searchLdap(Username username) throws LDAPSearchException {
