@@ -71,6 +71,7 @@ trait TeamMailboxRepositoryContract {
         new MailboxPath(TEAM_MAILBOX_NAMESPACE, TEAM_MAILBOX_DOMAIN_1, s"marketing.Sent"),
         new MailboxPath(TEAM_MAILBOX_NAMESPACE, TEAM_MAILBOX_DOMAIN_1, s"marketing.Trash"),
         new MailboxPath(TEAM_MAILBOX_NAMESPACE, TEAM_MAILBOX_DOMAIN_1, s"marketing.Drafts"),
+        new MailboxPath(TEAM_MAILBOX_NAMESPACE, TEAM_MAILBOX_DOMAIN_1, s"marketing.Templates"),
         new MailboxPath(TEAM_MAILBOX_NAMESPACE, TEAM_MAILBOX_DOMAIN_1, s"marketing"))
   }
 
@@ -468,7 +469,8 @@ trait TeamMailboxRepositoryContract {
       .collectSeq()
       .block().asJava)
       .containsExactlyInAnyOrder(TEAM_MAILBOX_MARKETING.mailboxPath, TEAM_MAILBOX_MARKETING.inboxPath, TEAM_MAILBOX_MARKETING.sentPath,
-        TEAM_MAILBOX_MARKETING.mailboxPath("Drafts"), TEAM_MAILBOX_MARKETING.mailboxPath("Outbox"), TEAM_MAILBOX_MARKETING.mailboxPath("Trash"))
+        TEAM_MAILBOX_MARKETING.mailboxPath("Drafts"), TEAM_MAILBOX_MARKETING.mailboxPath("Outbox"), TEAM_MAILBOX_MARKETING.mailboxPath("Trash"),
+        TEAM_MAILBOX_MARKETING.mailboxPath("Templates"))
   }
 
   @Test

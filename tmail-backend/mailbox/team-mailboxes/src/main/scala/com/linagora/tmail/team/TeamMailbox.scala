@@ -166,7 +166,8 @@ case class TeamMailbox(domain: Domain, mailboxName: TeamMailboxName) {
     sentPath,
     mailboxPath(DefaultMailboxes.TRASH),
     mailboxPath(DefaultMailboxes.OUTBOX),
-    mailboxPath(DefaultMailboxes.DRAFTS))
+    mailboxPath(DefaultMailboxes.DRAFTS),
+    mailboxPath(DefaultMailboxes.TEMPLATES))
 
   def quotaRoot: QuotaRoot = QuotaRoot.quotaRoot(s"$TEAM_MAILBOX_NAMESPACE&${mailboxName.value.value}@${domain.asString()}", Some(domain).toJava)
 

@@ -824,7 +824,7 @@ public class TeamMailboxManagementRoutesTest {
                 .getList("mailboxName");
 
             assertThat(mailboxNames)
-                .containsExactlyInAnyOrder("marketing", "INBOX", "Sent", "Trash", "Outbox", "Drafts");
+                .containsExactlyInAnyOrder("marketing", "INBOX", "Sent", "Trash", "Outbox", "Drafts", "Templates");
         }
 
         @Test
@@ -842,7 +842,7 @@ public class TeamMailboxManagementRoutesTest {
                 .getList("mailboxId");
 
             assertThat(mailboxIds)
-                .hasSize(6)
+                .hasSize(7)
                 .allSatisfy(id -> assertThat(id).isNotBlank());
         }
 
