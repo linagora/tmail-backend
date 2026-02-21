@@ -102,6 +102,25 @@ public abstract class TeamMailboxSmtpContract {
     }
 
     @Test
+    void smtpShouldAcceptSubmissionFromExtraSender(GuiceJamesServer server) throws Exception {
+        Username andre = Username.fromLocalPartWithDomain("andre", DOMAIN);
+        String andrePassword = "654321";
+        server.getProbe(DataProbeImpl.class)
+            .addUser(andre.asString(), andrePassword);
+
+        server.getProbe(TeamMailboxProbe.class)
+            .addExtraSender(MARKETING_TEAM_MAILBOX, andre);
+
+        assertThatCode(() -> messageSender.authenticate(andre.asString(), andrePassword)
+            .sendMessage(MARKETING_TEAM_MAILBOX.asMailAddress().asString(), BOB.asString()))
+            .doesNotThrowAnyException();
+
+        imapClient.login(BOB, BOB_PASSWORD)
+            .select(INBOX)
+            .awaitMessage(AWAIT_TEN_SECONDS);
+    }
+
+    @Test
     void teamMailboxShouldReceivedEmailFromAuthenticatedUser(GuiceJamesServer server) throws Exception {
         Username andre = Username.fromLocalPartWithDomain("andre", DOMAIN);
         String andrePassword = "123456";

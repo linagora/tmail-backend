@@ -20,10 +20,14 @@ package com.linagora.tmail.team
 
 import jakarta.inject.Inject
 import org.apache.james.core.Username
+import org.apache.james.mailbox.MailboxManager
+import org.apache.james.mailbox.model.MailboxACL
+import org.apache.james.mailbox.model.MailboxACL.Right
 import org.apache.james.utils.GuiceProbe
 import reactor.core.scala.publisher.{SFlux, SMono}
 
-class TeamMailboxProbe @Inject()(teamMailboxRepository: TeamMailboxRepository) extends GuiceProbe {
+class TeamMailboxProbe @Inject()(teamMailboxRepository: TeamMailboxRepository,
+                                 mailboxManager: MailboxManager) extends GuiceProbe {
   def create(teamMailbox: TeamMailbox): TeamMailboxProbe = {
     SMono(teamMailboxRepository.createTeamMailbox(teamMailbox)).block()
     this
@@ -54,4 +58,22 @@ class TeamMailboxProbe @Inject()(teamMailboxRepository: TeamMailboxRepository) e
     SFlux(teamMailboxRepository.listMembers(teamMailbox))
       .collectSeq()
       .block()
+
+  def addExtraSender(teamMailbox: TeamMailbox, username: Username): TeamMailboxProbe = {
+    val session = mailboxManager.createSystemSession(teamMailbox.admin)
+    mailboxManager.applyRightsCommand(
+      teamMailbox.mailboxPath,
+      MailboxACL.command().forUser(username).rights(Right.Post).asAddition(),
+      session)
+    this
+  }
+
+  def removeExtraSender(teamMailbox: TeamMailbox, username: Username): TeamMailboxProbe = {
+    val session = mailboxManager.createSystemSession(teamMailbox.admin)
+    mailboxManager.applyRightsCommand(
+      teamMailbox.mailboxPath,
+      MailboxACL.command().forUser(username).rights(Right.Post).asRemoval(),
+      session)
+    this
+  }
 }
