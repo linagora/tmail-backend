@@ -162,10 +162,15 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       .distinct()
   }
 
-  override def listTeamMailboxes(username: Username): Publisher[TeamMailbox] =
+  override def listTeamMailboxes(username: Username): Publisher[TeamMailbox] = {
+    val userKey = EntryKey.createUserEntryKey(username)
     SFlux.fromPublisher(mailboxManager.search(TEAM_MAILBOX_QUERY, mailboxManager.createSystemSession(username)))
       .flatMapIterable(mailboxMetaData => TeamMailbox.from(mailboxMetaData.getPath))
       .distinct()
+      .filterWhen(teamMailbox => SMono.fromPublisher(mailboxManager.listRightsReactive(teamMailbox.mailboxPath, createSession(teamMailbox)))
+        .map(acl => Option(acl.getEntries.get(userKey))
+          .exists(rights => rights.list().containsAll(BASIC_TEAM_MAILBOX_RIGHTS))))
+  }
 
   override def addMember(teamMailbox: TeamMailbox, teamMailboxMember: TeamMailboxMember): Publisher[Void] = {
     val session = createSession(teamMailbox)
