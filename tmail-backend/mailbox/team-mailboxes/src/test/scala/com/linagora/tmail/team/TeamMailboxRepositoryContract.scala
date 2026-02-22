@@ -152,6 +152,17 @@ trait TeamMailboxRepositoryContract {
   }
 
   @Test
+  def deleteTeamMailboxShouldRemoveCustomFolders(): Unit = {
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    val session: MailboxSession = mailboxManager.createSystemSession(TEAM_MAILBOX_MARKETING.owner)
+    mailboxManager.createMailbox(TEAM_MAILBOX_MARKETING.mailboxPath("custom"), session)
+
+    SMono.fromPublisher(testee.deleteTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+
+    assertThat(mailboxManager.list(session)).doesNotContain(TEAM_MAILBOX_MARKETING.mailboxPath("custom"));
+  }
+
+  @Test
   def deleteTeamMailboxShouldNotRemoveOtherTeamMailboxes(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_SALES)).block()
@@ -640,6 +651,32 @@ trait TeamMailboxRepositoryContract {
 
     assertThat(SFlux.fromPublisher(testee.listTeamMailboxes(BOB)).collectSeq().block().asJava)
       .containsExactlyInAnyOrder(TEAM_MAILBOX_MARKETING)
+  }
+
+  @Test
+  def listTeamMailboxesByUserShouldNotReturnTeamMailboxWhenUserOnlyHasExtraAclOnSubfolder(): Unit = {
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    val session = mailboxManager.createSystemSession(TEAM_MAILBOX_MARKETING.owner)
+    mailboxManager.applyRightsCommand(
+      TEAM_MAILBOX_MARKETING.inboxPath,
+      MailboxACL.command().forUser(BOB).rights(MailboxACL.Right.Lookup, MailboxACL.Right.Read).asAddition(),
+      session)
+
+    assertThat(SFlux.fromPublisher(testee.listTeamMailboxes(BOB)).collectSeq().block().asJava)
+      .isEmpty()
+  }
+
+  @Test
+  def listTeamMailboxesByUserShouldNotReturnTeamMailboxWhenUserIsExtraSenderOnly(): Unit = {
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    val session = mailboxManager.createSystemSession(TEAM_MAILBOX_MARKETING.admin)
+    mailboxManager.applyRightsCommand(
+      TEAM_MAILBOX_MARKETING.mailboxPath,
+      MailboxACL.command().forUser(BOB).rights(MailboxACL.Right.Post).asAddition(),
+      session)
+
+    assertThat(SFlux.fromPublisher(testee.listTeamMailboxes(BOB)).collectSeq().block().asJava)
+      .isEmpty()
   }
 
   @Test

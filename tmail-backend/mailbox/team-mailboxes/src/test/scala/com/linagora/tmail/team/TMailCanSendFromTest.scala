@@ -117,6 +117,21 @@ class TMailCanSendFromTest extends CanSendFromContract {
   }
 
   @Test
+  def userWithExtraAclOnSubfolderOnlyCannotSend(): Unit = {
+    val teamMailbox = TeamMailbox(Domain.of("domain.tld"), TeamMailboxName("marketing"))
+    SMono(teamMailboxRepository.createTeamMailbox(teamMailbox)).block()
+
+    val session = mailboxManager.createSystemSession(teamMailbox.owner)
+    mailboxManager.applyRightsCommand(
+      teamMailbox.inboxPath,
+      MailboxACL.command().forUser(Username.of("bob@domain.tld")).rights(MailboxACL.Right.Lookup, MailboxACL.Right.Read).asAddition(),
+      session)
+
+    assertThat(testee.userCanSendFrom(Username.of("bob@domain.tld"), Username.of("marketing@domain.tld")))
+      .isFalse
+  }
+
+  @Test
   def extraSenderCanSendAsTeamMailbox(): Unit = {
     val teamMailbox = TeamMailbox(Domain.of("domain.tld"), TeamMailboxName("marketing"))
     SMono(teamMailboxRepository.createTeamMailbox(teamMailbox)).block()
