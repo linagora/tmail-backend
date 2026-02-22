@@ -134,14 +134,14 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       }
 
   override def deleteTeamMailbox(teamMailbox: TeamMailbox): Publisher[Void] =
-    deleteDefaultMailboxReliably(teamMailbox, createSession(teamMailbox))
+    deleteTeamMailboxFoldersReliably(teamMailbox, createSession(teamMailbox))
       .`then`(SFlux.fromIterable(teamMailboxCallbackSetScala)
         .flatMap(_.teamMailboxRemoved(teamMailbox), ReactorUtils.DEFAULT_CONCURRENCY)
         .collectSeq()
         .`then`(SMono.empty))
 
-  private def deleteDefaultMailboxReliably(teamMailbox: TeamMailbox, session: MailboxSession) =
-    SFlux.fromIterable(teamMailbox.defaultMailboxPaths)
+  private def deleteTeamMailboxFoldersReliably(teamMailbox: TeamMailbox, session: MailboxSession) =
+    listMailboxPaths(teamMailbox)
       .flatMap(mailboxPath => deleteReliably(mailboxPath, session), ReactorUtils.DEFAULT_CONCURRENCY)
       .`then`()
 
@@ -173,21 +173,18 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
     SMono.fromPublisher(exists(teamMailbox))
       .filter(teamMailboxExist => teamMailboxExist)
       .switchIfEmpty(SMono.error(TeamMailboxNotFoundException(teamMailbox)))
-      .flatMapMany(_ => listMailboxPaths(teamMailbox, session))
+      .flatMapMany(_ => listMailboxPaths(teamMailbox))
       .flatMap(mailboxPath => addRightForMember(mailboxPath, teamMailboxMember.username, session, teamMailboxMember.role)
         .`then`(subscribeForMember(mailboxPath, memberSession)), ReactorUtils.DEFAULT_CONCURRENCY)
       .`then`()
   }
 
-  private def listMailboxPaths(teamMailbox: TeamMailbox, session: MailboxSession): SFlux[MailboxPath] =
-     SFlux(mailboxSessionMapperFactory.getMailboxMapper(session)
-      .findMailboxWithPathLike(MailboxQuery.builder
-        .namespace(TEAM_MAILBOX_NAMESPACE)
-        .expression(new PrefixedWildcard(teamMailbox.mailboxName.asString()))
-        .user(session.getUser)
-        .build
-        .asUserBound))
-      .map(_.generateAssociatedPath())
+  private def listMailboxPaths(teamMailbox: TeamMailbox): SFlux[MailboxPath] =
+     SFlux(mailboxManager.search(MailboxQuery.builder
+       .namespace(TEAM_MAILBOX_NAMESPACE)
+       .matchesAllMailboxNames
+       .build, mailboxManager.createSystemSession(teamMailbox.self)))
+       .map(metaData => metaData.getPath)
 
   private def addRightForMember(path: MailboxPath, user: Username, session: MailboxSession, teamMailboxRole: TeamMemberRole): SMono[Unit] =
     SMono(mailboxManager.applyRightsCommandReactive(path,
@@ -197,17 +194,6 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
         .asReplacement(),
       session))
       .`then`()
-
-  private def removeAdministerRightIfNeeded(path: MailboxPath, user: Username, session: MailboxSession, teamMailboxRole: TeamMemberRole): SMono[Void] =
-    teamMailboxRole.value match {
-      case MemberRole => SMono(mailboxManager.applyRightsCommandReactive(path,
-        MailboxACL.command
-          .forUser(user)
-          .rights(Right.Administer)
-          .asRemoval(),
-        session))
-      case ManagerRole => SMono.empty
-    }
 
   private def rightsToAdd(teamMailboxRole: TeamMemberRole): MailboxACL.Rfc4314Rights =
     teamMailboxRole.value match {
@@ -239,7 +225,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       .switchIfEmpty(SMono.error(TeamMailboxNotFoundException(teamMailbox)))
       .flatMap(_ => SMono.fromPublisher(isUserInTeamMailbox(teamMailbox, user))
         .filter(userInTeamMailbox => userInTeamMailbox)
-        .flatMapMany(_ => listMailboxPaths(teamMailbox, session))
+        .flatMapMany(_ => listMailboxPaths(teamMailbox))
         .flatMap(mailboxPath => removeRightForMember(mailboxPath, user, session)
           .`then`(unSubscribeForMember(mailboxPath, memberSession)))
         .`then`())
