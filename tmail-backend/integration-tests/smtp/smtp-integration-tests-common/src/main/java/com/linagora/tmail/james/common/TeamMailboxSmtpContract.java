@@ -121,6 +121,14 @@ public abstract class TeamMailboxSmtpContract {
     }
 
     @Test
+    void smtpShouldAcceptSubAddressedTeamMailboxRecipient() throws Exception {
+        assertThatCode(() -> messageSender
+            .authenticate(BOB.asString(), BOB_PASSWORD)
+            .sendMessage(BOB.asString(), "marketing+subfolder@" + DOMAIN.asString()))
+            .doesNotThrowAnyException();
+    }
+
+    @Test
     void teamMailboxShouldReceivedEmailFromAuthenticatedUser(GuiceJamesServer server) throws Exception {
         Username andre = Username.fromLocalPartWithDomain("andre", DOMAIN);
         String andrePassword = "123456";
