@@ -129,6 +129,29 @@ trait TeamMailboxRepositoryContract {
   }
 
   @Test
+  def deleteTeamMailboxShouldNotImpactOtherTeamMailboxWhenPrefixes(): Unit = {
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    val teamMailbox2 = TeamMailbox(DOMAIN_1, TeamMailboxName("marketing2"))
+    SMono.fromPublisher(testee.createTeamMailbox(teamMailbox2)).block()
+
+    SMono.fromPublisher(testee.deleteTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+
+    assertThat(SMono(testee.exists(teamMailbox2)).block()).isTrue
+  }
+
+  @Test
+  def deleteTeamMailboxShouldRemoveCustomFoldersFromListing(): Unit = {
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    val session: MailboxSession = mailboxManager.createSystemSession(TEAM_MAILBOX_MARKETING.owner)
+    mailboxManager.createMailbox(TEAM_MAILBOX_MARKETING.mailboxPath("custom"), session)
+
+    SMono.fromPublisher(testee.deleteTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+
+    assertThat(SFlux.fromPublisher(testee.listTeamMailboxes(DOMAIN_1)).collectSeq().block().asJava)
+      .isEmpty()
+  }
+
+  @Test
   def deleteTeamMailboxShouldNotRemoveOtherTeamMailboxes(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_SALES)).block()
