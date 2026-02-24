@@ -49,7 +49,7 @@
                 <processor>local-delivery</processor>
             </mailet>
             <mailet match="org.apache.james.transport.matchers.SMTPAuthSuccessful" class="org.apache.james.transport.mailets.RemoteDelivery">
-                <outgoingQueue>outgoing</outgoingQueue>
+                <outgoing>outgoing</outgoing>
                 <delayTime>5000, 100000, 500000</delayTime>
                 <maxRetries>3</maxRetries>
                 <maxDnsProblemRetries>0</maxDnsProblemRetries>
