@@ -23,7 +23,8 @@ import java.io.FileNotFoundException
 import com.github.fge.lambdas.Throwing
 import com.google.common.collect.ImmutableSet
 import com.google.inject.name.Named
-import com.google.inject.{AbstractModule, Provides, Singleton}
+import com.google.inject.{AbstractModule, Provides, Scopes, Singleton}
+import com.linagora.tmail.james.jmap.event.{DefaultSignatureTextFactory, SignatureTextFactory}
 import com.linagora.tmail.james.jmap.oidc.JMAPOidcConfiguration
 import com.linagora.tmail.james.jmap.settings.ReadOnlyPropertyProvider
 import org.apache.commons.configuration2.{Configuration, PropertiesConfiguration}
@@ -37,6 +38,9 @@ class TMailJMAPModule extends AbstractModule {
 
   val JMAP_CONFIGURATION_EMPTY: Configuration = new PropertiesConfiguration()
   val IMPLICIT_SETTINGS_READONLY_PROVIDERS_FQDN_PREFIX = PackageName.of("com.linagora.tmail.james.jmap.settings")
+
+  override def configure(): Unit =
+    bind(classOf[SignatureTextFactory]).to(classOf[DefaultSignatureTextFactory]).in(Scopes.SINGLETON)
 
   @Provides
   @Singleton

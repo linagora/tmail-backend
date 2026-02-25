@@ -51,6 +51,7 @@ import org.slf4j.LoggerFactory;
 
 import com.github.fge.lambdas.Throwing;
 import com.google.common.annotations.VisibleForTesting;
+import com.linagora.tmail.james.jmap.event.SignatureTextFactory.SignatureText;
 import com.linagora.tmail.team.TeamMailbox;
 import com.unboundid.ldap.sdk.Filter;
 import com.unboundid.ldap.sdk.LDAPConnectionPool;
@@ -82,15 +83,18 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
     private final String firstnameAttribute;
     private final String surnameAttribute;
     private final String usernameAttribute;
+    private final SignatureTextFactory signatureTextFactory;
 
     @Inject
     public IdentityProvisionListener(LDAPConnectionPool ldapConnectionPool,
                                      LdapRepositoryConfiguration ldapConfiguration,
                                      IdentityRepository identityRepository,
+                                     SignatureTextFactory signatureTextFactory,
                                      HierarchicalConfiguration<ImmutableNode> listenerConfig) {
         this.ldapConnectionPool = ldapConnectionPool;
         this.ldapConfiguration = ldapConfiguration;
         this.identityRepository = identityRepository;
+        this.signatureTextFactory = signatureTextFactory;
         this.objectClassFilter = Filter.createEqualityFilter("objectClass", ldapConfiguration.getUserObjectClass());
         this.userExtraFilter = Optional.ofNullable(ldapConfiguration.getFilter())
             .map(Throwing.function(Filter::create).sneakyThrow());
@@ -101,10 +105,12 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
 
     @VisibleForTesting
     public IdentityProvisionListener(LdapRepositoryConfiguration ldapConfiguration,
-                                     IdentityRepository identityRepository) throws LDAPException {
+                                     IdentityRepository identityRepository,
+                                     SignatureTextFactory signatureTextFactory) throws LDAPException {
         this.ldapConnectionPool = new LDAPConnectionFactory(ldapConfiguration).getLdapConnectionPool();
         this.ldapConfiguration = ldapConfiguration;
         this.identityRepository = identityRepository;
+        this.signatureTextFactory = signatureTextFactory;
         this.objectClassFilter = Filter.createEqualityFilter("objectClass", ldapConfiguration.getUserObjectClass());
         this.userExtraFilter = Optional.ofNullable(ldapConfiguration.getFilter())
             .map(Throwing.function(Filter::create).sneakyThrow());
@@ -154,7 +160,7 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
     private Publisher<Void> handleInboxCreated(Event event) {
         Username username = event.getUsername();
         return Mono.fromCallable(() -> searchLdap(username))
-            .map(Throwing.function(this::asIdentityCreationRequest))
+            .flatMap(ldapEntry -> asIdentityCreationRequest(username, ldapEntry))
             .flatMap(identityCreationRequest -> hasNoDefaultIdentity(username)
                 .flatMap(noDefaultIdentity -> Mono.from(identityRepository.save(username, identityCreationRequest))
                     .doOnSuccess(identity -> LOGGER.info("Created default identity for user {} with display name {}", username.asString(), identity.name()))))
@@ -259,12 +265,19 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
         return searchResultEntry;
     }
 
-    private IdentityCreationRequest asIdentityCreationRequest(SearchResultEntry ldapEntry) throws AddressException {
-        MailAddress mailAddress = Username.of(ldapEntry.getAttributeValue(usernameAttribute)).asMailAddress();
-        Optional<String> firstname = Optional.ofNullable(ldapEntry.getAttributeValue(firstnameAttribute));
-        Optional<String> surname = Optional.ofNullable(ldapEntry.getAttributeValue(surnameAttribute));
-        String identityDisplayName = toDisplayName(firstname, surname, mailAddress.asString());
-        return asIdentityRequest(mailAddress, identityDisplayName);
+    private Mono<IdentityCreationRequest> asIdentityCreationRequest(Username username, SearchResultEntry ldapEntry) {
+        try {
+            MailAddress mailAddress = Username.of(ldapEntry.getAttributeValue(usernameAttribute)).asMailAddress();
+            Optional<String> firstname = Optional.ofNullable(ldapEntry.getAttributeValue(firstnameAttribute));
+            Optional<String> surname = Optional.ofNullable(ldapEntry.getAttributeValue(surnameAttribute));
+            String identityDisplayName = toDisplayName(firstname, surname, mailAddress.asString());
+            return signatureTextFactory.forUser(username)
+                .map(signatureOptional -> signatureOptional
+                    .map(signature -> asIdentityRequest(mailAddress, identityDisplayName, signature))
+                    .orElseGet(() -> asIdentityRequest(mailAddress, identityDisplayName)));
+        } catch (AddressException e) {
+            return Mono.error(e);
+        }
     }
 
     private IdentityCreationRequest asIdentityRequest(MailAddress mailAddress, String identityDisplayName) {
@@ -276,6 +289,17 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
             Optional.of(DEFAULT_IDENTITY_SORT_ORDER),
             Optional.empty(),
             Optional.empty());
+    }
+
+    private IdentityCreationRequest asIdentityRequest(MailAddress mailAddress, String identityDisplayName, SignatureText signatureText) {
+        return IdentityCreationRequest.fromJava(
+            mailAddress,
+            Optional.of(identityDisplayName),
+            Optional.empty(),
+            Optional.empty(),
+            Optional.of(DEFAULT_IDENTITY_SORT_ORDER),
+            Optional.ofNullable(signatureText.textSignature()),
+            Optional.ofNullable(signatureText.htmlSignature()));
     }
 
     private String userBase(Domain domain) {
