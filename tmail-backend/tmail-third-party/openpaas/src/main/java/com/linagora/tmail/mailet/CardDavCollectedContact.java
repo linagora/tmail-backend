@@ -18,8 +18,6 @@
 
 package com.linagora.tmail.mailet;
 
-import static org.apache.james.jmap.send.MailMetadata.MAIL_METADATA_USERNAME_ATTRIBUTE;
-
 import java.util.List;
 import java.util.Optional;
 
@@ -79,7 +77,7 @@ public class CardDavCollectedContact extends GenericMailet {
     }
 
     private Optional<String> getJmapAuthenticatedUser(Mail mail) {
-        return AttributeUtils.getValueAndCastFromMail(mail, MAIL_METADATA_USERNAME_ATTRIBUTE, String.class);
+        return AttributeUtils.getValueAndCastFromMail(mail, Mail.JMAP_AUTH_USER, String.class);
     }
 
     private Optional<String> getSmtpAuthenticatedUser(Mail mail) {

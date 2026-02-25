@@ -43,7 +43,6 @@ import org.apache.james.core.MailAddress
 import org.apache.james.core.builder.MimeMessageBuilder
 import org.apache.james.core.builder.MimeMessageBuilder.BodyPartBuilder
 import org.apache.james.filesystem.api.FileSystem
-import org.apache.james.jmap.method.EmailSubmissionSetMethod.MAIL_METADATA_USERNAME_ATTRIBUTE
 import org.apache.james.lifecycle.api.{LifecycleUtil, Startable}
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.queue.api.MailQueueFactory.SPOOL
@@ -142,7 +141,7 @@ class CalendarEventMailReplyGenerator(val bodyPartContentGenerator: CalendarRepl
             .sender(attendeeReply.attendee.asString())
             .addRecipients(recipient)
             .mimeMessage(mimeMessage)
-            .addAttribute(new Attribute(MAIL_METADATA_USERNAME_ATTRIBUTE, AttributeValue.of(attendeeReply.attendee.asString())))
+            .addAttribute(new Attribute(Mail.JMAP_AUTH_USER, AttributeValue.of(attendeeReply.attendee.asString())))
             .build()
           LifecycleUtil.dispose(mimeMessage)
           mailImpl
