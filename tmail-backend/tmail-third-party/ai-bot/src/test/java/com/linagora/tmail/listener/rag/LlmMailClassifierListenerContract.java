@@ -334,7 +334,7 @@ public interface LlmMailClassifierListenerContract {
 
         // Basically empty body that LLM should have not enough data to qualify the mail as needs-action
         HierarchicalConfiguration<ImmutableNode> overrideConfig = listenerConfig();
-        overrideConfig.setProperty("listener.configuration.maxBodyLength", 1);
+        overrideConfig.setProperty("maxBodyLength", 1);
         resetListenerWithConfig(overrideConfig);
         registerListenerToEventBus();
 
@@ -621,7 +621,7 @@ public interface LlmMailClassifierListenerContract {
     @Test
     default void filterShouldSupportAutoSubmitted() throws Exception {
         HierarchicalConfiguration<ImmutableNode> overrideConfig = listenerConfig();
-        overrideConfig.addProperty("listener.configuration.filter.not.isAutoSubmitted", "");
+        overrideConfig.addProperty("filter.not.isAutoSubmitted", "");
         resetListenerWithConfig(overrideConfig);
         registerListenerToEventBus();
         needActionsLlmHook();
@@ -695,7 +695,7 @@ public interface LlmMailClassifierListenerContract {
     @Test
     default void filterShouldSupportHasHeaderCheck() throws Exception {
         HierarchicalConfiguration<ImmutableNode> overrideConfig = listenerConfig();
-        overrideConfig.addProperty("listener.configuration.filter.hasHeader[@name]", "X-Priority");
+        overrideConfig.addProperty("filter.hasHeader[@name]", "X-Priority");
         resetListenerWithConfig(overrideConfig);
         registerListenerToEventBus();
         needActionsLlmHook();
@@ -749,8 +749,8 @@ public interface LlmMailClassifierListenerContract {
     @Test
     default void filterShouldSupportHasHeaderWithValue() throws Exception {
         HierarchicalConfiguration<ImmutableNode> overrideConfig = listenerConfig();
-        overrideConfig.addProperty("listener.configuration.filter.hasHeader[@name]", "X-Priority");
-        overrideConfig.addProperty("listener.configuration.filter.hasHeader[@value]", "1");
+        overrideConfig.addProperty("filter.hasHeader[@name]", "X-Priority");
+        overrideConfig.addProperty("filter.hasHeader[@value]", "1");
         resetListenerWithConfig(overrideConfig);
         registerListenerToEventBus();
         needActionsLlmHook();
@@ -805,7 +805,7 @@ public interface LlmMailClassifierListenerContract {
     @Test
     default void filterShouldSupportMainRecipient() throws Exception {
         HierarchicalConfiguration<ImmutableNode> overrideConfig = listenerConfig();
-        overrideConfig.addProperty("listener.configuration.filter.isMainRecipient", "");
+        overrideConfig.addProperty("filter.isMainRecipient", "");
         resetListenerWithConfig(overrideConfig);
         registerListenerToEventBus();
         needActionsLlmHook();
@@ -859,7 +859,7 @@ public interface LlmMailClassifierListenerContract {
     @Test
     default void filterShouldSupportInbox() throws Exception {
         HierarchicalConfiguration<ImmutableNode> overrideConfig = listenerConfig();
-        overrideConfig.addProperty("listener.configuration.filter.isInINBOX", "");
+        overrideConfig.addProperty("filter.isInINBOX", "");
         resetListenerWithConfig(overrideConfig);
         registerListenerToEventBus();
         needActionsLlmHook();
@@ -912,7 +912,7 @@ public interface LlmMailClassifierListenerContract {
     @Test
     default void filterShouldSupportIsSpam() throws Exception {
         HierarchicalConfiguration<ImmutableNode> overrideConfig = listenerConfig();
-        overrideConfig.addProperty("listener.configuration.filter.isSpam", "");
+        overrideConfig.addProperty("filter.isSpam", "");
         resetListenerWithConfig(overrideConfig);
         registerListenerToEventBus();
         needActionsLlmHook();
@@ -965,9 +965,9 @@ public interface LlmMailClassifierListenerContract {
     @Test
     default void filterShouldSupportAndOperator() throws Exception {
         HierarchicalConfiguration<ImmutableNode> overrideConfig = listenerConfig();
-        overrideConfig.addProperty("listener.configuration.filter.and.isInINBOX", "");
-        overrideConfig.addProperty("listener.configuration.filter.and.isMainRecipient", "");
-        overrideConfig.addProperty("listener.configuration.filter.and.not.isAutoSubmitted", "");
+        overrideConfig.addProperty("filter.and.isInINBOX", "");
+        overrideConfig.addProperty("filter.and.isMainRecipient", "");
+        overrideConfig.addProperty("filter.and.not.isAutoSubmitted", "");
         resetListenerWithConfig(overrideConfig);
         registerListenerToEventBus();
         needActionsLlmHook();
@@ -1021,8 +1021,8 @@ public interface LlmMailClassifierListenerContract {
     @Test
     default void filterShouldSupportOrOperator() throws Exception {
         HierarchicalConfiguration<ImmutableNode> overrideConfig = listenerConfig();
-        overrideConfig.addProperty("listener.configuration.filter.or.isMainRecipient", "");
-        overrideConfig.addProperty("listener.configuration.filter.or.hasHeader[@name]", "X-Priority");
+        overrideConfig.addProperty("filter.or.isMainRecipient", "");
+        overrideConfig.addProperty("filter.or.hasHeader[@name]", "X-Priority");
         resetListenerWithConfig(overrideConfig);
         registerListenerToEventBus();
         needActionsLlmHook();

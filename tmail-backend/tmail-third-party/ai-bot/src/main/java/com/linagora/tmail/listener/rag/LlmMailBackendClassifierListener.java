@@ -147,11 +147,11 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
         this.htmlTextExtractor = htmlTextExtractor;
         this.identityRepository = identityRepository;
         this.metricFactory = metricFactory;
-        this.systemPrompt = Optional.ofNullable(configuration.getString("listener.configuration." + SYSTEM_PROMPT_PARAM, null))
+        this.systemPrompt = Optional.ofNullable(configuration.getString(SYSTEM_PROMPT_PARAM, null))
             .filter(s -> !s.isBlank())
             .orElse(DEFAULT_SYSTEM_PROMPT);
         this.labelRepository = labelRepository;
-        this.maxBodyLength = configuration.getInt("listener.configuration." + MAX_BODY_LENGTH_PARAM, DEFAULT_MAX_BODY_LENGTH);
+        this.maxBodyLength = configuration.getInt(MAX_BODY_LENGTH_PARAM, DEFAULT_MAX_BODY_LENGTH);
         Preconditions.checkArgument(maxBodyLength > 0, "'maxBodyLength' must be strictly positive");
         this.reviewModeEnabled = Boolean.parseBoolean(System.getProperty("tmail.ai.needsaction.relevance.review", "false"));
     }
