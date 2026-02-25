@@ -104,7 +104,7 @@ public class IdentityProvisionListenerTest {
         teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager, mailboxManager.getMapperFactory(), Set.of());
         LdapRepositoryConfiguration ldapRepositoryConfiguration = LdapRepositoryConfiguration.from(ldapRepositoryConfigurationWithVirtualHosting(ldapContainer));
         identityRepository = new IdentityRepository(new MemoryCustomIdentityDAO(), createDefaultIdentitySupplier(ldapRepositoryConfiguration));
-        testee = new IdentityProvisionListener(ldapRepositoryConfiguration, identityRepository);
+        testee = new IdentityProvisionListener(ldapRepositoryConfiguration, identityRepository, new DefaultSignatureTextFactory());
         mailboxManager.getEventBus().register(testee);
     }
 
