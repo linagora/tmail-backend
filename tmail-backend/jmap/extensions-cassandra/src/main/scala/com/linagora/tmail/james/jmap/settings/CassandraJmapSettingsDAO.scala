@@ -22,13 +22,14 @@ import com.datastax.oss.driver.api.core.CqlSession
 import com.datastax.oss.driver.api.core.`type`.DataTypes.{TEXT, mapOf}
 import com.datastax.oss.driver.api.core.`type`.codec.registry.CodecRegistry
 import com.datastax.oss.driver.api.core.`type`.codec.{TypeCodec, TypeCodecs}
+import com.datastax.oss.driver.api.core.config.DriverExecutionProfile
 import com.datastax.oss.driver.api.core.cql.{BoundStatement, BoundStatementBuilder, PreparedStatement, Row}
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, insertInto, selectFrom, update}
 import com.datastax.oss.driver.api.querybuilder.relation.Relation.column
 import com.linagora.tmail.james.jmap.settings.CassandraJmapSettingsDAO.{ADD_SETTINGS, MAP_OF_STRING_CODEC, REMOVE_SETTINGS}
 import com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.{SETTINGS, SETTINGS_STATE, TABLE_NAME, USER}
 import jakarta.inject.Inject
-import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor
+import org.apache.james.backends.cassandra.utils.{CassandraAsyncExecutor, ProfileLocator}
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.UuidState
 import reactor.core.scala.publisher.SMono
@@ -43,6 +44,8 @@ object CassandraJmapSettingsDAO {
 
 class CassandraJmapSettingsDAO @Inject()(session: CqlSession) {
   private val executor: CassandraAsyncExecutor = new CassandraAsyncExecutor(session)
+  private val readProfile: DriverExecutionProfile = ProfileLocator.READ.locateProfile(session, "USER")
+  private val writeProfile: DriverExecutionProfile = ProfileLocator.READ.locateProfile(session, "USER")
 
   private val insertStatement: PreparedStatement = session.prepare(insertInto(TABLE_NAME)
     .value(USER, bindMarker(USER))
@@ -75,13 +78,15 @@ class CassandraJmapSettingsDAO @Inject()(session: CqlSession) {
 
   def selectOne(username: Username): SMono[JmapSettings] =
     SMono.fromPublisher(executor.executeSingleRow(selectOne.bind()
-      .set(USER, username.asString(), TypeCodecs.TEXT)))
+      .set(USER, username.asString(), TypeCodecs.TEXT)
+      .setExecutionProfile(readProfile)))
       .filter(userSettingsExists)
       .map(toJmapSettings)
 
   def selectState(username: Username): SMono[UuidState] =
     SMono.fromPublisher(executor.executeSingleRow(selectState.bind()
-      .set(USER, username.asString(), TypeCodecs.TEXT))
+      .set(USER, username.asString(), TypeCodecs.TEXT)
+      .setExecutionProfile(readProfile))
       .filter(userSettingsExists)
       .map(row => UuidState(row.getUuid(SETTINGS_STATE))))
 
@@ -94,6 +99,7 @@ class CassandraJmapSettingsDAO @Inject()(session: CqlSession) {
       .set(USER, username.asString(), TypeCodecs.TEXT)
       .set(SETTINGS_STATE, newState.value, TypeCodecs.UUID)
       .set(SETTINGS, newSettingsJava, MAP_OF_STRING_CODEC)
+      .setExecutionProfile(writeProfile)
 
     SMono(executor.executeVoid(insertSetting))
   }
@@ -124,14 +130,15 @@ class CassandraJmapSettingsDAO @Inject()(session: CqlSession) {
       updateStatementBuilder.setSet(REMOVE_SETTINGS, removeSettingsJava, classOf[String])
     }
 
-    SMono.fromPublisher(executor.executeVoid(updateStatementBuilder.build()))
+    SMono.fromPublisher(executor.executeVoid(updateStatementBuilder.build().setExecutionProfile(writeProfile)))
   }
 
   def clearSettingsOfUser(username: Username): SMono[Void] =
     SMono.fromPublisher(executor.executeVoid(clearSettingsOfUser.bind()
       .set(USER, username.asString, TypeCodecs.TEXT)
       .setToNull(SETTINGS_STATE)
-      .setToNull(SETTINGS)))
+      .setToNull(SETTINGS)
+      .setExecutionProfile(writeProfile)))
 
   private def toJmapSettings(row: Row): JmapSettings =
     JmapSettings(settings = toSettings(row), state = UuidState(row.get(SETTINGS_STATE, TypeCodecs.UUID)))

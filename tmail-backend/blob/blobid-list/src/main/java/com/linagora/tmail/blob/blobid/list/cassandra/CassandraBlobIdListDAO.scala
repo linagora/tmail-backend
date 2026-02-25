@@ -21,11 +21,12 @@ package com.linagora.tmail.blob.blobid.list.cassandra
 import java.time.Duration
 
 import com.datastax.oss.driver.api.core.CqlSession
+import com.datastax.oss.driver.api.core.config.DriverExecutionProfile
 import com.datastax.oss.driver.api.core.cql.PreparedStatement
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, deleteFrom, insertInto, selectFrom}
 import com.linagora.tmail.blob.blobid.list.cassandra.BlobIdListTable._
 import jakarta.inject.Inject
-import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor
+import org.apache.james.backends.cassandra.utils.{CassandraAsyncExecutor, ProfileLocator}
 import org.apache.james.blob.api.BlobId
 import org.apache.james.util.DurationParser
 import reactor.core.scala.publisher.SMono
@@ -35,6 +36,8 @@ object CassandraBlobIdListDAO {
 
 class CassandraBlobIdListDAO @Inject()(session: CqlSession) {
   private val executor: CassandraAsyncExecutor = new CassandraAsyncExecutor(session)
+  private val readProfile: DriverExecutionProfile = ProfileLocator.READ.locateProfile(session, "BLOB-ID-LIST")
+  private val writeProfile: DriverExecutionProfile = ProfileLocator.READ.locateProfile(session, "BLOB-ID-LIST")
 
   private val insertStatement: PreparedStatement =
     session.prepare(insertInto(TABLE_NAME)
@@ -54,17 +57,20 @@ class CassandraBlobIdListDAO @Inject()(session: CqlSession) {
       .build())
 
   def insert(blobId: BlobId): SMono[Unit] =
-    SMono.fromPublisher(executor.executeVoid(insertStatement.bind().setString(BLOB_ID, blobId.asString)))
+    SMono.fromPublisher(executor.executeVoid(insertStatement.bind().setString(BLOB_ID, blobId.asString)
+        .setExecutionProfile(writeProfile)))
       .`then`
 
   def isStored(blobId: BlobId): SMono[java.lang.Boolean] =
     SMono.fromPublisher(executor.executeReturnExists(selectStatement.bind()
-      .setString(BLOB_ID, blobId.asString)))
+      .setString(BLOB_ID, blobId.asString)
+      .setExecutionProfile(readProfile)))
       .map(_.booleanValue())
 
   def remove(blobId: BlobId): SMono[Unit] =
     SMono.fromPublisher(executor.executeVoid(deleteStatement.bind()
-      .setString(BLOB_ID, blobId.asString)))
+        .setString(BLOB_ID, blobId.asString)
+        .setExecutionProfile(writeProfile)))
       .`then`
 
 }
