@@ -23,6 +23,7 @@ import static com.linagora.tmail.modules.data.TMailPostgresUsersRepositoryModule
 import jakarta.inject.Named;
 
 import org.apache.james.backends.postgres.PostgresTable;
+import org.apache.james.events.EventListener;
 import org.apache.james.user.api.UsernameChangeTaskStep;
 
 import com.google.inject.AbstractModule;
@@ -31,10 +32,13 @@ import com.google.inject.Scopes;
 import com.google.inject.Singleton;
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.james.jmap.saas.SaaSCapabilitiesModule;
+import com.linagora.tmail.saas.api.SaaSAccountProvisionListener;
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
 import com.linagora.tmail.saas.api.SaaSAccountUsernameChangeTaskStep;
+import com.linagora.tmail.saas.api.SaaSDomainAccountRepository;
 import com.linagora.tmail.saas.api.postgres.PostgresSaaSAccountRepository;
 import com.linagora.tmail.saas.api.postgres.PostgresSaaSDataDefinition;
+import com.linagora.tmail.saas.api.postgres.PostgresSaaSDomainAccountRepository;
 import com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionModule;
 
 public class PostgresSaaSModule extends AbstractModule {
@@ -46,9 +50,16 @@ public class PostgresSaaSModule extends AbstractModule {
         bind(SaaSAccountRepository.class).to(PostgresSaaSAccountRepository.class)
             .in(Scopes.SINGLETON);
 
+        bind(SaaSDomainAccountRepository.class).to(PostgresSaaSDomainAccountRepository.class)
+            .in(Scopes.SINGLETON);
+
         Multibinder.newSetBinder(binder(), UsernameChangeTaskStep.class)
             .addBinding()
             .to(SaaSAccountUsernameChangeTaskStep.class);
+
+        Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class)
+            .addBinding()
+            .to(SaaSAccountProvisionListener.class);
     }
 
     @Provides

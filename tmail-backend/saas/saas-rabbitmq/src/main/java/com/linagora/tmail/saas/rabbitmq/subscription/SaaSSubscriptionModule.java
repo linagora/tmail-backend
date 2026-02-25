@@ -43,6 +43,7 @@ import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
+import com.linagora.tmail.saas.api.SaaSDomainAccountRepository;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
 
 public class SaaSSubscriptionModule extends AbstractModule {
@@ -83,12 +84,18 @@ public class SaaSSubscriptionModule extends AbstractModule {
                                                                          SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration,
                                                                          DomainList domainList,
                                                                          MaxQuotaManager maxQuotaManager,
-                                                                         RateLimitingRepository rateLimitingRepository) {
+                                                                         RateLimitingRepository rateLimitingRepository,
+                                                                         UsersRepository usersRepository,
+                                                                         SaaSAccountRepository saaSAccountRepository,
+                                                                         SaaSDomainAccountRepository saaSDomainAccountRepository) {
         return new SaaSDomainSubscriptionConsumer(channelPool, rabbitMQConfiguration, twpCommonRabbitMQConfiguration,
             saasSubscriptionRabbitMQConfiguration,
             new SaaSDomainSubscriptionHandlerImpl(domainList,
                 maxQuotaManager,
-                rateLimitingRepository));
+                rateLimitingRepository,
+                usersRepository,
+                saaSAccountRepository,
+                saaSDomainAccountRepository));
     }
 
     @ProvidesIntoSet

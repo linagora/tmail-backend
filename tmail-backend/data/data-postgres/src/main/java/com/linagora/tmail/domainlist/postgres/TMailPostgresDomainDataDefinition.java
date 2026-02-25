@@ -39,12 +39,16 @@ import org.apache.james.domainlist.postgres.PostgresDomainDataDefinition;
 import org.jooq.Field;
 import org.jooq.Record;
 import org.jooq.Table;
+import org.jooq.impl.DSL;
+import org.jooq.impl.SQLDataType;
 
 public interface TMailPostgresDomainDataDefinition {
     interface PostgresDomainTable {
         Table<Record> TABLE_NAME = PostgresDomainDataDefinition.PostgresDomainTable.TABLE_NAME;
 
         Field<String> DOMAIN = PostgresDomainDataDefinition.PostgresDomainTable.DOMAIN;
+        Field<Boolean> CAN_UPGRADE = DSL.field("can_upgrade", SQLDataType.BOOLEAN);
+        Field<Boolean> IS_PAYING = DSL.field("is_paying", SQLDataType.BOOLEAN);
 
         PostgresTable TABLE = PostgresTable.name(TABLE_NAME.getName())
             .createTableStep(((dsl, tableName) -> dsl.createTableIfNotExists(tableName)
@@ -55,6 +59,8 @@ public interface TMailPostgresDomainDataDefinition {
                 .column(MAILS_RECEIVED_PER_MINUTE)
                 .column(MAILS_RECEIVED_PER_HOURS)
                 .column(MAILS_RECEIVED_PER_DAYS)
+                .column(CAN_UPGRADE)
+                .column(IS_PAYING)
                 .primaryKey(DOMAIN)))
             .disableRowLevelSecurity()
             .build();

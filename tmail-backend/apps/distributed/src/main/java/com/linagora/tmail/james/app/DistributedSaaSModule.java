@@ -24,6 +24,7 @@ import java.util.function.Function;
 
 import jakarta.inject.Named;
 
+import org.apache.james.events.EventListener;
 import org.apache.james.user.api.UsernameChangeTaskStep;
 
 import com.datastax.oss.driver.api.querybuilder.schema.CreateTable;
@@ -34,10 +35,13 @@ import com.google.inject.Scopes;
 import com.google.inject.Singleton;
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.james.jmap.saas.SaaSCapabilitiesModule;
+import com.linagora.tmail.saas.api.SaaSAccountProvisionListener;
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
 import com.linagora.tmail.saas.api.SaaSAccountUsernameChangeTaskStep;
+import com.linagora.tmail.saas.api.SaaSDomainAccountRepository;
 import com.linagora.tmail.saas.api.cassandra.CassandraSaaSAccountRepository;
 import com.linagora.tmail.saas.api.cassandra.CassandraSaaSDataDefinition;
+import com.linagora.tmail.saas.api.cassandra.CassandraSaaSDomainAccountRepository;
 import com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionModule;
 
 public class DistributedSaaSModule extends AbstractModule {
@@ -49,9 +53,16 @@ public class DistributedSaaSModule extends AbstractModule {
         bind(SaaSAccountRepository.class).to(CassandraSaaSAccountRepository.class)
             .in(Scopes.SINGLETON);
 
+        bind(SaaSDomainAccountRepository.class).to(CassandraSaaSDomainAccountRepository.class)
+            .in(Scopes.SINGLETON);
+
         Multibinder.newSetBinder(binder(), UsernameChangeTaskStep.class)
             .addBinding()
             .to(SaaSAccountUsernameChangeTaskStep.class);
+
+        Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class)
+            .addBinding()
+            .to(SaaSAccountProvisionListener.class);
     }
 
     @Provides

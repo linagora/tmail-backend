@@ -43,6 +43,7 @@ import org.apache.james.domainlist.api.mock.SimpleDomainList;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.inmemory.quota.InMemoryPerUserMaxQuotaManager;
 import org.apache.james.mailbox.quota.MaxQuotaManager;
+import org.apache.james.user.memory.MemoryUsersRepository;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionFactory;
 import org.junit.jupiter.api.AfterEach;
@@ -54,6 +55,8 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
 import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingRepository;
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition;
+import com.linagora.tmail.saas.api.memory.MemorySaaSAccountRepository;
+import com.linagora.tmail.saas.api.memory.MemorySaaSDomainAccountRepository;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
 
 import reactor.core.publisher.Mono;
@@ -120,7 +123,10 @@ class SaaSDomainSubscriptionConsumerTest {
             SaaSSubscriptionRabbitMQConfiguration.DEFAULT,
             new SaaSDomainSubscriptionHandlerImpl(domainList,
                 maxQuotaManager,
-                rateLimitingRepository));
+                rateLimitingRepository,
+                MemoryUsersRepository.withVirtualHosting(domainList),
+                new MemorySaaSAccountRepository(),
+                new MemorySaaSDomainAccountRepository()));
         testee.init();
     }
 

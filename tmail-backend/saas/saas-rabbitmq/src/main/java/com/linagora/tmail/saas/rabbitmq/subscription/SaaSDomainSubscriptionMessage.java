@@ -25,17 +25,25 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Preconditions;
 
 public interface SaaSDomainSubscriptionMessage {
-    record SaaSDomainValidSubscriptionMessage(String domain, Optional<Boolean> mailDnsConfigurationValidated, Optional<SaasFeatures> features) implements SaaSDomainSubscriptionMessage {
+    record SaaSDomainValidSubscriptionMessage(String domain,
+                                                  Optional<Boolean> mailDnsConfigurationValidated,
+                                                  Optional<SaasFeatures> features,
+                                                  Optional<Boolean> canUpgrade,
+                                                  Optional<Boolean> isPaying) implements SaaSDomainSubscriptionMessage {
 
         @JsonCreator
         public SaaSDomainValidSubscriptionMessage(@JsonProperty("domain") String domain,
                                                   @JsonProperty("mailDnsConfigurationValidated") Optional<Boolean> mailDnsConfigurationValidated,
-                                                  @JsonProperty("features") Optional<SaasFeatures> features) {
+                                                  @JsonProperty("features") Optional<SaasFeatures> features,
+                                                  @JsonProperty("canUpgrade") Optional<Boolean> canUpgrade,
+                                                  @JsonProperty("isPaying") Optional<Boolean> isPaying) {
             Preconditions.checkNotNull(domain, "domain cannot be null");
 
             this.domain = domain;
             this.mailDnsConfigurationValidated = mailDnsConfigurationValidated;
             this.features = features;
+            this.canUpgrade = canUpgrade;
+            this.isPaying = isPaying;
         }
     }
 

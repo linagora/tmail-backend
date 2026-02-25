@@ -276,6 +276,60 @@ public class SaaSDomainSubscriptionDeserializerTest {
 
             assertThat(parsed.features().get().mail().get().storageQuota()).isEqualTo(-1L);
         }
+
+        @Test
+        void parseMessageWithCanUpgradeAndIsPayingShouldSucceed() {
+            String validMessage = """
+            {
+                "domain": "twake.app",
+                "mailDnsConfigurationValidated": true,
+                "canUpgrade": false,
+                "isPaying": true
+            }
+            """;
+
+            SaaSDomainValidSubscriptionMessage message = (SaaSDomainValidSubscriptionMessage) SaaSSubscriptionDeserializer.parseAMQPDomainMessage(validMessage);
+
+            SoftAssertions.assertSoftly(softly -> {
+                softly.assertThat(message.domain()).isEqualTo("twake.app");
+                softly.assertThat(message.canUpgrade()).contains(false);
+                softly.assertThat(message.isPaying()).contains(true);
+            });
+        }
+
+        @Test
+        void parseMessageWithoutCanUpgradeAndIsPayingShouldReturnEmpty() {
+            String validMessage = """
+            {
+                "domain": "twake.app",
+                "mailDnsConfigurationValidated": true
+            }
+            """;
+
+            SaaSDomainValidSubscriptionMessage message = (SaaSDomainValidSubscriptionMessage) SaaSSubscriptionDeserializer.parseAMQPDomainMessage(validMessage);
+
+            SoftAssertions.assertSoftly(softly -> {
+                softly.assertThat(message.canUpgrade()).isEmpty();
+                softly.assertThat(message.isPaying()).isEmpty();
+            });
+        }
+
+        @Test
+        void parseMessageWithOnlyIsPayingShouldSucceed() {
+            String validMessage = """
+            {
+                "domain": "twake.app",
+                "isPaying": true
+            }
+            """;
+
+            SaaSDomainValidSubscriptionMessage message = (SaaSDomainValidSubscriptionMessage) SaaSSubscriptionDeserializer.parseAMQPDomainMessage(validMessage);
+
+            SoftAssertions.assertSoftly(softly -> {
+                softly.assertThat(message.canUpgrade()).isEmpty();
+                softly.assertThat(message.isPaying()).contains(true);
+            });
+        }
     }
 
     @Nested

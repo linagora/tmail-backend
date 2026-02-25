@@ -23,6 +23,7 @@ import jakarta.inject.Inject;
 import org.apache.james.core.Domain;
 import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.mailbox.quota.MaxQuotaManager;
+import org.apache.james.user.api.UsersRepository;
 import org.apache.james.util.ReactorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,24 +31,38 @@ import org.slf4j.LoggerFactory;
 import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition;
+import com.linagora.tmail.saas.api.SaaSAccountRepository;
+import com.linagora.tmail.saas.api.SaaSDomainAccountRepository;
+import com.linagora.tmail.saas.model.SaaSAccount;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class SaaSDomainSubscriptionHandlerImpl implements SaaSMessageHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SaaSDomainSubscriptionHandlerImpl.class);
+    private static final int DEFAULT_CONCURRENCY = 16;
 
     private final DomainList domainList;
     private final MaxQuotaManager maxQuotaManager;
     private final RateLimitingRepository rateLimitingRepository;
+    private final UsersRepository usersRepository;
+    private final SaaSAccountRepository saaSAccountRepository;
+    private final SaaSDomainAccountRepository saaSDomainAccountRepository;
 
     @Inject
     public SaaSDomainSubscriptionHandlerImpl(DomainList domainList,
                                              MaxQuotaManager maxQuotaManager,
-                                             RateLimitingRepository rateLimitingRepository) {
+                                             RateLimitingRepository rateLimitingRepository,
+                                             UsersRepository usersRepository,
+                                             SaaSAccountRepository saaSAccountRepository,
+                                             SaaSDomainAccountRepository saaSDomainAccountRepository) {
         this.domainList = domainList;
         this.maxQuotaManager = maxQuotaManager;
         this.rateLimitingRepository = rateLimitingRepository;
+        this.usersRepository = usersRepository;
+        this.saaSAccountRepository = saaSAccountRepository;
+        this.saaSDomainAccountRepository = saaSDomainAccountRepository;
     }
 
     @Override
@@ -78,6 +93,7 @@ public class SaaSDomainSubscriptionHandlerImpl implements SaaSMessageHandler {
             Domain domain = Domain.of(domainCancelSubscriptionMessage.domain());
             LOGGER.info("Processing domain cancellation for domain: {}", domain);
             return removeDomainIfExists(domain)
+                .then(Mono.from(saaSDomainAccountRepository.deleteSaaSDomainAccount(domain)))
                 .doOnSuccess(success -> LOGGER.info("Cancelled SaaS subscription for domain: {}", domain));
         }
         LOGGER.info("Skipping domain cancellation for domain: {} because enabled is true", domainCancelSubscriptionMessage.domain());
@@ -100,7 +116,8 @@ public class SaaSDomainSubscriptionHandlerImpl implements SaaSMessageHandler {
 
     private Mono<Void> handleDomainValidSubscriptionMessage(SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage message) {
         return createDomainIfValidated(message)
-            .then(applyDomainSettings(message));
+            .then(applyDomainSettings(message))
+            .then(applyAccountSettings(message));
     }
 
     private Mono<Void> createDomainIfValidated(SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage message) {
@@ -128,6 +145,26 @@ public class SaaSDomainSubscriptionHandlerImpl implements SaaSMessageHandler {
                 LOGGER.info("Skipping domain settings for domain: {} because features.mail is missing", domain);
                 return Mono.empty();
             });
+    }
+
+    private Mono<Void> applyAccountSettings(SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage message) {
+        if (message.canUpgrade().isEmpty() && message.isPaying().isEmpty()) {
+            LOGGER.info("Skipping account settings for domain: {} because canUpgrade and isPaying are absent", message.domain());
+            return Mono.empty();
+        }
+
+        Domain domain = Domain.of(message.domain());
+        SaaSAccount account = new SaaSAccount(
+            message.canUpgrade().orElse(SaaSAccount.DEFAULT.canUpgrade()),
+            message.isPaying().orElse(SaaSAccount.DEFAULT.isPaying()));
+
+        LOGGER.info("Applying account settings for domain: {}, canUpgrade: {}, isPaying: {}", domain, account.canUpgrade(), account.isPaying());
+
+        return Mono.from(saaSDomainAccountRepository.upsertSaasDomainAccount(domain, account))
+            .then(Flux.from(usersRepository.listUsersOfADomainReactive(domain))
+                .flatMap(user -> Mono.from(saaSAccountRepository.upsertSaasAccount(user, account)), DEFAULT_CONCURRENCY)
+                .then())
+            .doOnSuccess(success -> LOGGER.info("Successfully applied account settings for domain: {}", domain));
     }
 
     private Mono<Void> addDomainIfNotExist(Domain domain) {
