@@ -38,7 +38,7 @@ public class MessageFilterParser {
 
     public MessageFilter parse(HierarchicalConfiguration<ImmutableNode> config) {
         try {
-            HierarchicalConfiguration<ImmutableNode> filterConfig = config.configurationAt("listener.configuration.filter");
+            HierarchicalConfiguration<ImmutableNode> filterConfig = config.configurationAt("filter");
 
             if (filterConfig.isEmpty()) {
                 return MessageFilter.ALL;

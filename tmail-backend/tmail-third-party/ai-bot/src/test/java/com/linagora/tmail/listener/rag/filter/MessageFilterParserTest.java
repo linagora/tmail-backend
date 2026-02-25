@@ -45,7 +45,7 @@ class MessageFilterParserTest {
         @Test
         void shouldReturnAllFilterWhenNoFilterConfigurationExists() {
             HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
-            config.addProperty("listener.configuration.systemPrompt", "test");
+            config.addProperty("systemPrompt", "test");
 
             MessageFilter result = parser.parse(config);
 
@@ -67,7 +67,7 @@ class MessageFilterParserTest {
         @Test
         void shouldParseInboxFilter() {
             HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
-            config.addProperty("listener.configuration.filter.isInINBOX", "");
+            config.addProperty("filter.isInINBOX", "");
 
             MessageFilter result = parser.parse(config);
 
@@ -77,7 +77,7 @@ class MessageFilterParserTest {
         @Test
         void shouldParseSpamFilter() {
             HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
-            config.addProperty("listener.configuration.filter.isSpam", "");
+            config.addProperty("filter.isSpam", "");
 
             MessageFilter result = parser.parse(config);
 
@@ -87,7 +87,7 @@ class MessageFilterParserTest {
         @Test
         void shouldParseMainRecipientFilter() {
             HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
-            config.addProperty("listener.configuration.filter.isMainRecipient", "");
+            config.addProperty("filter.isMainRecipient", "");
 
             MessageFilter result = parser.parse(config);
 
@@ -97,7 +97,7 @@ class MessageFilterParserTest {
         @Test
         void shouldParseAutoSubmittedFilter() {
             HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
-            config.addProperty("listener.configuration.filter.isAutoSubmitted", "");
+            config.addProperty("filter.isAutoSubmitted", "");
 
             MessageFilter result = parser.parse(config);
 
@@ -107,7 +107,7 @@ class MessageFilterParserTest {
         @Test
         void shouldParseHasHeaderFilterWithNameOnly() {
             HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
-            config.addProperty("listener.configuration.filter.hasHeader[@name]", "X-Custom-Header");
+            config.addProperty("filter.hasHeader[@name]", "X-Custom-Header");
 
             MessageFilter result = parser.parse(config);
 
@@ -120,8 +120,8 @@ class MessageFilterParserTest {
         @Test
         void shouldParseHasHeaderFilterWithNameAndValue() {
             HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
-            config.addProperty("listener.configuration.filter.hasHeader[@name]", "X-Priority");
-            config.addProperty("listener.configuration.filter.hasHeader[@value]", "1");
+            config.addProperty("filter.hasHeader[@name]", "X-Priority");
+            config.addProperty("filter.hasHeader[@value]", "1");
 
             MessageFilter result = parser.parse(config);
 
@@ -134,7 +134,7 @@ class MessageFilterParserTest {
         @Test
         void shouldThrowExceptionWhenHasHeaderFilterMissingName() {
             HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
-            config.addProperty("listener.configuration.filter.hasHeader[@value]", "test");
+            config.addProperty("filter.hasHeader[@value]", "test");
 
             assertThatThrownBy(() -> parser.parse(config))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -147,8 +147,8 @@ class MessageFilterParserTest {
         @Test
         void shouldParseAndFilter() {
             HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
-            config.addProperty("listener.configuration.filter.and.isInINBOX", "");
-            config.addProperty("listener.configuration.filter.and.isMainRecipient", "");
+            config.addProperty("filter.and.isInINBOX", "");
+            config.addProperty("filter.and.isMainRecipient", "");
 
             MessageFilter result = parser.parse(config);
 
@@ -162,8 +162,8 @@ class MessageFilterParserTest {
         @Test
         void shouldParseOrFilter() {
             HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
-            config.addProperty("listener.configuration.filter.or.isInINBOX", "");
-            config.addProperty("listener.configuration.filter.or.isAutoSubmitted", "");
+            config.addProperty("filter.or.isInINBOX", "");
+            config.addProperty("filter.or.isAutoSubmitted", "");
 
             MessageFilter result = parser.parse(config);
 
@@ -177,7 +177,7 @@ class MessageFilterParserTest {
         @Test
         void shouldParseNotFilter() {
             HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
-            config.addProperty("listener.configuration.filter.not.isAutoSubmitted", "");
+            config.addProperty("filter.not.isAutoSubmitted", "");
 
             MessageFilter result = parser.parse(config);
 
@@ -189,7 +189,7 @@ class MessageFilterParserTest {
         @Test
         void shouldThrowExceptionWhenAndFilterHasNoChildren() {
             HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
-            config.addProperty("listener.configuration.filter.and", "");
+            config.addProperty("filter.and", "");
 
             assertThatThrownBy(() -> parser.parse(config))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -199,7 +199,7 @@ class MessageFilterParserTest {
         @Test
         void shouldThrowExceptionWhenOrFilterHasNoChildren() {
             HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
-            config.addProperty("listener.configuration.filter.or", "");
+            config.addProperty("filter.or", "");
 
             assertThatThrownBy(() -> parser.parse(config))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -209,7 +209,7 @@ class MessageFilterParserTest {
         @Test
         void shouldThrowExceptionWhenNotFilterHasNoChild() {
             HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
-            config.addProperty("listener.configuration.filter.not", "");
+            config.addProperty("filter.not", "");
 
             assertThatThrownBy(() -> parser.parse(config))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -219,8 +219,8 @@ class MessageFilterParserTest {
         @Test
         void shouldThrowExceptionWhenNotFilterHasMultipleChildren() {
             HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
-            config.addProperty("listener.configuration.filter.not.isInINBOX", "");
-            config.addProperty("listener.configuration.filter.not.isMainRecipient", "");
+            config.addProperty("filter.not.isInINBOX", "");
+            config.addProperty("filter.not.isMainRecipient", "");
 
             assertThatThrownBy(() -> parser.parse(config))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -233,9 +233,9 @@ class MessageFilterParserTest {
         @Test
         void shouldParseNestedAndOrFilters() {
             HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
-            config.addProperty("listener.configuration.filter.and.isInINBOX", "");
-            config.addProperty("listener.configuration.filter.and.or.isMainRecipient", "");
-            config.addProperty("listener.configuration.filter.and.or.hasHeader[@name]", "X-Priority");
+            config.addProperty("filter.and.isInINBOX", "");
+            config.addProperty("filter.and.or.isMainRecipient", "");
+            config.addProperty("filter.and.or.hasHeader[@name]", "X-Priority");
 
             MessageFilter result = parser.parse(config);
 
@@ -254,9 +254,9 @@ class MessageFilterParserTest {
         @Test
         void shouldParseAndWithNotFilter() {
             HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
-            config.addProperty("listener.configuration.filter.and.isInINBOX", "");
-            config.addProperty("listener.configuration.filter.and.isMainRecipient", "");
-            config.addProperty("listener.configuration.filter.and.not.isAutoSubmitted", "");
+            config.addProperty("filter.and.isInINBOX", "");
+            config.addProperty("filter.and.isMainRecipient", "");
+            config.addProperty("filter.and.not.isAutoSubmitted", "");
 
             MessageFilter result = parser.parse(config);
 
@@ -274,9 +274,9 @@ class MessageFilterParserTest {
         @Test
         void shouldParseDeeplyNestedFilters() {
             HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
-            config.addProperty("listener.configuration.filter.or.and.isInINBOX", "");
-            config.addProperty("listener.configuration.filter.or.and.not.isAutoSubmitted", "");
-            config.addProperty("listener.configuration.filter.or.isMainRecipient", "");
+            config.addProperty("filter.or.and.isInINBOX", "");
+            config.addProperty("filter.or.and.not.isAutoSubmitted", "");
+            config.addProperty("filter.or.isMainRecipient", "");
 
             MessageFilter result = parser.parse(config);
 
@@ -298,7 +298,7 @@ class MessageFilterParserTest {
         @Test
         void shouldThrowExceptionForUnknownFilterType() {
             HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
-            config.addProperty("listener.configuration.filter.unknownFilter", "");
+            config.addProperty("filter.unknownFilter", "");
 
             assertThatThrownBy(() -> parser.parse(config))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -308,8 +308,8 @@ class MessageFilterParserTest {
         @Test
         void shouldThrowExceptionWhenFilterConfigurationHasMultipleRootElements() {
             HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
-            config.addProperty("listener.configuration.filter.isInINBOX", "");
-            config.addProperty("listener.configuration.filter.isMainRecipient", "");
+            config.addProperty("filter.isInINBOX", "");
+            config.addProperty("filter.isMainRecipient", "");
 
             assertThatThrownBy(() -> parser.parse(config))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -319,7 +319,7 @@ class MessageFilterParserTest {
         @Test
         void shouldThrowExceptionWhenFilterConfigurationIsEmpty() {
             HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
-            config.addProperty("listener.configuration.filter", "");
+            config.addProperty("filter", "");
 
             assertThatThrownBy(() -> parser.parse(config))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -332,9 +332,9 @@ class MessageFilterParserTest {
         @Test
         void shouldParseTypicalPrioritizationFilter() {
             HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
-            config.addProperty("listener.configuration.filter.and.isInINBOX", "");
-            config.addProperty("listener.configuration.filter.and.isMainRecipient", "");
-            config.addProperty("listener.configuration.filter.and.not.isAutoSubmitted", "");
+            config.addProperty("filter.and.isInINBOX", "");
+            config.addProperty("filter.and.isMainRecipient", "");
+            config.addProperty("filter.and.not.isAutoSubmitted", "");
 
             MessageFilter result = parser.parse(config);
 
@@ -351,9 +351,9 @@ class MessageFilterParserTest {
         @Test
         void shouldParseFilterWithCustomHeaders() {
             HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
-            config.addProperty("listener.configuration.filter.and.isInINBOX", "");
-            config.addProperty("listener.configuration.filter.and.hasHeader[@name]", "X-Priority");
-            config.addProperty("listener.configuration.filter.and.hasHeader[@value]", "1");
+            config.addProperty("filter.and.isInINBOX", "");
+            config.addProperty("filter.and.hasHeader[@name]", "X-Priority");
+            config.addProperty("filter.and.hasHeader[@value]", "1");
 
             MessageFilter result = parser.parse(config);
 
@@ -370,10 +370,10 @@ class MessageFilterParserTest {
         @Test
         void shouldParseComplexBusinessLogicFilter() {
             HierarchicalConfiguration<ImmutableNode> config = new BaseHierarchicalConfiguration();
-            config.addProperty("listener.configuration.filter.and.isInINBOX", "");
-            config.addProperty("listener.configuration.filter.and.or.isMainRecipient", "");
-            config.addProperty("listener.configuration.filter.and.or.hasHeader[@name]", "X-Important");
-            config.addProperty("listener.configuration.filter.and.not.isAutoSubmitted", "");
+            config.addProperty("filter.and.isInINBOX", "");
+            config.addProperty("filter.and.or.isMainRecipient", "");
+            config.addProperty("filter.and.or.hasHeader[@name]", "X-Important");
+            config.addProperty("filter.and.not.isAutoSubmitted", "");
 
             MessageFilter result = parser.parse(config);
 

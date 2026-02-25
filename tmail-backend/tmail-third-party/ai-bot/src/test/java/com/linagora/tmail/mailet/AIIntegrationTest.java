@@ -27,11 +27,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
 import java.io.IOException;
+import java.lang.reflect.Field;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 
+import jakarta.inject.Inject;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
 
@@ -49,6 +51,7 @@ import org.apache.james.transport.mailets.ToRepository;
 import org.apache.james.transport.matchers.All;
 import org.apache.james.util.MimeMessageUtil;
 import org.apache.james.utils.DataProbeImpl;
+import org.apache.james.utils.GuiceProbe;
 import org.apache.james.utils.SMTPMessageSender;
 import org.apache.james.utils.TestIMAPClient;
 import org.apache.mailet.base.test.FakeMail;
@@ -59,19 +62,51 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 
+import com.google.inject.AbstractModule;
+import com.google.inject.multibindings.Multibinder;
 import com.google.inject.name.Names;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.probe.JmapSettingsProbe;
 import com.linagora.tmail.james.common.probe.JmapSettingsProbeModule;
+import com.linagora.tmail.listener.rag.LlmMailBackendClassifierListener;
 import com.linagora.tmail.mailet.conf.AIBaseModule;
 
 @Disabled("Unstable test https://github.com/linagora/tmail-backend/issues/1303")
 class AIIntegrationTest {
+    public static class LlmBackendClassifierProbeModule extends AbstractModule {
+        @Override
+        protected void configure() {
+            Multibinder.newSetBinder(binder(), GuiceProbe.class)
+                .addBinding()
+                .to(LlmBackendClassifierProbe.class);
+        }
+    }
+
+    public static class LlmBackendClassifierProbe implements GuiceProbe {
+        private final LlmMailBackendClassifierListener listener;
+
+        @Inject
+        public LlmBackendClassifierProbe(LlmMailBackendClassifierListener listener) {
+            this.listener = listener;
+        }
+
+        int maxBodyLength() throws Exception {
+            return (int) readField("maxBodyLength");
+        }
+
+        private Object readField(String fieldName) throws Exception {
+            Field field = LlmMailBackendClassifierListener.class.getDeclaredField(fieldName);
+            field.setAccessible(true);
+            return field.get(listener);
+        }
+    }
+
     private static final String BOB = "bob@" + DEFAULT_DOMAIN;
     private static final String ALICE = "alice@" + DEFAULT_DOMAIN;
     private static final String ANDRE = "andre@" + DEFAULT_DOMAIN;
     private static final String MARIA = "maria@" + DEFAULT_DOMAIN;
     private static final String BOT_ADDRESS = "gpt@" + DEFAULT_DOMAIN;
+    private static final int CONFIGURED_MAX_BODY_LENGTH = 1234;
 
     private TemporaryJamesServer jamesServer;
 
@@ -97,10 +132,13 @@ class AIIntegrationTest {
         String listenersContent = """
             <listeners>
                 <listener>
-                    <class>com.linagora.tmail.listener.rag.LlmMailPrioritizationClassifierListener</class>
+                    <class>com.linagora.tmail.listener.rag.LlmMailClassifierListener</class>
+                    <configuration>
+                        <maxBodyLength>%d</maxBodyLength>
+                    </configuration>
                 </listener>
             </listeners>
-            """;
+            """.formatted(CONFIGURED_MAX_BODY_LENGTH);
         Files.writeString(resourcesFolder.resolve("listeners.xml"), listenersContent);
 
         MailetContainer.Builder mailetContainer = TemporaryJamesServer.simpleMailetContainerConfiguration()
@@ -122,7 +160,7 @@ class AIIntegrationTest {
 
         jamesServer = TemporaryJamesServer.builder()
             .withBase(MemoryServer.MODULES)
-            .withOverrides(new AIBaseModule(), new JmapSettingsProbeModule(),
+            .withOverrides(new AIBaseModule(), new JmapSettingsProbeModule(), new LlmBackendClassifierProbeModule(),
                 binder -> binder.bind(Boolean.class).annotatedWith(Names.named("calDavSupport")).toInstance(false))
             .withMailetContainer(mailetContainer)
             .build(temporaryFolder);
@@ -396,5 +434,12 @@ class AIIntegrationTest {
                 .recipient(ALICE));
 
         awaitFirstMessageWithFlag(ALICE, "needs-action");
+    }
+
+    @Test
+    void shouldLoadLlmBackendClassifierConfigFromListenersXml() throws Exception {
+        LlmBackendClassifierProbe probe = jamesServer.getProbe(LlmBackendClassifierProbe.class);
+
+        assertThat(probe.maxBodyLength()).isEqualTo(CONFIGURED_MAX_BODY_LENGTH);
     }
 }
