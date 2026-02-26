@@ -24,6 +24,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Scopes;
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.james.jmap.saas.SaaSCapabilitiesModule;
+import com.linagora.tmail.saas.SaaSSignatureTextModule;
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
 import com.linagora.tmail.saas.api.SaaSAccountUsernameChangeTaskStep;
 import com.linagora.tmail.saas.api.memory.MemorySaaSAccountRepository;
@@ -32,6 +33,7 @@ public class MemorySaaSModule extends AbstractModule {
     @Override
     protected void configure() {
         install(new SaaSCapabilitiesModule());
+        install(new SaaSSignatureTextModule());
 
         bind(SaaSAccountRepository.class).to(MemorySaaSAccountRepository.class)
             .in(Scopes.SINGLETON);

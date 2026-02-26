@@ -16,47 +16,42 @@
  *  more details.                                                   *
  *******************************************************************/
 
-package com.linagora.tmail.james.app;
+package com.linagora.tmail.saas;
 
-import static com.linagora.tmail.modules.data.TMailPostgresUsersRepositoryModule.TMAIL_POSTGRES_USER;
+import java.util.Optional;
 
 import jakarta.inject.Named;
 
-import org.apache.james.backends.postgres.PostgresTable;
-import org.apache.james.user.api.UsernameChangeTaskStep;
+import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
+import org.apache.commons.configuration2.HierarchicalConfiguration;
+import org.apache.commons.configuration2.tree.ImmutableNode;
+import org.apache.james.modules.mailbox.ListenerConfiguration;
+import org.apache.james.modules.mailbox.ListenersConfiguration;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Scopes;
 import com.google.inject.Singleton;
-import com.google.inject.multibindings.Multibinder;
-import com.linagora.tmail.james.jmap.saas.SaaSCapabilitiesModule;
-import com.linagora.tmail.saas.SaaSSignatureTextModule;
-import com.linagora.tmail.saas.api.SaaSAccountRepository;
-import com.linagora.tmail.saas.api.SaaSAccountUsernameChangeTaskStep;
-import com.linagora.tmail.saas.api.postgres.PostgresSaaSAccountRepository;
-import com.linagora.tmail.saas.api.postgres.PostgresSaaSDataDefinition;
-import com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionModule;
+import com.linagora.tmail.james.jmap.event.IdentityProvisionListener;
+import com.linagora.tmail.james.jmap.event.SignatureTextFactory;
+import com.linagora.tmail.saas.listener.SaaSSignatureTextFactory;
 
-public class PostgresSaaSModule extends AbstractModule {
+public class SaaSSignatureTextModule extends AbstractModule {
     @Override
     protected void configure() {
-        install(new SaaSCapabilitiesModule());
-        install(new SaaSSubscriptionModule());
-        install(new SaaSSignatureTextModule());
-
-        bind(SaaSAccountRepository.class).to(PostgresSaaSAccountRepository.class)
-            .in(Scopes.SINGLETON);
-
-        Multibinder.newSetBinder(binder(), UsernameChangeTaskStep.class)
-            .addBinding()
-            .to(SaaSAccountUsernameChangeTaskStep.class);
+        bind(SignatureTextFactory.class).to(SaaSSignatureTextFactory.class).in(Scopes.SINGLETON);
     }
 
     @Provides
     @Singleton
-    @Named(TMAIL_POSTGRES_USER)
-    public PostgresTable.CreateTableFunction overrideCreateUserTableFunction() {
-        return PostgresSaaSDataDefinition.userTableWithSaaSSupport();
+    @Named(SaaSSignatureTextFactory.IDENTITY_PROVISION_LISTENER_CONFIGURATION)
+    public HierarchicalConfiguration<ImmutableNode> provideIdentityProvisionListenerConfiguration(ListenersConfiguration listenersConfiguration) {
+        return listenersConfiguration.getListenersConfiguration()
+            .stream()
+            .filter(listenerConfiguration -> listenerConfiguration.getClazz().equals(IdentityProvisionListener.class.getCanonicalName()))
+            .map(ListenerConfiguration::getConfiguration)
+            .flatMap(Optional::stream)
+            .findFirst()
+            .orElseGet(BaseHierarchicalConfiguration::new);
     }
 }
