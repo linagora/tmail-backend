@@ -27,3 +27,44 @@ Sample configuration: `listeners.xml`
   </listener>
 </listeners>
 ....
+
+=== SaaS Signature Enrichment
+
+When SaaS modules are enabled, the same listener configuration can define i18n signatures for non-paying users.
+This is handled by the SaaS `SignatureTextFactory` implementation.
+
+Additional configuration:
+- `defaultText.defaultLanguage`: fallback language (defaults to `en` when omitted).
+- `defaultText.<locale>.textSignature`: plain-text signature for a locale.
+- `defaultText.<locale>.htmlSignature`: HTML signature for a locale.
+
+Notes:
+- If `defaultText` is not configured, no i18n promotion signature is provisioned.
+- Locale keys and `defaultText.defaultLanguage` must be valid locales.
+- `defaultText.defaultLanguage` must match one configured locale block.
+- Paying users do not get the promotion signature.
+
+Sample configuration: `listeners.xml`
+
+....xml
+<listeners>
+  <listener>
+    <class>com.linagora.tmail.james.jmap.event.IdentityProvisionListener</class>
+    <configuration>
+      <firstnameAttribute>givenName</firstnameAttribute>
+      <surnameAttribute>sn</surnameAttribute>
+      <defaultText>
+        <defaultLanguage>en</defaultLanguage>
+        <en>
+          <textSignature>Register on https://sign-up.twake.app !</textSignature>
+          <htmlSignature><![CDATA[<p>Register on <a href="https://sign-up.twake.app">Twake</a> !</p>]]></htmlSignature>
+        </en>
+        <fr>
+          <textSignature>Inscrivez vous sur https://sign-up.twake.app !</textSignature>
+          <htmlSignature><![CDATA[<p>Inscrivez vous sur <a href="https://sign-up.twake.app">Twake</a> !</p>]]></htmlSignature>
+        </fr>
+      </defaultText>
+    </configuration>
+  </listener>
+</listeners>
+....
