@@ -21,29 +21,35 @@ package com.linagora.tmail.james.common
 import java.util.Optional
 
 import com.linagora.tmail.common.probe.SaaSProbe
-import com.linagora.tmail.james.common.JmapSaasContract.{DOMAIN_SUBSCRIPTION_ROUTING_KEY, QUOTA_ROOT, SUBSCRIPTION_ROUTING_KEY}
+import com.linagora.tmail.james.common.JmapSaasContract.{DOMAIN_SUBSCRIPTION_ROUTING_KEY, QUOTA_ROOT, SUBSCRIPTION_ROUTING_KEY, TEST_ACCOUNT_ID, TEST_DOMAIN, TEST_PASSWORD, TEST_USER}
 import com.linagora.tmail.james.common.probe.DomainProbe
 import com.linagora.tmail.saas.model.SaaSAccount
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
-import org.apache.james.core.Domain
 import org.apache.james.core.quota.QuotaSizeLimit
+import org.apache.james.core.{Domain, Username}
+import org.apache.james.jmap.core.AccountId
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
-import org.apache.james.mailbox.model.QuotaRoot
-import org.apache.james.modules.QuotaProbesImpl
+import org.apache.james.mailbox.model.{MailboxPath, QuotaRoot}
+import org.apache.james.modules.{MailboxProbeImpl, QuotaProbesImpl}
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers.{equalTo, hasKey, not}
+import org.junit.jupiter.api.Assumptions.assumeTrue
 import org.junit.jupiter.api.{AfterEach, Tag, Test}
 
 object JmapSaasContract {
   val SUBSCRIPTION_ROUTING_KEY: String = "saas.subscription.routingKey"
   val DOMAIN_SUBSCRIPTION_ROUTING_KEY: String = "domain.subscription.changed"
-  val QUOTA_ROOT: QuotaRoot = QuotaRoot.quotaRoot("#private&" + BOB.asString(), Optional.of(DOMAIN))
+  val TEST_DOMAIN: Domain = Domain.of("james.org")
+  val TEST_USER: Username = Username.fromLocalPartWithDomain("james-user", TEST_DOMAIN)
+  val TEST_PASSWORD: String = "secret"
+  val TEST_ACCOUNT_ID: String = AccountId.from(TEST_USER).fold(throw _, _.id.value)
+  val QUOTA_ROOT: QuotaRoot = QuotaRoot.quotaRoot("#private&" + TEST_USER.asString(), Optional.of(TEST_DOMAIN))
 }
 
 trait JmapSaasContract {
@@ -54,15 +60,17 @@ trait JmapSaasContract {
 
   def publishAmqpSettingsMessage(message: String, routingKey: String): Unit
 
+  def i18nSignatureProvisionConfigured: Boolean = false
+
   private def setUpJmapServer(saasSupport: Boolean = false): GuiceJamesServer = {
     val server = startJmapServer(saasSupport)
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
-      .addDomain(DOMAIN.asString())
-      .addUser(BOB.asString(), BOB_PASSWORD)
+      .addDomain(TEST_DOMAIN.asString())
+      .addUser(TEST_USER.asString(), TEST_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .setAuth(authScheme(UserCredential(TEST_USER, TEST_PASSWORD)))
       .build
 
     server
@@ -112,12 +120,44 @@ trait JmapSaasContract {
   }
 
   @Test
+  def shouldProvisionI18nSignatureForNonPayingUser(): Unit = {
+    assumeTrue(i18nSignatureProvisionConfigured)
+    val server = setUpJmapServer(saasSupport = true)
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(TEST_USER))
+
+    val request: String =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:submission"],
+         |  "methodCalls": [[
+         |    "Identity/get",
+         |    {
+         |      "accountId": "$TEST_ACCOUNT_ID",
+         |      "ids": null
+         |    },
+         |    "c1"]]
+         |}""".stripMargin
+
+    awaitAtMostTenSeconds.untilAsserted { () =>
+      `given`()
+        .body(request)
+        .when()
+        .post().prettyPeek()
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .body(s"methodResponses[0][1].list.findAll { it.email == '${TEST_USER.asString()}' && it.mayDelete == true }.size()", equalTo(1))
+        .body(s"methodResponses[0][1].list.find { it.email == '${TEST_USER.asString()}' && it.mayDelete == true }.textSignature", equalTo("Register on https://sign-up.twake.app !"))
+        .body(s"methodResponses[0][1].list.find { it.email == '${TEST_USER.asString()}' && it.mayDelete == true }.htmlSignature", equalTo("<p>Register on <a href=\"https://sign-up.twake.app\">Twake</a> !</p>"))
+    }
+  }
+
+  @Test
   @Tag(CategoryTags.BASIC_FEATURE)
   def shouldReturnAttachedPlan(): Unit = {
     val server: GuiceJamesServer = setUpJmapServer(saasSupport = true)
 
     server.getProbe(classOf[SaaSProbe])
-      .setPlan(BOB, new SaaSAccount(true, true))
+      .setPlan(TEST_USER, new SaaSAccount(true, true))
 
     `given`()
       .when()
@@ -135,7 +175,7 @@ trait JmapSaasContract {
 
     publishAmqpSettingsMessage(
       s"""{
-         |    "internalEmail": "${BOB.asString()}",
+         |    "internalEmail": "${TEST_USER.asString()}",
          |    "isPaying": true,
          |    "canUpgrade": true,
          |    "features": {
@@ -171,7 +211,7 @@ trait JmapSaasContract {
 
     publishAmqpSettingsMessage(
       s"""{
-         |    "internalEmail": "${BOB.asString()}",
+         |    "internalEmail": "${TEST_USER.asString()}",
          |    "isPaying": false,
          |    "canUpgrade": true,
          |    "features": {
@@ -190,7 +230,7 @@ trait JmapSaasContract {
 
     publishAmqpSettingsMessage(
       s"""{
-         |    "internalEmail": "${BOB.asString()}",
+         |    "internalEmail": "${TEST_USER.asString()}",
          |    "isPaying": true,
          |    "canUpgrade": true,
          |    "features": {
@@ -266,7 +306,7 @@ trait JmapSaasContract {
          |        "mailsReceivedPerDay": 2000
          |      }
          |    }
-         |}""".format(DOMAIN.asString())
+         |}""".format(TEST_DOMAIN.asString())
         .stripMargin,
       DOMAIN_SUBSCRIPTION_ROUTING_KEY)
 
@@ -293,13 +333,13 @@ trait JmapSaasContract {
          |        "mailsReceivedPerDay": 2000
          |      }
          |    }
-         |}""".format(DOMAIN.asString())
+         |}""".format(TEST_DOMAIN.asString())
         .stripMargin,
       DOMAIN_SUBSCRIPTION_ROUTING_KEY)
 
     publishAmqpSettingsMessage(
       s"""{
-         |    "internalEmail": "${BOB.asString()}",
+         |    "internalEmail": "${TEST_USER.asString()}",
          |    "isPaying": true,
          |    "canUpgrade": true,
          |    "features": {
@@ -329,10 +369,10 @@ trait JmapSaasContract {
       s"""{
          |    "domain": "%s",
          |    "enabled": false
-         |}""".format(DOMAIN.asString())
+         |}""".format(TEST_DOMAIN.asString())
         .stripMargin,
       DOMAIN_SUBSCRIPTION_ROUTING_KEY)
 
-    awaitAtMostTenSeconds.untilAsserted(() => assertThat(server.getProbe(classOf[DomainProbe]).containsDomain(DOMAIN)).isFalse)
+    awaitAtMostTenSeconds.untilAsserted(() => assertThat(server.getProbe(classOf[DomainProbe]).containsDomain(TEST_DOMAIN)).isFalse)
   }
 }

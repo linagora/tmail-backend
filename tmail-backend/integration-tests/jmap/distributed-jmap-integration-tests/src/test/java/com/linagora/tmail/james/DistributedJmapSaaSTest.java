@@ -18,6 +18,8 @@
 
 package com.linagora.tmail.james;
 
+import static com.linagora.tmail.UsersRepositoryModuleChooser.Implementation.COMBINED;
+import static com.linagora.tmail.common.TemporaryTmailServerUtils.BASE_CONFIGURATION_FILE_NAMES;
 import static com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.james.backends.cassandra.DockerCassandra.CASSANDRA_TESTING_PASSWORD;
@@ -29,18 +31,23 @@ import org.apache.james.CleanupTasksPerformer;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
+import org.apache.james.data.DockerLdapRule;
+import org.apache.james.data.LdapTestExtension;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.modules.QuotaProbesImpl;
+import org.apache.james.server.core.configuration.Configuration;
 import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 
 import com.github.fge.lambdas.Throwing;
+import com.google.common.collect.ImmutableList;
 import com.google.inject.Module;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
+import com.linagora.tmail.common.TemporaryTmailServerUtils;
 import com.linagora.tmail.common.module.SaaSProbeModule;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
@@ -74,6 +81,9 @@ public class DistributedJmapSaaSTest implements JmapSaasContract {
         .restartPolicy(RabbitMQExtension.DockerRestartPolicy.PER_CLASS)
         .isolationPolicy(RabbitMQExtension.IsolationPolicy.WEAK);
 
+    @RegisterExtension
+    static LdapTestExtension ldapTestExtension = new LdapTestExtension(new DockerLdapRule(true));
+
     @TempDir
     private File tmpDir;
 
@@ -82,9 +92,10 @@ public class DistributedJmapSaaSTest implements JmapSaasContract {
     @Override
     public GuiceJamesServer startJmapServer(boolean saasSupport) {
         dropUserTable();
+        Configuration.ConfigurationPath configurationPath = configurationPath(saasSupport);
         guiceJamesServer = DistributedServer.createServer(DistributedJamesConfiguration.builder()
                 .workingDirectory(tmpDir)
-                .configurationFromClasspath()
+                .configurationPath(configurationPath)
                 .blobStore(BlobStoreConfiguration.builder()
                     .s3()
                     .noSecondaryS3BlobStore()
@@ -94,13 +105,15 @@ public class DistributedJmapSaaSTest implements JmapSaasContract {
                     .disableSingleSave())
                 .eventBusKeysChoice(EventBusKeysChoice.RABBITMQ)
                 .searchConfiguration(SearchConfiguration.openSearch())
+                .usersRepository(COMBINED)
                 .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
                 .twpSettingsModuleChooserConfiguration(new TWPSettingsModuleChooserConfiguration(true))
                 .build())
             .overrideWith(opensearchExtension.getModule(),
                 cassandraExtension.getModule(),
                 rabbitMQExtensionModule.getModule(),
-                s3Extension.getModule())
+                s3Extension.getModule(),
+                ldapTestExtension.getModule())
             .overrideWith((binder -> binder.bind(CleanupTasksPerformer.class).asEagerSingleton()))
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(provideSaaSModule(saasSupport))
@@ -113,6 +126,24 @@ public class DistributedJmapSaaSTest implements JmapSaasContract {
 
         Throwing.runnable(() -> guiceJamesServer.start()).run();
         return guiceJamesServer;
+    }
+
+    @Override
+    public boolean i18nSignatureProvisionConfigured() {
+        return true;
+    }
+
+    private Configuration.ConfigurationPath configurationPath(boolean saasSupport) {
+        TemporaryTmailServerUtils serverUtils = new TemporaryTmailServerUtils(tmpDir, ImmutableList.<String>builder()
+            .addAll(BASE_CONFIGURATION_FILE_NAMES)
+            .add("rabbitmq.properties")
+            .add("usersrepository.xml")
+            .build());
+
+        if (saasSupport) {
+            serverUtils.copyResource("listeners-with-saas-signature.xml", "listeners.xml");
+        }
+        return serverUtils.getConfigurationPath();
     }
 
     @Override
