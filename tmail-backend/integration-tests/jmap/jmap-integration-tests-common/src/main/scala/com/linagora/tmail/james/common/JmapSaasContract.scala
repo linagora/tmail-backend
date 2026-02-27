@@ -60,7 +60,7 @@ trait JmapSaasContract {
 
   def publishAmqpSettingsMessage(message: String, routingKey: String): Unit
 
-  def i18nSignatureProvisionConfigured: Boolean = false
+  def saaSSignatureProvisionConfigured: Boolean = false
 
   private def setUpJmapServer(saasSupport: Boolean = false): GuiceJamesServer = {
     val server = startJmapServer(saasSupport)
@@ -120,8 +120,8 @@ trait JmapSaasContract {
   }
 
   @Test
-  def shouldProvisionI18nSignatureForNonPayingUser(): Unit = {
-    assumeTrue(i18nSignatureProvisionConfigured)
+  def shouldProvisionSaaSSignatureForNonPayingUser(): Unit = {
+    assumeTrue(saaSSignatureProvisionConfigured)
     val server = setUpJmapServer(saasSupport = true)
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(TEST_USER))
 
@@ -148,6 +148,41 @@ trait JmapSaasContract {
         .body(s"methodResponses[0][1].list.findAll { it.email == '${TEST_USER.asString()}' && it.mayDelete == true }.size()", equalTo(1))
         .body(s"methodResponses[0][1].list.find { it.email == '${TEST_USER.asString()}' && it.mayDelete == true }.textSignature", equalTo("Register on https://sign-up.twake.app !"))
         .body(s"methodResponses[0][1].list.find { it.email == '${TEST_USER.asString()}' && it.mayDelete == true }.htmlSignature", equalTo("<p>Register on <a href=\"https://sign-up.twake.app\">Twake</a> !</p>"))
+    }
+  }
+
+  @Test
+  def shouldNotProvisionSaaSSignatureForPayingUser(): Unit = {
+    assumeTrue(saaSSignatureProvisionConfigured)
+
+    val server = setUpJmapServer(saasSupport = true)
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(TEST_USER))
+    server.getProbe(classOf[SaaSProbe])
+      .setPlan(TEST_USER, new SaaSAccount(true, true))
+
+    val request: String =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:submission"],
+         |  "methodCalls": [[
+         |    "Identity/get",
+         |    {
+         |      "accountId": "$TEST_ACCOUNT_ID",
+         |      "ids": null
+         |    },
+         |    "c1"]]
+         |}""".stripMargin
+
+    awaitAtMostTenSeconds.untilAsserted { () =>
+      `given`()
+        .body(request)
+        .when()
+        .post()
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .body(s"methodResponses[0][1].list.findAll { it.email == '${TEST_USER.asString()}' && it.mayDelete == true }.size()", equalTo(1))
+        .body(s"methodResponses[0][1].list.find { it.email == '${TEST_USER.asString()}' && it.mayDelete == true }.textSignature", equalTo(""))
+        .body(s"methodResponses[0][1].list.find { it.email == '${TEST_USER.asString()}' && it.mayDelete == true }.htmlSignature", equalTo(""))
     }
   }
 

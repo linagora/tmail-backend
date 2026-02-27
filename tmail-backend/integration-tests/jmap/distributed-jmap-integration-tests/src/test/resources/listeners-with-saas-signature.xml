@@ -28,6 +28,7 @@
     <class>com.linagora.tmail.james.jmap.event.IdentityProvisionListener</class>
     <configuration>
       <defaultText>
+        <applyWhen>com.linagora.tmail.saas.filter.SaaSNonPayingUser</applyWhen>
         <defaultLanguage>en</defaultLanguage>
         <en>
           <textSignature>Register on https://sign-up.twake.app !</textSignature>
