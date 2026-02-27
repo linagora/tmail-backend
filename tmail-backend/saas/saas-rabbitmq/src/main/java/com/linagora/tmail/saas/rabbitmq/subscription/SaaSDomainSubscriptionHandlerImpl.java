@@ -82,7 +82,7 @@ public class SaaSDomainSubscriptionHandlerImpl implements SaaSMessageHandler {
             Domain domain = Domain.of(domainCancelSubscriptionMessage.domain());
             return ReactorUtils.logAsMono(() -> LOGGER.info("Processing domain cancellation for domain: {}", domain))
                 .then(removeDomainIfExists(domain))
-                .doOnSuccess(success -> LOGGER.info("Cancelled SaaS subscription for domain: {}", domain));
+                .then(ReactorUtils.logAsMono(() -> LOGGER.info("Cancelled SaaS subscription for domain: {}", domain)));
         }
         return ReactorUtils.logAsMono(() -> LOGGER.info("Skipping domain cancellation for domain: {} because enabled is true", domainCancelSubscriptionMessage.domain()));
     }
