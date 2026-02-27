@@ -129,7 +129,7 @@ public class DistributedJmapSaaSTest implements JmapSaasContract {
     }
 
     @Override
-    public boolean i18nSignatureProvisionConfigured() {
+    public boolean saaSSignatureProvisionConfigured() {
         return true;
     }
 
