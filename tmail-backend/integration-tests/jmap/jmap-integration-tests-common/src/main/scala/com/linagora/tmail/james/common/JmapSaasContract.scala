@@ -141,7 +141,7 @@ trait JmapSaasContract {
       `given`()
         .body(request)
         .when()
-        .post().prettyPeek()
+        .post()
       .`then`
         .statusCode(SC_OK)
         .contentType(JSON)

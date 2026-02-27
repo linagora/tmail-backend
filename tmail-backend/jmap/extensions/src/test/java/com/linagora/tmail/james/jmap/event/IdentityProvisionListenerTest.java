@@ -23,6 +23,7 @@ import static org.apache.james.user.ldap.DockerLdapSingleton.ADMIN_PASSWORD;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 
+import java.io.StringReader;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -30,6 +31,9 @@ import java.util.Set;
 import jakarta.mail.internet.AddressException;
 
 import org.apache.commons.configuration2.HierarchicalConfiguration;
+import org.apache.commons.configuration2.XMLConfiguration;
+import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.commons.configuration2.io.FileHandler;
 import org.apache.commons.configuration2.plist.PropertyListConfiguration;
 import org.apache.commons.configuration2.tree.ImmutableNode;
 import org.apache.james.core.Domain;
@@ -65,6 +69,9 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.linagora.tmail.james.jmap.settings.JmapSettingsKey;
+import com.linagora.tmail.james.jmap.settings.JmapSettingsPatch$;
+import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
 import com.linagora.tmail.team.TMailCanSendFrom;
 import com.linagora.tmail.team.TeamMailbox;
 import com.linagora.tmail.team.TeamMailboxMember;
@@ -79,11 +86,17 @@ public class IdentityProvisionListenerTest {
     private static final LdapGenericContainer ldapContainer = DockerLdapSingleton.ldapContainer;
     private static final Username USER1 = Username.of("james-user@james.org");
     private static final Username USER2 = Username.of("james-user2@james.org");
+    private static final JmapSettingsKey LANGUAGE_KEY = JmapSettingsKey.liftOrThrow("language");
+    private static final String EN_TEXT = "Register on https://sign-up.twake.app !";
+    private static final String EN_HTML = "<p>Register on <a href=\"https://sign-up.twake.app\">Twake</a> !</p>";
+    private static final String FR_TEXT = "Inscrivez vous sur https://sign-up.twake.app !";
+    private static final String FR_HTML = "<p>Inscrivez vous sur <a href=\"https://sign-up.twake.app\">Twake</a> !</p>";
 
     private InMemoryMailboxManager mailboxManager;
     private IdentityRepository identityRepository;
     private IdentityProvisionListener testee;
     private TeamMailboxRepository teamMailboxRepository;
+    private MemoryJmapSettingsRepository jmapSettingsRepository;
 
     @BeforeAll
     static void setUpAll() {
@@ -103,8 +116,11 @@ public class IdentityProvisionListenerTest {
             mailboxManager.getMapperFactory(), mailboxManager.getEventBus());
         teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager, mailboxManager.getMapperFactory(), Set.of());
         LdapRepositoryConfiguration ldapRepositoryConfiguration = LdapRepositoryConfiguration.from(ldapRepositoryConfigurationWithVirtualHosting(ldapContainer));
-        identityRepository = new IdentityRepository(new MemoryCustomIdentityDAO(), createDefaultIdentitySupplier(ldapRepositoryConfiguration));
-        testee = new IdentityProvisionListener(ldapRepositoryConfiguration, identityRepository, new DefaultSignatureTextFactory());
+        identityRepository = new IdentityRepository(new MemoryCustomIdentityDAO(),
+            createDefaultIdentitySupplier(ldapRepositoryConfiguration, teamMailboxRepository, mailboxManager));
+        jmapSettingsRepository = new MemoryJmapSettingsRepository();
+        testee = new IdentityProvisionListener(ldapRepositoryConfiguration, identityRepository,
+            new DefaultSignatureTextFactory(jmapSettingsRepository, signatureConfiguration("en")));
         mailboxManager.getEventBus().register(testee);
     }
 
@@ -197,6 +213,67 @@ public class IdentityProvisionListenerTest {
             .block();
 
         assertThat(user2DefinedIdentities).isEmpty();
+    }
+
+    @Test
+    void shouldProvisionDefaultLanguageSignatureWhenUserLanguageIsAbsent() {
+        Mono.from(mailboxManager.createMailboxReactive(MailboxPath.inbox(USER1),
+                mailboxManager.createSystemSession(USER1)))
+            .subscribeOn(Schedulers.boundedElastic())
+            .block();
+
+        List<Identity> userSetIdentities = Flux.from(identityRepository.list(USER1))
+            .filter(Identity::mayDelete)
+            .collectList()
+            .block();
+
+        SoftAssertions.assertSoftly(softly -> {
+            softly.assertThat(userSetIdentities).hasSize(1);
+            softly.assertThat(userSetIdentities.getFirst().textSignature()).isEqualTo(EN_TEXT);
+            softly.assertThat(userSetIdentities.getFirst().htmlSignature()).isEqualTo(EN_HTML);
+        });
+    }
+
+    @Test
+    void shouldProvisionConfiguredLanguageSignatureWhenLanguageIsSupported() {
+        Mono.from(jmapSettingsRepository.updatePartial(USER1, JmapSettingsPatch$.MODULE$.toUpsert(LANGUAGE_KEY, "fr"))).block();
+
+        Mono.from(mailboxManager.createMailboxReactive(MailboxPath.inbox(USER1),
+                mailboxManager.createSystemSession(USER1)))
+            .subscribeOn(Schedulers.boundedElastic())
+            .block();
+
+        List<Identity> userSetIdentities = Flux.from(identityRepository.list(USER1))
+            .filter(Identity::mayDelete)
+            .collectList()
+            .block();
+
+        SoftAssertions.assertSoftly(softly -> {
+            softly.assertThat(userSetIdentities).hasSize(1);
+            softly.assertThat(userSetIdentities.getFirst().textSignature()).isEqualTo(FR_TEXT);
+            softly.assertThat(userSetIdentities.getFirst().htmlSignature()).isEqualTo(FR_HTML);
+        });
+    }
+
+    @Test
+    void shouldProvisionDefaultLanguageSignatureWhenLanguageIsNotSupported() {
+        Mono.from(jmapSettingsRepository.updatePartial(USER1, JmapSettingsPatch$.MODULE$.toUpsert(LANGUAGE_KEY, "de"))).block();
+
+        Mono.from(mailboxManager.createMailboxReactive(MailboxPath.inbox(USER1),
+                mailboxManager.createSystemSession(USER1)))
+            .subscribeOn(Schedulers.boundedElastic())
+            .block();
+
+        List<Identity> userSetIdentities = Flux.from(identityRepository.list(USER1))
+            .filter(Identity::mayDelete)
+            .collectList()
+            .block();
+
+        SoftAssertions.assertSoftly(softly -> {
+            softly.assertThat(userSetIdentities).hasSize(1);
+            softly.assertThat(userSetIdentities.getFirst().textSignature()).isEqualTo(EN_TEXT);
+            softly.assertThat(userSetIdentities.getFirst().htmlSignature()).isEqualTo(EN_HTML);
+        });
     }
 
     private HierarchicalConfiguration<ImmutableNode> ldapRepositoryConfigurationWithVirtualHosting(LdapGenericContainer ldapContainer) {
@@ -375,7 +452,9 @@ public class IdentityProvisionListenerTest {
         assertThat(user2Identities).isEmpty();
     }
 
-    private DefaultIdentitySupplier createDefaultIdentitySupplier(LdapRepositoryConfiguration ldapRepositoryConfiguration) throws Exception {
+    private DefaultIdentitySupplier createDefaultIdentitySupplier(LdapRepositoryConfiguration ldapRepositoryConfiguration,
+                                                                  TeamMailboxRepository teamMailboxRepository,
+                                                                  InMemoryMailboxManager mailboxManager) throws Exception {
         MemoryDomainList domainList = new MemoryDomainList(mock(DNSService.class));
         domainList.configure(DomainListConfiguration.DEFAULT);
         domainList.addDomain(Domain.of("james.org"));
@@ -388,5 +467,38 @@ public class IdentityProvisionListenerTest {
         CanSendFrom canSendFrom = new TMailCanSendFrom(new AliasReverseResolverImpl(rrt), teamMailboxRepository, mailboxManager);
 
         return new DefaultIdentitySupplier(canSendFrom, ldapUserRepository);
+    }
+
+    private HierarchicalConfiguration<ImmutableNode> signatureConfiguration(String defaultLanguage) {
+        return configuration("""
+            <listeners>
+                <listener>
+                    <configuration>
+                        <defaultText>
+                            <defaultLanguage>%s</defaultLanguage>
+                            <en>
+                                <textSignature><![CDATA[%s]]></textSignature>
+                                <htmlSignature><![CDATA[%s]]></htmlSignature>
+                            </en>
+                            <fr>
+                                <textSignature><![CDATA[%s]]></textSignature>
+                                <htmlSignature><![CDATA[%s]]></htmlSignature>
+                            </fr>
+                        </defaultText>
+                    </configuration>
+                </listener>
+            </listeners>
+            """.formatted(defaultLanguage, EN_TEXT, EN_HTML, FR_TEXT, FR_HTML));
+    }
+
+    private HierarchicalConfiguration<ImmutableNode> configuration(String rawConfiguration) {
+        XMLConfiguration configuration = new XMLConfiguration();
+        try {
+            FileHandler fileHandler = new FileHandler(configuration);
+            fileHandler.load(new StringReader(rawConfiguration));
+        } catch (ConfigurationException e) {
+            throw new RuntimeException(e);
+        }
+        return configuration.configurationAt("listener.configuration");
     }
 }
