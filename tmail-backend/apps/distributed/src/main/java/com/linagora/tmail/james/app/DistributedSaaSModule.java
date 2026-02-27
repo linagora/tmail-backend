@@ -34,7 +34,6 @@ import com.google.inject.Scopes;
 import com.google.inject.Singleton;
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.james.jmap.saas.SaaSCapabilitiesModule;
-import com.linagora.tmail.saas.SaaSSignatureTextModule;
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
 import com.linagora.tmail.saas.api.SaaSAccountUsernameChangeTaskStep;
 import com.linagora.tmail.saas.api.cassandra.CassandraSaaSAccountRepository;
@@ -46,7 +45,6 @@ public class DistributedSaaSModule extends AbstractModule {
     protected void configure() {
         install(new SaaSCapabilitiesModule());
         install(new SaaSSubscriptionModule());
-        install(new SaaSSignatureTextModule());
 
         bind(SaaSAccountRepository.class).to(CassandraSaaSAccountRepository.class)
             .in(Scopes.SINGLETON);
