@@ -25,10 +25,11 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Preconditions;
 
 public interface SaaSDomainSubscriptionMessage {
-    record SaaSDomainValidSubscriptionMessage(String domain, Optional<Boolean> mailDnsConfigurationValidated, Optional<SaasFeatures> features) implements SaaSDomainSubscriptionMessage {
+    record SaaSDomainValidSubscriptionMessage(String domain, Optional<String> organizationId, Optional<Boolean> mailDnsConfigurationValidated, Optional<SaasFeatures> features) implements SaaSDomainSubscriptionMessage {
 
         @JsonCreator
         public SaaSDomainValidSubscriptionMessage(@JsonProperty("domain") String domain,
+                                                  @JsonProperty("organizationId") Optional<String> organizationId,
                                                   @JsonProperty("mailDnsConfigurationValidated") Optional<Boolean> mailDnsConfigurationValidated,
                                                   @JsonProperty("features") Optional<SaasFeatures> features) {
             Preconditions.checkNotNull(domain, "domain cannot be null");
@@ -36,10 +37,12 @@ public interface SaaSDomainSubscriptionMessage {
             this.domain = domain;
             this.mailDnsConfigurationValidated = mailDnsConfigurationValidated;
             this.features = features;
+            this.organizationId = organizationId;
         }
     }
 
     record SaaSDomainCancelSubscriptionMessage(@JsonProperty("domain") String domain,
+                                               @JsonProperty("organizationId") Optional<String> organizationId,
                                                @JsonProperty("enabled") Boolean enabled) implements SaaSDomainSubscriptionMessage {
         @JsonCreator
         public SaaSDomainCancelSubscriptionMessage {
@@ -47,5 +50,9 @@ public interface SaaSDomainSubscriptionMessage {
             Preconditions.checkNotNull(enabled, "enabled cannot be null");
         }
     }
+
+    String domain();
+
+    Optional<String> organizationId();
 }
 

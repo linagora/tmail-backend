@@ -55,7 +55,7 @@ public class SaaSDomainSubscriptionHandlerImplTest {
         SaasFeatures features = new SaasFeatures(Optional.of(mail));
 
         SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage message =
-            new SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage(domainName, Optional.of(MAIL_DNS_CONFIGURATION_VALIDATED), Optional.of(features));
+            new SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage(domainName, Optional.empty(), Optional.of(MAIL_DNS_CONFIGURATION_VALIDATED), Optional.of(features));
 
         handler.handleMessage(message).block();
 
@@ -90,7 +90,7 @@ public class SaaSDomainSubscriptionHandlerImplTest {
         assertThat(domainList.containsDomain(domain)).isTrue();
 
         SaaSDomainSubscriptionMessage.SaaSDomainCancelSubscriptionMessage message =
-            new SaaSDomainSubscriptionMessage.SaaSDomainCancelSubscriptionMessage(domainName, DOMAIN_DISABLED);
+            new SaaSDomainSubscriptionMessage.SaaSDomainCancelSubscriptionMessage(domainName, Optional.empty(),DOMAIN_DISABLED);
 
         handler.handleMessage(message).block();
 
@@ -103,7 +103,7 @@ public class SaaSDomainSubscriptionHandlerImplTest {
         Domain domain = Domain.of(domainName);
 
         SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage message =
-            new SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage(domainName, Optional.of(MAIL_DNS_CONFIGURATION_VALIDATED), Optional.empty());
+            new SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage(domainName, Optional.empty(), Optional.of(MAIL_DNS_CONFIGURATION_VALIDATED), Optional.empty());
 
         // First add
         handler.handleMessage(message).block();
@@ -119,7 +119,7 @@ public class SaaSDomainSubscriptionHandlerImplTest {
         Domain domain = Domain.of(domainName);
 
         SaaSDomainSubscriptionMessage.SaaSDomainCancelSubscriptionMessage message =
-            new SaaSDomainSubscriptionMessage.SaaSDomainCancelSubscriptionMessage(domainName, DOMAIN_DISABLED);
+            new SaaSDomainSubscriptionMessage.SaaSDomainCancelSubscriptionMessage(domainName, Optional.empty(), DOMAIN_DISABLED);
 
         // Should not throw
         handler.handleMessage(message).block();
