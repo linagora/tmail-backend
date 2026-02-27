@@ -45,6 +45,9 @@ import org.apache.james.user.ldap.LDAPConnectionFactory;
 import org.apache.james.user.ldap.LdapRepositoryConfiguration;
 import org.apache.james.util.FunctionalUtils;
 import org.apache.james.util.ReactorUtils;
+import org.apache.james.utils.ClassName;
+import org.apache.james.utils.GuiceLoader;
+import org.apache.james.utils.NamingScheme;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,6 +55,7 @@ import org.slf4j.LoggerFactory;
 import com.github.fge.lambdas.Throwing;
 import com.google.common.annotations.VisibleForTesting;
 import com.linagora.tmail.james.jmap.event.SignatureTextFactory.SignatureText;
+import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.team.TeamMailbox;
 import com.unboundid.ldap.sdk.Filter;
 import com.unboundid.ldap.sdk.LDAPConnectionPool;
@@ -74,6 +78,7 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
     private static final IdentityProvisionerListenerGroup GROUP = new IdentityProvisionerListenerGroup();
     private static final Logger LOGGER = LoggerFactory.getLogger(IdentityProvisionListener.class);
     private static final int DEFAULT_IDENTITY_SORT_ORDER = 0;
+    private static final String APPLY_WHEN_PATH = "defaultText.applyWhen";
 
     private final LDAPConnectionPool ldapConnectionPool;
     private final IdentityRepository identityRepository;
@@ -89,18 +94,35 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
     public IdentityProvisionListener(LDAPConnectionPool ldapConnectionPool,
                                      LdapRepositoryConfiguration ldapConfiguration,
                                      IdentityRepository identityRepository,
-                                     SignatureTextFactory signatureTextFactory,
+                                     JmapSettingsRepository jmapSettingsRepository,
+                                     GuiceLoader guiceLoader,
                                      HierarchicalConfiguration<ImmutableNode> listenerConfig) {
         this.ldapConnectionPool = ldapConnectionPool;
         this.ldapConfiguration = ldapConfiguration;
         this.identityRepository = identityRepository;
-        this.signatureTextFactory = signatureTextFactory;
+        this.signatureTextFactory = new DefaultSignatureTextFactory(jmapSettingsRepository, listenerConfig, resolveApplyWhenFilter(listenerConfig, guiceLoader));
         this.objectClassFilter = Filter.createEqualityFilter("objectClass", ldapConfiguration.getUserObjectClass());
         this.userExtraFilter = Optional.ofNullable(ldapConfiguration.getFilter())
             .map(Throwing.function(Filter::create).sneakyThrow());
         this.firstnameAttribute = listenerConfig.getString("firstnameAttribute", "givenName");
         this.surnameAttribute = listenerConfig.getString("surnameAttribute", "sn");
         this.usernameAttribute = ldapConfiguration.getUsernameAttribute().orElse(ldapConfiguration.getUserIdAttribute());
+    }
+
+    private ApplyWhenFilter resolveApplyWhenFilter(HierarchicalConfiguration<ImmutableNode> listenerConfig, GuiceLoader guiceLoader) {
+        return Optional.ofNullable(listenerConfig.getString(APPLY_WHEN_PATH))
+            .filter(applyWhenClassName -> !applyWhenClassName.isBlank())
+            .map(applyWhenClassName -> loadApplyWhenFilter(guiceLoader, applyWhenClassName))
+            .orElse(new ApplyWhenFilter.Always());
+    }
+
+    private ApplyWhenFilter loadApplyWhenFilter(GuiceLoader guiceLoader, String applyWhenClassName) {
+        try {
+            return guiceLoader.<ApplyWhenFilter>withNamingSheme(NamingScheme.IDENTITY)
+                .instantiate(new ClassName(applyWhenClassName));
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to load applyWhen filter `%s`".formatted(applyWhenClassName), e);
+        }
     }
 
     @VisibleForTesting
