@@ -20,6 +20,7 @@ package com.linagora.tmail.james.jmap.method
 
 import java.time.ZonedDateTime
 import java.util.Date
+
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
 import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.james.jmap.json.EmailSendSerializer
