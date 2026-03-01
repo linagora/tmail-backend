@@ -37,7 +37,7 @@ object CassandraBlobIdListDAO {
 class CassandraBlobIdListDAO @Inject()(session: CqlSession) {
   private val executor: CassandraAsyncExecutor = new CassandraAsyncExecutor(session)
   private val readProfile: DriverExecutionProfile = ProfileLocator.READ.locateProfile(session, "BLOB-ID-LIST")
-  private val writeProfile: DriverExecutionProfile = ProfileLocator.READ.locateProfile(session, "BLOB-ID-LIST")
+  private val writeProfile: DriverExecutionProfile = ProfileLocator.WRITE.locateProfile(session, "BLOB-ID-LIST")
 
   private val insertStatement: PreparedStatement =
     session.prepare(insertInto(TABLE_NAME)
