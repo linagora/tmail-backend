@@ -40,7 +40,7 @@ import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{Invocation, SessionTranslator, UTCDate, UuidState}
 import org.apache.james.jmap.json.EmailSetSerializer
 import org.apache.james.jmap.mail.{BlobId, EmailCreationRequest, EmailCreationResponse, EmailSubmissionId, Envelope, ThreadId}
-import org.apache.james.jmap.method.EmailSubmissionSetMethod.{LOGGER, MAIL_METADATA_USERNAME_ATTRIBUTE}
+import org.apache.james.jmap.method.EmailSubmissionSetMethod.LOGGER
 import org.apache.james.jmap.method.{EmailSetMethod, ForbiddenFromException, ForbiddenMailFromException, InvocationWithContext, Method, MethodRequiringAccountId, NoRecipientException, SizeExceededException}
 import org.apache.james.jmap.routes.{BlobResolvers, ProcessingContext, SessionSupplier}
 import org.apache.james.lifecycle.api.{LifecycleUtil, Startable}
@@ -57,7 +57,7 @@ import org.apache.james.server.core.{MailImpl, MimeMessageSource, MimeMessageWra
 import org.apache.james.util.ReactorUtils
 import org.apache.james.util.html.HtmlTextExtractor
 import org.apache.james.utils.{InitializationOperation, InitilizationOperationBuilder}
-import org.apache.mailet.{Attribute, AttributeValue}
+import org.apache.mailet.{Attribute, AttributeValue, Mail}
 import org.reactivestreams.Publisher
 import play.api.libs.json.{JsError, JsObject, JsSuccess}
 import reactor.core.scala.publisher.{SFlux, SMono}
@@ -220,7 +220,7 @@ class EmailSendMethod @Inject()(emailSetSerializer: EmailSetSerializer,
           .name(submissionId.value.value)
           .addRecipients(envelope.rcptTo.map(_.email).asJava)
           .sender(envelope.mailFrom.email)
-          .addAttribute(new Attribute(MAIL_METADATA_USERNAME_ATTRIBUTE, AttributeValue.of(mailboxSession.getUser.asString())))
+          .addAttribute(new Attribute(Mail.JMAP_AUTH_USER, AttributeValue.of(mailboxSession.getUser.asString())))
           .build()
         mailImpl.setMessageNoCopy(message)
         mailImpl
