@@ -45,7 +45,7 @@ object CassandraJmapSettingsDAO {
 class CassandraJmapSettingsDAO @Inject()(session: CqlSession) {
   private val executor: CassandraAsyncExecutor = new CassandraAsyncExecutor(session)
   private val readProfile: DriverExecutionProfile = ProfileLocator.READ.locateProfile(session, "USER")
-  private val writeProfile: DriverExecutionProfile = ProfileLocator.READ.locateProfile(session, "USER")
+  private val writeProfile: DriverExecutionProfile = ProfileLocator.WRITE.locateProfile(session, "USER")
 
   private val insertStatement: PreparedStatement = session.prepare(insertInto(TABLE_NAME)
     .value(USER, bindMarker(USER))
