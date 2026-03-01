@@ -64,7 +64,7 @@ class CassandraFirebaseSubscriptionDAO @Inject()(session: CqlSession, typeStateF
   import CassandraFirebaseSubscriptionTable._
 
   private val readProfile: DriverExecutionProfile = ProfileLocator.READ.locateProfile(session, "FIREBASE")
-  private val writeProfile: DriverExecutionProfile = ProfileLocator.READ.locateProfile(session, "FIREBASE")
+  private val writeProfile: DriverExecutionProfile = ProfileLocator.WRITE.locateProfile(session, "FIREBASE")
 
   private val executor: CassandraAsyncExecutor = new CassandraAsyncExecutor(session)
 
