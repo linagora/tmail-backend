@@ -313,6 +313,7 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
             String identityDisplayName = toDisplayName(firstname, surname, mailAddress.asString());
             return signatureTextFactory.forUser(username)
                 .map(signatureOptional -> signatureOptional.map(signature -> signature.interpolate(ldapEntry.getAttributes().stream()
+                    .filter(attribute -> attribute.getValue() != null)
                     .collect(ImmutableMap.toImmutableMap(
                         Attribute::getName,
                         Attribute::getValue)))))
