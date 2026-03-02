@@ -36,6 +36,7 @@ import com.datastax.oss.driver.api.core.type.DataTypes;
 public interface TMailCassandraDomainListDataDefinition {
     String TABLE_NAME = CassandraDomainsTable.TABLE_NAME;
     CqlIdentifier DOMAIN = CassandraDomainsTable.DOMAIN;
+    CqlIdentifier ACTIVATED = CqlIdentifier.fromCql("activated");
 
     CassandraDataDefinition MODULE = CassandraDataDefinition.table(TABLE_NAME)
         .comment("Holds domains this TMail server is operating on.")
@@ -48,6 +49,7 @@ public interface TMailCassandraDomainListDataDefinition {
             .withColumn(MAILS_SENT_PER_DAYS, DataTypes.BIGINT)
             .withColumn(MAILS_RECEIVED_PER_MINUTE, DataTypes.BIGINT)
             .withColumn(MAILS_RECEIVED_PER_HOURS, DataTypes.BIGINT)
-            .withColumn(MAILS_RECEIVED_PER_DAYS, DataTypes.BIGINT))
+            .withColumn(MAILS_RECEIVED_PER_DAYS, DataTypes.BIGINT)
+            .withColumn(ACTIVATED, DataTypes.BOOLEAN))
         .build();
 }
