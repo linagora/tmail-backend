@@ -33,7 +33,6 @@ import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDat
 import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.TABLE_NAME;
 import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.USER;
 
-import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
 import jakarta.inject.Inject;
 
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
@@ -43,6 +42,7 @@ import org.apache.james.core.Username;
 import org.reactivestreams.Publisher;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
