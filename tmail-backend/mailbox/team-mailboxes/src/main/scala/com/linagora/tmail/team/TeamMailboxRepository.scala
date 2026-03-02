@@ -30,7 +30,7 @@ import jakarta.inject.Inject
 import org.apache.james.UserEntityValidator
 import org.apache.james.core.{Domain, Username}
 import org.apache.james.mailbox.exception.{MailboxExistsException, MailboxNotFoundException}
-import org.apache.james.mailbox.model.MailboxACL.{EntryKey, NameType, Rfc4314Rights, Right}
+import org.apache.james.mailbox.model.MailboxACL.{EntryKey, NameType, Right}
 import org.apache.james.mailbox.model.search.{MailboxQuery, PrefixedWildcard}
 import org.apache.james.mailbox.model.{MailboxACL, MailboxPath}
 import org.apache.james.mailbox.store.MailboxSessionMapperFactory
@@ -126,12 +126,12 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
 
   private def createMailboxReliably(path: MailboxPath, teamMailbox: TeamMailbox, session: MailboxSession) =
     SMono(mailboxManager.createMailboxReactive(path, session))
-      .`then`(SMono(mailboxManager.applyRightsCommandReactive(path, MailboxACL.command.key(EntryKey.createUserEntryKey(teamMailbox.admin, false)).rights(MailboxACL.FULL_RIGHTS).asAddition(), session)))
-      .`then`(SMono(mailboxManager.applyRightsCommandReactive(path, MailboxACL.command.key(EntryKey.createUserEntryKey(teamMailbox.self, false)).rights(MailboxACL.FULL_RIGHTS).asAddition(), session)))
       .onErrorResume {
         case _: MailboxExistsException => SMono.empty
         case e => SMono.error(e)
       }
+      .`then`(SMono(mailboxManager.applyRightsCommandReactive(path, MailboxACL.command.key(EntryKey.createUserEntryKey(teamMailbox.admin, false)).rights(MailboxACL.FULL_RIGHTS).asAddition(), session)))
+      .`then`(SMono(mailboxManager.applyRightsCommandReactive(path, MailboxACL.command.key(EntryKey.createUserEntryKey(teamMailbox.self, false)).rights(MailboxACL.FULL_RIGHTS).asAddition(), session)))
 
   override def deleteTeamMailbox(teamMailbox: TeamMailbox): Publisher[Void] =
     deleteTeamMailboxFoldersReliably(teamMailbox, createSession(teamMailbox))
