@@ -19,6 +19,7 @@
 package com.linagora.tmail.james.jmap.firebase
 
 import java.time.{ZoneOffset, ZonedDateTime}
+
 import com.datastax.oss.driver.api.core.`type`.DataTypes.{TEXT, TIMESTAMP, UUID, frozenSetOf}
 import com.datastax.oss.driver.api.core.`type`.codec.registry.CodecRegistry
 import com.datastax.oss.driver.api.core.`type`.codec.{TypeCodec, TypeCodecs}
