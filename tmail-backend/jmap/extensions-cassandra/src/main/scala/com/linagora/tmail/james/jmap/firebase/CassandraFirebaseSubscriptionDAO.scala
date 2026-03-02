@@ -19,17 +19,17 @@
 package com.linagora.tmail.james.jmap.firebase
 
 import java.time.{ZoneOffset, ZonedDateTime}
-
 import com.datastax.oss.driver.api.core.`type`.DataTypes.{TEXT, TIMESTAMP, UUID, frozenSetOf}
 import com.datastax.oss.driver.api.core.`type`.codec.registry.CodecRegistry
 import com.datastax.oss.driver.api.core.`type`.codec.{TypeCodec, TypeCodecs}
+import com.datastax.oss.driver.api.core.config.DriverExecutionProfile
 import com.datastax.oss.driver.api.core.cql.{PreparedStatement, Row}
 import com.datastax.oss.driver.api.core.{CqlIdentifier, CqlSession}
 import com.datastax.oss.driver.api.querybuilder.QueryBuilder.{bindMarker, deleteFrom, insertInto, selectFrom}
 import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseSubscription, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionId, FirebaseToken}
 import jakarta.inject.Inject
 import org.apache.james.backends.cassandra.components.CassandraDataDefinition
-import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor
+import org.apache.james.backends.cassandra.utils.{CassandraAsyncExecutor, ProfileLocator}
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.change.TypeStateFactory
 import org.apache.james.jmap.api.model.TypeName
@@ -61,8 +61,10 @@ object CassandraFirebaseSubscriptionTable {
 }
 
 class CassandraFirebaseSubscriptionDAO @Inject()(session: CqlSession, typeStateFactory: TypeStateFactory) {
-
   import CassandraFirebaseSubscriptionTable._
+
+  private val readProfile: DriverExecutionProfile = ProfileLocator.READ.locateProfile(session, "FIREBASE")
+  private val writeProfile: DriverExecutionProfile = ProfileLocator.WRITE.locateProfile(session, "FIREBASE")
 
   private val executor: CassandraAsyncExecutor = new CassandraAsyncExecutor(session)
 
@@ -99,24 +101,28 @@ class CassandraFirebaseSubscriptionDAO @Inject()(session: CqlSession, typeStateF
       .set(EXPIRES, utcInstant, TypeCodecs.TIMESTAMP)
       .set(TYPES, typeNames, FROZEN_OF_STRINGS_CODEC)
       .set(TOKEN, subscription.token.value, TypeCodecs.TEXT)
+      .setExecutionProfile(writeProfile)
 
     SMono.fromPublisher(executor.executeVoid(insertSubscription)
       .thenReturn(subscription))
   }
 
   def selectAll(username: Username): SFlux[FirebaseSubscription] =
-    SFlux.fromPublisher(executor.executeRows(selectAll.bind().set(USER, username.asString, TypeCodecs.TEXT))
+    SFlux.fromPublisher(executor.executeRows(selectAll.bind().set(USER, username.asString, TypeCodecs.TEXT)
+      .setExecutionProfile(readProfile))
       .map(toFirebaseSubscription))
 
   def deleteOne(username: Username, deviceClientId: String): SMono[Unit] =
     SMono.fromPublisher(executor.executeVoid(deleteOne.bind()
       .set(USER, username.asString, TypeCodecs.TEXT)
-      .set(DEVICE_CLIENT_ID, deviceClientId, TypeCodecs.TEXT)))
+      .set(DEVICE_CLIENT_ID, deviceClientId, TypeCodecs.TEXT)
+      .setExecutionProfile(writeProfile)))
       .`then`()
 
   def deleteAllSubscriptions(username: Username): SMono[Unit] =
     SMono.fromPublisher(executor.executeVoid(deleteAllSubscriptions.bind()
-      .set(USER, username.asString, TypeCodecs.TEXT)))
+      .set(USER, username.asString, TypeCodecs.TEXT)
+      .setExecutionProfile(writeProfile)))
       .`then`()
 
   private def toFirebaseSubscription(row: Row) =
