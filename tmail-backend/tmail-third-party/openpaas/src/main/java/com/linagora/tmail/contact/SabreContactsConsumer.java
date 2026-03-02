@@ -33,6 +33,7 @@ import jakarta.inject.Named;
 
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
+import org.apache.james.core.Domain;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
 import org.apache.james.jmap.api.model.AccountId;
@@ -82,27 +83,32 @@ public class SabreContactsConsumer implements Closeable {
         Mono<?> handleContact(AccountId ownerAccountId, SabreContactMessage contactMessage);
     }
 
+    @FunctionalInterface
+    public interface DomainContactHandler {
+        Mono<?> handleContact(Domain domain, SabreContactMessage contactMessage);
+    }
+
     public void start() {
-        consumeAddedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_ADD, this::handleAddContact);
-        consumeUpdatedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_UPDATE, this::handleUpdateContact);
-        consumeDeletedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_DELETE, this::handleDeleteContact);
+        consumeAddedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_ADD, this::handleAddContact, this::handleAddDomainContact);
+        consumeUpdatedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_UPDATE, this::handleUpdateContact, this::handleUpdateDomainContact);
+        consumeDeletedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_DELETE, this::handleDeleteContact, this::handleDeleteDomainContact);
     }
 
     public void restart() {
         Disposable previousAddedConsumer = consumeAddedContactsDisposable;
         Disposable previousUpdatedConsumer = consumeUpdatedContactsDisposable;
         Disposable previousDeletedConsumer = consumeDeletedContactsDisposable;
-        consumeAddedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_ADD, this::handleAddContact);
-        consumeUpdatedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_UPDATE, this::handleUpdateContact);
-        consumeDeletedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_DELETE, this::handleDeleteContact);
+        consumeAddedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_ADD, this::handleAddContact, this::handleAddDomainContact);
+        consumeUpdatedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_UPDATE, this::handleUpdateContact, this::handleUpdateDomainContact);
+        consumeDeletedContactsDisposable = doConsumeContactMessages(QUEUE_NAME_DELETE, this::handleDeleteContact, this::handleDeleteDomainContact);
         Optional.ofNullable(previousAddedConsumer).ifPresent(Disposable::dispose);
         Optional.ofNullable(previousUpdatedConsumer).ifPresent(Disposable::dispose);
         Optional.ofNullable(previousDeletedConsumer).ifPresent(Disposable::dispose);
     }
 
-    private Disposable doConsumeContactMessages(String queue, ContactHandler contactHandler) {
+    private Disposable doConsumeContactMessages(String queue, ContactHandler userHandler, DomainContactHandler domainHandler) {
         return delivery(queue)
-            .flatMap(delivery -> messageConsume(delivery, delivery.getBody(), contactHandler), DEFAULT_CONCURRENCY)
+            .flatMap(delivery -> messageConsume(delivery, delivery.getBody(), userHandler, domainHandler), DEFAULT_CONCURRENCY)
             .subscribe();
     }
 
@@ -112,13 +118,18 @@ public class SabreContactsConsumer implements Closeable {
             Receiver::close);
     }
 
-    private Mono<?> messageConsume(AcknowledgableDelivery ackDelivery, byte[] messagePayload, ContactHandler contactHandler) {
+    private Mono<?> messageConsume(AcknowledgableDelivery ackDelivery, byte[] messagePayload, ContactHandler userHandler, DomainContactHandler domainHandler) {
         return Mono.fromCallable(() -> SabreContactMessage.parseAMQPMessage(messagePayload))
             .filter(Optional::isPresent)
             .map(Optional::get)
-            .flatMap(contactMessage -> getAccountId(contactMessage.openPaasUserId())
-                .flatMap(accountId -> contactHandler.handleContact(accountId, contactMessage))
-                .then())
+            .flatMap(contactMessage -> switch (contactMessage.owner()) {
+                case SabreContactMessage.Owner.UserOwner u ->
+                    getAccountId(u.id())
+                        .flatMap(accountId -> userHandler.handleContact(accountId, contactMessage)).then();
+                case SabreContactMessage.Owner.DomainOwner d ->
+                    openPaasRestClient.retrieveDomainName(d.id())
+                        .flatMap(domain -> domainHandler.handleContact(domain, contactMessage)).then();
+            })
             .doOnSuccess(result -> {
                 LOGGER.debug("Consumed contact successfully '{}'", result);
                 ackDelivery.ack();
@@ -186,6 +197,28 @@ public class SabreContactsConsumer implements Closeable {
             .flatMap(mailAddress -> Mono.from(contactSearchEngine.delete(ownerAccountId, mailAddress, sabreContactMessage.getVCardUid()))
                 .onErrorResume(error -> {
                     LOGGER.warn("Failed to delete contact: {} for accountId {} ", mailAddress, ownerAccountId.getIdentifier(), error);
+                    return Mono.empty();
+                }))
+            .then();
+    }
+
+    private Mono<Void> handleAddDomainContact(Domain domain, SabreContactMessage sabreContactMessage) {
+        return Flux.fromIterable(sabreContactMessage.getContactFields())
+            .flatMap(contactFields -> Mono.from(contactSearchEngine.index(domain, contactFields)))
+            .then();
+    }
+
+    private Mono<Void> handleUpdateDomainContact(Domain domain, SabreContactMessage sabreContactMessage) {
+        return Flux.fromIterable(sabreContactMessage.getContactFields())
+            .flatMap(contactFields -> Mono.from(contactSearchEngine.index(domain, contactFields)))
+            .then();
+    }
+
+    private Mono<Void> handleDeleteDomainContact(Domain domain, SabreContactMessage sabreContactMessage) {
+        return Flux.fromIterable(sabreContactMessage.getMailAddresses())
+            .flatMap(mailAddress -> Mono.from(contactSearchEngine.delete(domain, mailAddress))
+                .onErrorResume(error -> {
+                    LOGGER.warn("Failed to delete domain contact: {} for domain {}", mailAddress, domain.name(), error);
                     return Mono.empty();
                 }))
             .then();

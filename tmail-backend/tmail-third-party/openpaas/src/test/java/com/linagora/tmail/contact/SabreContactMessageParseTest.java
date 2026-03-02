@@ -41,11 +41,42 @@ public class SabreContactMessageParseTest {
             .isPresent()
             .get()
             .satisfies(message -> {
-                assertThat(message.openPaasUserId()).isEqualTo("67e26ebbecd9f300255a9f80");
+                assertThat(message.owner()).isEqualTo(new SabreContactMessage.Owner.UserOwner("67e26ebbecd9f300255a9f80"));
                 assertThat(message.getVCardUid()).isEqualTo("3ffe56cc-9196-4266-bf17-4894d00350d4");
                 assertThat(message.getMailAddresses()).containsExactly(new MailAddress("toto@tutu.com"));
                 assertThat(message.getContactFields()).containsExactly(ContactFields.of(new MailAddress("toto@tutu.com"), "Tran Tung"));
             });
+    }
+
+    @Test
+    void parsePayloadWithDomainOwnerShouldSucceed() {
+        String amqpMessage = """
+            {
+                "path": "addressbooks\\/67e26ebbecd9f300255a9f80\\/contacts\\/3ffe56cc-9196-4266-bf17-4894d00350d4.vcf",
+                "owner": "principals\\/domains\\/67e26ebbecd9f300255a9f80",
+                "carddata": "BEGIN:VCARD\\r\\nVERSION:4.0\\r\\nUID:3ffe56cc-9196-4266-bf17-4894d00350d4\\r\\nFN:Tran Tung\\r\\nN:vwevwe;wf vwe;;;\\r\\nEMAIL;TYPE=Work:mailto:toto@tutu.com\\r\\nEND:VCARD\\r\\n"
+            }""";
+
+        assertThat(SabreContactMessage.parseAMQPMessage(amqpMessage))
+            .isPresent()
+            .get()
+            .satisfies(message -> {
+                assertThat(message.owner()).isEqualTo(new SabreContactMessage.Owner.DomainOwner("67e26ebbecd9f300255a9f80"));
+                assertThat(message.getVCardUid()).isEqualTo("3ffe56cc-9196-4266-bf17-4894d00350d4");
+                assertThat(message.getMailAddresses()).containsExactly(new MailAddress("toto@tutu.com"));
+            });
+    }
+
+    @Test
+    void parsePayloadWithUnknownOwnerTypeShouldReturnEmpty() {
+        String amqpMessage = """
+            {
+                "path": "addressbooks\\/67e26ebbecd9f300255a9f80\\/contacts\\/3ffe56cc-9196-4266-bf17-4894d00350d4.vcf",
+                "owner": "principals\\/groups\\/67e26ebbecd9f300255a9f80",
+                "carddata": "BEGIN:VCARD\\r\\nVERSION:4.0\\r\\nUID:3ffe56cc-9196-4266-bf17-4894d00350d4\\r\\nFN:Tran Tung\\r\\nN:vwevwe;wf vwe;;;\\r\\nEMAIL;TYPE=Work:mailto:toto@tutu.com\\r\\nEND:VCARD\\r\\n"
+            }""";
+
+        assertThat(SabreContactMessage.parseAMQPMessage(amqpMessage)).isEmpty();
     }
 
     @Test
