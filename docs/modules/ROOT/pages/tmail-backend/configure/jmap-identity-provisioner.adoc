@@ -13,6 +13,7 @@ This ensures that users can immediately send emails with their proper display na
 It is possible to configure LDAP lookup parameters such as attribute names used to retrieve the user’s first and last names:
 - `firstnameAttribute`: attribute to get firstname of user from LDAP. Default to `givenName`.
 - `surnameAttribute`: attribute to get surname of user from LDAP. Default to `sn`.
+- `extraAttributes`: comma-separated list of additional LDAP attribute names to fetch. These attributes can then be referenced in signature templates using the `+{ldap:attributeName}+` placeholder syntax (see below).
 
 We can configure to provision i18n signatures by defining `defaultText` in the listener configuration.
 If `defaultText` is not configured, this listener provisions no signature.
@@ -24,6 +25,13 @@ Configuration keys:
 - `defaultText.<locale>.textSignature`: plain-text signature for a locale.
 - `defaultText.<locale>.htmlSignature`: HTML signature for a locale.
 
+Signature templates support LDAP attribute interpolation using the `+{ldap:attributeName}+` placeholder syntax.
+When provisioning an identity, placeholders are replaced with the corresponding LDAP attribute value fetched for that user.
+`givenName`, `sn`, and the username attribute are always fetched. Additional attributes must be declared via `extraAttributes`.
+If an attribute placeholder references an attribute that was not fetched or has no value, the placeholder is left as-is.
+
+Example: `+{ldap:givenName} {ldap:sn}+` becomes `John Doe`.
+
 Notes:
 - If `defaultText` is not configured, no i18n signature is provisioned.
 - Locale keys and `defaultText.defaultLanguage` must be valid locales.
@@ -31,17 +39,29 @@ Notes:
 
 Sample configuration: `listeners.xml`
 
-....xml
+[source,xml]
+----
 <listeners>
   <listener>
     <class>com.linagora.tmail.james.jmap.event.IdentityProvisionListener</class>
     <configuration>
       <firstnameAttribute>givenName</firstnameAttribute>
       <surnameAttribute>sn</surnameAttribute>
+      <!-- Optional: fetch additional LDAP attributes for use in signature templates -->
+      <extraAttributes>telephoneNumber,title</extraAttributes>
+      <defaultText>
+        <defaultLanguage>en</defaultLanguage>
+        <en>
+          <textSignature><![CDATA[Best regards,
+{ldap:title} {ldap:givenName} {ldap:sn}
+{ldap:telephoneNumber}]]></textSignature>
+          <htmlSignature><![CDATA[<p>Best regards,<br/>{ldap:title} {ldap:givenName} {ldap:sn}<br/>{ldap:telephoneNumber}</p>]]></htmlSignature>
+        </en>
+      </defaultText>
     </configuration>
   </listener>
 </listeners>
-....
+----
 
 === SaaS Signature Enrichment
 

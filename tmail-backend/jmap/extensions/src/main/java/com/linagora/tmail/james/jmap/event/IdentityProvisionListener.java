@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.event;
 
+import java.util.Collection;
 import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
@@ -54,9 +55,12 @@ import org.slf4j.LoggerFactory;
 
 import com.github.fge.lambdas.Throwing;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 import com.linagora.tmail.james.jmap.event.SignatureTextFactory.SignatureText;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.team.TeamMailbox;
+import com.unboundid.ldap.sdk.Attribute;
 import com.unboundid.ldap.sdk.Filter;
 import com.unboundid.ldap.sdk.LDAPConnectionPool;
 import com.unboundid.ldap.sdk.LDAPException;
@@ -89,6 +93,7 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
     private final String surnameAttribute;
     private final String usernameAttribute;
     private final SignatureTextFactory signatureTextFactory;
+    private final Set<String> attributes;
 
     @Inject
     public IdentityProvisionListener(LDAPConnectionPool ldapConnectionPool,
@@ -107,6 +112,12 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
         this.firstnameAttribute = listenerConfig.getString("firstnameAttribute", "givenName");
         this.surnameAttribute = listenerConfig.getString("surnameAttribute", "sn");
         this.usernameAttribute = ldapConfiguration.getUsernameAttribute().orElse(ldapConfiguration.getUserIdAttribute());
+        this.attributes = Optional.ofNullable(listenerConfig.getStringArray("extraAttributes")).map(values -> ImmutableSet.<String>builder().addAll(ImmutableSet.copyOf(values)))
+            .orElse(ImmutableSet.builder())
+            .add(firstnameAttribute)
+            .add(surnameAttribute)
+            .add(usernameAttribute)
+            .build();
     }
 
     private ApplyWhenFilter resolveApplyWhenFilter(HierarchicalConfiguration<ImmutableNode> listenerConfig, GuiceLoader guiceLoader) {
@@ -128,7 +139,8 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
     @VisibleForTesting
     public IdentityProvisionListener(LdapRepositoryConfiguration ldapConfiguration,
                                      IdentityRepository identityRepository,
-                                     SignatureTextFactory signatureTextFactory) throws LDAPException {
+                                     SignatureTextFactory signatureTextFactory,
+                                     Collection<String> extraAttributes) throws LDAPException {
         this.ldapConnectionPool = new LDAPConnectionFactory(ldapConfiguration).getLdapConnectionPool();
         this.ldapConfiguration = ldapConfiguration;
         this.identityRepository = identityRepository;
@@ -139,6 +151,12 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
         this.firstnameAttribute = "givenName";
         this.surnameAttribute = "sn";
         this.usernameAttribute = ldapConfiguration.getUsernameAttribute().orElse(ldapConfiguration.getUserIdAttribute());
+        this.attributes = ImmutableSet.<String>builder()
+            .add(firstnameAttribute)
+            .add(surnameAttribute)
+            .add(usernameAttribute)
+            .addAll(extraAttributes)
+            .build();
     }
 
     @Override
@@ -275,7 +293,7 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
     private SearchResultEntry searchLdap(Username username) throws LDAPSearchException {
         Filter filter = createFilter(username.asString(), evaluateLdapUserRetrievalAttribute(username));
         SearchResult searchResult = ldapConnectionPool.search(userBase(username), SearchScope.SUB, filter,
-            firstnameAttribute, surnameAttribute, usernameAttribute);
+            attributes.toArray(new String[0]));
         SearchResultEntry searchResultEntry = searchResult.getSearchEntries()
             .stream()
             .findFirst()
@@ -294,6 +312,11 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
             Optional<String> surname = Optional.ofNullable(ldapEntry.getAttributeValue(surnameAttribute));
             String identityDisplayName = toDisplayName(firstname, surname, mailAddress.asString());
             return signatureTextFactory.forUser(username)
+                .map(signatureOptional -> signatureOptional.map(signature -> signature.interpolate(ldapEntry.getAttributes().stream()
+                    .filter(attribute -> attribute.getValue() != null)
+                    .collect(ImmutableMap.toImmutableMap(
+                        Attribute::getName,
+                        Attribute::getValue)))))
                 .map(signatureOptional -> signatureOptional
                     .map(signature -> asIdentityRequest(mailAddress, identityDisplayName, signature))
                     .orElseGet(() -> asIdentityRequest(mailAddress, identityDisplayName)));

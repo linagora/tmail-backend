@@ -28,6 +28,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import com.google.common.collect.ImmutableList;
 import jakarta.mail.internet.AddressException;
 
 import org.apache.commons.configuration2.HierarchicalConfiguration;
@@ -120,7 +121,7 @@ public class IdentityProvisionListenerTest {
             createDefaultIdentitySupplier(ldapRepositoryConfiguration, teamMailboxRepository, mailboxManager));
         jmapSettingsRepository = new MemoryJmapSettingsRepository();
         testee = new IdentityProvisionListener(ldapRepositoryConfiguration, identityRepository,
-            new DefaultSignatureTextFactory(jmapSettingsRepository, signatureConfiguration("en")));
+            new DefaultSignatureTextFactory(jmapSettingsRepository, signatureConfiguration("en")), ImmutableList.of());
         mailboxManager.getEventBus().register(testee);
     }
 
@@ -452,6 +453,99 @@ public class IdentityProvisionListenerTest {
         assertThat(user2Identities).isEmpty();
     }
 
+    @Test
+    void shouldInterpolateLdapAttributesInSignatureOnInboxCreation() throws Exception {
+        LdapRepositoryConfiguration ldapRepositoryConfiguration = LdapRepositoryConfiguration.from(ldapRepositoryConfigurationWithVirtualHosting(ldapContainer));
+        InMemoryIntegrationResources freshResources = InMemoryIntegrationResources.defaultResources();
+        InMemoryMailboxManager freshMailboxManager = freshResources.getMailboxManager();
+        SubscriptionManager freshSubscriptionManager = new StoreSubscriptionManager(freshMailboxManager.getMapperFactory(),
+            freshMailboxManager.getMapperFactory(), freshMailboxManager.getEventBus());
+        TeamMailboxRepository freshTeamMailboxRepository = new TeamMailboxRepositoryImpl(freshMailboxManager, freshSubscriptionManager, freshMailboxManager.getMapperFactory(), Set.of());
+        IdentityRepository freshIdentityRepository = new IdentityRepository(new MemoryCustomIdentityDAO(),
+            createDefaultIdentitySupplier(ldapRepositoryConfiguration, freshTeamMailboxRepository, freshMailboxManager));
+        IdentityProvisionListener freshTestee = new IdentityProvisionListener(ldapRepositoryConfiguration, freshIdentityRepository,
+            new DefaultSignatureTextFactory(new MemoryJmapSettingsRepository(),
+                signatureConfigurationWithLdapPlaceholders()), ImmutableList.of());
+        freshMailboxManager.getEventBus().register(freshTestee);
+
+        Mono.from(freshMailboxManager.createMailboxReactive(MailboxPath.inbox(USER1), freshMailboxManager.createSystemSession(USER1)))
+            .subscribeOn(Schedulers.boundedElastic())
+            .block();
+
+        List<Identity> userSetIdentities = Flux.from(freshIdentityRepository.list(USER1))
+            .filter(Identity::mayDelete)
+            .collectList()
+            .block();
+
+        SoftAssertions.assertSoftly(softly -> {
+            softly.assertThat(userSetIdentities).hasSize(1);
+            softly.assertThat(userSetIdentities.getFirst().textSignature()).isEqualTo("firstname1 surname1");
+            softly.assertThat(userSetIdentities.getFirst().htmlSignature()).isEqualTo("<p>firstname1 surname1</p>");
+        });
+    }
+
+    @Test
+    void shouldInterpolateExtraLdapAttributeInSignatureOnInboxCreation() throws Exception {
+        LdapRepositoryConfiguration ldapRepositoryConfiguration = LdapRepositoryConfiguration.from(ldapRepositoryConfigurationWithVirtualHosting(ldapContainer));
+        InMemoryIntegrationResources freshResources = InMemoryIntegrationResources.defaultResources();
+        InMemoryMailboxManager freshMailboxManager = freshResources.getMailboxManager();
+        SubscriptionManager freshSubscriptionManager = new StoreSubscriptionManager(freshMailboxManager.getMapperFactory(),
+            freshMailboxManager.getMapperFactory(), freshMailboxManager.getEventBus());
+        TeamMailboxRepository freshTeamMailboxRepository = new TeamMailboxRepositoryImpl(freshMailboxManager, freshSubscriptionManager, freshMailboxManager.getMapperFactory(), Set.of());
+        IdentityRepository freshIdentityRepository = new IdentityRepository(new MemoryCustomIdentityDAO(),
+            createDefaultIdentitySupplier(ldapRepositoryConfiguration, freshTeamMailboxRepository, freshMailboxManager));
+        IdentityProvisionListener freshTestee = new IdentityProvisionListener(ldapRepositoryConfiguration, freshIdentityRepository,
+            new DefaultSignatureTextFactory(new MemoryJmapSettingsRepository(),
+                signatureConfigurationWithExtraAttribute()), ImmutableList.of("description"));
+        freshMailboxManager.getEventBus().register(freshTestee);
+
+        Mono.from(freshMailboxManager.createMailboxReactive(MailboxPath.inbox(USER1), freshMailboxManager.createSystemSession(USER1)))
+            .subscribeOn(Schedulers.boundedElastic())
+            .block();
+
+        List<Identity> userSetIdentities = Flux.from(freshIdentityRepository.list(USER1))
+            .filter(Identity::mayDelete)
+            .collectList()
+            .block();
+
+        SoftAssertions.assertSoftly(softly -> {
+            softly.assertThat(userSetIdentities).hasSize(1);
+            softly.assertThat(userSetIdentities.getFirst().textSignature()).isEqualTo("James user 1");
+            softly.assertThat(userSetIdentities.getFirst().htmlSignature()).isEqualTo("<p>James user 1</p>");
+        });
+    }
+
+    @Test
+    void shouldLeaveUnknownLdapPlaceholdersAsIsOnInboxCreation() throws Exception {
+        LdapRepositoryConfiguration ldapRepositoryConfiguration = LdapRepositoryConfiguration.from(ldapRepositoryConfigurationWithVirtualHosting(ldapContainer));
+        InMemoryIntegrationResources freshResources = InMemoryIntegrationResources.defaultResources();
+        InMemoryMailboxManager freshMailboxManager = freshResources.getMailboxManager();
+        SubscriptionManager freshSubscriptionManager = new StoreSubscriptionManager(freshMailboxManager.getMapperFactory(),
+            freshMailboxManager.getMapperFactory(), freshMailboxManager.getEventBus());
+        TeamMailboxRepository freshTeamMailboxRepository = new TeamMailboxRepositoryImpl(freshMailboxManager, freshSubscriptionManager, freshMailboxManager.getMapperFactory(), Set.of());
+        IdentityRepository freshIdentityRepository = new IdentityRepository(new MemoryCustomIdentityDAO(),
+            createDefaultIdentitySupplier(ldapRepositoryConfiguration, freshTeamMailboxRepository, freshMailboxManager));
+        IdentityProvisionListener freshTestee = new IdentityProvisionListener(ldapRepositoryConfiguration, freshIdentityRepository,
+            new DefaultSignatureTextFactory(new MemoryJmapSettingsRepository(),
+                signatureConfigurationWithUnknownPlaceholder()), ImmutableList.of());
+        freshMailboxManager.getEventBus().register(freshTestee);
+
+        Mono.from(freshMailboxManager.createMailboxReactive(MailboxPath.inbox(USER1), freshMailboxManager.createSystemSession(USER1)))
+            .subscribeOn(Schedulers.boundedElastic())
+            .block();
+
+        List<Identity> userSetIdentities = Flux.from(freshIdentityRepository.list(USER1))
+            .filter(Identity::mayDelete)
+            .collectList()
+            .block();
+
+        SoftAssertions.assertSoftly(softly -> {
+            softly.assertThat(userSetIdentities).hasSize(1);
+            softly.assertThat(userSetIdentities.getFirst().textSignature()).isEqualTo("Hello {ldap:noSuchAttr}");
+            softly.assertThat(userSetIdentities.getFirst().htmlSignature()).isEqualTo("<p>Hello {ldap:noSuchAttr}</p>");
+        });
+    }
+
     private DefaultIdentitySupplier createDefaultIdentitySupplier(LdapRepositoryConfiguration ldapRepositoryConfiguration,
                                                                   TeamMailboxRepository teamMailboxRepository,
                                                                   InMemoryMailboxManager mailboxManager) throws Exception {
@@ -489,6 +583,60 @@ public class IdentityProvisionListenerTest {
                 </listener>
             </listeners>
             """.formatted(defaultLanguage, EN_TEXT, EN_HTML, FR_TEXT, FR_HTML));
+    }
+
+    private HierarchicalConfiguration<ImmutableNode> signatureConfigurationWithLdapPlaceholders() {
+        return configuration("""
+            <listeners>
+                <listener>
+                    <configuration>
+                        <defaultText>
+                            <defaultLanguage>en</defaultLanguage>
+                            <en>
+                                <textSignature><![CDATA[{ldap:givenName} {ldap:sn}]]></textSignature>
+                                <htmlSignature><![CDATA[<p>{ldap:givenName} {ldap:sn}</p>]]></htmlSignature>
+                            </en>
+                        </defaultText>
+                    </configuration>
+                </listener>
+            </listeners>
+            """);
+    }
+
+    private HierarchicalConfiguration<ImmutableNode> signatureConfigurationWithExtraAttribute() {
+        return configuration("""
+            <listeners>
+                <listener>
+                    <configuration>
+                        <defaultText>
+                            <defaultLanguage>en</defaultLanguage>
+                            <en>
+                                <textSignature><![CDATA[{ldap:description}]]></textSignature>
+                                <htmlSignature><![CDATA[<p>{ldap:description}</p>]]></htmlSignature>
+                            </en>
+                        </defaultText>
+                    </configuration>
+                </listener>
+            </listeners>
+            """);
+    }
+
+    private HierarchicalConfiguration<ImmutableNode> signatureConfigurationWithUnknownPlaceholder() {
+        return configuration("""
+            <listeners>
+                <listener>
+                    <configuration>
+                        <defaultText>
+                            <defaultLanguage>en</defaultLanguage>
+                            <en>
+                                <textSignature><![CDATA[Hello {ldap:noSuchAttr}]]></textSignature>
+                                <htmlSignature><![CDATA[<p>Hello {ldap:noSuchAttr}</p>]]></htmlSignature>
+                            </en>
+                        </defaultText>
+                    </configuration>
+                </listener>
+            </listeners>
+            """);
     }
 
     private HierarchicalConfiguration<ImmutableNode> configuration(String rawConfiguration) {
