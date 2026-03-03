@@ -56,10 +56,16 @@ public record SabreContactMessage(Owner owner,
         record DomainOwner(String id) implements Owner {}
 
         static Optional<Owner> parse(String ownerPath) {
-            if (StringUtils.isBlank(ownerPath)) return Optional.empty();
+            if (StringUtils.isBlank(ownerPath)) {
+                return Optional.empty();
+            }
             String id = StringUtils.substringAfterLast(ownerPath, "/");
-            if (ownerPath.contains("/users/")) return Optional.of(new UserOwner(id));
-            if (ownerPath.contains("/domains/")) return Optional.of(new DomainOwner(id));
+            if (ownerPath.contains("/users/")) {
+                return Optional.of(new UserOwner(id));
+            }
+            if (ownerPath.contains("/domains/")) {
+                return Optional.of(new DomainOwner(id));
+            }
             return Optional.empty();
         }
     }
