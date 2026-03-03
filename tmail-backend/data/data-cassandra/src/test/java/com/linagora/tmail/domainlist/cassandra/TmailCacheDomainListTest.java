@@ -30,7 +30,6 @@ import org.apache.james.core.Domain;
 import org.apache.james.dnsservice.api.DNSService;
 import org.apache.james.dnsservice.api.InMemoryDNSService;
 import org.apache.james.domainlist.api.DomainListException;
-import org.apache.james.domainlist.cassandra.CassandraDomainList;
 import org.apache.james.domainlist.lib.DomainListConfiguration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,18 +41,18 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-class CacheDomainListTest {
+class TmailCacheDomainListTest {
 
     Domain domain1 = Domain.of("domain1.tld");
 
     @RegisterExtension
     static CassandraClusterExtension cassandraCluster = new CassandraClusterExtension(TMailCassandraDomainListDataDefinition.MODULE);
 
-    CassandraDomainList domainList;
+    TmailCassandraDomainList domainList;
 
     @BeforeEach
     public void setUp(CassandraCluster cassandra) throws Exception {
-        domainList = new CassandraDomainList(getDNSServer("localhost"), cassandra.getConf());
+        domainList = new TmailCassandraDomainList(getDNSServer("localhost"), cassandra.getConf());
         domainList.configure(DomainListConfiguration.builder()
             .autoDetect(false)
             .autoDetectIp(false)
@@ -73,7 +72,7 @@ class CacheDomainListTest {
             .blockLast();
 
         assertThat(statementRecorder.listExecutedStatements(
-            StatementRecorder.Selector.preparedStatement("SELECT domain FROM domains WHERE domain=:domain")))
+            StatementRecorder.Selector.preparedStatement("SELECT domain,activated FROM domains WHERE domain=:domain")))
             .hasSize(1);
     }
 
@@ -90,7 +89,7 @@ class CacheDomainListTest {
             .blockLast();
 
         assertThat(statementRecorder.listExecutedStatements(
-            StatementRecorder.Selector.preparedStatement("SELECT domain FROM domains WHERE domain=:domain")))
+            StatementRecorder.Selector.preparedStatement("SELECT domain,activated FROM domains WHERE domain=:domain")))
             .hasSizeBetween(2, 3);
     }
 
