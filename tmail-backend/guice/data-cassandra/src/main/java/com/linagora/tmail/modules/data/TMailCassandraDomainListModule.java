@@ -21,7 +21,6 @@ package com.linagora.tmail.modules.data;
 import org.apache.james.CoreDataModule;
 import org.apache.james.backends.cassandra.components.CassandraDataDefinition;
 import org.apache.james.domainlist.api.DomainList;
-import org.apache.james.domainlist.cassandra.CassandraDomainList;
 import org.apache.james.domainlist.lib.DomainListConfiguration;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
@@ -31,6 +30,7 @@ import com.google.inject.Scopes;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.linagora.tmail.domainlist.cassandra.TMailCassandraDomainListDataDefinition;
+import com.linagora.tmail.domainlist.cassandra.TmailCassandraDomainList;
 
 public class TMailCassandraDomainListModule extends AbstractModule {
 
@@ -38,15 +38,15 @@ public class TMailCassandraDomainListModule extends AbstractModule {
     public void configure() {
         install(new CoreDataModule());
 
-        bind(CassandraDomainList.class).in(Scopes.SINGLETON);
-        bind(DomainList.class).to(CassandraDomainList.class);
+        bind(TmailCassandraDomainList.class).in(Scopes.SINGLETON);
+        bind(DomainList.class).to(TmailCassandraDomainList.class);
         Multibinder.newSetBinder(binder(), CassandraDataDefinition.class).addBinding().toInstance(TMailCassandraDomainListDataDefinition.MODULE);
     }
 
     @ProvidesIntoSet
-    InitializationOperation configureDomainList(DomainListConfiguration configuration, CassandraDomainList cassandraDomainList) {
+    InitializationOperation configureDomainList(DomainListConfiguration configuration, TmailCassandraDomainList cassandraDomainList) {
         return InitilizationOperationBuilder
-            .forClass(CassandraDomainList.class)
+            .forClass(TmailCassandraDomainList.class)
             .init(() -> cassandraDomainList.configure(configuration));
     }
 }
