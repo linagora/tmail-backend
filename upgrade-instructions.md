@@ -12,6 +12,28 @@ software documentation. Do not follow this guide blindly!
 
 Note: this section is in progress. It will be updated during all the development process until the release.
 
+### Adding activated field to domains table
+
+Date: 04/03/2026
+
+Issue: https://github.com/linagora/tmail-backend/issues/2214
+
+Concerned product: Distributed TMail
+
+Add the optional `activated` field to the `domains` table to allow setting up rate limits on a domain before it's being activated.
+
+Note that existing domains prior to this addition without the activated field setup will be considered as activated for retro-compatibility.
+
+**IMPORTANT: These commands must be executed BEFORE deploying the new version.**
+
+#### Cassandra
+
+To add this column, run the following CQL command:
+
+```cql
+ALTER TABLE domains ADD activated boolean;
+```
+
 ### LLM Mail Classifier Listener renamed
 Date: 04/02/2026
 
