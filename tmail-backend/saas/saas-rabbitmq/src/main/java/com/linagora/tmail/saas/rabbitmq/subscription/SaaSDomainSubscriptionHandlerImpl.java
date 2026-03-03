@@ -18,6 +18,8 @@
 
 package com.linagora.tmail.saas.rabbitmq.subscription;
 
+import java.util.Optional;
+
 import jakarta.inject.Inject;
 
 import org.apache.james.core.Domain;
@@ -145,6 +147,7 @@ public class SaaSDomainSubscriptionHandlerImpl implements SaaSMessageHandler {
     }
 
     private Mono<Void> updateRateLimiting(Domain domain, RateLimitingDefinition rateLimiting) {
-        return Mono.from(rateLimitingRepository.setRateLimiting(domain, rateLimiting));
+        return Mono.from(domainList.containsDomainReactive(domain))
+            .flatMap(alreadyExists -> Mono.from(rateLimitingRepository.setRateLimiting(domain, Optional.of(alreadyExists), rateLimiting)));
     }
 }
