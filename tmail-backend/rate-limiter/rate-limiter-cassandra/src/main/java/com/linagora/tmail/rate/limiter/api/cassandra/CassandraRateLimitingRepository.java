@@ -36,11 +36,13 @@ import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDat
 import jakarta.inject.Inject;
 
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
+import org.apache.james.backends.cassandra.utils.ProfileLocator;
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.reactivestreams.Publisher;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.datastax.oss.driver.api.core.config.DriverExecutionProfile;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
@@ -57,6 +59,8 @@ public class CassandraRateLimitingRepository implements RateLimitingRepository {
     private final PreparedStatement selectRateLimitingStatement;
     private final PreparedStatement selectDomainRateLimitingStatement;
     private final PreparedStatement clearRateLimitingStatement;
+    private final DriverExecutionProfile readProfile;
+    private final DriverExecutionProfile writeProfile;
 
     @Inject
     public CassandraRateLimitingRepository(CqlSession session) {
@@ -98,6 +102,8 @@ public class CassandraRateLimitingRepository implements RateLimitingRepository {
             .setColumn(MAILS_RECEIVED_PER_DAYS, bindMarker(MAILS_RECEIVED_PER_DAYS))
             .whereColumn(USER).isEqualTo(bindMarker(USER))
             .build());
+        this.readProfile = ProfileLocator.READ.locateProfile(session, "USER");
+        this.writeProfile = ProfileLocator.WRITE.locateProfile(session, "USER");
     }
 
     @Override
@@ -109,7 +115,8 @@ public class CassandraRateLimitingRepository implements RateLimitingRepository {
             .set(MAILS_SENT_PER_DAYS, rateLimiting.mailsSentPerDays().orElse(null), TypeCodecs.BIGINT)
             .set(MAILS_RECEIVED_PER_MINUTE, rateLimiting.mailsReceivedPerMinute().orElse(null), TypeCodecs.BIGINT)
             .set(MAILS_RECEIVED_PER_HOURS, rateLimiting.mailsReceivedPerHours().orElse(null), TypeCodecs.BIGINT)
-            .set(MAILS_RECEIVED_PER_DAYS, rateLimiting.mailsReceivedPerDays().orElse(null), TypeCodecs.BIGINT)));
+            .set(MAILS_RECEIVED_PER_DAYS, rateLimiting.mailsReceivedPerDays().orElse(null), TypeCodecs.BIGINT)
+            .setExecutionProfile(writeProfile)));
     }
 
     @Override
@@ -121,13 +128,15 @@ public class CassandraRateLimitingRepository implements RateLimitingRepository {
             .set(MAILS_SENT_PER_DAYS, rateLimiting.mailsSentPerDays().orElse(null), TypeCodecs.BIGINT)
             .set(MAILS_RECEIVED_PER_MINUTE, rateLimiting.mailsReceivedPerMinute().orElse(null), TypeCodecs.BIGINT)
             .set(MAILS_RECEIVED_PER_HOURS, rateLimiting.mailsReceivedPerHours().orElse(null), TypeCodecs.BIGINT)
-            .set(MAILS_RECEIVED_PER_DAYS, rateLimiting.mailsReceivedPerDays().orElse(null), TypeCodecs.BIGINT)));
+            .set(MAILS_RECEIVED_PER_DAYS, rateLimiting.mailsReceivedPerDays().orElse(null), TypeCodecs.BIGINT)
+            .setExecutionProfile(writeProfile)));
     }
 
     @Override
     public Publisher<RateLimitingDefinition> getRateLimiting(Username username) {
         return Mono.from(executor.executeSingleRow(selectRateLimitingStatement.bind()
-                .set(USER, username.asString(), TypeCodecs.TEXT)))
+                .set(USER, username.asString(), TypeCodecs.TEXT)
+                .setExecutionProfile(readProfile)))
             .map(this::toRateLimitingDefinition)
             .defaultIfEmpty(EMPTY_RATE_LIMIT);
     }
@@ -135,7 +144,8 @@ public class CassandraRateLimitingRepository implements RateLimitingRepository {
     @Override
     public Publisher<RateLimitingDefinition> getRateLimiting(Domain domain) {
         return Mono.from(executor.executeSingleRow(selectDomainRateLimitingStatement.bind()
-                .set(DOMAIN, domain.asString(), TypeCodecs.TEXT)))
+                .set(DOMAIN, domain.asString(), TypeCodecs.TEXT)
+                .setExecutionProfile(readProfile)))
             .map(this::toRateLimitingDefinition)
             .defaultIfEmpty(EMPTY_RATE_LIMIT);
     }
@@ -149,7 +159,8 @@ public class CassandraRateLimitingRepository implements RateLimitingRepository {
             .setToNull(MAILS_SENT_PER_DAYS)
             .setToNull(MAILS_RECEIVED_PER_MINUTE)
             .setToNull(MAILS_RECEIVED_PER_HOURS)
-            .setToNull(MAILS_RECEIVED_PER_DAYS)));
+            .setToNull(MAILS_RECEIVED_PER_DAYS)
+            .setExecutionProfile(writeProfile)));
     }
 
     private RateLimitingDefinition toRateLimitingDefinition(Row row) {
