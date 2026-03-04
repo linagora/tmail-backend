@@ -22,7 +22,8 @@ import java.util.Optional
 
 import com.linagora.tmail.common.probe.SaaSProbe
 import com.linagora.tmail.james.common.JmapSaasContract.{DOMAIN_SUBSCRIPTION_ROUTING_KEY, QUOTA_ROOT, SUBSCRIPTION_ROUTING_KEY, TEST_ACCOUNT_ID, TEST_DOMAIN, TEST_PASSWORD, TEST_USER}
-import com.linagora.tmail.james.common.probe.DomainProbe
+import com.linagora.tmail.james.common.probe.{DomainProbe, RateLimitingProbe}
+import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition
 import com.linagora.tmail.saas.model.SaaSAccount
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
@@ -320,6 +321,70 @@ trait JmapSaasContract {
       DOMAIN_SUBSCRIPTION_ROUTING_KEY)
 
     awaitAtMostTenSeconds.untilAsserted(() => assertThat(server.getProbe(classOf[DomainProbe]).containsDomain(domain)).isTrue)
+  }
+
+  @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
+  def domainShouldBeUnactivatedWhenDomainSubscriptionSetUpRateLimiting(): Unit = {
+    val server = setUpJmapServer(saasSupport = true)
+    val domain: Domain = Domain.of("twake.app")
+
+    publishAmqpSettingsMessage(
+      s"""{
+         |    "domain": "%s",
+         |    "mailDnsConfigurationValidated": false,
+         |    "features": {
+         |      "mail": {
+         |        "storageQuota": 10000,
+         |        "mailsSentPerMinute": 10,
+         |        "mailsSentPerHour": 100,
+         |        "mailsSentPerDay": 1000,
+         |        "mailsReceivedPerMinute": 20,
+         |        "mailsReceivedPerHour": 200,
+         |        "mailsReceivedPerDay": 2000
+         |      }
+         |    }
+         |}""".format(domain.asString())
+        .stripMargin,
+      DOMAIN_SUBSCRIPTION_ROUTING_KEY)
+
+    awaitAtMostTenSeconds.untilAsserted(() => assertThat(server.getProbe(classOf[DomainProbe]).containsDomain(domain)).isFalse)
+  }
+
+  @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
+  def domainShouldStillSetUpRateLimitingWhenUnactivated(): Unit = {
+    val server = setUpJmapServer(saasSupport = true)
+    val domain: Domain = Domain.of("twake.app")
+
+    publishAmqpSettingsMessage(
+      s"""{
+         |    "domain": "%s",
+         |    "mailDnsConfigurationValidated": false,
+         |    "features": {
+         |      "mail": {
+         |        "storageQuota": 10000,
+         |        "mailsSentPerMinute": 10,
+         |        "mailsSentPerHour": 100,
+         |        "mailsSentPerDay": 1000,
+         |        "mailsReceivedPerMinute": 20,
+         |        "mailsReceivedPerHour": 200,
+         |        "mailsReceivedPerDay": 2000
+         |      }
+         |    }
+         |}""".format(domain.asString())
+        .stripMargin,
+      DOMAIN_SUBSCRIPTION_ROUTING_KEY)
+
+    awaitAtMostTenSeconds.untilAsserted(() => assertThat(server.getProbe(classOf[RateLimitingProbe]).getRateLimiting(domain))
+      .isEqualTo(RateLimitingDefinition.builder()
+        .mailsSentPerMinute(10)
+        .mailsSentPerHours(100)
+        .mailsSentPerDays(1000)
+        .mailsReceivedPerMinute(20)
+        .mailsReceivedPerHours(200)
+        .mailsReceivedPerDays(2000)
+        .build()))
   }
 
   @Test

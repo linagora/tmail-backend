@@ -120,4 +120,16 @@ public class MemoryJmapSaaSTest implements JmapSaasContract {
     public void domainShouldBeRemovedWhenDomainSubscriptionDisabled() {
 
     }
+
+    @Disabled("Memory app does not support RabbitMQ consumer")
+    @Test
+    public void domainShouldStillSetUpRateLimitingWhenUnactivated() {
+
+    }
+
+    @Disabled("Memory app does not support RabbitMQ consumer")
+    @Test
+    public void domainShouldBeUnactivatedWhenDomainSubscriptionSetUpRateLimiting() {
+
+    }
 }

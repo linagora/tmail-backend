@@ -32,6 +32,8 @@ import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
 import org.apache.james.modules.QuotaProbesImpl;
 import org.apache.james.utils.GuiceProbe;
+import org.junit.Test;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -46,6 +48,7 @@ import com.linagora.tmail.james.app.PostgresTmailConfiguration;
 import com.linagora.tmail.james.app.PostgresTmailServer;
 import com.linagora.tmail.james.common.JmapSaasContract;
 import com.linagora.tmail.james.common.probe.DomainProbe;
+import com.linagora.tmail.james.common.probe.RateLimitingProbe;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.settings.TWPSettingsModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
@@ -95,6 +98,9 @@ public class PostgresJmapSaaSTest implements JmapSaasContract {
                 .to(DomainProbe.class))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding()
+                .to(RateLimitingProbe.class))
+            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
+                .addBinding()
                 .to(QuotaProbesImpl.class));
 
         Throwing.runnable(() -> guiceJamesServer.start()).run();
@@ -123,5 +129,11 @@ public class PostgresJmapSaaSTest implements JmapSaasContract {
             return Modules.combine(new PostgresSaaSModule(), new SaaSProbeModule());
         }
         return Modules.EMPTY_MODULE;
+    }
+
+    @Disabled("ISSUE-2214 Need to do the postgres fix for domain activation with rate limiting")
+    @Test
+    public void domainShouldBeUnactivatedWhenDomainSubscriptionSetUpRateLimiting() {
+
     }
 }
