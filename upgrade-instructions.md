@@ -14,7 +14,7 @@ Note: this section is in progress. It will be updated during all the development
 
 ### Adding activated field to domains table
 
-Date: 28/01/2026
+Date: 04/03/2026
 
 Issue: https://github.com/linagora/tmail-backend/issues/2214
 
