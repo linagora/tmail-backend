@@ -18,7 +18,8 @@
 
 package com.linagora.tmail.james.jmap.projections
 
-import java.time.ZonedDateTime
+import java.time.Instant
+import java.util.Optional
 
 import org.apache.james.core.Username
 import org.apache.james.jmap.mail.Keyword
@@ -33,11 +34,11 @@ import scala.jdk.CollectionConverters._
 object KeywordEmailQueryViewContract {
   val ALICE: Username = Username.of("alice@domain.tld")
   val BOB: Username = Username.of("bob@domain.tld")
-  val DATE_1: ZonedDateTime = ZonedDateTime.parse("2010-10-30T15:12:00Z")
-  val DATE_2: ZonedDateTime = ZonedDateTime.parse("2010-10-30T16:12:00Z")
-  val DATE_3: ZonedDateTime = ZonedDateTime.parse("2010-10-30T17:12:00Z")
-  val DATE_4: ZonedDateTime = ZonedDateTime.parse("2010-10-30T18:12:00Z")
-  val DATE_5: ZonedDateTime = ZonedDateTime.parse("2010-10-30T19:12:00Z")
+  val DATE_1: Instant = Instant.parse("2010-10-30T15:12:00Z")
+  val DATE_2: Instant = Instant.parse("2010-10-30T16:12:00Z")
+  val DATE_3: Instant = Instant.parse("2010-10-30T17:12:00Z")
+  val DATE_4: Instant = Instant.parse("2010-10-30T18:12:00Z")
+  val DATE_5: Instant = Instant.parse("2010-10-30T19:12:00Z")
 
   val KEYWORD_A: Keyword = Keyword.of("keywordA").get
   val KEYWORD_B: Keyword = Keyword.of("keywordB").get
@@ -57,9 +58,15 @@ trait KeywordEmailQueryViewContract {
   def threadId2: ThreadId
   def threadId3: ThreadId
 
+  private def options(limit: Limit,
+                      collapseThreads: Boolean = false,
+                      before: Optional[Instant] = Optional.empty(),
+                      after: Optional[Instant] = Optional.empty()): KeywordEmailQueryView.Options =
+    new KeywordEmailQueryView.Options(before, after, limit, collapseThreads)
+
   @Test
   def listShouldReturnEmptyByDefault(): Unit = {
-    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, Limit.limit(12), false)).collectSeq().block().asJava)
+    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, options(Limit.limit(12)))).collectSeq().block().asJava)
       .isEmpty()
   }
 
@@ -69,7 +76,7 @@ trait KeywordEmailQueryViewContract {
     testee.save(ALICE, KEYWORD_A, DATE_3, messageId2, threadId2).block()
     testee.save(ALICE, KEYWORD_A, DATE_2, messageId3, threadId3).block()
 
-    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, Limit.limit(12), false)).collectSeq().block().asJava)
+    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, options(Limit.limit(12)))).collectSeq().block().asJava)
       .containsExactly(messageId2, messageId3, messageId1)
   }
 
@@ -78,7 +85,7 @@ trait KeywordEmailQueryViewContract {
     testee.save(ALICE, KEYWORD_A, DATE_1, messageId1, threadId1).block()
     testee.save(ALICE, KEYWORD_B, DATE_4, messageId2, threadId2).block()
 
-    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, Limit.limit(12), false)).collectSeq().block().asJava)
+    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, options(Limit.limit(12)))).collectSeq().block().asJava)
       .containsExactly(messageId1)
   }
 
@@ -88,7 +95,7 @@ trait KeywordEmailQueryViewContract {
     testee.save(ALICE, KEYWORD_A, DATE_3, messageId2, threadId2).block()
     testee.save(ALICE, KEYWORD_A, DATE_2, messageId3, threadId3).block()
 
-    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, Limit.limit(2), false)).collectSeq().block().asJava)
+    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, options(Limit.limit(2)))).collectSeq().block().asJava)
       .containsExactly(messageId2, messageId3)
   }
 
@@ -98,7 +105,7 @@ trait KeywordEmailQueryViewContract {
     testee.save(ALICE, KEYWORD_A, DATE_3, messageId2, threadId2).block()
     testee.save(ALICE, KEYWORD_A, DATE_2, messageId3, threadId3).block()
 
-    assertThat(SFlux.fromPublisher(testee.listMessagesByKeywordSinceAfter(ALICE, KEYWORD_A, DATE_2, Limit.limit(12), false)).collectSeq().block().asJava)
+    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, options(Limit.limit(12), after = Optional.of(DATE_2)))).collectSeq().block().asJava)
       .containsExactly(messageId2, messageId3)
   }
 
@@ -108,7 +115,7 @@ trait KeywordEmailQueryViewContract {
     testee.save(ALICE, KEYWORD_A, DATE_2, messageId2, threadId2).block()
     testee.save(ALICE, KEYWORD_A, DATE_3, messageId3, threadId3).block()
 
-    assertThat(SFlux.fromPublisher(testee.listMessagesByKeywordSinceAfter(ALICE, KEYWORD_A, DATE_5, Limit.limit(12), false)).collectSeq().block().asJava)
+    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, options(Limit.limit(12), after = Optional.of(DATE_5)))).collectSeq().block().asJava)
       .isEmpty()
   }
 
@@ -118,7 +125,7 @@ trait KeywordEmailQueryViewContract {
     testee.save(ALICE, KEYWORD_A, DATE_3, messageId2, threadId2).block()
     testee.save(ALICE, KEYWORD_A, DATE_2, messageId3, threadId3).block()
 
-    assertThat(SFlux.fromPublisher(testee.listMessagesByKeywordBefore(ALICE, KEYWORD_A, DATE_2, Limit.limit(12), false)).collectSeq().block().asJava)
+    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, options(Limit.limit(12), before = Optional.of(DATE_2)))).collectSeq().block().asJava)
       .containsExactly(messageId1)
   }
 
@@ -128,7 +135,7 @@ trait KeywordEmailQueryViewContract {
     testee.save(ALICE, KEYWORD_A, DATE_4, messageId2, threadId2).block()
     testee.save(ALICE, KEYWORD_A, DATE_5, messageId3, threadId3).block()
 
-    assertThat(SFlux.fromPublisher(testee.listMessagesByKeywordBefore(ALICE, KEYWORD_A, DATE_1, Limit.limit(12), false)).collectSeq().block().asJava)
+    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, options(Limit.limit(12), before = Optional.of(DATE_1)))).collectSeq().block().asJava)
       .isEmpty()
   }
 
@@ -138,7 +145,7 @@ trait KeywordEmailQueryViewContract {
     testee.save(ALICE, KEYWORD_A, DATE_3, messageId2, threadId1).block()
     testee.save(ALICE, KEYWORD_A, DATE_2, messageId3, threadId2).block()
 
-    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, Limit.limit(12), true)).collectSeq().block().asJava)
+    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, options(Limit.limit(12), collapseThreads = true))).collectSeq().block().asJava)
       .containsExactlyInAnyOrder(messageId2, messageId3)
   }
 
@@ -149,7 +156,7 @@ trait KeywordEmailQueryViewContract {
     testee.save(ALICE, KEYWORD_A, DATE_2, messageId3, threadId3).block()
     testee.save(ALICE, KEYWORD_A, DATE_4, messageId4, threadId1).block()
 
-    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, Limit.limit(2), true)).collectSeq().block().asJava)
+    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, options(Limit.limit(2), collapseThreads = true))).collectSeq().block().asJava)
       .containsExactly(messageId4, messageId3)
   }
 
@@ -159,7 +166,7 @@ trait KeywordEmailQueryViewContract {
     testee.save(ALICE, KEYWORD_A, DATE_3, messageId2, threadId1).block()
     testee.save(ALICE, KEYWORD_A, DATE_5, messageId3, threadId1).block()
 
-    assertThat(SFlux.fromPublisher(testee.listMessagesByKeywordSinceAfter(ALICE, KEYWORD_A, DATE_2, Limit.limit(12), true)).collectSeq().block().asJava)
+    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, options(Limit.limit(12), collapseThreads = true, after = Optional.of(DATE_2)))).collectSeq().block().asJava)
       .containsExactly(messageId3)
   }
 
@@ -170,7 +177,7 @@ trait KeywordEmailQueryViewContract {
     testee.save(ALICE, KEYWORD_A, DATE_5, messageId3, threadId1).block()
     testee.save(ALICE, KEYWORD_A, DATE_4, messageId4, threadId1).block()
 
-    assertThat(SFlux.fromPublisher(testee.listMessagesByKeywordSinceAfter(ALICE, KEYWORD_A, DATE_1, Limit.limit(2), true)).collectSeq().block().asJava)
+    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, options(Limit.limit(2), collapseThreads = true, after = Optional.of(DATE_1)))).collectSeq().block().asJava)
       .containsExactly(messageId3, messageId2)
   }
 
@@ -180,7 +187,7 @@ trait KeywordEmailQueryViewContract {
     testee.save(ALICE, KEYWORD_A, DATE_2, messageId2, threadId1).block()
     testee.save(ALICE, KEYWORD_A, DATE_3, messageId3, threadId1).block()
 
-    assertThat(SFlux.fromPublisher(testee.listMessagesByKeywordBefore(ALICE, KEYWORD_A, DATE_3, Limit.limit(12), true)).collectSeq().block().asJava)
+    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, options(Limit.limit(12), collapseThreads = true, before = Optional.of(DATE_3)))).collectSeq().block().asJava)
       .containsExactly(messageId2)
   }
 
@@ -191,7 +198,7 @@ trait KeywordEmailQueryViewContract {
     testee.save(ALICE, KEYWORD_A, DATE_5, messageId3, threadId3).block()
     testee.save(ALICE, KEYWORD_A, DATE_4, messageId4, threadId1).block()
 
-    assertThat(SFlux.fromPublisher(testee.listMessagesByKeywordBefore(ALICE, KEYWORD_A, DATE_4, Limit.limit(2), true)).collectSeq().block().asJava)
+    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, options(Limit.limit(2), collapseThreads = true, before = Optional.of(DATE_4)))).collectSeq().block().asJava)
       .containsExactly(messageId2, messageId1)
   }
 
@@ -201,8 +208,21 @@ trait KeywordEmailQueryViewContract {
     testee.save(ALICE, KEYWORD_A, DATE_3, messageId2, threadId1).block()
     testee.save(ALICE, KEYWORD_A, DATE_2, messageId3, threadId2).block()
 
-    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, Limit.limit(12), false)).collectSeq().block().asJava)
+    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, options(Limit.limit(12), collapseThreads = false))).collectSeq().block().asJava)
       .containsExactly(messageId2, messageId3, messageId1)
+  }
+
+  @Test
+  def listShouldSupportRangeQueryWithAfterAndBefore(): Unit = {
+    testee.save(ALICE, KEYWORD_A, DATE_1, messageId1, threadId1).block()
+    testee.save(ALICE, KEYWORD_A, DATE_2, messageId2, threadId2).block()
+    testee.save(ALICE, KEYWORD_A, DATE_3, messageId3, threadId3).block()
+    testee.save(ALICE, KEYWORD_A, DATE_4, messageId4, threadId1).block()
+
+    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, options(Limit.limit(12),
+      before = Optional.of(DATE_4),
+      after = Optional.of(DATE_2)))).collectSeq().block().asJava)
+      .containsExactly(messageId3, messageId2)
   }
 
   @Test
@@ -213,9 +233,9 @@ trait KeywordEmailQueryViewContract {
 
     testee.delete(ALICE, KEYWORD_A, DATE_1, messageId1).block()
 
-    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, Limit.limit(12), false)).collectSeq().block().asJava)
+    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, options(Limit.limit(12)))).collectSeq().block().asJava)
       .containsExactly(messageId2)
-    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_B, Limit.limit(12), false)).collectSeq().block().asJava)
+    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_B, options(Limit.limit(12)))).collectSeq().block().asJava)
       .containsExactly(messageId1)
   }
 
@@ -226,7 +246,7 @@ trait KeywordEmailQueryViewContract {
 
     testee.delete(ALICE, KEYWORD_A, DATE_2, messageId1).block()
 
-    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, Limit.limit(12), false)).collectSeq().block().asJava)
+    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, options(Limit.limit(12)))).collectSeq().block().asJava)
       .containsExactly(messageId2, messageId1)
   }
 
@@ -241,25 +261,25 @@ trait KeywordEmailQueryViewContract {
     testee.save(ALICE, KEYWORD_C, DATE_5, messageId3, threadId1).block()
     testee.save(ALICE, KEYWORD_C, DATE_5, messageId3, threadId1).block()
 
-    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_C, Limit.limit(12), false)).collectSeq().block().asJava)
+    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_C, options(Limit.limit(12)))).collectSeq().block().asJava)
       .containsExactly(messageId3)
   }
 
   @Test
   def listShouldThrowOnUndefinedLimit(): Unit = {
-    assertThatThrownBy(() => testee.listMessagesByKeyword(ALICE, KEYWORD_A, Limit.unlimited(), false).blockLast())
+    assertThatThrownBy(() => testee.listMessagesByKeyword(ALICE, KEYWORD_A, options(Limit.unlimited())).blockLast())
       .isInstanceOf(classOf[IllegalArgumentException])
   }
 
   @Test
-  def listSinceAfterShouldThrowOnUndefinedLimit(): Unit = {
-    assertThatThrownBy(() => testee.listMessagesByKeywordSinceAfter(ALICE, KEYWORD_A, DATE_3, Limit.unlimited(), false).blockLast())
+  def listWithAfterShouldThrowOnUndefinedLimit(): Unit = {
+    assertThatThrownBy(() => testee.listMessagesByKeyword(ALICE, KEYWORD_A, options(Limit.unlimited(), after = Optional.of(DATE_3))).blockLast())
       .isInstanceOf(classOf[IllegalArgumentException])
   }
 
   @Test
-  def listBeforeShouldThrowOnUndefinedLimit(): Unit = {
-    assertThatThrownBy(() => testee.listMessagesByKeywordBefore(ALICE, KEYWORD_A, DATE_3, Limit.unlimited(), false).blockLast())
+  def listWithBeforeShouldThrowOnUndefinedLimit(): Unit = {
+    assertThatThrownBy(() => testee.listMessagesByKeyword(ALICE, KEYWORD_A, options(Limit.unlimited(), before = Optional.of(DATE_3))).blockLast())
       .isInstanceOf(classOf[IllegalArgumentException])
   }
 }

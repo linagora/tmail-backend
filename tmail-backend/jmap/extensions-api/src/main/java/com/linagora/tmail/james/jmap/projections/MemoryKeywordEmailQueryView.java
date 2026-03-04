@@ -18,11 +18,12 @@
 
 package com.linagora.tmail.james.jmap.projections;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
 import java.util.Comparator;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.Function;
+import java.util.function.Predicate;
 
 import jakarta.inject.Inject;
 
@@ -30,7 +31,6 @@ import org.apache.james.core.Username;
 import org.apache.james.jmap.mail.Keyword;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.ThreadId;
-import org.apache.james.util.streams.Limit;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.HashBasedTable;
@@ -41,7 +41,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class MemoryKeywordEmailQueryView implements KeywordEmailQueryView {
-    private record Entry(ZonedDateTime receivedAt, MessageId messageId, ThreadId threadId) {
+    private record Entry(Instant receivedAt, MessageId messageId, ThreadId threadId) {
     }
 
     private final Map<Username, Table<Keyword, MessageId, Entry>> entriesByUser;
@@ -52,65 +52,53 @@ public class MemoryKeywordEmailQueryView implements KeywordEmailQueryView {
     }
 
     @Override
-    public Mono<Void> save(Username username, Keyword keyword, ZonedDateTime receivedAt, MessageId messageId, ThreadId threadId) {
+    public Mono<Void> save(Username username, Keyword keyword, Instant receivedAt, MessageId messageId, ThreadId threadId) {
         return Mono.fromRunnable(() -> userEntries(username)
             .put(keyword, messageId, new Entry(receivedAt, messageId, threadId)));
     }
 
     @Override
-    public Mono<Void> delete(Username username, Keyword keyword, ZonedDateTime receivedAt, MessageId messageId) {
+    public Mono<Void> delete(Username username, Keyword keyword, Instant receivedAt, MessageId messageId) {
         return Mono.fromRunnable(() -> {
             Entry entry = userEntries(username).get(keyword, messageId);
-            if (entry != null && entry.receivedAt.isEqual(receivedAt)) {
+            if (entry != null && entry.receivedAt().equals(receivedAt)) {
                 userEntries(username).remove(keyword, messageId);
             }
         });
     }
 
     @Override
-    public Flux<MessageId> listMessagesByKeyword(Username username, Keyword keyword, Limit limit, boolean collapseThreads) {
-        Preconditions.checkArgument(!limit.isUnlimited(), "Limit should be defined");
-
-        Flux<Entry> baseEntries = Flux.fromIterable(userEntries(username).row(keyword).values());
-
-        return maybeCollapseThreads(collapseThreads).apply(baseEntries)
-            .sort(Comparator.comparing(Entry::receivedAt).reversed())
-            .map(entry -> entry.messageId)
-            .take(limit.getLimit().get());
-    }
-
-    @Override
-    public Flux<MessageId> listMessagesByKeywordSinceAfter(Username username, Keyword keyword, ZonedDateTime since, Limit limit, boolean collapseThreads) {
-        Preconditions.checkArgument(!limit.isUnlimited(), "Limit should be defined");
+    public Flux<MessageId> listMessagesByKeyword(Username username, Keyword keyword, Options options) {
+        Preconditions.checkArgument(!options.limit().isUnlimited(), "Limit should be defined");
 
         Flux<Entry> baseEntries = Flux.fromIterable(userEntries(username).row(keyword).values())
-            .filter(entry -> entry.receivedAt.isAfter(since) || entry.receivedAt.isEqual(since));
+            .filter(beforeFiltering(options))
+            .filter(afterFiltering(options));
 
-        return maybeCollapseThreads(collapseThreads).apply(baseEntries)
+        return maybeCollapseThreads(options.collapseThread()).apply(baseEntries)
             .sort(Comparator.comparing(Entry::receivedAt).reversed())
-            .map(entry -> entry.messageId)
-            .take(limit.getLimit().get());
+            .map(Entry::messageId)
+            .take(options.limit().getLimit().get());
     }
 
-    @Override
-    public Flux<MessageId> listMessagesByKeywordBefore(Username username, Keyword keyword, ZonedDateTime before, Limit limit, boolean collapseThreads) {
-        Preconditions.checkArgument(!limit.isUnlimited(), "Limit should be defined");
+    private Predicate<Entry> beforeFiltering(Options options) {
+        return entry -> options.before()
+            .map(before -> entry.receivedAt().isBefore(before))
+            .orElse(true);
+    }
 
-        Flux<Entry> baseEntries = Flux.fromIterable(userEntries(username).row(keyword).values())
-            .filter(entry -> entry.receivedAt.isBefore(before));
-
-        return maybeCollapseThreads(collapseThreads).apply(baseEntries)
-            .sort(Comparator.comparing(Entry::receivedAt).reversed())
-            .map(entry -> entry.messageId)
-            .take(limit.getLimit().get());
+    private Predicate<Entry> afterFiltering(Options options) {
+        return entry -> options.after()
+            .map(after -> entry.receivedAt().isAfter(after) || entry.receivedAt().equals(after))
+            .orElse(true);
     }
 
     private Function<Flux<Entry>, Flux<Entry>> maybeCollapseThreads(boolean collapseThreads) {
         return entries -> {
             if (collapseThreads) {
-                return entries.groupBy(entry -> entry.threadId)
+                return entries.groupBy(Entry::threadId)
                     .flatMap(group -> group.reduce((entry1, entry2) ->
-                        entry1.receivedAt.isAfter(entry2.receivedAt) ? entry1 : entry2));
+                        entry1.receivedAt().isAfter(entry2.receivedAt()) ? entry1 : entry2));
             }
             return entries;
         };

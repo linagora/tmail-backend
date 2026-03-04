@@ -18,7 +18,8 @@
 
 package com.linagora.tmail.james.jmap.projections;
 
-import java.time.ZonedDateTime;
+import java.time.Instant;
+import java.util.Optional;
 
 import org.apache.james.core.Username;
 import org.apache.james.jmap.mail.Keyword;
@@ -30,13 +31,12 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public interface KeywordEmailQueryView {
-    Mono<Void> save(Username username, Keyword keyword, ZonedDateTime receivedAt, MessageId messageId, ThreadId threadId);
+    record Options(Optional<Instant> before, Optional<Instant> after, Limit limit, boolean collapseThread) {
+    }
 
-    Mono<Void> delete(Username username, Keyword keyword, ZonedDateTime receivedAt, MessageId messageId);
+    Mono<Void> save(Username username, Keyword keyword, Instant receivedAt, MessageId messageId, ThreadId threadId);
 
-    Flux<MessageId> listMessagesByKeyword(Username username, Keyword keyword, Limit limit, boolean collapseThreads);
+    Mono<Void> delete(Username username, Keyword keyword, Instant receivedAt, MessageId messageId);
 
-    Flux<MessageId> listMessagesByKeywordSinceAfter(Username username, Keyword keyword, ZonedDateTime since, Limit limit, boolean collapseThreads);
-
-    Flux<MessageId> listMessagesByKeywordBefore(Username username, Keyword keyword, ZonedDateTime before, Limit limit, boolean collapseThreads);
+    Flux<MessageId> listMessagesByKeyword(Username username, Keyword keyword, Options options);
 }
