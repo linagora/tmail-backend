@@ -136,4 +136,16 @@ public class PostgresJmapSaaSTest implements JmapSaasContract {
     public void domainShouldBeUnactivatedWhenDomainSubscriptionSetUpRateLimiting() {
 
     }
+
+    @Disabled("ISSUE-2214 Need to do the postgres fix for domain activation with rate limiting")
+    @Test
+    public void domainShouldBeUnactivatedWhenDnsNotSetAndRateLimitingSetUpSeparately() {
+
+    }
+
+    @Disabled("ISSUE-2214 Need to do the postgres fix for domain activation with rate limiting")
+    @Test
+    public void domainShouldBeUnactivatedWhenDomainSubscriptionSetUpRateLimitingWithMissingMailDnsConfigurationValidated() {
+
+    }
 }
