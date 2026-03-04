@@ -32,8 +32,6 @@ import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
 import org.apache.james.modules.QuotaProbesImpl;
 import org.apache.james.utils.GuiceProbe;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 
@@ -129,23 +127,5 @@ public class PostgresJmapSaaSTest implements JmapSaasContract {
             return Modules.combine(new PostgresSaaSModule(), new SaaSProbeModule());
         }
         return Modules.EMPTY_MODULE;
-    }
-
-    @Disabled("ISSUE-2214 Need to do the postgres fix for domain activation with rate limiting")
-    @Test
-    public void domainShouldBeUnactivatedWhenDomainSubscriptionSetUpRateLimiting() {
-
-    }
-
-    @Disabled("ISSUE-2214 Need to do the postgres fix for domain activation with rate limiting")
-    @Test
-    public void domainShouldBeUnactivatedWhenDnsNotSetAndRateLimitingSetUpSeparately() {
-
-    }
-
-    @Disabled("ISSUE-2214 Need to do the postgres fix for domain activation with rate limiting")
-    @Test
-    public void domainShouldBeUnactivatedWhenDomainSubscriptionSetUpRateLimitingWithMissingMailDnsConfigurationValidated() {
-
     }
 }
