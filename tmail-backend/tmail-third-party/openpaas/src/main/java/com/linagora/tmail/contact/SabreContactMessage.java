@@ -27,6 +27,8 @@ import java.util.Optional;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.james.core.MailAddress;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.DeserializationFeature;
@@ -41,8 +43,33 @@ import ezvcard.Ezvcard;
 import ezvcard.VCard;
 import ezvcard.property.SimpleProperty;
 
-public record SabreContactMessage(String openPaasUserId,
+public record SabreContactMessage(Owner owner,
                                   VCard vcard) {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(SabreContactMessage.class);
+
+    public sealed interface Owner permits Owner.UserOwner, Owner.DomainOwner {
+        String id();
+
+        record UserOwner(String id) implements Owner {}
+
+        record DomainOwner(String id) implements Owner {}
+
+        static Optional<Owner> parse(String ownerPath) {
+            if (StringUtils.isBlank(ownerPath)) {
+                return Optional.empty();
+            }
+            String id = StringUtils.substringAfterLast(ownerPath, "/");
+            if (ownerPath.contains("/users/")) {
+                return Optional.of(new UserOwner(id));
+            }
+            if (ownerPath.contains("/domains/")) {
+                return Optional.of(new DomainOwner(id));
+            }
+            return Optional.empty();
+        }
+    }
+
     public static class SabreContactParseException extends RuntimeException {
         SabreContactParseException(String message, Throwable cause) {
             super(message, cause);
@@ -77,7 +104,7 @@ public record SabreContactMessage(String openPaasUserId,
 
     public SabreContactMessage {
         Preconditions.checkNotNull(vcard);
-        Preconditions.checkNotNull(openPaasUserId);
+        Preconditions.checkNotNull(owner);
     }
 
     public static Optional<SabreContactMessage> parseAMQPMessage(String messagePayload) {
@@ -88,12 +115,20 @@ public record SabreContactMessage(String openPaasUserId,
         try {
             AMQPMessage contactMessage = DESERIALIZER.deserialize(messagePayload);
             if (contactMessage.hasCardData()) {
-                String openPaasUserId = StringUtils.substringAfterLast(contactMessage.owner().get(), "/");
+                String ownerPath = contactMessage.owner().get();
+                Optional<Owner> maybeOwner = Owner.parse(ownerPath);
+                if (maybeOwner.isEmpty()) {
+                    if (StringUtils.isNotBlank(ownerPath)) {
+                        LOGGER.warn("Unknown owner type in owner path '{}', ignoring message", ownerPath);
+                    }
+                    return Optional.empty();
+                }
+                Owner owner = maybeOwner.get();
+                Preconditions.checkArgument(StringUtils.isNotBlank(owner.id()), "Can not parse owner id from %s", ownerPath);
                 VCard vCard = Ezvcard.parse(contactMessage.cardData().get()).first();
-                Preconditions.checkArgument(StringUtils.isNotBlank(openPaasUserId), "Can not parse openPaasUserId from %s", contactMessage.owner().get());
                 Preconditions.checkArgument(vCard != null, "Can not parse vCard from %s", contactMessage.cardData().get());
                 Preconditions.checkArgument(vCard.getUid() != null, "Can not parse vCard uid from %s", contactMessage.cardData().get());
-                return Optional.of(new SabreContactMessage(openPaasUserId, vCard));
+                return Optional.of(new SabreContactMessage(owner, vCard));
             }
             return Optional.empty();
         } catch (Exception e) {

@@ -27,6 +27,7 @@ import javax.net.ssl.SSLException;
 import jakarta.mail.internet.AddressException;
 
 import org.apache.commons.lang3.StringUtils;
+import org.apache.james.core.Domain;
 import org.apache.james.core.MailAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -126,6 +127,37 @@ public class OpenPaasRestClient {
         };
     }
 
+
+    public Mono<Domain> retrieveDomainName(String domainId) {
+        Preconditions.checkArgument(StringUtils.isNotEmpty(domainId), "OpenPaas domain id cannot be empty");
+        return client.get()
+            .uri(String.format("/domains/%s", domainId))
+            .responseSingle((statusCode, data) -> handleDomainResponse(domainId, statusCode, data))
+            .map(response -> Domain.of(response.firstHostname()))
+            .onErrorResume(e -> Mono.error(new OpenPaasRestClientException(
+                "Failed to retrieve domain name using OpenPaas id " + domainId, e)));
+    }
+
+    private Mono<OpenPaasDomainResponse> handleDomainResponse(String domainId, HttpClientResponse httpClientResponse, ByteBufMono dataBuf) {
+        int statusCode = httpClientResponse.status().code();
+
+        return switch (statusCode) {
+            case 200 -> dataBuf.asByteArray()
+                .flatMap(dataAsBytes -> Mono.fromCallable(() -> deserializer.readValue(dataAsBytes, OpenPaasDomainResponse.class))
+                    .onErrorResume(e -> Mono.error(new OpenPaasRestClientException("Bad domain response body format", e))));
+            case 404 -> {
+                LOGGER.warn("Unable to retrieve domain name as OpenPaas domain with id {} not found", domainId);
+                yield Mono.empty();
+            }
+            default -> dataBuf.asString(StandardCharsets.UTF_8)
+                .switchIfEmpty(Mono.just(""))
+                .flatMap(errorResponse -> Mono.error(new OpenPaasRestClientException(
+                    String.format("""
+                            Error when getting OpenPaas domain response.\s
+                            Response Status = %s,
+                            Response Body = %s""", statusCode, errorResponse))));
+        };
+    }
 
     private Mono<OpenPaasUserResponse> handleUserResponse(String openPaasUserId, HttpClientResponse httpClientResponse, ByteBufMono dataBuf) {
         int statusCode = httpClientResponse.status().code();
