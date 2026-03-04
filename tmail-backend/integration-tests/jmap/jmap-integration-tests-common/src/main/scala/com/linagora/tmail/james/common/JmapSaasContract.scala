@@ -303,7 +303,7 @@ trait JmapSaasContract {
     publishAmqpSettingsMessage(
       s"""{
          |    "domain": "%s",
-         |    "validated": true,
+         |    "mailDnsConfigurationValidated": true,
          |    "features": {
          |      "mail": {
          |        "storageQuota": 10000,
@@ -329,7 +329,7 @@ trait JmapSaasContract {
     publishAmqpSettingsMessage(
       s"""{
          |    "domain": "%s",
-         |    "validated": true,
+         |    "mailDnsConfigurationValidated": true,
          |    "features": {
          |      "mail": {
          |        "storageQuota": 10000,
@@ -356,7 +356,7 @@ trait JmapSaasContract {
     publishAmqpSettingsMessage(
       s"""{
          |    "domain": "%s",
-         |    "validated": true,
+         |    "mailDnsConfigurationValidated": true,
          |    "features": {
          |      "mail": {
          |        "storageQuota": 10000,
