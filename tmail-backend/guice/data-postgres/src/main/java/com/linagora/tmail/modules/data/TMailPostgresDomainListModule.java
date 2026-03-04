@@ -29,7 +29,6 @@ package com.linagora.tmail.modules.data;
 import org.apache.james.backends.postgres.PostgresDataDefinition;
 import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.domainlist.lib.DomainListConfiguration;
-import org.apache.james.domainlist.postgres.PostgresDomainList;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
 
@@ -38,19 +37,20 @@ import com.google.inject.Scopes;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.linagora.tmail.domainlist.postgres.TMailPostgresDomainDataDefinition;
+import com.linagora.tmail.domainlist.postgres.TmailPostgresDomainList;
 
 public class TMailPostgresDomainListModule extends AbstractModule {
     @Override
     public void configure() {
-        bind(PostgresDomainList.class).in(Scopes.SINGLETON);
-        bind(DomainList.class).to(PostgresDomainList.class);
+        bind(TmailPostgresDomainList.class).in(Scopes.SINGLETON);
+        bind(DomainList.class).to(TmailPostgresDomainList.class);
         Multibinder.newSetBinder(binder(), PostgresDataDefinition.class).addBinding().toInstance(TMailPostgresDomainDataDefinition.MODULE);
     }
 
     @ProvidesIntoSet
-    InitializationOperation configureDomainList(DomainListConfiguration configuration, PostgresDomainList postgresDomainList) {
+    InitializationOperation configureDomainList(DomainListConfiguration configuration, TmailPostgresDomainList postgresDomainList) {
         return InitilizationOperationBuilder
-            .forClass(PostgresDomainList.class)
+            .forClass(TmailPostgresDomainList.class)
             .init(() -> postgresDomainList.configure(configuration));
     }
 }
