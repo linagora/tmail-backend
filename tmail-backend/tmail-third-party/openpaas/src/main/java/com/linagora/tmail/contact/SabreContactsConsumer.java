@@ -223,8 +223,8 @@ public class SabreContactsConsumer implements Closeable {
     }
 
     private Mono<Void> applyDomainContactDiff(Domain domain,
-                                               Map<MailAddress, ContactFields> newContacts,
-                                               Map<MailAddress, ContactFields> oldContacts) {
+                                              Map<MailAddress, ContactFields> newContacts,
+                                              Map<MailAddress, ContactFields> oldContacts) {
         Set<MailAddress> newAddresses = newContacts.keySet();
         Set<MailAddress> oldAddresses = oldContacts.keySet();
 
