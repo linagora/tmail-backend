@@ -32,8 +32,8 @@ import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
 import org.apache.james.modules.QuotaProbesImpl;
 import org.apache.james.utils.GuiceProbe;
-import org.junit.Test;
 import org.junit.jupiter.api.Disabled;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 
