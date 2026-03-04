@@ -34,9 +34,9 @@ import com.linagora.tmail.common.module.SaaSProbeModule;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemorySaaSModule;
 import com.linagora.tmail.james.app.MemoryServer;
+import com.linagora.tmail.james.calendar.ConfigurationPathFactory;
 import com.linagora.tmail.james.common.JmapSaasContract;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
-import com.linagora.tmail.james.calendar.ConfigurationPathFactory;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class MemoryJmapSaaSTest implements JmapSaasContract {
@@ -118,6 +118,30 @@ public class MemoryJmapSaaSTest implements JmapSaasContract {
     @Disabled("Memory app does not support RabbitMQ consumer")
     @Test
     public void domainShouldBeRemovedWhenDomainSubscriptionDisabled() {
+
+    }
+
+    @Disabled("Memory app does not support RabbitMQ consumer")
+    @Test
+    public void domainShouldBeUnactivatedWhenDomainSubscriptionSetUpRateLimitingWithMissingMailDnsConfigurationValidated() {
+
+    }
+
+    @Disabled("Memory app does not support RabbitMQ consumer")
+    @Test
+    public void domainShouldBeUnactivatedWhenDomainSubscriptionSetUpRateLimiting() {
+
+    }
+
+    @Disabled("Memory app does not support RabbitMQ consumer")
+    @Test
+    public void domainShouldBeActivatedWhenRateLimitingSetAndDnsSetSeparately() {
+
+    }
+
+    @Disabled("Memory app does not support RabbitMQ consumer")
+    @Test
+    public void domainShouldBeUnactivatedWhenDnsNotSetAndRateLimitingSetUpSeparately() {
 
     }
 }
