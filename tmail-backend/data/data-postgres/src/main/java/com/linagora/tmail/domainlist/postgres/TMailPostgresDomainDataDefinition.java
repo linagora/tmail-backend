@@ -39,12 +39,15 @@ import org.apache.james.domainlist.postgres.PostgresDomainDataDefinition;
 import org.jooq.Field;
 import org.jooq.Record;
 import org.jooq.Table;
+import org.jooq.impl.DSL;
+import org.jooq.impl.SQLDataType;
 
 public interface TMailPostgresDomainDataDefinition {
     interface PostgresDomainTable {
         Table<Record> TABLE_NAME = PostgresDomainDataDefinition.PostgresDomainTable.TABLE_NAME;
 
         Field<String> DOMAIN = PostgresDomainDataDefinition.PostgresDomainTable.DOMAIN;
+        Field<Boolean> ACTIVATED = DSL.field("activated", SQLDataType.BOOLEAN);
 
         PostgresTable TABLE = PostgresTable.name(TABLE_NAME.getName())
             .createTableStep(((dsl, tableName) -> dsl.createTableIfNotExists(tableName)
@@ -55,6 +58,7 @@ public interface TMailPostgresDomainDataDefinition {
                 .column(MAILS_RECEIVED_PER_MINUTE)
                 .column(MAILS_RECEIVED_PER_HOURS)
                 .column(MAILS_RECEIVED_PER_DAYS)
+                .column(ACTIVATED)
                 .primaryKey(DOMAIN)))
             .disableRowLevelSecurity()
             .build();
