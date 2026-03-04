@@ -18,7 +18,7 @@ Date: 04/03/2026
 
 Issue: https://github.com/linagora/tmail-backend/issues/2214
 
-Concerned product: Distributed TMail
+Concerned product: Distributed TMail, Postgres TMail
 
 Add the optional `activated` field to the `domains` table to allow setting up rate limits on a domain before it's being activated.
 
@@ -30,6 +30,17 @@ To add this column, run the following CQL command:
 
 ```cql
 ALTER TABLE domains ADD activated boolean;
+```
+
+Note that existing domains prior to this addition without the activated field setup will be considered as unactivated.
+You need then to set manually existing domains to activated = true.
+
+#### Postgres
+
+To add this column, run the following CQL command:
+
+```cql
+ALTER TABLE domains ADD COLUMN activated BOOLEAN;
 ```
 
 Note that existing domains prior to this addition without the activated field setup will be considered as unactivated.
