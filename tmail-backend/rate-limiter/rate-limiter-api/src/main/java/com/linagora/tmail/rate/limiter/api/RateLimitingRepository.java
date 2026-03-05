@@ -29,10 +29,6 @@ public interface RateLimitingRepository {
 
     Publisher<Void> setRateLimiting(Domain domain, RateLimitingDefinition rateLimiting);
 
-    default Publisher<Void> setRateLimiting(Domain domain, boolean activated, RateLimitingDefinition rateLimiting) {
-        return setRateLimiting(domain, rateLimiting);
-    }
-
     Publisher<RateLimitingDefinition> getRateLimiting(Username username);
 
     Publisher<RateLimitingDefinition> getRateLimiting(Domain domain);

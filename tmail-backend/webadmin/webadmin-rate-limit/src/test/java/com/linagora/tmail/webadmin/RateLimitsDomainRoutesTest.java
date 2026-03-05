@@ -161,15 +161,22 @@ public class RateLimitsDomainRoutesTest {
         }
 
         @Test
-        void shouldSucceedWhenDomainNotActivated() {
-            given()
+        void shouldReturnNotFoundWhenDomainNotFound() {
+            Map<String, Object> errors = given()
                 .body(LIMITED_PAYLOAD)
                 .put(String.format(PUT_RATE_LIMITS_TO_DOMAIN_PATH, NOT_EXISTING_DOMAIN.asString()))
             .then()
-                .statusCode(NO_CONTENT_204);
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
 
-            assertThat(Mono.from(rateLimitingRepository.getRateLimiting(NOT_EXISTING_DOMAIN)).block())
-                .isEqualTo(LIMITED_RATE_LIMITS);
+            Assertions.assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "Domain " + NOT_EXISTING_DOMAIN.asString() + " does not exist");
         }
 
         @Test

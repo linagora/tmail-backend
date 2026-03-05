@@ -76,43 +76,7 @@ public class CassandraRateLimitingRepositoryTest implements RateLimitingReposito
     }
 
     @Test
-    void setRateLimitingWithActivatedTrueShouldSucceed(CassandraCluster cassandraCluster) {
-        CqlSession testingSession = cassandraCluster.getConf();
-        boolean activated = true;
-
-        Mono.from(testee().setRateLimiting(DOMAIN_1, activated, RATE_LIMITING_1)).block();
-
-        SoftAssertions.assertSoftly(softly -> {
-            softly.assertThat(Mono.from(testee().getRateLimiting(DOMAIN_1)).block())
-                .isEqualTo(RATE_LIMITING_1);
-            softly.assertThat(testingSession.execute(String.format("SELECT * FROM domains WHERE domain = '%s'",  DOMAIN_1.asString()))
-                    .iterator()
-                    .next()
-                    .get("activated", Boolean.class))
-                .isEqualTo(true);
-        });
-    }
-
-    @Test
-    void setRateLimitingWithActivatedFalseShouldSucceed(CassandraCluster cassandraCluster) {
-        CqlSession testingSession = cassandraCluster.getConf();
-        boolean activated = false;
-
-        Mono.from(testee().setRateLimiting(DOMAIN_1, activated, RATE_LIMITING_1)).block();
-
-        SoftAssertions.assertSoftly(softly -> {
-            softly.assertThat(Mono.from(testee().getRateLimiting(DOMAIN_1)).block())
-                .isEqualTo(RATE_LIMITING_1);
-            softly.assertThat(testingSession.execute(String.format("SELECT * FROM domains WHERE domain = '%s'",  DOMAIN_1.asString()))
-                    .iterator()
-                    .next()
-                    .get("activated", Boolean.class))
-                .isEqualTo(false);
-        });
-    }
-
-    @Test
-    void setRateLimitingWithoutActivatedShouldSucceed(CassandraCluster cassandraCluster) {
+    void setRateLimitingShouldSucceedAndNotSetActivatedField(CassandraCluster cassandraCluster) {
         CqlSession testingSession = cassandraCluster.getConf();
 
         Mono.from(testee().setRateLimiting(DOMAIN_1, RATE_LIMITING_1)).block();
