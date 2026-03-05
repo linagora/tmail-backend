@@ -916,6 +916,47 @@ Valid status includes:
 - `FAILED`: Error encountered while executing this step. Check the logs.
 - `ABORTED`: Won't be executed because of previous step failures.
 
+== Messages
+
+=== Locate a message
+
+Allows an administrator to determine in which mailboxes a given message currently resides.
+This is useful for auditing purposes, for example to prove what happened to a message or where it ended up.
+
+....
+curl -XGET http://ip:port/messages/{messageId}
+....
+
+Where `messageId` is the low-level identifier of the message (format depends on the backend, e.g. a plain integer for the memory backend, a UUID for Cassandra).
+
+Response body:
+
+....
+{
+  "mailboxes": [
+    {
+      "mailboxId": "15b47950-5799-11ef-91ef-0242ac120002",
+      "mailboxPath": "#private:bob@domain.tld:INBOX"
+    },
+    {
+      "mailboxId": "23c58061-5799-11ef-91ef-0242ac120002",
+      "mailboxPath": "#private:bob@domain.tld:Sent"
+    }
+  ]
+}
+....
+
+Each entry in `mailboxes` contains:
+
+- `mailboxId`: the internal identifier of the mailbox (format depends on the backend)
+- `mailboxPath`: the full mailbox path in the form `namespace:owner:name`
+
+Return codes:
+
+- `200` The message was found. The response lists all mailboxes it belongs to.
+- `400` The provided `messageId` is syntactically invalid.
+- `404` No mailbox contains a message with that identifier.
+
 == Mailboxes
 
 === Clean Trash
