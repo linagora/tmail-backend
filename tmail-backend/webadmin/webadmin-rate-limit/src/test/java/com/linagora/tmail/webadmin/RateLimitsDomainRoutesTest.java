@@ -161,21 +161,15 @@ public class RateLimitsDomainRoutesTest {
         }
 
         @Test
-        void shouldReturnNotFoundWhenDomainNotFound() {
-            Map<String, Object> errors = given()
+        void shouldSucceedWhenDomainNotActivated() {
+            given()
+                .body(LIMITED_PAYLOAD)
                 .put(String.format(PUT_RATE_LIMITS_TO_DOMAIN_PATH, NOT_EXISTING_DOMAIN.asString()))
             .then()
-                .statusCode(NOT_FOUND_404)
-                .contentType(JSON)
-                .extract()
-                .body()
-                .jsonPath()
-                .getMap(".");
+                .statusCode(NO_CONTENT_204);
 
-            Assertions.assertThat(errors)
-                .containsEntry("statusCode", NOT_FOUND_404)
-                .containsEntry("type", "notFound")
-                .containsEntry("message", "Domain " + NOT_EXISTING_DOMAIN.asString() + " does not exist");
+            assertThat(Mono.from(rateLimitingRepository.getRateLimiting(NOT_EXISTING_DOMAIN)).block())
+                .isEqualTo(LIMITED_RATE_LIMITS);
         }
 
         @Test
@@ -392,7 +386,7 @@ public class RateLimitsDomainRoutesTest {
         @MethodSource("com.linagora.tmail.webadmin.RateLimitsDomainRoutesTest#domainInvalidSource")
         void shouldReturnErrorWhenInvalidDomain(String domain) {
             Map<String, Object> errors = given()
-                .put(String.format(GET_RATE_LIMITS_OF_DOMAIN_PATH, domain))
+                .get(String.format(GET_RATE_LIMITS_OF_DOMAIN_PATH, domain))
             .then()
                 .statusCode(BAD_REQUEST_400)
                 .contentType(JSON)
@@ -410,7 +404,7 @@ public class RateLimitsDomainRoutesTest {
         @Test
         void shouldReturnNotFoundWhenDomainNotFound() {
             Map<String, Object> errors = given()
-                .put(String.format(GET_RATE_LIMITS_OF_DOMAIN_PATH, NOT_EXISTING_DOMAIN.asString()))
+                .get(String.format(GET_RATE_LIMITS_OF_DOMAIN_PATH, NOT_EXISTING_DOMAIN.asString()))
             .then()
                 .statusCode(NOT_FOUND_404)
                 .contentType(JSON)

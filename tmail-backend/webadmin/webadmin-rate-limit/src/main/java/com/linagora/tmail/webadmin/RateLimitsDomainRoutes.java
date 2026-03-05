@@ -80,10 +80,10 @@ public class RateLimitsDomainRoutes implements Routes {
     private Route applyRateLimitsToDomain() {
         return (request, response) -> {
             Domain domain = extractDomain(request);
-            domainPreconditions(domain);
             try {
                 RateLimitsDTO rateLimitsDTO = jsonExtractor.parse(request.body());
-                Mono.from(rateLimitingRepository.setRateLimiting(domain, rateLimitsDTO.toRateLimitingDefinition())).block();
+                boolean activated = domainList.containsDomain(domain);
+                Mono.from(rateLimitingRepository.setRateLimiting(domain, activated, rateLimitsDTO.toRateLimitingDefinition())).block();
                 return halt(HttpStatus.NO_CONTENT_204);
             } catch (JsonExtractException e) {
                 LOGGER.info("Error while deserializing applyRateLimitsToDomain request", e);
