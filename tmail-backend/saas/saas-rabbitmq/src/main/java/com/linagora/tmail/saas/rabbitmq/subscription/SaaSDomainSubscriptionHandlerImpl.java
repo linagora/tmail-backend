@@ -145,7 +145,6 @@ public class SaaSDomainSubscriptionHandlerImpl implements SaaSMessageHandler {
     }
 
     private Mono<Void> updateRateLimiting(Domain domain, RateLimitingDefinition rateLimiting) {
-        return Mono.from(domainList.containsDomainReactive(domain))
-            .flatMap(activated -> Mono.from(rateLimitingRepository.setRateLimiting(domain, activated, rateLimiting)));
+        return Mono.from(rateLimitingRepository.setRateLimiting(domain, rateLimiting));
     }
 }

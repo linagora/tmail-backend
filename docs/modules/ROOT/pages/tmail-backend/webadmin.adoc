@@ -649,14 +649,13 @@ curl -XPUT http://ip:port/domains/{domain}/ratelimits
 }'
 ....
 
-Notes:
-- null values are allowed (means no limit set)
-- can add rate limits to a domain before its activation
+Note: null values are allowed (means no limit set)
 
 Return codes:
 
 - `204` The domain rate limits updated successfully
 - `400` Invalid request
+- `404` Domain does not exist
 
 === Get rate limits of a domain
 ....
@@ -682,7 +681,7 @@ Return codes:
 
 - `200` get the rate limits of the domain successfully
 - `400` Invalid request
-- `404` Domain does not exist or is not activated
+- `404` Domain does not exist
 
 == Domain contacts
 
