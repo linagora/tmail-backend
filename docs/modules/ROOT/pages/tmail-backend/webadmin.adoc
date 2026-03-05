@@ -916,9 +916,37 @@ Valid status includes:
 - `FAILED`: Error encountered while executing this step. Check the logs.
 - `ABORTED`: Won't be executed because of previous step failures.
 
-== Messages
+== Mailbox and message location
+
+=== Look up a mailbox by ID
+
+Allows an administrator to retrieve the path of a mailbox from its internal identifier.
+
+....
+curl -XGET http://ip:port/mailboxes/{mailboxId}
+....
+
+Response body:
+
+....
+{
+  "mailboxId": "15b47950-5799-11ef-91ef-0242ac120002",
+  "mailboxPath": "#private:bob@domain.tld:INBOX"
+}
+....
+
+- `mailboxId`: the internal identifier of the mailbox
+- `mailboxPath`: the full mailbox path in the form `namespace:owner:name`
+
+Return codes:
+
+- `200` The mailbox was found.
+- `400` The provided `mailboxId` is syntactically invalid.
+- `404` No mailbox exists with that identifier.
 
 === Locate a message
+
+=== Locate a message by ID
 
 Allows an administrator to determine in which mailboxes a given message currently resides.
 This is useful for auditing purposes, for example to prove what happened to a message or where it ended up.
