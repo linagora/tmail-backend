@@ -134,7 +134,6 @@ public class TmailCassandraDomainList extends AbstractDomainList {
     }
 
     private boolean isDomainActivated(Row row) {
-        return row.isNull(ACTIVATED)
-            || Boolean.TRUE.equals(row.get(ACTIVATED, TypeCodecs.BOOLEAN));
+        return Boolean.TRUE.equals(row.get(ACTIVATED, TypeCodecs.BOOLEAN));
     }
 }

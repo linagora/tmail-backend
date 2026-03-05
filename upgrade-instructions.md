@@ -22,8 +22,6 @@ Concerned product: Distributed TMail
 
 Add the optional `activated` field to the `domains` table to allow setting up rate limits on a domain before it's being activated.
 
-Note that existing domains prior to this addition without the activated field setup will be considered as activated for retro-compatibility.
-
 **IMPORTANT: These commands must be executed BEFORE deploying the new version.**
 
 #### Cassandra
@@ -33,6 +31,9 @@ To add this column, run the following CQL command:
 ```cql
 ALTER TABLE domains ADD activated boolean;
 ```
+
+Note that existing domains prior to this addition without the activated field setup will be considered as unactivated.
+You need then to set manually existing domains to activated = true.
 
 ### LLM Mail Classifier Listener renamed
 Date: 04/02/2026

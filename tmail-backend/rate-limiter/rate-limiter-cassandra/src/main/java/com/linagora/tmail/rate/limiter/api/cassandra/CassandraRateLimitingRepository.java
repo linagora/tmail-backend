@@ -34,8 +34,6 @@ import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDat
 import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.TABLE_NAME;
 import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.USER;
 
-import java.util.Optional;
-
 import jakarta.inject.Inject;
 
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
@@ -146,10 +144,10 @@ public class CassandraRateLimitingRepository implements RateLimitingRepository {
     }
 
     @Override
-    public Publisher<Void> setRateLimiting(Domain domain, Optional<Boolean> activated, RateLimitingDefinition rateLimiting) {
+    public Publisher<Void> setRateLimiting(Domain domain, boolean activated, RateLimitingDefinition rateLimiting) {
         return Mono.from(executor.executeVoid(insertActivatedDomainRateLimitingStatement.bind()
             .set(DOMAIN, domain.asString(), TypeCodecs.TEXT)
-            .set(ACTIVATED, activated.orElse(null), TypeCodecs.BOOLEAN)
+            .set(ACTIVATED, activated, TypeCodecs.BOOLEAN)
             .set(MAILS_SENT_PER_MINUTE, rateLimiting.mailsSentPerMinute().orElse(null), TypeCodecs.BIGINT)
             .set(MAILS_SENT_PER_HOURS, rateLimiting.mailsSentPerHours().orElse(null), TypeCodecs.BIGINT)
             .set(MAILS_SENT_PER_DAYS, rateLimiting.mailsSentPerDays().orElse(null), TypeCodecs.BIGINT)

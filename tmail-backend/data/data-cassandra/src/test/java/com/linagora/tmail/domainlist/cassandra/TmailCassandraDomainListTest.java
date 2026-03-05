@@ -67,14 +67,14 @@ class TmailCassandraDomainListTest implements DomainListContract {
     }
 
     @Test
-    void emptyActivatedShouldReturnDomain(CassandraCluster cassandra) {
+    void emptyActivatedShouldNotReturnDomain(CassandraCluster cassandra) {
         CqlSession testingSession = cassandra.getConf();
 
         testingSession.execute(String.format("INSERT INTO domains (domain) VALUES ('%s')", DOMAIN_1.asString()));
 
         SoftAssertions.assertSoftly(softly -> {
-            softly.assertThat(Throwing.supplier(() -> domainList().containsDomain(DOMAIN_1)).get()).isTrue();
-            softly.assertThat(Throwing.supplier(() -> domainList().getDomains()).get()).containsOnly(DOMAIN_1, Domain.LOCALHOST /*default domain*/);
+            softly.assertThat(Throwing.supplier(() -> domainList().containsDomain(DOMAIN_1)).get()).isFalse();
+            softly.assertThat(Throwing.supplier(() -> domainList().getDomains()).get()).containsOnly(Domain.LOCALHOST /*default domain*/);
         });
     }
 
