@@ -20,8 +20,6 @@ package com.linagora.tmail.rate.limiter.api.cassandra;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.Optional;
-
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.CassandraClusterExtension;
 import org.apache.james.backends.cassandra.components.CassandraDataDefinition;
@@ -80,7 +78,7 @@ public class CassandraRateLimitingRepositoryTest implements RateLimitingReposito
     @Test
     void setRateLimitingWithActivatedTrueShouldSucceed(CassandraCluster cassandraCluster) {
         CqlSession testingSession = cassandraCluster.getConf();
-        Optional<Boolean> activated = Optional.of(true);
+        boolean activated = true;
 
         Mono.from(testee().setRateLimiting(DOMAIN_1, activated, RATE_LIMITING_1)).block();
 
@@ -98,7 +96,7 @@ public class CassandraRateLimitingRepositoryTest implements RateLimitingReposito
     @Test
     void setRateLimitingWithActivatedFalseShouldSucceed(CassandraCluster cassandraCluster) {
         CqlSession testingSession = cassandraCluster.getConf();
-        Optional<Boolean> activated = Optional.of(false);
+        boolean activated = false;
 
         Mono.from(testee().setRateLimiting(DOMAIN_1, activated, RATE_LIMITING_1)).block();
 
@@ -118,24 +116,6 @@ public class CassandraRateLimitingRepositoryTest implements RateLimitingReposito
         CqlSession testingSession = cassandraCluster.getConf();
 
         Mono.from(testee().setRateLimiting(DOMAIN_1, RATE_LIMITING_1)).block();
-
-        SoftAssertions.assertSoftly(softly -> {
-            softly.assertThat(Mono.from(testee().getRateLimiting(DOMAIN_1)).block())
-                .isEqualTo(RATE_LIMITING_1);
-            softly.assertThat(testingSession.execute(String.format("SELECT * FROM domains WHERE domain = '%s'",  DOMAIN_1.asString()))
-                    .iterator()
-                    .next()
-                    .get("activated", Boolean.class))
-                .isEqualTo(null);
-        });
-    }
-
-    @Test
-    void setRateLimitingWithActivatedEmptyShouldSucceed(CassandraCluster cassandraCluster) {
-        CqlSession testingSession = cassandraCluster.getConf();
-        Optional<Boolean> activated = Optional.empty();
-
-        Mono.from(testee().setRateLimiting(DOMAIN_1, activated, RATE_LIMITING_1)).block();
 
         SoftAssertions.assertSoftly(softly -> {
             softly.assertThat(Mono.from(testee().getRateLimiting(DOMAIN_1)).block())

@@ -473,6 +473,45 @@ trait JmapSaasContract {
   }
 
   @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
+  def domainShouldBeActivatedWhenDnsSetAndRateLimitingSetSeparately(): Unit = {
+    val server = setUpJmapServer(saasSupport = true)
+    val domain: Domain = Domain.of("twake.app")
+
+    publishAmqpSettingsMessage(
+      s"""{
+         |    "domain": "%s",
+         |    "mailDnsConfigurationValidated": true
+         |}""".format(domain.asString())
+        .stripMargin,
+      DOMAIN_SUBSCRIPTION_ROUTING_KEY)
+
+    publishAmqpSettingsMessage(
+      s"""{
+         |    "domain": "%s",
+         |    "features": {
+         |      "mail": {
+         |        "storageQuota": 10000,
+         |        "mailsSentPerMinute": 10,
+         |        "mailsSentPerHour": 100,
+         |        "mailsSentPerDay": 1000,
+         |        "mailsReceivedPerMinute": 20,
+         |        "mailsReceivedPerHour": 200,
+         |        "mailsReceivedPerDay": 2000
+         |      }
+         |    }
+         |}""".format(domain.asString())
+        .stripMargin,
+      DOMAIN_SUBSCRIPTION_ROUTING_KEY)
+
+    awaitAtMostTenSeconds.untilAsserted(() => {
+      assertThat(server.getProbe(classOf[RateLimitingProbe]).getRateLimiting(domain))
+        .isEqualTo(RATE_LIMITATION)
+      assertThat(server.getProbe(classOf[DomainProbe]).containsDomain(domain)).isTrue
+    })
+  }
+
+  @Test
   def quotaForUserShouldBeDomainByDefaultWhenDefined(): Unit = {
     val server = setUpJmapServer(saasSupport = true)
 
