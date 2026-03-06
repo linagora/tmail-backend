@@ -34,6 +34,7 @@ import static com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.P
 import static com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.PostgresUserTable.MAILS_SENT_PER_MINUTE;
 
 import org.apache.james.backends.postgres.PostgresDataDefinition;
+import org.apache.james.backends.postgres.PostgresIndex;
 import org.apache.james.backends.postgres.PostgresTable;
 import org.apache.james.domainlist.postgres.PostgresDomainDataDefinition;
 import org.jooq.Field;
@@ -62,9 +63,14 @@ public interface TMailPostgresDomainDataDefinition {
                 .primaryKey(DOMAIN)))
             .disableRowLevelSecurity()
             .build();
+
+        PostgresIndex DOMAIN_ACTIVATED_INDEX = PostgresIndex.name("index_domain_activated")
+            .createIndexStep((dslContext, indexName) -> dslContext.createIndexIfNotExists(indexName)
+                .on(TABLE_NAME, ACTIVATED));
     }
 
     PostgresDataDefinition MODULE = PostgresDataDefinition.builder()
         .addTable(PostgresDomainTable.TABLE)
+        .addIndex(PostgresDomainTable.DOMAIN_ACTIVATED_INDEX)
         .build();
 }
