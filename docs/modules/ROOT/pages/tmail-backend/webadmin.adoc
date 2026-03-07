@@ -1153,7 +1153,7 @@ This route allows administrators to search through a user's mailbox for debuggin
 
 *This route must be explicitly wired at the application level — it is not active by default.*
 
-To enable it add `com.linagora.tmail.webadmin.mailbox.UserMailsSearchRoute` in `routes` definition in `webadmin.properties`.
+To enable it add `com.linagora.tmail.webadmin.mailbox.UserMailsSearchRoute` in `extensions.routes` definition in `webadmin.properties`.
 
 === Search a user's mails
 
