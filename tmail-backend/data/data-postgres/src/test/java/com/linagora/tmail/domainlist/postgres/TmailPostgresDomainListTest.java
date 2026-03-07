@@ -30,19 +30,19 @@ import org.apache.james.backends.postgres.PostgresExtension;
 import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.domainlist.lib.DomainListConfiguration;
 import org.apache.james.domainlist.lib.DomainListContract;
-import org.apache.james.domainlist.postgres.PostgresDomainList;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-public class PostgresDomainListTest implements DomainListContract {
+public class TmailPostgresDomainListTest implements DomainListContract {
     @RegisterExtension
     static PostgresExtension postgresExtension = PostgresExtension.withoutRowLevelSecurity(TMailPostgresDomainDataDefinition.MODULE);
 
-    PostgresDomainList domainList;
+    TmailPostgresDomainList domainList;
 
     @BeforeEach
     public void setup() throws Exception {
-        domainList = new PostgresDomainList(getDNSServer("localhost"), postgresExtension.getDefaultPostgresExecutor());
+        domainList = new TmailPostgresDomainList(getDNSServer("localhost"), postgresExtension.getDefaultPostgresExecutor());
         domainList.configure(DomainListConfiguration.builder()
             .autoDetect(false)
             .autoDetectIp(false)
@@ -52,5 +52,17 @@ public class PostgresDomainListTest implements DomainListContract {
     @Override
     public DomainList domainList() {
         return domainList;
+    }
+
+    @Override
+    @Disabled("Upsert is authorized")
+    public void addShouldBeCaseSensitive() {
+
+    }
+
+    @Override
+    @Disabled("Upsert is authorized")
+    public void addDomainShouldThrowIfWeAddTwoTimesTheSameDomain() {
+
     }
 }

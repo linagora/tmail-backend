@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.james.backends.postgres.PostgresDataDefinition;
 import org.apache.james.backends.postgres.PostgresExtension;
+import org.assertj.core.api.SoftAssertions;
 import org.jooq.impl.DSL;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -97,5 +98,22 @@ public class PostgresRateLimitingRepositoryTest implements RateLimitingRepositor
             .block()
             .get("hashed_password", String.class);
         assertThat(storedHashPassword).isEqualTo("hashedPassword");
+    }
+
+    @Test
+    void setRateLimitingShouldSucceedAndNotSetActivatedField() {
+        Mono.from(testee().setRateLimiting(DOMAIN_1, RATE_LIMITING_1)).block();
+
+        SoftAssertions.assertSoftly(softly -> {
+            softly.assertThat(Mono.from(testee().getRateLimiting(DOMAIN_1)).block())
+                .isEqualTo(RATE_LIMITING_1);
+            softly.assertThat(postgresExtension.getDefaultPostgresExecutor()
+                    .executeRow(dslContext -> Mono.from(dslContext.select(DSL.field("activated"))
+                        .from(DSL.table("domains"))
+                        .where(DSL.field("domain").eq(DOMAIN_1.asString()))))
+                    .block()
+                    .get("activated", Boolean.class))
+                .isEqualTo(null);
+        });
     }
 }

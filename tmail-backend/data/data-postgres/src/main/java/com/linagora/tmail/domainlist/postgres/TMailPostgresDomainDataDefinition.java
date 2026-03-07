@@ -34,17 +34,21 @@ import static com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.P
 import static com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.PostgresUserTable.MAILS_SENT_PER_MINUTE;
 
 import org.apache.james.backends.postgres.PostgresDataDefinition;
+import org.apache.james.backends.postgres.PostgresIndex;
 import org.apache.james.backends.postgres.PostgresTable;
 import org.apache.james.domainlist.postgres.PostgresDomainDataDefinition;
 import org.jooq.Field;
 import org.jooq.Record;
 import org.jooq.Table;
+import org.jooq.impl.DSL;
+import org.jooq.impl.SQLDataType;
 
 public interface TMailPostgresDomainDataDefinition {
     interface PostgresDomainTable {
         Table<Record> TABLE_NAME = PostgresDomainDataDefinition.PostgresDomainTable.TABLE_NAME;
 
         Field<String> DOMAIN = PostgresDomainDataDefinition.PostgresDomainTable.DOMAIN;
+        Field<Boolean> ACTIVATED = DSL.field("activated", SQLDataType.BOOLEAN);
 
         PostgresTable TABLE = PostgresTable.name(TABLE_NAME.getName())
             .createTableStep(((dsl, tableName) -> dsl.createTableIfNotExists(tableName)
@@ -55,12 +59,18 @@ public interface TMailPostgresDomainDataDefinition {
                 .column(MAILS_RECEIVED_PER_MINUTE)
                 .column(MAILS_RECEIVED_PER_HOURS)
                 .column(MAILS_RECEIVED_PER_DAYS)
+                .column(ACTIVATED)
                 .primaryKey(DOMAIN)))
             .disableRowLevelSecurity()
             .build();
+
+        PostgresIndex DOMAIN_ACTIVATED_INDEX = PostgresIndex.name("index_domain_activated")
+            .createIndexStep((dslContext, indexName) -> dslContext.createIndexIfNotExists(indexName)
+                .on(TABLE_NAME, ACTIVATED));
     }
 
     PostgresDataDefinition MODULE = PostgresDataDefinition.builder()
         .addTable(PostgresDomainTable.TABLE)
+        .addIndex(PostgresDomainTable.DOMAIN_ACTIVATED_INDEX)
         .build();
 }
