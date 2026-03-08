@@ -1145,6 +1145,7 @@ Response example:
 Return codes:
 
 - `200` Successfully returned the aggregated data
+- `400` Missing the `hasSpecificQuota` query parameter
 
 == User Mails Search
 
