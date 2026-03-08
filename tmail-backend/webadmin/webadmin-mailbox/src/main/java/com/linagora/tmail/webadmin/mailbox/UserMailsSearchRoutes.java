@@ -412,11 +412,21 @@ public class UserMailsSearchRoutes implements Routes {
 
     private Map<String, Boolean> extractKeywords(Flags flags) {
         Map<String, Boolean> keywords = new HashMap<>();
-        if (flags.contains(Flags.Flag.SEEN)) keywords.put("$seen", true);
-        if (flags.contains(Flags.Flag.ANSWERED)) keywords.put("$answered", true);
-        if (flags.contains(Flags.Flag.FLAGGED)) keywords.put("$flagged", true);
-        if (flags.contains(Flags.Flag.DRAFT)) keywords.put("$draft", true);
-        for (String userFlag : flags.getUserFlags()) keywords.put(userFlag, true);
+        if (flags.contains(Flags.Flag.SEEN)) {
+            keywords.put("$seen", true);
+        }
+        if (flags.contains(Flags.Flag.ANSWERED)) {
+            keywords.put("$answered", true);
+        }
+        if (flags.contains(Flags.Flag.FLAGGED)) {
+            keywords.put("$flagged", true);
+        }
+        if (flags.contains(Flags.Flag.DRAFT)) {
+            keywords.put("$draft", true);
+        }
+        for (String userFlag : flags.getUserFlags()) {
+            keywords.put(userFlag, true);
+        }
         return keywords;
     }
 
@@ -438,9 +448,15 @@ public class UserMailsSearchRoutes implements Routes {
 
     private List<EmailAddressDTO> extractAddresses(Message mime4jMessage, String fieldName) {
         org.apache.james.mime4j.stream.Field field = mime4jMessage.getHeader().getField(fieldName);
-        if (field == null) return List.of();
-        if (field instanceof AddressListField f) return toEmailAddresses(f.getAddressList());
-        if (field instanceof MailboxListField f) return toEmailAddresses(f.getMailboxList());
+        if (field == null) {
+            return List.of();
+        }
+        if (field instanceof AddressListField f) {
+            return toEmailAddresses(f.getAddressList());
+        }
+        if (field instanceof MailboxListField f) {
+            return toEmailAddresses(f.getMailboxList());
+        }
         if (field instanceof MailboxField f) {
             return Optional.ofNullable(f.getMailbox())
                 .map(m -> List.of(new EmailAddressDTO(m.getName(), m.getAddress())))
@@ -450,7 +466,9 @@ public class UserMailsSearchRoutes implements Routes {
     }
 
     private List<EmailAddressDTO> toEmailAddresses(AddressList addressList) {
-        if (addressList == null) return List.of();
+        if (addressList == null) {
+            return List.of();
+        }
         List<EmailAddressDTO> result = new ArrayList<>();
         for (Address address : addressList) {
             if (address instanceof Mailbox m) {
@@ -463,7 +481,9 @@ public class UserMailsSearchRoutes implements Routes {
     }
 
     private List<EmailAddressDTO> toEmailAddresses(MailboxList mailboxList) {
-        if (mailboxList == null) return List.of();
+        if (mailboxList == null) {
+            return List.of();
+        }
         return mailboxList.stream()
             .map(m -> new EmailAddressDTO(m.getName(), m.getAddress()))
             .collect(Collectors.toList());
@@ -484,10 +504,14 @@ public class UserMailsSearchRoutes implements Routes {
     }
 
     private int parseLimit(String limitParam) {
-        if (limitParam == null || limitParam.isBlank()) return DEFAULT_LIMIT;
+        if (limitParam == null || limitParam.isBlank()) {
+            return DEFAULT_LIMIT;
+        }
         try {
             int limit = Integer.parseInt(limitParam);
-            if (limit <= 0 || limit > MAX_LIMIT) throw invalidArgument("limit must be between 1 and " + MAX_LIMIT);
+            if (limit <= 0 || limit > MAX_LIMIT) {
+                throw invalidArgument("limit must be between 1 and " + MAX_LIMIT);
+            }
             return limit;
         } catch (NumberFormatException e) {
             throw invalidArgument("Invalid limit parameter: " + limitParam);
@@ -495,10 +519,14 @@ public class UserMailsSearchRoutes implements Routes {
     }
 
     private int parseOffset(String offsetParam) {
-        if (offsetParam == null || offsetParam.isBlank()) return 0;
+        if (offsetParam == null || offsetParam.isBlank()) {
+            return 0;
+        }
         try {
             int offset = Integer.parseInt(offsetParam);
-            if (offset < 0) throw invalidArgument("offset must be non-negative");
+            if (offset < 0) {
+                throw invalidArgument("offset must be non-negative");
+            }
             return offset;
         } catch (NumberFormatException e) {
             throw invalidArgument("Invalid offset parameter: " + offsetParam);
