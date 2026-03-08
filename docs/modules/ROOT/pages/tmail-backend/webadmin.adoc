@@ -1282,4 +1282,4 @@ Return codes:
 
 - `200` Successfully returned the list of matching mails
 - `400` Missing or blank `reason`, invalid `limit`/`offset`, unknown sort property, or malformed JSON body
-- `400` Missing the `hasSpecificQuota` query parameter
+
