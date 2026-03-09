@@ -22,9 +22,6 @@ import org.apache.james.core.Username;
 import org.apache.james.mailbox.model.QuotaRoot;
 import org.apache.james.mailbox.quota.MaxQuotaManager;
 import org.apache.james.mailbox.quota.UserQuotaRootResolver;
-import org.apache.james.user.api.UsersRepository;
-import org.apache.james.user.api.model.User;
-import org.apache.james.util.ReactorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,18 +35,15 @@ public class SaaSSubscriptionHandlerImpl implements SaaSMessageHandler {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SaaSSubscriptionHandlerImpl.class);
 
-    private final UsersRepository usersRepository;
     private final SaaSAccountRepository saasAccountRepository;
     private final MaxQuotaManager maxQuotaManager;
     private final UserQuotaRootResolver userQuotaRootResolver;
     private final RateLimitingRepository rateLimitingRepository;
 
-    public SaaSSubscriptionHandlerImpl(UsersRepository usersRepository,
-                                       SaaSAccountRepository saasAccountRepository,
+    public SaaSSubscriptionHandlerImpl(SaaSAccountRepository saasAccountRepository,
                                        MaxQuotaManager maxQuotaManager,
                                        UserQuotaRootResolver userQuotaRootResolver,
                                        RateLimitingRepository rateLimitingRepository) {
-        this.usersRepository = usersRepository;
         this.saasAccountRepository = saasAccountRepository;
         this.maxQuotaManager = maxQuotaManager;
         this.userQuotaRootResolver = userQuotaRootResolver;
@@ -64,14 +58,12 @@ public class SaaSSubscriptionHandlerImpl implements SaaSMessageHandler {
 
     public Mono<Void> handleMessage(SaaSSubscriptionMessage subscriptionMessage) {
         SaaSAccount saaSAccount = new SaaSAccount(subscriptionMessage.canUpgrade(), subscriptionMessage.isPaying());
-        return Mono.fromCallable(() -> usersRepository.getUserByName(Username.of(subscriptionMessage.internalEmail())))
-            .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
-            .map(User::getUserName)
-            .flatMap(username -> Mono.from(saasAccountRepository.upsertSaasAccount(username, saaSAccount))
-                .then(updateStorageQuota(username, subscriptionMessage.features()))
-                .then(updateRateLimiting(username, subscriptionMessage.features()))
-                .doOnSuccess(success -> LOGGER.info("Updated SaaS subscription for user: {}, isPaying: {}, canUpgrade: {}, mail features: {}",
-                    username, subscriptionMessage.isPaying(), subscriptionMessage.canUpgrade(), subscriptionMessage.features().mail())));
+        Username username = Username.of(subscriptionMessage.internalEmail());
+        return Mono.from(saasAccountRepository.upsertSaasAccount(username, saaSAccount))
+            .then(updateStorageQuota(username, subscriptionMessage.features()))
+            .then(updateRateLimiting(username, subscriptionMessage.features()))
+            .doOnSuccess(success -> LOGGER.info("Updated SaaS subscription for user: {}, isPaying: {}, canUpgrade: {}, mail features: {}",
+                username, subscriptionMessage.isPaying(), subscriptionMessage.canUpgrade(), subscriptionMessage.features().mail()));
     }
 
     private Mono<Void> updateStorageQuota(Username username, SaasFeatures saasFeatures) {

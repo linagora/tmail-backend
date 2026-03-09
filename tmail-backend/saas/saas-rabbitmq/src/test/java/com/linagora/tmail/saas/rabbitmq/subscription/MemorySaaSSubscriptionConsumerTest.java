@@ -29,12 +29,7 @@ import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
 import org.apache.james.mailbox.inmemory.quota.InMemoryPerUserMaxQuotaManager;
 import org.apache.james.mailbox.quota.MaxQuotaManager;
 import org.apache.james.mailbox.quota.UserQuotaRootResolver;
-import org.apache.james.user.api.UsersRepository;
-import org.apache.james.user.api.UsersRepositoryException;
-import org.apache.james.user.lib.UsersRepositoryContract;
-import org.apache.james.user.memory.MemoryUsersRepository;
 import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
 import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingRepository;
@@ -43,9 +38,6 @@ import com.linagora.tmail.saas.api.memory.MemorySaaSAccountRepository;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
 
 class MemorySaaSSubscriptionConsumerTest implements SaaSSubscriptionConsumerContract {
-    @RegisterExtension
-    UsersRepositoryContract.UserRepositoryExtension userRepositoryExtension = UsersRepositoryContract.UserRepositoryExtension.withVirtualHost();
-
     private SaaSSubscriptionConsumer testee;
     private SaaSAccountRepository saasAccountRepository;
     private MaxQuotaManager maxQuotaManager;
@@ -53,7 +45,7 @@ class MemorySaaSSubscriptionConsumerTest implements SaaSSubscriptionConsumerCont
     private RateLimitingRepository rateLimitingRepository;
 
     @BeforeEach
-    void setUp(UsersRepositoryContract.TestSystem testSystem) throws URISyntaxException, UsersRepositoryException {
+    void setUp() throws URISyntaxException {
         RabbitMQConfiguration rabbitMQConfiguration = RabbitMQConfiguration.builder()
             .amqpUri(rabbitMQExtension.getRabbitMQ().amqpUri())
             .managementUri(rabbitMQExtension.getRabbitMQ().managementUri())
@@ -65,14 +57,10 @@ class MemorySaaSSubscriptionConsumerTest implements SaaSSubscriptionConsumerCont
             Optional.empty(),
             false);
         saasAccountRepository = new MemorySaaSAccountRepository();
-        UsersRepository usersRepository = MemoryUsersRepository.withVirtualHosting(testSystem.getDomainList());
         maxQuotaManager = new InMemoryPerUserMaxQuotaManager();
 
         InMemoryIntegrationResources resources = defaultResources();
         userQuotaRootResolver = resources.getDefaultUserQuotaRootResolver();
-
-        usersRepository.addUser(ALICE, "password");
-        usersRepository.addUser(BOB, "password");
 
         rateLimitingRepository = new MemoryRateLimitingRepository();
 
@@ -81,8 +69,7 @@ class MemorySaaSSubscriptionConsumerTest implements SaaSSubscriptionConsumerCont
             rabbitMQConfiguration,
             twpCommonRabbitMQConfiguration,
             SaaSSubscriptionRabbitMQConfiguration.DEFAULT,
-            new SaaSSubscriptionHandlerImpl(usersRepository,
-                saasAccountRepository,
+            new SaaSSubscriptionHandlerImpl(saasAccountRepository,
                 maxQuotaManager,
                 userQuotaRootResolver,
                 rateLimitingRepository));

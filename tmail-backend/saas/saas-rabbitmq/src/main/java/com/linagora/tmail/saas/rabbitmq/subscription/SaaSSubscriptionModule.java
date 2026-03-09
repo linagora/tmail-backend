@@ -32,7 +32,6 @@ import org.apache.james.core.healthcheck.HealthCheck;
 import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.mailbox.quota.MaxQuotaManager;
 import org.apache.james.mailbox.quota.UserQuotaRootResolver;
-import org.apache.james.user.api.UsersRepository;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
 import org.apache.james.utils.PropertiesProvider;
@@ -61,15 +60,13 @@ public class SaaSSubscriptionModule extends AbstractModule {
                                                              @Named(TWP_INJECTION_KEY) RabbitMQConfiguration rabbitMQConfiguration,
                                                              TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration,
                                                              SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration,
-                                                             UsersRepository usersRepository,
                                                              SaaSAccountRepository saasAccountRepository,
                                                              MaxQuotaManager maxQuotaManager,
                                                              UserQuotaRootResolver userQuotaRootResolver,
                                                              RateLimitingRepository rateLimitingRepository) {
         return new SaaSSubscriptionConsumer(channelPool, rabbitMQConfiguration, twpCommonRabbitMQConfiguration,
             saasSubscriptionRabbitMQConfiguration,
-            new SaaSSubscriptionHandlerImpl(usersRepository,
-                saasAccountRepository,
+            new SaaSSubscriptionHandlerImpl(saasAccountRepository,
                 maxQuotaManager,
                 userQuotaRootResolver,
                 rateLimitingRepository));
