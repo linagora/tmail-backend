@@ -126,6 +126,36 @@ public interface SaaSSubscriptionConsumerContract {
     }
 
     @Test
+    default void shouldHonorCanUpgradeFalseEvenWhenUserDoesNotExistInJamesYet() {
+        String validMessage = String.format("""
+            {
+                "internalEmail": "%s",
+                "isPaying": false,
+                "canUpgrade": false,
+                "features": {
+                    "mail": {
+                        "storageQuota": 123,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
+            }
+            """, ALICE.asString());
+
+        publishAmqpSaaSSubscriptionMessage(validMessage);
+
+        await.untilAsserted(() -> {
+            SaaSAccount saaSAccount = Mono.from(saasAccountRepository().getSaaSAccount(ALICE)).block();
+            assertThat(saaSAccount).isNotNull();
+            assertThat(saaSAccount.canUpgrade()).isFalse();
+        });
+    }
+
+    @Test
     default void shouldSetStorageQuotaWhenUserHasNoPlanYet() {
         String validMessage = String.format("""
             {
