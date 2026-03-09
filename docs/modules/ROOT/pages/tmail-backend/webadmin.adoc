@@ -1146,3 +1146,141 @@ Return codes:
 
 - `200` Successfully returned the aggregated data
 - `400` Missing the `hasSpecificQuota` query parameter
+
+== User Mails Search
+
+This route allows administrators to search through a user's mailbox for debugging purposes
+(e.g. investigating missing mail reports).
+
+*This route must be explicitly wired at the application level — it is not active by default.*
+
+To enable it add `com.linagora.tmail.webadmin.mailbox.UserMailsSearchRoute` in `extensions.routes` definition in `webadmin.properties`.
+
+=== Search a user's mails
+
+....
+curl -XPOST http://ip:port/users/{username}/mails?limit={limit}&offset={offset} \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "reason": "Support ticket #4242 - user reports missing emails",
+    "filter": {
+      "text": "invoice",
+      "from": "billing@vendor.com",
+      "to": "user@domain.com",
+      "subject": "Invoice",
+      "hasAttachment": true,
+      "hasKeywords": ["$seen"],
+      "inMailboxes": ["mailboxId1"],
+      "inMailboxOtherThan": ["mailboxId2"],
+      "before": "2024-01-31T23:59:59Z",
+      "after": "2024-01-01T00:00:00Z"
+    },
+    "sort": [
+      { "property": "receivedAt", "isAscending": false }
+    ]
+  }'
+....
+
+All fields except `reason` are optional. `filter` and `sort` may be omitted entirely.
+
+Query parameters:
+
+- `limit` (optional, default: 50, max: 500): maximum number of results to return
+- `offset` (optional, default: 0): number of results to skip
+
+Request body fields:
+
+|===
+| Field | Type | Required | Description
+
+| `reason`
+| String
+| *Yes*
+| Justification for the search, recorded in the audit log.
+
+| `filter.text`
+| String
+| No
+| Full-text search across From, To, Cc, Bcc, subject, body, and attachments.
+
+| `filter.from`
+| String
+| No
+| Filter by sender address.
+
+| `filter.to`
+| String
+| No
+| Filter by recipient address.
+
+| `filter.subject`
+| String
+| No
+| Filter by subject.
+
+| `filter.hasAttachment`
+| Boolean
+| No
+| Filter by attachment presence.
+
+| `filter.hasKeywords`
+| String[]
+| No
+| Filter by flags/keywords (e.g. `$seen`, `$answered`, `$flagged`, `$draft`).
+
+| `filter.inMailboxes`
+| String[]
+| No
+| Restrict search to these mailbox IDs.
+
+| `filter.inMailboxOtherThan`
+| String[]
+| No
+| Exclude these mailbox IDs from the search.
+
+| `filter.before`
+| String (ISO-8601)
+| No
+| Return messages received on or before this date.
+
+| `filter.after`
+| String (ISO-8601)
+| No
+| Return messages received after this date.
+
+| `sort[].property`
+| String
+| No
+| Sort field: `receivedAt`, `from`, or `subject`.
+
+| `sort[].isAscending`
+| Boolean
+| No
+| Sort direction. Defaults to descending (`false`).
+|===
+
+Deleted messages are always excluded from results.
+
+Response example:
+
+....
+[
+  {
+    "id": "1",
+    "keywords": { "$seen": true },
+    "mailboxIds": { "mailboxId1": true },
+    "receivedAt": "2024-01-15T10:30:00+00:00",
+    "from": [{ "name": "Alice", "email": "alice@example.com" }],
+    "to": [{ "name": "Bob", "email": "bob@example.com" }],
+    "hasAttachment": false,
+    "preview": "Hello, please find attached...",
+    "subject": "Invoice #42"
+  }, ...
+]
+....
+
+Return codes:
+
+- `200` Successfully returned the list of matching mails
+- `400` Missing or blank `reason`, invalid `limit`/`offset`, unknown sort property, or malformed JSON body
+
