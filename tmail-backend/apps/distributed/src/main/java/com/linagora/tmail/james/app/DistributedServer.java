@@ -206,6 +206,7 @@ import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.listener.CollectTrustedContactsListenerModule;
 import com.linagora.tmail.mailbox.opensearch.TmailOpenSearchMailboxMappingModule;
 import com.linagora.tmail.mailbox.quota.cassandra.CassandraUserQuotaReporterModule;
+import com.linagora.tmail.modules.data.CassandraKeywordEmailQueryViewModule;
 import com.linagora.tmail.modules.data.TMailCassandraDelegationStoreModule;
 import com.linagora.tmail.modules.data.TMailCassandraDeletedMessageVaultModule;
 import com.linagora.tmail.modules.data.TMailCassandraDomainListModule;
@@ -285,6 +286,7 @@ public class DistributedServer {
         new CalendarEventMethodModule(),
         new ContactAutocompleteMethodModule(),
         new CassandraJmapModule(),
+        new CassandraKeywordEmailQueryViewModule(),
         new CustomMethodModule(),
         new EmailSendMethodModule(),
         new FilterGetMethodModule(),
