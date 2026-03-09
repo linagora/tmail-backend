@@ -28,6 +28,8 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import jakarta.mail.Flags;
+
 import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.apache.james.core.Username;
 import org.apache.james.events.Event;
@@ -102,6 +104,7 @@ public class RagDeletionListenerTest {
             TestMessageId.of(1),
             123L,
             Instant.now(),
+            new Flags(),
             false,
             Optional.of("headerBlobId"),
             Optional.empty(),
@@ -128,6 +131,7 @@ public class RagDeletionListenerTest {
             TestMessageId.of(1),
             123L,
             Instant.now(),
+            new Flags(),
             false,
             Optional.of("headerBlobId"),
             Optional.empty(),
@@ -155,6 +159,7 @@ public class RagDeletionListenerTest {
             TestMessageId.of(1),
             123L,
             Instant.now(),
+            new Flags(),
             false,
             Optional.of("headerBlobId"),
             Optional.empty(),
