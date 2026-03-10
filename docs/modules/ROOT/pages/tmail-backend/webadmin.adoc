@@ -579,6 +579,98 @@ Return codes:
 - `400` the target user is a system user or a team mailbox member
 - `404` the team mailbox does not exist
 
+== JMAP Labels
+
+Labels are user-defined tags that can be attached to JMAP messages. Each label has a display name, an internal keyword (IMAP flag), and optional color and description.
+
+=== List labels of a user
+
+....
+curl -XGET http://ip:port/users/user@domain.tld/labels
+....
+
+Returns the list of labels for the given user:
+
+....
+[
+  {
+    "id": "$label1",
+    "displayName": "Work",
+    "keyword": "$label1",
+    "color": "#ff0000",
+    "description": "Work emails"
+  },
+  ...
+]
+....
+
+The `color` and `description` fields are omitted when not set.
+
+Return codes:
+
+- `200` The label list was successfully retrieved
+- `404` The user does not exist
+
+=== Create a label
+
+....
+curl -XPOST http://ip:port/users/user@domain.tld/labels \
+  -H "Content-Type: application/json" \
+  -d '{"displayName": "Work", "color": "#ff0000", "description": "Work emails"}'
+....
+
+Creates a new label for the user. The `color`, `description`, and `keyword` fields are optional.
+
+If `keyword` is omitted, a random value is generated. If provided, it must be both a valid JMAP keyword (RFC 8621) and a valid JMAP id (alphanumeric and hyphens only — no `$` prefix).
+
+Returns the created label:
+
+....
+{
+  "id": "$label1",
+  "displayName": "Work",
+  "keyword": "$label1",
+  "color": "#ff0000",
+  "description": "Work emails"
+}
+....
+
+Return codes:
+
+- `201` The label was successfully created
+- `400` `displayName` is missing, empty, or the `color` has an invalid format
+- `404` The user does not exist
+
+=== Update a label
+
+....
+curl -XPATCH http://ip:port/users/user@domain.tld/labels/{labelId} \
+  -H "Content-Type: application/json" \
+  -d '{"displayName": "Job", "color": "#abcdef", "description": null}'
+....
+
+Fully replaces `displayName`, `color`, and `description` on a label. All three fields must be
+provided. `color` and `description` accept `null` to clear the field.
+
+Return codes:
+
+- `204` The label was successfully updated
+- `400` `displayName` is missing, null, or empty, or the `color` has an invalid format
+- `404` The user or the label does not exist
+
+=== Delete a label
+
+....
+curl -XDELETE http://ip:port/users/user@domain.tld/labels/{labelId}
+....
+
+Deletes a label.
+
+Return codes:
+
+- `204` The label was successfully deleted (idempotent — also returned if the label did not exist)
+- `404` The user does not exist
+
 == Rate limiting
 
 === Update rate limits of a user

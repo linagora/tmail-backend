@@ -124,6 +124,7 @@ import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 import com.linagora.tmail.webadmin.archival.InboxArchivalTaskModule;
 import com.linagora.tmail.webadmin.cleanup.MailboxesCleanupModule;
 import com.linagora.tmail.webadmin.contact.aucomplete.ContactIndexingModule;
+import com.linagora.tmail.webadmin.label.LabelRoutesModule;
 import com.linagora.tmail.webadmin.mailbox.MailboxResourcesLocationRoutesModule;
 import com.linagora.tmail.webadmin.quota.UserQuotaReporterRoutesModule;
 
@@ -183,6 +184,7 @@ public class MemoryServer {
           WEBADMIN,
           new TeamMailboxModule(),
           new TeamMailboxRoutesModule(),
+          new LabelRoutesModule(),
           new DKIMMailetModule())
         .with(new TeamMailboxModule(),
             new TMailScanningQuotaSearcherModule(),
