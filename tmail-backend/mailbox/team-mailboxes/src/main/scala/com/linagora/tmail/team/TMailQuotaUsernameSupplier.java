@@ -20,6 +20,7 @@ package com.linagora.tmail.team;
 
 import jakarta.inject.Inject;
 
+import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.apache.james.mailbox.store.quota.DefaultQuotaChangeNotifier;
 import org.apache.james.user.api.UsersRepository;
@@ -40,5 +41,11 @@ public class TMailQuotaUsernameSupplier implements DefaultQuotaChangeNotifier.Us
     public Flux<Username> get() {
         return Flux.merge(usersRepository.listReactive(),
             Flux.from(teamMailboxRepository.listTeamMailboxes()).map(teamMailbox -> Username.of(teamMailbox.asMailAddress().asString())));
+    }
+
+    @Override
+    public Flux<Username> getUsersForDomain(Domain domain) {
+        return Flux.merge(usersRepository.listUsersOfADomainReactive(domain),
+            Flux.from(teamMailboxRepository.listTeamMailboxes(domain)).map(teamMailbox -> Username.of(teamMailbox.asMailAddress().asString())));
     }
 }
