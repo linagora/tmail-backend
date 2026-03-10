@@ -81,8 +81,10 @@ import com.linagora.tmail.mailet.CalDavCollect;
 
 import net.fortuna.ical4j.model.Calendar;
 import net.fortuna.ical4j.model.Component;
+import net.fortuna.ical4j.model.Parameter;
 import net.fortuna.ical4j.model.Property;
 import net.fortuna.ical4j.model.component.CalendarComponent;
+import net.fortuna.ical4j.model.property.Attendee;
 import reactor.core.publisher.Mono;
 
 public class CalDavCollectIntegrationTest {
@@ -527,6 +529,61 @@ public class CalDavCollectIntegrationTest {
             .isEqualTo("20170112T090000Z");
         assertThat(getVEventContainingRecurrenceId(result.calendarData()))
             .isEmpty();
+    }
+
+    @Test
+    void mailetShouldCallDavServerWhenReplyWithoutOrganizerField(@TempDir File temporaryFolder) throws Exception {
+        String mimeMessageId = UUID.randomUUID().toString();
+        String calendarUid = UUID.randomUUID().toString();
+
+        // First create the event in the organizer's (sender's) calendar via a REQUEST
+        String requestMail = generateMail("template/emailWithAliceInviteBob.eml.mustache",
+            generateEmailTemplateData(sender, receiver, mimeMessageId, calendarUid));
+        sendMessage(receiver, sender, requestMail, mimeMessageId);
+
+        // Then receiver sends a REPLY without the ORGANIZER field (non-compliant external client)
+        String replyMimeMessageId = UUID.randomUUID().toString();
+        String replyMail = generateMail("template/emailReplyWithoutOrganizer.eml.mustache",
+            EmailTemplateData.builder()
+                .sender(getReceiver())
+                .receiver(getSender())
+                .mimeMessageId(replyMimeMessageId)
+                .calendarUid(calendarUid)
+                .build());
+        sendMessage(receiver, sender, replyMail, replyMimeMessageId);
+
+        // The organizer's calendar should be updated with the attendee's PARTSTAT=ACCEPTED
+        DavCalendarObject result = davClient.getCalendarObject(new DavUser(sender.id(), sender.email()), new EventUid(calendarUid)).block();
+        assertThat(result.calendarData().getComponent(Component.VEVENT).get()
+            .getProperties(Property.ATTENDEE).stream()
+            .map(p -> (Attendee) p)
+            .filter(a -> a.getCalAddress().getSchemeSpecificPart().equalsIgnoreCase(receiver.email()))
+            .findFirst()
+            .flatMap(a -> a.getParameter("PARTSTAT"))
+            .map(parameter -> ((Parameter) parameter).getValue())
+            .orElse(""))
+            .isEqualTo("ACCEPTED");
+    }
+
+    @Test
+    void mailetShouldNotCallDavServerForAttendeeWhenTheyReceiveTheirOwnReply(@TempDir File temporaryFolder) throws Exception {
+        String mimeMessageId = UUID.randomUUID().toString();
+        String calendarUid = UUID.randomUUID().toString();
+
+        // receiver sends a REPLY (without ORGANIZER) but also receives it (e.g. CC'd on their own reply)
+        String replyMimeMessageId = UUID.randomUUID().toString();
+        String replyMail = generateMail("template/emailReplyWithoutOrganizer.eml.mustache",
+            EmailTemplateData.builder()
+                .sender(getReceiver())
+                .receiver(getSender())
+                .mimeMessageId(replyMimeMessageId)
+                .calendarUid(calendarUid)
+                .build());
+        sendMessage(receiver, receiver, replyMail, replyMimeMessageId);
+
+        // receiver is explicitly the ATTENDEE in the REPLY iCal, so no ITIP should be sent for them
+        DavCalendarObject result = davClient.getCalendarObject(new DavUser(receiver.id(), receiver.email()), new EventUid(calendarUid)).block();
+        assertThat(result).isNull();
     }
 
     private EmailTemplateUser getReceiver() {

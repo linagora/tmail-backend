@@ -28,7 +28,7 @@ import io.restassured.http.ContentType.JSON
 import net.javacrumbs.jsonunit.JsonMatchers.jsonEquals
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import net.javacrumbs.jsonunit.core.Option
-import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
+import net.javacrumbs.jsonunit.core.Option.{IGNORING_ARRAY_ORDER, IGNORING_EXTRA_FIELDS}
 import org.apache.http.HttpStatus.{SC_CREATED, SC_OK}
 import org.apache.james.GuiceJamesServer
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
@@ -1623,6 +1623,57 @@ trait LinagoraCalendarEventParseMethodContract {
            |	},
            |	"c1"
            |]""".stripMargin)
+  }
+
+  @Test
+  def parseShouldReturnMethodReplyAndParticipantsWhenReplyWithoutOrganizer(): Unit = {
+    val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/replyWithoutOrganizer.ics"))
+
+    val request: String =
+      s"""{
+         |  "using": [
+         |    "urn:ietf:params:jmap:core",
+         |    "com:linagora:params:calendar:event"],
+         |  "methodCalls": [[
+         |    "CalendarEvent/parse",
+         |    {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "blobIds": [ "$blobId" ]
+         |    },
+         |    "c1"]]
+         |}""".stripMargin
+
+    val response = `given`
+      .body(request)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .withOptions(IGNORING_EXTRA_FIELDS, IGNORING_ARRAY_ORDER)
+      .inPath("methodResponses[0][1].parsed.*[0]")
+      .isEqualTo(
+        s"""{
+           |  "uid": "ea127690-0440-404b-af98-9823c855a283",
+           |  "method": "REPLY",
+           |  "participants": [
+           |    {
+           |      "name": "Laura ROYET",
+           |      "mailto": "bob@domain.tld",
+           |      "participationStatus": "ACCEPTED"
+           |    }
+           |  ]
+           |}""".stripMargin)
+
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].parsed.*[0]")
+      .node("organizer")
+      .isAbsent()
   }
 
   private def uploadAndGetBlobId(payload: InputStream): String =
