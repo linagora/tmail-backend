@@ -16,28 +16,22 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.modules.data;
+package com.linagora.tmail.james.app.modules.jmap;
 
-import org.apache.james.backends.cassandra.components.CassandraDataDefinition;
 import org.apache.james.jmap.method.EmailQueryOptimizer;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Scopes;
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.james.jmap.method.KeywordEmailQueryViewOptimizer;
-import com.linagora.tmail.james.jmap.projections.CassandraKeywordEmailQueryView;
-import com.linagora.tmail.james.jmap.projections.CassandraKeywordEmailQueryViewDataDefinition;
 import com.linagora.tmail.james.jmap.projections.KeywordEmailQueryView;
+import com.linagora.tmail.james.jmap.projections.MemoryKeywordEmailQueryView;
 
-public class CassandraKeywordEmailQueryViewModule extends AbstractModule {
+public class MemoryKeywordEmailQueryViewModule extends AbstractModule {
     @Override
     protected void configure() {
-        bind(KeywordEmailQueryView.class).to(CassandraKeywordEmailQueryView.class);
-        bind(CassandraKeywordEmailQueryView.class).in(Scopes.SINGLETON);
-
-        Multibinder.newSetBinder(binder(), CassandraDataDefinition.class)
-            .addBinding()
-            .toInstance(CassandraKeywordEmailQueryViewDataDefinition.MODULE);
+        bind(MemoryKeywordEmailQueryView.class).in(Scopes.SINGLETON);
+        bind(KeywordEmailQueryView.class).to(MemoryKeywordEmailQueryView.class);
 
         Multibinder<EmailQueryOptimizer> emailQueryOptimizerMultibinder = Multibinder.newSetBinder(binder(), EmailQueryOptimizer.class);
         emailQueryOptimizerMultibinder.addBinding().to(KeywordEmailQueryViewOptimizer.class);
