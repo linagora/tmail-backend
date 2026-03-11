@@ -156,6 +156,7 @@ import com.linagora.tmail.blob.guice.BlobStoreCacheModulesChooser;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.blob.guice.BlobStoreModulesChooser;
 import com.linagora.tmail.disconnector.EventBusDisconnectorModule;
+import com.linagora.tmail.event.KeywordEmailQueryViewListenerModule;
 import com.linagora.tmail.event.RabbitMQAndRedisEventBusModule;
 import com.linagora.tmail.event.TMailJMAPListenerModule;
 import com.linagora.tmail.event.TmailEventModule;
@@ -298,6 +299,7 @@ public class DistributedServer {
         new RFC8621MethodsModule(),
         new TMailCleverBlobResolverModule(),
         new JmapEventBusModule(),
+        new KeywordEmailQueryViewListenerModule(),
         new PublicAssetsModule(),
         new TicketRoutesModule(),
         new MessageVaultCapabilitiesModule(),
