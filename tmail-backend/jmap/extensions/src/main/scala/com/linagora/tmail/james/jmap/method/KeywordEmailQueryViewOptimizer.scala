@@ -21,11 +21,11 @@ package com.linagora.tmail.james.jmap.method
 import java.time.Instant
 import java.util.Optional
 
+import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration
 import com.linagora.tmail.james.jmap.method.KeywordEmailQueryViewOptimizer.FORBIDDEN_SYSTEM_FLAGS
 import com.linagora.tmail.james.jmap.projections.KeywordEmailQueryView
 import com.linagora.tmail.james.jmap.projections.KeywordEmailQueryView.Options
 import jakarta.inject.Inject
-import org.apache.james.jmap.JMAPConfiguration
 import org.apache.james.jmap.core.Limit.Limit
 import org.apache.james.jmap.core.Position.Position
 import org.apache.james.jmap.mail.{CollapseThreads, Comparator, EmailQueryRequest, FilterCondition, FilterQuery, Keyword}
@@ -42,7 +42,7 @@ object KeywordEmailQueryViewOptimizer {
   val FORBIDDEN_SYSTEM_FLAGS = List(Keyword.RECENT, Keyword.DELETED, Keyword.DRAFT, Keyword.ANSWERED, Keyword.FORWARDED, Keyword.SEEN)
 }
 
-class KeywordEmailQueryViewOptimizer @Inject() (val configuration: JMAPConfiguration,
+class KeywordEmailQueryViewOptimizer @Inject() (val configuration: JMAPExtensionConfiguration,
                                                 val keywordEmailQueryView: KeywordEmailQueryView) extends EmailQueryOptimizer {
   override def apply(request: EmailQueryRequest, session: MailboxSession, searchQuery: MultimailboxesSearchQuery, position: Position, limit: Limit): Option[SFlux[MessageId]] =
     request match {
@@ -52,7 +52,7 @@ class KeywordEmailQueryViewOptimizer @Inject() (val configuration: JMAPConfigura
     }
 
   private def matchesInKeywordSortedByReceivedAt(request: EmailQueryRequest): Boolean =
-    configuration.isEmailQueryViewEnabled &&
+    configuration.viewKeywordQueryEnabled &&
       request.filter.nonEmpty &&
       isValidKeywordQuery(request) &&
       request.sort.contains(Set(Comparator.RECEIVED_AT_DESC))
