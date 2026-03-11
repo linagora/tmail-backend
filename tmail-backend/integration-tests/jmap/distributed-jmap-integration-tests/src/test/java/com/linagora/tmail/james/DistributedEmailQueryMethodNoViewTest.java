@@ -26,15 +26,12 @@
 
 package com.linagora.tmail.james;
 
-import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.jmap.JMAPConfiguration;
 import org.apache.james.jmap.rfc8621.contract.EmailQueryMethodContract;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
@@ -44,10 +41,11 @@ import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.app.RabbitMQExtension;
+import com.linagora.tmail.james.common.KeywordEmailQueryMethodContract;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
-public class DistributedEmailQueryMethodNoViewTest implements EmailQueryMethodContract {
+public class DistributedEmailQueryMethodNoViewTest implements EmailQueryMethodContract, KeywordEmailQueryMethodContract {
     @RegisterExtension
     static JamesServerExtension testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
         DistributedJamesConfiguration.builder()
@@ -77,28 +75,4 @@ public class DistributedEmailQueryMethodNoViewTest implements EmailQueryMethodCo
                     .disableEmailQueryView()
                     .build())))
         .build();
-
-    @Test
-    @Override
-    @Disabled("JAMES-3340 Not supported for no email query view")
-    public void inMailboxAfterSortedByReceivedAtShouldCollapseThreads(GuiceJamesServer server) {
-    }
-
-    @Test
-    @Override
-    @Disabled("JAMES-3340 Not supported for no email query view")
-    public void inMailboxSortedByReceivedAtShouldCollapseThreads(GuiceJamesServer server) {
-    }
-
-    @Test
-    @Override
-    @Disabled("JAMES-3340 Not supported for no email query view")
-    public void inMailboxSortedBySentAtShouldCollapseThreads(GuiceJamesServer server) {
-    }
-
-    @Test
-    @Override
-    @Disabled("JAMES-3340 Not supported for no email query view")
-    public void inMailboxBeforeSortedByReceivedAtShouldCollapseThreads(GuiceJamesServer server) {
-    }
 }
