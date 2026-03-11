@@ -41,10 +41,11 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
+import com.linagora.tmail.james.common.KeywordEmailQueryMethodContract;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
-public class MemoryEmailQueryMethodNoViewTest implements EmailQueryMethodContract {
+public class MemoryEmailQueryMethodNoViewTest implements EmailQueryMethodContract, KeywordEmailQueryMethodContract {
     @RegisterExtension
     static JamesServerExtension testExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->
         MemoryConfiguration.builder()
@@ -85,29 +86,4 @@ public class MemoryEmailQueryMethodNoViewTest implements EmailQueryMethodContrac
     public void shouldListMailsReceivedAfterADate(GuiceJamesServer server) {
         EmailQueryMethodContract.super.shouldListMailsReceivedAfterADate(server);
     }
-
-    @Test
-    @Override
-    @Disabled("JAMES-3340 Not supported for no email query view")
-    public void inMailboxAfterSortedByReceivedAtShouldCollapseThreads(GuiceJamesServer server) {
-    }
-
-    @Test
-    @Override
-    @Disabled("JAMES-3340 Not supported for no email query view")
-    public void inMailboxSortedByReceivedAtShouldCollapseThreads(GuiceJamesServer server) {
-    }
-
-    @Test
-    @Override
-    @Disabled("JAMES-3340 Not supported for no email query view")
-    public void inMailboxSortedBySentAtShouldCollapseThreads(GuiceJamesServer server) {
-    }
-
-    @Test
-    @Override
-    @Disabled("JAMES-3340 Not supported for no email query view")
-    public void inMailboxBeforeSortedByReceivedAtShouldCollapseThreads(GuiceJamesServer server) {
-    }
-
 }
