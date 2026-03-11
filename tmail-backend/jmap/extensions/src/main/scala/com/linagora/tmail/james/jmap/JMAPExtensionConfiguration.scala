@@ -47,6 +47,9 @@ object JMAPExtensionConfiguration {
   val SUPPORT_HTTP_LINK_PROPERTY: String = "support.httpLink"
   val SETTINGS_READONLY_PROPERTIES_PROVIDERS: String = "settings.readonly.properties.providers"
 
+  val VIEW_KEYWORD_QUERY_ENABLED: String = "view.keyword.query.enabled"
+  val VIEW_KEYWORD_QUERY_ENABLED_DEFAULT: Boolean = false
+
   def from(configuration: Configuration): JMAPExtensionConfiguration = {
     val publicAssetTotalSizeLimit: PublicAssetTotalSizeLimit = Option(configuration.getString(PUBLIC_ASSET_TOTAL_SIZE_LIMIT_PROPERTY, null))
       .map(Size.parse)
@@ -82,6 +85,8 @@ object JMAPExtensionConfiguration {
 
     val readOnlySettingsProviders: Option[java.util.List[String]] = Optional.ofNullable(configuration.getList(classOf[String], SETTINGS_READONLY_PROPERTIES_PROVIDERS, null)).toScala
 
+    val viewKeywordQueryEnabled: Boolean = configuration.getBoolean(VIEW_KEYWORD_QUERY_ENABLED, VIEW_KEYWORD_QUERY_ENABLED_DEFAULT)
+
     JMAPExtensionConfiguration(publicAssetTotalSizeLimit = publicAssetTotalSizeLimit,
       supportMailAddress = supportMailAddressOpt,
       supportHttpLink = supportHttpLinkOpt,
@@ -89,7 +94,8 @@ object JMAPExtensionConfiguration {
       calendarEventReplySupportedLanguagesConfig = calendarEventReplySupportedLanguagesConfig,
       emailRecoveryActionConfiguration = emailRecoveryActionConfiguration,
       webFingerConfiguration = webFingerConfiguration,
-      readOnlySettingsProviders = readOnlySettingsProviders)
+      readOnlySettingsProviders = readOnlySettingsProviders,
+      viewKeywordQueryEnabled = viewKeywordQueryEnabled)
   }
 }
 
@@ -100,7 +106,8 @@ case class JMAPExtensionConfiguration(publicAssetTotalSizeLimit: PublicAssetTota
                                       calendarEventReplySupportedLanguagesConfig: CalendarEventReplySupportedLanguagesConfig = CALENDAR_EVENT_REPLY_SUPPORTED_LANGUAGES_DEFAULT,
                                       emailRecoveryActionConfiguration: EmailRecoveryActionConfiguration = EmailRecoveryActionConfiguration.DEFAULT,
                                       webFingerConfiguration: WebFingerConfiguration = WebFingerConfiguration.DEFAULT,
-                                      readOnlySettingsProviders: Option[java.util.List[String]] = None) {
+                                      readOnlySettingsProviders: Option[java.util.List[String]] = None,
+                                      viewKeywordQueryEnabled: Boolean = false) {
   def this(publicAssetTotalSizeLimit: PublicAssetTotalSizeLimit) = {
     this(publicAssetTotalSizeLimit, Option.empty)
   }

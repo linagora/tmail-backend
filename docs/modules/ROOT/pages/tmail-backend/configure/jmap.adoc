@@ -76,4 +76,8 @@ Example: `emailRecoveryAction.restorationHorizon=10d`
 | Optional, defaults to empty. Configures a list of fully qualified class names of `ReadOnlyPropertyProvider` implementations to be used.
 Example: `settings.readonly.properties.providers=com.linagora.tmail.james.jmap.settings.FixedLanguageReadOnlyPropertyProvider`
 
+| `view.keyword.query.enabled`
+| Optional boolean. Defaults to false. Should simple keyword Email/query be resolved against a {backend-name} projection, or should we resolve them against OpenSearch?
+This enables a higher resilience, but the projection needs to be correctly populated.
+
 |===
