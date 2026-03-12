@@ -714,7 +714,7 @@ trait CalendarEventCounterAcceptMethodContract {
       .isEqualToNormalizingNewlines(
         s"""BEGIN:VCALENDAR
            |VERSION:2.0
-           |PRODID:-//Sabre//Sabre VObject 4.2.2//EN
+           |PRODID:-//Sabre//Sabre VObject 4.5.7//EN
            |BEGIN:VEVENT
            |UID:$eventUid
            |DTSTART;TZID=Europe/Paris:20250328T090000
