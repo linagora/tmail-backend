@@ -714,7 +714,7 @@ public interface SaaSDomainSubscriptionConsumerContract {
     private void publishAmqpSaaSDomainSubscriptionMessage(String message) {
         rabbitMQExtension.getSender()
             .send(Mono.just(new OutboundMessage(
-                SaaSSubscriptionRabbitMQConfiguration.DEFAULT.exchange(),
+                SaaSSubscriptionRabbitMQConfiguration.DEFAULT.subscriptionExchange(),
                 SaaSSubscriptionRabbitMQConfiguration.DEFAULT.domainRoutingKey(),
                 message.getBytes(UTF_8))))
             .block();

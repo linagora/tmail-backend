@@ -80,13 +80,15 @@ public class SaaSSubscriptionConsumer implements Closeable, Startable {
     }
 
     public void init() {
-        declareExchangeAndQueue(saasSubscriptionRabbitMQConfiguration.exchange(), SAAS_SUBSCRIPTION_QUEUE, SAAS_SUBSCRIPTION_DEAD_LETTER_QUEUE);
+        declareExchangeAndQueue(saasSubscriptionRabbitMQConfiguration.subscriptionExchange(), saasSubscriptionRabbitMQConfiguration.userCreatedExchange(),
+            SAAS_SUBSCRIPTION_QUEUE, SAAS_SUBSCRIPTION_DEAD_LETTER_QUEUE);
         startConsumer();
     }
 
-    public void declareExchangeAndQueue(String exchange, String queue, String deadLetter) {
+    public void declareExchangeAndQueue(String subscriptionExchange, String userCreatedExchange, String queue, String deadLetter) {
         Flux.concat(
-                declareExchange(exchange),
+                declareExchange(subscriptionExchange),
+                declareExchange(userCreatedExchange),
                 sender.declareQueue(QueueSpecification
                     .queue(deadLetter)
                     .durable(DURABLE)
@@ -101,9 +103,13 @@ public class SaaSSubscriptionConsumer implements Closeable, Startable {
                         .consumerTimeout(Duration.ofMinutes(10L).toMillis())
                         .build())),
                 sender.bind(BindingSpecification.binding()
-                    .exchange(exchange)
+                    .exchange(subscriptionExchange)
                     .queue(queue)
-                    .routingKey(saasSubscriptionRabbitMQConfiguration.routingKey())))
+                    .routingKey(saasSubscriptionRabbitMQConfiguration.subscriptionRoutingKey())),
+                sender.bind(BindingSpecification.binding()
+                    .exchange(userCreatedExchange)
+                    .queue(queue)
+                    .routingKey(saasSubscriptionRabbitMQConfiguration.userCreatedRoutingKey())))
             .then()
             .block();
     }

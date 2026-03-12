@@ -39,7 +39,7 @@ class SaaSSubscriptionRabbitMQConfigurationTest {
 
         SaaSSubscriptionRabbitMQConfiguration configuration = SaaSSubscriptionRabbitMQConfiguration.from(rabbitConfiguration);
 
-        assertThat(configuration.exchange()).isEqualTo("SaaSSubscriptionExchange");
+        assertThat(configuration.subscriptionExchange()).isEqualTo("SaaSSubscriptionExchange");
     }
 
     @Test
@@ -49,7 +49,7 @@ class SaaSSubscriptionRabbitMQConfigurationTest {
 
         SaaSSubscriptionRabbitMQConfiguration configuration = SaaSSubscriptionRabbitMQConfiguration.from(rabbitConfiguration);
 
-        assertThat(configuration.routingKey()).isEqualTo("SaaSSubscriptionRoutingKey");
+        assertThat(configuration.subscriptionRoutingKey()).isEqualTo("SaaSSubscriptionRoutingKey");
     }
 
     @Test
@@ -80,5 +80,25 @@ class SaaSSubscriptionRabbitMQConfigurationTest {
         SaaSSubscriptionRabbitMQConfiguration configuration = SaaSSubscriptionRabbitMQConfiguration.from(rabbitConfiguration);
 
         assertThat(configuration.domainConfigurationRoutingKey()).isEqualTo("custom.config.routingKey");
+    }
+
+    @Test
+    void configureUserCreatedExchangeShouldWork() {
+        PropertiesConfiguration rabbitConfiguration = new PropertiesConfiguration();
+        rabbitConfiguration.addProperty("twp.saas.user.created.exchange", "SaaSUserCreatedExchange");
+
+        SaaSSubscriptionRabbitMQConfiguration configuration = SaaSSubscriptionRabbitMQConfiguration.from(rabbitConfiguration);
+
+        assertThat(configuration.userCreatedExchange()).isEqualTo("SaaSUserCreatedExchange");
+    }
+
+    @Test
+    void configureUserCreatedRoutingKeyShouldWork() {
+        PropertiesConfiguration rabbitConfiguration = new PropertiesConfiguration();
+        rabbitConfiguration.addProperty("twp.saas.user.created.routingKey", "SaaSUserCreatedRoutingKey");
+
+        SaaSSubscriptionRabbitMQConfiguration configuration = SaaSSubscriptionRabbitMQConfiguration.from(rabbitConfiguration);
+
+        assertThat(configuration.userCreatedRoutingKey()).isEqualTo("SaaSUserCreatedRoutingKey");
     }
 }

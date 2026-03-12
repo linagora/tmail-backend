@@ -87,7 +87,7 @@ public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
 
     public void declareExchangeAndQueue() {
         Flux.concat(
-                declareExchange(saasSubscriptionRabbitMQConfiguration.exchange()),
+                declareExchange(saasSubscriptionRabbitMQConfiguration.subscriptionExchange()),
                 declareExchange(saasSubscriptionRabbitMQConfiguration.configurationExchange()),
                 sender.declareQueue(QueueSpecification
                     .queue(SAAS_DOMAIN_SUBSCRIPTION_DEAD_LETTER_QUEUE)
@@ -103,7 +103,7 @@ public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
                         .consumerTimeout(Duration.ofMinutes(10L).toMillis())
                         .build())),
                 sender.bind(BindingSpecification.binding()
-                    .exchange(saasSubscriptionRabbitMQConfiguration.exchange())
+                    .exchange(saasSubscriptionRabbitMQConfiguration.subscriptionExchange())
                     .queue(SAAS_DOMAIN_SUBSCRIPTION_QUEUE)
                     .routingKey(saasSubscriptionRabbitMQConfiguration.domainRoutingKey())),
                 sender.bind(BindingSpecification.binding()
