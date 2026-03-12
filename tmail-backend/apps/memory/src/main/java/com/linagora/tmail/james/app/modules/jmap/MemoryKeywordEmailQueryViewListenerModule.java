@@ -18,22 +18,17 @@
 
 package com.linagora.tmail.james.app.modules.jmap;
 
-import org.apache.james.jmap.method.EmailQueryOptimizer;
+import org.apache.james.events.EventListener;
 
 import com.google.inject.AbstractModule;
-import com.google.inject.Scopes;
 import com.google.inject.multibindings.Multibinder;
-import com.linagora.tmail.james.jmap.method.KeywordEmailQueryViewOptimizer;
-import com.linagora.tmail.james.jmap.projections.KeywordEmailQueryView;
-import com.linagora.tmail.james.jmap.projections.MemoryKeywordEmailQueryView;
+import com.linagora.tmail.james.jmap.event.KeywordEmailQueryViewListener;
 
-public class MemoryKeywordEmailQueryViewModule extends AbstractModule {
+public class MemoryKeywordEmailQueryViewListenerModule extends AbstractModule {
     @Override
     protected void configure() {
-        bind(MemoryKeywordEmailQueryView.class).in(Scopes.SINGLETON);
-        bind(KeywordEmailQueryView.class).to(MemoryKeywordEmailQueryView.class);
-
-        Multibinder<EmailQueryOptimizer> emailQueryOptimizerMultibinder = Multibinder.newSetBinder(binder(), EmailQueryOptimizer.class);
-        emailQueryOptimizerMultibinder.addBinding().to(KeywordEmailQueryViewOptimizer.class);
+        Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class)
+            .addBinding()
+            .to(KeywordEmailQueryViewListener.class);
     }
 }

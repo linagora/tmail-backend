@@ -79,6 +79,7 @@ import com.linagora.tmail.imap.TMailIMAPModule;
 import com.linagora.tmail.james.app.modules.jmap.MemoryDownloadAllModule;
 import com.linagora.tmail.james.app.modules.jmap.MemoryFirebaseSubscriptionRepositoryModule;
 import com.linagora.tmail.james.app.modules.jmap.MemoryJmapSettingsRepositoryModule;
+import com.linagora.tmail.james.app.modules.jmap.MemoryKeywordEmailQueryViewListenerModule;
 import com.linagora.tmail.james.app.modules.jmap.MemoryKeywordEmailQueryViewModule;
 import com.linagora.tmail.james.app.modules.jmap.MemoryLabelRepositoryModule;
 import com.linagora.tmail.james.app.modules.jmap.MemoryTmailEventBusModule;
@@ -235,6 +236,7 @@ public class MemoryServer {
             .overrideWith(chooseJmapModule(configuration))
             .overrideWith(chooseJmapOidc(configuration))
             .overrideWith(chooseJmapModule(configuration))
+            .overrideWith(chooseKeywordEmailQueryListener(configuration))
             .overrideWith(binder -> {
                 binder.bind(GuiceLoader.class).to(NoopGuiceLoader.class);
                 binder.bind(NoopGuiceLoader.class).in(Singleton.class);
@@ -315,6 +317,15 @@ public class MemoryServer {
         if (configuration.oidcEnabled()) {
             return Modules.combine(new JMAPOidcModule(), new OidcBackchannelLogoutRoutesModule(),
                 new CaffeineOidcTokenCacheModule());
+        }
+        return binder -> {
+
+        };
+    }
+
+    private static Module chooseKeywordEmailQueryListener(MemoryConfiguration configuration) {
+        if (configuration.keywordEmailQueryViewEnabled()) {
+            return new MemoryKeywordEmailQueryViewListenerModule();
         }
         return binder -> {
 

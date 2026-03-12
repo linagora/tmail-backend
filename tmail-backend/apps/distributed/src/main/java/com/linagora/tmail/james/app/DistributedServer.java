@@ -301,7 +301,6 @@ public class DistributedServer {
         new RFC8621MethodsModule(),
         new TMailCleverBlobResolverModule(),
         new JmapEventBusModule(),
-        new KeywordEmailQueryViewListenerModule(),
         new PublicAssetsModule(),
         new TicketRoutesModule(),
         new MessageVaultCapabilitiesModule(),
@@ -441,6 +440,7 @@ public class DistributedServer {
             .overrideWith(overrideEventBusModule(configuration))
             .overrideWith(chooseDropListsModule(configuration))
             .overrideWith(chooseJmapOidc(configuration))
+            .overrideWith(chooseKeywordEmailQueryListener(configuration))
             .overrideWith(QUOTA_USERNAME_SUPPLIER_MODULE);
     }
 
@@ -636,6 +636,15 @@ public class DistributedServer {
         if (configuration.oidcEnabled()) {
             return Modules.combine(new JMAPOidcModule(), new OidcBackchannelLogoutRoutesModule(),
                 OidcTokenCacheModuleChooser.chooseModule(configuration.oidcTokenCacheChoice()));
+        }
+        return binder -> {
+
+        };
+    }
+
+    private static Module chooseKeywordEmailQueryListener(DistributedJamesConfiguration configuration) {
+        if (configuration.keywordEmailQueryViewEnabled()) {
+            return new KeywordEmailQueryViewListenerModule();
         }
         return binder -> {
 
