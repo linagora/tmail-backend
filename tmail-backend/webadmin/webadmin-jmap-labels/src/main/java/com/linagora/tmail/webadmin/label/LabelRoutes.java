@@ -130,6 +130,9 @@ public class LabelRoutes implements Routes {
                     OptionConverters.toScala(body.color()),
                     OptionConverters.toScala(Optional.of(new DescriptionUpdate(OptionConverters.toScala(body.description()))))))
                 .block();
+            body.readOnly().ifPresent(readOnly ->
+                Mono.from(labelRepository.setLabelReadOnly(username, labelId, readOnly))
+                    .block());
         } catch (LabelNotFoundException e) {
             throw ErrorResponder.builder()
                 .statusCode(HttpStatus.NOT_FOUND_404)

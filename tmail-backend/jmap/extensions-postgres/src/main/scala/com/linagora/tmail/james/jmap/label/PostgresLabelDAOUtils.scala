@@ -18,7 +18,7 @@
 
 package com.linagora.tmail.james.jmap.label
 
-import com.linagora.tmail.james.jmap.label.PostgresLabelModule.LabelTable.{COLOR, DISPLAY_NAME, DESCRIPTION, KEYWORD}
+import com.linagora.tmail.james.jmap.label.PostgresLabelModule.LabelTable.{COLOR, DESCRIPTION, DISPLAY_NAME, KEYWORD, READ_ONLY}
 import com.linagora.tmail.james.jmap.model.{Color, DisplayName, Label, LabelId}
 import org.apache.james.jmap.mail.Keyword
 import org.jooq.Record
@@ -32,6 +32,7 @@ object PostgresLabelDAOUtils {
       keyword = keyword,
       color = Option.apply(record.get(COLOR))
         .map(Color(_)),
-      description = Option.apply(record.get(DESCRIPTION)))
+      description = Option.apply(record.get(DESCRIPTION)),
+      readOnly = Option(record.get(READ_ONLY)).map(_.booleanValue).getOrElse(false))
   }
 }

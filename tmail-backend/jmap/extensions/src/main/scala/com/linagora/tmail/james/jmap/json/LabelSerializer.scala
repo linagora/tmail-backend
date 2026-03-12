@@ -27,6 +27,7 @@ import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.{Properties, SetError, UuidState}
 import org.apache.james.jmap.json.mapWrites
 import org.apache.james.jmap.mail.Keyword
+import play.api.libs.functional.syntax._
 import play.api.libs.json.{Format, JsArray, JsError, JsObject, JsResult, JsString, JsSuccess, JsValue, Json, JsonValidationError, Reads, Writes, __}
 
 object LabelSerializer {
@@ -73,7 +74,12 @@ object LabelSerializer {
 
   implicit val labelCreationRequestStandardWrites: Writes[LabelCreationRequest] = Json.writes[LabelCreationRequest]
 
-  private val labelCreationRequestStandardReads: Reads[LabelCreationRequest] = Json.reads[LabelCreationRequest]
+  private val labelCreationRequestStandardReads: Reads[LabelCreationRequest] = (
+    (__ \ "displayName").read[DisplayName] and
+    (__ \ "color").readNullable[Color] and
+    (__ \ "description").readNullable[String] and
+    (__ \ "readOnly").readNullable[Boolean].map(_.getOrElse(false))
+  )(LabelCreationRequest.apply _)
 
   implicit val labelCreationRequestReads: Reads[LabelCreationRequest] = new Reads[LabelCreationRequest] {
     override def reads(json: JsValue): JsResult[LabelCreationRequest] = {

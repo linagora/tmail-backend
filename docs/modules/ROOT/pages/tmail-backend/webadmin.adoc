@@ -581,7 +581,7 @@ Return codes:
 
 == JMAP Labels
 
-Labels are user-defined tags that can be attached to JMAP messages. Each label has a display name, an internal keyword (IMAP flag), and optional color and description.
+Labels are user-defined tags that can be attached to JMAP messages. Each label has a display name, an internal keyword (IMAP flag), and optional color and description. Labels can optionally be marked as read-only, which prevents them from being updated or deleted via JMAP.
 
 === List labels of a user
 
@@ -598,13 +598,14 @@ Returns the list of labels for the given user:
     "displayName": "Work",
     "keyword": "$label1",
     "color": "#ff0000",
-    "description": "Work emails"
+    "description": "Work emails",
+    "readOnly": false
   },
   ...
 ]
 ....
 
-The `color` and `description` fields are omitted when not set.
+The `color` and `description` fields are omitted when not set. The `readOnly` field is always present and defaults to `false`.
 
 Return codes:
 
@@ -631,7 +632,8 @@ Returns the created label:
   "displayName": "Work",
   "keyword": "$label1",
   "color": "#ff0000",
-  "description": "Work emails"
+  "description": "Work emails",
+  "readOnly": false
 }
 ....
 
@@ -646,11 +648,10 @@ Return codes:
 ....
 curl -XPATCH http://ip:port/users/user@domain.tld/labels/{labelId} \
   -H "Content-Type: application/json" \
-  -d '{"displayName": "Job", "color": "#abcdef", "description": null}'
+  -d '{"displayName": "Job", "color": "#abcdef", "description": null, "readOnly": true}'
 ....
 
-Fully replaces `displayName`, `color`, and `description` on a label. All three fields must be
-provided. `color` and `description` accept `null` to clear the field.
+Fully replaces `displayName`, `color`, and `description` on a label. `color` and `description` accept `null` to clear the field. The optional `readOnly` boolean field controls whether the label can be updated or deleted via JMAP — when `true`, JMAP clients receive a `forbidden` error when attempting to modify or destroy the label. Administrators can always update labels (including toggling `readOnly`) via this WebAdmin endpoint regardless of the `readOnly` value.
 
 Return codes:
 

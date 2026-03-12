@@ -22,6 +22,7 @@ import static com.linagora.tmail.james.jmap.label.PostgresLabelModule.LabelTable
 import static com.linagora.tmail.james.jmap.label.PostgresLabelModule.LabelTable.DESCRIPTION;
 import static com.linagora.tmail.james.jmap.label.PostgresLabelModule.LabelTable.DISPLAY_NAME;
 import static com.linagora.tmail.james.jmap.label.PostgresLabelModule.LabelTable.KEYWORD;
+import static com.linagora.tmail.james.jmap.label.PostgresLabelModule.LabelTable.READ_ONLY;
 import static com.linagora.tmail.james.jmap.label.PostgresLabelModule.LabelTable.TABLE_NAME;
 import static com.linagora.tmail.james.jmap.label.PostgresLabelModule.LabelTable.USERNAME;
 
@@ -63,13 +64,14 @@ public class PostgresLabelDAO {
             .set(COLOR, OptionConverters.toJava(label.color())
                 .map(Color::value)
                 .orElse(null))
-            .set(DESCRIPTION,OptionConverters.toJava(label.description())
-                .orElse(null))))
+            .set(DESCRIPTION, OptionConverters.toJava(label.description())
+                .orElse(null))
+            .set(READ_ONLY, label.readOnly())))
             .thenReturn(label);
     }
 
     public Flux<Label> selectAll(Username username) {
-        return postgresExecutor.executeRows(dsl -> Flux.from(dsl.select(KEYWORD, DISPLAY_NAME, COLOR, DESCRIPTION)
+        return postgresExecutor.executeRows(dsl -> Flux.from(dsl.select(KEYWORD, DISPLAY_NAME, COLOR, DESCRIPTION, READ_ONLY)
                 .from(TABLE_NAME)
                 .where(USERNAME.eq(username.asString()))))
             .map(PostgresLabelDAOUtils::toLabel);
@@ -80,7 +82,7 @@ public class PostgresLabelDAO {
             return Flux.empty();
         }
 
-        return postgresExecutor.executeRows(dsl -> Flux.from(dsl.select(KEYWORD, DISPLAY_NAME, COLOR, DESCRIPTION)
+        return postgresExecutor.executeRows(dsl -> Flux.from(dsl.select(KEYWORD, DISPLAY_NAME, COLOR, DESCRIPTION, READ_ONLY)
                 .from(TABLE_NAME)
                 .where(USERNAME.eq(username.asString()),
                     KEYWORD.in(keywords))))
@@ -138,6 +140,18 @@ public class PostgresLabelDAO {
         return description -> updateColorStatement.map(statement -> statement.set(DESCRIPTION, description))
             .orElseGet(() -> updateDisplayNameStatement.map(statement -> statement.set(DESCRIPTION, description))
                 .orElseGet(() -> originalUpdateStatement.set(DESCRIPTION, description)));
+    }
+
+    public Mono<Void> setReadOnly(Username username, LabelId labelId, boolean readOnly) {
+        return postgresExecutor.executeReturnAffectedRowsCount(dsl ->
+                Mono.from(dsl.update(TABLE_NAME)
+                    .set(READ_ONLY, readOnly)
+                    .where(USERNAME.eq(username.asString()), KEYWORD.eq(labelId.toKeyword()))))
+            .handle((updatedLabelCount, sink) -> {
+                if (updatedLabelCount == 0) {
+                    sink.error(new LabelNotFoundException(labelId));
+                }
+            });
     }
 
     public Mono<Void> deleteOne(Username username, String keyword) {

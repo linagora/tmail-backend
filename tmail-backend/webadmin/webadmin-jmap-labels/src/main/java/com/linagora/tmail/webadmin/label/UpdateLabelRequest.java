@@ -28,14 +28,15 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.linagora.tmail.james.jmap.model.Color;
 import com.linagora.tmail.james.jmap.model.DisplayName;
 
-public record UpdateLabelRequest(DisplayName displayName, Optional<Color> color, Optional<String> description) {
+public record UpdateLabelRequest(DisplayName displayName, Optional<Color> color, Optional<String> description, Optional<Boolean> readOnly) {
 
     @JsonCreator
     public UpdateLabelRequest(
         @JsonProperty("displayName") String displayName,
         @JsonProperty("color") Optional<String> color,
-        @JsonProperty("description") Optional<String> description) {
-        this(validateDisplayName(displayName), color.map(UpdateLabelRequest::asColor), description);
+        @JsonProperty("description") Optional<String> description,
+        @JsonProperty("readOnly") Optional<Boolean> readOnly) {
+        this(validateDisplayName(displayName), color.map(UpdateLabelRequest::asColor), description, readOnly);
     }
 
     private static DisplayName validateDisplayName(String value) {

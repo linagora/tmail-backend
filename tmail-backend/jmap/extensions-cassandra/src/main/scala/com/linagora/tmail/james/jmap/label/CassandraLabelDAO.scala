@@ -18,7 +18,7 @@
 
 package com.linagora.tmail.james.jmap.label
 
-import com.datastax.oss.driver.api.core.`type`.DataTypes.{TEXT, listOf}
+import com.datastax.oss.driver.api.core.`type`.DataTypes.{BOOLEAN, TEXT, listOf}
 import com.datastax.oss.driver.api.core.`type`.codec.registry.CodecRegistry
 import com.datastax.oss.driver.api.core.`type`.codec.{TypeCodec, TypeCodecs}
 import com.datastax.oss.driver.api.core.cql.{BoundStatementBuilder, PreparedStatement, Row}
@@ -40,6 +40,7 @@ object CassandraLabelTable {
   val DISPLAY_NAME: CqlIdentifier = CqlIdentifier.fromCql("display_name")
   val COLOR: CqlIdentifier = CqlIdentifier.fromCql("color")
   val DESCRIPTION: CqlIdentifier = CqlIdentifier.fromCql("description")
+  val READ_ONLY: CqlIdentifier = CqlIdentifier.fromCql("read_only")
 
   val MODULE: CassandraDataDefinition = CassandraDataDefinition.table(TABLE_NAME)
     .comment("Hold user JMAP labels")
@@ -48,7 +49,8 @@ object CassandraLabelTable {
       .withClusteringColumn(KEYWORD, TEXT)
       .withColumn(DISPLAY_NAME, TEXT)
       .withColumn(COLOR, TEXT)
-      .withColumn(DESCRIPTION, TEXT))
+      .withColumn(DESCRIPTION, TEXT)
+      .withColumn(READ_ONLY, BOOLEAN))
     .build
 
   val LIST_OF_STRINGS_CODEC: TypeCodec[java.util.List[String]] = CodecRegistry.DEFAULT.codecFor(listOf(TEXT))
@@ -65,6 +67,7 @@ class CassandraLabelDAO @Inject()(session: CqlSession) {
     .value(DISPLAY_NAME, bindMarker(DISPLAY_NAME))
     .value(COLOR, bindMarker(COLOR))
     .value(DESCRIPTION, bindMarker(DESCRIPTION))
+    .value(READ_ONLY, bindMarker(READ_ONLY))
     .build())
 
   private val updateStatement: PreparedStatement = session.prepare(update(TABLE_NAME)
@@ -101,6 +104,12 @@ class CassandraLabelDAO @Inject()(session: CqlSession) {
     .whereColumn(USER).isEqualTo(bindMarker(USER))
     .build())
 
+  private val setReadOnlyStatement: PreparedStatement = session.prepare(update(TABLE_NAME)
+    .setColumn(READ_ONLY, bindMarker(READ_ONLY))
+    .where(column(USER).isEqualTo(bindMarker(USER)))
+    .where(column(KEYWORD).isEqualTo(bindMarker(KEYWORD)))
+    .build())
+
   def insert(username: Username, label: Label): SMono[Label] = {
     val insertLabel = insert.bind()
       .set(USER, username.asString(), TypeCodecs.TEXT)
@@ -108,6 +117,7 @@ class CassandraLabelDAO @Inject()(session: CqlSession) {
       .set(DISPLAY_NAME, label.displayName.value, TypeCodecs.TEXT)
       .set(COLOR, label.color.map(_.value).orNull, TypeCodecs.TEXT)
       .set(DESCRIPTION, label.description.orNull, TypeCodecs.TEXT)
+      .set(READ_ONLY, label.readOnly: java.lang.Boolean, TypeCodecs.BOOLEAN)
 
     SMono.fromPublisher(executor.executeVoid(insertLabel)
       .thenReturn(label))
@@ -169,6 +179,12 @@ class CassandraLabelDAO @Inject()(session: CqlSession) {
     SMono.fromPublisher(executor.executeVoid(deleteAll.bind()
       .set(USER, username.asString, TypeCodecs.TEXT)))
 
+  def setReadOnly(username: Username, keyword: Keyword, readOnly: Boolean): SMono[Void] =
+    SMono.fromPublisher(executor.executeVoid(setReadOnlyStatement.bind()
+      .set(USER, username.asString, TypeCodecs.TEXT)
+      .set(KEYWORD, keyword.flagName, TypeCodecs.TEXT)
+      .set(READ_ONLY, readOnly: java.lang.Boolean, TypeCodecs.BOOLEAN)))
+
   private def toLabel(row: Row) = {
     val keyword = Keyword.of(row.get(KEYWORD, TypeCodecs.TEXT)).get
 
@@ -177,6 +193,7 @@ class CassandraLabelDAO @Inject()(session: CqlSession) {
       keyword = keyword,
       color = Option(row.get(COLOR, TypeCodecs.TEXT))
         .map(value => Color(value)),
-      description = Option(row.get(DESCRIPTION, TypeCodecs.TEXT)))
+      description = Option(row.get(DESCRIPTION, TypeCodecs.TEXT)),
+      readOnly = Option(row.get(READ_ONLY, TypeCodecs.BOOLEAN)).map(_.booleanValue).getOrElse(false))
   }
 }

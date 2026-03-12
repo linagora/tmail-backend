@@ -20,7 +20,7 @@ package com.linagora.tmail.james.common
 
 import com.linagora.tmail.james.common.LabelSetMethodContract.{LABEL_COLOR, LABEL_NAME, LABEL_NEW_COLOR, LABEL_NEW_NAME, LABEL_DESCRIPTION, LABEL_NEW_DESCRIPTION}
 import com.linagora.tmail.james.common.probe.JmapGuiceLabelProbe
-import com.linagora.tmail.james.jmap.model.{Label, LabelId}
+import com.linagora.tmail.james.jmap.model.{Color, DisplayName, Label, LabelCreationRequest, LabelId}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
@@ -662,7 +662,8 @@ trait LabelSetMethodContract {
            |						"displayName": "$LABEL_NAME",
            |						"keyword": "${label.keyword.flagName}",
            |						"color": "$LABEL_COLOR",
-           |                        "description": "$LABEL_DESCRIPTION"
+           |                        "description": "$LABEL_DESCRIPTION",
+           |                        "readOnly": false
            |					}
            |				]
            |			},
@@ -1705,6 +1706,166 @@ trait LabelSetMethodContract {
            |  "created": [],
            |  "updated": [],
            |  "destroyed": []
+           |}""".stripMargin)
+  }
+
+  @Test
+  def labelSetCreateShouldReturnNotCreatedWhenReadOnlyParam(): Unit = {
+    val request =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+         |  "methodCalls": [
+         |    ["Label/set", {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "create": {
+         |        "L13": {
+         |          "displayName": "$LABEL_NAME",
+         |          "color": "$LABEL_COLOR",
+         |          "readOnly": true
+         |        }
+         |      }
+         |    }, "c1"]
+         |  ]
+         |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState")
+      .isEqualTo(
+        s"""{
+           |  "sessionState": "${SESSION_STATE.value}",
+           |  "methodResponses": [
+           |    ["Label/set", {
+           |      "accountId": "$ACCOUNT_ID",
+           |      "notCreated": {
+           |        "L13": {
+           |          "type": "invalidArguments",
+           |          "description": "Some server-set properties were specified",
+           |          "properties":["readOnly"]
+           |        }
+           |      }
+           |    }, "c1"]
+           |  ]
+           |}""".stripMargin)
+  }
+
+  @Test
+  def labelSetUpdateShouldReturnForbiddenWhenLabelIsReadOnly(server: GuiceJamesServer): Unit = {
+    val label: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
+      .addLabel(BOB, LabelCreationRequest(
+        DisplayName(LABEL_NAME),
+        Some(Color(LABEL_COLOR)),
+        Some(LABEL_DESCRIPTION),
+        readOnly = true))
+
+    val request =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+         |  "methodCalls": [
+         |    ["Label/set", {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "update": {
+         |        "${label.id.id.value}": {
+         |          "displayName": "$LABEL_NEW_NAME"
+         |        }
+         |      }
+         |    }, "c1"]
+         |  ]
+         |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState")
+      .isEqualTo(
+        s"""{
+           |  "sessionState": "${SESSION_STATE.value}",
+           |  "methodResponses": [
+           |    ["Label/set", {
+           |      "accountId": "$ACCOUNT_ID",
+           |      "notUpdated": {
+           |        "${label.id.id.value}": {
+           |          "type": "forbidden",
+           |          "description": "Label '${label.id.serialize}' is read-only and cannot be modified via JMAP"
+           |        }
+           |      }
+           |    }, "c1"]
+           |  ]
+           |}""".stripMargin)
+  }
+
+  @Test
+  def labelSetDestroyShouldReturnForbiddenWhenLabelIsReadOnly(server: GuiceJamesServer): Unit = {
+    val label: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
+      .addLabel(BOB, LabelCreationRequest(
+        DisplayName(LABEL_NAME),
+        Some(Color(LABEL_COLOR)),
+        Some(LABEL_DESCRIPTION),
+        readOnly = true))
+
+    val request =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+         |  "methodCalls": [
+         |    ["Label/set", {
+         |      "accountId": "$ACCOUNT_ID",
+         |      "destroy": ["${label.id.id.value}"]
+         |    }, "c1"]
+         |  ]
+         |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState")
+      .isEqualTo(
+        s"""{
+           |  "sessionState": "${SESSION_STATE.value}",
+           |  "methodResponses": [
+           |    ["Label/set", {
+           |      "accountId": "$ACCOUNT_ID",
+           |      "notDestroyed": {
+           |        "${label.id.id.value}": {
+           |          "type": "forbidden",
+           |          "description": "Label '${label.id.serialize}' is read-only and cannot be modified via JMAP"
+           |        }
+           |      }
+           |    }, "c1"]
+           |  ]
            |}""".stripMargin)
   }
 

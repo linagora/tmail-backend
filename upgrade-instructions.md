@@ -12,6 +12,33 @@ software documentation. Do not follow this guide blindly!
 
 Note: this section is in progress. It will be updated during all the development process until the release.
 
+### Adding read_only field to labels table
+
+Date: 12/03/2026
+
+Concerned product: Distributed TMail, Postgres TMail
+
+Add the optional `read_only` field to the `labels` table. When set to `true`, a label cannot be updated or deleted by the user via JMAP (`Label/set`). Read-only labels can still be managed by administrators through the WebAdmin API.
+
+Labels created before this migration will have `NULL` for this column, which is treated as `false` (not read-only) by the application.
+
+**IMPORTANT: These commands must be executed BEFORE deploying the new version.**
+
+#### Cassandra
+To add this column, run the following CQL command:
+
+```cql
+ALTER TABLE labels ADD read_only boolean;
+```
+
+#### Postgres
+
+To add this column, run the following SQL command:
+
+```sql
+ALTER TABLE labels ADD COLUMN read_only BOOLEAN;
+```
+
 ### Adding can_upgrade and is_paying fields to domains table
 
 Date: 12/03/2026

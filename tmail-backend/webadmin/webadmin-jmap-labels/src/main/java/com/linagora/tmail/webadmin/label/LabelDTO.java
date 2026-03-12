@@ -28,13 +28,15 @@ public class LabelDTO {
     public final String keyword;
     public final String color;
     public final String description;
+    public final boolean readOnly;
 
-    public LabelDTO(String id, String displayName, String keyword, String color, String description) {
+    public LabelDTO(String id, String displayName, String keyword, String color, String description, boolean readOnly) {
         this.id = id;
         this.displayName = displayName;
         this.keyword = keyword;
         this.color = color;
         this.description = description;
+        this.readOnly = readOnly;
     }
 
     public static LabelDTO from(Label label) {
@@ -43,6 +45,7 @@ public class LabelDTO {
             label.displayName().value(),
             label.keyword(),
             label.color().isDefined() ? label.color().get().value() : null,
-            label.description().isDefined() ? label.description().get() : null);
+            label.description().isDefined() ? label.description().get() : null,
+            label.readOnly());
     }
 }

@@ -19,7 +19,7 @@
 package com.linagora.tmail.james.jmap.label
 
 import com.linagora.tmail.james.jmap.label.LabelRepositoryContract.{ALICE, BLUE, BOB, RED}
-import com.linagora.tmail.james.jmap.model.{Color, DescriptionUpdate, DisplayName, Label, LabelCreationRequest, LabelId, LabelNotFoundException}
+import com.linagora.tmail.james.jmap.model.{Color, DescriptionUpdate, DisplayName, Label, LabelCreationRequest, LabelId, LabelNotFoundException, LabelReadOnlyException}
 import org.apache.james.core.Username
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
 import org.junit.jupiter.api.Test
@@ -406,5 +406,50 @@ trait LabelRepositoryContract {
 
     assertThat(describedLabel.description).isEqualTo(Some("This label has description"))
     assertThat(notDescribedLabel.description).isEqualTo(None)
+  }
+
+  @Test
+  def addLabelShouldDefaultReadOnlyToFalse(): Unit = {
+    val label = SMono.fromPublisher(testee.addLabel(ALICE,
+      LabelCreationRequest(DisplayName("Important"), Some(RED), None))).block()
+
+    assertThat(label.readOnly).isFalse
+  }
+
+  @Test
+  def addLabelShouldSupportReadOnly(): Unit = {
+    val label = SMono.fromPublisher(testee.addLabel(ALICE,
+      LabelCreationRequest(DisplayName("Important"), Some(RED), None, true))).block()
+
+    assertThat(label.readOnly).isTrue
+  }
+
+  @Test
+  def setLabelReadOnlyShouldSucceed(): Unit = {
+    val label = SMono.fromPublisher(testee.addLabel(ALICE,
+      LabelCreationRequest(DisplayName("Important"), Some(RED), None))).block()
+
+    SMono.fromPublisher(testee.setLabelReadOnly(ALICE, label.id, readOnly = true)).block()
+
+    assertThat(SFlux.fromPublisher(testee.listLabels(ALICE)).collectSeq().block().head.readOnly).isTrue
+  }
+
+  @Test
+  def setLabelReadOnlyShouldAllowTogglingBackToFalse(): Unit = {
+    val label = SMono.fromPublisher(testee.addLabel(ALICE,
+      LabelCreationRequest(DisplayName("Important"), Some(RED), None))).block()
+
+    SMono.fromPublisher(testee.setLabelReadOnly(ALICE, label.id, readOnly = true)).block()
+    SMono.fromPublisher(testee.setLabelReadOnly(ALICE, label.id, readOnly = false)).block()
+
+    assertThat(SFlux.fromPublisher(testee.listLabels(ALICE)).collectSeq().block().head.readOnly).isFalse
+  }
+
+  @Test
+  def setLabelReadOnlyShouldThrowWhenLabelDoesNotExist(): Unit = {
+    val randomLabelId = LabelId.generate()
+
+    assertThatThrownBy(() => SMono.fromPublisher(testee.setLabelReadOnly(ALICE, randomLabelId, readOnly = true)).block())
+      .isInstanceOf(classOf[LabelNotFoundException])
   }
 }

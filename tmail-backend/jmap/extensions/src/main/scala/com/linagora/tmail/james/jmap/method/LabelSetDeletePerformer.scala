@@ -21,7 +21,7 @@ package com.linagora.tmail.james.jmap.method
 import com.google.inject.Inject
 import com.linagora.tmail.james.jmap.label.LabelRepository
 import com.linagora.tmail.james.jmap.method.LabelSetDeletePerformer.{LabelDeletionFailure, LabelDeletionResult, LabelDeletionResults, LabelDeletionSuccess}
-import com.linagora.tmail.james.jmap.model.{LabelId, LabelSetRequest, UnparsedLabelId}
+import com.linagora.tmail.james.jmap.model.{LabelId, LabelReadOnlyException, LabelSetRequest, UnparsedLabelId}
 import org.apache.james.jmap.core.SetError
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.mailbox.MailboxSession
@@ -34,6 +34,7 @@ object LabelSetDeletePerformer {
   case class LabelDeletionFailure(LabelId: UnparsedLabelId, exception: Throwable) extends LabelDeletionResult {
     def asLabelSetError: SetError = exception match {
       case e: IllegalArgumentException => SetError.invalidArguments(SetErrorDescription(s"${LabelId.id} is not a LabelId: ${e.getMessage}"))
+      case _: LabelReadOnlyException => SetError.forbidden(SetErrorDescription(exception.getMessage))
       case _ => SetError.serverFail(SetErrorDescription(exception.getMessage))
     }
   }
@@ -63,6 +64,13 @@ class LabelSetDeletePerformer @Inject()(val labelRepository: LabelRepository) {
       .map(LabelDeletionResults)
 
   private def delete(unparsedId: UnparsedLabelId, mailboxSession: MailboxSession): SMono[LabelDeletionResult] =
-    SMono.fromPublisher(labelRepository.deleteLabel(mailboxSession.getUser, unparsedId.asLabelId))
-        .`then`(SMono.just[LabelDeletionResult](LabelDeletionSuccess(unparsedId.asLabelId)))
+    SFlux.fromPublisher(labelRepository.getLabels(mailboxSession.getUser, java.util.List.of(unparsedId.asLabelId)))
+      .next()
+      .flatMap(label =>
+        if (label.readOnly)
+          SMono.just[LabelDeletionResult](LabelDeletionFailure(unparsedId, LabelReadOnlyException(unparsedId.asLabelId)))
+        else
+          SMono.fromPublisher(labelRepository.deleteLabel(mailboxSession.getUser, unparsedId.asLabelId))
+            .`then`(SMono.just[LabelDeletionResult](LabelDeletionSuccess(unparsedId.asLabelId))))
+      .defaultIfEmpty(LabelDeletionSuccess(unparsedId.asLabelId))
 }
