@@ -249,6 +249,29 @@ trait JmapSaasContract {
   }
 
   @Test
+  def saasB2BUserCreatedShouldSetCanUpgrade(): Unit = {
+    setUpJmapServer(saasSupport = true)
+
+    publishAmqpSettingsMessage(
+      s"""{
+         |    "internalEmail": "${TEST_USER.asString()}",
+         |    "canUpgrade": false
+         |}""".stripMargin,
+      SUBSCRIPTION_ROUTING_KEY)
+
+    awaitAtMostTenSeconds.untilAsserted { () =>
+      `given`()
+        .when()
+        .get("/session")
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .body("capabilities.'com:linagora:params:saas'.canUpgrade", equalTo(false))
+        .body("capabilities.'com:linagora:params:saas'.isPaying", equalTo(true))
+    }
+  }
+
+  @Test
   @Tag(CategoryTags.BASIC_FEATURE)
   def planNameShouldBeUpdatedWhenSubscriptionUpdateAndUserAlreadyHasAPlan(): Unit = {
     setUpJmapServer(saasSupport = true)

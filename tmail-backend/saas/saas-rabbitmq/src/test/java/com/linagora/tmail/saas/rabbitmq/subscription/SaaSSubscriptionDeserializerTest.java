@@ -25,6 +25,8 @@ import org.assertj.core.api.SoftAssertions;
 import org.junit.jupiter.api.Test;
 
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition;
+import com.linagora.tmail.saas.rabbitmq.subscription.SaaSUserMessage.SaaSB2BUserCreatedMessage;
+import com.linagora.tmail.saas.rabbitmq.subscription.SaaSUserMessage.SaaSSubscriptionMessage;
 
 class SaaSSubscriptionDeserializerTest {
     RateLimitingDefinition RATE_LIMITING_1 = RateLimitingDefinition.builder()
@@ -66,7 +68,7 @@ class SaaSSubscriptionDeserializerTest {
             }
             """;
 
-        SaaSSubscriptionMessage message = SaaSSubscriptionDeserializer.parseAMQPUserMessage(validMessage);
+        SaaSSubscriptionMessage message = (SaaSSubscriptionMessage) SaaSSubscriptionDeserializer.parseAMQPUserMessage(validMessage);
 
         SoftAssertions.assertSoftly(softly -> {
             softly.assertThat(message.internalEmail()).isEqualTo("alice@twake.app");
@@ -74,6 +76,23 @@ class SaaSSubscriptionDeserializerTest {
             softly.assertThat(message.canUpgrade()).isTrue();
             softly.assertThat(message.features().mail().get().storageQuota()).isEqualTo(12334534L);
             softly.assertThat(message.features().mail().get().rateLimitingDefinition()).isEqualTo(RATE_LIMITING_1);
+        });
+    }
+
+    @Test
+    void parseValidAmqpUserCreatedMessageShouldSucceed() {
+        String validMessage = """
+            {
+                "internalEmail": "alice@twake.app",
+                "canUpgrade": false
+            }
+            """;
+
+        SaaSB2BUserCreatedMessage message = (SaaSB2BUserCreatedMessage) SaaSSubscriptionDeserializer.parseAMQPUserMessage(validMessage);
+
+        SoftAssertions.assertSoftly(softly -> {
+            softly.assertThat(message.internalEmail()).isEqualTo("alice@twake.app");
+            softly.assertThat(message.canUpgrade()).isFalse();
         });
     }
 
@@ -88,7 +107,7 @@ class SaaSSubscriptionDeserializerTest {
         }
         """;
 
-        SaaSSubscriptionMessage parsed = SaaSSubscriptionDeserializer.parseAMQPUserMessage(message);
+        SaaSSubscriptionMessage parsed = (SaaSSubscriptionMessage) SaaSSubscriptionDeserializer.parseAMQPUserMessage(message);
 
         assertThat(parsed.features().mail()).isEmpty();
     }
@@ -169,21 +188,6 @@ class SaaSSubscriptionDeserializerTest {
     }
 
     @Test
-    void parseMissingRequiredMailPayloadShouldThrowException() {
-        String message = """
-            {
-                "internalEmail": "alice@twake.app",
-                "isPaying": true,
-                "canUpgrade": true
-            }
-            """;
-
-        assertThatThrownBy(() -> SaaSSubscriptionDeserializer.parseAMQPUserMessage(message))
-            .isInstanceOf(SaaSSubscriptionDeserializer.SaaSSubscriptionMessageParseException.class)
-            .hasMessageContaining("Failed to parse SaaS subscription message");
-    }
-
-    @Test
     void parseMissingRequiredRateLimitingShouldThrowException() {
         String message = """
             {
@@ -225,7 +229,7 @@ class SaaSSubscriptionDeserializerTest {
             }
             """;
 
-        SaaSSubscriptionMessage parsed = SaaSSubscriptionDeserializer.parseAMQPUserMessage(message);
+        SaaSSubscriptionMessage parsed = (SaaSSubscriptionMessage) SaaSSubscriptionDeserializer.parseAMQPUserMessage(message);
 
         SoftAssertions.assertSoftly(softly -> {
             softly.assertThat(parsed.internalEmail()).isEqualTo("alice@twake.app");
@@ -257,7 +261,7 @@ class SaaSSubscriptionDeserializerTest {
             }
             """;
 
-        SaaSSubscriptionMessage parsed = SaaSSubscriptionDeserializer.parseAMQPUserMessage(message);
+        SaaSSubscriptionMessage parsed = (SaaSSubscriptionMessage) SaaSSubscriptionDeserializer.parseAMQPUserMessage(message);
 
         assertThat(parsed.features().mail().get().storageQuota()).isEqualTo(-1L);
     }

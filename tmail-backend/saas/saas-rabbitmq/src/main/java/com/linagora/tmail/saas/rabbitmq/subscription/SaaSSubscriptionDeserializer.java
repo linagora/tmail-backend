@@ -27,6 +27,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.linagora.tmail.saas.rabbitmq.subscription.SaaSDomainSubscriptionMessage.SaaSDomainCancelSubscriptionMessage;
 import com.linagora.tmail.saas.rabbitmq.subscription.SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage;
+import com.linagora.tmail.saas.rabbitmq.subscription.SaaSUserMessage.SaaSB2BUserCreatedMessage;
+import com.linagora.tmail.saas.rabbitmq.subscription.SaaSUserMessage.SaaSSubscriptionMessage;
 
 public class SaaSSubscriptionDeserializer {
     public static class SaaSSubscriptionMessageParseException extends RuntimeException {
@@ -37,11 +39,11 @@ public class SaaSSubscriptionDeserializer {
 
     private static final SaaSSubscriptionDeserializer DESERIALIZER = new SaaSSubscriptionDeserializer();
 
-    public static SaaSSubscriptionMessage parseAMQPUserMessage(String messagePayload) {
+    public static SaaSUserMessage parseAMQPUserMessage(String messagePayload) {
         return parseAMQPUserMessage(messagePayload.getBytes(StandardCharsets.UTF_8));
     }
 
-    public static SaaSSubscriptionMessage parseAMQPUserMessage(byte[] messagePayload) {
+    public static SaaSUserMessage parseAMQPUserMessage(byte[] messagePayload) {
         try {
             return DESERIALIZER.deserializeUserMessage(messagePayload);
         } catch (Exception e) {
@@ -62,6 +64,7 @@ public class SaaSSubscriptionDeserializer {
     }
 
     private static final String ENABLED_FIELD = "enabled";
+    private static final String FEATURES_FIELD = "features";
 
     private final ObjectMapper objectMapper;
 
@@ -71,8 +74,21 @@ public class SaaSSubscriptionDeserializer {
         objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
     }
 
-    public SaaSSubscriptionMessage deserializeUserMessage(byte[] jsonBytes) throws IOException {
+    public SaaSUserMessage deserializeUserMessage(byte[] jsonBytes) throws IOException {
+        JsonNode root = objectMapper.readTree(jsonBytes);
+
+        if (root.has(FEATURES_FIELD)) {
+            return deserializeUserSubscriptionMessage(jsonBytes);
+        }
+        return deserializeUserCreatedMessage(jsonBytes);
+    }
+
+    public SaaSSubscriptionMessage deserializeUserSubscriptionMessage(byte[] jsonBytes) throws IOException {
         return objectMapper.readValue(jsonBytes, SaaSSubscriptionMessage.class);
+    }
+
+    public SaaSB2BUserCreatedMessage deserializeUserCreatedMessage(byte[] jsonBytes) throws IOException {
+        return objectMapper.readValue(jsonBytes, SaaSB2BUserCreatedMessage.class);
     }
 
     public SaaSDomainSubscriptionMessage deserializeDomainMessage(byte[] jsonBytes) throws IOException {

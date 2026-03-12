@@ -156,6 +156,30 @@ public interface SaaSSubscriptionConsumerContract {
     }
 
     @Test
+    default void shouldHonorCanUpgradeFalseForNewlyRegisteredB2BUserAccount() {
+        String validMessage = String.format("""
+            {
+                "internalEmail": "%s",
+                "canUpgrade": false
+            }
+            """, ALICE.asString());
+
+        rabbitMQExtension.getSender()
+            .send(Mono.just(new OutboundMessage(
+                SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_USER_CREATED_EXCHANGE_DEFAULT,
+                SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_USER_CREATED_ROUTING_KEY_DEFAULT,
+                validMessage.getBytes(UTF_8))))
+            .block();
+
+        await.untilAsserted(() -> {
+            SaaSAccount saaSAccount = Mono.from(saasAccountRepository().getSaaSAccount(ALICE)).block();
+            assertThat(saaSAccount).isNotNull();
+            assertThat(saaSAccount.canUpgrade()).isFalse();
+            assertThat(saaSAccount.isPaying()).isTrue();
+        });
+    }
+
+    @Test
     default void shouldSetStorageQuotaWhenUserHasNoPlanYet() {
         String validMessage = String.format("""
             {
