@@ -23,6 +23,7 @@ import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 import java.time.Instant;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.stream.Stream;
@@ -37,6 +38,7 @@ import org.apache.james.events.Group;
 import org.apache.james.jmap.mail.Keyword;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.mailbox.MessageIdManager;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.acl.ACLDiff;
 import org.apache.james.mailbox.acl.MailboxACLResolver;
@@ -44,7 +46,6 @@ import org.apache.james.mailbox.events.MailboxEvents.Added;
 import org.apache.james.mailbox.events.MailboxEvents.FlagsUpdated;
 import org.apache.james.mailbox.events.MailboxEvents.MailboxACLUpdated;
 import org.apache.james.mailbox.events.MailboxEvents.MessageContentDeletionEvent;
-import org.apache.james.mailbox.exception.UnsupportedRightException;
 import org.apache.james.mailbox.model.FetchGroup;
 import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.james.mailbox.model.MailboxId;
@@ -54,6 +55,8 @@ import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mailbox.model.MessageResult;
 import org.apache.james.mailbox.model.ThreadId;
 import org.apache.james.mailbox.model.UpdatedFlags;
+import org.apache.james.util.FunctionalUtils;
+import org.apache.james.util.ReactorUtils;
 import org.reactivestreams.Publisher;
 
 import com.google.common.collect.ImmutableSet;
@@ -75,17 +78,21 @@ public class KeywordEmailQueryViewListener implements ReactiveGroupEventListener
 
     private static final Group GROUP = new KeywordEmailQueryViewListenerGroup();
     private static final Keyword FLAGGED = new Keyword("$flagged");
+    private static final int MESSAGES_BATCH_SIZE = 32;
 
     private final KeywordEmailQueryView keywordEmailQueryView;
     private final MailboxManager mailboxManager;
+    private final MessageIdManager messageIdManager;
     private final MailboxACLResolver mailboxACLResolver;
 
     @Inject
     public KeywordEmailQueryViewListener(KeywordEmailQueryView keywordEmailQueryView,
                                          MailboxManager mailboxManager,
+                                         MessageIdManager messageIdManager,
                                          MailboxACLResolver mailboxACLResolver) {
         this.keywordEmailQueryView = keywordEmailQueryView;
         this.mailboxManager = mailboxManager;
+        this.messageIdManager = messageIdManager;
         this.mailboxACLResolver = mailboxACLResolver;
     }
 
@@ -120,29 +127,58 @@ public class KeywordEmailQueryViewListener implements ReactiveGroupEventListener
     }
 
     private Mono<Void> handleAdded(Added added) {
-        if (added.isMoved()) {
-            return Mono.empty();
-        }
-
-        return Flux.fromIterable(added.getAdded().values())
-            .flatMap(messageMetaData -> saveKeywords(added.getUsername(), messageMetaData))
+        return Mono.when(deleteKeywordViewIfNeeded(added), addKeywordView(added))
             .then();
     }
 
-    private Mono<Void> handleFlagsUpdated(FlagsUpdated flagsUpdated) {
-        MailboxSession session = mailboxManager.createSystemSession(flagsUpdated.getUsername());
+    private Mono<Void> deleteKeywordViewIfNeeded(Added added) {
+        if (!added.isMoved()) {
+            return Mono.empty();
+        }
 
-        return Mono.from(mailboxManager.getMailboxReactive(flagsUpdated.getMailboxId(), session))
-            .flatMap(mailbox -> Flux.fromIterable(flagsUpdated.getUpdatedFlags())
-                .flatMap(updatedFlags -> applyUpdatedFlags(flagsUpdated.getUsername(), mailbox, session, updatedFlags))
+        MailboxSession actorSession = mailboxManager.createSystemSession(added.getUsername());
+        MailboxId movedFromMailboxId = added.movedFromMailboxId().orElseThrow();
+
+        return Mono.from(mailboxManager.getMailboxReactive(movedFromMailboxId, actorSession))
+            .flatMap(sourceMailbox -> {
+                Username sourceMailboxOwner = sourceMailbox.getMailboxPath().getUser();
+                MailboxSession sourceOwnerSession = mailboxManager.createSystemSession(sourceMailboxOwner);
+
+                return Mono.from(mailboxManager.getMailboxReactive(movedFromMailboxId, sourceOwnerSession))
+                    .flatMap(mailbox -> usersHavingReadRight(sourceMailboxOwner, mailbox, sourceOwnerSession)
+                        .concatMap(username -> resolveInaccessibleMessages(added.getAdded().values(), username)
+                            .flatMap(messageMetaData -> deleteKeywords(username, messageMetaData.getFlags(), messageMetaData.getInternalDate().toInstant(), messageMetaData.getMessageId()), DEFAULT_CONCURRENCY))
+                        .then());
+            });
+    }
+
+    private Mono<Void> addKeywordView(Added added) {
+        Username mailboxOwner = added.getMailboxPath().getUser();
+        MailboxSession ownerSession = mailboxManager.createSystemSession(mailboxOwner);
+
+        return Mono.from(mailboxManager.getMailboxReactive(added.getMailboxId(), ownerSession))
+            .flatMap(mailbox -> usersHavingReadRight(mailboxOwner, mailbox, ownerSession)
+                .concatMap(username -> Flux.fromIterable(added.getAdded().values())
+                    .flatMap(messageMetaData -> saveKeywords(username, messageMetaData), DEFAULT_CONCURRENCY))
+                .then());
+    }
+
+    private Mono<Void> handleFlagsUpdated(FlagsUpdated flagsUpdated) {
+        Username mailboxOwner = flagsUpdated.getMailboxPath().getUser();
+        MailboxSession ownerSession = mailboxManager.createSystemSession(mailboxOwner);
+
+        return Mono.from(mailboxManager.getMailboxReactive(flagsUpdated.getMailboxId(), ownerSession))
+            .flatMap(mailbox -> usersHavingReadRight(mailboxOwner, mailbox, ownerSession)
+                .concatMap(username -> Flux.fromIterable(flagsUpdated.getUpdatedFlags())
+                    .flatMap(updatedFlags -> applyUpdatedFlags(username, mailbox, ownerSession, updatedFlags), DEFAULT_CONCURRENCY))
                 .then());
     }
 
     private Mono<Void> handleMailboxACLUpdated(MailboxACLUpdated mailboxACLUpdated) {
-        Flux<Void> handleReadRightAdded = Flux.fromIterable(usersWhoGainedReadRight(mailboxACLUpdated.getUsername(), mailboxACLUpdated.getAclDiff()))
-            .concatMap(username -> indexKeywordViewForMailbox(mailboxACLUpdated.getUsername(), mailboxACLUpdated.getMailboxId(), username));
+        Flux<Void> handleReadRightAdded = usersWhoGainedReadRight(mailboxACLUpdated.getUsername(), mailboxACLUpdated.getAclDiff())
+            .concatMap(username -> indexKeywordViewForMailbox(mailboxACLUpdated.getMailboxId(), username));
 
-        Flux<Void> handleReadRightRevoked = Flux.fromIterable(usersWhoLostReadRight(mailboxACLUpdated.getUsername(), mailboxACLUpdated.getAclDiff()))
+        Flux<Void> handleReadRightRevoked = usersWhoLostReadRight(mailboxACLUpdated.getUsername(), mailboxACLUpdated.getAclDiff())
             .concatMap(username -> clearKeywordViewForMailbox(mailboxACLUpdated.getUsername(), mailboxACLUpdated.getMailboxId(), username));
 
         return Flux.merge(handleReadRightAdded, handleReadRightRevoked)
@@ -212,7 +248,7 @@ public class KeywordEmailQueryViewListener implements ReactiveGroupEventListener
 
     private Mono<Void> saveKeywords(Username username, Set<Keyword> keywords, KeywordSaveContext messageContext) {
         return Flux.fromIterable(keywords)
-            .flatMap(keyword -> keywordEmailQueryView.save(username, keyword, messageContext.receivedAt(), messageContext.messageId(), messageContext.threadId()))
+            .flatMap(keyword -> keywordEmailQueryView.save(username, keyword, messageContext.receivedAt(), messageContext.messageId(), messageContext.threadId()), DEFAULT_CONCURRENCY)
             .then();
     }
 
@@ -222,26 +258,51 @@ public class KeywordEmailQueryViewListener implements ReactiveGroupEventListener
 
     private Mono<Void> deleteKeywords(Username username, Set<Keyword> keywords, Instant receivedAt, MessageId messageId) {
         return Flux.fromIterable(keywords)
-            .flatMap(keyword -> keywordEmailQueryView.delete(username, keyword, receivedAt, messageId))
+            .flatMap(keyword -> keywordEmailQueryView.delete(username, keyword, receivedAt, messageId), DEFAULT_CONCURRENCY)
             .then();
     }
 
-    private Mono<Void> indexKeywordViewForMailbox(Username mailboxOwner, MailboxId mailboxId, Username sharee) {
-        MailboxSession session = mailboxManager.createSystemSession(mailboxOwner);
+    private Mono<Void> indexKeywordViewForMailbox(MailboxId mailboxId, Username sharee) {
+        MailboxSession shareeSession = mailboxManager.createSystemSession(sharee);
 
-        return Mono.from(mailboxManager.getMailboxReactive(mailboxId, session))
-            .flatMapMany(messageManager -> Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, session)))
+        return getMessagesInSharedMailbox(mailboxId, shareeSession)
             .flatMap(messageResult -> saveKeywords(sharee, concernedKeywords(messageResult.getFlags()), toSaveContext(messageResult)), DEFAULT_CONCURRENCY)
             .then();
     }
 
     private Mono<Void> clearKeywordViewForMailbox(Username mailboxOwner, MailboxId mailboxId, Username sharee) {
-        MailboxSession session = mailboxManager.createSystemSession(mailboxOwner);
+        MailboxSession ownerSession = mailboxManager.createSystemSession(mailboxOwner);
+        MailboxSession shareeSession = mailboxManager.createSystemSession(sharee);
 
-        return Mono.from(mailboxManager.getMailboxReactive(mailboxId, session))
-            .flatMapMany(messageManager -> Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, session)))
-            .flatMap(messageResult -> deleteKeywords(sharee, messageResult.getFlags(), messageResult.getInternalDate().toInstant(), messageResult.getMessageId()), DEFAULT_CONCURRENCY)
+        return getMessagesInSharedMailbox(mailboxId, ownerSession)
+            .window(MESSAGES_BATCH_SIZE)
+            .concatMap(window -> window.collectList()
+                .flatMapMany(messageResults -> resolveInaccessibleMessages(messageResults, shareeSession))
+                .flatMap(messageResult -> deleteKeywords(sharee, messageResult.getFlags(), messageResult.getInternalDate().toInstant(), messageResult.getMessageId()), DEFAULT_CONCURRENCY))
             .then();
+    }
+
+    private Flux<MessageResult> getMessagesInSharedMailbox(MailboxId mailboxId, MailboxSession ownerSession) {
+        return Mono.from(mailboxManager.getMailboxReactive(mailboxId, ownerSession))
+            .flatMapMany(mailbox -> Flux.from(mailbox.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, ownerSession)));
+    }
+
+    private Flux<MessageResult> resolveInaccessibleMessages(List<MessageResult> messageResults, MailboxSession shareeSession) {
+        return Mono.from(messageIdManager.accessibleMessagesReactive(messageResults.stream()
+                .map(MessageResult::getMessageId)
+                .collect(ImmutableSet.toImmutableSet()), shareeSession))
+            .flatMapMany(accessibleMessageIds -> Flux.fromIterable(messageResults)
+                .filter(messageResult -> !accessibleMessageIds.contains(messageResult.getMessageId())));
+    }
+
+    private Flux<MessageMetaData> resolveInaccessibleMessages(Collection<MessageMetaData> messageMetaData, Username username) {
+        MailboxSession session = mailboxManager.createSystemSession(username);
+
+        return Mono.from(messageIdManager.accessibleMessagesReactive(messageMetaData.stream()
+                .map(MessageMetaData::getMessageId)
+                .collect(ImmutableSet.toImmutableSet()), session))
+            .flatMapMany(accessibleMessageIds -> Flux.fromIterable(messageMetaData)
+                .filter(metadata -> !accessibleMessageIds.contains(metadata.getMessageId())));
     }
 
     private KeywordSaveContext toSaveContext(MessageResult messageResult) {
@@ -252,34 +313,45 @@ public class KeywordEmailQueryViewListener implements ReactiveGroupEventListener
         return new KeywordDeleteContext(messageResult.getMessageId(), messageResult.getInternalDate().toInstant());
     }
 
-    private Collection<Username> usersWhoGainedReadRight(Username owner, ACLDiff aclDiff) {
+    private Flux<Username> usersWhoGainedReadRight(Username owner, ACLDiff aclDiff) {
         return impactedUsers(aclDiff)
-            .stream()
-            .filter(username -> !hasReadRight(owner, aclDiff.getOldACL(), username) && hasReadRight(owner, aclDiff.getNewACL(), username))
-            .collect(ImmutableSet.toImmutableSet());
+            .filterWhen(username -> hasReadRightReactive(owner, aclDiff.getOldACL(), username)
+                .map(FunctionalUtils.negate()))
+            .filterWhen(username -> hasReadRightReactive(owner, aclDiff.getNewACL(), username));
     }
 
-    private Collection<Username> usersWhoLostReadRight(Username owner, ACLDiff aclDiff) {
+    private Flux<Username> usersWhoLostReadRight(Username owner, ACLDiff aclDiff) {
         return impactedUsers(aclDiff)
-            .stream()
-            .filter(username -> hasReadRight(owner, aclDiff.getOldACL(), username) && !hasReadRight(owner, aclDiff.getNewACL(), username))
-            .collect(ImmutableSet.toImmutableSet());
+            .filterWhen(username -> hasReadRightReactive(owner, aclDiff.getOldACL(), username))
+            .filterWhen(username -> hasReadRightReactive(owner, aclDiff.getNewACL(), username)
+                .map(FunctionalUtils.negate()));
     }
 
-    private Collection<Username> impactedUsers(ACLDiff aclDiff) {
-        return Stream.concat(aclDiff.getOldACL().getEntries().keySet().stream(), aclDiff.getNewACL().getEntries().keySet().stream())
+    private Flux<Username> impactedUsers(ACLDiff aclDiff) {
+        return Flux.concat(
+                Flux.fromIterable(aclDiff.getOldACL().getEntries().keySet()),
+                Flux.fromIterable(aclDiff.getNewACL().getEntries().keySet()))
             .filter(entryKey -> MailboxACL.NameType.user.equals(entryKey.getNameType()))
             .map(MailboxACL.EntryKey::getName)
             .map(Username::of)
-            .collect(ImmutableSet.toImmutableSet());
+            .distinct();
     }
 
-    private boolean hasReadRight(Username owner, MailboxACL acl, Username username) {
-        try {
-            return mailboxACLResolver.resolveRights(username, acl, owner).contains(MailboxACL.Right.Read);
-        } catch (UnsupportedRightException e) {
-            throw new IllegalStateException("Failed to resolve mailbox ACL rights", e);
-        }
+    private Flux<Username> usersHavingReadRight(Username owner, MessageManager mailbox, MailboxSession ownerSession) {
+        return Mono.fromCallable(() -> mailbox.getResolvedAcl(ownerSession))
+            .flatMapMany(acl -> Flux.concat(
+                    Flux.just(owner),
+                    Flux.fromIterable(acl.getEntries().keySet())
+                        .filter(entryKey -> MailboxACL.NameType.user.equals(entryKey.getNameType()))
+                        .map(MailboxACL.EntryKey::getName)
+                        .map(Username::of))
+                .filterWhen(username -> hasReadRightReactive(owner, acl, username))
+                .distinct());
+    }
+
+    private Mono<Boolean> hasReadRightReactive(Username owner, MailboxACL acl, Username username) {
+        return Mono.fromCallable(() -> mailboxACLResolver.resolveRights(username, acl, owner).contains(MailboxACL.Right.Read))
+            .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER);
     }
 
     private Set<Keyword> concernedKeywords(Flags flags) {
