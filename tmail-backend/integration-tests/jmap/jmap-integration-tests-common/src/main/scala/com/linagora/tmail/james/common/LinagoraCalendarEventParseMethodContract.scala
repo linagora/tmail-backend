@@ -1658,7 +1658,7 @@ trait LinagoraCalendarEventParseMethodContract {
       .withOptions(IGNORING_EXTRA_FIELDS, IGNORING_ARRAY_ORDER)
       .inPath("methodResponses[0][1].parsed.*[0]")
       .isEqualTo(
-        s"""{
+        s"""[{
            |  "uid": "ea127690-0440-404b-af98-9823c855a283",
            |  "method": "REPLY",
            |  "participants": [
@@ -1668,7 +1668,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |      "participationStatus": "ACCEPTED"
            |    }
            |  ]
-           |}""".stripMargin)
+           |}]""".stripMargin)
 
     assertThatJson(response)
       .inPath("methodResponses[0][1].parsed.*[0]")
