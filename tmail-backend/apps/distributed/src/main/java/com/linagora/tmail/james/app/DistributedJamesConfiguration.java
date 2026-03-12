@@ -41,6 +41,7 @@ import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
+import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.oidc.JMAPOidcConfiguration;
 import com.linagora.tmail.james.jmap.oidc.OidcTokenCacheModuleChooser;
@@ -65,7 +66,8 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                                             VaultConfiguration vaultConfiguration,
                                             ExtensionConfiguration extentionConfiguration,
                                             boolean oidcEnabled,
-                                            OidcTokenCacheModuleChooser.OidcTokenCacheChoice oidcTokenCacheChoice) implements Configuration {
+                                            OidcTokenCacheModuleChooser.OidcTokenCacheChoice oidcTokenCacheChoice,
+                                            boolean keywordEmailQueryViewEnabled) implements Configuration {
     public static class Builder {
         private Optional<SearchConfiguration> searchConfiguration;
         private Optional<BlobStoreConfiguration> blobStoreConfiguration;
@@ -85,6 +87,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
         private Optional<ExtensionConfiguration> extentionConfiguration;
         private Optional<Boolean> oidcEnabled;
         private Optional<OidcTokenCacheModuleChooser.OidcTokenCacheChoice> oidcTokenStorageChoice;
+        private Optional<Boolean> keywordEmailQueryViewEnabled;
 
         private Builder() {
             searchConfiguration = Optional.empty();
@@ -105,6 +108,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             extentionConfiguration = Optional.empty();
             oidcEnabled = Optional.empty();
             oidcTokenStorageChoice = Optional.empty();
+            keywordEmailQueryViewEnabled = Optional.empty();
         }
 
         public Builder workingDirectory(String path) {
@@ -215,6 +219,11 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             return this;
         }
 
+        public Builder keywordEmailQueryViewEnabled(boolean enable) {
+            this.keywordEmailQueryViewEnabled = Optional.of(enable);
+            return this;
+        }
+
         public DistributedJamesConfiguration build() {
             ConfigurationPath configurationPath = this.configurationPath.orElse(new ConfigurationPath(FileSystem.FILE_PROTOCOL_AND_CONF));
             JamesServerResourceLoader directories = new JamesServerResourceLoader(rootDirectory
@@ -315,6 +324,16 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             OidcTokenCacheModuleChooser.OidcTokenCacheChoice oidcTokenCacheChoice = this.oidcTokenStorageChoice.orElseGet(Throwing.supplier(
                 () -> OidcTokenCacheModuleChooser.OidcTokenCacheChoice.from(propertiesProvider)));
 
+            boolean keywordEmailQueryViewEnabled = this.keywordEmailQueryViewEnabled.orElseGet(() -> {
+                try {
+                    return JMAPExtensionConfiguration.from(propertiesProvider.getConfiguration("jmap")).viewKeywordQueryEnabled();
+                } catch (FileNotFoundException e) {
+                    return false;
+                } catch (ConfigurationException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
             return new DistributedJamesConfiguration(
                 configurationPath,
                 directories,
@@ -335,7 +354,8 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 vaultConfiguration,
                 extentionConfiguration,
                 oidcEnabled,
-                oidcTokenCacheChoice);
+                oidcTokenCacheChoice,
+                keywordEmailQueryViewEnabled);
         }
     }
 

@@ -37,8 +37,8 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
+import com.google.common.collect.ImmutableMap;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.KeywordEmailQueryMethodContract;
@@ -53,6 +53,7 @@ public class MemoryEmailQueryMethodTest implements EmailQueryMethodContract, Key
             .configurationFromClasspath()
             .usersRepository(DEFAULT)
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
+            .keywordEmailQueryViewEnabled(true)
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule(ImmutableMap.of("view.keyword.query.enabled", true))))

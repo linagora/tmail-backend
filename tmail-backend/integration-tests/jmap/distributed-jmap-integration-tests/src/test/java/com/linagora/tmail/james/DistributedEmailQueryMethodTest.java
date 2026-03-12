@@ -60,6 +60,7 @@ public class DistributedEmailQueryMethodTest implements EmailQueryMethodContract
                 .disableSingleSave())
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
+            .keywordEmailQueryViewEnabled(true)
             .build())
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
