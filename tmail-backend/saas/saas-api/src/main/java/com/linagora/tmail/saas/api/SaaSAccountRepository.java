@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.saas.api;
 
+import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.reactivestreams.Publisher;
 
@@ -29,4 +30,10 @@ public interface SaaSAccountRepository {
     Publisher<Void> upsertSaasAccount(Username username, SaaSAccount saaSAccount);
 
     Publisher<Void> deleteSaaSAccount(Username username);
+
+    Publisher<SaaSAccount> getSaaSAccount(Domain domain);
+
+    Publisher<Void> upsertSaasAccount(Domain domain, SaaSAccount saaSAccount);
+
+    Publisher<Void> deleteSaaSAccount(Domain domain);
 }

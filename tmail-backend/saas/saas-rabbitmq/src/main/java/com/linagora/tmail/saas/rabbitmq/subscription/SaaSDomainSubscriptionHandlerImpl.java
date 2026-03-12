@@ -31,6 +31,8 @@ import org.slf4j.LoggerFactory;
 import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition;
+import com.linagora.tmail.saas.api.SaaSAccountRepository;
+import com.linagora.tmail.saas.model.SaaSAccount;
 
 import reactor.core.publisher.Mono;
 import reactor.util.context.Context;
@@ -42,14 +44,17 @@ public class SaaSDomainSubscriptionHandlerImpl implements SaaSMessageHandler {
     private final DomainList domainList;
     private final MaxQuotaManager maxQuotaManager;
     private final RateLimitingRepository rateLimitingRepository;
+    private final SaaSAccountRepository saasAccountRepository;
 
     @Inject
     public SaaSDomainSubscriptionHandlerImpl(DomainList domainList,
                                              MaxQuotaManager maxQuotaManager,
-                                             RateLimitingRepository rateLimitingRepository) {
+                                             RateLimitingRepository rateLimitingRepository,
+                                             SaaSAccountRepository saasAccountRepository) {
         this.domainList = domainList;
         this.maxQuotaManager = maxQuotaManager;
         this.rateLimitingRepository = rateLimitingRepository;
+        this.saasAccountRepository = saasAccountRepository;
     }
 
     @Override
@@ -82,6 +87,7 @@ public class SaaSDomainSubscriptionHandlerImpl implements SaaSMessageHandler {
             Domain domain = Domain.of(domainCancelSubscriptionMessage.domain());
             return ReactorUtils.logAsMono(() -> LOGGER.info("Processing domain cancellation for domain: {}", domain))
                 .then(removeDomainIfExists(domain))
+                .then(Mono.from(saasAccountRepository.deleteSaaSAccount(domain)))
                 .then(ReactorUtils.logAsMono(() -> LOGGER.info("Cancelled SaaS subscription for domain: {}", domain)));
         }
         return ReactorUtils.logAsMono(() -> LOGGER.info("Skipping domain cancellation for domain: {} because enabled is true", domainCancelSubscriptionMessage.domain()));
@@ -102,7 +108,21 @@ public class SaaSDomainSubscriptionHandlerImpl implements SaaSMessageHandler {
 
     private Mono<Void> handleDomainValidSubscriptionMessage(SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage message) {
         return createDomainIfValidated(message)
-            .then(applyDomainSettings(message));
+            .then(applyDomainSettings(message))
+            .then(upsertDomainSaaSAccount(message));
+    }
+
+    private Mono<Void> upsertDomainSaaSAccount(SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage message) {
+        if (message.canUpgrade().isEmpty() && message.isPaying().isEmpty()) {
+            return Mono.empty();
+        }
+        Domain domain = Domain.of(message.domain());
+        SaaSAccount saaSAccount = new SaaSAccount(
+            message.canUpgrade().orElse(SaaSAccount.DEFAULT.canUpgrade()),
+            message.isPaying().orElse(SaaSAccount.DEFAULT.isPaying()));
+        return Mono.from(saasAccountRepository.upsertSaasAccount(domain, saaSAccount))
+            .then(ReactorUtils.logAsMono(() -> LOGGER.info("Updated SaaS account for domain: {}, canUpgrade: {}, isPaying: {}",
+                domain, saaSAccount.canUpgrade(), saaSAccount.isPaying())));
     }
 
     private Mono<Void> createDomainIfValidated(SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage message) {

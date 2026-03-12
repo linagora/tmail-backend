@@ -37,6 +37,8 @@ public interface TMailCassandraDomainListDataDefinition {
     String TABLE_NAME = CassandraDomainsTable.TABLE_NAME;
     CqlIdentifier DOMAIN = CassandraDomainsTable.DOMAIN;
     CqlIdentifier ACTIVATED = CqlIdentifier.fromCql("activated");
+    CqlIdentifier CAN_UPGRADE = CqlIdentifier.fromCql("can_upgrade");
+    CqlIdentifier IS_PAYING = CqlIdentifier.fromCql("is_paying");
 
     CassandraDataDefinition MODULE = CassandraDataDefinition.table(TABLE_NAME)
         .comment("Holds domains this TMail server is operating on.")
@@ -50,6 +52,8 @@ public interface TMailCassandraDomainListDataDefinition {
             .withColumn(MAILS_RECEIVED_PER_MINUTE, DataTypes.BIGINT)
             .withColumn(MAILS_RECEIVED_PER_HOURS, DataTypes.BIGINT)
             .withColumn(MAILS_RECEIVED_PER_DAYS, DataTypes.BIGINT)
-            .withColumn(ACTIVATED, DataTypes.BOOLEAN))
+            .withColumn(ACTIVATED, DataTypes.BOOLEAN)
+            .withColumn(CAN_UPGRADE, DataTypes.BOOLEAN)
+            .withColumn(IS_PAYING, DataTypes.BOOLEAN))
         .build();
 }

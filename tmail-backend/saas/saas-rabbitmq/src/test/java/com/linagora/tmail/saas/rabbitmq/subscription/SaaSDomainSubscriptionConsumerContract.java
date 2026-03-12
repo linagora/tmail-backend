@@ -46,6 +46,8 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition;
+import com.linagora.tmail.saas.api.SaaSAccountRepository;
+import com.linagora.tmail.saas.model.SaaSAccount;
 
 import reactor.core.publisher.Mono;
 import reactor.rabbitmq.OutboundMessage;
@@ -84,6 +86,7 @@ public interface SaaSDomainSubscriptionConsumerContract {
     DomainList domainList();
     MaxQuotaManager maxQuotaManager();
     RateLimitingRepository rateLimitingRepository();
+    SaaSAccountRepository saasAccountRepository();
     SaaSDomainSubscriptionConsumer testee();
 
     @AfterEach
@@ -709,6 +712,90 @@ public interface SaaSDomainSubscriptionConsumerContract {
         publishAmqpSaaSDomainSubscriptionMessage(cancelMessage);
 
         await.untilAsserted(() -> assertThat(domainList().containsDomain(DOMAIN)).isFalse());
+    }
+
+    @Test
+    default void shouldSetDomainSaaSAccountOnValidSubscription() {
+        String validMessage = String.format("""
+        {
+            "domain": "%s",
+            "mailDnsConfigurationValidated": true,
+            "canUpgrade": false,
+            "isPaying": true
+        }
+        """, DOMAIN.asString());
+
+        publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+
+        await.untilAsserted(() -> {
+            SaaSAccount saaSAccount = Mono.from(saasAccountRepository().getSaaSAccount(DOMAIN)).block();
+            assertThat(saaSAccount).isNotNull();
+            assertThat(saaSAccount.isPaying()).isTrue();
+            assertThat(saaSAccount.canUpgrade()).isFalse();
+        });
+    }
+
+    @Test
+    default void shouldSetDomainSaaSAccountWhenValidatedNoop() {
+        String validMessage = String.format("""
+        {
+            "domain": "%s",
+            "canUpgrade": true,
+            "isPaying": true
+        }
+        """, DOMAIN.asString());
+
+        publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+
+        await.untilAsserted(() -> {
+            SaaSAccount saaSAccount = Mono.from(saasAccountRepository().getSaaSAccount(DOMAIN)).block();
+            assertThat(saaSAccount).isNotNull();
+            assertThat(saaSAccount.isPaying()).isTrue();
+            assertThat(saaSAccount.canUpgrade()).isTrue();
+        });
+    }
+
+    @Test
+    default void shouldDeleteDomainSaaSAccountOnCancelSubscription() {
+        Mono.from(saasAccountRepository().upsertSaasAccount(DOMAIN, new SaaSAccount(true, true))).block();
+
+        String cancelMessage = String.format("""
+        {
+            "domain": "%s",
+            "enabled": false
+        }
+        """, DOMAIN.asString());
+
+        publishAmqpSaaSDomainSubscriptionMessage(cancelMessage);
+
+        await.untilAsserted(() ->
+            assertThat(Mono.from(saasAccountRepository().getSaaSAccount(DOMAIN)).block()).isNull());
+    }
+
+    @Test
+    default void shouldNotSetDomainSaaSAccountWhenNoSaaSFields() {
+        String validMessage = String.format("""
+        {
+            "domain": "%s",
+            "mailDnsConfigurationValidated": true,
+            "features": {
+                "mail": {
+                    "storageQuota": 1234,
+                    "mailsSentPerMinute": 10,
+                    "mailsSentPerHour": 100,
+                    "mailsSentPerDay": 1000,
+                    "mailsReceivedPerMinute": 20,
+                    "mailsReceivedPerHour": 200,
+                    "mailsReceivedPerDay": 2000
+                }
+            }
+        }
+        """, DOMAIN.asString());
+
+        publishAmqpSaaSDomainSubscriptionMessage(validMessage);
+
+        await.untilAsserted(() -> assertThat(domainList().containsDomain(DOMAIN)).isTrue());
+        assertThat(Mono.from(saasAccountRepository().getSaaSAccount(DOMAIN)).block()).isNull();
     }
 
     private void publishAmqpSaaSDomainSubscriptionMessage(String message) {

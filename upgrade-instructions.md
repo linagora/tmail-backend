@@ -12,6 +12,36 @@ software documentation. Do not follow this guide blindly!
 
 Note: this section is in progress. It will be updated during all the development process until the release.
 
+### Adding can_upgrade and is_paying fields to domains table
+
+Date: 12/03/2026
+
+Concerned product: Distributed TMail, Postgres TMail
+
+Add `can_upgrade` and `is_paying` fields to the `domains` table to support domain-level SaaS account configuration.
+These fields enable domain-wide SaaS plan defaults that apply to all users of the domain when no user-level
+override is set.
+
+**IMPORTANT: These commands must be executed BEFORE deploying the new version.**
+
+#### Cassandra
+
+To add these columns, run the following CQL commands:
+
+```cql
+ALTER TABLE domains ADD can_upgrade boolean;
+ALTER TABLE domains ADD is_paying boolean;
+```
+
+#### Postgres
+
+To add these columns, run the following SQL commands:
+
+```sql
+ALTER TABLE domains ADD COLUMN can_upgrade BOOLEAN;
+ALTER TABLE domains ADD COLUMN is_paying BOOLEAN;
+```
+
 ### Adding activated field to domains table
 
 Date: 04/03/2026

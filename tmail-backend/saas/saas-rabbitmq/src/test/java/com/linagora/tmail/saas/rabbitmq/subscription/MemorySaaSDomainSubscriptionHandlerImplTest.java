@@ -26,11 +26,14 @@ import org.junit.jupiter.api.BeforeEach;
 
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
 import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingRepository;
+import com.linagora.tmail.saas.api.SaaSAccountRepository;
+import com.linagora.tmail.saas.api.memory.MemorySaaSAccountRepository;
 
 public class MemorySaaSDomainSubscriptionHandlerImplTest implements SaaSDomainSubscriptionHandlerImplContract {
     private DomainList domainList;
     private MaxQuotaManager maxQuotaManager;
     private RateLimitingRepository rateLimitingRepository;
+    private SaaSAccountRepository saasAccountRepository;
 
     private SaaSDomainSubscriptionHandlerImpl handler;
 
@@ -39,8 +42,9 @@ public class MemorySaaSDomainSubscriptionHandlerImplTest implements SaaSDomainSu
         domainList = new SimpleDomainList();
         maxQuotaManager = new InMemoryPerUserMaxQuotaManager();
         rateLimitingRepository = new MemoryRateLimitingRepository();
+        saasAccountRepository = new MemorySaaSAccountRepository();
 
-        handler = new SaaSDomainSubscriptionHandlerImpl(domainList, maxQuotaManager, rateLimitingRepository);
+        handler = new SaaSDomainSubscriptionHandlerImpl(domainList, maxQuotaManager, rateLimitingRepository, saasAccountRepository);
     }
 
 
@@ -57,6 +61,11 @@ public class MemorySaaSDomainSubscriptionHandlerImplTest implements SaaSDomainSu
     @Override
     public RateLimitingRepository rateLimitingRepository() {
         return rateLimitingRepository;
+    }
+
+    @Override
+    public SaaSAccountRepository saasAccountRepository() {
+        return saasAccountRepository;
     }
 
     @Override

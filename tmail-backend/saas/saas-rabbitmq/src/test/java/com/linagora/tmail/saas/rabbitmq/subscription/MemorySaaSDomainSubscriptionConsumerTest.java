@@ -32,12 +32,15 @@ import org.junit.jupiter.api.BeforeEach;
 
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
 import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingRepository;
+import com.linagora.tmail.saas.api.SaaSAccountRepository;
+import com.linagora.tmail.saas.api.memory.MemorySaaSAccountRepository;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
 
 class MemorySaaSDomainSubscriptionConsumerTest implements SaaSDomainSubscriptionConsumerContract {
     private DomainList domainList;
     private MaxQuotaManager maxQuotaManager;
     private RateLimitingRepository rateLimitingRepository;
+    private SaaSAccountRepository saasAccountRepository;
     private SaaSDomainSubscriptionConsumer testee;
 
     @BeforeEach
@@ -55,8 +58,8 @@ class MemorySaaSDomainSubscriptionConsumerTest implements SaaSDomainSubscription
 
         maxQuotaManager = new InMemoryPerUserMaxQuotaManager();
         domainList = new SimpleDomainList();
-
         rateLimitingRepository = new MemoryRateLimitingRepository();
+        saasAccountRepository = new MemorySaaSAccountRepository();
 
         testee = new SaaSDomainSubscriptionConsumer(
             rabbitMQExtension.getRabbitChannelPool(),
@@ -65,7 +68,8 @@ class MemorySaaSDomainSubscriptionConsumerTest implements SaaSDomainSubscription
             SaaSSubscriptionRabbitMQConfiguration.DEFAULT,
             new SaaSDomainSubscriptionHandlerImpl(domainList,
                 maxQuotaManager,
-                rateLimitingRepository));
+                rateLimitingRepository,
+                saasAccountRepository));
         testee.init();
     }
 
@@ -83,6 +87,11 @@ class MemorySaaSDomainSubscriptionConsumerTest implements SaaSDomainSubscription
     @Override
     public RateLimitingRepository rateLimitingRepository() {
         return rateLimitingRepository;
+    }
+
+    @Override
+    public SaaSAccountRepository saasAccountRepository() {
+        return saasAccountRepository;
     }
 
     @Override

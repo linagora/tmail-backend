@@ -49,6 +49,8 @@ public interface TMailPostgresDomainDataDefinition {
 
         Field<String> DOMAIN = PostgresDomainDataDefinition.PostgresDomainTable.DOMAIN;
         Field<Boolean> ACTIVATED = DSL.field("activated", SQLDataType.BOOLEAN);
+        Field<Boolean> CAN_UPGRADE = DSL.field("can_upgrade", SQLDataType.BOOLEAN);
+        Field<Boolean> IS_PAYING = DSL.field("is_paying", SQLDataType.BOOLEAN);
 
         PostgresTable TABLE = PostgresTable.name(TABLE_NAME.getName())
             .createTableStep(((dsl, tableName) -> dsl.createTableIfNotExists(tableName)
@@ -60,6 +62,8 @@ public interface TMailPostgresDomainDataDefinition {
                 .column(MAILS_RECEIVED_PER_HOURS)
                 .column(MAILS_RECEIVED_PER_DAYS)
                 .column(ACTIVATED)
+                .column(CAN_UPGRADE)
+                .column(IS_PAYING)
                 .primaryKey(DOMAIN)))
             .disableRowLevelSecurity()
             .build();
