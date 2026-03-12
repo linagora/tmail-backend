@@ -20,6 +20,7 @@ package com.linagora.tmail.james;
 
 import static com.linagora.tmail.james.app.PostgresTmailConfiguration.EventBusImpl.RABBITMQ;
 import static com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT;
+import static com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_USER_CREATED_EXCHANGE_DEFAULT;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.io.File;
@@ -117,6 +118,16 @@ public class PostgresJmapSaaSTest implements JmapSaasContract {
         rabbitMQExtension.getSender()
             .send(Mono.just(new OutboundMessage(
                 TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT,
+                routingKey,
+                message.getBytes(UTF_8))))
+            .block();
+    }
+
+    @Override
+    public void publishAmqpUserCreatedMessage(String message, String routingKey) {
+        rabbitMQExtension.getSender()
+            .send(Mono.just(new OutboundMessage(
+                TWP_SAAS_USER_CREATED_EXCHANGE_DEFAULT,
                 routingKey,
                 message.getBytes(UTF_8))))
             .block();

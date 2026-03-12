@@ -44,7 +44,7 @@ public interface SaaSUserMessage {
     record SaaSB2BUserCreatedMessage(String internalEmail, Boolean canUpgrade) implements SaaSUserMessage {
         @JsonCreator
         public SaaSB2BUserCreatedMessage(@JsonProperty("internalEmail") String internalEmail,
-                                       @JsonProperty("canUpgrade") Boolean canUpgrade) {
+                                         @JsonProperty("canUpgrade") Boolean canUpgrade) {
             Preconditions.checkNotNull(internalEmail, "internalEmail cannot be null");
             Preconditions.checkNotNull(canUpgrade, "canUpgrade cannot be null");
             Preconditions.checkArgument(!canUpgrade, "canUpgrade can't be true for saas b2b user creation");

@@ -21,6 +21,7 @@ package com.linagora.tmail.james;
 import static com.linagora.tmail.UsersRepositoryModuleChooser.Implementation.COMBINED;
 import static com.linagora.tmail.common.TemporaryTmailServerUtils.BASE_CONFIGURATION_FILE_NAMES;
 import static com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT;
+import static com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_USER_CREATED_EXCHANGE_DEFAULT;
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static org.apache.james.backends.cassandra.DockerCassandra.CASSANDRA_TESTING_PASSWORD;
 import static org.apache.james.backends.cassandra.DockerCassandra.CASSANDRA_TESTING_USER;
@@ -167,6 +168,16 @@ public class DistributedJmapSaaSTest implements JmapSaasContract {
         rabbitMQExtension.getSender()
             .send(Mono.just(new OutboundMessage(
                 TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT,
+                routingKey,
+                message.getBytes(UTF_8))))
+            .block();
+    }
+
+    @Override
+    public void publishAmqpUserCreatedMessage(String message, String routingKey) {
+        rabbitMQExtension.getSender()
+            .send(Mono.just(new OutboundMessage(
+                TWP_SAAS_USER_CREATED_EXCHANGE_DEFAULT,
                 routingKey,
                 message.getBytes(UTF_8))))
             .block();

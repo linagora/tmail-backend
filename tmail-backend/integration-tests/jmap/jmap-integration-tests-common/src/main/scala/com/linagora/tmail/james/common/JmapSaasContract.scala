@@ -21,7 +21,7 @@ package com.linagora.tmail.james.common
 import java.util.Optional
 
 import com.linagora.tmail.common.probe.SaaSProbe
-import com.linagora.tmail.james.common.JmapSaasContract.{DOMAIN_SUBSCRIPTION_ROUTING_KEY, QUOTA_ROOT, RATE_LIMITATION, SUBSCRIPTION_ROUTING_KEY, TEST_ACCOUNT_ID, TEST_DOMAIN, TEST_PASSWORD, TEST_USER}
+import com.linagora.tmail.james.common.JmapSaasContract.{DOMAIN_SUBSCRIPTION_ROUTING_KEY, QUOTA_ROOT, RATE_LIMITATION, SUBSCRIPTION_ROUTING_KEY, TEST_ACCOUNT_ID, TEST_DOMAIN, TEST_PASSWORD, TEST_USER, USER_CREATED_ROUTING_KEY}
 import com.linagora.tmail.james.common.probe.{DomainProbe, RateLimitingProbe}
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition
 import com.linagora.tmail.saas.model.SaaSAccount
@@ -45,6 +45,7 @@ import org.junit.jupiter.api.{AfterEach, Tag, Test}
 
 object JmapSaasContract {
   val SUBSCRIPTION_ROUTING_KEY: String = "saas.subscription.routingKey"
+  val USER_CREATED_ROUTING_KEY: String = "user.created"
   val DOMAIN_SUBSCRIPTION_ROUTING_KEY: String = "domain.subscription.changed"
   val TEST_DOMAIN: Domain = Domain.of("james.org")
   val TEST_USER: Username = Username.fromLocalPartWithDomain("james-user", TEST_DOMAIN)
@@ -68,6 +69,8 @@ trait JmapSaasContract {
   def stopJmapServer(): Unit
 
   def publishAmqpSettingsMessage(message: String, routingKey: String): Unit
+
+  def publishAmqpUserCreatedMessage(message: String, routingKey: String): Unit
 
   def saaSSignatureProvisionConfigured: Boolean = false
 
@@ -252,12 +255,12 @@ trait JmapSaasContract {
   def saasB2BUserCreatedShouldSetCanUpgrade(): Unit = {
     setUpJmapServer(saasSupport = true)
 
-    publishAmqpSettingsMessage(
+    publishAmqpUserCreatedMessage(
       s"""{
          |    "internalEmail": "${TEST_USER.asString()}",
          |    "canUpgrade": false
          |}""".stripMargin,
-      SUBSCRIPTION_ROUTING_KEY)
+      USER_CREATED_ROUTING_KEY)
 
     awaitAtMostTenSeconds.untilAsserted { () =>
       `given`()
