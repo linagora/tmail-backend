@@ -253,6 +253,10 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>webadmin-jmap-labels</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>tmail-webadmin-team-mailboxes</artifactId>
         </dependency>
         <dependency>
