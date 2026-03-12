@@ -29,7 +29,6 @@ services:
       - WEB_PORT=8080
       - DAV_SERVER_HOST=esn_sabre
       - DAV_SERVER_PORT=80
-      - SABRE_IMPERSONATION_ENABLED=true
     depends_on:
       - mongo
       - redis
@@ -77,7 +76,7 @@ services:
 
   sabre_dav:
     container_name: esn_sabre
-    image: linagora/esn-sabre
+    image: linagora/esn-sabre:sabre-4_7_0-09-03-2026
     ports:
       - "8001:80"
     environment:
@@ -97,6 +96,7 @@ services:
       - SABRE_ADMIN_LOGIN=admin
       - SABRE_ADMIN_PASSWORD=secret123
       - OPENPASS_BASIC_AUTH=YWRtaW5Ab3Blbi1wYWFzLm9yZzpzZWNyZXQ=
+      - SABRE_IMPERSONATION_ENABLED=true
     networks:
       - emaily
 
