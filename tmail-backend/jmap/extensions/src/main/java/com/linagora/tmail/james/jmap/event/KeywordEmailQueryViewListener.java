@@ -19,6 +19,7 @@
 package com.linagora.tmail.james.jmap.event;
 
 import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
+import static org.apache.james.util.ReactorUtils.LOW_CONCURRENCY;
 
 import java.time.Instant;
 import java.util.Arrays;
@@ -147,7 +148,7 @@ public class KeywordEmailQueryViewListener implements ReactiveGroupEventListener
                 return Mono.from(mailboxManager.getMailboxReactive(movedFromMailboxId, sourceOwnerSession))
                     .flatMap(mailbox -> usersHavingReadRight(sourceMailboxOwner, mailbox, sourceOwnerSession)
                         .concatMap(username -> resolveInaccessibleMessages(added.getAdded().values(), username)
-                            .flatMap(messageMetaData -> deleteKeywords(username, messageMetaData.getFlags(), messageMetaData.getInternalDate().toInstant(), messageMetaData.getMessageId()), DEFAULT_CONCURRENCY))
+                            .flatMap(messageMetaData -> deleteKeywords(username, messageMetaData.getFlags(), messageMetaData.getInternalDate().toInstant(), messageMetaData.getMessageId()), LOW_CONCURRENCY))
                         .then());
             });
     }
@@ -159,7 +160,7 @@ public class KeywordEmailQueryViewListener implements ReactiveGroupEventListener
         return Mono.from(mailboxManager.getMailboxReactive(added.getMailboxId(), ownerSession))
             .flatMap(mailbox -> usersHavingReadRight(mailboxOwner, mailbox, ownerSession)
                 .concatMap(username -> Flux.fromIterable(added.getAdded().values())
-                    .flatMap(messageMetaData -> saveKeywords(username, messageMetaData), DEFAULT_CONCURRENCY))
+                    .flatMap(messageMetaData -> saveKeywords(username, messageMetaData), LOW_CONCURRENCY))
                 .then());
     }
 
@@ -170,7 +171,7 @@ public class KeywordEmailQueryViewListener implements ReactiveGroupEventListener
         return Mono.from(mailboxManager.getMailboxReactive(flagsUpdated.getMailboxId(), ownerSession))
             .flatMap(mailbox -> usersHavingReadRight(mailboxOwner, mailbox, ownerSession)
                 .concatMap(username -> Flux.fromIterable(flagsUpdated.getUpdatedFlags())
-                    .flatMap(updatedFlags -> applyUpdatedFlags(username, mailbox, ownerSession, updatedFlags), DEFAULT_CONCURRENCY))
+                    .flatMap(updatedFlags -> applyUpdatedFlags(username, mailbox, ownerSession, updatedFlags), LOW_CONCURRENCY))
                 .then());
     }
 
@@ -266,7 +267,7 @@ public class KeywordEmailQueryViewListener implements ReactiveGroupEventListener
         MailboxSession shareeSession = mailboxManager.createSystemSession(sharee);
 
         return getMessagesInSharedMailbox(mailboxId, shareeSession)
-            .flatMap(messageResult -> saveKeywords(sharee, concernedKeywords(messageResult.getFlags()), toSaveContext(messageResult)), DEFAULT_CONCURRENCY)
+            .flatMap(messageResult -> saveKeywords(sharee, concernedKeywords(messageResult.getFlags()), toSaveContext(messageResult)), LOW_CONCURRENCY)
             .then();
     }
 
@@ -278,7 +279,7 @@ public class KeywordEmailQueryViewListener implements ReactiveGroupEventListener
             .window(MESSAGES_BATCH_SIZE)
             .concatMap(window -> window.collectList()
                 .flatMapMany(messageResults -> resolveInaccessibleMessages(messageResults, shareeSession))
-                .flatMap(messageResult -> deleteKeywords(sharee, messageResult.getFlags(), messageResult.getInternalDate().toInstant(), messageResult.getMessageId()), DEFAULT_CONCURRENCY))
+                .flatMap(messageResult -> deleteKeywords(sharee, messageResult.getFlags(), messageResult.getInternalDate().toInstant(), messageResult.getMessageId()), LOW_CONCURRENCY))
             .then();
     }
 
