@@ -113,6 +113,7 @@ services:
       - SABRE_ADMIN_LOGIN=admin
       - SABRE_ADMIN_PASSWORD=secret123
       - OPENPASS_BASIC_AUTH=YWRtaW5Ab3Blbi1wYWFzLm9yZzpzZWNyZXQ=
+      - SABRE_IMPERSONATION_ENABLED=true
     networks:
       - emaily
     healthcheck:
