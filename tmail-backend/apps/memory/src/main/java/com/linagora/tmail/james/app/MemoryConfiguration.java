@@ -37,7 +37,6 @@ import org.apache.james.utils.PropertiesProvider;
 
 import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
-import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.oidc.JMAPOidcConfiguration;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
@@ -51,8 +50,7 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
                                   ExtensionConfiguration extentionConfiguration,
                                   boolean jmapEnabled,
                                   boolean dropListEnabled,
-                                  boolean oidcEnabled,
-                                  boolean keywordEmailQueryViewEnabled) implements Configuration {
+                                  boolean oidcEnabled) implements Configuration {
     public static class Builder {
         private Optional<String> rootDirectory;
         private Optional<ConfigurationPath> configurationPath;
@@ -64,7 +62,6 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
         private Optional<Boolean> jmapEnabled;
         private Optional<Boolean> dropListsEnabled;
         private Optional<Boolean> oidcEnabled;
-        private Optional<Boolean> keywordEmailQueryViewEnabled;
 
         private Builder() {
             rootDirectory = Optional.empty();
@@ -77,7 +74,6 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
             jmapEnabled = Optional.empty();
             dropListsEnabled = Optional.empty();
             oidcEnabled = Optional.empty();
-            keywordEmailQueryViewEnabled = Optional.empty();
         }
 
         public Builder workingDirectory(String path) {
@@ -148,11 +144,6 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
             return this;
         }
 
-        public Builder keywordEmailQueryViewEnabled(boolean enable) {
-            this.keywordEmailQueryViewEnabled = Optional.of(enable);
-            return this;
-        }
-
         public MemoryConfiguration build() {
             ConfigurationPath configurationPath = this.configurationPath.orElse(new ConfigurationPath(FileSystem.FILE_PROTOCOL_AND_CONF));
             JamesServerResourceLoader directories = new JamesServerResourceLoader(rootDirectory
@@ -218,16 +209,6 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
                 }
             });
 
-            boolean keywordEmailQueryViewEnabled = this.keywordEmailQueryViewEnabled.orElseGet(() -> {
-                try {
-                    return JMAPExtensionConfiguration.from(propertiesProvider.getConfiguration("jmap")).viewKeywordQueryEnabled();
-                } catch (FileNotFoundException e) {
-                    return false;
-                } catch (ConfigurationException e) {
-                    throw new RuntimeException(e);
-                }
-            });
-
             return new MemoryConfiguration(
                 configurationPath,
                 directories,
@@ -239,8 +220,7 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
                 extentionConfiguration,
                 jmapEnabled,
                 dropListsEnabled,
-                oidcEnabled,
-                keywordEmailQueryViewEnabled);
+                oidcEnabled);
         }
     }
 
