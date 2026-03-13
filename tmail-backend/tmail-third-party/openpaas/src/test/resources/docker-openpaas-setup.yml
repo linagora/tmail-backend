@@ -95,7 +95,7 @@ services:
 
   sabre_dav:
     hostname: esn_sabre
-    image: linagora/esn-sabre:v4-dev2
+    image: linagora/esn-sabre:sabre-4_7_0-09-03-2026
     environment:
       - SABRE_ENV=dev
       - SABRE_MONGO_HOST=mongo
@@ -113,6 +113,7 @@ services:
       - SABRE_ADMIN_LOGIN=admin
       - SABRE_ADMIN_PASSWORD=secret123
       - OPENPASS_BASIC_AUTH=YWRtaW5Ab3Blbi1wYWFzLm9yZzpzZWNyZXQ=
+      - SABRE_IMPERSONATION_ENABLED=true
     networks:
       - emaily
     healthcheck:

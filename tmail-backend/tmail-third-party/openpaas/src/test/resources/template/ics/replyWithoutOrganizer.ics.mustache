@@ -1,0 +1,14 @@
+BEGIN:VCALENDAR
+PRODID:-//External Client//EN
+VERSION:2.0
+METHOD:REPLY
+BEGIN:VEVENT
+UID:{{calendarUid}}
+DTSTAMP:{{dtStamp}}
+DTSTART:{{dtStart}}
+DTEND:{{dtEnd}}
+SEQUENCE:{{sequence}}
+SUMMARY:Sprint planning #23
+ATTENDEE;PARTSTAT=ACCEPTED;CN={{sender.name}}:mailto:{{sender.email}}
+END:VEVENT
+END:VCALENDAR

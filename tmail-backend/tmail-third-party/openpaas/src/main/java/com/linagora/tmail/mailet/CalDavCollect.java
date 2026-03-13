@@ -103,7 +103,7 @@ public class CalDavCollect extends GenericMailet {
                 MailAddress mailAddress = new MailAddress(recipient);
                 Calendar calendar = parseICalString(icalContent);
 
-                if (concernsRecipient(mailAddress, calendar)) {
+                if (shouldSendItip(mailAddress, calendar)) {
                     davUserProvider.provide(Username.of(mailAddress.asString()))
                         .flatMap(davUser -> synchronizeWithDavServer(json, davUser))
                         .block();
@@ -134,6 +134,30 @@ public class CalDavCollect extends GenericMailet {
     private Calendar parseICalString(String icsContent) throws Exception {
         StringReader reader = new StringReader(icsContent);
         return new CalendarBuilder().build(reader);
+    }
+
+    private boolean shouldSendItip(MailAddress mailAddress, Calendar calendar) {
+        if (isReply(calendar)) {
+            // For REPLY: the recipient is the organizer receiving the attendee's response.
+            // Skip if the recipient is explicitly listed as an attendee — it means they sent the reply themselves.
+            return !isExplicitAttendee(mailAddress, calendar);
+        }
+        return concernsRecipient(mailAddress, calendar);
+    }
+
+    private boolean isReply(Calendar calendar) {
+        return calendar.getProperty(Property.METHOD)
+            .map(Property::getValue)
+            .map("REPLY"::equalsIgnoreCase)
+            .orElse(false);
+    }
+
+    private boolean isExplicitAttendee(MailAddress mailAddress, Calendar calendar) {
+        return calendar.getComponents(Component.VEVENT)
+            .stream()
+            .filter(VEvent.class::isInstance)
+            .map(VEvent.class::cast)
+            .anyMatch(event -> isAttendee(mailAddress, event));
     }
 
     private boolean concernsRecipient(MailAddress mailAddress, Calendar calendar) {

@@ -1,0 +1,31 @@
+To: {{receiver.name}} <{{receiver.email}}>
+From: {{sender.name}} <{{sender.email}}>
+Subject: Accepted: Sprint planning #23
+Message-ID: {{mimeMessageId}}
+Date: Tue, 5 Sep 2017 09:54:16 +0200
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="------------D24E361990BDBA143D4D8794"
+Content-Language: en-US
+
+This is a multi-part message in MIME format.
+--------------D24E361990BDBA143D4D8794
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 7bit
+
+I will attend.
+
+--------------D24E361990BDBA143D4D8794
+Content-Type: text/calendar; charset=UTF-8; method=REPLY
+Content-Disposition: attachment;
+Content-Transfer-Encoding: base64
+
+{{#base64Encode}}{{>ics/replyWithoutOrganizer.ics.mustache}}{{/base64Encode}}
+
+--------------D24E361990BDBA143D4D8794
+Content-Type: application/ics; name=reply.ics
+Content-Disposition: attachment; filename=reply.ics
+Content-Transfer-Encoding: base64
+
+{{#base64Encode}}{{>ics/replyWithoutOrganizer.ics.mustache}}{{/base64Encode}}
+--------------D24E361990BDBA143D4D8794--
