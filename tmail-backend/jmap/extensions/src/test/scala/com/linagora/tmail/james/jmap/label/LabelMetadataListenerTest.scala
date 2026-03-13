@@ -128,7 +128,7 @@ class LabelMetadataListenerTest {
     dispatch(LabelCreated(EventId.random(), ALICE, WORK_LABEL))
 
     assertThat(annotations.asJava)
-      .contains(annotation(s"$WORK_PREFIX/displayName", "Work"))
+      .contains(annotation(s"$WORK_PREFIX/displayname", "Work"))
   }
 
   @Test
@@ -155,8 +155,8 @@ class LabelMetadataListenerTest {
 
     assertThat(annotations.asJava)
       .contains(
-        annotation(s"$WORK_PREFIX/displayName", "Work"),
-        annotation(s"$PERSONAL_PREFIX/displayName", "Personal"))
+        annotation(s"$WORK_PREFIX/displayname", "Work"),
+        annotation(s"$PERSONAL_PREFIX/displayname", "Personal"))
   }
 
   @Test
@@ -167,7 +167,7 @@ class LabelMetadataListenerTest {
     dispatch(LabelUpdated(EventId.random(), ALICE, updatedLabel))
 
     assertThat(annotations.asJava)
-      .contains(annotation(s"$WORK_PREFIX/displayName", "Work updated"))
+      .contains(annotation(s"$WORK_PREFIX/displayname", "Work updated"))
   }
 
   @Test
@@ -200,7 +200,7 @@ class LabelMetadataListenerTest {
     assertThat(annotations.map(_.getKey).asJava)
       .doesNotContain(
         new MailboxAnnotationKey(s"$WORK_PREFIX/keyword"),
-        new MailboxAnnotationKey(s"$WORK_PREFIX/displayName"),
+        new MailboxAnnotationKey(s"$WORK_PREFIX/displayname"),
         new MailboxAnnotationKey(s"$WORK_PREFIX/color"))
   }
 
