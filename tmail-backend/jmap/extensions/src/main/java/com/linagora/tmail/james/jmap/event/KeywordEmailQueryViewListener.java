@@ -128,6 +128,10 @@ public class KeywordEmailQueryViewListener implements ReactiveGroupEventListener
     }
 
     private Mono<Void> handleAdded(Added added) {
+        if (!hasConcernedKeywords(added)) {
+            return Mono.empty();
+        }
+
         return Mono.when(deleteKeywordViewIfNeeded(added), addKeywordView(added))
             .then();
     }
@@ -165,6 +169,10 @@ public class KeywordEmailQueryViewListener implements ReactiveGroupEventListener
     }
 
     private Mono<Void> handleFlagsUpdated(FlagsUpdated flagsUpdated) {
+        if (!hasConcernedKeywordChanges(flagsUpdated)) {
+            return Mono.empty();
+        }
+
         Username mailboxOwner = flagsUpdated.getMailboxPath().getUser();
         MailboxSession ownerSession = mailboxManager.createSystemSession(mailboxOwner);
 
@@ -353,6 +361,24 @@ public class KeywordEmailQueryViewListener implements ReactiveGroupEventListener
     private Mono<Boolean> hasReadRightReactive(Username owner, MailboxACL acl, Username username) {
         return Mono.fromCallable(() -> mailboxACLResolver.resolveRights(username, acl, owner).contains(MailboxACL.Right.Read))
             .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER);
+    }
+
+    private boolean hasConcernedKeywords(Added added) {
+        return added.getAdded().values()
+            .stream()
+            .map(MessageMetaData::getFlags)
+            .map(this::concernedKeywords)
+            .anyMatch(keywords -> !keywords.isEmpty());
+    }
+
+    private boolean hasConcernedKeywordChanges(FlagsUpdated flagsUpdated) {
+        return flagsUpdated.getUpdatedFlags()
+            .stream()
+            .anyMatch(this::hasConcernedKeywordChanges);
+    }
+
+    private boolean hasConcernedKeywordChanges(UpdatedFlags updatedFlags) {
+        return !concernedKeywords(updatedFlags.getOldFlags()).equals(concernedKeywords(updatedFlags.getNewFlags()));
     }
 
     private Set<Keyword> concernedKeywords(Flags flags) {
