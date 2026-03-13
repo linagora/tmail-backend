@@ -156,6 +156,7 @@ import com.linagora.tmail.blob.guice.BlobStoreCacheModulesChooser;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.blob.guice.BlobStoreModulesChooser;
 import com.linagora.tmail.disconnector.EventBusDisconnectorModule;
+import com.linagora.tmail.event.KeywordEmailQueryViewListenerModule;
 import com.linagora.tmail.event.RabbitMQAndRedisEventBusModule;
 import com.linagora.tmail.event.TMailJMAPListenerModule;
 import com.linagora.tmail.event.TmailEventModule;
@@ -206,6 +207,7 @@ import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.listener.CollectTrustedContactsListenerModule;
 import com.linagora.tmail.mailbox.opensearch.TmailOpenSearchMailboxMappingModule;
 import com.linagora.tmail.mailbox.quota.cassandra.CassandraUserQuotaReporterModule;
+import com.linagora.tmail.modules.data.CassandraKeywordEmailQueryViewModule;
 import com.linagora.tmail.modules.data.TMailCassandraDelegationStoreModule;
 import com.linagora.tmail.modules.data.TMailCassandraDeletedMessageVaultModule;
 import com.linagora.tmail.modules.data.TMailCassandraDomainListModule;
@@ -287,6 +289,7 @@ public class DistributedServer {
         new CalendarEventMethodModule(),
         new ContactAutocompleteMethodModule(),
         new CassandraJmapModule(),
+        new CassandraKeywordEmailQueryViewModule(),
         new CustomMethodModule(),
         new EmailSendMethodModule(),
         new FilterGetMethodModule(),
@@ -298,6 +301,7 @@ public class DistributedServer {
         new RFC8621MethodsModule(),
         new TMailCleverBlobResolverModule(),
         new JmapEventBusModule(),
+        new KeywordEmailQueryViewListenerModule(),
         new PublicAssetsModule(),
         new TicketRoutesModule(),
         new MessageVaultCapabilitiesModule(),
