@@ -141,7 +141,7 @@ public class LinagoraLlmMailClassifierListenerTest implements LlmMailClassifierL
         chatLanguageModel = streamChatLanguageModelFactory.createChatLanguageModel(aiBotConfig);
         identityRepository = setUpIdentityRepository();
         jmapSettingsRepository = new MemoryJmapSettingsRepository();
-        labelRepository = new MemoryLabelRepository();
+        labelRepository = new MemoryLabelRepository(tmailEventBus);
         Label label1 = Mono.from(labelRepository.addLabel(ALICE, new LabelCreationRequest(new DisplayName("Production-Incident"), scala.Option.apply(new Color("#0000")), scala.Option.apply("work or production incident"), false))).block();
         Label label2 =Mono.from(labelRepository.addLabel(ALICE, new LabelCreationRequest(new DisplayName("Payment-Alert"), scala.Option.apply(new Color("#0000")), scala.Option.apply("This is a payment reminder alert"), false))).block();
         Label label3 =Mono.from(labelRepository.addLabel(ALICE, new LabelCreationRequest(new DisplayName("Hiring"), scala.Option.apply(new Color("#0000")), scala.Option.apply("This is a recruitment process related email"), false))).block();

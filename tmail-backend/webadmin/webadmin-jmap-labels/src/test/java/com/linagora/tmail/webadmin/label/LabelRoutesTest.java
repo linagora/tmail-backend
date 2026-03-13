@@ -34,6 +34,11 @@ import static org.mockito.Mockito.when;
 import java.util.Optional;
 
 import org.apache.james.core.Username;
+import org.apache.james.events.InVMEventBus;
+import org.apache.james.events.MemoryEventDeadLetters;
+import org.apache.james.events.RetryBackoffConfiguration;
+import org.apache.james.events.delivery.InVmEventDelivery;
+import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.james.webadmin.WebAdminServer;
 import org.apache.james.webadmin.WebAdminUtils;
@@ -66,7 +71,10 @@ class LabelRoutesTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        labelRepository = new MemoryLabelRepository();
+        labelRepository = new MemoryLabelRepository(new InVMEventBus(
+            new InVmEventDelivery(new RecordingMetricFactory()),
+            RetryBackoffConfiguration.FAST,
+            new MemoryEventDeadLetters()));
         usersRepository = mock(UsersRepository.class);
         when(usersRepository.contains(BOB)).thenReturn(true);
 

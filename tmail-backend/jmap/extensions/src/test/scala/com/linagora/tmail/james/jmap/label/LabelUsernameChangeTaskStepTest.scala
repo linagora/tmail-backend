@@ -21,6 +21,9 @@ package com.linagora.tmail.james.jmap.label
 import com.linagora.tmail.james.jmap.label.LabelRepositoryContract.{ALICE, BOB, RED}
 import com.linagora.tmail.james.jmap.label.LabelUsernameChangeTaskStepTest.{LABEL_1, LABEL_2}
 import com.linagora.tmail.james.jmap.model.{DisplayName, Label, LabelCreationRequest}
+import org.apache.james.events.delivery.InVmEventDelivery
+import org.apache.james.events.{InVMEventBus, MemoryEventDeadLetters, RetryBackoffConfiguration}
+import org.apache.james.metrics.tests.RecordingMetricFactory
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
 import reactor.core.scala.publisher.{SFlux, SMono}
@@ -38,7 +41,7 @@ class LabelUsernameChangeTaskStepTest {
 
   @BeforeEach
   def beforeEach(): Unit = {
-    labelRepository = new MemoryLabelRepository
+    labelRepository = new MemoryLabelRepository(new InVMEventBus(new InVmEventDelivery(new RecordingMetricFactory()), RetryBackoffConfiguration.FAST, new MemoryEventDeadLetters()))
     testee = new LabelUsernameChangeTaskStep(labelRepository)
   }
 
