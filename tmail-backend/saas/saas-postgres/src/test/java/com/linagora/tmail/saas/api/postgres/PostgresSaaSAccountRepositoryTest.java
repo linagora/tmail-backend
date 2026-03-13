@@ -22,6 +22,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.james.backends.postgres.PostgresDataDefinition;
 import org.apache.james.backends.postgres.PostgresExtension;
+
+import com.linagora.tmail.domainlist.postgres.TMailPostgresDomainDataDefinition;
 import org.jooq.impl.DSL;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,7 +38,7 @@ import reactor.core.publisher.Mono;
 public class PostgresSaaSAccountRepositoryTest implements SaaSAccountRepositoryContract {
     @RegisterExtension
     static PostgresExtension postgresExtension = PostgresExtension.withoutRowLevelSecurity(
-        PostgresDataDefinition.aggregateModules(PostgresSaaSDataDefinition.MODULE));
+        PostgresDataDefinition.aggregateModules(PostgresSaaSDataDefinition.MODULE, TMailPostgresDomainDataDefinition.MODULE));
 
     private PostgresSaaSAccountRepository repository;
 

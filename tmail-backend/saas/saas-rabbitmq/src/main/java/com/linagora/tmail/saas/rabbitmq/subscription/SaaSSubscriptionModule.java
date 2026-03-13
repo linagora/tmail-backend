@@ -80,12 +80,14 @@ public class SaaSSubscriptionModule extends AbstractModule {
                                                                          SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration,
                                                                          DomainList domainList,
                                                                          MaxQuotaManager maxQuotaManager,
-                                                                         RateLimitingRepository rateLimitingRepository) {
+                                                                         RateLimitingRepository rateLimitingRepository,
+                                                                         SaaSAccountRepository saasAccountRepository) {
         return new SaaSDomainSubscriptionConsumer(channelPool, rabbitMQConfiguration, twpCommonRabbitMQConfiguration,
             saasSubscriptionRabbitMQConfiguration,
             new SaaSDomainSubscriptionHandlerImpl(domainList,
                 maxQuotaManager,
-                rateLimitingRepository));
+                rateLimitingRepository,
+                saasAccountRepository));
     }
 
     @ProvidesIntoSet

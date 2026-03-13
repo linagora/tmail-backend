@@ -30,6 +30,7 @@ import org.junit.jupiter.api.Test;
 
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition;
+import com.linagora.tmail.saas.api.SaaSAccountRepository;
 
 import reactor.core.publisher.Mono;
 
@@ -40,6 +41,7 @@ public interface SaaSDomainSubscriptionHandlerImplContract {
     DomainList domainList();
     MaxQuotaManager maxQuotaManager();
     RateLimitingRepository rateLimitingRepository();
+    SaaSAccountRepository saasAccountRepository();
 
     SaaSDomainSubscriptionHandlerImpl handler();
 
@@ -59,7 +61,7 @@ public interface SaaSDomainSubscriptionHandlerImplContract {
         SaasFeatures features = new SaasFeatures(Optional.of(mail));
 
         SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage message =
-            new SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage(domainName, Optional.empty(), Optional.of(MAIL_DNS_CONFIGURATION_VALIDATED), Optional.of(features));
+            new SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage(domainName, Optional.empty(), Optional.of(MAIL_DNS_CONFIGURATION_VALIDATED), Optional.of(features), Optional.empty(), Optional.empty());
 
         handler().handleMessage(message).block();
 
@@ -107,7 +109,7 @@ public interface SaaSDomainSubscriptionHandlerImplContract {
         Domain domain = Domain.of(domainName);
 
         SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage message =
-            new SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage(domainName, Optional.empty(), Optional.of(MAIL_DNS_CONFIGURATION_VALIDATED), Optional.empty());
+            new SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage(domainName, Optional.empty(), Optional.of(MAIL_DNS_CONFIGURATION_VALIDATED), Optional.empty(), Optional.empty(), Optional.empty());
 
         // First add
         handler().handleMessage(message).block();

@@ -28,15 +28,18 @@ import java.util.Optional;
 import jakarta.inject.Inject;
 
 import org.apache.james.backends.postgres.utils.PostgresExecutor;
+import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.reactivestreams.Publisher;
 
+import com.linagora.tmail.domainlist.postgres.TMailPostgresDomainDataDefinition;
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
 import com.linagora.tmail.saas.model.SaaSAccount;
 
 import reactor.core.publisher.Mono;
 
 public class PostgresSaaSAccountRepository implements SaaSAccountRepository {
+
     private final PostgresExecutor executor;
 
     @Inject
@@ -46,15 +49,27 @@ public class PostgresSaaSAccountRepository implements SaaSAccountRepository {
 
     @Override
     public Publisher<SaaSAccount> getSaaSAccount(Username username) {
+        return getUserSaaSAccount(username)
+            .switchIfEmpty(Mono.defer(() -> username.getDomainPart()
+                .map(domain -> Mono.from(getSaaSAccount(domain)))
+                .orElse(Mono.empty())))
+            .switchIfEmpty(Mono.just(SaaSAccount.DEFAULT));
+    }
+
+    private Mono<SaaSAccount> getUserSaaSAccount(Username username) {
         return Mono.from(executor.executeRow(dsl -> Mono.from(dsl.select(CAN_UPGRADE, IS_PAYING)
                 .from(TABLE_NAME)
                 .where(USERNAME.eq(username.asString())))))
-            .mapNotNull(row  -> new SaaSAccount(
-                Optional.ofNullable(row.get(CAN_UPGRADE))
-                    .orElse(SaaSAccount.DEFAULT.canUpgrade()),
-                Optional.ofNullable(row.get(IS_PAYING))
-                    .orElse(SaaSAccount.DEFAULT.isPaying())))
-            .switchIfEmpty(Mono.just(SaaSAccount.DEFAULT));
+            .flatMap(row -> {
+                Boolean canUpgrade = row.get(CAN_UPGRADE);
+                Boolean isPaying = row.get(IS_PAYING);
+                if (canUpgrade == null && isPaying == null) {
+                    return Mono.empty();
+                }
+                return Mono.just(new SaaSAccount(
+                    Optional.ofNullable(canUpgrade).orElse(SaaSAccount.DEFAULT.canUpgrade()),
+                    Optional.ofNullable(isPaying).orElse(SaaSAccount.DEFAULT.isPaying())));
+            });
     }
 
     @Override
@@ -75,5 +90,46 @@ public class PostgresSaaSAccountRepository implements SaaSAccountRepository {
             .set(CAN_UPGRADE, (Boolean) null)
             .set(IS_PAYING, (Boolean) null)
             .where(USERNAME.eq(username.asString()))));
+    }
+
+    @Override
+    public Publisher<SaaSAccount> getSaaSAccount(Domain domain) {
+        return Mono.from(executor.executeRow(dsl -> Mono.from(dsl
+                .select(TMailPostgresDomainDataDefinition.PostgresDomainTable.CAN_UPGRADE,
+                    TMailPostgresDomainDataDefinition.PostgresDomainTable.IS_PAYING)
+                .from(TMailPostgresDomainDataDefinition.PostgresDomainTable.TABLE_NAME)
+                .where(TMailPostgresDomainDataDefinition.PostgresDomainTable.DOMAIN.eq(domain.asString())))))
+            .flatMap(row -> {
+                Boolean canUpgrade = row.get(TMailPostgresDomainDataDefinition.PostgresDomainTable.CAN_UPGRADE);
+                Boolean isPaying = row.get(TMailPostgresDomainDataDefinition.PostgresDomainTable.IS_PAYING);
+                if (canUpgrade == null && isPaying == null) {
+                    return Mono.<SaaSAccount>empty();
+                }
+                return Mono.just(new SaaSAccount(
+                    Optional.ofNullable(canUpgrade).orElse(SaaSAccount.DEFAULT.canUpgrade()),
+                    Optional.ofNullable(isPaying).orElse(SaaSAccount.DEFAULT.isPaying())));
+            });
+    }
+
+    @Override
+    public Publisher<Void> upsertSaasAccount(Domain domain, SaaSAccount saaSAccount) {
+        return executor.executeVoid(dsl -> Mono.from(dsl
+            .insertInto(TMailPostgresDomainDataDefinition.PostgresDomainTable.TABLE_NAME)
+            .set(TMailPostgresDomainDataDefinition.PostgresDomainTable.DOMAIN, domain.asString())
+            .set(TMailPostgresDomainDataDefinition.PostgresDomainTable.CAN_UPGRADE, saaSAccount.canUpgrade())
+            .set(TMailPostgresDomainDataDefinition.PostgresDomainTable.IS_PAYING, saaSAccount.isPaying())
+            .onConflict(TMailPostgresDomainDataDefinition.PostgresDomainTable.DOMAIN)
+            .doUpdate()
+            .set(TMailPostgresDomainDataDefinition.PostgresDomainTable.CAN_UPGRADE, saaSAccount.canUpgrade())
+            .set(TMailPostgresDomainDataDefinition.PostgresDomainTable.IS_PAYING, saaSAccount.isPaying())));
+    }
+
+    @Override
+    public Publisher<Void> deleteSaaSAccount(Domain domain) {
+        return executor.executeVoid(dsl -> Mono.from(dsl
+            .update(TMailPostgresDomainDataDefinition.PostgresDomainTable.TABLE_NAME)
+            .set(TMailPostgresDomainDataDefinition.PostgresDomainTable.CAN_UPGRADE, (Boolean) null)
+            .set(TMailPostgresDomainDataDefinition.PostgresDomainTable.IS_PAYING, (Boolean) null)
+            .where(TMailPostgresDomainDataDefinition.PostgresDomainTable.DOMAIN.eq(domain.asString()))));
     }
 }

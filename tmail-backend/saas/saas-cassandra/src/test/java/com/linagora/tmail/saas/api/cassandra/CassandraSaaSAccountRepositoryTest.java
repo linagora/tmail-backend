@@ -22,11 +22,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.CassandraClusterExtension;
+import org.apache.james.backends.cassandra.components.CassandraDataDefinition;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.datastax.oss.driver.api.core.CqlSession;
+import com.linagora.tmail.domainlist.cassandra.TMailCassandraDomainListDataDefinition;
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
 import com.linagora.tmail.saas.api.SaaSAccountRepositoryContract;
 
@@ -34,7 +36,8 @@ import reactor.core.publisher.Mono;
 
 public class CassandraSaaSAccountRepositoryTest implements SaaSAccountRepositoryContract {
     @RegisterExtension
-    static CassandraClusterExtension cassandraCluster = new CassandraClusterExtension(CassandraSaaSDataDefinition.MODULE);
+    static CassandraClusterExtension cassandraCluster = new CassandraClusterExtension(
+        CassandraDataDefinition.aggregateModules(CassandraSaaSDataDefinition.MODULE, TMailCassandraDomainListDataDefinition.MODULE));
 
     private CassandraSaaSAccountRepository cassandraSaaSAccountRepository;
 

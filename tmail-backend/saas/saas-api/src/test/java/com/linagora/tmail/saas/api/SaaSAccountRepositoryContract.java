@@ -20,6 +20,7 @@ package com.linagora.tmail.saas.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.junit.jupiter.api.Test;
 
@@ -36,6 +37,7 @@ public interface SaaSAccountRepositoryContract {
 
     Username BOB = Username.of("bob@domain.tld");
     Username ALICE = Username.of("alice@domain.tld");
+    Domain DOMAIN_TLD = Domain.of("domain.tld");
 
     @Test
     default void upsertSaasAccountShouldSucceed() {
@@ -88,6 +90,79 @@ public interface SaaSAccountRepositoryContract {
         Mono.from(testee().deleteSaaSAccount(BOB)).block();
         Mono.from(testee().deleteSaaSAccount(BOB)).block();
 
+        assertThat(Mono.from(testee().getSaaSAccount(BOB)).block())
+            .isEqualTo(SaaSAccount.DEFAULT);
+    }
+
+    @Test
+    default void getSaaSAccountForDomainShouldReturnEmptyWhenNotSet() {
+        assertThat(Mono.from(testee().getSaaSAccount(DOMAIN_TLD)).block()).isNull();
+    }
+
+    @Test
+    default void upsertSaasAccountForDomainShouldSucceed() {
+        Mono.from(testee().upsertSaasAccount(DOMAIN_TLD, SAAS_ACCOUNT)).block();
+
+        assertThat(Mono.from(testee().getSaaSAccount(DOMAIN_TLD)).block())
+            .isEqualTo(SAAS_ACCOUNT);
+    }
+
+    @Test
+    default void upsertSaasAccountForDomainShouldOverridePreviousValue() {
+        Mono.from(testee().upsertSaasAccount(DOMAIN_TLD, SAAS_ACCOUNT)).block();
+        Mono.from(testee().upsertSaasAccount(DOMAIN_TLD, SAAS_ACCOUNT_2)).block();
+
+        assertThat(Mono.from(testee().getSaaSAccount(DOMAIN_TLD)).block())
+            .isEqualTo(SAAS_ACCOUNT_2);
+    }
+
+    @Test
+    default void deleteSaaSAccountForDomainShouldClearAccount() {
+        Mono.from(testee().upsertSaasAccount(DOMAIN_TLD, SAAS_ACCOUNT)).block();
+        Mono.from(testee().deleteSaaSAccount(DOMAIN_TLD)).block();
+
+        assertThat(Mono.from(testee().getSaaSAccount(DOMAIN_TLD)).block()).isNull();
+    }
+
+    @Test
+    default void deleteSaaSAccountForDomainShouldBeIdempotent() {
+        Mono.from(testee().upsertSaasAccount(DOMAIN_TLD, SAAS_ACCOUNT)).block();
+
+        Mono.from(testee().deleteSaaSAccount(DOMAIN_TLD)).block();
+        Mono.from(testee().deleteSaaSAccount(DOMAIN_TLD)).block();
+
+        assertThat(Mono.from(testee().getSaaSAccount(DOMAIN_TLD)).block()).isNull();
+    }
+
+    @Test
+    default void getSaaSAccountForUsernameShouldFallbackToDomainWhenNoUserValue() {
+        Mono.from(testee().upsertSaasAccount(DOMAIN_TLD, SAAS_ACCOUNT)).block();
+
+        assertThat(Mono.from(testee().getSaaSAccount(BOB)).block())
+            .isEqualTo(SAAS_ACCOUNT);
+    }
+
+    @Test
+    default void getSaaSAccountForUsernameShouldPreferUserValueOverDomain() {
+        Mono.from(testee().upsertSaasAccount(DOMAIN_TLD, SAAS_ACCOUNT)).block();
+        Mono.from(testee().upsertSaasAccount(BOB, SAAS_ACCOUNT_2)).block();
+
+        assertThat(Mono.from(testee().getSaaSAccount(BOB)).block())
+            .isEqualTo(SAAS_ACCOUNT_2);
+    }
+
+    @Test
+    default void getSaaSAccountForUsernameShouldFallbackToDomainAfterUserDelete() {
+        Mono.from(testee().upsertSaasAccount(DOMAIN_TLD, SAAS_ACCOUNT)).block();
+        Mono.from(testee().upsertSaasAccount(BOB, SAAS_ACCOUNT_2)).block();
+        Mono.from(testee().deleteSaaSAccount(BOB)).block();
+
+        assertThat(Mono.from(testee().getSaaSAccount(BOB)).block())
+            .isEqualTo(SAAS_ACCOUNT);
+    }
+
+    @Test
+    default void getSaaSAccountForUsernameShouldReturnDefaultWhenNoUserNoDomain() {
         assertThat(Mono.from(testee().getSaaSAccount(BOB)).block())
             .isEqualTo(SaaSAccount.DEFAULT);
     }
