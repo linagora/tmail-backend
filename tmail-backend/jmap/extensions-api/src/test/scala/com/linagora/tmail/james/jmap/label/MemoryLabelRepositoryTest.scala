@@ -18,15 +18,17 @@
 
 package com.linagora.tmail.james.jmap.label
 
-import org.junit.jupiter.api.BeforeEach
+import org.apache.james.events.delivery.InVmEventDelivery
+import org.apache.james.events.{EventBus, InVMEventBus, MemoryEventDeadLetters, RetryBackoffConfiguration}
+import org.apache.james.metrics.tests.RecordingMetricFactory
 
 class MemoryLabelRepositoryTest extends LabelRepositoryContract {
-  var memoryLabelRepository: MemoryLabelRepository = _
-
-  @BeforeEach
-  def setup(): Unit = {
-    memoryLabelRepository = new MemoryLabelRepository
-  }
+  val inVMEventBus: InVMEventBus = new InVMEventBus(
+    new InVmEventDelivery(new RecordingMetricFactory()),
+    RetryBackoffConfiguration.FAST,
+    new MemoryEventDeadLetters())
+  val memoryLabelRepository: MemoryLabelRepository = new MemoryLabelRepository(inVMEventBus)
 
   override def testee: LabelRepository = memoryLabelRepository
+  override def eventBus: EventBus = inVMEventBus
 }
