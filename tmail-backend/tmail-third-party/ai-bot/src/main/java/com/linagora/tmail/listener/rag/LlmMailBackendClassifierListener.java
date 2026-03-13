@@ -86,12 +86,14 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
 
     public static final Group GROUP = new LlmMailPrioritizationBackendClassifierGroup();
     public static final String NEEDS_ACTION = "needs-action";
+    public static final boolean READ_ONLY = true;
     public static ImmutableMap<String, Label> SYSTEM_LABELS = ImmutableMap.of(NEEDS_ACTION, new Label(
         LabelId.fromKeyword(NEEDS_ACTION),
         DisplayName.apply(NEEDS_ACTION),
         NEEDS_ACTION,
         scala.Option.apply(new Color("#FF0000")),
-        scala.Option.apply("Emails requiring recipient action: answering questions, making decisions, completing tasks, handling requests, or responding by deadline. Excludes newsletters, notifications, and FYI messages.")));
+        scala.Option.apply("Emails requiring recipient action: answering questions, making decisions, completing tasks, handling requests, or responding by deadline. Excludes newsletters, notifications, and FYI messages."),
+        READ_ONLY));
     private static final Logger LOGGER = LoggerFactory.getLogger(LlmMailBackendClassifierListener.class);
     private static final String SYSTEM_PROMPT_PARAM = "systemPrompt";
     private static final String MAX_BODY_LENGTH_PARAM = "maxBodyLength";

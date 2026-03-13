@@ -106,9 +106,9 @@ class LabelRoutesTest {
         @Test
         void getLabelsReturnsExistingLabels() {
             LabelCreationRequest req1 = new LabelCreationRequest(
-                new DisplayName("Work"), noColor(), noDescription());
+                new DisplayName("Work"), noColor(), noDescription(), false);
             LabelCreationRequest req2 = new LabelCreationRequest(
-                new DisplayName("Personal"), noColor(), noDescription());
+                new DisplayName("Personal"), noColor(), noDescription(), false);
             Mono.from(labelRepository.addLabel(BOB, req1)).block();
             Mono.from(labelRepository.addLabel(BOB, req2)).block();
 
@@ -130,7 +130,8 @@ class LabelRoutesTest {
             LabelCreationRequest req = new LabelCreationRequest(
                 new DisplayName("Urgent"),
                 Option$.MODULE$.apply(Color.validate("#ff0000").toOption().get()),
-                Option$.MODULE$.apply("Very important emails"));
+                Option$.MODULE$.apply("Very important emails"),
+                false);
             Label created = Mono.from(labelRepository.addLabel(BOB, req)).block();
 
             String response = when()
@@ -148,6 +149,7 @@ class LabelRoutesTest {
                     assertThatJson(node).node("keyword").isNotNull();
                     assertThatJson(node).node("color").isEqualTo("\"#ff0000\"");
                     assertThatJson(node).node("description").isEqualTo("\"Very important emails\"");
+                    assertThatJson(node).node("readOnly").isEqualTo("false");
                 });
         }
 
@@ -317,7 +319,7 @@ class LabelRoutesTest {
         @Test
         void updateLabelReturns204OnSuccess() {
             LabelCreationRequest req = new LabelCreationRequest(
-                new DisplayName("Work"), noColor(), noDescription());
+                new DisplayName("Work"), noColor(), noDescription(), false);
             Label created = Mono.from(labelRepository.addLabel(BOB, req)).block();
 
             given()
@@ -332,7 +334,7 @@ class LabelRoutesTest {
         @Test
         void updateLabelPersistsDisplayNameChange() {
             LabelCreationRequest req = new LabelCreationRequest(
-                new DisplayName("Work"), noColor(), noDescription());
+                new DisplayName("Work"), noColor(), noDescription(), false);
             Label created = Mono.from(labelRepository.addLabel(BOB, req)).block();
 
             given()
@@ -354,7 +356,7 @@ class LabelRoutesTest {
         @Test
         void updateLabelCanSetColor() {
             LabelCreationRequest req = new LabelCreationRequest(
-                new DisplayName("Work"), noColor(), noDescription());
+                new DisplayName("Work"), noColor(), noDescription(), false);
             Label created = Mono.from(labelRepository.addLabel(BOB, req)).block();
 
             given()
@@ -376,7 +378,7 @@ class LabelRoutesTest {
         @Test
         void updateLabelReturns400WhenDisplayNameNull() {
             LabelCreationRequest req = new LabelCreationRequest(
-                new DisplayName("Work"), noColor(), noDescription());
+                new DisplayName("Work"), noColor(), noDescription(), false);
             Label created = Mono.from(labelRepository.addLabel(BOB, req)).block();
 
             given()
@@ -391,7 +393,7 @@ class LabelRoutesTest {
         @Test
         void updateLabelReturns400WhenColorInvalid() {
             LabelCreationRequest req = new LabelCreationRequest(
-                new DisplayName("Work"), noColor(), noDescription());
+                new DisplayName("Work"), noColor(), noDescription(), false);
             Label created = Mono.from(labelRepository.addLabel(BOB, req)).block();
 
             given()
@@ -426,6 +428,54 @@ class LabelRoutesTest {
             .then()
                 .statusCode(NOT_FOUND_404);
         }
+
+        @Test
+        void updateLabelCanSetReadOnlyToTrue() {
+            LabelCreationRequest req = new LabelCreationRequest(
+                new DisplayName("Work"), noColor(), noDescription(), false);
+            Label created = Mono.from(labelRepository.addLabel(BOB, req)).block();
+
+            given()
+                .contentType(JSON)
+                .body("{\"displayName\": \"Work\", \"readOnly\": true}")
+            .when()
+                .patch(BOB_LABELS_PATH + "/" + created.id().serialize())
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            String response = when()
+                .get(BOB_LABELS_PATH)
+            .then()
+                .statusCode(OK_200)
+                .extract().body().asString();
+
+            assertThatJson(response).isArray().first()
+                .satisfies(node -> assertThatJson(node).node("readOnly").isEqualTo("true"));
+        }
+
+        @Test
+        void updateLabelCanToggleReadOnlyBackToFalse() {
+            LabelCreationRequest req = new LabelCreationRequest(
+                new DisplayName("Work"), noColor(), noDescription(), true);
+            Label created = Mono.from(labelRepository.addLabel(BOB, req)).block();
+
+            given()
+                .contentType(JSON)
+                .body("{\"displayName\": \"Work\", \"readOnly\": false}")
+            .when()
+                .patch(BOB_LABELS_PATH + "/" + created.id().serialize())
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            String response = when()
+                .get(BOB_LABELS_PATH)
+            .then()
+                .statusCode(OK_200)
+                .extract().body().asString();
+
+            assertThatJson(response).isArray().first()
+                .satisfies(node -> assertThatJson(node).node("readOnly").isEqualTo("false"));
+        }
     }
 
     @Nested
@@ -433,7 +483,7 @@ class LabelRoutesTest {
         @Test
         void deleteLabelReturns204OnSuccess() {
             LabelCreationRequest req = new LabelCreationRequest(
-                new DisplayName("Work"), noColor(), noDescription());
+                new DisplayName("Work"), noColor(), noDescription(), false);
             Label created = Mono.from(labelRepository.addLabel(BOB, req)).block();
 
             when()
@@ -445,7 +495,7 @@ class LabelRoutesTest {
         @Test
         void deleteLabelActuallyRemovesIt() {
             LabelCreationRequest req = new LabelCreationRequest(
-                new DisplayName("Work"), noColor(), noDescription());
+                new DisplayName("Work"), noColor(), noDescription(), false);
             Label created = Mono.from(labelRepository.addLabel(BOB, req)).block();
 
             when().delete(BOB_LABELS_PATH + "/" + created.id().serialize());

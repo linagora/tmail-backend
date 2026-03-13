@@ -96,6 +96,11 @@ public class PostgresLabelRepository implements LabelRepository {
             .deleteAll(username);
     }
 
+    @Override
+    public Publisher<Void> setLabelReadOnly(Username username, LabelId labelId, boolean readOnly) {
+        return labelDAO(username).setReadOnly(username, labelId, readOnly);
+    }
+
     private PostgresLabelDAO labelDAO(Username username) {
         return new PostgresLabelDAO(executorFactory.create(username.getDomainPart()));
     }

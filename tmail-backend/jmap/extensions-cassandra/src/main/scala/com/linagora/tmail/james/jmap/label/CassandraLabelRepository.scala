@@ -22,7 +22,7 @@ import java.io.FileNotFoundException
 
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Provides, Scopes}
-import com.linagora.tmail.james.jmap.model.{Color, DescriptionUpdate, DisplayName, Label, LabelCreationRequest, LabelId, LabelNotFoundException}
+import com.linagora.tmail.james.jmap.model.{Color, DescriptionUpdate, DisplayName, Label, LabelCreationRequest, LabelId, LabelNotFoundException, LabelReadOnlyException}
 import jakarta.inject.Inject
 import org.apache.james.backends.cassandra.components.CassandraDataDefinition
 import org.apache.james.core.Username
@@ -68,6 +68,11 @@ class CassandraLabelRepository @Inject()(dao: CassandraLabelDAO) extends LabelRe
 
   override def deleteAllLabels(username: Username): Publisher[Void] =
     dao.deleteAll(username)
+
+  override def setLabelReadOnly(username: Username, labelId: LabelId, readOnly: Boolean): Publisher[Void] =
+    dao.selectOne(username, labelId.toKeyword)
+      .switchIfEmpty(SMono.error(LabelNotFoundException(labelId)))
+      .flatMap(_ => dao.setReadOnly(username, labelId.toKeyword, readOnly))
 }
 
 case class CassandraLabelRepositoryModule() extends AbstractModule {

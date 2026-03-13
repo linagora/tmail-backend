@@ -21,6 +21,7 @@ We introduce the `Label` object representing the information of a label, which c
 - **keyword**: `String`. Server-set. The associated keyword that could be used to set on emails.
 - **color**: `Color`|null. Color of the label.
 - **description**: `String`|null. A short description of the label.
+- **readOnly**: `Boolean`. Server-set. Defaults to `false`. When `true`, the label cannot be updated or deleted via JMAP (`Label/set`). Read-only labels can only be managed by an administrator through the WebAdmin API.
 
 We introduce the `Color` data type which is a `String` in the form of hex color code. It starts with a hashtag `#` and are followed by six letters and/or numbers.
 The first two letters/numbers refer to red, the next two refer to green, and the last two refer to blue.
@@ -33,6 +34,8 @@ Standard */get* method as described in Section 5.1, RFC8620.
 == Label/set
 
 Standard */set* method as described in Section 5.3, RFC8620.
+
+Attempting to update or destroy a label with `readOnly: true` via JMAP will result in a `forbidden` error for that label.
 
 == Label/changes
 
@@ -74,7 +77,8 @@ Response:
           "displayName": "Custom Tag 1",
           "keyword": "custom_tag_1",
           "color": "#000000",
-          "description": "Custom Tag1 description"
+          "description": "Custom Tag1 description",
+          "readOnly": false
         }],
         "notFound": [ "notFound"]
       },

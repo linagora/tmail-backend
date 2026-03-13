@@ -70,12 +70,12 @@ case class Color(value: String)
 case class DescriptionUpdate(value: Option[String])
 
 object LabelCreationRequest {
-  val serverSetProperty = Set("id", "keyword")
+  val serverSetProperty = Set("id", "keyword", "readOnly")
   val assignableProperties = Set("displayName", "color", "description")
   val knownProperties = assignableProperties ++ serverSetProperty
 }
 
-case class LabelCreationRequest(displayName: DisplayName, color: Option[Color], description: Option[String]) {
+case class LabelCreationRequest(displayName: DisplayName, color: Option[Color], description: Option[String], readOnly: Boolean = false) {
   def toLabel: Label = {
     val keyword: Keyword = KeywordUtil.generate()
 
@@ -83,16 +83,17 @@ case class LabelCreationRequest(displayName: DisplayName, color: Option[Color], 
       displayName = displayName,
       keyword = keyword,
       color = color,
-      description = description)
+      description = description,
+      readOnly = readOnly)
   }
 }
 
 object Label {
-  val allProperties: Properties = Properties("id", "displayName", "keyword", "color", "description")
+  val allProperties: Properties = Properties("id", "displayName", "keyword", "color", "description", "readOnly")
   val idProperty: Properties = Properties("id")
 }
 
-case class Label(id: LabelId, displayName: DisplayName, keyword: Keyword, color: Option[Color], description: Option[String] ) {
+case class Label(id: LabelId, displayName: DisplayName, keyword: Keyword, color: Option[Color], description: Option[String], readOnly: Boolean = false) {
   def update(newDisplayName: Option[DisplayName], newColor: Option[Color], newDescription:Option[String]): Label =
     copy(displayName = newDisplayName.getOrElse(displayName),
       color = newColor.orElse(color),
@@ -100,6 +101,7 @@ case class Label(id: LabelId, displayName: DisplayName, keyword: Keyword, color:
 }
 
 case class LabelNotFoundException(id: LabelId) extends RuntimeException
+case class LabelReadOnlyException(id: LabelId) extends RuntimeException(s"Label '${id.serialize}' is read-only and cannot be modified via JMAP")
 
 case class UnparsedLabelId(id: Id) {
   def asLabelId: LabelId = LabelId(id)
