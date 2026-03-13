@@ -18,11 +18,16 @@
 
 package com.linagora.tmail.james.jmap.label
 
+import java.util.concurrent.CopyOnWriteArrayList
+
 import com.linagora.tmail.james.jmap.label.LabelRepositoryContract.{ALICE, BLUE, BOB, RED}
 import com.linagora.tmail.james.jmap.model.{Color, DescriptionUpdate, DisplayName, Label, LabelCreationRequest, LabelId, LabelNotFoundException}
 import org.apache.james.core.Username
+import org.apache.james.events.EventListener.ExecutionMode
+import org.apache.james.events.{Event, EventBus, EventListener, Group}
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
-import org.junit.jupiter.api.Test
+import org.junit.jupiter.api.{BeforeEach, Test}
+import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.CollectionConverters._
@@ -32,10 +37,27 @@ object LabelRepositoryContract {
   val BOB: Username = Username.of("bob@domain.com")
   val RED: Color = Color("#FF0000")
   val BLUE: Color = Color("#0000FF")
+
+  class LabelEventCollectorGroup extends Group {}
+
+  class LabelEventCollector extends EventListener.ReactiveGroupEventListener {
+    val events: CopyOnWriteArrayList[TmailLabelEvent] = new CopyOnWriteArrayList[TmailLabelEvent]()
+
+    override def getDefaultGroup: Group = new LabelEventCollectorGroup()
+
+    override def isHandling(event: Event): Boolean = event.isInstanceOf[TmailLabelEvent]
+
+    override def getExecutionMode(): ExecutionMode = ExecutionMode.SYNCHRONOUS
+    override def reactiveEvent(event: Event): Publisher[Void] = {
+      events.add(event.asInstanceOf[TmailLabelEvent])
+      SMono.empty[Void]
+    }
+  }
 }
 
 trait LabelRepositoryContract {
   def testee: LabelRepository
+  def eventBus: EventBus
 
   @Test
   def addLabelFromCreationRequestShouldSucceed(): Unit = {
@@ -406,5 +428,83 @@ trait LabelRepositoryContract {
 
     assertThat(describedLabel.description).isEqualTo(Some("This label has description"))
     assertThat(notDescribedLabel.description).isEqualTo(None)
+  }
+
+  @Test
+  def addLabelFromCreationRequestShouldDispatchLabelCreatedEvent(): Unit = {
+    val eventCollector = new LabelRepositoryContract.LabelEventCollector()
+    eventBus.register(eventCollector, eventCollector.getDefaultGroup)
+
+    val createdLabel = SMono.fromPublisher(testee.addLabel(ALICE, LabelCreationRequest(DisplayName("Work"), Some(RED), None))).block()
+
+    assertThat(eventCollector.events.asScala.map(_.getClass).asJava)
+      .containsOnly(classOf[LabelCreated])
+    assertThat(eventCollector.events.asScala.map(_.asInstanceOf[LabelCreated].label).asJava)
+      .containsOnly(createdLabel)
+    assertThat(eventCollector.events.asScala.map(_.getUsername).asJava)
+      .containsOnly(ALICE)
+  }
+
+  @Test
+  def addLabelShouldDispatchLabelCreatedEvent(): Unit = {
+    val eventCollector = new LabelRepositoryContract.LabelEventCollector()
+    eventBus.register(eventCollector, eventCollector.getDefaultGroup)
+
+    val label = LabelCreationRequest(DisplayName("Work"), Some(RED), None).toLabel
+    SMono.fromPublisher(testee.addLabel(ALICE, label)).block()
+
+    assertThat(eventCollector.events.asScala.map(_.getClass).asJava)
+      .containsOnly(classOf[LabelCreated])
+    assertThat(eventCollector.events.asScala.map(_.asInstanceOf[LabelCreated].label).asJava)
+      .containsOnly(label)
+  }
+
+  @Test
+  def addLabelsShouldDispatchOneLabelCreatedEventPerLabel(): Unit = {
+    val eventCollector = new LabelRepositoryContract.LabelEventCollector()
+    eventBus.register(eventCollector, eventCollector.getDefaultGroup)
+
+    SFlux.fromPublisher(testee.addLabels(ALICE, java.util.List.of(
+      LabelCreationRequest(DisplayName("Work"), Some(RED), None),
+      LabelCreationRequest(DisplayName("Personal"), Some(BLUE), None)
+    ))).collectSeq().block()
+
+    assertThat(eventCollector.events.asScala.filter(_.isInstanceOf[LabelCreated]).asJava)
+      .hasSize(2)
+  }
+
+  @Test
+  def updateLabelShouldDispatchLabelUpdatedEvent(): Unit = {
+    val eventCollector = new LabelRepositoryContract.LabelEventCollector()
+    eventBus.register(eventCollector, eventCollector.getDefaultGroup)
+
+    val label = SMono.fromPublisher(testee.addLabel(ALICE, LabelCreationRequest(DisplayName("Work"), Some(RED), None))).block()
+    eventCollector.events.clear()
+
+    SMono.fromPublisher(testee.updateLabel(ALICE, label.id, newDisplayName = Some(DisplayName("Work updated")))).block()
+
+    assertThat(eventCollector.events.asScala.map(_.getClass).asJava)
+      .containsOnly(classOf[LabelUpdated])
+    val updatedEvent = eventCollector.events.get(0).asInstanceOf[LabelUpdated]
+    assertThat(updatedEvent.getUsername).isEqualTo(ALICE)
+    assertThat(updatedEvent.updatedLabel.displayName).isEqualTo(DisplayName("Work updated"))
+    assertThat(updatedEvent.updatedLabel.id).isEqualTo(label.id)
+  }
+
+  @Test
+  def deleteLabelShouldDispatchLabelDestroyedEvent(): Unit = {
+    val eventCollector = new LabelRepositoryContract.LabelEventCollector()
+    eventBus.register(eventCollector, eventCollector.getDefaultGroup)
+
+    val label = SMono.fromPublisher(testee.addLabel(ALICE, LabelCreationRequest(DisplayName("Work"), Some(RED), None))).block()
+    eventCollector.events.clear()
+
+    SMono.fromPublisher(testee.deleteLabel(ALICE, label.id)).block()
+
+    assertThat(eventCollector.events.asScala.map(_.getClass).asJava)
+      .containsOnly(classOf[LabelDestroyed])
+    val destroyedEvent = eventCollector.events.get(0).asInstanceOf[LabelDestroyed]
+    assertThat(destroyedEvent.getUsername).isEqualTo(ALICE)
+    assertThat(destroyedEvent.labelId).isEqualTo(label.id)
   }
 }

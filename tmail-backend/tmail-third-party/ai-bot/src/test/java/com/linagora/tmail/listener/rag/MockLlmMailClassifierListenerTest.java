@@ -150,7 +150,7 @@ public class MockLlmMailClassifierListenerTest implements LlmMailClassifierListe
         identityRepository = setUpIdentityRepository();
         jmapSettingsRepository = new MemoryJmapSettingsRepository();
         jmapSettingsRepositoryUtils = new JmapSettingsRepositoryJavaUtils(jmapSettingsRepository);
-        labelRepository = new MemoryLabelRepository();
+        labelRepository = new MemoryLabelRepository(tmailEventBus);
         Label label1 = Mono.from(labelRepository.addLabel(ALICE, new LabelCreationRequest(new DisplayName("label1"), scala.Option.apply(new Color("#0000")), scala.Option.apply("label1 description")))).block();
         label1Id = label1.keyword();
         Label label2 =Mono.from(labelRepository.addLabel(ALICE, new LabelCreationRequest(new DisplayName("label2"), scala.Option.apply(new Color("#0000")), scala.Option.apply("label2 description")))).block();
