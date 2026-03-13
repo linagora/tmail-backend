@@ -35,10 +35,14 @@ import reactor.core.scala.publisher.SMono
 
 class LabelMetadataListenerGroup extends Group {}
 
+object LabelMetadataListener {
+  val LABELS_ANNOTATION_PREFIX: String = "/private/vendor/tmail/labels"
+}
+
 class LabelMetadataListener @Inject()(mailboxManager: MailboxManager,
                                       mapperFactory: MailboxSessionMapperFactory) extends ReactiveGroupEventListener {
 
-  private val LABELS_ANNOTATION_PREFIX = "/private/vendor/tmail/labels"
+  import LabelMetadataListener.LABELS_ANNOTATION_PREFIX
 
   override def getDefaultGroup: Group = new LabelMetadataListenerGroup()
 
