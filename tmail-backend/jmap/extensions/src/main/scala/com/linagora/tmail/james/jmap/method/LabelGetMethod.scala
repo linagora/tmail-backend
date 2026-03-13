@@ -21,7 +21,8 @@ package com.linagora.tmail.james.jmap.method
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
 import com.linagora.tmail.james.jmap.json.LabelSerializer
-import com.linagora.tmail.james.jmap.label.{LabelChangeRepository, LabelRepository, LabelTypeName}
+import com.linagora.tmail.james.jmap.label.{LabelChangeRepository, LabelMetadataListener, LabelRepository, LabelTypeName}
+import org.apache.james.mailbox.ReadOnlyAnnotationPredicate
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_LABEL
 import com.linagora.tmail.james.jmap.model.{Label, LabelGetRequest, LabelGetResponse, LabelId, LabelIds}
 import eu.timepit.refined.auto._
@@ -66,6 +67,10 @@ class LabelMethodModule extends AbstractModule {
 
   override def configure(): Unit = {
     install(new LabelCapabilitiesModule())
+
+    Multibinder.newSetBinder(binder(), classOf[ReadOnlyAnnotationPredicate])
+      .addBinding()
+      .toInstance(key => key.asString().startsWith(LabelMetadataListener.LABELS_ANNOTATION_PREFIX))
 
     Multibinder.newSetBinder(binder(), classOf[Method])
       .addBinding()
