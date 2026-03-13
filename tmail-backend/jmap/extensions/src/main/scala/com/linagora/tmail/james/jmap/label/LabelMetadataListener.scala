@@ -102,7 +102,7 @@ class LabelMetadataListener @Inject()(mailboxManager: MailboxManager,
     new MailboxAnnotationKey(s"${annotationPrefix(keyword)}/keyword")
 
   private def displayNameKey(keyword: String): MailboxAnnotationKey =
-    new MailboxAnnotationKey(s"${annotationPrefix(keyword)}/displayName")
+    new MailboxAnnotationKey(s"${annotationPrefix(keyword)}/displayname")
 
   private def colorKey(keyword: String): MailboxAnnotationKey =
     new MailboxAnnotationKey(s"${annotationPrefix(keyword)}/color")

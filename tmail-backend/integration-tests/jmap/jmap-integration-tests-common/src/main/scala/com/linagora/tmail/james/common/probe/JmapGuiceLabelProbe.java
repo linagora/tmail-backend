@@ -30,6 +30,7 @@ import com.linagora.tmail.james.jmap.label.LabelRepository;
 import com.linagora.tmail.james.jmap.model.Label;
 import com.linagora.tmail.james.jmap.model.LabelChange;
 import com.linagora.tmail.james.jmap.model.LabelCreationRequest;
+import com.linagora.tmail.james.jmap.model.LabelId;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -54,6 +55,10 @@ public class JmapGuiceLabelProbe implements GuiceProbe {
         return Flux.from(labelRepository.listLabels(username))
             .collectList()
             .block();
+    }
+
+    public void deleteLabel(Username username, LabelId labelId) {
+        Mono.from(labelRepository.deleteLabel(username, labelId)).block();
     }
 
     public void saveLabelChange(LabelChange labelChange) {
