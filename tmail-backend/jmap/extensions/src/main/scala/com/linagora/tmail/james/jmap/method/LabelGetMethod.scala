@@ -22,7 +22,6 @@ import com.google.inject.AbstractModule
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
 import com.linagora.tmail.james.jmap.json.LabelSerializer
 import com.linagora.tmail.james.jmap.label.{LabelChangeRepository, LabelMetadataListener, LabelRepository, LabelTypeName}
-import org.apache.james.mailbox.ReadOnlyAnnotationPredicate
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_LABEL
 import com.linagora.tmail.james.jmap.model.{Label, LabelGetRequest, LabelGetResponse, LabelId, LabelIds}
 import eu.timepit.refined.auto._
@@ -35,7 +34,7 @@ import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProp
 import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodRequiringAccountId}
 import org.apache.james.jmap.routes.SessionSupplier
-import org.apache.james.mailbox.MailboxSession
+import org.apache.james.mailbox.{MailboxSession, ReadOnlyAnnotationPredicate}
 import org.apache.james.metrics.api.MetricFactory
 import org.reactivestreams.Publisher
 import play.api.libs.json.{JsObject, Json}
