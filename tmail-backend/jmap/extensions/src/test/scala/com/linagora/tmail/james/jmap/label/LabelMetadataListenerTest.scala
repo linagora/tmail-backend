@@ -18,6 +18,8 @@
 
 package com.linagora.tmail.james.jmap.label
 
+import java.nio.charset.StandardCharsets
+
 import com.google.common.hash.Hashing
 import com.linagora.tmail.james.jmap.label.LabelRepositoryContract.ALICE
 import com.linagora.tmail.james.jmap.model.{Color, DisplayName, Label, LabelId}
@@ -34,7 +36,6 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
 import reactor.core.scala.publisher.SMono
 
-import java.nio.charset.StandardCharsets
 import scala.jdk.CollectionConverters._
 
 class LabelMetadataListenerTest {

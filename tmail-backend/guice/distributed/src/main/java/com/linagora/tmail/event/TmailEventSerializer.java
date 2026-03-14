@@ -31,8 +31,6 @@ import org.apache.james.core.Username;
 import org.apache.james.events.Event;
 import org.apache.james.events.EventSerializer;
 
-import scala.jdk.javaapi.OptionConverters;
-
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -42,8 +40,6 @@ import com.linagora.tmail.blob.secondaryblobstore.FailedBlobEvents;
 import com.linagora.tmail.blob.secondaryblobstore.ObjectStorageIdentity;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.contact.TmailContactUserAddedEvent;
-import org.apache.james.jmap.mail.Keyword;
-
 import com.linagora.tmail.james.jmap.label.LabelCreated;
 import com.linagora.tmail.james.jmap.label.LabelDestroyed;
 import com.linagora.tmail.james.jmap.label.LabelUpdated;
@@ -51,6 +47,8 @@ import com.linagora.tmail.james.jmap.model.Color;
 import com.linagora.tmail.james.jmap.model.DisplayName;
 import com.linagora.tmail.james.jmap.model.Label;
 import com.linagora.tmail.james.jmap.model.LabelId;
+
+import scala.jdk.javaapi.OptionConverters;
 
 public class TmailEventSerializer implements EventSerializer {
 
