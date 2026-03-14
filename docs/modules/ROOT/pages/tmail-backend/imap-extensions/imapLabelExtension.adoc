@@ -1,0 +1,11 @@
+= IMAP Labels
+
+Allows IMAP clients to retrieve JMAP labels (read only)
+
+Syntax
+
+...
+A1 GETMETADATA "INBOX" (DEPTH infinity) /private/vendor/tmail/labels
+* METADATA "INBOX" (/private/vendor/tmail/labels/b69e4560/keyword "b0cdcdb8-97a7-4534-bd89-054e33c522bf" /private/vendor/tmail/labels/b69e4560/displayname "New label" /private/vendor/tmail/labels/ddccf2df/keyword "99585cfa-fb89-4b8e-bd64-d7fbe6032409" /private/vendor/tmail/labels/ddccf2df/displayname "fvev er re rg er")
+A1 OK GETMETADATA completed.
+...
