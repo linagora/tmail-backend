@@ -18,17 +18,27 @@
 
 package com.linagora.tmail.james.jmap.label
 
-import org.apache.james.events.delivery.InVmEventDelivery
-import org.apache.james.events.{EventBus, InVMEventBus, MemoryEventDeadLetters, RetryBackoffConfiguration}
-import org.apache.james.metrics.tests.RecordingMetricFactory
+import com.linagora.tmail.james.jmap.contact.TmailEvent
+import com.linagora.tmail.james.jmap.model.{Label, LabelId}
+import org.apache.james.core.Username
+import org.apache.james.events.Event.EventId
 
-class MemoryLabelRepositoryTest extends LabelRepositoryContract {
-  val inVMEventBus: InVMEventBus = new InVMEventBus(
-    new InVmEventDelivery(new RecordingMetricFactory()),
-    RetryBackoffConfiguration.FAST,
-    new MemoryEventDeadLetters())
-  val memoryLabelRepository: MemoryLabelRepository = new MemoryLabelRepository(inVMEventBus)
+trait TmailLabelEvent extends TmailEvent
 
-  override def testee: LabelRepository = memoryLabelRepository
-  override def eventBus: EventBus = inVMEventBus
+case class LabelCreated(eventId: EventId, username: Username, label: Label) extends TmailLabelEvent {
+  override def getUsername: Username = username
+  override def isNoop: Boolean = false
+  override def getEventId: EventId = eventId
+}
+
+case class LabelUpdated(eventId: EventId, username: Username, updatedLabel: Label) extends TmailLabelEvent {
+  override def getUsername: Username = username
+  override def isNoop: Boolean = false
+  override def getEventId: EventId = eventId
+}
+
+case class LabelDestroyed(eventId: EventId, username: Username, labelId: LabelId) extends TmailLabelEvent {
+  override def getUsername: Username = username
+  override def isNoop: Boolean = false
+  override def getEventId: EventId = eventId
 }

@@ -21,11 +21,15 @@ package com.linagora.tmail.james.jmap.label
 import java.io.FileNotFoundException
 
 import com.google.inject.multibindings.Multibinder
+import com.google.inject.name.Named
 import com.google.inject.{AbstractModule, Provides, Scopes}
 import com.linagora.tmail.james.jmap.model.{Color, DescriptionUpdate, DisplayName, Label, LabelCreationRequest, LabelId, LabelNotFoundException}
 import jakarta.inject.Inject
 import org.apache.james.backends.cassandra.components.CassandraDataDefinition
 import org.apache.james.core.Username
+import org.apache.james.events.{Event, EventBus}
+import org.apache.james.jmap.api.model.AccountId
+import org.apache.james.jmap.change.AccountIdRegistrationKey
 import org.apache.james.jmap.mail.Keyword
 import org.apache.james.user.api.{DeleteUserDataTaskStep, UsernameChangeTaskStep}
 import org.apache.james.utils.PropertiesProvider
@@ -34,14 +38,16 @@ import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 
-
-
-class CassandraLabelRepository @Inject()(dao: CassandraLabelDAO) extends LabelRepository {
+class CassandraLabelRepository @Inject()(dao: CassandraLabelDAO, @Named("TMAIL_EVENT_BUS") eventBus: EventBus) extends LabelRepository {
   override def addLabel(username: Username, labelCreationRequest: LabelCreationRequest): Publisher[Label] =
-    dao.insert(username, labelCreationRequest.toLabel)
+    SMono.fromPublisher(dao.insert(username, labelCreationRequest.toLabel))
+      .flatMap(label =>
+        SMono.fromPublisher(eventBus.dispatch(LabelCreated(Event.EventId.random(), username, label), AccountIdRegistrationKey(AccountId.fromUsername(username))))
+          .`then`(SMono.just(label)))
 
   override def addLabel(username: Username, label: Label): Publisher[Void] =
     dao.insert(username, label)
+      .`then`(SMono.fromPublisher(eventBus.dispatch(LabelCreated(Event.EventId.random(), username, label), AccountIdRegistrationKey(AccountId.fromUsername(username)))))
       .`then`()
 
   override def addLabels(username: Username, labelCreationRequests: java.util.Collection[LabelCreationRequest]): Publisher[Label] =
@@ -51,7 +57,20 @@ class CassandraLabelRepository @Inject()(dao: CassandraLabelDAO) extends LabelRe
   override def updateLabel(username: Username, labelId: LabelId, newDisplayName: Option[DisplayName], newColor: Option[Color], newDescription: Option[DescriptionUpdate]): Publisher[Void] =
     dao.selectOne(username, labelId.toKeyword)
       .switchIfEmpty(SMono.error(LabelNotFoundException(labelId)))
-      .flatMap(_ => dao.updateLabel(username, labelId.toKeyword, newDisplayName, newColor, newDescription))
+      .flatMap(oldLabel => {
+        val updatedLabel = oldLabel.copy(
+          displayName = newDisplayName.getOrElse(oldLabel.displayName),
+          color = newColor.orElse(oldLabel.color),
+          description = newDescription match {
+            case Some(DescriptionUpdate(Some(desc))) => Some(desc)
+            case Some(DescriptionUpdate(None)) => None
+            case None => oldLabel.description
+          }
+        )
+        dao.updateLabel(username, labelId.toKeyword, newDisplayName, newColor, newDescription)
+          .`then`(SMono.fromPublisher(eventBus.dispatch(LabelUpdated(Event.EventId.random(), username, updatedLabel), AccountIdRegistrationKey(AccountId.fromUsername(username)))))
+      })
+      .`then`()
 
   override def getLabels(username: Username, ids: java.util.Collection[LabelId]): Publisher[Label] =
     dao.selectSome(username = username,
@@ -65,9 +84,14 @@ class CassandraLabelRepository @Inject()(dao: CassandraLabelDAO) extends LabelRe
 
   override def deleteLabel(username: Username, labelId: LabelId): Publisher[Void] =
     dao.deleteOne(username, labelId.toKeyword)
+      .`then`(SMono.fromPublisher(eventBus.dispatch(LabelDestroyed(Event.EventId.random(), username, labelId), AccountIdRegistrationKey(AccountId.fromUsername(username)))))
+      .`then`()
 
   override def deleteAllLabels(username: Username): Publisher[Void] =
-    dao.deleteAll(username)
+    dao.selectAll(username)
+      .map(label => LabelId.fromKeyword(label.keyword))
+      .concatMap(labelId => deleteLabel(username, labelId))
+      .`then`()
 }
 
 case class CassandraLabelRepositoryModule() extends AbstractModule {

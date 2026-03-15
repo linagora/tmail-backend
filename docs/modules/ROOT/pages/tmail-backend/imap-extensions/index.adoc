@@ -3,3 +3,4 @@
 These extensions include:
 
 - link:imapAuthDelegationExtension.adoc[IMAP Auth Delegation extension]
+- link:imapLabelExtension.adoc[IMAP Label extension]

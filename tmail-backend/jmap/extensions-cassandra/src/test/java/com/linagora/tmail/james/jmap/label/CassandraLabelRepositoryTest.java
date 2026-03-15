@@ -21,12 +21,22 @@ package com.linagora.tmail.james.jmap.label;
 import org.apache.james.backends.cassandra.CassandraCluster;
 import org.apache.james.backends.cassandra.CassandraClusterExtension;
 import org.apache.james.backends.cassandra.components.CassandraDataDefinition;
+import org.apache.james.events.EventBus;
+import org.apache.james.events.InVMEventBus;
+import org.apache.james.events.MemoryEventDeadLetters;
+import org.apache.james.events.RetryBackoffConfiguration;
+import org.apache.james.events.delivery.InVmEventDelivery;
+import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 public class CassandraLabelRepositoryTest implements LabelRepositoryContract {
     static final CassandraDataDefinition MODULE = CassandraLabelTable.MODULE();
 
+    private final InVMEventBus inVMEventBus = new InVMEventBus(
+        new InVmEventDelivery(new RecordingMetricFactory()),
+        RetryBackoffConfiguration.FAST,
+        new MemoryEventDeadLetters());
     private CassandraLabelRepository cassandraLabelRepository;
 
     @RegisterExtension
@@ -34,11 +44,16 @@ public class CassandraLabelRepositoryTest implements LabelRepositoryContract {
 
     @BeforeEach
     void setUp(CassandraCluster cassandraCluster) {
-        cassandraLabelRepository = new CassandraLabelRepository(new CassandraLabelDAO(cassandraCluster.getConf()));
+        cassandraLabelRepository = new CassandraLabelRepository(new CassandraLabelDAO(cassandraCluster.getConf()), inVMEventBus);
     }
 
     @Override
     public LabelRepository testee() {
         return cassandraLabelRepository;
+    }
+
+    @Override
+    public EventBus eventBus() {
+        return inVMEventBus;
     }
 }
