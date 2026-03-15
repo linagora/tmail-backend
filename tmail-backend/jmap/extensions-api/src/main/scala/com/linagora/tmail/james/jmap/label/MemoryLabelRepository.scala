@@ -89,7 +89,9 @@ class MemoryLabelRepository @Inject()(@Named("TMAIL_EVENT_BUS") eventBus: EventB
       .`then`()
 
   override def deleteAllLabels(username: Username): Publisher[Void] =
-    SMono.fromCallable(() => labelsTable.row(username).clear())
+    SMono.fromCallable(() => ImmutableList.copyOf(labelsTable.row(username).keySet()))
+      .flatMapMany(keywords => SFlux.fromIterable(keywords.asScala))
+      .concatMap(keyword => deleteLabel(username, LabelId.fromKeyword(keyword)))
       .`then`()
 <<<<<<< HEAD
 
