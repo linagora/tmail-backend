@@ -19,7 +19,7 @@ This includes:
 - link:deleted-message-vault.adoc[Additional Deleted message vault configuration]
 - link:ldap-mailing-list.adoc[LDAP mailing list]
 - link:users-repository.adoc[Combined users repository]
-- link:welcome-message.adoc[Welcome message listener]
+- link:extra-listener.adoc[Extra listeners]
 - link:rabbitmq.adoc[Additional RabbitMQ configuration]
 - xref:tmail-backend/imap-extensions/imapAuthDelegationExtension.adoc[IMAP extensions]
 - xref:tmail-backend/smtp-extensions/smtpAuthDelegationExtension.adoc[SMTP extensions]
