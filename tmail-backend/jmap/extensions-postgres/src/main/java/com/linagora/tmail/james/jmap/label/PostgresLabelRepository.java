@@ -123,8 +123,10 @@ public class PostgresLabelRepository implements LabelRepository {
 
     @Override
     public Publisher<Void> deleteAllLabels(Username username) {
-        return labelDAO(username)
-            .deleteAll(username);
+        return Flux.from(listLabels(username))
+            .map(label -> LabelId.fromKeyword(label.keyword()))
+            .concatMap(labelId -> Mono.from(deleteLabel(username, labelId)))
+            .then();
     }
 
     @Override

@@ -88,7 +88,10 @@ class CassandraLabelRepository @Inject()(dao: CassandraLabelDAO, @Named("TMAIL_E
       .`then`()
 
   override def deleteAllLabels(username: Username): Publisher[Void] =
-    dao.deleteAll(username)
+    dao.selectAll(username)
+      .map(label => LabelId.fromKeyword(label.keyword))
+      .concatMap(labelId => deleteLabel(username, labelId))
+      .`then`()
 
   override def setLabelReadOnly(username: Username, labelId: LabelId, readOnly: Boolean): Publisher[Void] =
     dao.selectOne(username, labelId.toKeyword)
