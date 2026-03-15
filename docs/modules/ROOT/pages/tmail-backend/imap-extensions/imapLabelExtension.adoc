@@ -2,6 +2,13 @@
 
 Allows IMAP clients to retrieve JMAP labels (read only)
 
+NOTE: This extension is *read-only*. Clients may use `GETMETADATA` to inspect label metadata under `/private/vendor/tmail/labels/...` (see example below), but any attempt to modify labels via `SETMETADATA` on `/private/vendor/tmail/labels/<id>` will be rejected. The server returns a `NO` response for such requests, for example:
+
+....
+A1 SETMETADATA "INBOX" (/private/vendor/tmail/labels/b69e4560/displayname "renamed")
+A1 NO SETMETADATA failed: label annotations are read-only.
+....
+
 Syntax
 
 ...

@@ -49,6 +49,7 @@ import com.linagora.tmail.disconnector.DisconnectionRequestedEventSerializer;
 import com.linagora.tmail.disconnector.DisconnectorNotificationRegistration;
 import com.linagora.tmail.disconnector.DisconnectorRegistrationKey;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactListener;
+import com.linagora.tmail.james.jmap.label.LabelMetadataListener;
 
 public class TmailEventModule extends AbstractModule {
     public static final NamingStrategy TMAIL_NAMING_STRATEGY = new NamingStrategy(new EventBusName("tmailEvent"));
@@ -65,9 +66,10 @@ public class TmailEventModule extends AbstractModule {
         Multibinder.newSetBinder(binder(), EventSerializer.class)
             .addBinding()
             .to(DisconnectionRequestedEventSerializer.class);
-        Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class, Names.named(TMAIL_EVENT_BUS_INJECT_NAME))
-            .addBinding()
-            .to(EmailAddressContactListener.class);
+        Multibinder<EventListener.ReactiveGroupEventListener> tmailListenerBinder =
+            Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class, Names.named(TMAIL_EVENT_BUS_INJECT_NAME));
+        tmailListenerBinder.addBinding().to(EmailAddressContactListener.class);
+        tmailListenerBinder.addBinding().to(LabelMetadataListener.class);
     }
 
     @ProvidesIntoSet

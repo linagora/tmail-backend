@@ -26,12 +26,16 @@ import jakarta.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.events.EventListener.{ExecutionMode, ReactiveGroupEventListener}
 import org.apache.james.events.{Event, Group}
-import org.apache.james.mailbox.MailboxManager
-import org.apache.james.mailbox.model.{MailboxAnnotation, MailboxAnnotationKey, MailboxPath}
+import org.apache.james.mailbox.{DefaultMailboxes, MailboxManager, MailboxSession}
+import org.apache.james.mailbox.MailboxManager.CreateOption
+import org.apache.james.mailbox.exception.{MailboxExistsException, MailboxNotFoundException}
+import org.apache.james.mailbox.model.{MailboxAnnotation, MailboxAnnotationKey, MailboxId, MailboxPath}
 import org.apache.james.mailbox.store.MailboxSessionMapperFactory
 import org.reactivestreams.Publisher
 import reactor.core.publisher.Mono
-import reactor.core.scala.publisher.SMono
+import reactor.core.scala.publisher.{SFlux, SMono}
+
+import scala.jdk.CollectionConverters._
 
 class LabelMetadataListenerGroup extends Group {}
 
@@ -57,11 +61,24 @@ class LabelMetadataListener @Inject()(mailboxManager: MailboxManager,
     case _ => Mono.empty
   }
 
+  private def getOrProvisionInbox(username: Username, session: MailboxSession): SMono[MailboxId] =
+    SMono.fromPublisher(mailboxManager.getMailboxReactive(MailboxPath.inbox(username), session))
+      .map(_.getId)
+      .onErrorResume(classOf[MailboxNotFoundException], _ =>
+        SFlux.fromIterable(DefaultMailboxes.DEFAULT_MAILBOXES.asScala)
+          .concatMap(name =>
+            SMono.fromPublisher(mailboxManager.createMailboxReactive(
+                MailboxPath.forUser(username, name),
+                CreateOption.CREATE_SUBSCRIPTION,
+                session))
+              .onErrorResume(classOf[MailboxExistsException], _ => SMono.empty))
+          .`then`(SMono.fromPublisher(mailboxManager.getMailboxReactive(MailboxPath.inbox(username), session))
+            .map(_.getId)))
+
   private def upsertLabelAnnotations(username: Username, label: Label): SMono[Unit] = {
     val keyword = label.keyword.flagName
     val session = mailboxManager.createSystemSession(username)
-    SMono.fromPublisher(mailboxManager.getMailboxReactive(MailboxPath.inbox(username), session))
-      .map(_.getId)
+    getOrProvisionInbox(username, session)
       .flatMap { mailboxId =>
         val annotationMapper = mapperFactory.getAnnotationMapper(session)
         val writeKeyword = SMono.fromPublisher(annotationMapper.insertAnnotationReactive(mailboxId,
@@ -81,8 +98,7 @@ class LabelMetadataListener @Inject()(mailboxManager: MailboxManager,
   private def deleteLabelAnnotations(username: Username, labelId: LabelId): SMono[Unit] = {
     val keyword = labelId.toKeyword.flagName
     val session = mailboxManager.createSystemSession(username)
-    SMono.fromPublisher(mailboxManager.getMailboxReactive(MailboxPath.inbox(username), session))
-      .map(_.getId)
+    getOrProvisionInbox(username, session)
       .flatMap { mailboxId =>
         val annotationMapper = mapperFactory.getAnnotationMapper(session)
         SMono.fromPublisher(annotationMapper.deleteAnnotationReactive(mailboxId, keywordKey(keyword)))
