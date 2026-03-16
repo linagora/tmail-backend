@@ -38,8 +38,6 @@ import scala.compat.java8.OptionConverters;
 
 public record CreateLabelRequest(String displayName, String color, Optional<Boolean> readOnly, Optional<String> description, Optional<String> keyword) {
 
-    public static final boolean READ_ONLY = true;
-
     @JsonCreator
     public CreateLabelRequest(@JsonProperty("displayName") String displayName,
                               @JsonProperty("color") String color,
