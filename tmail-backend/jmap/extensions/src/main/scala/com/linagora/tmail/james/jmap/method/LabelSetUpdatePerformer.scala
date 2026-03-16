@@ -19,7 +19,7 @@
 package com.linagora.tmail.james.jmap.method
 
 import com.linagora.tmail.james.jmap.label.LabelRepository
-import com.linagora.tmail.james.jmap.model.{LabelId, LabelNotFoundException, LabelPatchObject, LabelPatchUpdateValidationException, LabelSetRequest, LabelUpdateResponse, UnparsedLabelId, ValidatedLabelPatchObject}
+import com.linagora.tmail.james.jmap.model.{LabelId, LabelNotFoundException, LabelPatchObject, LabelPatchUpdateValidationException, LabelReadOnlyException, LabelSetRequest, LabelUpdateResponse, UnparsedLabelId, ValidatedLabelPatchObject}
 import jakarta.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.change.State
@@ -34,6 +34,7 @@ case class LabelUpdateFailure(id: UnparsedLabelId, exception: Throwable) extends
   def asSetError: SetError = exception match {
     case e: LabelPatchUpdateValidationException => SetError.invalidArguments(SetErrorDescription(e.error), e.asProperty)
     case e: LabelNotFoundException => SetError.notFound(SetErrorDescription(e.getMessage))
+    case _: LabelReadOnlyException => SetError.forbidden(SetErrorDescription(exception.getMessage))
     case e: IllegalArgumentException => SetError.invalidArguments(SetErrorDescription(e.getMessage), None)
     case _ => SetError.serverFail(SetErrorDescription(exception.getMessage))
   }
@@ -74,6 +75,13 @@ class LabelSetUpdatePerformer @Inject()(val labelRepository: LabelRepository,
       .map(LabelUpdateResults)
 
   private def updateLabel(username: Username, labelId: LabelId, validatedPatch: ValidatedLabelPatchObject): SMono[LabelUpdateResult] =
-    SMono.fromPublisher(labelRepository.updateLabel(username, labelId, validatedPatch.displayNameUpdate, validatedPatch.colorUpdate, validatedPatch.descriptionUpdate))
-      .`then`(SMono.just(LabelUpdateSuccess(labelId)))
+    SFlux.fromPublisher(labelRepository.getLabels(username, java.util.List.of(labelId)))
+      .next()
+      .switchIfEmpty(SMono.error(LabelNotFoundException(labelId)))
+      .flatMap(label =>
+        if (label.readOnly)
+          SMono.just[LabelUpdateResult](LabelUpdateFailure(labelId.asUnparsedLabelId, LabelReadOnlyException(labelId)))
+        else
+          SMono.fromPublisher(labelRepository.updateLabel(username, labelId, validatedPatch.displayNameUpdate, validatedPatch.colorUpdate, validatedPatch.descriptionUpdate))
+            .`then`(SMono.just[LabelUpdateResult](LabelUpdateSuccess(labelId))))
 }

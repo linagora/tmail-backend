@@ -67,6 +67,7 @@ public interface PostgresLabelModule {
         Field<String> DISPLAY_NAME = DSL.field("display_name", SQLDataType.VARCHAR.notNull());
         Field<String> COLOR = DSL.field("color", SQLDataType.VARCHAR);
         Field<String> DESCRIPTION =  DSL.field("description", SQLDataType.VARCHAR);
+        Field<Boolean> READ_ONLY = DSL.field("read_only", SQLDataType.BOOLEAN);
 
         PostgresTable TABLE = PostgresTable.name(TABLE_NAME.getName())
             .createTableStep(((dsl, tableName) -> dsl.createTableIfNotExists(tableName)
@@ -75,6 +76,7 @@ public interface PostgresLabelModule {
                 .column(DISPLAY_NAME)
                 .column(COLOR)
                 .column(DESCRIPTION)
+                .column(READ_ONLY)
                 .constraint(DSL.primaryKey(USERNAME, KEYWORD))
                 .comment("Hold user JMAP labels")))
             .supportsRowLevelSecurity()

@@ -21,7 +21,7 @@ package com.linagora.tmail.james.jmap.label
 import java.util
 
 import com.google.common.collect.{HashBasedTable, ImmutableList, Table, Tables}
-import com.linagora.tmail.james.jmap.model._
+import com.linagora.tmail.james.jmap.model.{Color, DescriptionUpdate, DisplayName, Label, LabelCreationRequest, LabelId, LabelNotFoundException, LabelReadOnlyException}
 import org.apache.james.core.Username
 import org.apache.james.jmap.mail.Keyword
 import org.reactivestreams.Publisher
@@ -79,5 +79,11 @@ class MemoryLabelRepository extends LabelRepository {
 
   override def deleteAllLabels(username: Username): Publisher[Void] =
     SMono.fromCallable(() => labelsTable.row(username).clear())
+      .`then`()
+
+  override def setLabelReadOnly(username: Username, labelId: LabelId, readOnly: Boolean): Publisher[Void] =
+    SMono.justOrEmpty(labelsTable.get(username, labelId.toKeyword))
+      .doOnNext(label => labelsTable.put(username, labelId.toKeyword, label.copy(readOnly = readOnly)))
+      .switchIfEmpty(SMono.error(LabelNotFoundException(labelId)))
       .`then`()
 }

@@ -36,16 +36,19 @@ import com.linagora.tmail.james.jmap.model.LabelId;
 import scala.Option;
 import scala.compat.java8.OptionConverters;
 
-public record CreateLabelRequest(String displayName, String color, Optional<String> description, Optional<String> keyword) {
+public record CreateLabelRequest(String displayName, String color, Optional<Boolean> readOnly, Optional<String> description, Optional<String> keyword) {
+
     @JsonCreator
     public CreateLabelRequest(@JsonProperty("displayName") String displayName,
                               @JsonProperty("color") String color,
+                              @JsonProperty("readOnly") Optional<Boolean> readOnly,
                               @JsonProperty("description") Optional<String> description,
                               @JsonProperty("keyword") Optional<String> keyword) {
         this.displayName = displayName;
         this.color = color;
         this.description = description;
         this.keyword = keyword;
+        this.readOnly = readOnly;
     }
 
     private DisplayName validateDisplayName() {
@@ -101,7 +104,8 @@ public record CreateLabelRequest(String displayName, String color, Optional<Stri
             validateDisplayName(),
             validatedKeyword,
             toScalaColor(),
-            toScalaDescription());
+            toScalaDescription(),
+            readOnly.orElse(false));
     }
 
     private LabelId toLabelId(String validatedKeyword) {
@@ -117,7 +121,8 @@ public record CreateLabelRequest(String displayName, String color, Optional<Stri
     }
 
     public LabelCreationRequest toCreationRequest() {
-        return new LabelCreationRequest(validateDisplayName(), toScalaColor(), toScalaDescription());
+        return new LabelCreationRequest(validateDisplayName(), toScalaColor(), toScalaDescription(),
+            readOnly.orElse(false));
     }
 
     @SuppressWarnings("unchecked")

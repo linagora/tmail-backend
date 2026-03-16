@@ -40,4 +40,6 @@ trait LabelRepository {
   def deleteLabel(username: Username, labelId: LabelId): Publisher[Void]
 
   def deleteAllLabels(username: Username): Publisher[Void]
+
+  def setLabelReadOnly(username: Username, labelId: LabelId, readOnly: Boolean): Publisher[Void]
 }

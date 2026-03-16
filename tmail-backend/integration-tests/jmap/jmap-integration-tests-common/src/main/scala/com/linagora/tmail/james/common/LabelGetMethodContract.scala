@@ -200,14 +200,16 @@ trait LabelGetMethodContract {
          |						"displayName": "Label 1",
          |						"keyword": "${label1.keyword.flagName}",
          |						"color": "${RED.value}",
-         |                      "description": "Description for label 1"
+         |            "description": "Description for label 1",
+         |            "readOnly": false
          |					},
          |					{
          |						"id": "${label2.id.id.value}",
          |						"displayName": "Label 2",
          |						"keyword": "${label2.keyword.flagName}",
          |						"color": "${BLUE.value}",
-         |                      "description": "Description for label 2"
+         |            "description": "Description for label 2",
+         |            "readOnly": false
          |					}
          |				]
          |			},
@@ -310,7 +312,8 @@ trait LabelGetMethodContract {
          |						"displayName": "Label 1",
          |						"keyword": "$${json-unit.ignore}",
          |						"color": "${RED.value}",
-         |                      "description": "Description for label 1"
+         |                      "description": "Description for label 1",
+         |                      "readOnly": false
          |					}]
          |			},
          |			"c1"
@@ -364,7 +367,8 @@ trait LabelGetMethodContract {
          |						"displayName": "Label 1",
          |						"keyword": "${label1.keyword.flagName}",
          |						"color": "${RED.value}",
-         |                      "description": "Description for label 1"
+         |            "description": "Description for label 1",
+         |            "readOnly": false
          |					}]
          |			},
          |			"c1"
@@ -516,7 +520,8 @@ trait LabelGetMethodContract {
          |						"displayName": "Label 1",
          |						"keyword": "${label1.keyword.flagName}",
          |						"color": "${RED.value}",
-         |                      "description": "Description for label 1"
+         |            "description": "Description for label 1",
+         |            "readOnly": false
          |					}]
          |			},
          |			"c1"
