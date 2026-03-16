@@ -79,10 +79,10 @@ public class TmailEventSerializer implements EventSerializer {
     record TmailContactUserAddedEventDTO(String eventId, String username, String contactAddress, String contactFirstname, String contactSurname) implements EventDTO {
     }
 
-    record LabelCreatedDTO(String eventId, String username, String keyword, String displayName, String color, String description) implements EventDTO {
+    record LabelCreatedDTO(String eventId, String username, String keyword, String displayName, String color, String description, Boolean readOnly) implements EventDTO {
     }
 
-    record LabelUpdatedDTO(String eventId, String username, String keyword, String displayName, String color, String description) implements EventDTO {
+    record LabelUpdatedDTO(String eventId, String username, String keyword, String displayName, String color, String description, Boolean readOnly) implements EventDTO {
     }
 
     record LabelDestroyedDTO(String eventId, String username, String keyword) implements EventDTO {
@@ -130,13 +130,14 @@ public class TmailEventSerializer implements EventSerializer {
     }
 
 
-    private Label dtoToLabel(String keyword, String displayName, String color, String description) {
+    private Label dtoToLabel(String keyword, String displayName, String color, String description, Boolean readOnly) {
         return new Label(
             LabelId.fromKeyword(keyword),
             new DisplayName(displayName),
             keyword,
             scala.Option.apply(color != null ? new Color(color) : null),
-            scala.Option.apply(description));
+            scala.Option.apply(description),
+            Boolean.TRUE.equals(readOnly));
     }
 
     private EventDTO toDTO(Event event) {
@@ -153,11 +154,13 @@ public class TmailEventSerializer implements EventSerializer {
             case LabelCreated e -> new LabelCreatedDTO(e.getEventId().getId().toString(), e.username().asString(),
                 e.label().keyword(), e.label().displayName().value(),
                 OptionConverters.toJava(e.label().color()).map(Color::value).orElse(null),
-                OptionConverters.toJava(e.label().description()).orElse(null));
+                OptionConverters.toJava(e.label().description()).orElse(null),
+                e.label().readOnly());
             case LabelUpdated e -> new LabelUpdatedDTO(e.getEventId().getId().toString(), e.username().asString(),
                 e.updatedLabel().keyword(), e.updatedLabel().displayName().value(),
                 OptionConverters.toJava(e.updatedLabel().color()).map(Color::value).orElse(null),
-                OptionConverters.toJava(e.updatedLabel().description()).orElse(null));
+                OptionConverters.toJava(e.updatedLabel().description()).orElse(null),
+                e.updatedLabel().readOnly());
             case LabelDestroyed e -> new LabelDestroyedDTO(e.getEventId().getId().toString(), e.username().asString(),
                 e.labelId().toKeyword());
             default -> throw new IllegalStateException("Unexpected value: " + event);
@@ -176,9 +179,9 @@ public class TmailEventSerializer implements EventSerializer {
             case TmailContactUserAddedEventDTO dto -> new TmailContactUserAddedEvent(Event.EventId.of(dto.eventId()),
                 Username.of(dto.username()), new ContactFields(new MailAddress(dto.contactAddress()), dto.contactFirstname(), dto.contactSurname()));
             case LabelCreatedDTO dto -> new LabelCreated(Event.EventId.of(dto.eventId()),
-                Username.of(dto.username()), dtoToLabel(dto.keyword(), dto.displayName(), dto.color(), dto.description()));
+                Username.of(dto.username()), dtoToLabel(dto.keyword(), dto.displayName(), dto.color(), dto.description(), dto.readOnly()));
             case LabelUpdatedDTO dto -> new LabelUpdated(Event.EventId.of(dto.eventId()),
-                Username.of(dto.username()), dtoToLabel(dto.keyword(), dto.displayName(), dto.color(), dto.description()));
+                Username.of(dto.username()), dtoToLabel(dto.keyword(), dto.displayName(), dto.color(), dto.description(), dto.readOnly()));
             case LabelDestroyedDTO dto -> new LabelDestroyed(Event.EventId.of(dto.eventId()), Username.of(dto.username()), LabelId.fromKeyword(dto.keyword));
             default -> throw new IllegalStateException("Unexpected value: " + eventDTO);
         };

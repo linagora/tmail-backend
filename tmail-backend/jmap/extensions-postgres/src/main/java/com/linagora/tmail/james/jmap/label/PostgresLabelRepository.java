@@ -131,7 +131,15 @@ public class PostgresLabelRepository implements LabelRepository {
 
     @Override
     public Publisher<Void> setLabelReadOnly(Username username, LabelId labelId, boolean readOnly) {
-        return labelDAO(username).setReadOnly(username, labelId, readOnly);
+        PostgresLabelDAO dao = labelDAO(username);
+        return Mono.from(dao.selectSome(username, List.of(labelId.toKeyword())))
+            .switchIfEmpty(Mono.error(new LabelNotFoundException(labelId)))
+            .flatMap(label -> dao.setReadOnly(username, labelId, readOnly)
+                .then(Mono.from(eventBus.dispatch(
+                    new LabelUpdated(Event.EventId.random(), username,
+                        new Label(label.id(), label.displayName(), label.keyword(), label.color(), label.description(), readOnly)),
+                    new AccountIdRegistrationKey(AccountId.fromUsername(username))))))
+            .then();
     }
 
     private PostgresLabelDAO labelDAO(Username username) {
@@ -146,6 +154,6 @@ public class PostgresLabelRepository implements LabelRepository {
                 .<Option<String>>map(d -> scala.Option.apply(d))
                 .orElse(scala.Option.empty()))
             .orElse(oldLabel.description());
-        return new Label(oldLabel.id(), displayName, oldLabel.keyword(), color, description);
+        return new Label(oldLabel.id(), displayName, oldLabel.keyword(), color, description, oldLabel.readOnly());
     }
 }

@@ -93,14 +93,14 @@ class MemoryLabelRepository @Inject()(@Named("TMAIL_EVENT_BUS") eventBus: EventB
       .flatMapMany(keywords => SFlux.fromIterable(keywords.asScala))
       .concatMap(keyword => deleteLabel(username, LabelId.fromKeyword(keyword)))
       .`then`()
-<<<<<<< HEAD
 
   override def setLabelReadOnly(username: Username, labelId: LabelId, readOnly: Boolean): Publisher[Void] =
     SMono.justOrEmpty(labelsTable.get(username, labelId.toKeyword))
-      .doOnNext(label => labelsTable.put(username, labelId.toKeyword, label.copy(readOnly = readOnly)))
       .switchIfEmpty(SMono.error(LabelNotFoundException(labelId)))
+      .flatMap(label => {
+        val updatedLabel = label.copy(readOnly = readOnly)
+        labelsTable.put(username, labelId.toKeyword, updatedLabel)
+        SMono.fromPublisher(eventBus.dispatch(LabelUpdated(Event.EventId.random(), username, updatedLabel), AccountIdRegistrationKey(AccountId.fromUsername(username))))
+      })
       .`then`()
 }
-=======
-}
->>>>>>> 220bd3d04 (ISSUE-2255 Fire Label events)

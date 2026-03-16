@@ -97,7 +97,8 @@ class IMAPLabelMetadataIntegrationTest {
             .addLabel(ALICE, new LabelCreationRequest(
                 new DisplayName(displayName),
                 Option.apply(color == null ? null : new Color(color)),
-                OptionConverters.toScala(Optional.empty())));
+                OptionConverters.toScala(Optional.empty()),
+                false));
     }
 
     @Test
