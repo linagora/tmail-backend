@@ -23,16 +23,21 @@ import static io.restassured.RestAssured.when;
 import static io.restassured.RestAssured.with;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.is;
+import static org.mockito.Mockito.mock;
 
 import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import jakarta.mail.Flags;
 
+import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
-import org.apache.james.domainlist.api.DomainList;
+import org.apache.james.dnsservice.api.DNSService;
+import org.apache.james.domainlist.lib.DomainListConfiguration;
+import org.apache.james.domainlist.memory.MemoryDomainList;
 import org.apache.james.jmap.mail.Keyword;
 import org.apache.james.json.DTOConverter;
 import org.apache.james.mailbox.MailboxSession;
@@ -44,6 +49,7 @@ import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageId;
+import org.apache.james.mailbox.store.StoreSubscriptionManager;
 import org.apache.james.task.Hostname;
 import org.apache.james.task.MemoryTaskManager;
 import org.apache.james.task.TaskManager;
@@ -64,9 +70,15 @@ import org.junit.jupiter.api.Test;
 
 import com.linagora.tmail.james.jmap.projections.KeywordEmailQueryView;
 import com.linagora.tmail.james.jmap.projections.MemoryKeywordEmailQueryView;
+import com.linagora.tmail.team.TeamMailbox;
+import com.linagora.tmail.team.TeamMailboxMember;
+import com.linagora.tmail.team.TeamMailboxRepository;
+import com.linagora.tmail.team.TeamMailboxRepositoryImpl;
 
 import io.restassured.RestAssured;
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+import scala.jdk.javaapi.OptionConverters;
 import spark.Service;
 
 class PopulateKeywordEmailQueryViewRequestToTaskTest {
@@ -94,16 +106,17 @@ class PopulateKeywordEmailQueryViewRequestToTaskTest {
         }
     }
 
-    private static final DomainList NO_DOMAIN_LIST = null;
-    private static final Username OWNER = Username.of("bob");
-    private static final Username SHAREE = Username.of("alice");
-    private static final Username SECOND_SHAREE = Username.of("charlie");
+    private static final Domain JAMES_ORG = Domain.of("james.org");
+    private static final Username OWNER = Username.of("bob@james.org");
+    private static final Username SHAREE = Username.of("alice@james.org");
+    private static final Username SECOND_SHAREE = Username.of("charlie@james.org");
     private static final Instant INTERNAL_DATE = Instant.parse("2024-01-01T10:15:30Z");
     private static final Keyword FLAGGED = new Keyword("$flagged");
     private static final Keyword DELETED = new Keyword("$deleted");
     private static final Keyword RECENT = new Keyword("$recent");
     private static final Keyword SEEN = new Keyword("$seen");
     private static final Keyword USER_KEYWORD = new Keyword("project-a");
+    private static final String TEAM_MAILBOX_NAME = "marketing";
     private static final String BASE_PATH = "/mailboxes";
 
     private WebAdminServer webAdminServer;
@@ -113,6 +126,7 @@ class PopulateKeywordEmailQueryViewRequestToTaskTest {
     private MailboxSession ownerSession;
     private MailboxId ownerInboxId;
     private MemoryKeywordEmailQueryView keywordEmailQueryView;
+    private TeamMailboxRepository teamMailboxRepository;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -121,19 +135,28 @@ class PopulateKeywordEmailQueryViewRequestToTaskTest {
 
         resources = InMemoryIntegrationResources.defaultResources();
         mailboxManager = resources.getMailboxManager();
-        MemoryUsersRepository usersRepository = MemoryUsersRepository.withoutVirtualHosting(NO_DOMAIN_LIST);
+        DNSService dnsService = mock(DNSService.class);
+        MemoryDomainList domainList = new MemoryDomainList(dnsService);
+        domainList.configure(DomainListConfiguration.DEFAULT);
+        domainList.addDomain(JAMES_ORG);
+        MemoryUsersRepository usersRepository = MemoryUsersRepository.withVirtualHosting(domainList);
         usersRepository.addUser(OWNER, "pass");
         usersRepository.addUser(SHAREE, "pass");
         usersRepository.addUser(SECOND_SHAREE, "pass");
 
         ownerSession = mailboxManager.createSystemSession(OWNER);
         ownerInboxId = mailboxManager.createMailbox(MailboxPath.inbox(OWNER), ownerSession).get();
+        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager,
+            new StoreSubscriptionManager(resources.getMailboxManager().getMapperFactory(), resources.getMailboxManager().getMapperFactory(), resources.getMailboxManager().getEventBus()),
+            resources.getMailboxManager().getMapperFactory(),
+            Set.of());
 
         keywordEmailQueryView = new MemoryKeywordEmailQueryView();
         webAdminServer = WebAdminUtils.createWebAdminServer(
             new TasksRoutes(taskManager, jsonTransformer,
                 DTOConverter.of(PopulateKeywordEmailQueryViewTaskAdditionalInformationDTO.module())),
-            new JMAPRoutes(new KeywordEmailQueryViewPopulator(usersRepository, mailboxManager, keywordEmailQueryView, new UnionMailboxACLResolver()), taskManager))
+            new JMAPRoutes(new KeywordEmailQueryViewPopulator(usersRepository, mailboxManager, keywordEmailQueryView,
+                new UnionMailboxACLResolver(), teamMailboxRepository), taskManager))
             .start();
 
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
@@ -266,6 +289,53 @@ class PopulateKeywordEmailQueryViewRequestToTaskTest {
     }
 
     @Test
+    void populateShouldProvisionConcernedKeywordsForTeamMailboxMember() throws Exception {
+        TeamMailbox teamMailbox = createTeamMailbox(TEAM_MAILBOX_NAME);
+        addMemberToTeamMailbox(teamMailbox, SHAREE);
+        addMemberToTeamMailbox(teamMailbox, SECOND_SHAREE);
+        MessageId messageId = appendMessageToTeamInbox(teamMailbox, asFlags(List.of(Flags.Flag.FLAGGED), USER_KEYWORD)).getId().getMessageId();
+
+        String taskId = with()
+            .queryParam("action", "populateKeywordEmailQueryView")
+            .post()
+            .jsonPath()
+            .get("taskId");
+
+        with()
+            .basePath(TasksRoutes.BASE)
+            .get(taskId + "/await");
+
+        SoftAssertions.assertSoftly(softly -> {
+            softly.assertThat(messageIdsByKeywordView(SHAREE, FLAGGED)).containsExactly(messageId);
+            softly.assertThat(messageIdsByKeywordView(SHAREE, USER_KEYWORD)).containsExactly(messageId);
+            softly.assertThat(messageIdsByKeywordView(SECOND_SHAREE, FLAGGED)).containsExactly(messageId);
+            softly.assertThat(messageIdsByKeywordView(SECOND_SHAREE, USER_KEYWORD)).containsExactly(messageId);
+        });
+    }
+
+    @Test
+    void populateShouldNotProvisionKeywordForNonTeamMailboxMember() throws Exception {
+        TeamMailbox teamMailbox = createTeamMailbox(TEAM_MAILBOX_NAME);
+        addMemberToTeamMailbox(teamMailbox, SHAREE);
+        appendMessageToTeamInbox(teamMailbox, asFlags(List.of(Flags.Flag.FLAGGED), USER_KEYWORD));
+
+        String taskId = with()
+            .queryParam("action", "populateKeywordEmailQueryView")
+            .post()
+            .jsonPath()
+            .get("taskId");
+
+        with()
+            .basePath(TasksRoutes.BASE)
+            .get(taskId + "/await");
+
+        SoftAssertions.assertSoftly(softly -> {
+            softly.assertThat(messageIdsByKeywordView(SECOND_SHAREE, FLAGGED)).isEmpty();
+            softly.assertThat(messageIdsByKeywordView(SECOND_SHAREE, USER_KEYWORD)).isEmpty();
+        });
+    }
+
+    @Test
     void populateShouldNotProvisionNonConcernedSystemFlags() throws Exception {
         appendMessage(asFlags(List.of(Flags.Flag.SEEN, Flags.Flag.DELETED, Flags.Flag.RECENT)));
 
@@ -345,8 +415,31 @@ class PopulateKeywordEmailQueryViewRequestToTaskTest {
             .build("Subject: test\r\n\r\nbody"), ownerSession);
     }
 
+    private TeamMailbox createTeamMailbox(String teamMailboxName) {
+        TeamMailbox teamMailbox = OptionConverters.toJava(TeamMailbox.fromJava(JAMES_ORG, teamMailboxName)).orElseThrow();
+        Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox)).block();
+        return teamMailbox;
+    }
+
+    private void addMemberToTeamMailbox(TeamMailbox teamMailbox, Username username) {
+        Mono.from(teamMailboxRepository.addMember(teamMailbox, TeamMailboxMember.asMember(username))).block();
+    }
+
+    private MessageManager.AppendResult appendMessageToTeamInbox(TeamMailbox teamMailbox, Flags flags) throws Exception {
+        MailboxSession teamOwnerSession = mailboxManager.createSystemSession(teamMailbox.owner());
+        return teamInbox(teamMailbox, teamOwnerSession).appendMessage(MessageManager.AppendCommand.builder()
+            .withInternalDate(Date.from(INTERNAL_DATE))
+            .withFlags(flags)
+            .notRecent()
+            .build("Subject: test\r\n\r\nbody"), teamOwnerSession);
+    }
+
     private MessageManager ownerInbox() throws Exception {
         return mailboxManager.getMailbox(ownerInboxId, ownerSession);
+    }
+
+    private MessageManager teamInbox(TeamMailbox teamMailbox, MailboxSession teamOwnerSession) throws Exception {
+        return mailboxManager.getMailbox(teamMailbox.inboxPath(), teamOwnerSession);
     }
 
     private Flags asFlags(Keyword... flags) {

@@ -25,9 +25,11 @@ import java.time.Instant;
 import java.util.Date;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 import jakarta.mail.Flags;
 
+import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.apache.james.events.Event;
 import org.apache.james.jmap.mail.Keyword;
@@ -44,6 +46,7 @@ import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.MessageRange;
+import org.apache.james.mailbox.store.StoreSubscriptionManager;
 import org.apache.james.util.streams.Limit;
 import org.awaitility.Awaitility;
 import org.awaitility.Durations;
@@ -54,9 +57,14 @@ import org.junit.jupiter.api.Test;
 
 import com.linagora.tmail.james.jmap.projections.KeywordEmailQueryView;
 import com.linagora.tmail.james.jmap.projections.MemoryKeywordEmailQueryView;
+import com.linagora.tmail.team.TeamMailbox;
+import com.linagora.tmail.team.TeamMailboxMember;
+import com.linagora.tmail.team.TeamMailboxRepository;
+import com.linagora.tmail.team.TeamMailboxRepositoryImpl;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import scala.jdk.javaapi.OptionConverters;
 
 class KeywordEmailQueryViewListenerTest {
     private static final ConditionFactory CALMLY_AWAIT = Awaitility.with()
@@ -65,13 +73,16 @@ class KeywordEmailQueryViewListenerTest {
         .atMost(Durations.TEN_SECONDS)
         .await();
 
+    private static final Domain DOMAIN = Domain.of("domain.tld");
     private static final Username OWNER = Username.of("owner@domain.tld");
     private static final Username SHAREE = Username.of("sharee@domain.tld");
+    private static final Username SECOND_SHAREE = Username.of("second-sharee@domain.tld");
     private static final MailboxPath OWNER_INBOX = MailboxPath.inbox(OWNER);
     private static final Keyword IMPORTANT_FLAGGED = new Keyword("$flagged");
     private static final Keyword SEEN = new Keyword("$seen");
     private static final Keyword USER_NEW_KEYWORD = new Keyword("project-a");
     private static final Keyword USER_OLD_KEYWORD = new Keyword("old-tag");
+    private static final String TEAM_MAILBOX_NAME = "marketing";
     private static final Instant INTERNAL_DATE = Instant.parse("2024-01-01T10:15:30Z");
 
     private MemoryKeywordEmailQueryView keywordEmailQueryView;
@@ -80,6 +91,7 @@ class KeywordEmailQueryViewListenerTest {
     private MailboxSession ownerSession;
     private MailboxId mailboxId;
     private KeywordEmailQueryViewListener testee;
+    private TeamMailboxRepository teamMailboxRepository;
 
     @BeforeEach
     void setUp() {
@@ -90,6 +102,10 @@ class KeywordEmailQueryViewListenerTest {
         keywordEmailQueryView = new MemoryKeywordEmailQueryView();
         testee = new KeywordEmailQueryViewListener(keywordEmailQueryView, mailboxManager, resources.getMessageIdManager(), new UnionMailboxACLResolver());
         resources.getEventBus().register(testee);
+        teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager,
+            new StoreSubscriptionManager(resources.getMailboxManager().getMapperFactory(), resources.getMailboxManager().getMapperFactory(), resources.getMailboxManager().getEventBus()),
+            resources.getMailboxManager().getMapperFactory(),
+            Set.of());
 
         mailboxId = Mono.from(mailboxManager.createMailboxReactive(OWNER_INBOX, ownerSession)).block();
     }
@@ -141,6 +157,21 @@ class KeywordEmailQueryViewListenerTest {
             CALMLY_AWAIT.untilAsserted(() -> {
                 assertThat(messageIdsByKeywordView(OWNER, IMPORTANT_FLAGGED)).containsExactly(messageId);
                 assertThat(messageIdsByKeywordView(SHAREE, IMPORTANT_FLAGGED)).containsExactly(messageId);
+            });
+        }
+
+        @Test
+        void shouldPopulateConcernedKeywordsForTeamMailboxMemberOnAddedEvent() throws Exception {
+            TeamMailbox teamMailbox = createTeamMailbox(TEAM_MAILBOX_NAME);
+            addMemberToTeamMailbox(teamMailbox, SHAREE);
+
+            MessageId messageId = appendMessageToTeamInbox(teamMailbox, asFlags(List.of(Flags.Flag.FLAGGED), USER_NEW_KEYWORD))
+                .getId()
+                .getMessageId();
+
+            CALMLY_AWAIT.untilAsserted(() -> {
+                assertThat(messageIdsByKeywordView(SHAREE, IMPORTANT_FLAGGED)).containsExactly(messageId);
+                assertThat(messageIdsByKeywordView(SHAREE, USER_NEW_KEYWORD)).containsExactly(messageId);
             });
         }
 
@@ -524,6 +555,28 @@ class KeywordEmailQueryViewListenerTest {
         }
 
         @Test
+        void shouldAddConcernedKeywordViewForTeamMailboxMemberOnFlagsUpdatedEvent() throws Exception {
+            TeamMailbox teamMailbox = createTeamMailbox(TEAM_MAILBOX_NAME);
+            addMemberToTeamMailbox(teamMailbox, SHAREE);
+            addMemberToTeamMailbox(teamMailbox, SECOND_SHAREE);
+            MailboxSession shareeSession = mailboxManager.createSystemSession(SHAREE);
+
+            MessageManager.AppendResult appendResult = appendMessageToTeamInbox(teamMailbox, new Flags());
+            MessageId messageId = appendResult.getId().getMessageId();
+            MessageUid uid = appendResult.getId().getUid();
+            CALMLY_AWAIT.untilAsserted(() -> {
+                assertThat(messageIdsByKeywordView(SHAREE, USER_NEW_KEYWORD)).isEmpty();
+                assertThat(messageIdsByKeywordView(SECOND_SHAREE, USER_NEW_KEYWORD)).isEmpty();
+            });
+
+            teamInbox(teamMailbox, shareeSession).setFlags(asFlags(USER_NEW_KEYWORD), MessageManager.FlagsUpdateMode.ADD, MessageRange.one(uid), shareeSession);
+            CALMLY_AWAIT.untilAsserted(() -> {
+                assertThat(messageIdsByKeywordView(SHAREE, USER_NEW_KEYWORD)).containsExactly(messageId);
+                assertThat(messageIdsByKeywordView(SECOND_SHAREE, USER_NEW_KEYWORD)).containsExactly(messageId);
+            });
+        }
+
+        @Test
         void shouldRemoveConcernedKeywordViewForOwnerAndShareeWhenShareeRemovesFlagsOnSharedMailbox() throws Exception {
             MailboxSession shareeSession = mailboxManager.createSystemSession(SHAREE);
 
@@ -724,8 +777,38 @@ class KeywordEmailQueryViewListenerTest {
             .build("Subject: test\r\n\r\nbody"), ownerSession);
     }
 
+    private TeamMailbox createTeamMailbox(String teamMailboxName) {
+        TeamMailbox teamMailbox = OptionConverters.toJava(TeamMailbox.fromJava(DOMAIN, teamMailboxName)).orElseThrow();
+        Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox)).block();
+        return teamMailbox;
+    }
+
+    private void addMemberToTeamMailbox(TeamMailbox teamMailbox, Username username) {
+        Mono.from(teamMailboxRepository.addMember(teamMailbox, TeamMailboxMember.asMember(username))).block();
+    }
+
+    private MessageManager.AppendResult appendMessageToTeamInbox(TeamMailbox teamMailbox, Flags flags) throws MailboxException {
+        return teamInbox(teamMailbox).appendMessage(MessageManager.AppendCommand.builder()
+            .withInternalDate(Date.from(INTERNAL_DATE))
+            .withFlags(flags)
+            .notRecent()
+            .build("Subject: team test\r\n\r\nbody"), teamOwnerSession(teamMailbox));
+    }
+
     private MessageManager ownerInbox() throws MailboxException {
         return mailboxManager.getMailbox(mailboxId, ownerSession);
+    }
+
+    private MessageManager teamInbox(TeamMailbox teamMailbox) throws MailboxException {
+        return mailboxManager.getMailbox(teamMailbox.inboxPath(), teamOwnerSession(teamMailbox));
+    }
+
+    private MessageManager teamInbox(TeamMailbox teamMailbox, MailboxSession mailboxSession) throws MailboxException {
+        return mailboxManager.getMailbox(teamMailbox.inboxPath(), mailboxSession);
+    }
+
+    private MailboxSession teamOwnerSession(TeamMailbox teamMailbox) {
+        return mailboxManager.createSystemSession(teamMailbox.owner());
     }
 
     private Flags asFlags(Keyword... flags) {
