@@ -1144,6 +1144,47 @@ Response codes:
 * 201: Success. Corresponding task id is returned.
 * 400: Error in the request. Details can be found in the reported error.
 
+=== Keyword email query view population
+
+The keyword email query view population task backfills `KeywordEmailQueryView` for all users.
+It provisions only TMail concerned keywords:
+
+- `$flagged`
+- user-defined keywords
+
+Messages flagged as deleted are ignored.
+For shared mailboxes, the task provisions the keyword view for the mailbox owner and for sharees having effective `Read` right.
+
+....
+curl -XPOST http://ip:port/mailboxes?task=populateKeywordEmailQueryView&messagesPerSecond={messagesPerSecondValue}
+....
+
+An admin can specify the throttling that should be used when running the task:
+
+- `messagesPerSecond` rate at which messages should be processed, per second. Default to `10`.
+
+Response codes:
+
+* `201`: Success. Corresponding task id is returned.
+* `400`: Error in the request. Details can be found in the reported error.
+
+The scheduled task will have the following type `PopulateKeywordEmailQueryViewTask` and the following `additionalInformation`:
+
+....
+{
+  "type": "PopulateKeywordEmailQueryViewTask",
+  "processedUserCount": 2,
+  "processedMessageCount": 12,
+  "provisionedKeywordViewCount": 18,
+  "failedUserCount": 0,
+  "failedMessageCount": 0,
+  "runningOptions": {
+    "messagesPerSecond": 5
+  },
+  "timestamp": "2026-03-16T08:00:00Z"
+}
+....
+
 == JMAP OIDC
 
 === Backchannel logout
