@@ -96,7 +96,11 @@ class CassandraLabelRepository @Inject()(dao: CassandraLabelDAO, @Named("TMAIL_E
   override def setLabelReadOnly(username: Username, labelId: LabelId, readOnly: Boolean): Publisher[Void] =
     dao.selectOne(username, labelId.toKeyword)
       .switchIfEmpty(SMono.error(LabelNotFoundException(labelId)))
-      .flatMap(_ => dao.setReadOnly(username, labelId.toKeyword, readOnly))
+      .flatMap(label => {
+        val updatedLabel = label.copy(readOnly = readOnly)
+        dao.setReadOnly(username, labelId.toKeyword, readOnly)
+          .`then`(SMono.fromPublisher(eventBus.dispatch(LabelUpdated(Event.EventId.random(), username, updatedLabel), AccountIdRegistrationKey(AccountId.fromUsername(username)))))
+      })
 }
 
 case class CassandraLabelRepositoryModule() extends AbstractModule {

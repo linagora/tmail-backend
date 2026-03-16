@@ -551,6 +551,5 @@ trait LabelRepositoryContract {
     val destroyedEvent = eventCollector.events.get(0).asInstanceOf[LabelDestroyed]
     assertThat(destroyedEvent.getUsername).isEqualTo(ALICE)
     assertThat(destroyedEvent.labelId).isEqualTo(label.id)
->>>>>>> 220bd3d04 (ISSUE-2255 Fire Label events)
   }
 }

@@ -57,21 +57,32 @@ class LabelEventSerializationTest {
         new DisplayName("Work"),
         KEYWORD,
         scala.Option.apply(new Color("#FF0000")),
-        scala.Option.apply(null));
+        scala.Option.apply(null),
+        false);
 
     static final Label LABEL_WITH_COLOR_AND_DESCRIPTION = new Label(
         LABEL_ID,
         new DisplayName("Work"),
         KEYWORD,
         scala.Option.apply(new Color("#FF0000")),
-        scala.Option.apply("Important label"));
+        scala.Option.apply("Important label"),
+        false);
 
     static final Label LABEL_MINIMAL = new Label(
         LABEL_ID,
         new DisplayName("Work"),
         KEYWORD,
         scala.Option.apply(null),
-        scala.Option.apply(null));
+        scala.Option.apply(null),
+        false);
+
+    static final Label LABEL_WITH_COLOR_READONLY = new Label(
+        LABEL_ID,
+        new DisplayName("Work"),
+        KEYWORD,
+        scala.Option.apply(new Color("#FF0000")),
+        scala.Option.apply(null),
+        true);
 
     static final String LABEL_CREATED_JSON = "{" +
         "\"type\":\"TmailEventSerializer$LabelCreatedDTO\"," +
@@ -80,7 +91,8 @@ class LabelEventSerializationTest {
         "\"keyword\":\"mylabel\"," +
         "\"displayName\":\"Work\"," +
         "\"color\":\"#FF0000\"," +
-        "\"description\":null" +
+        "\"description\":null," +
+        "\"readOnly\":false" +
         "}";
 
     static final String LABEL_CREATED_WITH_DESCRIPTION_JSON = "{" +
@@ -90,7 +102,8 @@ class LabelEventSerializationTest {
         "\"keyword\":\"mylabel\"," +
         "\"displayName\":\"Work\"," +
         "\"color\":\"#FF0000\"," +
-        "\"description\":\"Important label\"" +
+        "\"description\":\"Important label\"," +
+        "\"readOnly\":false" +
         "}";
 
     static final String LABEL_CREATED_MINIMAL_JSON = "{" +
@@ -100,7 +113,8 @@ class LabelEventSerializationTest {
         "\"keyword\":\"mylabel\"," +
         "\"displayName\":\"Work\"," +
         "\"color\":null," +
-        "\"description\":null" +
+        "\"description\":null," +
+        "\"readOnly\":false" +
         "}";
 
     static final String LABEL_UPDATED_JSON = "{" +
@@ -110,7 +124,19 @@ class LabelEventSerializationTest {
         "\"keyword\":\"mylabel\"," +
         "\"displayName\":\"Work\"," +
         "\"color\":\"#FF0000\"," +
-        "\"description\":null" +
+        "\"description\":null," +
+        "\"readOnly\":false" +
+        "}";
+
+    static final String LABEL_UPDATED_READONLY_JSON = "{" +
+        "\"type\":\"TmailEventSerializer$LabelUpdatedDTO\"," +
+        "\"eventId\":\"6e0dd59d-660e-4d9b-b22f-0354479f47b4\"," +
+        "\"username\":\"alice@domain.com\"," +
+        "\"keyword\":\"mylabel\"," +
+        "\"displayName\":\"Work\"," +
+        "\"color\":\"#FF0000\"," +
+        "\"description\":null," +
+        "\"readOnly\":true" +
         "}";
 
     static final String LABEL_DESTROYED_JSON = "{" +
@@ -178,5 +204,47 @@ class LabelEventSerializationTest {
     void labelDestroyedShouldBeWellDeserialized() {
         assertThat(SERIALIZER.asEvent(LABEL_DESTROYED_JSON))
             .isEqualTo(new LabelDestroyed(EVENT_ID, ALICE, LABEL_ID));
+    }
+
+    @Test
+    void labelUpdatedReadOnlyShouldBeWellSerialized() {
+        assertThat(SERIALIZER.toJson(new LabelUpdated(EVENT_ID, ALICE, LABEL_WITH_COLOR_READONLY)))
+            .isEqualTo(LABEL_UPDATED_READONLY_JSON);
+    }
+
+    @Test
+    void labelUpdatedReadOnlyShouldBeWellDeserialized() {
+        assertThat(SERIALIZER.asEvent(LABEL_UPDATED_READONLY_JSON))
+            .isEqualTo(new LabelUpdated(EVENT_ID, ALICE, LABEL_WITH_COLOR_READONLY));
+    }
+
+    @Test
+    void labelUpdatedShouldDeserializeWithoutReadOnlyFieldForBackwardCompatibility() {
+        String legacyJson = "{" +
+            "\"type\":\"TmailEventSerializer$LabelUpdatedDTO\"," +
+            "\"eventId\":\"6e0dd59d-660e-4d9b-b22f-0354479f47b4\"," +
+            "\"username\":\"alice@domain.com\"," +
+            "\"keyword\":\"mylabel\"," +
+            "\"displayName\":\"Work\"," +
+            "\"color\":\"#FF0000\"," +
+            "\"description\":null" +
+            "}";
+        assertThat(SERIALIZER.asEvent(legacyJson))
+            .isEqualTo(new LabelUpdated(EVENT_ID, ALICE, LABEL_WITH_COLOR));
+    }
+
+    @Test
+    void labelCreatedShouldDeserializeWithoutReadOnlyFieldForBackwardCompatibility() {
+        String legacyJson = "{" +
+            "\"type\":\"TmailEventSerializer$LabelCreatedDTO\"," +
+            "\"eventId\":\"6e0dd59d-660e-4d9b-b22f-0354479f47b4\"," +
+            "\"username\":\"alice@domain.com\"," +
+            "\"keyword\":\"mylabel\"," +
+            "\"displayName\":\"Work\"," +
+            "\"color\":\"#FF0000\"," +
+            "\"description\":null" +
+            "}";
+        assertThat(SERIALIZER.asEvent(legacyJson))
+            .isEqualTo(new LabelCreated(EVENT_ID, ALICE, LABEL_WITH_COLOR));
     }
 }
