@@ -72,7 +72,7 @@ trait LabelGetMethodContract {
       .asString
 
     assertThatJson(response)
-      .inPath("capabilities.\"com:linagora:params:jmap:labels\"")
+      .inPath("capabilities.com:linagora:params:jmap:labels")
       .isEqualTo("""{"version": 2}""")
   }
 
