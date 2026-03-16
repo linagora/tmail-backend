@@ -54,7 +54,7 @@ case object LabelCapability extends Capability {
 }
 
 case object LabelCapabilityProperties extends CapabilityProperties {
-  override def jsonify(): JsObject = Json.obj()
+  override def jsonify(): JsObject = Json.obj("version" -> 2)
 }
 
 class LabelCapabilitiesModule extends AbstractModule {

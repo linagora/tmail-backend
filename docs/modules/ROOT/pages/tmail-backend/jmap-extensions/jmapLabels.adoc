@@ -10,7 +10,18 @@ Servers supporting the JMAP Labels extension need to advertise it through the se
 com:linagora:params:jmap:labels
 ....
 
-The associated object is empty.
+The associated capability object contains a `version` field indicating the feature set supported by the server:
+
+```json
+"com:linagora:params:jmap:labels": {
+  "version": 2
+}
+```
+
+=== Versions
+
+- **Version 1** (initial): Basic label management — `Label/get`, `Label/set`, `Label/changes`. No `version` field present in the capability object (treated as version 1 by clients).
+- **Version 2**: Adds the `readOnly` field on the `Label` object. Read-only labels cannot be updated or deleted via JMAP. Clients should check for version ≥ 2 before relying on `readOnly`.
 
 == Label object
 
