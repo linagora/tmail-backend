@@ -47,6 +47,7 @@ import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mailbox.model.MessageResult;
 import org.apache.james.mailbox.model.ThreadId;
 import org.apache.james.mailbox.model.search.MailboxQuery;
+import org.apache.james.mailbox.model.search.PrefixedWildcard;
 import org.apache.james.task.Task;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.james.util.ReactorUtils;
@@ -55,6 +56,9 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableSet;
 import com.linagora.tmail.james.jmap.projections.KeywordEmailQueryView;
+import com.linagora.tmail.team.TeamMailbox;
+import com.linagora.tmail.team.TeamMailboxNameSpace;
+import com.linagora.tmail.team.TeamMailboxRepository;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -126,16 +130,19 @@ public class KeywordEmailQueryViewPopulator {
     private final MailboxManager mailboxManager;
     private final KeywordEmailQueryView keywordEmailQueryView;
     private final MailboxACLResolver mailboxACLResolver;
+    private final TeamMailboxRepository teamMailboxRepository;
 
     @Inject
     public KeywordEmailQueryViewPopulator(UsersRepository usersRepository,
                                           MailboxManager mailboxManager,
                                           KeywordEmailQueryView keywordEmailQueryView,
-                                          MailboxACLResolver mailboxACLResolver) {
+                                          MailboxACLResolver mailboxACLResolver,
+                                          TeamMailboxRepository teamMailboxRepository) {
         this.usersRepository = usersRepository;
         this.mailboxManager = mailboxManager;
         this.keywordEmailQueryView = keywordEmailQueryView;
         this.mailboxACLResolver = mailboxACLResolver;
+        this.teamMailboxRepository = teamMailboxRepository;
     }
 
     Mono<Task.Result> populateView(Progress progress, RunningOptions runningOptions) {
@@ -153,23 +160,22 @@ public class KeywordEmailQueryViewPopulator {
     }
 
     private Flux<ProvisionContext> listAllMailboxMessages(Progress progress) {
-        return Flux.from(usersRepository.listReactive())
-            .map(mailboxManager::createSystemSession)
-            .doOnNext(any -> progress.incrementProcessedUserCount())
-            .concatMap(session -> listUserMailboxMessages(progress, session))
+        return Flux.merge(listPrivateMailboxMessages(progress), listTeamMailboxMessages())
             .filter(context -> !context.messageResult().getFlags().contains(DELETED));
     }
 
-    private Flux<ProvisionContext> listUserMailboxMessages(Progress progress, MailboxSession ownerSession) {
-        Username owner = ownerSession.getUser();
-        return listUsersMailboxes(ownerSession)
-            .flatMap(mailboxMetadata -> retrieveMailbox(ownerSession, mailboxMetadata), DEFAULT_CONCURRENCY)
-            .concatMap(mailbox -> usersHavingReadRight(owner, mailbox, ownerSession)
-                .collect(ImmutableSet.toImmutableSet())
-                .flatMapMany(readableUsers -> listAllMessages(mailbox, ownerSession)
-                    .map(messageResult -> new ProvisionContext(readableUsers, messageResult))))
+    private Flux<ProvisionContext> listPrivateMailboxMessages(Progress progress) {
+        return Flux.from(usersRepository.listReactive())
+            .map(mailboxManager::createSystemSession)
+            .doOnNext(any -> progress.incrementProcessedUserCount())
+            .concatMap(session -> listUserMailboxMessages(progress, session));
+    }
+
+    private Flux<ProvisionContext> listUserMailboxMessages(Progress progress, MailboxSession userSession) {
+        return listUserPrivateMailboxes(userSession)
+            .concatMap(this::listMailboxMessages)
             .onErrorResume(MailboxException.class, e -> {
-                LOGGER.error("KeywordEmailQueryView population aborted for {} as we failed listing user mailboxes", owner, e);
+                LOGGER.error("KeywordEmailQueryView population aborted for {} as we failed listing user mailboxes", userSession.getUser().asString(), e);
                 progress.incrementFailedUserCount();
                 return Flux.empty();
             });
@@ -210,8 +216,35 @@ public class KeywordEmailQueryViewPopulator {
         return progress.getFailedUserCount() > 0 || progress.getFailedMessageCount() > 0;
     }
 
-    private Flux<MailboxMetaData> listUsersMailboxes(MailboxSession session) {
+    private Flux<MailboxMetaData> listUserPrivateMailboxes(MailboxSession session) {
         return mailboxManager.search(MailboxQuery.privateMailboxesBuilder(session).build(), Minimal, session);
+    }
+
+    private Flux<ProvisionContext> listTeamMailboxMessages() {
+        return Flux.from(teamMailboxRepository.listTeamMailboxes())
+            .concatMap(this::listTeamMailboxFolders)
+            .concatMap(this::listMailboxMessages);
+    }
+
+    private Flux<MailboxMetaData> listTeamMailboxFolders(TeamMailbox teamMailbox) {
+        MailboxQuery query = MailboxQuery.builder()
+            .namespace(TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE())
+            .user(teamMailbox.owner())
+            .expression(new PrefixedWildcard(teamMailbox.mailboxName().asString()))
+            .build();
+
+        return mailboxManager.search(query, Minimal, mailboxManager.createSystemSession(teamMailbox.self()));
+    }
+
+    private Flux<ProvisionContext> listMailboxMessages(MailboxMetaData mailboxMetadata) {
+        MailboxSession ownerSession = mailboxManager.createSystemSession(mailboxMetadata.getPath().getUser());
+        Username owner = ownerSession.getUser();
+
+        return retrieveMailbox(ownerSession, mailboxMetadata)
+            .flatMapMany(mailbox -> usersHavingReadRight(owner, mailbox, ownerSession)
+                .collect(ImmutableSet.toImmutableSet())
+                .flatMapMany(readableUsers -> listAllMessages(mailbox, ownerSession)
+                    .map(messageResult -> new ProvisionContext(readableUsers, messageResult))));
     }
 
     private Mono<MessageManager> retrieveMailbox(MailboxSession session, MailboxMetaData mailboxMetadata) {
