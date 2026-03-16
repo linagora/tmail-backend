@@ -32,7 +32,6 @@ import org.apache.james.mailbox.model.{MailboxAnnotation, MailboxAnnotationKey, 
 import org.apache.james.mailbox.store.MailboxSessionMapperFactory
 import org.apache.james.mailbox.{DefaultMailboxes, MailboxManager, MailboxSession}
 import org.reactivestreams.Publisher
-import reactor.core.publisher.Mono
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.CollectionConverters._
@@ -54,12 +53,13 @@ class LabelMetadataListener @Inject()(mailboxManager: MailboxManager,
 
   override def isHandling(event: Event): Boolean = event.isInstanceOf[TmailLabelEvent]
 
-  override def reactiveEvent(event: Event): Publisher[Void] = event match {
-    case e: LabelCreated => upsertLabelAnnotations(e.username, e.label)
-    case e: LabelUpdated => upsertLabelAnnotations(e.username, e.updatedLabel)
-    case e: LabelDestroyed => deleteLabelAnnotations(e.username, e.labelId)
-    case _ => Mono.empty
-  }
+  override def reactiveEvent(event: Event): Publisher[Void] =
+    event match {
+      case e: LabelCreated => upsertLabelAnnotations(e.username, e.label)
+      case e: LabelUpdated => upsertLabelAnnotations(e.username, e.updatedLabel)
+      case e: LabelDestroyed => deleteLabelAnnotations(e.username, e.labelId)
+      case _ => SMono.empty[Unit]
+    }
 
   private def getOrProvisionInbox(username: Username, session: MailboxSession): SMono[MailboxId] =
     SMono.fromPublisher(mailboxManager.getMailboxReactive(MailboxPath.inbox(username), session))
