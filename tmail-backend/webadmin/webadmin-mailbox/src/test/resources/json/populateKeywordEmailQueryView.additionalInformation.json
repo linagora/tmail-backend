@@ -1,0 +1,12 @@
+{
+  "type":"PopulateKeywordEmailQueryViewTask",
+  "timestamp":"2007-12-03T10:15:30Z",
+  "processedUserCount":1,
+  "processedMessageCount":2,
+  "provisionedKeywordViewCount":3,
+  "failedUserCount":4,
+  "failedMessageCount":5,
+  "runningOptions": {
+    "messagesPerSecond":20
+  }
+}

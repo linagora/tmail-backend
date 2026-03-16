@@ -1,0 +1,6 @@
+{
+  "type":"PopulateKeywordEmailQueryViewTask",
+  "runningOptions": {
+    "messagesPerSecond":2
+  }
+}
