@@ -60,13 +60,20 @@ trait LabelGetMethodContract {
 
   @Test
   def shouldReturnLabelCapabilityInSessionRoute(): Unit = {
-    `given`()
+    val response = `given`()
       .when()
       .get("/session")
     .`then`
       .statusCode(SC_OK)
       .contentType(JSON)
       .body("capabilities", hasKey("com:linagora:params:jmap:labels"))
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .inPath("capabilities.com:linagora:params:jmap:labels")
+      .isEqualTo("""{"version": 2}""")
   }
 
   @Test
