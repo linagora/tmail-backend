@@ -25,8 +25,11 @@ import com.linagora.tmail.james.jmap.model.Label
 import org.apache.commons.configuration2.XMLConfiguration
 import org.apache.commons.configuration2.io.FileHandler
 import org.apache.james.core.Username
+import org.apache.james.events.delivery.InVmEventDelivery
+import org.apache.james.events.{InVMEventBus, MemoryEventDeadLetters, RetryBackoffConfiguration}
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources
 import org.apache.james.mailbox.model.MailboxPath
+import org.apache.james.metrics.tests.RecordingMetricFactory
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
 import reactor.core.publisher.{Flux, Mono}
@@ -44,7 +47,10 @@ class LabelProvisionnerTest {
   def setUp(): Unit = {
     val resources = InMemoryIntegrationResources.defaultResources()
     mailboxManager = resources.getMailboxManager
-    labelRepository = new MemoryLabelRepository()
+    labelRepository = new MemoryLabelRepository(new InVMEventBus(
+      new InVmEventDelivery(new RecordingMetricFactory()),
+      RetryBackoffConfiguration.FAST,
+      new MemoryEventDeadLetters()))
   }
 
   private def registerListener(rawXmlConfig: String): Unit = {
