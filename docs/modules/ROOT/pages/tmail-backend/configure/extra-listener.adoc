@@ -1,0 +1,194 @@
+= Extra Listeners
+:navtitle: Extra Listeners
+
+This page documents additional event listeners provided by TMail that can be optionally configured in `listeners.xml`.
+These listeners are *not bound by Guice* by default and must be explicitly declared in the configuration file to be activated.
+
+All listeners are triggered when a user's INBOX is first created (i.e. when a new user account is provisioned),
+except where noted otherwise.
+
+== Welcome Listener
+
+This listener delivers a welcome email into a newly created user INBOX.
+
+This can be used to welcome users and avoid the "Empty INBOX newcomer syndrome".
+
+=== Legacy configuration
+
+[source,xml]
+----
+<listeners>
+  <listener>
+    <class>com.linagora.tmail.mailbox.WelcomeListener</class>
+    <configuration>
+      <eml>file://welcome.eml</eml>
+    </configuration>
+  </listener>
+</listeners>
+----
+
+=== Internationalization configuration
+
+Preferred over the legacy configuration when `supportedLanguages` is set:
+
+[source,xml]
+----
+<listeners>
+  <listener>
+    <class>com.linagora.tmail.mailbox.WelcomeListener</class>
+    <configuration>
+      <supportedLanguages>en,fr,vi</supportedLanguages>
+      <i18nWelcomeTemplateDirectory>classpath://eml-template/welcome/</i18nWelcomeTemplateDirectory>
+      <defaultLanguage>en</defaultLanguage>
+    </configuration>
+  </listener>
+</listeners>
+----
+
+Configuration keys:
+
+- `supportedLanguages`: Optional. Comma-separated list of supported languages (ISO 639-1 codes). If not configured, falls back to the legacy `eml` configuration.
+- `i18nWelcomeTemplateDirectory`: Optional. Directory containing the welcome email templates for each supported language. Each template must follow the naming convention: `welcome-<languageCode>.eml` (e.g. `welcome-en.eml`).
+- `defaultLanguage`: Optional. The default language (ISO 639-1 code) to use when the user's language is not supported or missing. Defaults to `en`.
+
+== Domain Contact Provisioner Listener
+
+This listener indexes a domain contact every time a user is created, and removes it when the user is deleted.
+
+This avoids waiting for an LDAP synchronisation job so that users belonging to the same organisation can
+immediately find the new user when composing an email.
+
+Configuration keys:
+
+- `firstnameAttribute`: LDAP attribute for the user's first name. Defaults to `givenName`.
+- `surnameAttribute`: LDAP attribute for the user's last name. Defaults to `sn`.
+- `ignoredDomains`: Optional. Comma-separated list of domains to exclude from indexing (e.g. B2C SaaS domains).
+
+[source,xml]
+----
+<listeners>
+  <listener>
+    <class>com.linagora.tmail.james.jmap.contact.DomainContactProvisionerListener</class>
+    <configuration>
+      <ignoredDomains>lin-saas.com,stg.lin-saas.com</ignoredDomains>
+      <firstnameAttribute>givenName</firstnameAttribute>
+      <surnameAttribute>sn</surnameAttribute>
+    </configuration>
+  </listener>
+</listeners>
+----
+
+== JMAP Identity Provisioner Listener
+
+This listener automatically provisions a default JMAP identity for a user when their INBOX is first created.
+It avoids the need for an external LSC synchronisation job to populate JMAP identities.
+
+When the INBOX is created, the listener looks up the user's personal information (first name, surname) from LDAP
+and creates a default JMAP identity using those attributes. This ensures users can immediately send emails
+with their proper display name.
+
+Configuration keys:
+
+- `firstnameAttribute`: LDAP attribute for the user's first name. Defaults to `givenName`.
+- `surnameAttribute`: LDAP attribute for the user's last name. Defaults to `sn`.
+- `extraAttributes`: Optional. Comma-separated list of additional LDAP attributes to fetch. These can be referenced in signature templates via the `+{ldap:attributeName}+` placeholder syntax.
+
+Signature provisioning is controlled by the optional `defaultText` block:
+
+- `defaultText.applyWhen`: Optional FQDN of an `ApplyWhenFilter` implementation loaded via Guice. Defaults to always-eligible.
+- `defaultText.defaultLanguage`: Fallback language. Defaults to `en`.
+- `defaultText.<locale>.textSignature`: Plain-text signature for a locale.
+- `defaultText.<locale>.htmlSignature`: HTML signature for a locale.
+
+Signature templates support LDAP attribute interpolation using `+{ldap:attributeName}+`.
+`givenName`, `sn`, and the username attribute are always fetched; additional attributes must be declared via `extraAttributes`.
+If a placeholder references an unknown or empty attribute it is left as-is.
+
+[source,xml]
+----
+<listeners>
+  <listener>
+    <class>com.linagora.tmail.james.jmap.event.IdentityProvisionListener</class>
+    <configuration>
+      <firstnameAttribute>givenName</firstnameAttribute>
+      <surnameAttribute>sn</surnameAttribute>
+      <!-- Optional: fetch additional LDAP attributes for use in signature templates -->
+      <extraAttributes>telephoneNumber,title</extraAttributes>
+      <defaultText>
+        <defaultLanguage>en</defaultLanguage>
+        <en>
+          <textSignature><![CDATA[Best regards,
+{ldap:title} {ldap:givenName} {ldap:sn}
+{ldap:telephoneNumber}]]></textSignature>
+          <htmlSignature><![CDATA[<p>Best regards,<br/>{ldap:title} {ldap:givenName} {ldap:sn}<br/>{ldap:telephoneNumber}</p>]]></htmlSignature>
+        </en>
+      </defaultText>
+    </configuration>
+  </listener>
+</listeners>
+----
+
+=== SaaS Signature Enrichment
+
+In a SaaS context, use the `applyWhen` filter to restrict signature provisioning to non-paying users:
+
+[source,xml]
+----
+<defaultText>
+  <applyWhen>com.linagora.tmail.saas.filter.SaaSNonPayingUser</applyWhen>
+  ...
+</defaultText>
+----
+
+== Label Provisioner Listener
+
+This listener automatically creates a predefined set of JMAP labels for every new user.
+Labels can optionally be marked `readOnly`, preventing users from renaming or deleting them via JMAP
+while still allowing them to be applied to messages.
+
+Each label supports the following fields:
+
+- `keyword`: Optional. A stable IMAP keyword used as the label identifier. When omitted a random UUID is generated. Providing an explicit keyword is recommended for read-only labels to guarantee a predictable identifier.
+- `displayName`: Required. The label name displayed to the user.
+- `readOnly`: Required. `true` to prevent the user from modifying or deleting the label via JMAP.
+- `color`: Optional. Hexadecimal color value (`#rrggbb`). Silently ignored if the format is invalid.
+- `description`: Optional. A human-readable description of the label's purpose.
+
+[source,xml]
+----
+<listeners>
+  <listener>
+    <class>com.linagora.tmail.james.jmap.event.LabelProvisionner</class>
+    <configuration>
+      <labels>
+        <label>
+          <keyword>social</keyword>
+          <displayName>Social</displayName>
+          <readOnly>true</readOnly>
+          <color>#aabbcc</color>
+          <description>Email notifications from social networks (Facebook, LinkedIn, X, Instagram, …)</description>
+        </label>
+        <label>
+          <keyword>promotion</keyword>
+          <displayName>Promotion</displayName>
+          <readOnly>true</readOnly>
+          <color>#334455</color>
+          <description>Commercial opportunities, discounts and product presentations</description>
+        </label>
+        <label>
+          <displayName>Family</displayName>
+          <readOnly>false</readOnly>
+          <color>#aabbcc</color>
+          <description>Mail from family members</description>
+        </label>
+        <label>
+          <displayName>Work</displayName>
+          <readOnly>false</readOnly>
+          <color>#aabbcc</color>
+          <description>Mail from co-workers</description>
+        </label>
+      </labels>
+    </configuration>
+  </listener>
+</listeners>
+----
