@@ -143,7 +143,8 @@ public class KeywordEmailQueryViewPopulator {
     }
 
     Mono<Task.Result> populateView(Progress progress, RunningOptions runningOptions) {
-        return provisionKeywordView(listAllMailboxMessages(progress), runningOptions, progress);
+        return keywordEmailQueryView.truncate()
+            .then(provisionKeywordView(listAllMailboxMessages(progress), runningOptions, progress));
     }
 
     private Mono<Task.Result> provisionKeywordView(Flux<ProvisionContext> entries, RunningOptions runningOptions, Progress progress) {

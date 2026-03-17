@@ -49,6 +49,7 @@ import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageId;
+import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mailbox.store.StoreSubscriptionManager;
 import org.apache.james.task.Hostname;
 import org.apache.james.task.MemoryTaskManager;
@@ -403,6 +404,36 @@ class PopulateKeywordEmailQueryViewRequestToTaskTest {
         assertThat(messageIdsByKeywordView(OWNER, FLAGGED)).containsOnly(messageId);
     }
 
+    @Test
+    void populateShouldRemoveKeywordViewOfDeletedMessages() throws Exception {
+        MessageManager.AppendResult appendResult = appendMessage(asFlags(List.of(Flags.Flag.FLAGGED)));
+        MessageId messageId = appendResult.getId().getMessageId();
+
+        String firstTaskId = with()
+            .queryParam("action", "populateKeywordEmailQueryView")
+            .post()
+            .jsonPath()
+            .get("taskId");
+        with()
+            .basePath(TasksRoutes.BASE)
+            .get(firstTaskId + "/await");
+
+        assertThat(messageIdsByKeywordView(OWNER, FLAGGED)).containsExactly(messageId);
+
+        expungeMessage(appendResult);
+
+        String secondTaskId = with()
+            .queryParam("action", "populateKeywordEmailQueryView")
+            .post()
+            .jsonPath()
+            .get("taskId");
+        with()
+            .basePath(TasksRoutes.BASE)
+            .get(secondTaskId + "/await");
+
+        assertThat(messageIdsByKeywordView(OWNER, FLAGGED)).isEmpty();
+    }
+
     private void shareInboxWithSharee(Username sharee) throws Exception {
         resources.getStoreRightManager().applyRightsCommand(ownerInboxId,
             MailboxACL.command().forUser(sharee)
@@ -417,6 +448,12 @@ class PopulateKeywordEmailQueryViewRequestToTaskTest {
             .withFlags(flags)
             .notRecent()
             .build("Subject: test\r\n\r\nbody"), ownerSession);
+    }
+
+    private void expungeMessage(MessageManager.AppendResult appendResult) throws Exception {
+        ownerInbox().setFlags(new Flags(Flags.Flag.DELETED), MessageManager.FlagsUpdateMode.ADD,
+            MessageRange.one(appendResult.getId().getUid()), ownerSession);
+        ownerInbox().expunge(MessageRange.one(appendResult.getId().getUid()), ownerSession);
     }
 
     private TeamMailbox createTeamMailbox(String teamMailboxName) {
