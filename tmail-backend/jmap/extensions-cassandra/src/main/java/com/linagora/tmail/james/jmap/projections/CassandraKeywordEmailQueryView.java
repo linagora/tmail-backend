@@ -51,6 +51,7 @@ import com.datastax.oss.driver.api.core.cql.BoundStatementBuilder;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.cql.Row;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
+import com.datastax.oss.driver.api.querybuilder.QueryBuilder;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -145,6 +146,12 @@ public class CassandraKeywordEmailQueryView implements KeywordEmailQueryView {
             .set(KEYWORD, keyword.flagName(), TypeCodecs.TEXT)
             .setInstant(RECEIVED_AT, receivedAt)
             .setUuid(MESSAGE_ID, cassandraMessageId.get()));
+    }
+
+    @Override
+    public Mono<Void> truncate() {
+        return executor.executeVoid(QueryBuilder.truncate(TABLE_NAME)
+            .build());
     }
 
     @Override

@@ -39,4 +39,6 @@ public interface KeywordEmailQueryView {
     Mono<Void> delete(Username username, Keyword keyword, Instant receivedAt, MessageId messageId);
 
     Flux<MessageId> listMessagesByKeyword(Username username, Keyword keyword, Options options);
+
+    Mono<Void> truncate();
 }

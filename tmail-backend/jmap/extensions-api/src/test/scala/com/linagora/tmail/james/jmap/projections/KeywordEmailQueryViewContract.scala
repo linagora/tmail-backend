@@ -266,6 +266,41 @@ trait KeywordEmailQueryViewContract {
   }
 
   @Test
+  def truncateShouldBeIdempotent(): Unit = {
+    assertThatCode(() => testee.truncate().block())
+      .doesNotThrowAnyException()
+  }
+
+  @Test
+  def truncateShouldRemoveAllEntries(): Unit = {
+    testee.save(ALICE, KEYWORD_A, DATE_1, messageId1, threadId1).block()
+    testee.save(ALICE, KEYWORD_B, DATE_2, messageId2, threadId2).block()
+    testee.save(BOB, KEYWORD_A, DATE_3, messageId3, threadId3).block()
+
+    testee.truncate().block()
+
+    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, options(Limit.limit(12)))).collectSeq().block().asJava)
+      .isEmpty()
+    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_B, options(Limit.limit(12)))).collectSeq().block().asJava)
+      .isEmpty()
+    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(BOB, KEYWORD_A, options(Limit.limit(12)))).collectSeq().block().asJava)
+      .isEmpty()
+  }
+
+  @Test
+  def saveShouldWorkAfterTruncate(): Unit = {
+    testee.save(ALICE, KEYWORD_A, DATE_1, messageId1, threadId1).block()
+
+    testee.truncate().block()
+    testee.save(ALICE, KEYWORD_B, DATE_2, messageId2, threadId2).block()
+
+    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, options(Limit.limit(12)))).collectSeq().block().asJava)
+      .isEmpty()
+    assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_B, options(Limit.limit(12)))).collectSeq().block().asJava)
+      .containsExactly(messageId2)
+  }
+
+  @Test
   def listShouldThrowOnUndefinedLimit(): Unit = {
     assertThatThrownBy(() => testee.listMessagesByKeyword(ALICE, KEYWORD_A, options(Limit.unlimited())).blockLast())
       .isInstanceOf(classOf[IllegalArgumentException])

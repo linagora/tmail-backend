@@ -68,6 +68,11 @@ public class MemoryKeywordEmailQueryView implements KeywordEmailQueryView {
     }
 
     @Override
+    public Mono<Void> truncate() {
+        return Mono.fromRunnable(entriesByUser::clear);
+    }
+
+    @Override
     public Flux<MessageId> listMessagesByKeyword(Username username, Keyword keyword, Options options) {
         Preconditions.checkArgument(!options.limit().isUnlimited(), "Limit should be defined");
 
