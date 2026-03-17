@@ -55,7 +55,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import com.linagora.tmail.james.jmap.projections.ConcernedKeywordsExtractor;
 import com.linagora.tmail.james.jmap.projections.KeywordEmailQueryView;
+import com.linagora.tmail.james.jmap.projections.MailboxReadRightsResolver;
 import com.linagora.tmail.james.jmap.projections.MemoryKeywordEmailQueryView;
 import com.linagora.tmail.team.TeamMailbox;
 import com.linagora.tmail.team.TeamMailboxMember;
@@ -100,7 +102,9 @@ class KeywordEmailQueryViewListenerTest {
         ownerSession = mailboxManager.createSystemSession(OWNER);
 
         keywordEmailQueryView = new MemoryKeywordEmailQueryView();
-        testee = new KeywordEmailQueryViewListener(keywordEmailQueryView, mailboxManager, resources.getMessageIdManager(), new UnionMailboxACLResolver());
+        testee = new KeywordEmailQueryViewListener(keywordEmailQueryView, mailboxManager, resources.getMessageIdManager(),
+            new MailboxReadRightsResolver(new UnionMailboxACLResolver()),
+            new ConcernedKeywordsExtractor());
         resources.getEventBus().register(testee);
         teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager,
             new StoreSubscriptionManager(resources.getMailboxManager().getMapperFactory(), resources.getMailboxManager().getMapperFactory(), resources.getMailboxManager().getEventBus()),

@@ -68,7 +68,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.linagora.tmail.james.jmap.projections.ConcernedKeywordsExtractor;
 import com.linagora.tmail.james.jmap.projections.KeywordEmailQueryView;
+import com.linagora.tmail.james.jmap.projections.MailboxReadRightsResolver;
 import com.linagora.tmail.james.jmap.projections.MemoryKeywordEmailQueryView;
 import com.linagora.tmail.team.TeamMailbox;
 import com.linagora.tmail.team.TeamMailboxMember;
@@ -156,7 +158,9 @@ class PopulateKeywordEmailQueryViewRequestToTaskTest {
             new TasksRoutes(taskManager, jsonTransformer,
                 DTOConverter.of(PopulateKeywordEmailQueryViewTaskAdditionalInformationDTO.module())),
             new JMAPRoutes(new KeywordEmailQueryViewPopulator(usersRepository, mailboxManager, keywordEmailQueryView,
-                new UnionMailboxACLResolver(), teamMailboxRepository), taskManager))
+                new MailboxReadRightsResolver(new UnionMailboxACLResolver()),
+                new ConcernedKeywordsExtractor(),
+                teamMailboxRepository), taskManager))
             .start();
 
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)

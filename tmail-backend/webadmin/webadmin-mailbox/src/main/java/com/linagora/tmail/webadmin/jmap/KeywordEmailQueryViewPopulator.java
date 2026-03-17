@@ -24,24 +24,18 @@ import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.Arrays;
-import java.util.Locale;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicLong;
-import java.util.stream.Stream;
 
 import jakarta.inject.Inject;
-import jakarta.mail.Flags;
 
 import org.apache.james.core.Username;
 import org.apache.james.jmap.mail.Keyword;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
-import org.apache.james.mailbox.acl.MailboxACLResolver;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.model.FetchGroup;
-import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.james.mailbox.model.MailboxMetaData;
 import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mailbox.model.MessageResult;
@@ -55,7 +49,9 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableSet;
+import com.linagora.tmail.james.jmap.projections.ConcernedKeywordsExtractor;
 import com.linagora.tmail.james.jmap.projections.KeywordEmailQueryView;
+import com.linagora.tmail.james.jmap.projections.MailboxReadRightsResolver;
 import com.linagora.tmail.team.TeamMailbox;
 import com.linagora.tmail.team.TeamMailboxNameSpace;
 import com.linagora.tmail.team.TeamMailboxRepository;
@@ -124,24 +120,25 @@ public class KeywordEmailQueryViewPopulator {
     }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(KeywordEmailQueryViewPopulator.class);
-    private static final Keyword FLAGGED = new Keyword("$flagged");
-
     private final UsersRepository usersRepository;
     private final MailboxManager mailboxManager;
     private final KeywordEmailQueryView keywordEmailQueryView;
-    private final MailboxACLResolver mailboxACLResolver;
+    private final MailboxReadRightsResolver mailboxReadRightsResolver;
+    private final ConcernedKeywordsExtractor concernedKeywordsExtractor;
     private final TeamMailboxRepository teamMailboxRepository;
 
     @Inject
     public KeywordEmailQueryViewPopulator(UsersRepository usersRepository,
                                           MailboxManager mailboxManager,
                                           KeywordEmailQueryView keywordEmailQueryView,
-                                          MailboxACLResolver mailboxACLResolver,
+                                          MailboxReadRightsResolver mailboxReadRightsResolver,
+                                          ConcernedKeywordsExtractor concernedKeywordsExtractor,
                                           TeamMailboxRepository teamMailboxRepository) {
         this.usersRepository = usersRepository;
         this.mailboxManager = mailboxManager;
         this.keywordEmailQueryView = keywordEmailQueryView;
-        this.mailboxACLResolver = mailboxACLResolver;
+        this.mailboxReadRightsResolver = mailboxReadRightsResolver;
+        this.concernedKeywordsExtractor = concernedKeywordsExtractor;
         this.teamMailboxRepository = teamMailboxRepository;
     }
 
@@ -182,7 +179,7 @@ public class KeywordEmailQueryViewPopulator {
     }
 
     private Mono<Task.Result> provisionKeywordView(ProvisionContext context, Progress progress) {
-        return Mono.fromCallable(() -> concernedKeywords(context.messageResult().getFlags()))
+        return Mono.fromCallable(() -> concernedKeywordsExtractor.extract(context.messageResult().getFlags()))
             .flatMap(keywords -> {
                 progress.incrementProcessedMessageCount();
                 if (keywords.isEmpty()) {
@@ -241,7 +238,7 @@ public class KeywordEmailQueryViewPopulator {
         Username owner = ownerSession.getUser();
 
         return retrieveMailbox(ownerSession, mailboxMetadata)
-            .flatMapMany(mailbox -> usersHavingReadRight(owner, mailbox, ownerSession)
+            .flatMapMany(mailbox -> mailboxReadRightsResolver.usersHavingReadRight(owner, mailbox, ownerSession)
                 .collect(ImmutableSet.toImmutableSet())
                 .flatMapMany(readableUsers -> listAllMessages(mailbox, ownerSession)
                     .map(messageResult -> new ProvisionContext(readableUsers, messageResult))));
@@ -255,29 +252,4 @@ public class KeywordEmailQueryViewPopulator {
         return Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.MINIMAL, session));
     }
 
-    private Flux<Username> usersHavingReadRight(Username owner, MessageManager mailbox, MailboxSession ownerSession) {
-        return Mono.fromCallable(() -> mailbox.getResolvedAcl(ownerSession))
-            .flatMapMany(acl -> Flux.concat(
-                    Flux.just(owner),
-                    Flux.fromIterable(acl.getEntries().keySet())
-                        .filter(entryKey -> MailboxACL.NameType.user.equals(entryKey.getNameType()))
-                        .map(MailboxACL.EntryKey::getName)
-                        .map(Username::of))
-                .filterWhen(username -> hasReadRightReactive(owner, acl, username))
-                .distinct());
-    }
-
-    private Mono<Boolean> hasReadRightReactive(Username owner, MailboxACL acl, Username username) {
-        return Mono.fromCallable(() -> mailboxACLResolver.resolveRights(username, acl, owner).contains(MailboxACL.Right.Read))
-            .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER);
-    }
-
-    private Set<Keyword> concernedKeywords(Flags flags) {
-        Stream<Keyword> concernedSystemKeywords = flags.contains(Flags.Flag.FLAGGED) ? Stream.of(FLAGGED) : Stream.empty();
-        Stream<Keyword> userKeywords = Arrays.stream(flags.getUserFlags())
-            .map(flagName -> new Keyword(flagName.toLowerCase(Locale.US)));
-
-        return Stream.concat(concernedSystemKeywords, userKeywords)
-            .collect(ImmutableSet.toImmutableSet());
-    }
 }
