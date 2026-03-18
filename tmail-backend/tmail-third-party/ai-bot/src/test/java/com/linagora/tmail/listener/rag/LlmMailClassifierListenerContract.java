@@ -59,7 +59,7 @@ public interface LlmMailClassifierListenerContract {
     String getLabel1Id();
     String getLabel2Id();
     String getLabel3Id();
-    String NEEDS_ACTION_FLAG = LlmMailBackendClassifierListener.SYSTEM_LABELS.get("needs-action").keyword();
+    String NEEDS_ACTION_FLAG = LlmMailBackendClassifierListener.NEEDS_ACTION;
 
     String markLabelAsSave(String labelKeyword);
 
