@@ -98,6 +98,7 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
                 + "Excludes newsletters, notifications, and FYI messages. Only apply when the email explicitly and urgently requires a direct, personal response or action from the named recipient — not for general announcements, newsletters, automatic notifications, or emails that merely mention the recipient"),
             READ_ONLY);
     }
+    
     private static final Logger LOGGER = LoggerFactory.getLogger(LlmMailBackendClassifierListener.class);
     private static final String SYSTEM_PROMPT_PARAM = "systemPrompt";
     private static final String MAX_BODY_LENGTH_PARAM = "maxBodyLength";
