@@ -21,11 +21,11 @@ package com.linagora.tmail.webadmin.jmap;
 import com.google.common.base.Preconditions;
 
 public record RunningOptions(int messagesPerSecond) {
+    public static final RunningOptions DEFAULT = new RunningOptions(500);
+
     public static RunningOptions withMessageRatePerSecond(int messageRatePerSecond) {
         return new RunningOptions(messageRatePerSecond);
     }
-
-    public static final RunningOptions DEFAULT = new RunningOptions(10);
 
     public RunningOptions {
         Preconditions.checkArgument(messagesPerSecond > 0, "'messagesPerSecond' must be strictly positive");

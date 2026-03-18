@@ -1161,7 +1161,7 @@ curl -XPOST http://ip:port/mailboxes?task=populateKeywordEmailQueryView&messages
 
 An admin can specify the throttling that should be used when running the task:
 
-- `messagesPerSecond` rate at which messages should be processed, per second. Default to `10`.
+- `messagesPerSecond` rate at which messages should be processed, per second. Default to `500`.
 
 Response codes:
 
