@@ -89,6 +89,11 @@ public class PostgresKeywordEmailQueryView implements KeywordEmailQueryView {
                 .map(asEmailEntry()));
     }
 
+    @Override
+    public Mono<Void> clearAll() {
+        return postgresExecutor.executeVoid(dslContext -> Mono.from(dslContext.truncate(TABLE_NAME)));
+    }
+
     private SelectLimitPercentStep buildSelectStatement(DSLContext dslContext, Username username, Keyword keyword, Options options, Limit backendFetchLimit) {
          SelectConditionStep selectStep = dslContext.select(MESSAGE_ID, RECEIVED_AT, THREAD_ID)
             .from(TABLE_NAME)
