@@ -22,7 +22,6 @@ import static org.apache.james.mailbox.postgres.DeleteMessageListener.CONTENT_DE
 
 import org.apache.james.backends.postgres.PostgresDataDefinition;
 import org.apache.james.events.EventListener;
-import org.apache.james.vault.DeletedMessageVaultDeletionListener;
 import org.apache.james.vault.metadata.DeletedMessageMetadataVault;
 import org.apache.james.vault.metadata.PostgresDeletedMessageMetadataDataDefinition;
 
@@ -31,6 +30,7 @@ import com.google.inject.Scopes;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.name.Names;
 import com.linagora.tmail.vault.TMailDeletedMessageVaultModule;
+import com.linagora.tmail.vault.TeamMailboxDeletedMessageVaultDeletionListener;
 import com.linagora.tmail.vault.dto.TmailDeletedMessageWithStorageInformationConverter;
 import com.linagora.tmail.vault.postgres.TmailPostgresDeletedMessageMetadataVault;
 
@@ -50,6 +50,6 @@ public class TMailPostgresDeletedMessageVaultModule extends AbstractModule {
 
         Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class, Names.named(CONTENT_DELETION))
             .addBinding()
-            .to(DeletedMessageVaultDeletionListener.class);
+            .to(TeamMailboxDeletedMessageVaultDeletionListener.class);
     }
 }

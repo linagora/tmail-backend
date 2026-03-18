@@ -21,7 +21,6 @@ package com.linagora.tmail.modules.data;
 import org.apache.james.backends.cassandra.components.CassandraDataDefinition;
 import org.apache.james.events.EventListener;
 import org.apache.james.mailbox.cassandra.DeleteMessageListener;
-import org.apache.james.vault.DeletedMessageVaultDeletionListener;
 import org.apache.james.vault.metadata.DeletedMessageMetadataDataDefinition;
 import org.apache.james.vault.metadata.DeletedMessageMetadataVault;
 
@@ -30,6 +29,7 @@ import com.google.inject.Scopes;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.name.Names;
 import com.linagora.tmail.vault.TMailDeletedMessageVaultModule;
+import com.linagora.tmail.vault.TeamMailboxDeletedMessageVaultDeletionListener;
 import com.linagora.tmail.vault.cassandra.TmailCassandraDeletedMessageMetadataVault;
 import com.linagora.tmail.vault.cassandra.TmailMetadataDAO;
 import com.linagora.tmail.vault.cassandra.TmailStorageInformationDAO;
@@ -57,6 +57,6 @@ public class TMailCassandraDeletedMessageVaultModule extends AbstractModule {
 
         Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class, Names.named(DeleteMessageListener.CONTENT_DELETION))
             .addBinding()
-            .to(DeletedMessageVaultDeletionListener.class);
+            .to(TeamMailboxDeletedMessageVaultDeletionListener.class);
     }
 }
