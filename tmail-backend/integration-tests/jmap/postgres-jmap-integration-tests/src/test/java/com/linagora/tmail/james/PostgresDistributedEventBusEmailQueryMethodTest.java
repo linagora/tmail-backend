@@ -1,37 +1,17 @@
-/********************************************************************
- *  As a subpart of Twake Mail, this file is edited by Linagora.    *
- *                                                                  *
- *  https://twake-mail.com/                                         *
- *  https://linagora.com                                            *
- *                                                                  *
- *  This file is subject to The Affero Gnu Public License           *
- *  version 3.                                                      *
- *                                                                  *
- *  https://www.gnu.org/licenses/agpl-3.0.en.html                   *
- *                                                                  *
- *  This program is distributed in the hope that it will be         *
- *  useful, but WITHOUT ANY WARRANTY; without even the implied      *
- *  warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR         *
- *  PURPOSE. See the GNU Affero General Public License for          *
- *  more details.                                                   *
- ********************************************************************/
-
 package com.linagora.tmail.james;
 
-import static com.linagora.tmail.james.app.PostgresTmailConfiguration.EventBusImpl.IN_MEMORY;
+import static com.linagora.tmail.james.app.PostgresTmailConfiguration.EventBusImpl.RABBITMQ_AND_REDIS;
 
 import org.apache.james.ClockExtension;
 import org.apache.james.DockerOpenSearchExtension;
-import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.postgres.PostgresExtension;
+import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.jmap.rfc8621.contract.EmailQueryMethodContract;
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
 import org.apache.james.utils.GuiceProbe;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.common.collect.ImmutableMap;
@@ -41,6 +21,7 @@ import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
 import com.linagora.tmail.james.app.PostgresTmailConfiguration;
 import com.linagora.tmail.james.app.PostgresTmailServer;
+import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.KeywordEmailQueryMethodContract;
 import com.linagora.tmail.james.common.LabelChangesMethodContract;
 import com.linagora.tmail.james.common.probe.JmapGuiceContactAutocompleteProbe;
@@ -50,8 +31,7 @@ import com.linagora.tmail.james.jmap.firebase.FirebasePushClient;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 import com.linagora.tmail.team.TeamMailboxProbe;
 
-public class PostgresEmailQueryMethodTest implements EmailQueryMethodContract, KeywordEmailQueryMethodContract {
-
+public class PostgresDistributedEventBusEmailQueryMethodTest implements EmailQueryMethodContract, KeywordEmailQueryMethodContract {
     @RegisterExtension
     static JamesServerExtension testExtension = new JamesServerBuilder<PostgresTmailConfiguration>(tmpDir ->
         PostgresTmailConfiguration.builder()
@@ -65,7 +45,7 @@ public class PostgresEmailQueryMethodTest implements EmailQueryMethodContract, K
                 .disableSingleSave())
             .searchConfiguration(SearchConfiguration.openSearch())
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.ENABLED)
-            .eventBusImpl(IN_MEMORY)
+            .eventBusImpl(RABBITMQ_AND_REDIS)
             .keywordEmailQueryViewEnabled(true)
             .build())
         .server(configuration -> PostgresTmailServer.createServer(configuration)
@@ -81,12 +61,7 @@ public class PostgresEmailQueryMethodTest implements EmailQueryMethodContract, K
         .extension(PostgresExtension.empty())
         .extension(new DockerOpenSearchExtension())
         .extension(new ClockExtension())
+        .extension(new RabbitMQExtension())
+        .extension(new RedisExtension())
         .build();
-
-    @Test
-    @Override
-    @Disabled("JAMES-3377 Not supported for in-memory event bus test" +
-        "Do not attempt message parsing a performs a full match on the raw message content")
-    public void emailQueryFilterByTextShouldIgnoreAttachmentContent(GuiceJamesServer server) {
-    }
 }
