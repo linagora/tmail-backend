@@ -122,6 +122,7 @@ import com.linagora.tmail.webadmin.EmailAddressContactRoutesModule;
 import com.linagora.tmail.webadmin.OidcBackchannelLogoutRoutesModule;
 import com.linagora.tmail.webadmin.RateLimitsRoutesModule;
 import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
+import com.linagora.tmail.webadmin.TeamMailboxVaultRoutesModule;
 import com.linagora.tmail.webadmin.archival.InboxArchivalTaskModule;
 import com.linagora.tmail.webadmin.cleanup.MailboxesCleanupModule;
 import com.linagora.tmail.webadmin.contact.aucomplete.ContactIndexingModule;
@@ -185,6 +186,7 @@ public class MemoryServer {
           WEBADMIN,
           new TeamMailboxModule(),
           new TeamMailboxRoutesModule(),
+          new TeamMailboxVaultRoutesModule(),
           new LabelRoutesModule(),
           new DKIMMailetModule())
         .with(new TeamMailboxModule(),

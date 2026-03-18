@@ -579,6 +579,78 @@ Return codes:
 - `400` the target user is a system user or a team mailbox member
 - `404` the team mailbox does not exist
 
+== Deleted Messages Vault for Team Mailboxes
+
+When messages are deleted from a team mailbox, they are stored in the deleted messages vault under the team mailbox's own identity (e.g. `sales@domain.tld`) rather than the internal technical owner.
+This allows vault operations to target each team mailbox individually.
+
+=== Browse deleted messages of a Team Mailbox
+
+....
+curl -XPOST 'http://ip:port/deletedMessages/users/sales@domain.tld/messages?force=true' \
+  -H 'Content-Type: application/json' \
+  -d '{"combinator":"and","criteria":[]}'
+....
+
+Lists deleted messages stored in the vault for the given team mailbox. The `?force=true` parameter bypasses the user existence check, which is required since `sales@domain.tld` is a virtual identity used internally by the vault rather than a real user account.
+
+An empty query (`{"combinator":"and","criteria":[]}`) returns all deleted messages. Criteria can be added to filter by subject, sender, deletion date, etc. — see xref:3.7.0@james-distributed-app:operate/webadmin.adoc#_deleted_messages_vault[the James vault documentation] for the full query syntax.
+
+Response:
+
+....
+[
+  {
+    "messageId": "...",
+    "subject": "Hello",
+    "sender": "alice@domain.tld",
+    "recipients": ["sales@domain.tld"],
+    "deletionDate": "2024-12-15T08:23:45Z",
+    "deliveryDate": "2024-12-14T10:00:00Z",
+    "hasAttachment": false,
+    "size": 1234
+  }
+]
+....
+
+Return codes:
+
+- `200` the list of deleted messages is returned
+- `400` the address is invalid or the query body is malformed
+- `404` no deleted messages found for this team mailbox
+
+=== Restore deleted messages of a Team Mailbox
+
+....
+curl -XPOST 'http://ip:port/deletedMessages/teamMailbox/sales@domain.tld?action=restore'
+....
+
+Schedules a task that restores all deleted messages from the vault for the given team mailbox into its restore mailbox folder.
+
+Response:
+
+....
+{"taskId":"5641376-02ed-47bd-bce7-b7a5110e7e98"}
+....
+
+The scheduled task has type `team-mailbox-deleted-messages-restore` and the following additional information:
+
+....
+{
+  "type": "team-mailbox-deleted-messages-restore",
+  "timestamp": "2024-12-15T08:23:45Z",
+  "teamMailboxAddress": "sales@domain.tld",
+  "successfulRestoreCount": 12,
+  "errorRestoreCount": 0
+}
+....
+
+Return codes:
+
+- `201` the task has been scheduled, a `taskId` is returned
+- `400` the team mailbox address is invalid
+- `404` the team mailbox does not exist
+
 == JMAP Labels
 
 Labels are user-defined tags that can be attached to JMAP messages. Each label has a display name, an internal keyword (IMAP flag), and optional color and description. Labels can optionally be marked as read-only, which prevents them from being updated or deleted via JMAP.
