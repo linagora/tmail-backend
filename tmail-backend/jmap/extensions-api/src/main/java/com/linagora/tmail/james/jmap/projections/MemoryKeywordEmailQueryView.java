@@ -68,7 +68,7 @@ public class MemoryKeywordEmailQueryView implements KeywordEmailQueryView {
     }
 
     @Override
-    public Mono<Void> truncate() {
+    public Mono<Void> clearAll() {
         return Mono.fromRunnable(entriesByUser::clear);
     }
 

@@ -266,18 +266,21 @@ trait KeywordEmailQueryViewContract {
   }
 
   @Test
-  def truncateShouldBeIdempotent(): Unit = {
-    assertThatCode(() => testee.truncate().block())
+  def clearAllShouldBeIdempotent(): Unit = {
+    assertThatCode(() => {
+      testee.clearAll().block()
+      testee.clearAll().block()
+    })
       .doesNotThrowAnyException()
   }
 
   @Test
-  def truncateShouldRemoveAllEntries(): Unit = {
+  def clearAllShouldRemoveAllEntries(): Unit = {
     testee.save(ALICE, KEYWORD_A, DATE_1, messageId1, threadId1).block()
     testee.save(ALICE, KEYWORD_B, DATE_2, messageId2, threadId2).block()
     testee.save(BOB, KEYWORD_A, DATE_3, messageId3, threadId3).block()
 
-    testee.truncate().block()
+    testee.clearAll().block()
 
     assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, options(Limit.limit(12)))).collectSeq().block().asJava)
       .isEmpty()
@@ -288,10 +291,10 @@ trait KeywordEmailQueryViewContract {
   }
 
   @Test
-  def saveShouldWorkAfterTruncate(): Unit = {
+  def saveShouldWorkAfterClearAll(): Unit = {
     testee.save(ALICE, KEYWORD_A, DATE_1, messageId1, threadId1).block()
 
-    testee.truncate().block()
+    testee.clearAll().block()
     testee.save(ALICE, KEYWORD_B, DATE_2, messageId2, threadId2).block()
 
     assertThat(SFlux.fromPublisher(testee.listMessagesByKeyword(ALICE, KEYWORD_A, options(Limit.limit(12)))).collectSeq().block().asJava)

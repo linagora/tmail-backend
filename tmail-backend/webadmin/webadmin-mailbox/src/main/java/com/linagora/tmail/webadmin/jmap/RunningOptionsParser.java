@@ -29,7 +29,7 @@ public class RunningOptionsParser {
             .orElse(RunningOptions.DEFAULT);
     }
 
-    public static Optional<Integer> intQueryParameter(Request request, String queryParameter) {
+    private static Optional<Integer> intQueryParameter(Request request, String queryParameter) {
         try {
             return Optional.ofNullable(request.queryParams(queryParameter))
                 .map(Integer::parseInt);

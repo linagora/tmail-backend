@@ -149,7 +149,7 @@ public class CassandraKeywordEmailQueryView implements KeywordEmailQueryView {
     }
 
     @Override
-    public Mono<Void> truncate() {
+    public Mono<Void> clearAll() {
         return executor.executeVoid(QueryBuilder.truncate(TABLE_NAME)
             .build());
     }
