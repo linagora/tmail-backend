@@ -100,10 +100,10 @@ public class PostgresKeywordEmailQueryView implements KeywordEmailQueryView {
             .and(KEYWORD.eq(keyword.flagName()));
 
         options.after()
-            .map(after -> selectStep.and(RECEIVED_AT.greaterOrEqual(OffsetDateTime.ofInstant(after, ZoneOffset.UTC))));
+            .ifPresent(after -> selectStep.and(RECEIVED_AT.greaterOrEqual(OffsetDateTime.ofInstant(after, ZoneOffset.UTC))));
 
         options.before()
-            .map(before -> selectStep.and(RECEIVED_AT.lessThan(OffsetDateTime.ofInstant(before, ZoneOffset.UTC))));
+            .ifPresent(before -> selectStep.and(RECEIVED_AT.lessThan(OffsetDateTime.ofInstant(before, ZoneOffset.UTC))));
 
         return selectStep.orderBy(RECEIVED_AT.desc())
             .limit(backendFetchLimit.getLimit().get());
