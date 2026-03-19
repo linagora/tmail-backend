@@ -82,6 +82,7 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
     private static final IdentityProvisionerListenerGroup GROUP = new IdentityProvisionerListenerGroup();
     private static final Logger LOGGER = LoggerFactory.getLogger(IdentityProvisionListener.class);
     private static final int DEFAULT_IDENTITY_SORT_ORDER = 0;
+    private static final int TEAM_MAILBOX_IDENTITY_SORT_ORDER = 10;
     private static final String APPLY_WHEN_PATH = "defaultText.applyWhen";
 
     private final LDAPConnectionPool ldapConnectionPool;
@@ -269,7 +270,7 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
             .filter(Identity::mayDelete)
             .hasElements()
             .filter(FunctionalUtils.identityPredicate().negate())
-            .flatMap(noIdentity -> Mono.from(identityRepository.save(user, asIdentityRequest(teamMailboxAddress, identityName)))
+            .flatMap(noIdentity -> Mono.from(identityRepository.save(user, asTeamMailboxIdentityRequest(teamMailboxAddress, identityName)))
                 .doOnSuccess(identity -> LOGGER.info("Created team mailbox identity for user {} with email {}", user.asString(), teamMailboxAddress.asString())))
             .then();
     }
@@ -332,6 +333,17 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
             Optional.empty(),
             Optional.empty(),
             Optional.of(DEFAULT_IDENTITY_SORT_ORDER),
+            Optional.empty(),
+            Optional.empty());
+    }
+
+    private IdentityCreationRequest asTeamMailboxIdentityRequest(MailAddress mailAddress, String identityDisplayName) {
+        return IdentityCreationRequest.fromJava(
+            mailAddress,
+            Optional.of(identityDisplayName),
+            Optional.empty(),
+            Optional.empty(),
+            Optional.of(TEAM_MAILBOX_IDENTITY_SORT_ORDER),
             Optional.empty(),
             Optional.empty());
     }
