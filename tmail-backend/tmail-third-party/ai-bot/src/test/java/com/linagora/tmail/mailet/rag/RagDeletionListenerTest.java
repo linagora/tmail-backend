@@ -108,7 +108,8 @@ public class RagDeletionListenerTest {
             false,
             Optional.of("headerBlobId"),
             Optional.empty(),
-            "bodyBlobId");
+            "bodyBlobId",
+            Optional.empty());
 
         eventBus.dispatch(messageContentDeletionEvent, Set.of()).block();
 
@@ -135,7 +136,8 @@ public class RagDeletionListenerTest {
             false,
             Optional.of("headerBlobId"),
             Optional.empty(),
-            "bodyBlobId");
+            "bodyBlobId",
+            Optional.empty());
 
         eventBus.dispatch(messageContentDeletionEvent, Set.of()).block();
 
@@ -163,7 +165,8 @@ public class RagDeletionListenerTest {
             false,
             Optional.of("headerBlobId"),
             Optional.empty(),
-            "bodyBlobId");
+            "bodyBlobId",
+            Optional.empty());
 
         eventBus.dispatch(messageContentDeletionEvent, Set.of()).block();
 
