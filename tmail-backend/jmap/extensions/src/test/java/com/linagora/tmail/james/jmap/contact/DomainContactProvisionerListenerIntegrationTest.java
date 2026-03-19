@@ -212,11 +212,36 @@ public class DomainContactProvisionerListenerIntegrationTest {
         }
 
         @Test
-        void shouldNotProvisionDomainContactWhenTeamMailboxCreated() throws AddressException {
-            TeamMailbox teamMailbox = TeamMailbox.asTeamMailbox(new MailAddress("teamMailbox@james.org")).get();
+        void shouldIndexDomainContactWhenTeamMailboxCreated() throws AddressException {
+            TeamMailbox teamMailbox = TeamMailbox.asTeamMailbox(new MailAddress("teammailbox@james.org")).get();
             Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox)).block();
 
             assertThat(Flux.from(contactSearchEngine.list(DOMAIN))
+                .map(EmailAddressContact::fields)
+                .collectList()
+                .block())
+                .containsExactlyInAnyOrder(new ContactFields(new MailAddress("teammailbox@james.org"), "", ""));
+        }
+
+        @Test
+        void shouldRemoveDomainContactWhenTeamMailboxDeleted() throws AddressException {
+            TeamMailbox teamMailbox = TeamMailbox.asTeamMailbox(new MailAddress("teamMailbox@james.org")).get();
+            Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox)).block();
+            Mono.from(teamMailboxRepository.deleteTeamMailbox(teamMailbox)).block();
+
+            assertThat(Flux.from(contactSearchEngine.list(DOMAIN))
+                .map(EmailAddressContact::fields)
+                .collectList()
+                .block())
+                .isEmpty();
+        }
+
+        @Test
+        void shouldNotIndexTeamMailboxDomainContactWhenDomainIsBlacklisted() throws AddressException {
+            TeamMailbox teamMailbox = TeamMailbox.asTeamMailbox(new MailAddress("teammailbox@ignored.org")).get();
+            Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox)).block();
+
+            assertThat(Flux.from(contactSearchEngine.list(Domain.of("ignored.org")))
                 .map(EmailAddressContact::fields)
                 .collectList()
                 .block())
