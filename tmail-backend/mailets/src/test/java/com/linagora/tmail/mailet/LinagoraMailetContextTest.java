@@ -54,7 +54,7 @@ import com.linagora.tmail.team.TeamMailboxRepositoryImpl;
 import reactor.core.publisher.Mono;
 
 public class LinagoraMailetContextTest implements JamesMailetContextContract {
-    private static final TeamMailbox TEAM_MAILBOX = TeamMailbox.fromJava(DOMAIN_COM, "makerting").get();
+    private static final TeamMailbox TEAM_MAILBOX = TeamMailbox.fromJava(DOMAIN_COM, "test-bte-2").get();
 
     @Override
     public AbstractDomainList domainList() {
@@ -139,6 +139,22 @@ public class LinagoraMailetContextTest implements JamesMailetContextContract {
         Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
         assertThat(testee.localRecipients(ImmutableList.of(TEAM_MAILBOX.asMailAddress())))
             .containsExactlyInAnyOrder(TEAM_MAILBOX.asMailAddress());
+    }
+
+    @Test
+    void localRecipientsShouldAcceptSubAddressingOnTeamMailboxes() throws Exception {
+        Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+        MailAddress address = new MailAddress(TEAM_MAILBOX.asMailAddress().getLocalPart() + "+test@" + DOMAIN_COM.asString());
+        assertThat(testee.localRecipients(ImmutableList.of(address)))
+            .containsExactlyInAnyOrder(address);
+    }
+
+    @Test
+    void isLocalEmailShouldAcceptSubAddressingOnTeamMailboxes() throws Exception {
+        Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+        MailAddress address = new MailAddress(TEAM_MAILBOX.asMailAddress().getLocalPart() + "+test@" + DOMAIN_COM.asString());
+        assertThat(testee.isLocalEmail(address))
+            .isTrue();
     }
 
     @Test
