@@ -34,14 +34,12 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.google.common.collect.ImmutableMap;
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
 import com.linagora.tmail.james.app.PostgresTmailConfiguration;
 import com.linagora.tmail.james.app.PostgresTmailServer;
-import com.linagora.tmail.james.common.KeywordEmailQueryMethodContract;
 import com.linagora.tmail.james.common.LabelChangesMethodContract;
 import com.linagora.tmail.james.common.probe.JmapGuiceContactAutocompleteProbe;
 import com.linagora.tmail.james.common.probe.JmapSettingsProbe;
@@ -50,7 +48,7 @@ import com.linagora.tmail.james.jmap.firebase.FirebasePushClient;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 import com.linagora.tmail.team.TeamMailboxProbe;
 
-public class PostgresEmailQueryMethodTest implements EmailQueryMethodContract, KeywordEmailQueryMethodContract {
+public class PostgresEmailQueryMethodTest implements EmailQueryMethodContract {
 
     @RegisterExtension
     static JamesServerExtension testExtension = new JamesServerBuilder<PostgresTmailConfiguration>(tmpDir ->
@@ -66,7 +64,6 @@ public class PostgresEmailQueryMethodTest implements EmailQueryMethodContract, K
             .searchConfiguration(SearchConfiguration.openSearch())
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.ENABLED)
             .eventBusImpl(IN_MEMORY)
-            .keywordEmailQueryViewEnabled(true)
             .build())
         .server(configuration -> PostgresTmailServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
@@ -76,8 +73,7 @@ public class PostgresEmailQueryMethodTest implements EmailQueryMethodContract, K
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(JmapGuiceContactAutocompleteProbe.class))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(JmapSettingsProbe.class))
             .overrideWith(binder -> binder.bind(FirebasePushClient.class).toInstance(LabelChangesMethodContract.firebasePushClient()))
-            .overrideWith(new DelegationProbeModule())
-            .overrideWith(new LinagoraTestJMAPServerModule(ImmutableMap.of("view.keyword.query.enabled", true))))
+            .overrideWith(new DelegationProbeModule()))
         .extension(PostgresExtension.empty())
         .extension(new DockerOpenSearchExtension())
         .extension(new ClockExtension())

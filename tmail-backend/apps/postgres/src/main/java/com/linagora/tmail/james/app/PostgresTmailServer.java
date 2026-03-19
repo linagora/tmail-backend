@@ -588,8 +588,10 @@ public class PostgresTmailServer {
     private static Module chooseKeywordEmailQueryListener(PostgresTmailConfiguration configuration) {
         if (configuration.keywordEmailQueryViewEnabled()) {
             return switch (configuration.eventBusImpl()) {
-                case IN_MEMORY -> new PostgresMemoryEventBusKeywordEmailQueryViewListenerModule();
                 case RABBITMQ, RABBITMQ_AND_REDIS -> new KeywordEmailQueryViewListenerModule();
+                case IN_MEMORY -> binder -> {
+
+                };
             };
         }
         return binder -> {
