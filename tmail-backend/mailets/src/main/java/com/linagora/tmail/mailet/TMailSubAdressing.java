@@ -43,6 +43,7 @@ import org.apache.mailet.StorageDirective;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.fge.lambdas.Throwing;
 import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.team.TeamMailbox;
 
@@ -65,11 +66,10 @@ public class TMailSubAdressing extends SubAddressing {
     @Override
     protected Optional<MailboxPath> getPathWithCorrectCase(MailAddress recipient, String encodedTargetFolder) throws UsersRepositoryException, MailboxException {
         MailAddress strippedRecipient = recipient.stripDetails(UsersRepository.LOCALPART_DETAIL_DELIMITER);
-        Optional<TeamMailbox> maybeTeamMailbox = OptionConverters.toJava(TeamMailbox.asTeamMailbox(strippedRecipient));
-        if (maybeTeamMailbox.isPresent()) {
-            return findTeamMailboxFolder(maybeTeamMailbox.get(), encodedTargetFolder);
-        }
-        return super.getPathWithCorrectCase(recipient, encodedTargetFolder);
+
+        return OptionConverters.toJava(TeamMailbox.asTeamMailbox(strippedRecipient))
+            .flatMap(teamMailbox -> findTeamMailboxFolder(teamMailbox, encodedTargetFolder))
+            .or(Throwing.supplier(() -> super.getPathWithCorrectCase(recipient, encodedTargetFolder)).sneakyThrow());
     }
 
     private Optional<MailboxPath> findTeamMailboxFolder(TeamMailbox teamMailbox, String encodedTargetFolder) {

@@ -21,17 +21,20 @@ package com.linagora.tmail.mailet;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.Collection;
+import java.util.Optional;
 
 import jakarta.mail.MessagingException;
 
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.james.core.Domain;
+import org.apache.james.core.Username;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
 import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.james.mailbox.model.MailboxId;
+import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.store.StoreSubscriptionManager;
 import org.apache.james.user.memory.MemoryUsersRepository;
 import org.apache.mailet.Attribute;
@@ -118,6 +121,26 @@ class TMailSubAdressingTest {
 
         assertThat(mail.attributes().map(this::unbox))
             .containsOnly(Pair.of(RECIPIENT_ATTRIBUTE, EXPECTED_FOLDER_NAME));
+    }
+
+    @Test
+    void shouldAddStorageDirectiveWhenAnyoneHasPostRightForUser() throws Exception {
+        Username username = Username.of("bob@linagora.com");
+        MailboxSession session = mailboxManager.createSystemSession(username);
+        MailboxId userId = mailboxManager.createMailbox(MailboxPath.forUser(username, "test"), session).get();
+        mailboxManager.applyRightsCommand(userId, MailboxACL.command()
+            .key(MailboxACL.ANYONE_KEY)
+            .rights(MailboxACL.Right.Post)
+            .asAddition(), session);
+
+        Mail mail =  FakeMail.builder()
+            .name("name")
+            .recipient("bob+test@linagora.com")
+            .sender(SENDER).build();
+        testee.service(mail);
+
+        assertThat(mail.attributes().map(this::unbox))
+            .containsOnly(Pair.of(AttributeName.of("DeliveryPaths_bob@linagora.com"), "test"));
     }
 
     @Test
