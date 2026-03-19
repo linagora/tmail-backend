@@ -762,7 +762,8 @@ class KeywordEmailQueryViewListenerTest {
             });
 
             MailboxEvents.MessageContentDeletionEvent event = new MailboxEvents.MessageContentDeletionEvent(Event.EventId.random(), OWNER, mailboxId, messageId, 12L,
-                INTERNAL_DATE, asFlags(List.of(Flags.Flag.FLAGGED), USER_NEW_KEYWORD), false, Optional.empty(), Optional.empty(), "bodyBlobId");
+                INTERNAL_DATE, asFlags(List.of(Flags.Flag.FLAGGED), USER_NEW_KEYWORD), false, Optional.empty(), Optional.empty(), "bodyBlobId",
+                Optional.empty());
 
             Mono.from(testee.reactiveEvent(event)).block();
 
