@@ -126,6 +126,7 @@ class TMailWithMailingListValidRcptHandlerTest {
         "group@linagora.com",
         "address-alias@linagora.com",
         "sales@linagora.com",
+        "sales+detail@linagora.com",
         "mygroup@lists.james.org"
     })
     void shouldHandeLocalResources(String address) throws Exception {

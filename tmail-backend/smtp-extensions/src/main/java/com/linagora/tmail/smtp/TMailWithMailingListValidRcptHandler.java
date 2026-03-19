@@ -90,7 +90,8 @@ public class TMailWithMailingListValidRcptHandler extends ValidRcptHandler {
     }
 
     private boolean isATeamMailbox(MailAddress recipient) {
-        return TeamMailbox.asTeamMailbox(recipient)
+        MailAddress strippedRecipient = recipient.stripDetails(UsersRepository.LOCALPART_DETAIL_DELIMITER);
+        return TeamMailbox.asTeamMailbox(strippedRecipient)
             .map(tm -> Mono.from(teamMailboxRepository.exists(tm)).block())
             .getOrElse(() -> false);
     }
