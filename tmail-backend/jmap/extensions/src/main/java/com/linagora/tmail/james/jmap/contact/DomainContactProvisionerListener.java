@@ -42,6 +42,7 @@ import org.slf4j.LoggerFactory;
 
 import com.github.fge.lambdas.Throwing;
 import com.google.common.collect.ImmutableList;
+import com.linagora.tmail.team.TeamMailbox;
 import com.unboundid.ldap.sdk.Filter;
 import com.unboundid.ldap.sdk.LDAPConnectionPool;
 import com.unboundid.ldap.sdk.LDAPSearchException;
@@ -50,6 +51,7 @@ import com.unboundid.ldap.sdk.SearchResultEntry;
 import com.unboundid.ldap.sdk.SearchScope;
 
 import reactor.core.publisher.Mono;
+import scala.jdk.javaapi.OptionConverters;
 
 public class DomainContactProvisionerListener implements EventListener.ReactiveGroupEventListener {
     private static final Logger LOGGER = LoggerFactory.getLogger(DomainContactProvisionerListener.class);
@@ -128,7 +130,21 @@ public class DomainContactProvisionerListener implements EventListener.ReactiveG
             return maybeDomain.map(domain -> addDomainContact(domain, username))
                 .orElse(Mono.empty());
         }
-        return Mono.empty();
+        return OptionConverters.toJava(TeamMailbox.from(event.getMailboxPath()))
+            .filter(teamMailbox -> teamMailbox.mailboxPath().equals(event.getMailboxPath()))
+            .map(this::addTeamMailboxDomainContact)
+            .orElse(Mono.empty());
+    }
+
+    private Mono<Void> addTeamMailboxDomainContact(TeamMailbox teamMailbox) {
+        Domain domain = teamMailbox.asMailAddress().getDomain();
+        if (ignoredDomains.contains(domain)) {
+            return Mono.empty();
+        }
+        ContactFields contactFields = new ContactFields(teamMailbox.asMailAddress(), "", "");
+        return Mono.from(contactSearchEngine.index(domain, contactFields))
+            .doOnError(error -> LOGGER.error("Error when indexing team mailbox contact for domain", error))
+            .then();
     }
 
     private Mono<Void> addDomainContact(Domain domain, Username username) {
@@ -183,7 +199,20 @@ public class DomainContactProvisionerListener implements EventListener.ReactiveG
             return maybeDomain.map(domain -> removeDomainContact(domain, username))
                 .orElse(Mono.empty());
         }
-        return Mono.empty();
+        return OptionConverters.toJava(TeamMailbox.from(event.getMailboxPath()))
+            .filter(teamMailbox -> teamMailbox.mailboxPath().equals(event.getMailboxPath()))
+            .map(this::removeTeamMailboxDomainContact)
+            .orElse(Mono.empty());
+    }
+
+    private Mono<Void> removeTeamMailboxDomainContact(TeamMailbox teamMailbox) {
+        Domain domain = teamMailbox.asMailAddress().getDomain();
+        if (ignoredDomains.contains(domain)) {
+            return Mono.empty();
+        }
+        return Mono.from(contactSearchEngine.delete(domain, teamMailbox.asMailAddress()))
+            .doOnError(error -> LOGGER.error("Error when removing team mailbox contact for domain", error))
+            .then();
     }
 
     private Mono<Void> removeDomainContact(Domain domain, Username username) {
