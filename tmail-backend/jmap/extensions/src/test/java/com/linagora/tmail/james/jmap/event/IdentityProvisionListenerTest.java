@@ -320,6 +320,7 @@ public class IdentityProvisionListenerTest {
             softly.assertThat(identities).hasSize(1);
             softly.assertThat(identities.getFirst().name()).isEqualTo("marketing");
             softly.assertThat(identities.getFirst().email()).isEqualTo(teamMailbox.asMailAddress());
+            softly.assertThat(identities.getFirst().sortOrder()).isEqualTo(10);
             softly.assertThat(identities.getFirst().mayDelete()).isEqualTo(true);
         });
     }
@@ -345,6 +346,7 @@ public class IdentityProvisionListenerTest {
             softly.assertThat(identities).hasSize(1);
             softly.assertThat(identities.getFirst().name()).isEqualTo("marketing");
             softly.assertThat(identities.getFirst().email()).isEqualTo(teamMailbox.asMailAddress());
+            softly.assertThat(identities.getFirst().sortOrder()).isEqualTo(10);
             softly.assertThat(identities.getFirst().mayDelete()).isEqualTo(true);
         });
     }
