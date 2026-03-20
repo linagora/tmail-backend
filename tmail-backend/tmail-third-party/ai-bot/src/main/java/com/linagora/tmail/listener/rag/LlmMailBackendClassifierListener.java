@@ -56,7 +56,6 @@ import org.slf4j.LoggerFactory;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.collect.Sets;
 import com.google.inject.name.Named;
@@ -87,13 +86,19 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
     public static final Group GROUP = new LlmMailPrioritizationBackendClassifierGroup();
     public static final String NEEDS_ACTION = "needs-action";
     public static final boolean READ_ONLY = true;
-    public static ImmutableMap<String, Label> SYSTEM_LABELS = ImmutableMap.of(NEEDS_ACTION, new Label(
-        LabelId.fromKeyword(NEEDS_ACTION),
-        DisplayName.apply(NEEDS_ACTION),
-        NEEDS_ACTION,
-        scala.Option.apply(new Color("#FF0000")),
-        scala.Option.apply("Emails requiring recipient action: answering questions, making decisions, completing tasks, handling requests, or responding by deadline. Excludes newsletters, notifications, and FYI messages."),
-        READ_ONLY));
+
+    public static Label buildNeedsActionLabel(String displayName, String email) {
+        return new Label(
+            LabelId.fromKeyword(NEEDS_ACTION),
+            DisplayName.apply(NEEDS_ACTION),
+            NEEDS_ACTION,
+            scala.Option.apply(new Color("#FF0000")),
+            scala.Option.apply("Emails requiring direct action from " + displayName + " <" + email + ">: "
+                + "answering questions, making decisions, completing tasks, handling requests, or responding by deadline. "
+                + "Excludes newsletters, notifications, and FYI messages. Only apply when the email explicitly and urgently requires a direct, personal response or action from the named recipient — not for general announcements, newsletters, automatic notifications, or emails that merely mention the recipient"),
+            READ_ONLY);
+    }
+    
     private static final Logger LOGGER = LoggerFactory.getLogger(LlmMailBackendClassifierListener.class);
     private static final String SYSTEM_PROMPT_PARAM = "systemPrompt";
     private static final String MAX_BODY_LENGTH_PARAM = "maxBodyLength";
@@ -104,22 +109,21 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
     public static final String GUESSED_LABEL_SUFFIX = "-save";
     private static final String DEFAULT_SYSTEM_PROMPT = """
     Analyze the email and select labels that best match its content and intent.
-    
+
     Selection criteria:
+    - Only assign a label when you are highly confident it applies — when in doubt, omit it
     - Choose labels whose descriptions match the email's topic, intent, or category
     - Prioritize specificity: prefer specific labels over generic ones
-    - Only include genuinely relevant labels
-    - You may return labels depending on relevance
-    
+
     OUTPUT FORMAT:
     Return label IDs as comma-separated values with no spaces.
-    
+
     Examples:
     - needs-action,label_work
     - label_personal
     - needs-action
     - (empty if no labels match)
-    
+
     Return ONLY the label IDs. No explanations.
     """;
 
@@ -197,8 +201,8 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
                 .collect(ImmutableSet.toImmutableSet()));
         }
 
-        Set<String> validateLabelIds(Set<Label> userLabels) {
-            Set<String> allAvailableLabels = Stream.concat(userLabels.stream(), SYSTEM_LABELS.values().stream())
+        Set<String> validateLabelIds(UserContext context) {
+            Set<String> allAvailableLabels = Stream.concat(context.labels().stream(), context.systemLabels().stream())
                 .map(Label::keyword)
                 .collect(Collectors.toSet());
 
@@ -211,7 +215,7 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
             }
 
             Flags flags = new Flags();
-            validateLabelIds(context.labels()).forEach(label -> {
+            validateLabelIds(context).forEach(label -> {
                 flags.add(label);
                 if (DUAL_LABELING_ENABLED) {
                     flags.add(label + GUESSED_LABEL_SUFFIX);
@@ -226,11 +230,15 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
         }
     }
 
-    record UserContext(String displayName, Set<Label> labels) {
+    record UserContext(String displayName, Set<Label> labels, Label needsActionLabel) {
+        Set<Label> systemLabels() {
+            return ImmutableSet.of(needsActionLabel);
+        }
     }
 
     private Mono<Void> classifyMail(LlmMailClassifierListener.ParsedMessage message, MailboxSession session) {
-        return Mono.zip(getUserDisplayName(session.getUser()), getUserLabels(session.getUser()), UserContext::new)
+        return Mono.zip(getUserDisplayName(session.getUser()), getUserLabels(session.getUser()),
+                (displayName, labels) -> new UserContext(displayName, labels, buildNeedsActionLabel(displayName, session.getUser().asString())))
             .flatMap(userContext -> Mono.fromCallable(() -> buildUserPrompt(message, session.getUser(), userContext))
                 .flatMap(userPrompt -> performLlmClassification(message, session, userPrompt, userContext)))
             .doOnError(e -> LOGGER.error("LLM call failed for messageId {} in mailboxId {} of user {}",
@@ -250,15 +258,15 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
                     .field("sender", llmUserPrompt.sender())
                     .field("user", llmUserPrompt.user())
                     .field("subject", llmUserPrompt.subject())
-                    .field("decision", llmOutput.labels.contains(SYSTEM_LABELS.get(NEEDS_ACTION).keyword()) ? "YES" : "NO")
-                    .field("labels suggested", getLabelsNamesFromIds(llmOutput.labels, userContext.labels()))
+                    .field("decision", llmOutput.labels.contains(NEEDS_ACTION) ? "YES" : "NO")
+                    .field("labels suggested", getLabelsNamesFromIds(llmOutput.labels, userContext))
                     .field("preview", truncatePreview(llmUserPrompt.textContent()))
                     .log(logger -> logger.info("Email successfully classified"));
             }
     }
 
-    private String getLabelsNamesFromIds(Set<String> labelIds, Set<Label> userLabels) {
-        Set<String> guessedLabelNames = Stream.concat(userLabels.stream(), SYSTEM_LABELS.values().stream())
+    private String getLabelsNamesFromIds(Set<String> labelIds, UserContext userContext) {
+        Set<String> guessedLabelNames = Stream.concat(userContext.labels().stream(), userContext.systemLabels().stream())
             .filter(label -> labelIds.contains(label.keyword()))
             .map(Label::displayName)
             .map(DisplayName::value)
@@ -314,15 +322,15 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
                     .collect(Collectors.joining(", ")))
                 .orElse("");
             String subject = Strings.nullToEmpty(message.parsed().getSubject());
-            String labelsInfo = buildLabelsInfo(userContext.labels());
+            String labelsInfo = buildLabelsInfo(userContext);
             MessageContentExtractor.MessageContent messageContent = new MessageContentExtractor().extract(message.parsed());
             Optional<String> maybeBody = messageContent.extractMainTextContent(htmlTextExtractor);
 
             return new LlmUserPrompt(userContext.displayName(), username.asString(), truncateBody(maybeBody.orElse("")), from, to, subject, labelsInfo);
     }
 
-    private String buildLabelsInfo(Set<Label> userLabels) {
-        return  Stream.concat(SYSTEM_LABELS.values().stream(), userLabels.stream())
+    private String buildLabelsInfo(UserContext userContext) {
+        return Stream.concat(userContext.systemLabels().stream(), userContext.labels().stream())
             .map(label -> "labelId : " + label.keyword() + " - Label name :" + label.displayName() + " - label description :" + OptionConverters.toJava(label.description()).orElse("No description"))
             .collect(Collectors.joining("\n- ", "- ", ""));
     }
