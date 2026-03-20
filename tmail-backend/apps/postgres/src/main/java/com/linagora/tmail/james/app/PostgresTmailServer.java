@@ -140,6 +140,7 @@ import com.linagora.tmail.ScheduledReconnectionHandler;
 import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.blob.guice.BlobStoreModulesChooser;
 import com.linagora.tmail.disconnector.EventBusDisconnectorModule;
+import com.linagora.tmail.event.KeywordEmailQueryViewListenerModule;
 import com.linagora.tmail.event.RabbitMQAndRedisEventBusModule;
 import com.linagora.tmail.event.TMailJMAPListenerModule;
 import com.linagora.tmail.event.TmailEventModule;
@@ -187,6 +188,7 @@ import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.listener.CollectTrustedContactsListenerModule;
 import com.linagora.tmail.mailbox.opensearch.TmailOpenSearchMailboxMappingModule;
 import com.linagora.tmail.mailbox.quota.postgres.PostgresUserQuotaReporterModule;
+import com.linagora.tmail.modules.data.PostgresKeywordEmailQueryViewModule;
 import com.linagora.tmail.modules.data.TMailPostgresDataModule;
 import com.linagora.tmail.modules.data.TMailPostgresDeletedMessageVaultModule;
 import com.linagora.tmail.modules.data.TMailPostgresUsersRepositoryModule;
@@ -275,7 +277,8 @@ public class PostgresTmailServer {
             .overrideWith(chooseTaskManagerModules(configuration))
             .overrideWith(chooseJmapOidc(configuration))
             .overrideWith(chooseTWPSettingsModule(configuration.twpSettingsModuleChooserConfiguration()))
-            .overrideWith(chooseEventBusModules(configuration.eventBusImpl()));
+            .overrideWith(chooseEventBusModules(configuration.eventBusImpl()))
+            .overrideWith(chooseKeywordEmailQueryListener(configuration));
     }
 
     private static final Module WEBADMIN = Modules.combine(
@@ -332,6 +335,7 @@ public class PostgresTmailServer {
         new JmapSettingsMethodModule(),
         new PublicAssetsModule(),
         new MailboxClearMethodModule(),
+        new PostgresKeywordEmailQueryViewModule(),
         new FolderFilteringActionMethodModule())
         .with(new TeamMailboxJmapModule());
 
@@ -581,5 +585,19 @@ public class PostgresTmailServer {
             return List.of(new TWPSettingsModule());
         }
         return List.of();
+    }
+
+    private static Module chooseKeywordEmailQueryListener(PostgresTmailConfiguration configuration) {
+        if (configuration.keywordEmailQueryViewEnabled()) {
+            return switch (configuration.eventBusImpl()) {
+                case RABBITMQ, RABBITMQ_AND_REDIS -> new KeywordEmailQueryViewListenerModule();
+                case IN_MEMORY -> binder -> {
+
+                };
+            };
+        }
+        return binder -> {
+
+        };
     }
 }
