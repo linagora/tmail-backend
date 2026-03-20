@@ -24,7 +24,13 @@ import org.apache.james.core.Username;
 import org.apache.james.events.Event;
 import org.apache.james.events.EventListener;
 import org.apache.james.events.Group;
+import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.mailbox.SessionProvider;
 import org.apache.james.mailbox.events.MailboxEvents;
+import org.apache.james.mailbox.model.Mailbox;
+import org.apache.james.mailbox.model.MailboxId;
+import org.apache.james.mailbox.store.MailboxSessionMapperFactory;
+import org.apache.james.util.FunctionalUtils;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,15 +49,24 @@ public class RagDeletionListener implements EventListener.ReactiveGroupEventList
     }
 
     public static final Group RAG_DELETION_LISTENER_GROUP = new RagDeletionListenerGroup();
+    private static final Username ADMIN = Username.of("admin");
     private static final Logger LOGGER = LoggerFactory.getLogger(RagDeletionListener.class);
 
+    private final MailboxSession session;
     private final JmapSettingsRepository jmapSettingsRepository;
+    private final MailboxSessionMapperFactory mapperFactory;
     private final Partition.Factory partitionFactory;
     private final OpenRagHttpClient openRagHttpClient;
 
     @Inject
-    public RagDeletionListener(JmapSettingsRepository jmapSettingsRepository, Partition.Factory partitionFactory, OpenRagHttpClient openRagHttpClient) {
+    public RagDeletionListener(JmapSettingsRepository jmapSettingsRepository,
+                               SessionProvider sessionProvider,
+                               MailboxSessionMapperFactory mapperFactory,
+                               Partition.Factory partitionFactory,
+                               OpenRagHttpClient openRagHttpClient) {
+        this.session = sessionProvider.createSystemSession(ADMIN);
         this.jmapSettingsRepository = jmapSettingsRepository;
+        this.mapperFactory = mapperFactory;
         this.partitionFactory = partitionFactory;
         this.openRagHttpClient = openRagHttpClient;
     }
@@ -69,13 +84,28 @@ public class RagDeletionListener implements EventListener.ReactiveGroupEventList
     @Override
     public Publisher<Void> reactiveEvent(Event event) {
         if (event instanceof MailboxEvents.MessageContentDeletionEvent contentDeletionEvent) {
-            return Mono.just(contentDeletionEvent)
-                .map(MailboxEvents.MessageContentDeletionEvent::getUsername)
-                .filterWhen(this::aiRagSettingEnabled)
+            return isUnreferencedByUser(contentDeletionEvent)
+                .filter(Boolean::booleanValue)
+                .filterWhen(any -> aiRagSettingEnabled(contentDeletionEvent.getUsername()))
                 .flatMap(any -> deleteRagDocument(contentDeletionEvent));
         }
 
         return Mono.empty();
+    }
+
+    private Mono<Boolean> isUnreferencedByUser(MailboxEvents.MessageContentDeletionEvent contentDeletionEvent) {
+        return mapperFactory.getMessageIdMapper(session)
+            .findMailboxesReactive(contentDeletionEvent.messageId())
+            .filter(mailboxId -> !mailboxId.equals(contentDeletionEvent.mailboxId()))
+            .flatMap(this::retrieveMailboxUser)
+            .any(contentDeletionEvent.getUsername()::equals)
+            .map(FunctionalUtils.negate());
+    }
+
+    private Mono<Username> retrieveMailboxUser(MailboxId mailboxId) {
+        return mapperFactory.getMailboxMapper(session)
+            .findMailboxById(mailboxId)
+            .map(Mailbox::getUser);
     }
 
     private Mono<Boolean> aiRagSettingEnabled(Username username) {
