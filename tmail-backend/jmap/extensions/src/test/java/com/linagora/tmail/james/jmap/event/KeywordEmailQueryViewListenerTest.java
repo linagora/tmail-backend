@@ -753,7 +753,7 @@ class KeywordEmailQueryViewListenerTest {
     @Nested
     class MessageContentDeletionEvent {
         @Test
-        void shouldDeleteConcernedKeywords() throws Exception {
+        void shouldDeleteConcernedKeywordViews() throws Exception {
             MessageManager.AppendResult appendResult = appendMessage(asFlags(List.of(Flags.Flag.FLAGGED), USER_NEW_KEYWORD));
             MessageId messageId = appendResult.getId().getMessageId();
             CALMLY_AWAIT.untilAsserted(() -> {
@@ -761,6 +761,9 @@ class KeywordEmailQueryViewListenerTest {
                 assertThat(messageIdsByKeywordView(OWNER, USER_NEW_KEYWORD)).containsExactly(messageId);
             });
 
+            // delete the message
+            ownerInbox().setFlags(new Flags(Flags.Flag.DELETED), MessageManager.FlagsUpdateMode.ADD, MessageRange.one(appendResult.getId().getUid()), ownerSession);
+            ownerInbox().expunge(MessageRange.one(appendResult.getId().getUid()), ownerSession);
             MailboxEvents.MessageContentDeletionEvent event = new MailboxEvents.MessageContentDeletionEvent(Event.EventId.random(), OWNER, mailboxId, MailboxACL.EMPTY, messageId, 12L,
                 INTERNAL_DATE, asFlags(List.of(Flags.Flag.FLAGGED), USER_NEW_KEYWORD), false, Optional.empty(), Optional.empty(), "bodyBlobId",
                 Optional.empty());
@@ -770,6 +773,273 @@ class KeywordEmailQueryViewListenerTest {
             CALMLY_AWAIT.untilAsserted(() -> {
                 assertThat(messageIdsByKeywordView(OWNER, IMPORTANT_FLAGGED)).isEmpty();
                 assertThat(messageIdsByKeywordView(OWNER, USER_NEW_KEYWORD)).isEmpty();
+            });
+        }
+
+        @Test
+        void shouldDeleteConcernedKeywordViewsForOwnerAndShareeWhenBothLoseAccess() throws Exception {
+            // GIVEN owner shares the mailbox with the sharee
+            resources.getStoreRightManager().applyRightsCommand(mailboxId,
+                MailboxACL.command().forUser(SHAREE)
+                    .rights(MailboxACL.Right.Read, MailboxACL.Right.Lookup)
+                    .asAddition(),
+                ownerSession);
+
+            // AND both owner and sharee see the keyword-view entry for the shared message
+            MessageManager.AppendResult appendResult = appendMessage(asFlags(USER_NEW_KEYWORD));
+            MessageId messageId = appendResult.getId().getMessageId();
+            CALMLY_AWAIT.untilAsserted(() -> {
+                assertThat(messageIdsByKeywordView(OWNER, USER_NEW_KEYWORD)).containsExactly(messageId);
+                assertThat(messageIdsByKeywordView(SHAREE, USER_NEW_KEYWORD)).containsExactly(messageId);
+            });
+
+            // WHEN the owner expunges the only shared-mailbox reference
+            ownerInbox().setFlags(new Flags(Flags.Flag.DELETED), MessageManager.FlagsUpdateMode.ADD, MessageRange.one(appendResult.getId().getUid()), ownerSession);
+            ownerInbox().expunge(MessageRange.one(appendResult.getId().getUid()), ownerSession);
+
+            MailboxACL sharedMailboxACL = MailboxACL.EMPTY.union(
+                MailboxACL.EntryKey.createUserEntryKey(SHAREE.asString()),
+                new MailboxACL.Rfc4314Rights(MailboxACL.Right.Read, MailboxACL.Right.Lookup));
+
+            MailboxEvents.MessageContentDeletionEvent event = new MailboxEvents.MessageContentDeletionEvent(Event.EventId.random(), OWNER, mailboxId,
+                sharedMailboxACL,
+                messageId, 12L, INTERNAL_DATE, asFlags(USER_NEW_KEYWORD), false, Optional.empty(), Optional.empty(), "bodyBlobId", Optional.empty());
+
+            Mono.from(testee.reactiveEvent(event)).block();
+
+            // THEN both owner and sharee keyword views are cleaned up
+            CALMLY_AWAIT.untilAsserted(() -> {
+                assertThat(messageIdsByKeywordView(OWNER, USER_NEW_KEYWORD)).isEmpty();
+                assertThat(messageIdsByKeywordView(SHAREE, USER_NEW_KEYWORD)).isEmpty();
+            });
+        }
+
+        @Test
+        void shouldDeleteConcernedKeywordViewsForShareeAndKeepOwnerWhenOwnerStillHasAnotherReference() throws Exception {
+            // GIVEN owner has a private mailbox to keep another reference
+            MailboxId ownerPersonalMailboxId = Mono.from(mailboxManager.createMailboxReactive(MailboxPath.forUser(OWNER, "private"), ownerSession)).block();
+
+            // AND owner shares the mailbox with the sharee
+            resources.getStoreRightManager().applyRightsCommand(mailboxId,
+                MailboxACL.command().forUser(SHAREE)
+                    .rights(MailboxACL.Right.Read, MailboxACL.Right.Lookup)
+                    .asAddition(),
+                ownerSession);
+
+            // AND both owner and sharee see the keyword-view entry for the shared message
+            MessageManager.AppendResult appendResult = appendMessage(asFlags(USER_NEW_KEYWORD));
+            MessageId messageId = appendResult.getId().getMessageId();
+            CALMLY_AWAIT.untilAsserted(() -> {
+                assertThat(messageIdsByKeywordView(OWNER, USER_NEW_KEYWORD)).containsExactly(messageId);
+                assertThat(messageIdsByKeywordView(SHAREE, USER_NEW_KEYWORD)).containsExactly(messageId);
+            });
+
+            // AND owner copies the message to another mailbox
+            Flux.from(mailboxManager.copyMessagesReactive(MessageRange.one(appendResult.getId().getUid()), mailboxId, ownerPersonalMailboxId, ownerSession))
+                .then()
+                .block();
+
+            // WHEN the owner expunges the shared-mailbox reference
+            ownerInbox().setFlags(new Flags(Flags.Flag.DELETED), MessageManager.FlagsUpdateMode.ADD, MessageRange.one(appendResult.getId().getUid()), ownerSession);
+            ownerInbox().expunge(MessageRange.one(appendResult.getId().getUid()), ownerSession);
+
+            MailboxACL sharedMailboxACL = MailboxACL.EMPTY.union(
+                MailboxACL.EntryKey.createUserEntryKey(SHAREE.asString()),
+                new MailboxACL.Rfc4314Rights(MailboxACL.Right.Read, MailboxACL.Right.Lookup));
+
+            MailboxEvents.MessageContentDeletionEvent event = new MailboxEvents.MessageContentDeletionEvent(Event.EventId.random(), OWNER, mailboxId,
+                sharedMailboxACL,
+                messageId, 12L, INTERNAL_DATE, asFlags(USER_NEW_KEYWORD), false, Optional.empty(), Optional.empty(), "bodyBlobId", Optional.empty());
+
+            Mono.from(testee.reactiveEvent(event)).block();
+
+            // THEN the sharee keyword view is cleaned up while the owner keeps it
+            CALMLY_AWAIT.untilAsserted(() -> {
+                assertThat(messageIdsByKeywordView(OWNER, USER_NEW_KEYWORD)).containsExactly(messageId);
+                assertThat(messageIdsByKeywordView(SHAREE, USER_NEW_KEYWORD)).isEmpty();
+            });
+        }
+
+        @Test
+        void shouldDeleteConcernedKeywordViewsForOwnerAndKeepShareeWhenShareeStillHasAnotherReference() throws Exception {
+            // GIVEN sharee has a private mailbox to keep another reference
+            MailboxSession shareeSession = mailboxManager.createSystemSession(SHAREE);
+            MailboxId shareePersonalMailboxId = Mono.from(mailboxManager.createMailboxReactive(MailboxPath.forUser(SHAREE, "private"), shareeSession)).block();
+
+            // AND owner shares the mailbox with the sharee
+            resources.getStoreRightManager().applyRightsCommand(mailboxId,
+                MailboxACL.command().forUser(SHAREE)
+                    .rights(MailboxACL.Right.Read, MailboxACL.Right.Lookup)
+                    .asAddition(),
+                ownerSession);
+
+            // AND both owner and sharee see the keyword-view entry for the shared message
+            MessageManager.AppendResult appendResult = appendMessage(asFlags(USER_NEW_KEYWORD));
+            MessageId messageId = appendResult.getId().getMessageId();
+            CALMLY_AWAIT.untilAsserted(() -> {
+                assertThat(messageIdsByKeywordView(OWNER, USER_NEW_KEYWORD)).containsExactly(messageId);
+                assertThat(messageIdsByKeywordView(SHAREE, USER_NEW_KEYWORD)).containsExactly(messageId);
+            });
+
+            // AND sharee copies the message to another mailbox
+            Flux.from(mailboxManager.copyMessagesReactive(MessageRange.one(appendResult.getId().getUid()), mailboxId, shareePersonalMailboxId, shareeSession))
+                .then()
+                .block();
+
+            // WHEN the owner expunges the shared-mailbox reference
+            ownerInbox().setFlags(new Flags(Flags.Flag.DELETED), MessageManager.FlagsUpdateMode.ADD, MessageRange.one(appendResult.getId().getUid()), ownerSession);
+            ownerInbox().expunge(MessageRange.one(appendResult.getId().getUid()), ownerSession);
+
+            MailboxACL sharedMailboxACL = MailboxACL.EMPTY.union(
+                MailboxACL.EntryKey.createUserEntryKey(SHAREE.asString()),
+                new MailboxACL.Rfc4314Rights(MailboxACL.Right.Read, MailboxACL.Right.Lookup));
+
+            MailboxEvents.MessageContentDeletionEvent event = new MailboxEvents.MessageContentDeletionEvent(Event.EventId.random(), OWNER, mailboxId,
+                sharedMailboxACL,
+                messageId, 12L, INTERNAL_DATE, asFlags(USER_NEW_KEYWORD), false, Optional.empty(), Optional.empty(), "bodyBlobId", Optional.empty());
+
+            Mono.from(testee.reactiveEvent(event)).block();
+
+            // THEN the owner keyword view is cleaned up while the sharee keeps it
+            CALMLY_AWAIT.untilAsserted(() -> {
+                assertThat(messageIdsByKeywordView(OWNER, USER_NEW_KEYWORD)).isEmpty();
+                assertThat(messageIdsByKeywordView(SHAREE, USER_NEW_KEYWORD)).containsExactly(messageId);
+            });
+        }
+
+        @Test
+        void shouldDeleteConcernedKeywordViewsForTeamMailboxMemberWhenMemberLosesAccessToDeletedMessage() throws Exception {
+            // GIVEN a team mailbox with one member
+            TeamMailbox teamMailbox = createTeamMailbox(TEAM_MAILBOX_NAME);
+            addMemberToTeamMailbox(teamMailbox, SHAREE);
+            MailboxSession teamOwnerSession = teamOwnerSession(teamMailbox);
+
+            // AND the member sees the keyword-view entry for the team mailbox message
+            MessageManager.AppendResult appendResult = appendMessageToTeamInbox(teamMailbox, asFlags(USER_NEW_KEYWORD));
+            MessageId messageId = appendResult.getId().getMessageId();
+            CALMLY_AWAIT.untilAsserted(() -> assertThat(messageIdsByKeywordView(SHAREE, USER_NEW_KEYWORD)).containsExactly(messageId));
+
+            // WHEN the team mailbox reference is expunged and a content deletion event is emitted
+            teamInbox(teamMailbox).setFlags(new Flags(Flags.Flag.DELETED), MessageManager.FlagsUpdateMode.ADD, MessageRange.one(appendResult.getId().getUid()), teamOwnerSession);
+            teamInbox(teamMailbox).expunge(MessageRange.one(appendResult.getId().getUid()), teamOwnerSession);
+
+            MailboxEvents.MessageContentDeletionEvent event = new MailboxEvents.MessageContentDeletionEvent(Event.EventId.random(), teamMailbox.owner(),
+                teamInbox(teamMailbox).getId(),
+                teamInbox(teamMailbox).getResolvedAcl(teamOwnerSession),
+                messageId, 12L, INTERNAL_DATE, asFlags(USER_NEW_KEYWORD), false, Optional.empty(), Optional.empty(), "bodyBlobId", Optional.empty());
+
+            Mono.from(testee.reactiveEvent(event)).block();
+
+            // THEN the member keyword view is cleaned up
+            CALMLY_AWAIT.untilAsserted(() -> assertThat(messageIdsByKeywordView(SHAREE, USER_NEW_KEYWORD)).isEmpty());
+        }
+
+        @Test
+        void shouldKeepConcernedKeywordViewsForTeamMailboxMemberWhenMemberStillHasAnotherReference() throws Exception {
+            // GIVEN a team mailbox with one member
+            TeamMailbox teamMailbox = createTeamMailbox(TEAM_MAILBOX_NAME);
+            addMemberToTeamMailbox(teamMailbox, SHAREE);
+            MailboxSession teamOwnerSession = teamOwnerSession(teamMailbox);
+            MailboxSession shareeSession = mailboxManager.createSystemSession(SHAREE);
+            MailboxId shareePersonalMailboxId = Mono.from(mailboxManager.createMailboxReactive(MailboxPath.forUser(SHAREE, "private"), shareeSession)).block();
+
+            // AND the member sees the keyword-view entry for the team mailbox message
+            MessageManager.AppendResult appendResult = appendMessageToTeamInbox(teamMailbox, asFlags(USER_NEW_KEYWORD));
+            MessageId messageId = appendResult.getId().getMessageId();
+            CALMLY_AWAIT.untilAsserted(() -> assertThat(messageIdsByKeywordView(SHAREE, USER_NEW_KEYWORD)).containsExactly(messageId));
+
+            // AND the member copies that message into a personal mailbox
+            Flux.from(mailboxManager.copyMessagesReactive(MessageRange.one(appendResult.getId().getUid()), teamInbox(teamMailbox).getId(), shareePersonalMailboxId, shareeSession))
+                .then()
+                .block();
+
+            // WHEN the team mailbox reference is expunged and a content deletion event is emitted
+            teamInbox(teamMailbox).setFlags(new Flags(Flags.Flag.DELETED), MessageManager.FlagsUpdateMode.ADD, MessageRange.one(appendResult.getId().getUid()), teamOwnerSession);
+            teamInbox(teamMailbox).expunge(MessageRange.one(appendResult.getId().getUid()), teamOwnerSession);
+
+            MailboxEvents.MessageContentDeletionEvent event = new MailboxEvents.MessageContentDeletionEvent(Event.EventId.random(), teamMailbox.owner(),
+                teamInbox(teamMailbox).getId(),
+                teamInbox(teamMailbox).getResolvedAcl(teamOwnerSession),
+                messageId, 12L, INTERNAL_DATE, asFlags(USER_NEW_KEYWORD), false, Optional.empty(), Optional.empty(), "bodyBlobId", Optional.empty());
+
+            Mono.from(testee.reactiveEvent(event)).block();
+
+            // THEN the member keeps the keyword view because another reference remains
+            CALMLY_AWAIT.untilAsserted(() -> assertThat(messageIdsByKeywordView(SHAREE, USER_NEW_KEYWORD)).containsExactly(messageId));
+        }
+
+        @Test
+        void shouldDeleteConcernedKeywordViewsForOneTeamMailboxMemberAndKeepAnotherWhenOnlyOneRetainsAnotherReference() throws Exception {
+            // GIVEN a team mailbox with two members
+            TeamMailbox teamMailbox = createTeamMailbox(TEAM_MAILBOX_NAME);
+            addMemberToTeamMailbox(teamMailbox, SHAREE);
+            addMemberToTeamMailbox(teamMailbox, SECOND_SHAREE);
+            MailboxSession teamOwnerSession = teamOwnerSession(teamMailbox);
+            MailboxSession secondShareeSession = mailboxManager.createSystemSession(SECOND_SHAREE);
+            MailboxId secondShareePersonalMailboxId = Mono.from(mailboxManager.createMailboxReactive(MailboxPath.forUser(SECOND_SHAREE, "private"), secondShareeSession)).block();
+
+            // AND both members see the keyword-view entry for the team mailbox message
+            MessageManager.AppendResult appendResult = appendMessageToTeamInbox(teamMailbox, asFlags(USER_NEW_KEYWORD));
+            MessageId messageId = appendResult.getId().getMessageId();
+            CALMLY_AWAIT.untilAsserted(() -> {
+                assertThat(messageIdsByKeywordView(SHAREE, USER_NEW_KEYWORD)).containsExactly(messageId);
+                assertThat(messageIdsByKeywordView(SECOND_SHAREE, USER_NEW_KEYWORD)).containsExactly(messageId);
+            });
+
+            // AND only the second member copies that message into a personal mailbox
+            Flux.from(mailboxManager.copyMessagesReactive(MessageRange.one(appendResult.getId().getUid()), teamInbox(teamMailbox).getId(), secondShareePersonalMailboxId, secondShareeSession))
+                .then()
+                .block();
+
+            // WHEN the team mailbox reference is expunged and a content deletion event is emitted
+            teamInbox(teamMailbox).setFlags(new Flags(Flags.Flag.DELETED), MessageManager.FlagsUpdateMode.ADD, MessageRange.one(appendResult.getId().getUid()), teamOwnerSession);
+            teamInbox(teamMailbox).expunge(MessageRange.one(appendResult.getId().getUid()), teamOwnerSession);
+
+            MailboxEvents.MessageContentDeletionEvent event = new MailboxEvents.MessageContentDeletionEvent(Event.EventId.random(), teamMailbox.owner(),
+                teamInbox(teamMailbox).getId(),
+                teamInbox(teamMailbox).getResolvedAcl(teamOwnerSession),
+                messageId, 12L, INTERNAL_DATE, asFlags(USER_NEW_KEYWORD), false, Optional.empty(), Optional.empty(), "bodyBlobId", Optional.empty());
+
+            Mono.from(testee.reactiveEvent(event)).block();
+
+            // THEN the first member loses the keyword view while the second member keeps it
+            CALMLY_AWAIT.untilAsserted(() -> {
+                assertThat(messageIdsByKeywordView(SHAREE, USER_NEW_KEYWORD)).isEmpty();
+                assertThat(messageIdsByKeywordView(SECOND_SHAREE, USER_NEW_KEYWORD)).containsExactly(messageId);
+            });
+        }
+
+        @Test
+        void shouldDeleteConcernedKeywordViewsForAllTeamMailboxMembersWhenNoOneRetainsAnotherReference() throws Exception {
+            // GIVEN a team mailbox with two members
+            TeamMailbox teamMailbox = createTeamMailbox(TEAM_MAILBOX_NAME);
+            addMemberToTeamMailbox(teamMailbox, SHAREE);
+            addMemberToTeamMailbox(teamMailbox, SECOND_SHAREE);
+            MailboxSession teamOwnerSession = teamOwnerSession(teamMailbox);
+
+            // AND both members see the keyword-view entry for the team mailbox message
+            MessageManager.AppendResult appendResult = appendMessageToTeamInbox(teamMailbox, asFlags(USER_NEW_KEYWORD));
+            MessageId messageId = appendResult.getId().getMessageId();
+            CALMLY_AWAIT.untilAsserted(() -> {
+                assertThat(messageIdsByKeywordView(SHAREE, USER_NEW_KEYWORD)).containsExactly(messageId);
+                assertThat(messageIdsByKeywordView(SECOND_SHAREE, USER_NEW_KEYWORD)).containsExactly(messageId);
+            });
+
+            // WHEN the team mailbox reference is expunged and a content deletion event is emitted
+            teamInbox(teamMailbox).setFlags(new Flags(Flags.Flag.DELETED), MessageManager.FlagsUpdateMode.ADD, MessageRange.one(appendResult.getId().getUid()), teamOwnerSession);
+            teamInbox(teamMailbox).expunge(MessageRange.one(appendResult.getId().getUid()), teamOwnerSession);
+
+            MailboxEvents.MessageContentDeletionEvent event = new MailboxEvents.MessageContentDeletionEvent(Event.EventId.random(), teamMailbox.owner(),
+                teamInbox(teamMailbox).getId(),
+                teamInbox(teamMailbox).getResolvedAcl(teamOwnerSession),
+                messageId, 12L, INTERNAL_DATE, asFlags(USER_NEW_KEYWORD), false, Optional.empty(), Optional.empty(), "bodyBlobId", Optional.empty());
+
+            Mono.from(testee.reactiveEvent(event)).block();
+
+            // THEN both members lose the keyword view
+            CALMLY_AWAIT.untilAsserted(() -> {
+                assertThat(messageIdsByKeywordView(SHAREE, USER_NEW_KEYWORD)).isEmpty();
+                assertThat(messageIdsByKeywordView(SECOND_SHAREE, USER_NEW_KEYWORD)).isEmpty();
             });
         }
     }
