@@ -194,10 +194,9 @@ public class KeywordEmailQueryViewListener implements ReactiveGroupEventListener
     }
 
     private Mono<Void> handleMessageContentDeletion(MessageContentDeletionEvent messageContentDeletionEvent) {
-        return deleteKeywords(messageContentDeletionEvent.getUsername(),
-            messageContentDeletionEvent.flags(),
-            messageContentDeletionEvent.internalDate(),
-            messageContentDeletionEvent.messageId());
+        return mailboxReadRightsResolver.usersHavingReadRight(messageContentDeletionEvent.getUsername(), messageContentDeletionEvent.mailboxACL())
+            .concatMap(username -> deleteKeywordViewIfMessageNoLongerAccessible(username, messageContentDeletionEvent))
+            .then();
     }
 
     private Mono<Void> applyUpdatedFlags(Username username, MessageManager messageManager, MailboxSession session, UpdatedFlags updatedFlags) {
@@ -368,5 +367,16 @@ public class KeywordEmailQueryViewListener implements ReactiveGroupEventListener
         return base.stream()
             .filter(keyword -> !toSubtract.contains(keyword))
             .collect(ImmutableSet.toImmutableSet());
+    }
+
+    private Mono<Void> deleteKeywordViewIfMessageNoLongerAccessible(Username username, MessageContentDeletionEvent messageContentDeletionEvent) {
+        MailboxSession session = mailboxManager.createSystemSession(username);
+
+        return Mono.from(messageIdManager.accessibleMessagesReactive(ImmutableSet.of(messageContentDeletionEvent.messageId()), session))
+            .filter(accessibleMessageIds -> !accessibleMessageIds.contains(messageContentDeletionEvent.messageId()))
+            .flatMap(any -> deleteKeywords(username,
+                messageContentDeletionEvent.flags(),
+                messageContentDeletionEvent.internalDate(),
+                messageContentDeletionEvent.messageId()));
     }
 }

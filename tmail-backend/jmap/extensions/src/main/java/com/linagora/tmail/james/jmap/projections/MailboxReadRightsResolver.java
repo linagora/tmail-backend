@@ -43,7 +43,7 @@ public class MailboxReadRightsResolver {
             .flatMapMany(acl -> usersHavingReadRight(owner, acl));
     }
 
-    private Flux<Username> usersHavingReadRight(Username owner, MailboxACL acl) {
+    public Flux<Username> usersHavingReadRight(Username owner, MailboxACL acl) {
         return Flux.concat(
                 Flux.just(owner),
                 Flux.fromIterable(acl.getEntries().keySet())
