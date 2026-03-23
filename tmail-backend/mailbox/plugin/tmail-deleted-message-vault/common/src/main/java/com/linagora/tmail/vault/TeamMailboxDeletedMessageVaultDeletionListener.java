@@ -26,6 +26,8 @@ import jakarta.inject.Inject;
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.BlobStore;
 import org.apache.james.core.Username;
+import org.apache.james.mailbox.MessageIdManager;
+import org.apache.james.mailbox.SessionProvider;
 import org.apache.james.mailbox.events.MailboxEvents.MessageContentDeletionEvent;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.vault.DeletedMessageVault;
@@ -52,8 +54,10 @@ public class TeamMailboxDeletedMessageVaultDeletionListener extends DeletedMessa
     public TeamMailboxDeletedMessageVaultDeletionListener(BlobId.Factory blobIdFactory,
                                                           DeletedMessageVault deletedMessageVault,
                                                           BlobStore blobStore,
-                                                          Clock clock) {
-        super(blobIdFactory, deletedMessageVault, blobStore, clock);
+                                                          Clock clock,
+                                                          MessageIdManager messageIdManager,
+                                                          SessionProvider sessionProvider) {
+        super(blobIdFactory, deletedMessageVault, blobStore, clock, messageIdManager, sessionProvider);
     }
 
     @Override
@@ -84,6 +88,7 @@ public class TeamMailboxDeletedMessageVaultDeletionListener extends DeletedMessa
             event.eventId(),
             username,
             event.mailboxId(),
+            event.mailboxACL(),
             event.messageId(),
             event.size(),
             event.internalDate(),

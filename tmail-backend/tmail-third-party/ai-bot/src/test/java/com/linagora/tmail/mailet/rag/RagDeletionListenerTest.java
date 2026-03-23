@@ -40,6 +40,7 @@ import org.apache.james.events.RetryBackoffConfiguration;
 import org.apache.james.events.delivery.InVmEventDelivery;
 import org.apache.james.mailbox.events.MailboxEvents;
 import org.apache.james.mailbox.inmemory.InMemoryId;
+import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.james.mailbox.model.TestMessageId;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.awaitility.Awaitility;
@@ -101,6 +102,7 @@ public class RagDeletionListenerTest {
             Event.EventId.random(),
             username,
             InMemoryId.of(1),
+            MailboxACL.EMPTY,
             TestMessageId.of(1),
             123L,
             Instant.now(),
@@ -129,6 +131,7 @@ public class RagDeletionListenerTest {
             Event.EventId.random(),
             username,
             InMemoryId.of(1),
+            MailboxACL.EMPTY,
             TestMessageId.of(1),
             123L,
             Instant.now(),
@@ -158,6 +161,7 @@ public class RagDeletionListenerTest {
             Event.EventId.random(),
             username,
             InMemoryId.of(1),
+            MailboxACL.EMPTY,
             TestMessageId.of(1),
             123L,
             Instant.now(),

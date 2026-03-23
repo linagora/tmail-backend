@@ -761,7 +761,7 @@ class KeywordEmailQueryViewListenerTest {
                 assertThat(messageIdsByKeywordView(OWNER, USER_NEW_KEYWORD)).containsExactly(messageId);
             });
 
-            MailboxEvents.MessageContentDeletionEvent event = new MailboxEvents.MessageContentDeletionEvent(Event.EventId.random(), OWNER, mailboxId, messageId, 12L,
+            MailboxEvents.MessageContentDeletionEvent event = new MailboxEvents.MessageContentDeletionEvent(Event.EventId.random(), OWNER, mailboxId, MailboxACL.EMPTY, messageId, 12L,
                 INTERNAL_DATE, asFlags(List.of(Flags.Flag.FLAGGED), USER_NEW_KEYWORD), false, Optional.empty(), Optional.empty(), "bodyBlobId",
                 Optional.empty());
 
