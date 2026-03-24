@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Optional;
 
 import org.apache.james.core.MailAddress;
+import org.apache.james.user.api.UsersRepository;
 
 import com.google.common.hash.Hashing;
 import com.linagora.tmail.dav.request.CardDavCreationObjectRequest;
@@ -34,8 +35,9 @@ public class CardDavUtils {
     private static final EmailType DEFAULT_EMAIL_TYPE = EmailType.WORK;
 
     public static CardDavCreationObjectRequest createObjectCreationRequest(Optional<String> maybeFullName, MailAddress email) {
-        CardDavCreationObjectRequest.Email emailObject = new CardDavCreationObjectRequest.Email(List.of(DEFAULT_EMAIL_TYPE), email);
-        return new CardDavCreationObjectRequest(VERSION, createContactUid(email), maybeFullName, Optional.empty(), emailObject);
+        MailAddress normalizedEmail = email.stripDetails(UsersRepository.LOCALPART_DETAIL_DELIMITER);
+        CardDavCreationObjectRequest.Email emailObject = new CardDavCreationObjectRequest.Email(List.of(DEFAULT_EMAIL_TYPE), normalizedEmail);
+        return new CardDavCreationObjectRequest(VERSION, createContactUid(normalizedEmail), maybeFullName, Optional.empty(), emailObject);
     }
 
     public static CardDavCreationObjectRequest createObjectCreationRequest(MailAddress email) {
