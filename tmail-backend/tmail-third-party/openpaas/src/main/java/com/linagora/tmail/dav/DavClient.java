@@ -183,6 +183,71 @@ public class DavClient {
             .responseSingle((response, responseContent) -> handleCalendarObjectUpdateResponse(updatedCalendarObject, response));
     }
 
+    public Mono<Void> grantCalendarDelegation(DavUser calendarOwner, String delegatedToEmail) {
+        String uri = CALENDAR_PATH + calendarOwner.userId() + "/" + calendarOwner.userId() + ".json";
+        String payload = """
+            {
+              "share": {
+                "set": [
+                  {
+                    "dav:href": "mailto:%s",
+                    "dav:read": true
+                  }
+                ],
+                "remove": []
+              }
+            }
+            """.formatted(delegatedToEmail);
+
+        return client.headers(headers -> headers
+                .add(HttpHeaderNames.CONTENT_TYPE, "application/json;charset=UTF-8")
+                .add(HttpHeaderNames.ACCEPT, "application/json, text/plain, */*")
+                .add(HttpHeaderNames.AUTHORIZATION, authenticationToken(calendarOwner.username())))
+            .request(HttpMethod.POST)
+            .uri(uri)
+            .send(Mono.just(Unpooled.wrappedBuffer(payload.getBytes(StandardCharsets.UTF_8))))
+            .responseSingle((response, responseContent) -> {
+                if (response.status().code() == 200) {
+                    return Mono.empty();
+                }
+                return responseContent.asString(StandardCharsets.UTF_8)
+                    .switchIfEmpty(Mono.just(StringUtils.EMPTY))
+                    .flatMap(body -> Mono.error(new DavClientException(
+                        "Unexpected status code: %d when granting calendar delegation to '%s': %s"
+                            .formatted(response.status().code(), delegatedToEmail, body))));
+            });
+    }
+
+    public Mono<Void> createCalendarCollection(String username, URI uri) {
+        String mkcalendarBody = """
+            <?xml version="1.0" encoding="utf-8" ?>
+            <C:mkcalendar xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+              <D:set>
+                <D:prop>
+                  <D:displayname>Secondary Calendar</D:displayname>
+                </D:prop>
+              </D:set>
+            </C:mkcalendar>
+            """;
+
+        return client.headers(headers -> headers
+                .add(HttpHeaderNames.CONTENT_TYPE, "application/xml")
+                .add(HttpHeaderNames.AUTHORIZATION, authenticationToken(username)))
+            .request(HttpMethod.valueOf("MKCALENDAR"))
+            .uri(uri.toString())
+            .send(Mono.just(Unpooled.wrappedBuffer(mkcalendarBody.getBytes(StandardCharsets.UTF_8))))
+            .responseSingle((response, responseContent) -> {
+                if (response.status().code() == 201) {
+                    return ReactorUtils.logAsMono(() -> LOGGER.info("Calendar collection '{}' created successfully.", uri));
+                }
+                return responseContent.asString(StandardCharsets.UTF_8)
+                    .switchIfEmpty(Mono.just(StringUtils.EMPTY))
+                    .flatMap(body -> Mono.error(new DavClientException(
+                        "Unexpected status code: %d when creating calendar collection '%s': %s"
+                            .formatted(response.status().code(), uri, body))));
+            });
+    }
+
     public Mono<Void> createCalendar(String username, URI uri, Calendar calendarData) {
         return client.headers(headers -> headers.add(HttpHeaderNames.CONTENT_TYPE, "text/plain")
                 .add(HttpHeaderNames.AUTHORIZATION, authenticationToken(username)))
@@ -254,6 +319,9 @@ public class DavClient {
         } else if (response.status() == HttpResponseStatus.PRECONDITION_FAILED) {
             return Mono.error(new RetriableDavClientException(
                 String.format("Precondition failed (ETag mismatch) when updating calendar object '%s'. Retry may be needed.", updatedCalendarObject.uri())));
+        } else if (response.status() == HttpResponseStatus.FORBIDDEN) {
+            return Mono.error(new DavClientException.PermissionDenied(
+                String.format("Permission denied (403) when updating calendar object '%s'", updatedCalendarObject.uri())));
         } else {
             return Mono.error(new DavClientException(
                 String.format("Unexpected status code: %d when updating calendar object '%s'", response.status().code(), updatedCalendarObject.uri())));
@@ -276,6 +344,10 @@ public class DavClient {
     }
 
     public Mono<DavCalendarObject> getCalendarObject(DavUser user, EventUid eventUid) {
+        return getCalendarObjects(user, eventUid).next();
+    }
+
+    public Flux<DavCalendarObject> getCalendarObjects(DavUser user, EventUid eventUid) {
         Preconditions.checkNotNull(user, "Dav user should not be null");
 
         return findUserCalendars(user)
@@ -285,8 +357,7 @@ public class DavClient {
                     .onErrorResume(ex -> {
                         LOGGER.debug("Error while querying '{}' for VEvent '{}': ", calendarURI, eventUid, ex);
                         return Mono.empty();
-                    }))
-            .next();
+                    }));
     }
 
     private Mono<DavCalendarObject> getCalendarObjectContainingVEventFromSpecificCalendar(URI calendarURI, EventUid eventUid, String username) {
@@ -324,7 +395,7 @@ public class DavClient {
                 if (response.status() == HttpResponseStatus.MULTI_STATUS) {
                     return byteBufMono.asString(StandardCharsets.UTF_8)
                         .map(multiStatusResponse -> XMLUtil.parse(multiStatusResponse, DavMultistatus.class))
-                        .map(this::extractCalendarURIsFromResponse);
+                        .map(multistatus -> extractCalendarURIsFromResponse(multistatus, user.userId()));
                 } else {
                     return Mono.error(new DavClientException(
                         String.format("Unexpected status code: %d when finding user calendars for user: %s",
@@ -339,11 +410,12 @@ public class DavClient {
             .add(HttpHeaderNames.AUTHORIZATION, authenticationToken(username));
     }
 
-    private List<URI> extractCalendarURIsFromResponse(DavMultistatus multistatus) {
+    private List<URI> extractCalendarURIsFromResponse(DavMultistatus multistatus, String userId) {
         return multistatus.getResponses().stream()
             .filter(DavResponse::isCalendarCollectionResponse)
             .flatMap(response -> response.getHref()
                 .getValue()
+                .filter(href -> href.startsWith(CALENDAR_PATH + userId + "/"))
                 .filter(href -> !(href.endsWith("inbox/") || href.endsWith("outbox/")))
                 .flatMap(this::parseCalendarHref).stream())
             .peek(href -> LOGGER.trace("Found user calendar: '{}'", href))

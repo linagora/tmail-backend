@@ -52,7 +52,12 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import scala.jdk.javaapi.OptionConverters;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 public class CalDavEventRepository implements CalendarEventRepository {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(CalDavEventRepository.class);
 
     public enum FreeBusyStatus {
         BUSY,
@@ -146,9 +151,17 @@ public class CalDavEventRepository implements CalendarEventRepository {
     public Mono<Void> updateEvent(Username username, String eventUid, CalendarEventModifier eventModifier) {
         UnaryOperator<DavCalendarObject> updateEventOperator = calendarObject -> calendarObject.withUpdatePatches(eventModifier);
         return davUserProvider.provide(username)
-            .flatMap(davUser -> davClient.getCalendarObject(davUser, new EventUid(eventUid))
+            .flatMap(davUser -> davClient.getCalendarObjects(davUser, new EventUid(eventUid))
+                .switchIfEmpty(Flux.error(new CalendarEventNotFoundException(username.asString(), eventUid)))
+                .flatMap(calendarObject -> davClient.updateCalendarObject(davUser, calendarObject.uri(), updateEventOperator)
+                    .thenReturn(Boolean.TRUE)
+                    .onErrorResume(DavClientException.PermissionDenied.class, e -> {
+                        LOGGER.debug("Skipping calendar object '{}': permission denied, likely a delegated calendar", calendarObject.uri());
+                        return Mono.empty();
+                    }))
+                .next()
                 .switchIfEmpty(Mono.error(new CalendarEventNotFoundException(username.asString(), eventUid)))
-                .flatMap(calendarObject -> davClient.updateCalendarObject(davUser, calendarObject.uri(), updateEventOperator)));
+                .then());
     }
 
 }

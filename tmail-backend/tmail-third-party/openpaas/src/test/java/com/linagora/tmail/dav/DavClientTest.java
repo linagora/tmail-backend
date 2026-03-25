@@ -226,7 +226,7 @@ class DavClientTest {
 
         assertThat(client.findUserCalendars(OPEN_PAAS_DAV_USER).collectList().block())
             .hasSameElementsAs(
-                List.of(URI.create("/calendars/ALICE_ID/0b4e80d7-7337-458f-852d-7ae8d72a74b2/")));
+                List.of(URI.create("/calendars/openpaasUserId1/0b4e80d7-7337-458f-852d-7ae8d72a74b2/")));
     }
 
     @Test
