@@ -128,6 +128,77 @@ trait CalendarEventCounterAcceptMethodContract {
   }
 
   @Test
+  def shouldBeIdempotent(server: GuiceJamesServer): Unit = {
+    // Given: An original calendar event created and pushed to the server
+    val eventUid: String = UUID.randomUUID().toString
+    val originalStartDate: ZonedDateTime = ZonedDateTime.parse("2025-03-14T14:00:00Z")
+    val originalEndDate: ZonedDateTime = originalStartDate.plusHours(2)
+    val (_, originalCalendar: CalendarEventHelper) = createAndPushOriginalCalendarEvent(server, eventUid, originalStartDate, originalEndDate)
+
+    // And: A counter event proposing a new schedule
+    val counterEvent: Calendar = originalCalendar.generateCounterEvent(originalStartDate.minusDays(1), originalEndDate.minusDays(1))
+    val counterEventBlobId: String = createNewEmailWithCalendarAttachment(server, eventUid, counterEvent)
+
+    `given`
+      .body(
+        s"""{
+           |  "using": [
+           |    "urn:ietf:params:jmap:core",
+           |    "com:linagora:params:calendar:event"],
+           |  "methodCalls": [[
+           |    "CalendarEventCounter/accept",
+           |    {
+           |      "accountId": "$bobAccountId",
+           |      "blobIds": [ "$counterEventBlobId" ]
+           |    },
+           |    "c1"]]
+           |}""".stripMargin)
+      .when
+      .post
+      .`then`
+      .statusCode(SC_OK)
+
+    // When: The counter event is accepted
+    val response: String =
+      `given`
+        .body(
+          s"""{
+             |  "using": [
+             |    "urn:ietf:params:jmap:core",
+             |    "com:linagora:params:calendar:event"],
+             |  "methodCalls": [[
+             |    "CalendarEventCounter/accept",
+             |    {
+             |      "accountId": "$bobAccountId",
+             |      "blobIds": [ "$counterEventBlobId" ]
+             |    },
+             |    "c1"]]
+             |}""".stripMargin)
+      .when
+        .post
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .extract
+        .body
+        .asString
+
+    // Then: The response should indicate the event was successfully accepted
+    assertThatJson(response)
+      .withOptions(IGNORING_ARRAY_ORDER)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |  "CalendarEventCounter/accept",
+           |  {
+           |    "accountId": "$bobAccountId",
+           |    "accepted": [ "$counterEventBlobId" ]
+           |  },
+           |  "c1"
+           |]""".stripMargin)
+  }
+
+  @Test
   def shouldUpdateCalendarOnDavServerWhenAccepted(server: GuiceJamesServer): Unit = {
     // Given: An original calendar event created and pushed to the server
     val eventUid: String = UUID.randomUUID().toString
