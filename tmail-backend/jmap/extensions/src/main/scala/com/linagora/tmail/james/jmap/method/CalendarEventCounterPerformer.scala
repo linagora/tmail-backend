@@ -18,7 +18,7 @@
 
 package com.linagora.tmail.james.jmap.method
 
-import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier.ImplicitCalendar
+import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier.{ImplicitCalendar, NoUpdateRequiredException}
 import com.linagora.tmail.james.jmap.calendar._
 import com.linagora.tmail.james.jmap.model._
 import com.linagora.tmail.james.jmap.{CalendarEventNotFoundException, CalendarEventRepository}
@@ -92,6 +92,7 @@ class CalendarEventCounterPerformer @Inject()(calendarEventRepository: CalendarE
       .switchIfEmpty(SMono.just(EventCounterAcceptedResults.notFound(blobId)))
       .onErrorResume({
         case _: BlobNotFoundException => SMono.just(EventCounterAcceptedResults.notFound(blobId))
+        case _: NoUpdateRequiredException => SMono.just(EventCounterAcceptedResults.done(blobId))
         case error => SMono.just(EventCounterAcceptedResults.notDone(blobId, error, mailboxSession.getUser.asString()))
       })
   }
