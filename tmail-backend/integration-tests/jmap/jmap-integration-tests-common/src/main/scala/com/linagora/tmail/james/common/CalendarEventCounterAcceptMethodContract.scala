@@ -55,6 +55,10 @@ trait CalendarEventCounterAcceptMethodContract {
 
   def getCalendarFromDav(userCredential: UserCredential, eventUid: String): Calendar
 
+  def grantCalendarDelegation(calendarOwner: UserCredential, delegatedTo: UserCredential): Unit = {}
+
+  def pushCalendarToNonDefaultDav(userCredential: UserCredential, eventUid: String, calendar: Calendar): Unit = {}
+
   def randomMessageId: MessageId
 
   @BeforeEach
@@ -235,6 +239,99 @@ trait CalendarEventCounterAcceptMethodContract {
     val parsedCalendar: CalendarEventParsed = CalendarEventParsed.from(getCalendarFromDav(bobCredential, eventUid)).head
     assertThat(parsedCalendar.startAsJava().get().truncatedTo(ChronoUnit.SECONDS)).isEqualTo(counterProposedStartDate.truncatedTo(ChronoUnit.SECONDS))
     assertThat(parsedCalendar.endAsJava().get().truncatedTo(ChronoUnit.SECONDS)).isEqualTo(counterProposedEndDate.truncatedTo(ChronoUnit.SECONDS))
+  }
+
+  @Test
+  def shouldUpdateOrganizerCalendarWhenAttendeeHasDelegatedCalendarToOrganizer(server: GuiceJamesServer): Unit = {
+    // Given: An original calendar event pushed to Bob's DAV calendar (Sabre scheduling will handle Alice's copy)
+    val eventUid: String = UUID.randomUUID().toString
+    val originalStartDate: ZonedDateTime = ZonedDateTime.now()
+    val originalEndDate: ZonedDateTime = originalStartDate.plusHours(2)
+    val (_, originalCalendar: CalendarEventHelper) = createAndPushOriginalCalendarEvent(server, eventUid, originalStartDate, originalEndDate)
+
+    // And: Alice has delegated her calendar to Bob (so Bob's PROPFIND includes Alice's calendars — triggering the bug)
+    grantCalendarDelegation(aliceCredential, bobCredential)
+
+    // And: A counter event proposing a new schedule
+    val counterProposedStartDate: ZonedDateTime = originalStartDate.minusDays(1)
+    val counterProposedEndDate: ZonedDateTime = originalEndDate.minusDays(1)
+    val counterEvent: Calendar = originalCalendar.generateCounterEvent(counterProposedStartDate, counterProposedEndDate)
+    val counterEventBlobId: String = createNewEmailWithCalendarAttachment(server, eventUid, counterEvent)
+
+    // When: Bob (the organizer) accepts the counter
+    `given`
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:calendar:event"],
+           |  "methodCalls": [[
+           |    "CalendarEventCounter/accept",
+           |    {
+           |      "accountId": "$bobAccountId",
+           |      "blobIds": [ "$counterEventBlobId" ]
+           |    },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .body("methodResponses[0][1].accepted", contains(counterEventBlobId))
+
+    // Then: Bob's calendar should be updated with the proposed dates
+    val bobCalendar: CalendarEventParsed = CalendarEventParsed.from(getCalendarFromDav(bobCredential, eventUid)).head
+    assertThat(bobCalendar.startAsJava().get().truncatedTo(ChronoUnit.SECONDS)).isEqualTo(counterProposedStartDate.truncatedTo(ChronoUnit.SECONDS))
+    assertThat(bobCalendar.endAsJava().get().truncatedTo(ChronoUnit.SECONDS)).isEqualTo(counterProposedEndDate.truncatedTo(ChronoUnit.SECONDS))
+  }
+
+
+  @Test
+  def shouldUpdateOrganizerNonDefaultCalendarWhenAttendeeHasDelegatedCalendarToOrganizer(server: GuiceJamesServer): Unit = {
+    // Given: An original calendar event pushed to Bob's non-default DAV calendar
+    val eventUid: String = UUID.randomUUID().toString
+    val originalStartDate: ZonedDateTime = ZonedDateTime.now()
+    val originalEndDate: ZonedDateTime = originalStartDate.plusHours(2)
+    val originalCalendar: CalendarEventHelper = CalendarEventHelper(
+      uid = eventUid,
+      start = originalStartDate,
+      end = originalEndDate,
+      attendee = aliceCredential.username.asString(),
+      organizer = Some(bobCredential.username.asString()))
+    pushCalendarToNonDefaultDav(bobCredential, eventUid, originalCalendar.asCalendar)
+    Thread.sleep(1000)
+
+    // And: Alice has delegated her calendar to Bob (so Bob's PROPFIND includes Alice's calendars)
+    grantCalendarDelegation(aliceCredential, bobCredential)
+    Thread.sleep(1000)
+
+    // And: A counter event proposing a new schedule
+    val counterProposedStartDate: ZonedDateTime = originalStartDate.minusDays(1)
+    val counterProposedEndDate: ZonedDateTime = originalEndDate.minusDays(1)
+    val counterEvent: Calendar = originalCalendar.generateCounterEvent(counterProposedStartDate, counterProposedEndDate)
+    val counterEventBlobId: String = createNewEmailWithCalendarAttachment(server, eventUid, counterEvent)
+
+    // When: Bob (the organizer) accepts the counter
+    `given`
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:calendar:event"],
+           |  "methodCalls": [[
+           |    "CalendarEventCounter/accept",
+           |    {
+           |      "accountId": "$bobAccountId",
+           |      "blobIds": [ "$counterEventBlobId" ]
+           |    },
+           |    "c1"]]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .body("methodResponses[0][1].accepted", contains(counterEventBlobId))
+
+    // Then: Bob's non-default calendar should be updated with the proposed dates
+    val bobCalendar: CalendarEventParsed = CalendarEventParsed.from(getCalendarFromDav(bobCredential, eventUid)).head
+    assertThat(bobCalendar.startAsJava().get().truncatedTo(ChronoUnit.SECONDS)).isEqualTo(counterProposedStartDate.truncatedTo(ChronoUnit.SECONDS))
+    assertThat(bobCalendar.endAsJava().get().truncatedTo(ChronoUnit.SECONDS)).isEqualTo(counterProposedEndDate.truncatedTo(ChronoUnit.SECONDS))
   }
 
   @Test

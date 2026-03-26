@@ -24,6 +24,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.net.URI;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 
 import org.apache.james.JamesServerBuilder;
@@ -117,11 +118,30 @@ public class MemoryCalendarEventCounterAcceptMethodTest implements CalendarEvent
     }
 
     @Override
+    public void grantCalendarDelegation(UserCredential calendarOwner, UserCredential delegatedTo) {
+        OpenPaasUser ownerOpenPaasUser = davUsers.get(calendarOwner.username().asString());
+        assertThat(ownerOpenPaasUser).isNotNull();
+        davClient.grantCalendarDelegation(
+            new DavUser(ownerOpenPaasUser.id(), ownerOpenPaasUser.email()),
+            delegatedTo.username().asString()).block();
+    }
+
+    @Override
     public Calendar getCalendarFromDav(UserCredential userCredential, String eventUid) {
         OpenPaasUser openPaasUser = davUsers.get(userCredential.username().asString());
 
         return davClient.getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new EventUid(eventUid)).block()
             .calendarData();
+    }
+
+    @Override
+    public void pushCalendarToNonDefaultDav(UserCredential userCredential, String eventUid, Calendar calendar) {
+        String openPaasUserId = davUsers.get(userCredential.username().asString()).id();
+        String secondaryCalendarId = UUID.randomUUID().toString();
+        URI calendarCollectionUri = URI.create("/calendars/" + openPaasUserId + "/" + secondaryCalendarId + "/");
+        URI calendarObjectUri = URI.create("/calendars/" + openPaasUserId + "/" + secondaryCalendarId + "/" + eventUid + ".ics");
+        davClient.createCalendarCollection(userCredential.username().asString(), calendarCollectionUri).block();
+        davClient.createCalendar(userCredential.username().asString(), calendarObjectUri, calendar).block();
     }
 
     @Override

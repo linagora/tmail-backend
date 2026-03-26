@@ -1,7 +1,7 @@
 <?xml version="1.0"?>
 <d:multistatus xmlns:d="DAV:" xmlns:s="http://sabredav.org/ns" xmlns:cal="urn:ietf:params:xml:ns:caldav" xmlns:cs="http://calendarserver.org/ns/" xmlns:card="urn:ietf:params:xml:ns:carddav">
     <d:response>
-        <d:href>/calendars/ALICE_ID/</d:href>
+        <d:href>/calendars/openpaasUserId1/</d:href>
         <d:propstat>
             <d:prop>
                 <d:resourcetype>
@@ -12,7 +12,7 @@
         </d:propstat>
     </d:response>
     <d:response>
-        <d:href>/calendars/ALICE_ID/invalid /</d:href>
+        <d:href>/calendars/openpaasUserId1/invalid /</d:href>
         <d:propstat>
             <d:prop>
                 <d:resourcetype>
@@ -34,7 +34,7 @@
         </d:propstat>
     </d:response>
     <d:response>
-        <d:href>/calendars/ALICE_ID/0b4e80d7-7337-458f-852d-7ae8d72a74b2/</d:href>
+        <d:href>/calendars/openpaasUserId1/0b4e80d7-7337-458f-852d-7ae8d72a74b2/</d:href>
         <d:propstat>
             <d:prop>
                 <d:resourcetype>
@@ -58,7 +58,7 @@
         </d:propstat>
     </d:response>
     <d:response>
-        <d:href>/calendars/ALICE_ID/inbox/</d:href>
+        <d:href>/calendars/openpaasUserId1/inbox/</d:href>
         <d:propstat>
             <d:prop>
                 <d:resourcetype>
@@ -70,7 +70,7 @@
         </d:propstat>
     </d:response>
     <d:response>
-        <d:href>/calendars/ALICE_ID/outbox/</d:href>
+        <d:href>/calendars/openpaasUserId1/outbox/</d:href>
         <d:propstat>
             <d:prop>
                 <d:resourcetype>

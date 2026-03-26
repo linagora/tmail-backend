@@ -26,4 +26,10 @@ public class DavClientException extends RuntimeException {
     public DavClientException(String message, Throwable cause) {
         super(message, cause);
     }
+
+    public static class PermissionDenied extends DavClientException {
+        public PermissionDenied(String message) {
+            super(message);
+        }
+    }
 }
