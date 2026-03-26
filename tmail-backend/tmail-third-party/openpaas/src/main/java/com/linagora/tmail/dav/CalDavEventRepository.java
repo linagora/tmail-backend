@@ -33,6 +33,8 @@ import org.apache.james.jmap.mail.BlobId;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.SessionProvider;
 import org.reactivestreams.Publisher;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.linagora.tmail.dav.cal.FreeBusyRequest;
 import com.linagora.tmail.dav.cal.FreeBusyResponse;
@@ -51,9 +53,6 @@ import net.fortuna.ical4j.model.property.immutable.ImmutableMethod;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import scala.jdk.javaapi.OptionConverters;
-
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 public class CalDavEventRepository implements CalendarEventRepository {
 
