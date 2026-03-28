@@ -59,6 +59,7 @@ import org.apache.james.modules.LegacyEncryptionModule;
 import org.apache.james.modules.MailboxModule;
 import org.apache.james.modules.MailetProcessingModule;
 import org.apache.james.modules.RunArgumentsModule;
+import org.apache.james.modules.TCNativeEncryptionModule;
 import org.apache.james.modules.blobstore.BlobStoreCacheModulesChooser;
 import org.apache.james.modules.data.PostgresDLPConfigurationStoreModule;
 import org.apache.james.modules.data.PostgresDataJmapModule;
@@ -343,7 +344,7 @@ public class PostgresTmailServer {
     private static final Module PROTOCOLS = Modules.combine(
         JMAP_LINAGORA,
         new IMAPServerModule(),
-        new LegacyEncryptionModule(),
+        Boolean.getBoolean("james.tcnative.enabled") ? new TCNativeEncryptionModule() : new LegacyEncryptionModule(),
         new LMTPServerModule(),
         new ManageSieveServerModule(),
         new POP3ServerModule(),

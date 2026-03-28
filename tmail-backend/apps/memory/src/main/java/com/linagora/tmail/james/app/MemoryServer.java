@@ -42,6 +42,7 @@ import org.apache.james.modules.BlobMemoryModule;
 import org.apache.james.modules.LegacyEncryptionModule;
 import org.apache.james.modules.MailboxModule;
 import org.apache.james.modules.MailetProcessingModule;
+import org.apache.james.modules.TCNativeEncryptionModule;
 import org.apache.james.modules.data.MemoryDataModule;
 import org.apache.james.modules.data.MemoryDelegationStoreModule;
 import org.apache.james.modules.data.MemoryDropListsModule;
@@ -147,7 +148,7 @@ public class MemoryServer {
 
     public static final Module PROTOCOLS = Modules.combine(
         new IMAPServerModule(),
-        new LegacyEncryptionModule(),
+        Boolean.getBoolean("james.tcnative.enabled") ? new TCNativeEncryptionModule() : new LegacyEncryptionModule(),
         new ManageSieveServerModule(),
         new ProtocolHandlerModule(),
         new SMTPServerModule());

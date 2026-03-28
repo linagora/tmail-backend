@@ -66,6 +66,7 @@ import org.apache.james.modules.DistributedTaskSerializationModule;
 import org.apache.james.modules.LegacyEncryptionModule;
 import org.apache.james.modules.MailboxModule;
 import org.apache.james.modules.MailetProcessingModule;
+import org.apache.james.modules.TCNativeEncryptionModule;
 import org.apache.james.modules.data.CassandraDLPConfigurationStoreModule;
 import org.apache.james.modules.data.CassandraDropListsModule;
 import org.apache.james.modules.data.CassandraJmapModule;
@@ -321,7 +322,7 @@ public class DistributedServer {
         new CassandraVacationModule(),
         new IMAPServerModule(),
         JMAP,
-        new LegacyEncryptionModule(),
+        Boolean.getBoolean("james.tcnative.enabled") ? new TCNativeEncryptionModule() : new LegacyEncryptionModule(),
         new ManageSieveServerModule(),
         new ProtocolHandlerModule(),
         new SMTPServerModule(),

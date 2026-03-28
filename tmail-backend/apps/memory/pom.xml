@@ -214,6 +214,12 @@
             <groupId>com.linagora.tmail</groupId>
             <artifactId>tmail-guice-common</artifactId>
         </dependency>
+        <!-- BoringSSL via Netty tcnative — enabled with -Djames.tcnative.enabled=true -->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-tcnative-boringssl-static</artifactId>
+            <version>${netty.tcnative.version}</version>
+        </dependency>
     </dependencies>
 
     <build>

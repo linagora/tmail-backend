@@ -326,6 +326,12 @@
             <groupId>${james.groupId}</groupId>
             <artifactId>james-server-guice-webadmin-mail-over-web</artifactId>
         </dependency>
+        <!-- BoringSSL via Netty tcnative — enabled with -Djames.tcnative.enabled=true -->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-tcnative-boringssl-static</artifactId>
+            <version>${netty.tcnative.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
