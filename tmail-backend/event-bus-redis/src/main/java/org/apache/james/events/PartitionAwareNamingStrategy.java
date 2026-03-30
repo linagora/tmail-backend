@@ -35,7 +35,7 @@ public class PartitionAwareNamingStrategy implements NamingStrategy {
 
     @Override
     public RegistrationQueueName queueName(EventBusId eventBusId) {
-        return new RegistrationQueueName(partitionedEventBusName.value() + "-eventbus-" + eventBusId.asString());
+        return new RegistrationQueueName(baseEventBusName.value() + "-eventbus-" + eventBusId.asString());
     }
 
     @Override

@@ -26,6 +26,7 @@ import org.junit.jupiter.api.Test;
 
 public class TmailNamingStrategyFactoryTest {
     private static final EventBusName EVENT_BUS_NAME = new EventBusName("mailboxEvent");
+    private static final EventBusId EVENT_BUS_ID = EventBusId.of("00000000-0000-0000-0000-000000000123");
     private static final Group GROUP = new Group() {
     };
 
@@ -71,5 +72,16 @@ public class TmailNamingStrategyFactoryTest {
         assertThat(strategies)
             .extracting(strategy -> strategy.deadLetterQueue().getName())
             .containsOnly("mailboxEvent-dead-letter-queue");
+    }
+
+    @Test
+    void notificationQueueNameShouldBeTheSameAcrossPartitions() {
+        TmailNamingStrategyFactory testee = new TmailNamingStrategyFactory(EVENT_BUS_NAME, new TmailRabbitEventBusConfiguration(3));
+
+        List<NamingStrategy> strategies = testee.namingStrategies();
+
+        assertThat(strategies)
+            .extracting(strategy -> strategy.queueName(EVENT_BUS_ID).asString())
+            .containsOnly("mailboxEvent-eventbus-00000000-0000-0000-0000-000000000123");
     }
 }
