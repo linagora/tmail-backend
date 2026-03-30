@@ -455,6 +455,10 @@
                                 <from>src/main/eml-template</from>
                                 <into>/root/eml-template</into>
                             </path>
+                            <path>
+                                <from>src/main/upgrades</from>
+                                <into>/root/upgrades</into>
+                            </path>
                         </paths>
                         <permissions>
                             <permission>
@@ -476,6 +480,10 @@
                                 <file>/root/async-profiler/build/jattach</file>
                                 <mode>755</mode>
                                 <!-- Read/write/execute for owner, read/execute for group/other -->
+                            </permission>
+                            <permission>
+                                <file>/root/upgrades/**</file>
+                                <mode>755</mode>
                             </permission>
                         </permissions>
                     </extraDirectories>
