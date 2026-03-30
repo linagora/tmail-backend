@@ -105,7 +105,7 @@ public class RedisEventBusServiceSentinelTest {
 
     private void initEventBus(RedisEventBusConfiguration redisEventBusConfiguration) throws Exception {
         SentinelRedisConfiguration redisConfiguration = redisExtension.getRedisSentinelCluster().redisSentinelContainerList().getRedisConfiguration();
-        eventBus = new RabbitMQAndRedisEventBus(new NamingStrategy(new EventBusName("test")), rabbitMQExtension.getSender(),
+        eventBus = new RabbitMQAndRedisEventBus(new DefaultNamingStrategy(new EventBusName("test")), rabbitMQExtension.getSender(),
             rabbitMQExtension.getReceiverProvider(), new EventBusTestFixture.TestEventSerializer(), RoutingKeyConverter.forFactories(new EventBusTestFixture.TestRegistrationKeyFactory()),
             new MemoryEventDeadLetters(), new RecordingMetricFactory(),
             rabbitMQExtension.getRabbitChannelPool(), EventBusId.random(),

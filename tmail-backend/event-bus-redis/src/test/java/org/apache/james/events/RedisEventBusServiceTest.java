@@ -330,7 +330,7 @@ class RedisEventBusServiceTest {
 
     private void initEventBus(RedisEventBusConfiguration redisEventBusConfiguration) throws Exception {
         StandaloneRedisConfiguration redisConfiguration = StandaloneRedisConfiguration.from(redisExtension.dockerRedis().redisURI().toString());
-        eventBus = new RabbitMQAndRedisEventBus(new NamingStrategy(new EventBusName("test")), rabbitMQExtension.getSender(),
+        eventBus = new RabbitMQAndRedisEventBus(new DefaultNamingStrategy(new EventBusName("test")), rabbitMQExtension.getSender(),
             rabbitMQExtension.getReceiverProvider(), new EventBusTestFixture.TestEventSerializer(),
             RoutingKeyConverter.forFactories(new EventBusTestFixture.TestRegistrationKeyFactory()),
             new MemoryEventDeadLetters(), new RecordingMetricFactory(),

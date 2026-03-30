@@ -31,6 +31,7 @@ import java.util.concurrent.TimeUnit;
 import org.apache.james.DisconnectorNotifier;
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.core.Username;
+import org.apache.james.events.DefaultNamingStrategy;
 import org.apache.james.events.EventBusId;
 import org.apache.james.events.EventBusName;
 import org.apache.james.events.EventSerializer;
@@ -81,7 +82,7 @@ public class DisconnectionRouteTest {
     private RabbitMQEventBus eventBus1;
     private RabbitMQEventBus eventBus2;
 
-    private static final NamingStrategy NAMING_STRATEGY = new NamingStrategy(new EventBusName("tmail-event-bus"));
+    private static final NamingStrategy NAMING_STRATEGY = new DefaultNamingStrategy(new EventBusName("tmail-event-bus"));
     private static final RoutingKeyConverter ROUTING_KEY_CONVERTER = new RoutingKeyConverter(ImmutableSet.of(new DisconnectorRegistrationKey.Factory()));
     private static final EventSerializer EVENT_SERIALIZER = new EventSerializersAggregator(ImmutableSet.of(new DisconnectionRequestedEventSerializer()));
 

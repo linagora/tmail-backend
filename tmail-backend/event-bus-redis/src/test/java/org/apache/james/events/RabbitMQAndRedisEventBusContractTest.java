@@ -107,7 +107,7 @@ abstract class RabbitMQAndRedisEventBusContractTest implements GroupContract.Sin
     ErrorHandlingContract {
     
     static EventBusName TEST_EVENT_BUS = new EventBusName("test");
-    static NamingStrategy TEST_NAMING_STRATEGY = new NamingStrategy(TEST_EVENT_BUS);
+    static NamingStrategy TEST_NAMING_STRATEGY = new DefaultNamingStrategy(TEST_EVENT_BUS);
     static DispatchingFailureGroup dispatchingFailureGroup = new DispatchingFailureGroup(TEST_EVENT_BUS);
 
     @RegisterExtension
@@ -214,7 +214,7 @@ abstract class RabbitMQAndRedisEventBusContractTest implements GroupContract.Sin
     @Test
     void groupQueuesNameShouldRemainUnchanged() {
         // to detect breaking change on Group queues name
-        assertThat(new NamingStrategy(new EventBusName("mailboxEvent"))
+        assertThat(new DefaultNamingStrategy(new EventBusName("mailboxEvent"))
             .workQueue(TmailGroupRegistrationHandler.GROUP)
             .asString())
             .isEqualTo("mailboxEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup");
@@ -783,7 +783,7 @@ abstract class RabbitMQAndRedisEventBusContractTest implements GroupContract.Sin
 
         @BeforeEach
         void beforeEach() throws Exception {
-            otherEventBus = newEventBus(new NamingStrategy(new EventBusName("other")), rabbitMQExtension.getSender(), rabbitMQExtension.getReceiverProvider());
+            otherEventBus = newEventBus(new DefaultNamingStrategy(new EventBusName("other")), rabbitMQExtension.getSender(), rabbitMQExtension.getReceiverProvider());
             otherEventBus.start();
         }
 
