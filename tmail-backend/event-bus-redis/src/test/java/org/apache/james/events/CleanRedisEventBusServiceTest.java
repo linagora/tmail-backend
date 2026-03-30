@@ -44,7 +44,7 @@ import reactor.rabbitmq.ExchangeSpecification;
 import reactor.rabbitmq.QueueSpecification;
 
 class CleanRedisEventBusServiceTest {
-    private static final NamingStrategy TEST_NAMING_STRATEGY = new NamingStrategy(new EventBusName("test"));
+    private static final NamingStrategy TEST_NAMING_STRATEGY = new DefaultNamingStrategy(new EventBusName("test"));
 
     @RegisterExtension
     static RabbitMQExtension rabbitMQExtension = RabbitMQExtension.singletonRabbitMQ()

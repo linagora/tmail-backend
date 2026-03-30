@@ -23,6 +23,7 @@ import java.util.Set;
 import jakarta.inject.Named;
 
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
+import org.apache.james.events.DefaultNamingStrategy;
 import org.apache.james.events.EventBus;
 import org.apache.james.events.EventBusId;
 import org.apache.james.events.EventBusName;
@@ -52,7 +53,7 @@ import com.linagora.tmail.james.jmap.contact.EmailAddressContactListener;
 import com.linagora.tmail.james.jmap.label.LabelMetadataListener;
 
 public class TmailEventModule extends AbstractModule {
-    public static final NamingStrategy TMAIL_NAMING_STRATEGY = new NamingStrategy(new EventBusName("tmailEvent"));
+    public static final NamingStrategy TMAIL_NAMING_STRATEGY = new DefaultNamingStrategy(new EventBusName("tmailEvent"));
     public static final String TMAIL_EVENT_BUS_INJECT_NAME = "TMAIL_EVENT_BUS";
 
     @Override
