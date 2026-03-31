@@ -59,6 +59,7 @@ import static org.mockito.Mockito.when;
 import java.io.Closeable;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
@@ -135,6 +136,19 @@ abstract class RabbitMQAndRedisEventBusContractTest implements GroupContract.Sin
 
     abstract void unpauseRedis();
 
+    List<NamingStrategy> namingStrategies() {
+        return List.of(TEST_NAMING_STRATEGY);
+    }
+
+    List<NamingStrategy> mailboxEventNamingStrategies() {
+        return List.of(new DefaultNamingStrategy(new EventBusName("mailboxEvent")));
+    }
+
+    List<String> expectedGroupQueuesNames() {
+        // to detect breaking change on Group queues name
+        return List.of("mailboxEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup");
+    }
+
     @BeforeEach
     void setUp() throws Exception {
         redisClientFactory = new RedisClientFactory(FileSystemImpl.forTesting(),
@@ -165,11 +179,14 @@ abstract class RabbitMQAndRedisEventBusContractTest implements GroupContract.Sin
         Stream.concat(
             ALL_GROUPS.stream(),
             Stream.of(GroupRegistrationHandler.GROUP))
-            .map(TEST_NAMING_STRATEGY::workQueue)
+            .flatMap(group -> namingStrategies().stream()
+                .map(namingStrategy -> namingStrategy.workQueue(group)))
             .forEach(queueName -> rabbitMQExtension.getSender().delete(QueueSpecification.queue(queueName.asString())).block());
-        rabbitMQExtension.getSender()
-            .delete(ExchangeSpecification.exchange(TEST_NAMING_STRATEGY.exchange()))
-            .block();
+        namingStrategies().stream()
+            .map(NamingStrategy::exchange)
+            .forEach(exchange -> rabbitMQExtension.getSender()
+                .delete(ExchangeSpecification.exchange(exchange))
+                .block());
         rabbitMQExtension.getSender()
             .delete(TEST_NAMING_STRATEGY.deadLetterQueue())
             .block();
@@ -177,11 +194,15 @@ abstract class RabbitMQAndRedisEventBusContractTest implements GroupContract.Sin
     }
 
     private RabbitMQAndRedisEventBus newEventBus() throws Exception {
-        return newEventBus(TEST_NAMING_STRATEGY, rabbitMQExtension.getSender(), rabbitMQExtension.getReceiverProvider());
+        return newEventBus(namingStrategies(), rabbitMQExtension.getSender(), rabbitMQExtension.getReceiverProvider());
     }
 
     private RabbitMQAndRedisEventBus newEventBus(NamingStrategy namingStrategy, Sender sender, ReceiverProvider receiverProvider) throws Exception {
-        return new RabbitMQAndRedisEventBus(namingStrategy, sender, receiverProvider, eventSerializer, routingKeyConverter,
+        return newEventBus(List.of(namingStrategy), sender, receiverProvider);
+    }
+
+    private RabbitMQAndRedisEventBus newEventBus(List<NamingStrategy> namingStrategies, Sender sender, ReceiverProvider receiverProvider) throws Exception {
+        return new RabbitMQAndRedisEventBus(namingStrategies, sender, receiverProvider, eventSerializer, routingKeyConverter,
             memoryEventDeadLetters, new RecordingMetricFactory(),
             rabbitMQExtension.getRabbitChannelPool(), EventBusId.random(),
             new RabbitMQEventBus.Configurations(rabbitMQExtension.getRabbitMQ().getConfiguration(), EventBusTestFixture.RETRY_BACKOFF_CONFIGURATION),
@@ -214,10 +235,9 @@ abstract class RabbitMQAndRedisEventBusContractTest implements GroupContract.Sin
     @Test
     void groupQueuesNameShouldRemainUnchanged() {
         // to detect breaking change on Group queues name
-        assertThat(new DefaultNamingStrategy(new EventBusName("mailboxEvent"))
-            .workQueue(TmailGroupRegistrationHandler.GROUP)
-            .asString())
-            .isEqualTo("mailboxEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup");
+        assertThat(mailboxEventNamingStrategies())
+            .extracting(strategy -> strategy.workQueue(TmailGroupRegistrationHandler.GROUP).asString())
+            .containsExactlyInAnyOrderElementsOf(expectedGroupQueuesNames());
     }
 
     @Test
@@ -429,11 +449,14 @@ abstract class RabbitMQAndRedisEventBusContractTest implements GroupContract.Sin
                 .autoDelete(!AUTO_DELETE)
                 .arguments(NO_ARGUMENTS))
                 .block();
-            sender.bind(BindingSpecification.binding()
-                .exchange(TEST_NAMING_STRATEGY.exchange())
-                .queue(WORK_QUEUE_NAME)
-                .routingKey(EMPTY_ROUTING_KEY))
-                .block();
+            namingStrategies().stream()
+                .map(NamingStrategy::exchange)
+                .distinct()
+                .forEach(exchange -> sender.bind(BindingSpecification.binding()
+                    .exchange(exchange)
+                    .queue(WORK_QUEUE_NAME)
+                    .routingKey(EMPTY_ROUTING_KEY))
+                    .block());
         }
 
         @Test

@@ -11,42 +11,21 @@
  *                                                                  *
  *  This program is distributed in the hope that it will be         *
  *  useful, but WITHOUT ANY WARRANTY; without even the implied      *
- *  warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR         *
+ *  WARRANTY OF MERCHANTABILITY or FITNESS FOR A PARTICULAR         *
  *  PURPOSE. See the GNU Affero General Public License for          *
  *  more details.                                                   *
- *                                                                  *
- *  This file was taken and adapted from the Apache James project.  *
- *                                                                  *
- *  https://james.apache.org                                        *
- *                                                                  *
- *  It was originally licensed under the Apache V2 license.         *
- *                                                                  *
- *  http://www.apache.org/licenses/LICENSE-2.0                      *
  ********************************************************************/
 
 package org.apache.james.events;
 
-import java.util.Collection;
-import java.util.stream.Stream;
+import java.util.List;
 
 import reactor.core.publisher.Mono;
 
-public interface TmailGroupRegistrationHandler {
-    class GroupRegistrationHandlerGroup extends Group {
+public interface TmailGroupEventDispatcher {
+    void start();
 
-    }
+    Mono<Void> dispatch(byte[] serializedEvent, Event event);
 
-    Group GROUP = new GroupRegistrationHandlerGroup();
-
-    Stream<GroupRegistration> synchronousGroupRegistrations();
-
-    Registration register(EventListener.ReactiveEventListener listener, Group group);
-
-    Collection<Group> registeredGroups();
-
-    Mono<Void> reDeliver(Group group, Event event);
-
-    void stop();
-
-    void restart();
+    Mono<Void> dispatch(byte[] serializedEvent, List<Event> events);
 }
