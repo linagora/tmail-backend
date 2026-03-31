@@ -50,13 +50,9 @@ public class CardDavClient {
         this.config = config;
     }
 
-    private String authenticationToken(String username) {
-        return DavClientHelper.authenticationToken(config, username);
-    }
-
     private UnaryOperator<HttpHeaders> cardDavHeaders(String username) {
         return headers -> headers.add(HttpHeaderNames.ACCEPT, ACCEPT_VCARD_JSON)
-            .add(HttpHeaderNames.AUTHORIZATION, authenticationToken(username));
+            .add(HttpHeaderNames.AUTHORIZATION, config.authenticationToken(username));
     }
 
     public Mono<Boolean> existsCollectedContact(String username, String userId, String collectedId) {
