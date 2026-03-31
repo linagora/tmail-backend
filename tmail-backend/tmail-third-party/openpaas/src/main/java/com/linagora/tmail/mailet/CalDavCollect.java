@@ -18,7 +18,7 @@
 
 package com.linagora.tmail.mailet;
 
-import static com.linagora.tmail.dav.DavClient.CALENDAR_PATH;
+import static com.linagora.tmail.dav.CalDavClient.CALENDAR_PATH;
 
 import java.io.StringReader;
 import java.net.URI;
@@ -115,7 +115,7 @@ public class CalDavCollect extends GenericMailet {
     }
 
     private Mono<Void> synchronizeWithDavServer(byte[] json, DavUser davUser) {
-        return davClient.sendITIPRequest(davUser.username(),
+        return davClient.caldav().sendITIPRequest(davUser.username(),
             URI.create(CALENDAR_PATH + davUser.userId()),
             json);
     }

@@ -18,34 +18,26 @@
 
 package com.linagora.tmail.dav;
 
-import jakarta.inject.Inject;
+import java.nio.charset.StandardCharsets;
 
-import org.apache.james.core.Username;
-
-import com.linagora.tmail.api.OpenPaasRestClient;
+import org.apache.commons.lang3.StringUtils;
 
 import reactor.core.publisher.Mono;
+import reactor.netty.ByteBufMono;
+import reactor.netty.http.client.HttpClientResponse;
 
-public class OpenPaasDavUserProvider implements DavUserProvider {
-    private final OpenPaasRestClient restClient;
-    private final DavClient davClient;
+class DavClientHelper {
 
-    @Inject
-    public OpenPaasDavUserProvider(OpenPaasRestClient restClient, DavClient davClient) {
-        this.restClient = restClient;
-        this.davClient = davClient;
+    static String authenticationToken(DavConfiguration config, String username) {
+        return HttpUtils.createBasicAuthenticationToken(new UsernamePasswordCredentials(
+            config.adminCredential().getUserName() + "&" + username,
+            config.adminCredential().getPassword()));
     }
 
-    @Override
-    public Mono<DavUser> provide(Username username) {
-        return provideDavUser(username)
-            .switchIfEmpty(davClient.caldav().getPrincipal(username)
-                .then(provideDavUser(username))
-            .switchIfEmpty(Mono.error(() -> new RuntimeException("Unable to find user in Dav server with username '%s'".formatted(username.asString())))));
-    }
-
-    private Mono<DavUser> provideDavUser(Username username) {
-        return restClient.searchOpenPaasUserId(username.asString())
-            .map(openPaasUserId -> new DavUser(openPaasUserId, username.asString()));
+    static <T> Mono<T> unexpectedStatus(HttpClientResponse response, ByteBufMono content, String context) {
+        return content.asString(StandardCharsets.UTF_8)
+            .switchIfEmpty(Mono.just(StringUtils.EMPTY))
+            .flatMap(body -> Mono.error(new DavClientException(
+                "Unexpected status code: %d when %s: %s".formatted(response.status().code(), context, body))));
     }
 }

@@ -112,7 +112,7 @@ public class CalDavEventRepository implements CalendarEventRepository {
             .flatMap(requestCalendar -> {
                 String eventUid = CalendarUidField.getEventUidFromCalendar(requestCalendar);
                 Optional<String> recurrenceId = RecurrenceIdField.getRecurrenceIdAsString(requestCalendar);
-                return davClient.getCalendarObject(davUser, new EventUid(eventUid))
+                return davClient.caldav().getCalendarObject(davUser, new EventUid(eventUid))
                     .switchIfEmpty(Mono.error(() -> new DavClientException("Unable to find any calendar objects containing VEVENT with id '%s'".formatted(eventUid))))
                     .map(davCalendarObject -> davCalendarObject.parse(recurrenceId));
             });
@@ -125,7 +125,7 @@ public class CalDavEventRepository implements CalendarEventRepository {
 
         return Mono.justOrEmpty(FreeBusyRequest.tryFromCalendarEventParsed(calendarEventParsed))
             .map(builder -> builder.user(davUser.userId()).build())
-            .flatMap(request -> davClient.freeBusyQuery(davUser, request))
+            .flatMap(request -> davClient.caldav().freeBusyQuery(davUser, request))
             .map(isBusyFunction)
             .map(FreeBusyStatus::isBusy)
             .defaultIfEmpty(FreeBusyStatus.FREE);
@@ -150,9 +150,9 @@ public class CalDavEventRepository implements CalendarEventRepository {
     public Mono<Void> updateEvent(Username username, String eventUid, CalendarEventModifier eventModifier) {
         UnaryOperator<DavCalendarObject> updateEventOperator = calendarObject -> calendarObject.withUpdatePatches(eventModifier);
         return davUserProvider.provide(username)
-            .flatMap(davUser -> davClient.getCalendarObjects(davUser, new EventUid(eventUid))
+            .flatMap(davUser -> davClient.caldav().getCalendarObjects(davUser, new EventUid(eventUid))
                 .switchIfEmpty(Flux.error(new CalendarEventNotFoundException(username.asString(), eventUid)))
-                .flatMap(calendarObject -> davClient.updateCalendarObject(davUser, calendarObject.uri(), updateEventOperator)
+                .flatMap(calendarObject -> davClient.caldav().updateCalendarObject(davUser, calendarObject.uri(), updateEventOperator)
                     .thenReturn(Boolean.TRUE)
                     .onErrorResume(DavClientException.PermissionDenied.class, e -> {
                         LOGGER.debug("Skipping calendar object '{}': permission denied, likely a delegated calendar", calendarObject.uri());

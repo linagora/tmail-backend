@@ -114,14 +114,14 @@ public class MemoryCalendarEventCounterAcceptMethodTest implements CalendarEvent
         String openPaasUserId = davUsers.get(userCredential.username().asString()).id();
         assertThat(openPaasUserId).isNotNull();
         URI davCalendarUri = URI.create("/calendars/" + openPaasUserId + "/" + openPaasUserId + "/" + eventUid + ".ics");
-        davClient.createCalendar(userCredential.username().asString(), davCalendarUri, calendar).block();
+        davClient.caldav().createCalendar(userCredential.username().asString(), davCalendarUri, calendar).block();
     }
 
     @Override
     public void grantCalendarDelegation(UserCredential calendarOwner, UserCredential delegatedTo) {
         OpenPaasUser ownerOpenPaasUser = davUsers.get(calendarOwner.username().asString());
         assertThat(ownerOpenPaasUser).isNotNull();
-        davClient.grantCalendarDelegation(
+        davClient.caldav().grantCalendarDelegation(
             new DavUser(ownerOpenPaasUser.id(), ownerOpenPaasUser.email()),
             delegatedTo.username().asString()).block();
     }
@@ -130,7 +130,7 @@ public class MemoryCalendarEventCounterAcceptMethodTest implements CalendarEvent
     public Calendar getCalendarFromDav(UserCredential userCredential, String eventUid) {
         OpenPaasUser openPaasUser = davUsers.get(userCredential.username().asString());
 
-        return davClient.getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new EventUid(eventUid)).block()
+        return davClient.caldav().getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new EventUid(eventUid)).block()
             .calendarData();
     }
 
@@ -140,8 +140,8 @@ public class MemoryCalendarEventCounterAcceptMethodTest implements CalendarEvent
         String secondaryCalendarId = UUID.randomUUID().toString();
         URI calendarCollectionUri = URI.create("/calendars/" + openPaasUserId + "/" + secondaryCalendarId + "/");
         URI calendarObjectUri = URI.create("/calendars/" + openPaasUserId + "/" + secondaryCalendarId + "/" + eventUid + ".ics");
-        davClient.createCalendarCollection(userCredential.username().asString(), calendarCollectionUri).block();
-        davClient.createCalendar(userCredential.username().asString(), calendarObjectUri, calendar).block();
+        davClient.caldav().createCalendarCollection(userCredential.username().asString(), calendarCollectionUri).block();
+        davClient.caldav().createCalendar(userCredential.username().asString(), calendarObjectUri, calendar).block();
     }
 
     @Override
