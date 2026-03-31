@@ -36,6 +36,12 @@ public class TmailNamingStrategyFactory {
             .toList();
     }
 
+    public List<String> groupWorkQueueNames(Group group) {
+        return namingStrategies().stream()
+            .map(namingStrategy -> namingStrategy.workQueue(group).asString())
+            .toList();
+    }
+
     private NamingStrategy toNamingStrategy(int partition) {
         if (partition == 0) {
             return new DefaultNamingStrategy(baseEventBusName);

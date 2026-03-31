@@ -42,6 +42,7 @@ import org.apache.james.event.json.MailboxEventSerializer;
 import org.apache.james.events.CleanRedisEventBusService;
 import org.apache.james.events.EventBus;
 import org.apache.james.events.EventBusId;
+import org.apache.james.events.EventBusName;
 import org.apache.james.events.EventBusReconnectionHandler;
 import org.apache.james.events.EventListener;
 import org.apache.james.events.EventSerializer;
@@ -59,6 +60,8 @@ import org.apache.james.events.RegistrationKey;
 import org.apache.james.events.RetryBackoffConfiguration;
 import org.apache.james.events.RoutingKeyConverter;
 import org.apache.james.events.TmailGroupRegistrationHandler;
+import org.apache.james.events.TmailNamingStrategyFactory;
+import org.apache.james.events.TmailRabbitEventBusConfiguration;
 import org.apache.james.jmap.InjectionKeys;
 import org.apache.james.jmap.change.Factory;
 import org.apache.james.jmap.change.JmapEventSerializer;
@@ -71,6 +74,7 @@ import org.apache.james.utils.PropertiesProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
@@ -86,6 +90,11 @@ import com.linagora.tmail.james.jmap.label.LabelMetadataListener;
 
 public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     private static final Logger LOGGER = LoggerFactory.getLogger(RabbitMQAndRedisEventBusModule.class);
+    private static final ImmutableSet<EventBusName> EVENT_BUSES_TO_MONITOR = ImmutableSet.of(
+        MAILBOX_EVENT_NAMING_STRATEGY.getEventBusName(),
+        JMAP_NAMING_STRATEGY.getEventBusName(),
+        CONTENT_DELETION_NAMING_STRATEGY.getEventBusName(),
+        TMAIL_NAMING_STRATEGY.getEventBusName());
 
     @Override
     protected void configure() {
@@ -326,13 +335,30 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     }
 
     @Provides
+    @Singleton
+    TmailRabbitEventBusConfiguration tmailRabbitEventBusConfiguration(PropertiesProvider propertiesProvider) throws ConfigurationException {
+        try {
+            Configuration configuration = propertiesProvider.getConfiguration("rabbitmq");
+            return TmailRabbitEventBusConfiguration.from(configuration);
+        } catch (FileNotFoundException e) {
+            LOGGER.info("Missing `rabbitmq.properties` configuration file -> using default TmailRabbitEventBusConfiguration");
+            return TmailRabbitEventBusConfiguration.DEFAULT;
+        }
+    }
+
+    @Provides
     @Named(EVENT_BUS_GROUP_QUEUES_TO_MONITOR_INJECT_KEY)
     @Singleton
-    Set<String> redisEventBusGroupQueuesToMonitor() {
-        return ImmutableSet.of(
-            "mailboxEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
-            "jmapEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
-            "contentDeletionEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
-            "tmailEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup");
+    Set<String> eventBusGroupQueuesToMonitor(TmailRabbitEventBusConfiguration tmailRabbitEventBusConfiguration) {
+        return computeEventBusGroupQueuesToMonitor(tmailRabbitEventBusConfiguration);
+    }
+
+    @VisibleForTesting
+    static Set<String> computeEventBusGroupQueuesToMonitor(TmailRabbitEventBusConfiguration tmailRabbitEventBusConfiguration) {
+        return EVENT_BUSES_TO_MONITOR.stream()
+            .flatMap(eventBusName -> new TmailNamingStrategyFactory(eventBusName, tmailRabbitEventBusConfiguration)
+                    .groupWorkQueueNames(TmailGroupRegistrationHandler.GROUP)
+                .stream())
+            .collect(ImmutableSet.toImmutableSet());
     }
 }
