@@ -18,104 +18,49 @@
 
 package org.apache.james.events;
 
-import static com.rabbitmq.client.MessageProperties.PERSISTENT_TEXT_PLAIN;
-import static org.apache.james.backends.rabbitmq.Constants.AUTO_DELETE;
-import static org.apache.james.backends.rabbitmq.Constants.DIRECT_EXCHANGE;
-import static org.apache.james.backends.rabbitmq.Constants.DURABLE;
-import static org.apache.james.backends.rabbitmq.Constants.EMPTY_ROUTING_KEY;
-import static org.apache.james.backends.rabbitmq.Constants.EXCLUSIVE;
-import static org.apache.james.backends.rabbitmq.Constants.evaluateAutoDelete;
-import static org.apache.james.backends.rabbitmq.Constants.evaluateDurable;
-import static org.apache.james.backends.rabbitmq.Constants.evaluateExclusive;
 import static org.apache.james.events.GroupRegistration.DEFAULT_RETRY_COUNT;
-import static org.apache.james.events.RabbitMQAndRedisEventBus.EVENT_BUS_ID;
 
 import java.nio.charset.StandardCharsets;
-import java.time.Duration;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.TimeoutException;
 import java.util.function.Predicate;
 
-import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
-import org.apache.james.events.RoutingKeyConverter.RoutingKey;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
-import com.rabbitmq.client.AMQP;
 
 import io.lettuce.core.RedisException;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
-import reactor.rabbitmq.BindingSpecification;
-import reactor.rabbitmq.ExchangeSpecification;
-import reactor.rabbitmq.OutboundMessage;
-import reactor.rabbitmq.Sender;
-import reactor.util.retry.Retry;
 
 public class TMailEventDispatcher {
     public static final Predicate<? super Throwable> REDIS_ERROR_PREDICATE = throwable -> throwable instanceof RedisException || throwable instanceof TimeoutException;
     private static final Logger LOGGER = LoggerFactory.getLogger(TMailEventDispatcher.class);
 
-    private final NamingStrategy namingStrategy;
     private final EventSerializer eventSerializer;
-    private final Sender sender;
-    private final AMQP.BasicProperties basicProperties;
-    private final EventDeadLetters deadLetters;
-    private final RabbitMQConfiguration configuration;
-    private final DispatchingFailureGroup dispatchingFailureGroup;
     private final TmailGroupRegistrationHandler groupRegistrationHandler;
+    private final TmailGroupEventDispatcher groupEventDispatcher;
     private final RedisKeyEventDispatcher keyEventDispatcher;
     private final LocalKeyListenerExecutor localKeyListenerExecutor;
 
-    TMailEventDispatcher(NamingStrategy namingStrategy, EventBusId eventBusId,
-                         EventSerializer eventSerializer, Sender sender,
-                         EventDeadLetters deadLetters, RabbitMQConfiguration configuration,
+    TMailEventDispatcher(EventSerializer eventSerializer,
                          TmailGroupRegistrationHandler groupRegistrationHandler,
+                         TmailGroupEventDispatcher groupEventDispatcher,
                          RedisKeyEventDispatcher keyEventDispatcher,
                          LocalKeyListenerExecutor localKeyListenerExecutor) {
-        this.namingStrategy = namingStrategy;
         this.eventSerializer = eventSerializer;
-        this.sender = sender;
-        this.basicProperties = new AMQP.BasicProperties.Builder()
-            .headers(ImmutableMap.of(EVENT_BUS_ID, eventBusId.asString()))
-            .deliveryMode(PERSISTENT_TEXT_PLAIN.getDeliveryMode())
-            .priority(PERSISTENT_TEXT_PLAIN.getPriority())
-            .contentType(PERSISTENT_TEXT_PLAIN.getContentType())
-            .build();
-        this.deadLetters = deadLetters;
-        this.configuration = configuration;
-        this.dispatchingFailureGroup = new DispatchingFailureGroup(namingStrategy.getEventBusName());
         this.groupRegistrationHandler = groupRegistrationHandler;
+        this.groupEventDispatcher = groupEventDispatcher;
         this.keyEventDispatcher = keyEventDispatcher;
         this.localKeyListenerExecutor = localKeyListenerExecutor;
     }
 
     void start() {
-        Flux.concat(
-            sender.declareExchange(ExchangeSpecification.exchange(namingStrategy.exchange())
-                .durable(DURABLE)
-                .type(DIRECT_EXCHANGE)),
-            sender.declareExchange(ExchangeSpecification.exchange(namingStrategy.deadLetterExchange())
-                .durable(DURABLE)
-                .type(DIRECT_EXCHANGE)),
-            sender.declareQueue(namingStrategy.deadLetterQueue()
-                .durable(evaluateDurable(DURABLE, configuration.isQuorumQueuesUsed()))
-                .exclusive(evaluateExclusive(!EXCLUSIVE, configuration.isQuorumQueuesUsed()))
-                .autoDelete(evaluateAutoDelete(!AUTO_DELETE, configuration.isQuorumQueuesUsed()))
-                .arguments(configuration.workQueueArgumentsBuilder()
-                    .build())),
-            sender.bind(BindingSpecification.binding()
-                .exchange(namingStrategy.deadLetterExchange())
-                .queue(namingStrategy.deadLetterQueue().getName())
-                .routingKey(EMPTY_ROUTING_KEY)))
-            .then()
-            .block();
+        groupEventDispatcher.start();
     }
 
     Mono<Void> dispatch(Event event, Set<RegistrationKey> keys) {
@@ -174,53 +119,10 @@ public class TMailEventDispatcher {
     }
 
     private Mono<Void> remoteGroupsDispatch(byte[] serializedEvent, Event event) {
-        return remoteDispatchWithAcks(serializedEvent)
-            .doOnError(ex -> LOGGER.error(
-                "cannot dispatch event of type '{}' belonging '{}' with id '{}' to remote groups, store it into dead letter",
-                event.getClass().getSimpleName(),
-                event.getUsername().asString(),
-                event.getEventId().getId(),
-                ex))
-            .onErrorResume(ex -> deadLetters.store(dispatchingFailureGroup, event)
-                .then(propagateErrorIfNeeded(ex)));
+        return groupEventDispatcher.dispatch(serializedEvent, event);
     }
 
     private Mono<Void> remoteGroupsDispatch(byte[] serializedEvent, List<Event> events) {
-        return remoteDispatchWithAcks(serializedEvent)
-            .onErrorResume(ex -> Flux.fromIterable(events)
-                .map(event -> {
-                    LOGGER.error(
-                        "cannot dispatch event of type '{}' belonging '{}' with id '{}' to remote groups, store it into dead letter",
-                        event.getClass().getSimpleName(),
-                        event.getUsername().asString(),
-                        event.getEventId().getId(),
-                        ex);
-                    return deadLetters.store(dispatchingFailureGroup, event);
-                })
-                .then(propagateErrorIfNeeded(ex)));
-    }
-
-    private Mono<Void> propagateErrorIfNeeded(Throwable throwable) {
-        if (configuration.eventBusPropagateDispatchError()) {
-            return Mono.error(throwable);
-        }
-        return Mono.empty();
-    }
-
-    private Mono<Void> remoteDispatchWithAcks(byte[] serializedEvent) {
-        if (configuration.isEventBusPublishConfirmEnabled()) {
-            return Mono.from(sender.sendWithPublishConfirms(Mono.just(toMessage(serializedEvent, RoutingKey.empty())))
-                .subscribeOn(Schedulers.boundedElastic())) // channel.confirmSelect is synchronous
-                .filter(outboundMessageResult -> !outboundMessageResult.isAck())
-                .handle((result, sink) -> sink.error(new Exception("Publish was not acked")))
-                .retryWhen(Retry.backoff(2, Duration.ofMillis(100)))
-                .then();
-        } else {
-            return sender.send(Mono.just(toMessage(serializedEvent, RoutingKey.empty())));
-        }
-    }
-
-    private OutboundMessage toMessage(byte[] serializedEvent, RoutingKey routingKey) {
-        return new OutboundMessage(namingStrategy.exchange(), routingKey.asString(), basicProperties, serializedEvent);
+        return groupEventDispatcher.dispatch(serializedEvent, events);
     }
 }

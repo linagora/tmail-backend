@@ -80,6 +80,7 @@ public class RabbitMQAndRedisEventBus implements EventBus, Startable {
     }
 
     private final NamingStrategy namingStrategy;
+    private final List<NamingStrategy> namingStrategies;
     private final EventSerializer eventSerializer;
     private final RoutingKeyConverter routingKeyConverter;
     private final EventBusId eventBusId;
@@ -108,7 +109,21 @@ public class RabbitMQAndRedisEventBus implements EventBus, Startable {
                                     EventBusId eventBusId, RabbitMQEventBus.Configurations configurations,
                                     RedisEventBusClientFactory redisEventBusClientFactory,
                                     RedisEventBusConfiguration redisEventBusConfiguration) {
-        this.namingStrategy = namingStrategy;
+        this(ImmutableList.of(namingStrategy), sender, receiverProvider, eventSerializer, routingKeyConverter, eventDeadLetters,
+            metricFactory, channelPool, eventBusId, configurations, redisEventBusClientFactory, redisEventBusConfiguration);
+    }
+
+    public RabbitMQAndRedisEventBus(List<NamingStrategy> namingStrategies, Sender sender, ReceiverProvider receiverProvider,
+                                    EventSerializer eventSerializer, RoutingKeyConverter routingKeyConverter,
+                                    EventDeadLetters eventDeadLetters, MetricFactory metricFactory,
+                                    ReactorRabbitMQChannelPool channelPool, EventBusId eventBusId,
+                                    RabbitMQEventBus.Configurations configurations,
+                                    RedisEventBusClientFactory redisEventBusClientFactory,
+                                    RedisEventBusConfiguration redisEventBusConfiguration) {
+        Preconditions.checkArgument(!namingStrategies.isEmpty(), "At least one naming strategy is required");
+
+        this.namingStrategies = ImmutableList.copyOf(namingStrategies);
+        this.namingStrategy = this.namingStrategies.getFirst();
         this.sender = sender;
         this.receiverProvider = receiverProvider;
         this.listenerExecutor = new ListenerExecutor(metricFactory);
@@ -130,16 +145,7 @@ public class RabbitMQAndRedisEventBus implements EventBus, Startable {
     @Override
     public void start() {
         if (!isRunning && !isStopping) {
-
-            LocalListenerRegistry localListenerRegistry = new LocalListenerRegistry();
-            LocalKeyListenerExecutor localKeyListenerExecutor = new LocalKeyListenerExecutor(localListenerRegistry, listenerExecutor);
-            keyRegistrationHandler = new RedisKeyRegistrationHandler(namingStrategy, eventBusId, eventSerializer, routingKeyConverter,
-                localListenerRegistry, listenerExecutor, configurations.retryBackoff(), metricFactory, redisEventBusClientFactory, redisSetReactiveCommands, redisEventBusConfiguration);
-            groupRegistrationHandler = new TmailGroupRegistrationHandler(namingStrategy, eventSerializer, channelPool, sender, receiverProvider, eventDeadLetters, listenerExecutor, configurations);
-            RedisKeyEventDispatcher redisKeyEventDispatcher = new RedisKeyEventDispatcher(eventBusId, eventSerializer, redisPublisher, redisSetReactiveCommands, redisEventBusConfiguration);
-            eventDispatcher = new TMailEventDispatcher(namingStrategy, eventBusId, eventSerializer, sender, eventDeadLetters, configurations.rabbitMQConfiguration(),
-                groupRegistrationHandler, redisKeyEventDispatcher, localKeyListenerExecutor);
-
+            createEventBusComponents();
             eventDispatcher.start();
             keyRegistrationHandler.start();
             isRunning = true;
@@ -154,26 +160,10 @@ public class RabbitMQAndRedisEventBus implements EventBus, Startable {
     @VisibleForTesting
     void startWithoutStartingKeyRegistrationHandler() {
         if (!isRunning && !isStopping) {
-
-            LocalListenerRegistry localListenerRegistry = new LocalListenerRegistry();
-            LocalKeyListenerExecutor localKeyListenerExecutor =  new LocalKeyListenerExecutor(localListenerRegistry, listenerExecutor);
-            keyRegistrationHandler = new RedisKeyRegistrationHandler(namingStrategy, eventBusId, eventSerializer, routingKeyConverter,
-                localListenerRegistry, listenerExecutor, configurations.retryBackoff(), metricFactory, redisEventBusClientFactory, redisSetReactiveCommands, redisEventBusConfiguration);
-            groupRegistrationHandler = new TmailGroupRegistrationHandler(namingStrategy, eventSerializer, channelPool, sender, receiverProvider, eventDeadLetters, listenerExecutor, configurations);
-            RedisKeyEventDispatcher redisKeyEventDispatcher = new RedisKeyEventDispatcher(eventBusId, eventSerializer, redisPublisher, redisSetReactiveCommands, redisEventBusConfiguration);
-            eventDispatcher = new TMailEventDispatcher(namingStrategy, eventBusId, eventSerializer, sender, eventDeadLetters, configurations.rabbitMQConfiguration(),
-                groupRegistrationHandler, redisKeyEventDispatcher, localKeyListenerExecutor);
-
-            keyRegistrationHandler.declarePubSubChannel();
-
+            createEventBusComponents();
             eventDispatcher.start();
             isRunning = true;
         }
-    }
-
-    @VisibleForTesting
-    void startKeyRegistrationHandler() {
-        keyRegistrationHandler.start();
     }
 
     @PreDestroy
@@ -236,7 +226,7 @@ public class RabbitMQAndRedisEventBus implements EventBus, Startable {
             if (group instanceof DispatchingFailureGroup) {
                 return eventDispatcher.dispatch(event, NO_KEY);
             }
-            return groupRegistrationHandler.retrieveGroupRegistration(group).reDeliver(event);
+            return groupRegistrationHandler.reDeliver(group, event);
         }
         return Mono.empty();
     }
@@ -254,6 +244,22 @@ public class RabbitMQAndRedisEventBus implements EventBus, Startable {
     @VisibleForTesting
     public RedisKeyRegistrationHandler getKeyRegistrationHandler() {
         return keyRegistrationHandler;
+    }
+
+    private void createEventBusComponents() {
+        LocalListenerRegistry localListenerRegistry = new LocalListenerRegistry();
+        LocalKeyListenerExecutor localKeyListenerExecutor = new LocalKeyListenerExecutor(localListenerRegistry, listenerExecutor);
+        keyRegistrationHandler = new RedisKeyRegistrationHandler(namingStrategy, eventBusId, eventSerializer, routingKeyConverter,
+            localListenerRegistry, listenerExecutor, configurations.retryBackoff(), metricFactory, redisEventBusClientFactory,
+            redisSetReactiveCommands, redisEventBusConfiguration);
+        groupRegistrationHandler = new AggregatedTmailGroupRegistrationHandler(namingStrategies, eventSerializer, channelPool,
+            sender, receiverProvider, eventDeadLetters, listenerExecutor, configurations);
+        RedisKeyEventDispatcher redisKeyEventDispatcher = new RedisKeyEventDispatcher(eventBusId, eventSerializer, redisPublisher,
+            redisSetReactiveCommands, redisEventBusConfiguration);
+        TmailGroupEventDispatcher groupEventDispatcher = new AggregatedTmailGroupEventDispatcher(namingStrategies, eventBusId,
+            sender, eventDeadLetters, configurations.rabbitMQConfiguration());
+        eventDispatcher = new TMailEventDispatcher(eventSerializer, groupRegistrationHandler, groupEventDispatcher,
+            redisKeyEventDispatcher, localKeyListenerExecutor);
     }
 
 }
