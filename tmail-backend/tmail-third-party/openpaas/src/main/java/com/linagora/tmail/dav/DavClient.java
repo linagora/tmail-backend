@@ -210,11 +210,7 @@ public class DavClient {
                 if (response.status().code() == 200) {
                     return Mono.empty();
                 }
-                return responseContent.asString(StandardCharsets.UTF_8)
-                    .switchIfEmpty(Mono.just(StringUtils.EMPTY))
-                    .flatMap(body -> Mono.error(new DavClientException(
-                        "Unexpected status code: %d when granting calendar delegation to '%s': %s"
-                            .formatted(response.status().code(), delegatedToEmail, body))));
+                return unexpectedStatus(response, responseContent, "granting calendar delegation to '%s'".formatted(delegatedToEmail));
             });
     }
 
@@ -240,11 +236,7 @@ public class DavClient {
                 if (response.status().code() == 201) {
                     return ReactorUtils.logAsMono(() -> LOGGER.info("Calendar collection '{}' created successfully.", uri));
                 }
-                return responseContent.asString(StandardCharsets.UTF_8)
-                    .switchIfEmpty(Mono.just(StringUtils.EMPTY))
-                    .flatMap(body -> Mono.error(new DavClientException(
-                        "Unexpected status code: %d when creating calendar collection '%s': %s"
-                            .formatted(response.status().code(), uri, body))));
+                return unexpectedStatus(response, responseContent, "creating calendar collection '%s'".formatted(uri));
             });
     }
 
@@ -255,18 +247,10 @@ public class DavClient {
             .uri(uri.toString())
             .send(Mono.just(Unpooled.wrappedBuffer(calendarData.toString().getBytes(StandardCharsets.UTF_8))))
             .responseSingle((response, responseContent) -> {
-                switch (response.status().code()) {
-                    case 201:
-                        return ReactorUtils.logAsMono(() -> LOGGER.info("Calendar object '{}' created successfully.", uri));
-                    default:
-                        return responseContent.asString(StandardCharsets.UTF_8)
-                            .switchIfEmpty(Mono.just(StringUtils.EMPTY))
-                            .flatMap(responseBody -> Mono.error(new DavClientException("""
-                                Unexpected status code: %d when create calendar object '%s'
-                                %s
-                                """.formatted(response.status().code(), uri.toString(), responseBody))));
-
+                if (response.status().code() == 201) {
+                    return ReactorUtils.logAsMono(() -> LOGGER.info("Calendar object '{}' created successfully.", uri));
                 }
+                return unexpectedStatus(response, responseContent, "creating calendar object '%s'".formatted(uri));
             });
     }
 
@@ -276,18 +260,10 @@ public class DavClient {
             .request(HttpMethod.DELETE)
             .uri(uri.toString())
             .responseSingle((response, responseContent) -> {
-                switch (response.status().code()) {
-                    case 204:
-                        return ReactorUtils.logAsMono(() -> LOGGER.info("Calendar object '{}' has been deleted successfully.", uri));
-                    default:
-                        return responseContent.asString(StandardCharsets.UTF_8)
-                            .switchIfEmpty(Mono.just(StringUtils.EMPTY))
-                            .flatMap(responseBody -> Mono.error(new DavClientException("""
-                                Unexpected status code: %d when deleting calendar object '%s'
-                                %s
-                                """.formatted(response.status().code(), uri.toString(), responseBody))));
-
+                if (response.status().code() == 204) {
+                    return ReactorUtils.logAsMono(() -> LOGGER.info("Calendar object '{}' has been deleted successfully.", uri));
                 }
+                return unexpectedStatus(response, responseContent, "deleting calendar object '%s'".formatted(uri));
             });
     }
 
@@ -298,18 +274,10 @@ public class DavClient {
             .uri(uri.toString())
             .send(Mono.just(Unpooled.wrappedBuffer(json)))
             .responseSingle((response, responseContent) -> {
-                switch (response.status().code()) {
-                    case 204:
-                        return ReactorUtils.logAsMono(() -> LOGGER.info("Send itip request for '{}' successfully.", uri));
-                    default:
-                        return responseContent.asString(StandardCharsets.UTF_8)
-                            .switchIfEmpty(Mono.just(StringUtils.EMPTY))
-                            .flatMap(responseBody -> Mono.error(new DavClientException("""
-                                Unexpected status code: %d when sending itip request for '%s'
-                                %s
-                                """.formatted(response.status().code(), uri.toString(), responseBody))));
-
+                if (response.status().code() == 204) {
+                    return ReactorUtils.logAsMono(() -> LOGGER.info("Send itip request for '{}' successfully.", uri));
                 }
+                return unexpectedStatus(response, responseContent, "sending itip request for '%s'".formatted(uri));
             });
     }
 
@@ -441,13 +409,15 @@ public class DavClient {
                 if (response.status() == HttpResponseStatus.OK) {
                     return byteBufMono.asByteArray().map(FreeBusyResponse::deserialize);
                 }
-                return byteBufMono.asString(StandardCharsets.UTF_8)
-                    .switchIfEmpty(Mono.just(StringUtils.EMPTY))
-                    .flatMap(body -> Mono.error(new DavClientException(
-                        String.format("Unexpected status code: %d when querying freebusy for user: %s. Response body: %s",
-                            response.status().code(), user.userId(), body)
-                    )));
+                return unexpectedStatus(response, byteBufMono, "querying freebusy for user '%s'".formatted(user.userId()));
             });
+    }
+
+    private static <T> Mono<T> unexpectedStatus(HttpClientResponse response, ByteBufMono content, String context) {
+        return content.asString(StandardCharsets.UTF_8)
+            .switchIfEmpty(Mono.just(StringUtils.EMPTY))
+            .flatMap(body -> Mono.error(new DavClientException(
+                "Unexpected status code: %d when %s: %s".formatted(response.status().code(), context, body))));
     }
 
     public Mono<Void> getPrincipal(Username user) {
