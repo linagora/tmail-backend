@@ -62,7 +62,7 @@ public class CalDavClient {
              <d:current-user-principal />
           </d:prop>
         </d:propfind>""";
-
+    
     public static final int MAX_CALENDAR_OBJECT_UPDATE_RETRIES = 5;
     public static final String CALENDAR_PATH = "/calendars/";
 
@@ -79,13 +79,9 @@ public class CalDavClient {
         this.config = config;
     }
 
-    private String authenticationToken(String username) {
-        return DavClientHelper.authenticationToken(config, username);
-    }
-
     private UnaryOperator<HttpHeaders> calDavHeaders(String username) {
         return headers -> headers.add(HttpHeaderNames.ACCEPT, ACCEPT_XML)
-            .add(HttpHeaderNames.AUTHORIZATION, authenticationToken(username));
+            .add(HttpHeaderNames.AUTHORIZATION, config.authenticationToken(username));
     }
 
     public Mono<Void> updateCalendarObject(DavUser user, URI calendarObjectUri, UnaryOperator<DavCalendarObject> calendarObjectUpdater) {
@@ -101,7 +97,7 @@ public class CalDavClient {
     public Mono<Void> doUpdateCalendarObject(String username, DavCalendarObject updatedCalendarObject) {
         return client.headers(headers -> headers.add(HttpHeaderNames.ACCEPT, ACCEPT_XML)
                 .add(HttpHeaderNames.IF_MATCH, updatedCalendarObject.eTag())
-                .add(HttpHeaderNames.AUTHORIZATION, authenticationToken(username)))
+                .add(HttpHeaderNames.AUTHORIZATION, config.authenticationToken(username)))
             .request(HttpMethod.PUT)
             .uri(updatedCalendarObject.uri().toString())
             .send(Mono.just(Unpooled.wrappedBuffer(updatedCalendarObject.calendarData().toString().getBytes(StandardCharsets.UTF_8))))
@@ -142,7 +138,7 @@ public class CalDavClient {
         return client.headers(headers -> headers
                 .add(HttpHeaderNames.CONTENT_TYPE, "application/json;charset=UTF-8")
                 .add(HttpHeaderNames.ACCEPT, "application/json, text/plain, */*")
-                .add(HttpHeaderNames.AUTHORIZATION, authenticationToken(calendarOwner.username())))
+                .add(HttpHeaderNames.AUTHORIZATION, config.authenticationToken(calendarOwner.username())))
             .request(HttpMethod.POST)
             .uri(uri)
             .send(Mono.just(Unpooled.wrappedBuffer(payload.getBytes(StandardCharsets.UTF_8))))
@@ -168,7 +164,7 @@ public class CalDavClient {
 
         return client.headers(headers -> headers
                 .add(HttpHeaderNames.CONTENT_TYPE, "application/xml")
-                .add(HttpHeaderNames.AUTHORIZATION, authenticationToken(username)))
+                .add(HttpHeaderNames.AUTHORIZATION, config.authenticationToken(username)))
             .request(HttpMethod.valueOf("MKCALENDAR"))
             .uri(uri.toString())
             .send(Mono.just(Unpooled.wrappedBuffer(mkcalendarBody.getBytes(StandardCharsets.UTF_8))))
@@ -182,7 +178,7 @@ public class CalDavClient {
 
     public Mono<Void> createCalendar(String username, URI uri, Calendar calendarData) {
         return client.headers(headers -> headers.add(HttpHeaderNames.CONTENT_TYPE, "text/plain")
-                .add(HttpHeaderNames.AUTHORIZATION, authenticationToken(username)))
+                .add(HttpHeaderNames.AUTHORIZATION, config.authenticationToken(username)))
             .request(HttpMethod.PUT)
             .uri(uri.toString())
             .send(Mono.just(Unpooled.wrappedBuffer(calendarData.toString().getBytes(StandardCharsets.UTF_8))))
@@ -196,7 +192,7 @@ public class CalDavClient {
 
     public Mono<Void> deleteCalendar(String username, URI uri) {
         return client.headers(headers -> headers.add(HttpHeaderNames.CONTENT_TYPE, "text/plain")
-                .add(HttpHeaderNames.AUTHORIZATION, authenticationToken(username)))
+                .add(HttpHeaderNames.AUTHORIZATION, config.authenticationToken(username)))
             .request(HttpMethod.DELETE)
             .uri(uri.toString())
             .responseSingle((response, responseContent) -> {
@@ -209,7 +205,7 @@ public class CalDavClient {
 
     public Mono<Void> sendITIPRequest(String username, URI uri, byte[] json) {
         return client.headers(headers -> headers.add(HttpHeaderNames.CONTENT_TYPE, "application/json")
-                .add(HttpHeaderNames.AUTHORIZATION, authenticationToken(username)))
+                .add(HttpHeaderNames.AUTHORIZATION, config.authenticationToken(username)))
             .request(HttpMethod.valueOf("ITIP"))
             .uri(uri.toString())
             .send(Mono.just(Unpooled.wrappedBuffer(json)))
@@ -222,7 +218,7 @@ public class CalDavClient {
     }
 
     public Mono<DavCalendarObject> getCalendarObjectByUri(DavUser user, URI uri) {
-        return client.headers(headers -> headers.add(HttpHeaderNames.AUTHORIZATION, authenticationToken(user.username())))
+        return client.headers(headers -> headers.add(HttpHeaderNames.AUTHORIZATION, config.authenticationToken(user.username())))
             .request(HttpMethod.GET)
             .uri(uri.toString())
             .responseSingle((response, responseContent) -> {
@@ -321,7 +317,7 @@ public class CalDavClient {
 
     public Mono<FreeBusyResponse> freeBusyQuery(DavUser user, FreeBusyRequest request) {
         return client.headers(headers -> headers.add(HttpHeaderNames.ACCEPT, CONTENT_TYPE_JSON)
-                .add(HttpHeaderNames.AUTHORIZATION, authenticationToken(user.username())))
+                .add(HttpHeaderNames.AUTHORIZATION, config.authenticationToken(user.username())))
             .request(HttpMethod.POST)
             .uri(CALENDAR_PATH + "freebusy")
             .send(Mono.just(Unpooled.wrappedBuffer(request.serializeAsBytes())))

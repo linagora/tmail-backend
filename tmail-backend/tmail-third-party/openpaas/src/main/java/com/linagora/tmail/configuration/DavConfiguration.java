@@ -29,6 +29,7 @@ import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.james.util.DurationParser;
 
 import com.google.common.base.Preconditions;
+import com.linagora.tmail.HttpUtils;
 
 public record DavConfiguration(UsernamePasswordCredentials adminCredential,
                                URI baseUrl,
@@ -73,5 +74,11 @@ public record DavConfiguration(UsernamePasswordCredentials adminCredential,
     public static boolean isConfigured(Configuration configuration) {
         String baseUrl = configuration.getString(DAV_API_URI_PROPERTY, null);
         return StringUtils.isNotEmpty(baseUrl);
+    }
+
+    public String authenticationToken(String username) {
+        return HttpUtils.createBasicAuthenticationToken(new UsernamePasswordCredentials(
+            adminCredential().getUserName() + "&" + username,
+            adminCredential().getPassword()));
     }
 }

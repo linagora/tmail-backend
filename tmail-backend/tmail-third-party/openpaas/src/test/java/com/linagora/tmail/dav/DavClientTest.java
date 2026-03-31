@@ -118,7 +118,7 @@ class DavClientTest {
                 .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(OPENPAAS_USER_NAME)))
                 .willReturn(serverError()));
 
-        assertThatThrownBy(() -> client.existsCollectedContact(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, collectedContactUid).block())
+        assertThatThrownBy(() -> client.carddav().existsCollectedContact(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, collectedContactUid).block())
             .isInstanceOf(DavClientException.class);
     }
 
@@ -208,7 +208,7 @@ class DavClientTest {
                 .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(OPENPAAS_USER_NAME)))
                 .willReturn(ok()));
 
-        assertThatThrownBy(() -> client.findUserCalendars(OPEN_PAAS_DAV_USER).collectList().block())
+        assertThatThrownBy(() -> client.caldav().findUserCalendars(OPEN_PAAS_DAV_USER).collectList().block())
             .isInstanceOf(DavClientException.class);
     }
 

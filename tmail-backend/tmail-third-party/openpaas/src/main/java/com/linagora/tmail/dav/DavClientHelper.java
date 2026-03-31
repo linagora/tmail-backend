@@ -28,11 +28,6 @@ import reactor.netty.http.client.HttpClientResponse;
 
 class DavClientHelper {
 
-    static String authenticationToken(DavConfiguration config, String username) {
-        return HttpUtils.createBasicAuthenticationToken(new UsernamePasswordCredentials(
-            config.adminCredential().getUserName() + "&" + username,
-            config.adminCredential().getPassword()));
-    }
 
     static <T> Mono<T> unexpectedStatus(HttpClientResponse response, ByteBufMono content, String context) {
         return content.asString(StandardCharsets.UTF_8)
