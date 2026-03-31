@@ -93,9 +93,9 @@ public class CardDavCollectedContact extends GenericMailet {
     }
 
     private Mono<Void> createCollectedContactIfNotExists(String sender, String openPassUserId, CardDavCreationObjectRequest cardDavCreationObjectRequest) {
-        return davClient.existsCollectedContact(sender, openPassUserId, cardDavCreationObjectRequest.uid())
+        return davClient.carddav().existsCollectedContact(sender, openPassUserId, cardDavCreationObjectRequest.uid())
             .filter(FunctionalUtils.identityPredicate().negate())
-            .flatMap(exists -> davClient.createCollectedContact(sender, openPassUserId, cardDavCreationObjectRequest))
+            .flatMap(exists -> davClient.carddav().createCollectedContact(sender, openPassUserId, cardDavCreationObjectRequest))
             .onErrorResume(error -> {
                 LOGGER.error("Error while creating collected contact if not exists.", error);
                 return Mono.empty();
