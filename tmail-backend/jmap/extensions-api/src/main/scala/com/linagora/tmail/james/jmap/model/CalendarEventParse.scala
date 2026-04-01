@@ -115,14 +115,14 @@ object CalendarUidField {
     vEvent.getUid.toScala
       .map(_.getValue).map(CalendarUidField(_))
 
-  def getEventUidFromCalendar(calendar: Calendar): String =
+  def getEventUidFromCalendar(calendar: Calendar): CalendarUidField =
     from(calendar.getFirstVEvent) match {
-      case Some(uidField) => uidField.value
+      case Some(uidField) => uidField
       case None => throw new IllegalStateException("Calendar does not contain UID field")
     }
 }
 
-case class CalendarUidField(value: String) extends AnyVal
+case class CalendarUidField(value: String)
 
 object CalendarPriorityField {
   def from(vEvent: VEvent): Option[CalendarPriorityField] =

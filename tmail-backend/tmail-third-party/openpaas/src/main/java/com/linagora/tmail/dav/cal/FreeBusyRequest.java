@@ -24,18 +24,21 @@ import java.util.List;
 import java.util.Optional;
 
 import com.google.common.base.Preconditions;
+import com.linagora.tmail.dav.DavUid;
+import com.linagora.tmail.dav.OpenPaaSUserId;
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
 
 public record FreeBusyRequest(Instant start,
                               Instant end,
-                              List<String> users,
-                              List<String> uids) {
+                              List<OpenPaaSUserId> users,
+                              List<DavUid> uids) {
 
     public static Optional<FreeBusyRequest.Builder> tryFromCalendarEventParsed(CalendarEventParsed calendarEventParsed) {
         return calendarEventParsed.startAsJava()
             .flatMap(start -> calendarEventParsed.endAsJava()
-                .flatMap(end -> calendarEventParsed.uidAsString().map(
-                    uid -> FreeBusyRequest.builder().start(start).end(end).uid(uid))));
+                .flatMap(end -> calendarEventParsed.uidAsString()
+                    .map(DavUid::new)
+                    .map(uid -> FreeBusyRequest.builder().start(start).end(end).uid(uid))));
     }
 
     public FreeBusyRequest {
@@ -52,8 +55,8 @@ public record FreeBusyRequest(Instant start,
     public static class Builder {
         private Instant start;
         private Instant end;
-        private List<String> users;
-        private List<String> uids;
+        private List<OpenPaaSUserId> users;
+        private List<DavUid> uids;
 
         public Builder start(Instant start) {
             this.start = start;
@@ -75,12 +78,12 @@ public record FreeBusyRequest(Instant start,
             return this;
         }
 
-        public Builder user(String user) {
+        public Builder user(OpenPaaSUserId user) {
             this.users = List.of(user);
             return this;
         }
 
-        public Builder uid(String uid) {
+        public Builder uid(DavUid uid) {
             this.uids = List.of(uid);
             return this;
         }

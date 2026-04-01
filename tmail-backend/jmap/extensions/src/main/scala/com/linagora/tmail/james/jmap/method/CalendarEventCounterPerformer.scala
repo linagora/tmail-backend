@@ -97,8 +97,8 @@ class CalendarEventCounterPerformer @Inject()(calendarEventRepository: CalendarE
       })
   }
 
-  private def getEventUid(counterCalendar: Calendar): String =
-    CalendarUidField.from(counterCalendar.getFirstVEvent).map(_.value) match {
+  private def getEventUid(counterCalendar: Calendar): CalendarUidField =
+    CalendarUidField.from(counterCalendar.getFirstVEvent) match {
       case Some(uid) => uid
       case None => throw new IllegalArgumentException("The calendar file must contain a UID property")
     }

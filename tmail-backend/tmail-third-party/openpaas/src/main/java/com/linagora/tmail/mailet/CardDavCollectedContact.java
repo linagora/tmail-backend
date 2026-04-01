@@ -25,6 +25,7 @@ import jakarta.inject.Inject;
 import jakarta.mail.MessagingException;
 
 import org.apache.james.core.MailAddress;
+import org.apache.james.core.Username;
 import org.apache.james.util.FunctionalUtils;
 import org.apache.mailet.AttributeUtils;
 import org.apache.mailet.Mail;
@@ -36,6 +37,7 @@ import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.dav.CardDavUtils;
 import com.linagora.tmail.dav.DavClient;
+import com.linagora.tmail.dav.OpenPaaSUserId;
 import com.linagora.tmail.dav.request.CardDavCreationObjectRequest;
 
 import reactor.core.publisher.Flux;
@@ -65,34 +67,36 @@ public class CardDavCollectedContact extends GenericMailet {
         }
     }
 
-    private Optional<String> getSender(Mail mail) {
+    private Optional<Username> getSender(Mail mail) {
         return getSmtpAuthenticatedUser(mail)
             .or(() -> getJmapAuthenticatedUser(mail))
             .or(() -> maybeSender(mail));
     }
 
-    private Optional<String> maybeSender(Mail mail) {
+    private Optional<Username> maybeSender(Mail mail) {
         return mail.getMaybeSender().asOptional()
-            .map(MailAddress::asString);
+            .map(address -> Username.of(address.asString()));
     }
 
-    private Optional<String> getJmapAuthenticatedUser(Mail mail) {
-        return AttributeUtils.getValueAndCastFromMail(mail, Mail.JMAP_AUTH_USER, String.class);
+    private Optional<Username> getJmapAuthenticatedUser(Mail mail) {
+        return AttributeUtils.getValueAndCastFromMail(mail, Mail.JMAP_AUTH_USER, String.class)
+            .map(Username::of);
     }
 
-    private Optional<String> getSmtpAuthenticatedUser(Mail mail) {
-        return AttributeUtils.getValueAndCastFromMail(mail, Mail.SMTP_AUTH_USER, String.class);
+    private Optional<Username> getSmtpAuthenticatedUser(Mail mail) {
+        return AttributeUtils.getValueAndCastFromMail(mail, Mail.SMTP_AUTH_USER, String.class)
+            .map(Username::of);
     }
 
-    private Mono<Void> collectedContactProcess(String sender, List<MailAddress> recipients) {
-        return openPaasRestClient.searchOpenPaasUserId(sender)
+    private Mono<Void> collectedContactProcess(Username senderUsername, List<MailAddress> recipients) {
+        return openPaasRestClient.searchOpenPaasUserId(senderUsername)
             .flatMapMany(openPassUserId -> Flux.fromIterable(recipients)
                 .map(CardDavUtils::createObjectCreationRequest)
-                .flatMap(cardDavCreationObjectRequest -> createCollectedContactIfNotExists(sender, openPassUserId, cardDavCreationObjectRequest)))
+                .flatMap(cardDavCreationObjectRequest -> createCollectedContactIfNotExists(senderUsername, openPassUserId, cardDavCreationObjectRequest)))
             .then();
     }
 
-    private Mono<Void> createCollectedContactIfNotExists(String sender, String openPassUserId, CardDavCreationObjectRequest cardDavCreationObjectRequest) {
+    private Mono<Void> createCollectedContactIfNotExists(Username sender, OpenPaaSUserId openPassUserId, CardDavCreationObjectRequest cardDavCreationObjectRequest) {
         return davClient.carddav().existsCollectedContact(sender, openPassUserId, cardDavCreationObjectRequest.uid())
             .filter(FunctionalUtils.identityPredicate().negate())
             .flatMap(exists -> davClient.carddav().createCollectedContact(sender, openPassUserId, cardDavCreationObjectRequest))

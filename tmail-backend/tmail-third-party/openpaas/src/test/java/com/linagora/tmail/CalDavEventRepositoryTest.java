@@ -54,7 +54,7 @@ import com.linagora.tmail.dav.CalDavEventRepository;
 import com.linagora.tmail.dav.DavCalendarObject;
 import com.linagora.tmail.dav.DavClient;
 import com.linagora.tmail.dav.DavUser;
-import com.linagora.tmail.dav.EventUid;
+import com.linagora.tmail.dav.DavUid;
 import com.linagora.tmail.dav.OpenPaasDavUserProvider;
 import com.linagora.tmail.james.jmap.AttendanceStatus;
 import com.linagora.tmail.james.jmap.CalendarEventNotFoundException;
@@ -66,6 +66,7 @@ import com.linagora.tmail.james.jmap.calendar.CalendarResolver;
 import com.linagora.tmail.james.jmap.calendar.OrganizerValidator;
 import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults;
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
+import com.linagora.tmail.james.jmap.model.CalendarUidField;
 import com.linagora.tmail.james.jmap.model.EventAttendanceStatusEntry;
 
 import net.fortuna.ical4j.model.Calendar;
@@ -75,7 +76,7 @@ import reactor.core.scala.publisher.SMono;
 import scala.jdk.javaapi.CollectionConverters;
 import scala.jdk.javaapi.OptionConverters;
 
-public class CalDavEventRepositoryTest {
+class CalDavEventRepositoryTest {
 
     @RegisterExtension
     static DockerOpenPaasExtension dockerOpenPaasExtension = new DockerOpenPaasExtension(DockerOpenPaasSetup.SINGLETON);
@@ -107,7 +108,7 @@ public class CalDavEventRepositoryTest {
 
     private void setupNewTestUser() {
         openPaasUser = dockerOpenPaasExtension.newTestUser();
-        testUser = Username.of(openPaasUser.email());
+        testUser = openPaasUser.email();
         aliceOpenPaasUser = dockerOpenPaasExtension.newTestUser();
     }
 
@@ -125,7 +126,7 @@ public class CalDavEventRepositoryTest {
             "DTSTART;TZID=Europe/Paris:20250409T110000\n" +
             "DTEND;TZID=Europe/Paris:20250409T120000\n" +
             "ORGANIZER;CN=John1 Doe1:user_8f960db2-199e-42d2-97ac-65ddc344b96e@open-paas.org\n" +
-            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email() + "\n" +
+            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email().asString() +"\n" +
             "DTSTAMP:20250331T083652Z\n" + recurrenceIdField.map(rci -> rci + "\n").orElse("") +
             "SEQUENCE:1\n" +
             "END:VEVENT\n" +
@@ -144,8 +145,8 @@ public class CalDavEventRepositoryTest {
     }
 
     private void pushCalendarToDav(String username, CalendarEventHelper calendarEvent) {
-        URI davCalendarUri = URI.create("/calendars/" + openPaasUser.id() + "/" + openPaasUser.id() + "/" + calendarEvent.uid() + ".ics");
-        davClient.caldav().createCalendar(username, davCalendarUri, calendarEvent.asCalendar()).block();
+        URI davCalendarUri = URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + calendarEvent.uid() + ".ics");
+        davClient.caldav().createCalendar(Username.of(username), davCalendarUri, calendarEvent.asCalendar()).block();
     }
 
     @ParameterizedTest
@@ -153,8 +154,8 @@ public class CalDavEventRepositoryTest {
     void getAttendanceStatusShouldReturnCorrectData(PartStat partStat) {
         // Given a calendar event
         ZonedDateTime startDate = ZonedDateTime.parse("2025-03-14T14:00:00Z");
-        CalendarEventHelper calendarEvent = new CalendarEventHelper(openPaasUser.email(), partStat, startDate, startDate.plusHours(1));
-        pushCalendarToDav(openPaasUser.email(), calendarEvent);
+        CalendarEventHelper calendarEvent = new CalendarEventHelper(openPaasUser.email().asString(), partStat, startDate, startDate.plusHours(1));
+        pushCalendarToDav(openPaasUser.email().asString(), calendarEvent);
 
         // When getAttendanceStatus
         BlobId blobId = setupCalendarResolver(calendarEvent.uid());
@@ -205,7 +206,7 @@ public class CalDavEventRepositoryTest {
             "RRULE:FREQ=WEEKLY;COUNT=4;BYDAY=WE\n" +
             "ORGANIZER;CN=John1 Doe1:mailto:user1@open-paas.org\n" +
             "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVI\n" +
-            " DUAL;CN=John2 Doe2:mailto:" + openPaasUser.email() + "\n" +
+            " DUAL;CN=John2 Doe2:mailto:" + openPaasUser.email().asString() +"\n" +
             "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:u\n" +
             " ser1@open-paas.org\n" +
             "DTSTAMP:20250331T075231Z\n" +
@@ -222,7 +223,7 @@ public class CalDavEventRepositoryTest {
             "DTSTAMP:20250331T075231Z\n" +
             recurrenceIdValue + "\n" +
             "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVI\n" +
-            " DUAL;CN=John2 Doe2:" + openPaasUser.email() + "\n" +
+            " DUAL;CN=John2 Doe2:" + openPaasUser.email().asString() +"\n" +
             "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL;CN=John1\n" +
             "  Doe1:mailto:user1@open-paas.org\n" +
             "SEQUENCE:1\n" +
@@ -230,7 +231,7 @@ public class CalDavEventRepositoryTest {
             "END:VCALENDAR\n";
 
         // Push calendar to Dav
-        URI davCalendarUri = URI.create("/calendars/" + openPaasUser.id() + "/" + openPaasUser.id() + "/" + eventUid + ".ics");
+        URI davCalendarUri = URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + eventUid + ".ics");
         davClient.caldav().createCalendar(openPaasUser.email(), davCalendarUri, stringAsCalendar(calendarAsString)).block();
 
         // Setup blobId for the event, with recurrence id
@@ -274,7 +275,7 @@ public class CalDavEventRepositoryTest {
             "RRULE:FREQ=WEEKLY;COUNT=4;BYDAY=WE\n" +
             "ORGANIZER;CN=John1 Doe1:mailto:user1@open-paas.org\n" +
             "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVI\n" +
-            " DUAL;CN=John2 Doe2:mailto:" + openPaasUser.email() + "\n" +
+            " DUAL;CN=John2 Doe2:mailto:" + openPaasUser.email().asString() +"\n" +
             "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:u\n" +
             " ser1@open-paas.org\n" +
             "DTSTAMP:20250331T075231Z\n" +
@@ -291,7 +292,7 @@ public class CalDavEventRepositoryTest {
             "DTSTAMP:20250331T075231Z\n" +
             recurrenceIdValue + "\n" +
             "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVI\n" +
-            " DUAL;CN=John2 Doe2:" + openPaasUser.email() + "\n" +
+            " DUAL;CN=John2 Doe2:" + openPaasUser.email().asString() +"\n" +
             "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL;CN=John1\n" +
             "  Doe1:mailto:user1@open-paas.org\n" +
             "SEQUENCE:1\n" +
@@ -299,7 +300,7 @@ public class CalDavEventRepositoryTest {
             "END:VCALENDAR\n";
 
         // Push calendar to Dav
-        URI davCalendarUri = URI.create("/calendars/" + openPaasUser.id() + "/" + openPaasUser.id() + "/" + eventUid + ".ics");
+        URI davCalendarUri = URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + eventUid + ".ics");
         davClient.caldav().createCalendar(openPaasUser.email(), davCalendarUri, stringAsCalendar(calendarAsString)).block();
 
         // Setup blobId for the event, with empty recurrence id
@@ -320,14 +321,14 @@ public class CalDavEventRepositoryTest {
         // Given a calendar event A, already ACCEPTED
         ZonedDateTime startDateOfEventA = ZonedDateTime.parse("2025-03-14T14:00:00Z");
         ZonedDateTime endDateOfEventA = startDateOfEventA.plusHours(2);
-        CalendarEventHelper calendarEventA = new CalendarEventHelper(openPaasUser.email(), PartStat.ACCEPTED, startDateOfEventA, endDateOfEventA);
-        pushCalendarToDav(openPaasUser.email(), calendarEventA);
+        CalendarEventHelper calendarEventA = new CalendarEventHelper(openPaasUser.email().asString(), PartStat.ACCEPTED, startDateOfEventA, endDateOfEventA);
+        pushCalendarToDav(openPaasUser.email().asString(), calendarEventA);
 
         // And a calendar event B has the conflict with time slot with event A
         ZonedDateTime startDateOfEventB = startDateOfEventA.plusHours(1);
         assertThat(startDateOfEventB.isBefore(endDateOfEventA)).isTrue();
-        CalendarEventHelper calendarEventB = new CalendarEventHelper(openPaasUser.email(), PartStat.NEEDS_ACTION, startDateOfEventB, startDateOfEventB.plusHours(1));
-        pushCalendarToDav(openPaasUser.email(), calendarEventB);
+        CalendarEventHelper calendarEventB = new CalendarEventHelper(openPaasUser.email().asString(), PartStat.NEEDS_ACTION, startDateOfEventB, startDateOfEventB.plusHours(1));
+        pushCalendarToDav(openPaasUser.email().asString(), calendarEventB);
 
         // When getAttendanceStatus of event B
         BlobId blobId = setupCalendarResolver(calendarEventB.uid());
@@ -346,13 +347,13 @@ public class CalDavEventRepositoryTest {
         // Given a calendar event A, already ACCEPTED
         ZonedDateTime startDateOfEventA = ZonedDateTime.parse("2025-03-14T14:00:00Z");
         ZonedDateTime endDateOfEventA = startDateOfEventA.plusHours(2);
-        CalendarEventHelper calendarEventA = new CalendarEventHelper(openPaasUser.email(), PartStat.ACCEPTED, startDateOfEventA, endDateOfEventA);
-        pushCalendarToDav(openPaasUser.email(), calendarEventA);
+        CalendarEventHelper calendarEventA = new CalendarEventHelper(openPaasUser.email().asString(), PartStat.ACCEPTED, startDateOfEventA, endDateOfEventA);
+        pushCalendarToDav(openPaasUser.email().asString(), calendarEventA);
 
         // And a calendar event B has not the conflict with time slot with event A
         ZonedDateTime startDateOfEventB = endDateOfEventA.plusHours(2);
-        CalendarEventHelper calendarEventB = new CalendarEventHelper(openPaasUser.email(), PartStat.NEEDS_ACTION, startDateOfEventB, startDateOfEventB.plusHours(1));
-        pushCalendarToDav(openPaasUser.email(), calendarEventB);
+        CalendarEventHelper calendarEventB = new CalendarEventHelper(openPaasUser.email().asString(), PartStat.NEEDS_ACTION, startDateOfEventB, startDateOfEventB.plusHours(1));
+        pushCalendarToDav(openPaasUser.email().asString(), calendarEventB);
 
         // When getAttendanceStatus of event B
         BlobId blobId = setupCalendarResolver(calendarEventB.uid());
@@ -408,14 +409,14 @@ public class CalDavEventRepositoryTest {
             "DTSTART;TZID=Europe/Paris:20250314T150000\n" +
             "DTEND;TZID=Europe/Paris:20250314T170000\n" +
             "ORGANIZER;CN=John1 Doe1:mailto:user2@open-paas.org\n" +
-            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email() + "\n" +
+            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email().asString() +"\n" +
             "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:user2@open-paas.org\n" +
             "DTSTAMP:20250313T113032\n" +
             "END:VEVENT\n" +
             "END:VCALENDAR\n";
 
         davClient.caldav().createCalendar(openPaasUser.email(),
-                URI.create("/calendars/" + openPaasUser.id() + "/" + openPaasUser.id() + "/" + eventUidA + ".ics"),
+                URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + eventUidA + ".ics"),
                 CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(calendarWithFrancesTimeZone.getBytes(StandardCharsets.UTF_8))))
             .block();
 
@@ -433,14 +434,14 @@ public class CalDavEventRepositoryTest {
             "DTSTART;TZID=Asia/Jakarta:20250314T210000\n" +
             "DTEND;TZID=Asia/Jakarta:20250314T230000\n" +
             "ORGANIZER;CN=John1 Doe1:mailto:user2@open-paas.org\n" +
-            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email() + "\n" +
+            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email().asString() +"\n" +
             "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:user2@open-paas.org\n" +
             "DTSTAMP:20250313T113032\n" +
             "END:VEVENT\n" +
             "END:VCALENDAR\n";
 
         davClient.caldav().createCalendar(openPaasUser.email(),
-                URI.create("/calendars/" + openPaasUser.id() + "/" + openPaasUser.id() + "/" + eventUidB + ".ics"),
+                URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + eventUidB + ".ics"),
                 CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(calendarWithVietnamTimeZone.getBytes(StandardCharsets.UTF_8))))
             .block();
 
@@ -479,10 +480,10 @@ public class CalDavEventRepositoryTest {
             "DTEND;TZID=Europe/Paris:20250401T153000\n" +
             "CLASS:PUBLIC\n" +
             "SUMMARY:Loop3\n" +
-            "ORGANIZER;CN=John1 Doe1:mailto:" + openPaasUser.email() + "\n" +
+            "ORGANIZER;CN=John1 Doe1:mailto:" + openPaasUser.email().asString() +"\n" +
             "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVI\n" +
-            " DUAL;CN=John2 Doe2:mailto:" + aliceOpenPaasUser.email() + "\n" +
-            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:" + openPaasUser.email() + "\n" +
+            " DUAL;CN=John2 Doe2:mailto:" + aliceOpenPaasUser.email().asString() +"\n" +
+            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:" + openPaasUser.email().asString() +"\n" +
             "DTSTAMP:20250331T075231Z\n" +
             "SEQUENCE:0\n" +
             "END:VEVENT\n" +
@@ -492,12 +493,12 @@ public class CalDavEventRepositoryTest {
 
         // Create the event on organizer (OpenPaas user) calendar
         davClient.caldav().createCalendar(openPaasUser.email(),
-                URI.create("/calendars/" + openPaasUser.id() + "/" + openPaasUser.id() + "/" + eventUidA + ".ics"),
+                URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + eventUidA + ".ics"),
                 calendar)
             .block();
         // Create the event on attendee (Alice) calendar
         davClient.caldav().createCalendar(aliceOpenPaasUser.email(),
-                URI.create("/calendars/" + aliceOpenPaasUser.id() + "/" + aliceOpenPaasUser.id() + "/" + eventUidA + ".ics"),
+                URI.create("/calendars/" + aliceOpenPaasUser.id().value() + "/" + aliceOpenPaasUser.id().value() + "/" + eventUidA + ".ics"),
                 calendar)
             .block();
 
@@ -513,9 +514,9 @@ public class CalDavEventRepositoryTest {
             "UID:" + eventUidA + "\n" +
             "DTSTART;TZID=Europe/Paris:" + proposedStartDate.format(DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss")) + "\n" +
             "DTEND;TZID=Europe/Paris:" + proposedEndDate.format(DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss")) + "\n" +
-            "ORGANIZER;CN=John1 Doe1:mailto:" + openPaasUser.email() + "\n" +
-            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2:mailto:" + aliceOpenPaasUser.email() + "\n" +
-            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:" + openPaasUser.email() + "\n" +
+            "ORGANIZER;CN=John1 Doe1:mailto:" + openPaasUser.email().asString() +"\n" +
+            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2:mailto:" + aliceOpenPaasUser.email().asString() +"\n" +
+            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:" + openPaasUser.email().asString() +"\n" +
             "DTSTAMP:20250331T075231Z\n" +
             "END:VEVENT\n" +
             "END:VCALENDAR\n";
@@ -524,11 +525,11 @@ public class CalDavEventRepositoryTest {
             testUser);
 
         // OpenPaas user accepts the counter proposal
-        assertThatCode(() -> testee.updateEvent(Username.of(openPaasUser.email()), eventUidA, calendarEventModifier).block())
+        assertThatCode(() -> testee.updateEvent(openPaasUser.email(), new CalendarUidField(eventUidA), calendarEventModifier).block())
             .doesNotThrowAnyException();
 
-        DavCalendarObject openPaasUserCalendar = davClient.caldav().getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new EventUid(eventUidA)).block();
-        DavCalendarObject aliceDavCalendarObject = davClient.caldav().getCalendarObject(new DavUser(aliceOpenPaasUser.id(), aliceOpenPaasUser.email()), new EventUid(eventUidA)).block();
+        DavCalendarObject openPaasUserCalendar = davClient.caldav().getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(eventUidA)).block();
+        DavCalendarObject aliceDavCalendarObject = davClient.caldav().getCalendarObject(new DavUser(aliceOpenPaasUser.id(), aliceOpenPaasUser.email()), new DavUid(eventUidA)).block();
 
         // the event should be updated in both organizer (OpenPaas user) calendar and attendee (Alice) calendar
         assertThat(openPaasUserCalendar.uri()).isNotEqualTo(aliceDavCalendarObject.uri());
@@ -545,14 +546,14 @@ public class CalDavEventRepositoryTest {
             "UID:" + eventUidA + "\n" +
             "DTSTART;TZID=Europe/Paris:20250314T150000\n" +
             "DTEND;TZID=Europe/Paris:20250314T170000\n" +
-            "ORGANIZER;CN=John1 Doe1:" + openPaasUser.email() + "\n" +
-            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email() + "\n" +
+            "ORGANIZER;CN=John1 Doe1:" + openPaasUser.email().asString() +"\n" +
+            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email().asString() +"\n" +
             "DTSTAMP:20250313T113032\n" +
             "END:VEVENT\n" +
             "END:VCALENDAR\n";
 
         davClient.caldav().createCalendar(openPaasUser.email(),
-                URI.create("/calendars/" + openPaasUser.id() + "/" + openPaasUser.id() + "/" + eventUidA + ".ics"),
+                URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + eventUidA + ".ics"),
                 CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(calendarWithFrancesTimeZone.getBytes(StandardCharsets.UTF_8))))
             .block();
 
@@ -560,10 +561,10 @@ public class CalDavEventRepositoryTest {
             .atZone(ZoneId.of("Europe/Paris"));
         ZonedDateTime proposedEndDate = proposedStartDate.plusHours(2);
 
-        assertThatCode(() -> testee.updateEvent(testUser, eventUidA, createRescheduledTimingModifier(proposedStartDate, proposedEndDate)).block())
+        assertThatCode(() -> testee.updateEvent(testUser, new CalendarUidField(eventUidA), createRescheduledTimingModifier(proposedStartDate, proposedEndDate)).block())
             .doesNotThrowAnyException();
 
-        DavCalendarObject davCalendarObject = davClient.caldav().getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new EventUid(eventUidA)).block();
+        DavCalendarObject davCalendarObject = davClient.caldav().getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(eventUidA)).block();
 
         String updatedCalendar = davCalendarObject.calendarData().toString();
         assertThat(updatedCalendar).contains("DTSTART;TZID=Europe/Paris:20250320T160000");
@@ -579,14 +580,14 @@ public class CalDavEventRepositoryTest {
             "UID:" + eventUidA + "\n" +
             "DTSTART;TZID=Europe/Paris:20250314T150000\n" +
             "DTEND;TZID=Europe/Paris:20250314T170000\n" +
-            "ORGANIZER;CN=John1 Doe1:" + openPaasUser.email() + "\n" +
-            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email() + "\n" +
+            "ORGANIZER;CN=John1 Doe1:" + openPaasUser.email().asString() +"\n" +
+            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email().asString() +"\n" +
             "DTSTAMP:20250313T113032\n" +
             "END:VEVENT\n" +
             "END:VCALENDAR\n";
 
         davClient.caldav().createCalendar(openPaasUser.email(),
-                URI.create("/calendars/" + openPaasUser.id() + "/" + openPaasUser.id() + "/" + eventUidA + ".ics"),
+                URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + eventUidA + ".ics"),
                 CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(calendarWithFrancesTimeZone.getBytes(StandardCharsets.UTF_8))))
             .block();
 
@@ -594,10 +595,10 @@ public class CalDavEventRepositoryTest {
             .atZone(ZoneId.of("Europe/Paris"));
         ZonedDateTime proposedEndDate = proposedStartDate.plusHours(2);
 
-        assertThatCode(() -> testee.updateEvent(testUser, eventUidA, createRescheduledTimingModifier(proposedStartDate, proposedEndDate)).block())
+        assertThatCode(() -> testee.updateEvent(testUser, new CalendarUidField(eventUidA), createRescheduledTimingModifier(proposedStartDate, proposedEndDate)).block())
             .doesNotThrowAnyException();
 
-        assertThatThrownBy(() -> testee.updateEvent(testUser, eventUidA, createRescheduledTimingModifier(proposedStartDate, proposedEndDate)).block())
+        assertThatThrownBy(() -> testee.updateEvent(testUser, new CalendarUidField(eventUidA), createRescheduledTimingModifier(proposedStartDate, proposedEndDate)).block())
             .isInstanceOf(CalendarEventModifier.NoUpdateRequiredException.class);
     }
 
@@ -608,7 +609,7 @@ public class CalDavEventRepositoryTest {
         ZonedDateTime proposedStartDate = ZonedDateTime.now();
         ZonedDateTime proposedEndDate = proposedStartDate.plusHours(2);
 
-        assertThatThrownBy(() -> testee.updateEvent(testUser, nonExistentEventUid, createRescheduledTimingModifier(proposedStartDate, proposedEndDate)).block())
+        assertThatThrownBy(() -> testee.updateEvent(testUser, new CalendarUidField(nonExistentEventUid), createRescheduledTimingModifier(proposedStartDate, proposedEndDate)).block())
             .isInstanceOf(CalendarEventNotFoundException.class)
             .hasMessageContaining("Calendar event not found");
     }
@@ -624,13 +625,13 @@ public class CalDavEventRepositoryTest {
             "DTSTART;TZID=Europe/Paris:20250314T150000\n" +
             "DTEND;TZID=Europe/Paris:20250314T170000\n" +
             "ORGANIZER;CN=John1 Doe1:mailto:" + organizerEmail + "\n" +
-            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email() + "\n" +
+            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email().asString() +"\n" +
             "DTSTAMP:20250313T113032\n" +
             "END:VEVENT\n" +
             "END:VCALENDAR\n";
 
         davClient.caldav().createCalendar(openPaasUser.email(),
-                URI.create("/calendars/" + openPaasUser.id() + "/" + openPaasUser.id() + "/" + eventUidA + ".ics"),
+                URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + eventUidA + ".ics"),
                 CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(calendarWithDifferentOrganizer.getBytes(StandardCharsets.UTF_8))))
             .block();
 
@@ -642,7 +643,7 @@ public class CalDavEventRepositoryTest {
             OptionConverters.toScala(Optional.empty()),
             new OrganizerValidator(testUser.asString()));
 
-        assertThatThrownBy(() -> testee.updateEvent(testUser, eventUidA, eventModifier).block())
+        assertThatThrownBy(() -> testee.updateEvent(testUser, new CalendarUidField(eventUidA), eventModifier).block())
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Can not update event");
     }
@@ -657,14 +658,14 @@ public class CalDavEventRepositoryTest {
             "DTSTART;TZID=Europe/Paris:20250328T090000\n" +
             "DTEND;TZID=Europe/Paris:20250328T100000\n" +
             "RRULE:FREQ=WEEKLY;COUNT=4;BYDAY=WE\n" +
-            "ORGANIZER;CN=John1 Doe1:" + openPaasUser.email() + "\n" +
-            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email() + "\n" +
+            "ORGANIZER;CN=John1 Doe1:" + openPaasUser.email().asString() +"\n" +
+            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email().asString() +"\n" +
             "DTSTAMP:20250313T113032\n" +
             "END:VEVENT\n" +
             "END:VCALENDAR\n";
 
         davClient.caldav().createCalendar(openPaasUser.email(),
-                URI.create("/calendars/" + openPaasUser.id() + "/" + openPaasUser.id() + "/" + eventUidA + ".ics"),
+                URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + eventUidA + ".ics"),
                 CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(calendarWithFrancesTimeZone.getBytes(StandardCharsets.UTF_8))))
             .block();
 
@@ -676,18 +677,18 @@ public class CalDavEventRepositoryTest {
             "RECURRENCE-ID;TZID=Europe/Paris:20250409T090000\n" +
             "DTSTART;TZID=Europe/Paris:20250409T110000\n" +
             "DTEND;TZID=Europe/Paris:20250409T120000\n" +
-            "ORGANIZER;CN=John1 Doe1:" + openPaasUser.email() + "\n" +
-            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email() + "\n" +
+            "ORGANIZER;CN=John1 Doe1:" + openPaasUser.email().asString() +"\n" +
+            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email().asString() +"\n" +
             "DTSTAMP:20250313T113032\n" +
             "END:VEVENT\n" +
             "END:VCALENDAR\n";
 
         CalendarEventModifier calendarEventModifier = CalendarEventModifier.of(CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(counterEvent.getBytes(StandardCharsets.UTF_8))), testUser);
 
-        assertThatCode(() ->  testee.updateEvent(testUser, eventUidA, calendarEventModifier).block())
+        assertThatCode(() ->  testee.updateEvent(testUser, new CalendarUidField(eventUidA), calendarEventModifier).block())
             .doesNotThrowAnyException();
 
-        DavCalendarObject davCalendarObject = davClient.caldav().getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new EventUid(eventUidA)).block();
+        DavCalendarObject davCalendarObject = davClient.caldav().getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(eventUidA)).block();
 
         String updatedCalendar = davCalendarObject.calendarData().toString();
         assertThat(updatedCalendar.replaceAll("(?m)^DTSTAMP:.*\\R?", "").trim())
@@ -699,15 +700,15 @@ public class CalDavEventRepositoryTest {
                 "DTSTART;TZID=Europe/Paris:20250328T090000\n" +
                 "DTEND;TZID=Europe/Paris:20250328T100000\n" +
                 "RRULE:FREQ=WEEKLY;COUNT=4;BYDAY=WE\n" +
-                "ORGANIZER;CN=John1 Doe1;SCHEDULE-STATUS=3.7:" + openPaasUser.email() + "\n" +
-                "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email() + "\n" +
+                "ORGANIZER;CN=John1 Doe1;SCHEDULE-STATUS=3.7:" + openPaasUser.email().asString() +"\n" +
+                "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email().asString() +"\n" +
                 "END:VEVENT\n" +
                 "BEGIN:VEVENT\n" +
                 "UID:" + eventUidA + "\n" +
                 "DTSTART;TZID=Europe/Paris:20250409T110000\n" +
                 "DTEND;TZID=Europe/Paris:20250409T120000\n" +
-                "ORGANIZER;CN=John1 Doe1:" + openPaasUser.email() + "\n" +
-                "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email() + "\n" +
+                "ORGANIZER;CN=John1 Doe1:" + openPaasUser.email().asString() +"\n" +
+                "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email().asString() +"\n" +
                 "RECURRENCE-ID;TZID=Europe/Paris:20250409T090000\n" +
                 "SEQUENCE:1\n" +
                 "END:VEVENT\n" +
@@ -722,11 +723,11 @@ public class CalDavEventRepositoryTest {
      void davClientShouldCreateNewCalendar() {
         ZonedDateTime startDateOfEventA = ZonedDateTime.parse("2025-03-14T14:00:00Z");
         ZonedDateTime endDateOfEventA = startDateOfEventA.plusHours(2);
-        CalendarEventHelper calendarEventA = new CalendarEventHelper(openPaasUser.email(), PartStat.ACCEPTED, startDateOfEventA, endDateOfEventA);
-        URI davCalendarUri = URI.create("/calendars/" + openPaasUser.id() + "/" + openPaasUser.id() + "/" + calendarEventA.uid() + ".ics");
+        CalendarEventHelper calendarEventA = new CalendarEventHelper(openPaasUser.email().asString(), PartStat.ACCEPTED, startDateOfEventA, endDateOfEventA);
+        URI davCalendarUri = URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + calendarEventA.uid() + ".ics");
         davClient.caldav().createCalendar(openPaasUser.email(), davCalendarUri, calendarEventA.asCalendar()).block();
 
-        DavCalendarObject result = davClient.caldav().getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new EventUid(calendarEventA.uid())).block();
+        DavCalendarObject result = davClient.caldav().getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(calendarEventA.uid())).block();
         assertThat(result).isNotNull();
     }
 
@@ -734,20 +735,20 @@ public class CalDavEventRepositoryTest {
     void davClientShouldDeleteCalendar() {
         ZonedDateTime startDateOfEventA = ZonedDateTime.parse("2025-03-14T14:00:00Z");
         ZonedDateTime endDateOfEventA = startDateOfEventA.plusHours(2);
-        CalendarEventHelper calendarEventA = new CalendarEventHelper(openPaasUser.email(), PartStat.ACCEPTED, startDateOfEventA, endDateOfEventA);
-        URI davCalendarUri = URI.create("/calendars/" + openPaasUser.id() + "/" + openPaasUser.id() + "/" + calendarEventA.uid() + ".ics");
+        CalendarEventHelper calendarEventA = new CalendarEventHelper(openPaasUser.email().asString(), PartStat.ACCEPTED, startDateOfEventA, endDateOfEventA);
+        URI davCalendarUri = URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + calendarEventA.uid() + ".ics");
         davClient.caldav().createCalendar(openPaasUser.email(), davCalendarUri, calendarEventA.asCalendar()).block();
         davClient.caldav().deleteCalendar(openPaasUser.email(), davCalendarUri).block();
 
-        DavCalendarObject result = davClient.caldav().getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new EventUid(calendarEventA.uid())).block();
+        DavCalendarObject result = davClient.caldav().getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(calendarEventA.uid())).block();
         assertThat(result).isNull();
     }
 
     @Test
     void setAttendanceStatusShouldUpdateDavCalendar() {
         ZonedDateTime startDate = ZonedDateTime.parse("2025-03-14T14:00:00Z");
-        CalendarEventHelper calendarEvent = new CalendarEventHelper(openPaasUser.email(), PartStat.NEEDS_ACTION, startDate, startDate.plusHours(1));
-        pushCalendarToDav(openPaasUser.email(), calendarEvent);
+        CalendarEventHelper calendarEvent = new CalendarEventHelper(openPaasUser.email().asString(), PartStat.NEEDS_ACTION, startDate, startDate.plusHours(1));
+        pushCalendarToDav(openPaasUser.email().asString(), calendarEvent);
 
         BlobId blobId = setupCalendarResolver(calendarEvent.uid(), Optional.empty());
 
@@ -755,7 +756,7 @@ public class CalDavEventRepositoryTest {
             blobId).block())
             .doesNotThrowAnyException();
 
-        DavCalendarObject davCalendarObject = davClient.caldav().getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new EventUid(calendarEvent.uid())).block();
+        DavCalendarObject davCalendarObject = davClient.caldav().getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(calendarEvent.uid())).block();
 
         assertThat(davCalendarObject.calendarData().toString())
             .contains("ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:user2@open-paas.org");
@@ -773,14 +774,14 @@ public class CalDavEventRepositoryTest {
             "DTEND;TZID=Europe/Paris:20250328T100000\n" +
             "RRULE:FREQ=WEEKLY;COUNT=4;BYDAY=WE\n" +
             "ORGANIZER;CN=John1 Doe1;SCHEDULE-STATUS=3.7:user_8f960db2-199e-42d2-97ac-65ddc344b96e@open-paas.org\n" +
-            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email() + "\n" +
+            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email().asString() +"\n" +
             "END:VEVENT\n" +
             "BEGIN:VEVENT\n" +
             "UID:" + eventUidA + "\n" +
             "DTSTART;TZID=Europe/Paris:20250409T110000\n" +
             "DTEND;TZID=Europe/Paris:20250409T120000\n" +
             "ORGANIZER;CN=John1 Doe1:user_8f960db2-199e-42d2-97ac-65ddc344b96e@open-paas.org\n" +
-            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email() + "\n" +
+            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email().asString() +"\n" +
             "DTSTAMP:20250331T083652Z\n" +
             "RECURRENCE-ID;TZID=Europe/Paris:20250409T090000\n" +
             "SEQUENCE:1\n" +
@@ -788,7 +789,7 @@ public class CalDavEventRepositoryTest {
             "END:VCALENDAR\n";
 
         davClient.caldav().createCalendar(openPaasUser.email(),
-                URI.create("/calendars/" + openPaasUser.id() + "/" + openPaasUser.id() + "/" + eventUidA + ".ics"),
+                URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + eventUidA + ".ics"),
                 CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(calendar.getBytes(StandardCharsets.UTF_8))))
             .block();
 
@@ -797,7 +798,7 @@ public class CalDavEventRepositoryTest {
         assertThatCode(() -> testee.setAttendanceStatus(testUser,
             AttendanceStatus.Accepted, blobId).block()).doesNotThrowAnyException();
 
-        DavCalendarObject davCalendarObject = davClient.caldav().getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new EventUid(eventUidA)).block();
+        DavCalendarObject davCalendarObject = davClient.caldav().getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(eventUidA)).block();
         String updatedCalendar = davCalendarObject.calendarData().toString();
         assertThat(updatedCalendar.replaceAll("(?m)^DTSTAMP:.*\\R?", "").trim())
             .isEqualToNormalizingNewlines("BEGIN:VCALENDAR\n" +
@@ -809,7 +810,7 @@ public class CalDavEventRepositoryTest {
                 "DTEND;TZID=Europe/Paris:20250328T100000\n" +
                 "RRULE:FREQ=WEEKLY;COUNT=4;BYDAY=WE\n" +
                 "ORGANIZER;CN=John1 Doe1;SCHEDULE-STATUS=3.7:user_8f960db2-199e-42d2-97ac-65ddc344b96e@open-paas.org\n" +
-                "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email() + "\n" +
+                "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email().asString() +"\n" +
                 "END:VEVENT\n" +
                 "BEGIN:VEVENT\n" +
                 "UID:" + eventUidA + "\n" +
@@ -818,7 +819,7 @@ public class CalDavEventRepositoryTest {
                 "ORGANIZER;CN=John1 Doe1:user_8f960db2-199e-42d2-97ac-65ddc344b96e@open-paas.org\n" +
                 "RECURRENCE-ID;TZID=Europe/Paris:20250409T090000\n" +
                 "SEQUENCE:2\n" +
-                "ATTENDEE;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2;PARTSTAT=ACCEPTED:mailto:" + openPaasUser.email() + "\n" +
+                "ATTENDEE;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2;PARTSTAT=ACCEPTED:mailto:" + openPaasUser.email().asString() +"\n" +
                 "END:VEVENT\n" +
                 "END:VCALENDAR\n".trim());
     }

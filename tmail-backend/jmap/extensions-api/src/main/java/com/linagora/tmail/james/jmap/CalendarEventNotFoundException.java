@@ -18,9 +18,13 @@
 
 package com.linagora.tmail.james.jmap;
 
+import org.apache.james.core.Username;
+
+import com.linagora.tmail.james.jmap.model.CalendarUidField;
+
 public class CalendarEventNotFoundException extends RuntimeException {
 
-    public CalendarEventNotFoundException(String username, String eventUid) {
-        super("Calendar event not found for user " + username + " and eventUid " + eventUid);
+    public CalendarEventNotFoundException(Username username, CalendarUidField eventUid) {
+        super("Calendar event not found for user " + username.asString() + " and eventUid " + eventUid.value());
     }
 }

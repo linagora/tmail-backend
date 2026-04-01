@@ -27,20 +27,23 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 import java.net.URI;
 import java.net.URISyntaxException;
 
+import org.apache.james.core.Username;
+
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import com.github.tomakehurst.wiremock.junit5.WireMockRuntimeInfo;
 import com.linagora.tmail.HttpUtils;
+import com.linagora.tmail.dav.OpenPaaSUserId;
 
 public class WireMockOpenPaaSServerExtension extends WireMockExtension {
-    public static final String ALICE_ID = "ALICE_ID";
+    public static final OpenPaaSUserId ALICE_ID = new OpenPaaSUserId("ALICE_ID");
 
     public static final String BOB_ID = "BOB_ID";
     public static final String BOB = "BOB";
     public static final String BAD_PASSWORD = "BAD_PASSWORD";
     public static final String GOOD_PASSWORD = "GOOD_PASSWORD";
     public static final String ERROR_MAIL = "error@lina.com";
-    public static final String ALICE = DavServerExtension.ALICE;
-    public static final String NOTFOUND_EMAIL = "notfound@lina.com";
+    public static final Username ALICE = Username.of(DavServerExtension.ALICE);
+    public static final Username NOTFOUND_EMAIL = Username.of("notfound@lina.com");
 
     public WireMockOpenPaaSServerExtension(Builder builder) {
         super(builder);
@@ -63,12 +66,12 @@ public class WireMockOpenPaaSServerExtension extends WireMockExtension {
     protected void onBeforeEach(WireMockRuntimeInfo wireMockRuntimeInfo) {
         super.onBeforeEach(wireMockRuntimeInfo);
 
-        stubFor(get("/users/" + ALICE_ID)
-            .withHeader("Authorization", equalTo(HttpUtils.createBasicAuthenticationToken(ALICE_ID, BAD_PASSWORD)))
+        stubFor(get("/users/" + ALICE_ID.value())
+            .withHeader("Authorization", equalTo(HttpUtils.createBasicAuthenticationToken(ALICE_ID.value(), BAD_PASSWORD)))
                 .willReturn(aResponse().withStatus(401)));
 
-        stubFor(get("/users/" + ALICE_ID)
-            .withHeader("Authorization", equalTo(HttpUtils.createBasicAuthenticationToken(ALICE_ID, GOOD_PASSWORD)))
+        stubFor(get("/users/" + ALICE_ID.value())
+            .withHeader("Authorization", equalTo(HttpUtils.createBasicAuthenticationToken(ALICE_ID.value(), GOOD_PASSWORD)))
             .willReturn(aResponse()
                 .withStatus(200)
                 .withBody("{\n" +
@@ -164,24 +167,24 @@ public class WireMockOpenPaaSServerExtension extends WireMockExtension {
         setSearchEmailNotFound(NOTFOUND_EMAIL);
 
         stubFor(get(urlEqualTo("/users?email=" + ERROR_MAIL))
-            .withHeader("Authorization", equalTo(HttpUtils.createBasicAuthenticationToken(ALICE_ID, GOOD_PASSWORD)))
+            .withHeader("Authorization", equalTo(HttpUtils.createBasicAuthenticationToken(ALICE_ID.value(), GOOD_PASSWORD)))
             .willReturn(aResponse()
                 .withStatus(503)
                 .withBody("503 Temporary error")));
     }
 
-    public void setSearchEmailExist(String emailQuery, String openPassUidExpected) {
-        stubFor(get(urlEqualTo("/users?email=" + emailQuery))
-            .withHeader("Authorization", equalTo(HttpUtils.createBasicAuthenticationToken(ALICE_ID, GOOD_PASSWORD)))
+    public void setSearchEmailExist(Username emailQuery, OpenPaaSUserId openPassUidExpected) {
+        stubFor(get(urlEqualTo("/users?email=" + emailQuery.asString()))
+            .withHeader("Authorization", equalTo(HttpUtils.createBasicAuthenticationToken(ALICE_ID.value(), GOOD_PASSWORD)))
             .willReturn(aResponse().withStatus(200)
                 .withBody("[\n" +
                     "    {\n" +
-                    "        \"_id\": \"" + openPassUidExpected + "\",\n" +
+                    "        \"_id\": \"" + openPassUidExpected.value() + "\",\n" +
                     "        \"firstname\": \"John1\",\n" +
                     "        \"lastname\": \"Doe1\",\n" +
-                    "        \"preferredEmail\": \"" + emailQuery + "\",\n" +
+                    "        \"preferredEmail\": \"" + emailQuery.asString() + "\",\n" +
                     "        \"emails\": [\n" +
-                    "            \"" + emailQuery + "\"\n" +
+                    "            \"" + emailQuery.asString() + "\"\n" +
                     "        ],\n" +
                     "        \"domains\": [\n" +
                     "            {\n" +
@@ -191,16 +194,16 @@ public class WireMockOpenPaaSServerExtension extends WireMockExtension {
                     "        ],\n" +
                     "        \"states\": [],\n" +
                     "        \"avatars\": [],\n" +
-                    "        \"id\": \"" + openPassUidExpected + "\",\n" +
+                    "        \"id\": \"" + openPassUidExpected.value() + "\",\n" +
                     "        \"displayName\": \"John1 Doe1\",\n" +
                     "        \"objectType\": \"user\"\n" +
                     "    }\n" +
                     "]")));
     }
 
-    public void setSearchEmailNotFound(String emailQuery) {
-        stubFor(get(urlEqualTo("/users?email=" + emailQuery))
-            .withHeader("Authorization", equalTo(HttpUtils.createBasicAuthenticationToken(ALICE_ID, GOOD_PASSWORD)))
+    public void setSearchEmailNotFound(Username emailQuery) {
+        stubFor(get(urlEqualTo("/users?email=" + emailQuery.asString()))
+            .withHeader("Authorization", equalTo(HttpUtils.createBasicAuthenticationToken(ALICE_ID.value(), GOOD_PASSWORD)))
             .willReturn(aResponse().withStatus(200).withBody("[]")));
     }
 }

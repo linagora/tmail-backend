@@ -71,6 +71,8 @@ import com.google.inject.util.Modules;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.dav.CardDavUtils;
 import com.linagora.tmail.dav.DavServerExtension;
+import com.linagora.tmail.dav.DavUid;
+import com.linagora.tmail.dav.OpenPaaSUserId;
 import com.linagora.tmail.dav.WireMockOpenPaaSServerExtension;
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngineModule;
 import com.linagora.tmail.listener.CollectTrustedContactsListenerModule;
@@ -82,8 +84,6 @@ public class CardDavCollectedContactIntegrationTest {
     private static final Username ALICE = Username.of("alice@" + DEFAULT_DOMAIN);
     private static final Username BOB = Username.of("bob@" + DEFAULT_DOMAIN);
     private static final Username CEDRIC = Username.of("cedric@" + DEFAULT_DOMAIN);
-    private static final String ALICE_OPENPAAS_USER_NAME = ALICE.asString();
-    private static final String BOB_OPENPAAS_USER_NAME = BOB.asString();
     private static final boolean COLLECTED_CONTACT_EXISTS = true;
 
     @RegisterExtension
@@ -118,7 +118,7 @@ public class CardDavCollectedContactIntegrationTest {
                 public OpenPaasConfiguration provideOpenPaasConfiguration() {
                     return new OpenPaasConfiguration(
                         openPaasServerExtension.getBaseUrl(),
-                        WireMockOpenPaaSServerExtension.ALICE_ID,
+                        WireMockOpenPaaSServerExtension.ALICE_ID.value(),
                         WireMockOpenPaaSServerExtension.GOOD_PASSWORD,
                         false,
                         davServerExtension.getDavConfiguration());
@@ -154,64 +154,64 @@ public class CardDavCollectedContactIntegrationTest {
     @Test
     void shouldPUTCreateCollectedContactWhenContactDoesNotExist() throws Exception {
         // Setup mock server
-        String contactUid = CardDavUtils.createContactUid(BOB.asMailAddress());
-        String openPassUid = UUID.randomUUID().toString();
-        openPaasServerExtension.setSearchEmailExist(ALICE.asString(), openPassUid);
+        DavUid contactUid = CardDavUtils.createContactUid(BOB.asMailAddress());
+        OpenPaaSUserId openPassUid = new OpenPaaSUserId(UUID.randomUUID().toString());
+        openPaasServerExtension.setSearchEmailExist(ALICE, openPassUid);
         // Contact does not exist
-        davServerExtension.setCollectedContactExists(ALICE_OPENPAAS_USER_NAME, openPassUid, contactUid, !COLLECTED_CONTACT_EXISTS);
-        davServerExtension.setCreateCollectedContact(ALICE_OPENPAAS_USER_NAME, openPassUid, contactUid);
+        davServerExtension.setCollectedContactExists(ALICE, openPassUid, contactUid, !COLLECTED_CONTACT_EXISTS);
+        davServerExtension.setCreateCollectedContact(ALICE, openPassUid, contactUid);
 
         // when alice sends an email to bob
         aliceSendAnEmailToBob();
 
         // then the endpoint createCollectedContact is called
-        davServerExtension.assertCreateCollectedContactWasCalled(ALICE_OPENPAAS_USER_NAME, openPassUid, contactUid, 1);
+        davServerExtension.assertCreateCollectedContactWasCalled(ALICE, openPassUid, contactUid, 1);
     }
 
     @Test
     void shouldNotPUTCreateCollectedContactWhenContactExists() throws Exception {
         // Setup mock server
-        String contactUid = CardDavUtils.createContactUid(BOB.asMailAddress());
-        String openPassUid = UUID.randomUUID().toString();
-        openPaasServerExtension.setSearchEmailExist(ALICE.asString(), openPassUid);
+        DavUid contactUid = CardDavUtils.createContactUid(BOB.asMailAddress());
+        OpenPaaSUserId openPassUid = new OpenPaaSUserId(UUID.randomUUID().toString());
+        openPaasServerExtension.setSearchEmailExist(ALICE, openPassUid);
         // Contact exists
-        davServerExtension.setCollectedContactExists(ALICE_OPENPAAS_USER_NAME, openPassUid, contactUid, COLLECTED_CONTACT_EXISTS);
-        davServerExtension.setCreateCollectedContact(ALICE_OPENPAAS_USER_NAME, openPassUid, contactUid);
+        davServerExtension.setCollectedContactExists(ALICE, openPassUid, contactUid, COLLECTED_CONTACT_EXISTS);
+        davServerExtension.setCreateCollectedContact(ALICE, openPassUid, contactUid);
 
         // when alice sends an email to bob
         aliceSendAnEmailToBob();
 
         // then the endpoint createCollectedContact is not called
-        davServerExtension.assertCreateCollectedContactWasCalled(ALICE_OPENPAAS_USER_NAME, openPassUid, contactUid, 0);
+        davServerExtension.assertCreateCollectedContactWasCalled(ALICE, openPassUid, contactUid, 0);
     }
 
     @Test
     void shouldNotPUTCreateCollectedContactWhenSearchEmailDoesNotExist() throws Exception {
         // Setup mock server
-        String contactUid = CardDavUtils.createContactUid(BOB.asMailAddress());
-        String openPassUid = UUID.randomUUID().toString();
-        openPaasServerExtension.setSearchEmailNotFound(ALICE.asString());
-        davServerExtension.setCollectedContactExists(ALICE_OPENPAAS_USER_NAME, openPassUid, contactUid, !COLLECTED_CONTACT_EXISTS);
-        davServerExtension.setCreateCollectedContact(ALICE_OPENPAAS_USER_NAME, openPassUid, contactUid);
+        DavUid contactUid = CardDavUtils.createContactUid(BOB.asMailAddress());
+        OpenPaaSUserId openPassUid = new OpenPaaSUserId(UUID.randomUUID().toString());
+        openPaasServerExtension.setSearchEmailNotFound(ALICE);
+        davServerExtension.setCollectedContactExists(ALICE, openPassUid, contactUid, !COLLECTED_CONTACT_EXISTS);
+        davServerExtension.setCreateCollectedContact(ALICE, openPassUid, contactUid);
 
         // when alice sends an email to bob
         aliceSendAnEmailToBob();
 
-        davServerExtension.assertCollectedContactExistsWasCalled(ALICE_OPENPAAS_USER_NAME, openPassUid, contactUid, 0);
-        davServerExtension.assertCreateCollectedContactWasCalled(ALICE_OPENPAAS_USER_NAME, openPassUid, contactUid, 0);
+        davServerExtension.assertCollectedContactExistsWasCalled(ALICE, openPassUid, contactUid, 0);
+        davServerExtension.assertCreateCollectedContactWasCalled(ALICE, openPassUid, contactUid, 0);
     }
 
     @Test
     void shouldPUTCreateCollectedContactMultipleTimesWhenMultipleRecipients() throws Exception {
         // Setup mock server
-        String bobContactUid = CardDavUtils.createContactUid(BOB.asMailAddress());
-        String cedricContactUid = CardDavUtils.createContactUid(CEDRIC.asMailAddress());
-        String aliceOpenPassId = UUID.randomUUID().toString();
-        openPaasServerExtension.setSearchEmailExist(ALICE.asString(), aliceOpenPassId);
-        davServerExtension.setCollectedContactExists(ALICE_OPENPAAS_USER_NAME, aliceOpenPassId, bobContactUid, !COLLECTED_CONTACT_EXISTS);
-        davServerExtension.setCreateCollectedContact(ALICE_OPENPAAS_USER_NAME, aliceOpenPassId, bobContactUid);
-        davServerExtension.setCollectedContactExists(ALICE_OPENPAAS_USER_NAME, aliceOpenPassId, cedricContactUid, !COLLECTED_CONTACT_EXISTS);
-        davServerExtension.setCreateCollectedContact(ALICE_OPENPAAS_USER_NAME, aliceOpenPassId, cedricContactUid);
+        DavUid bobContactUid = CardDavUtils.createContactUid(BOB.asMailAddress());
+        DavUid cedricContactUid = CardDavUtils.createContactUid(CEDRIC.asMailAddress());
+        OpenPaaSUserId aliceOpenPassId = new OpenPaaSUserId(UUID.randomUUID().toString());
+        openPaasServerExtension.setSearchEmailExist(ALICE, aliceOpenPassId);
+        davServerExtension.setCollectedContactExists(ALICE, aliceOpenPassId, bobContactUid, !COLLECTED_CONTACT_EXISTS);
+        davServerExtension.setCreateCollectedContact(ALICE, aliceOpenPassId, bobContactUid);
+        davServerExtension.setCollectedContactExists(ALICE, aliceOpenPassId, cedricContactUid, !COLLECTED_CONTACT_EXISTS);
+        davServerExtension.setCreateCollectedContact(ALICE, aliceOpenPassId, cedricContactUid);
 
         // when alice sends an email to bob and cedric
         messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
@@ -238,21 +238,21 @@ public class CardDavCollectedContactIntegrationTest {
             .awaitMessage(awaitAtMostOneMinute);
 
         // then the endpoint createCollectedContact is called twice
-        davServerExtension.assertCreateCollectedContactWasCalled(ALICE_OPENPAAS_USER_NAME, aliceOpenPassId, bobContactUid, 1);
-        davServerExtension.assertCreateCollectedContactWasCalled(ALICE_OPENPAAS_USER_NAME, aliceOpenPassId, cedricContactUid, 1);
+        davServerExtension.assertCreateCollectedContactWasCalled(ALICE, aliceOpenPassId, bobContactUid, 1);
+        davServerExtension.assertCreateCollectedContactWasCalled(ALICE, aliceOpenPassId, cedricContactUid, 1);
     }
 
     @Test
     void shouldPUTCreateCollectedContactForContactDoesNotExistWhenMultipleRecipients() throws Exception {
         // Setup mock server
-        String bobContactUid = CardDavUtils.createContactUid(BOB.asMailAddress());
-        String cedricContactUid = CardDavUtils.createContactUid(CEDRIC.asMailAddress());
-        String aliceOpenPassId = UUID.randomUUID().toString();
-        openPaasServerExtension.setSearchEmailExist(ALICE.asString(), aliceOpenPassId);
-        davServerExtension.setCollectedContactExists(ALICE_OPENPAAS_USER_NAME, aliceOpenPassId, bobContactUid, COLLECTED_CONTACT_EXISTS);
-        davServerExtension.setCreateCollectedContact(ALICE_OPENPAAS_USER_NAME, aliceOpenPassId, bobContactUid);
-        davServerExtension.setCollectedContactExists(ALICE_OPENPAAS_USER_NAME, aliceOpenPassId, cedricContactUid, !COLLECTED_CONTACT_EXISTS);
-        davServerExtension.setCreateCollectedContact(ALICE_OPENPAAS_USER_NAME, aliceOpenPassId, cedricContactUid);
+        DavUid bobContactUid = CardDavUtils.createContactUid(BOB.asMailAddress());
+        DavUid cedricContactUid = CardDavUtils.createContactUid(CEDRIC.asMailAddress());
+        OpenPaaSUserId aliceOpenPassId = new OpenPaaSUserId(UUID.randomUUID().toString());
+        openPaasServerExtension.setSearchEmailExist(ALICE, aliceOpenPassId);
+        davServerExtension.setCollectedContactExists(ALICE, aliceOpenPassId, bobContactUid, COLLECTED_CONTACT_EXISTS);
+        davServerExtension.setCreateCollectedContact(ALICE, aliceOpenPassId, bobContactUid);
+        davServerExtension.setCollectedContactExists(ALICE, aliceOpenPassId, cedricContactUid, !COLLECTED_CONTACT_EXISTS);
+        davServerExtension.setCreateCollectedContact(ALICE, aliceOpenPassId, cedricContactUid);
 
         // when alice sends an email to bob and cedric
         messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
@@ -279,8 +279,8 @@ public class CardDavCollectedContactIntegrationTest {
             .awaitMessage(awaitAtMostOneMinute);
 
         // then the endpoint createCollectedContact is called once
-        davServerExtension.assertCreateCollectedContactWasCalled(ALICE_OPENPAAS_USER_NAME, aliceOpenPassId, bobContactUid, 0);
-        davServerExtension.assertCreateCollectedContactWasCalled(ALICE_OPENPAAS_USER_NAME, aliceOpenPassId, cedricContactUid, 1);
+        davServerExtension.assertCreateCollectedContactWasCalled(ALICE, aliceOpenPassId, bobContactUid, 0);
+        davServerExtension.assertCreateCollectedContactWasCalled(ALICE, aliceOpenPassId, cedricContactUid, 1);
     }
 
     @Test
@@ -291,14 +291,14 @@ public class CardDavCollectedContactIntegrationTest {
             .addUserAliasMapping(ALICE.getLocalPart(), DEFAULT_DOMAIN, aliceAlias);
 
         // Setup mock server
-        String bobContactUid = CardDavUtils.createContactUid(BOB.asMailAddress());
-        String cedricContactUid = CardDavUtils.createContactUid(CEDRIC.asMailAddress());
-        String aliceOpenPassId = UUID.randomUUID().toString();
-        openPaasServerExtension.setSearchEmailExist(ALICE.asString(), aliceOpenPassId);
-        davServerExtension.setCollectedContactExists(ALICE_OPENPAAS_USER_NAME, aliceOpenPassId, bobContactUid, !COLLECTED_CONTACT_EXISTS);
-        davServerExtension.setCreateCollectedContact(ALICE_OPENPAAS_USER_NAME, aliceOpenPassId, bobContactUid);
-        davServerExtension.setCollectedContactExists(ALICE_OPENPAAS_USER_NAME, aliceOpenPassId, cedricContactUid, !COLLECTED_CONTACT_EXISTS);
-        davServerExtension.setCreateCollectedContact(ALICE_OPENPAAS_USER_NAME, aliceOpenPassId, cedricContactUid);
+        DavUid bobContactUid = CardDavUtils.createContactUid(BOB.asMailAddress());
+        DavUid cedricContactUid = CardDavUtils.createContactUid(CEDRIC.asMailAddress());
+        OpenPaaSUserId aliceOpenPassId = new OpenPaaSUserId(UUID.randomUUID().toString());
+        openPaasServerExtension.setSearchEmailExist(ALICE, aliceOpenPassId);
+        davServerExtension.setCollectedContactExists(ALICE, aliceOpenPassId, bobContactUid, !COLLECTED_CONTACT_EXISTS);
+        davServerExtension.setCreateCollectedContact(ALICE, aliceOpenPassId, bobContactUid);
+        davServerExtension.setCollectedContactExists(ALICE, aliceOpenPassId, cedricContactUid, !COLLECTED_CONTACT_EXISTS);
+        davServerExtension.setCreateCollectedContact(ALICE, aliceOpenPassId, cedricContactUid);
 
         // when Alice uses her alias to email Bob
         messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
@@ -319,16 +319,16 @@ public class CardDavCollectedContactIntegrationTest {
             .awaitMessage(awaitAtMostOneMinute);
 
         // then Alice should have a collected contact created for BOB
-        davServerExtension.assertCreateCollectedContactWasCalled(ALICE_OPENPAAS_USER_NAME, aliceOpenPassId, bobContactUid, 1);
+        davServerExtension.assertCreateCollectedContactWasCalled(ALICE, aliceOpenPassId, bobContactUid, 1);
     }
 
     @Test
     void shouldCollectContactsWhenAddedEventContainsToBeCollectedFlag() throws Exception {
-        String aliceContactUid = CardDavUtils.createContactUid(ALICE.asMailAddress());
-        String bobOpenPassId = UUID.randomUUID().toString();
-        openPaasServerExtension.setSearchEmailExist(BOB.asString(), bobOpenPassId);
-        davServerExtension.setCollectedContactExists(BOB_OPENPAAS_USER_NAME, bobOpenPassId, aliceContactUid, !COLLECTED_CONTACT_EXISTS);
-        davServerExtension.setCreateCollectedContact(BOB_OPENPAAS_USER_NAME, bobOpenPassId, aliceContactUid);
+        DavUid aliceContactUid = CardDavUtils.createContactUid(ALICE.asMailAddress());
+        OpenPaaSUserId bobOpenPassId = new OpenPaaSUserId(UUID.randomUUID().toString());
+        openPaasServerExtension.setSearchEmailExist(BOB, bobOpenPassId);
+        davServerExtension.setCollectedContactExists(BOB, bobOpenPassId, aliceContactUid, !COLLECTED_CONTACT_EXISTS);
+        davServerExtension.setCreateCollectedContact(BOB, bobOpenPassId, aliceContactUid);
 
         appendMessageToInbox(BOB, MessageManager.AppendCommand.builder()
             .withFlags(new Flags(TO_BE_COLLECTED_FLAG))
@@ -340,16 +340,16 @@ public class CardDavCollectedContactIntegrationTest {
                 .build()));
 
         awaitAtMostOneMinute.untilAsserted(() ->
-            davServerExtension.assertCreateCollectedContactWasCalled(BOB_OPENPAAS_USER_NAME, bobOpenPassId, aliceContactUid, 1));
+            davServerExtension.assertCreateCollectedContactWasCalled(BOB, bobOpenPassId, aliceContactUid, 1));
     }
 
     @Test
     void shouldCollectContactsWhenFlagsUpdatedAddsToBeCollectedFlag() throws Exception {
-        String aliceContactUid = CardDavUtils.createContactUid(ALICE.asMailAddress());
-        String bobOpenPassId = UUID.randomUUID().toString();
-        openPaasServerExtension.setSearchEmailExist(BOB.asString(), bobOpenPassId);
-        davServerExtension.setCollectedContactExists(BOB_OPENPAAS_USER_NAME, bobOpenPassId, aliceContactUid, !COLLECTED_CONTACT_EXISTS);
-        davServerExtension.setCreateCollectedContact(BOB_OPENPAAS_USER_NAME, bobOpenPassId, aliceContactUid);
+        DavUid aliceContactUid = CardDavUtils.createContactUid(ALICE.asMailAddress());
+        OpenPaaSUserId bobOpenPassId = new OpenPaaSUserId(UUID.randomUUID().toString());
+        openPaasServerExtension.setSearchEmailExist(BOB, bobOpenPassId);
+        davServerExtension.setCollectedContactExists(BOB, bobOpenPassId, aliceContactUid, !COLLECTED_CONTACT_EXISTS);
+        davServerExtension.setCreateCollectedContact(BOB, bobOpenPassId, aliceContactUid);
 
         ComposedMessageId composedMessageId = appendMessageToInbox(BOB, MessageManager.AppendCommand.builder()
             .withFlags(new Flags())
@@ -364,7 +364,7 @@ public class CardDavCollectedContactIntegrationTest {
             .setFlags(BOB, MailboxPath.inbox(BOB), composedMessageId.getUid(), new Flags(TO_BE_COLLECTED_FLAG));
 
         awaitAtMostOneMinute.untilAsserted(() ->
-            davServerExtension.assertCreateCollectedContactWasCalled(BOB_OPENPAAS_USER_NAME, bobOpenPassId, aliceContactUid, 1));
+            davServerExtension.assertCreateCollectedContactWasCalled(BOB, bobOpenPassId, aliceContactUid, 1));
     }
 
     private void aliceSendAnEmailToBob() throws MessagingException, IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidKeySpecException {

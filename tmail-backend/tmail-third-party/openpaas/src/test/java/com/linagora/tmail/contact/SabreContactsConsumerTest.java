@@ -59,6 +59,8 @@ import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.dav.CardDavUtils;
 import com.linagora.tmail.dav.DavClient;
 import com.linagora.tmail.dav.DavClientException;
+import com.linagora.tmail.dav.DavUid;
+import com.linagora.tmail.dav.OpenPaaSUserId;
 import com.linagora.tmail.dav.request.CardDavCreationObjectRequest;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContact;
@@ -76,7 +78,7 @@ import reactor.rabbitmq.OutboundMessage;
 import reactor.rabbitmq.QueueSpecification;
 import reactor.rabbitmq.Sender;
 
-public class SabreContactsConsumerTest {
+class SabreContactsConsumerTest {
     private final ConditionFactory calmlyAwait = Awaitility.with()
         .pollInterval(Duration.ofMillis(500))
         .and()
@@ -189,7 +191,7 @@ public class SabreContactsConsumerTest {
             END:VCARD
             """.formatted(fullName, uid, email1, email2);
 
-        davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), uid, vcard.getBytes(StandardCharsets.UTF_8)).block();
+        davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), new DavUid(uid), vcard.getBytes(StandardCharsets.UTF_8)).block();
 
         // Then: both email addresses should be indexed and searchable
         awaitAtMost.untilAsserted(() -> assertThat(
@@ -217,7 +219,7 @@ public class SabreContactsConsumerTest {
     @Test
     void shouldRemoveAllEmailsFromSearchEngineWhenCollectedContactWithMultipleEmailsIsDeleted() throws Exception {
         // Given: a vCard with multiple email addresses is created and indexed
-        String uid = UUID.randomUUID().toString();
+        DavUid uid = new DavUid(UUID.randomUUID().toString());
         String fullName = "Tung Tran";
         String email1 = "vttran@exmaple.ltd";
         String email2 = "tung.tran@domain.tld";
@@ -230,7 +232,7 @@ public class SabreContactsConsumerTest {
             EMAIL;TYPE=work:%s
             EMAIL;TYPE=home:%s
             END:VCARD
-            """.formatted(fullName, uid, email1, email2);
+            """.formatted(fullName, uid.value(), email1, email2);
 
         davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), uid, vcard.getBytes(StandardCharsets.UTF_8)).block();
 
@@ -289,7 +291,7 @@ public class SabreContactsConsumerTest {
             END:VCARD
             """.formatted(originalName, uid, email1, email2);
 
-        davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), uid, vcard.getBytes(StandardCharsets.UTF_8)).block();
+        davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), new DavUid(uid), vcard.getBytes(StandardCharsets.UTF_8)).block();
 
         awaitAtMost.untilAsserted(() -> {
             assertThat(Flux.from(emailAddressContactSearchEngine.autoComplete(getAccountId(),
@@ -302,7 +304,7 @@ public class SabreContactsConsumerTest {
         // When: the full name is updated in the vCard
         String updatedVcard = vcard.replace(originalName, updatedName);
 
-        davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), uid, updatedVcard.getBytes(StandardCharsets.UTF_8)).block();
+        davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), new DavUid(uid), updatedVcard.getBytes(StandardCharsets.UTF_8)).block();
 
         // Then: all emails should be reindexed with the updated full name
         awaitAtMost.untilAsserted(() -> assertThat(
@@ -329,12 +331,12 @@ public class SabreContactsConsumerTest {
             EMAIL;TYPE=work:%s
             END:VCARD""".formatted(vcardUid, originEmail);
 
-        davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), vcardUid, vcard.getBytes(StandardCharsets.UTF_8)).block();
+        davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), new DavUid(vcardUid), vcard.getBytes(StandardCharsets.UTF_8)).block();
         awaitContactIndexed(originEmail, "Tung Tran");
 
         // When: the contact is updated to replace the original email with a new one
         String vcardUpdated = vcard.replace(originEmail, newEmail);
-        davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), vcardUid, vcardUpdated.getBytes(StandardCharsets.UTF_8)).block();
+        davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), new DavUid(vcardUid), vcardUpdated.getBytes(StandardCharsets.UTF_8)).block();
 
         // Then
         awaitAtMost.untilAsserted(() -> assertThat(Flux.from(emailAddressContactSearchEngine.autoComplete(getAccountId(),
@@ -413,7 +415,7 @@ public class SabreContactsConsumerTest {
             END:VCARD
             """.formatted(originalName, uid, emailToKeep, emailToRemove);
 
-        davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), uid,
+        davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), new DavUid(uid),
             originalVcard.getBytes(StandardCharsets.UTF_8)).block();
 
         awaitAtMost.untilAsserted(() -> {
@@ -441,7 +443,7 @@ public class SabreContactsConsumerTest {
             """.formatted(updatedName, uid, emailToKeep, emailToAdd);
 
         // When
-        davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), uid, updatedVcard.getBytes(StandardCharsets.UTF_8)).block();
+        davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), new DavUid(uid), updatedVcard.getBytes(StandardCharsets.UTF_8)).block();
 
         // Then
         // emailToRemove should be gone
@@ -468,8 +470,8 @@ public class SabreContactsConsumerTest {
     @Test
     void shouldPreserveOtherContactWhenDeletingOneOfMultipleWithSameEmail() throws Exception {
         // Given: two contacts with the same email address but different UIDs and full names are indexed
-        String vcardUid1 = UUID.randomUUID().toString();
-        String vcardUid2 = UUID.randomUUID().toString();
+        DavUid vcardUid1 = new DavUid(UUID.randomUUID().toString());
+        DavUid vcardUid2 = new DavUid(UUID.randomUUID().toString());
 
         String emailAddress = "vttran@exmaple.ltd";
 
@@ -479,7 +481,7 @@ public class SabreContactsConsumerTest {
             FN:Tung Tran
             UID:%s
             EMAIL;TYPE=work:%s
-            END:VCARD""".formatted(vcardUid1, emailAddress);
+            END:VCARD""".formatted(vcardUid1.value(), emailAddress);
 
         String vcard2 = """
             BEGIN:VCARD
@@ -487,7 +489,7 @@ public class SabreContactsConsumerTest {
             FN:Java Member
             UID:%s
             EMAIL;TYPE=work:%s
-            END:VCARD""".formatted(vcardUid2, emailAddress);
+            END:VCARD""".formatted(vcardUid2.value(), emailAddress);
 
         davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), vcardUid1, vcard1.getBytes(StandardCharsets.UTF_8)).block();
         davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), vcardUid2, vcard2.getBytes(StandardCharsets.UTF_8)).block();
@@ -526,27 +528,27 @@ public class SabreContactsConsumerTest {
     }
 
     private AccountId getAccountId() {
-        return AccountId.fromUsername(Username.of(openPaasUser.email()));
+        return AccountId.fromUsername(openPaasUser.email());
     }
 
-    private void deleteCollectedContact(String vcardUid) {
+    private void deleteCollectedContact(DavUid vcardUid) {
         deleteCollectedContact(openPaasUser.email(), openPaasUser.id(), vcardUid);
     }
 
-    private void deleteCollectedContact(String username, String userId, String vcardUid) {
+    private void deleteCollectedContact(Username username, OpenPaaSUserId userId, DavUid vcardUid) {
         UsernamePasswordCredentials adminCredential = dockerOpenPaasExtension.dockerOpenPaasSetup().davConfiguration().adminCredential();
         davHTTPClient.headers(headers -> {
                 headers.add(HttpHeaderNames.ACCEPT, "application/vcard+json");
                 headers.add(HttpHeaderNames.AUTHORIZATION, HttpUtils.createBasicAuthenticationToken(new UsernamePasswordCredentials(
-                    adminCredential.getUserName() + "&" + username, adminCredential.getPassword())));
+                    adminCredential.getUserName() + "&" + username.asString(), adminCredential.getPassword())));
             })
             .delete()
-            .uri(String.format("/addressbooks/%s/collected/%s.vcf", userId, vcardUid))
+            .uri(String.format("/addressbooks/%s/collected/%s.vcf", userId.value(), vcardUid.value()))
             .responseSingle((response, byteBufMono) ->
                 switch (response.status().code()) {
                     case 204 -> Mono.empty();
                     default -> Mono.error(new DavClientException(
-                        String.format("Unexpected status code: %d when deleted contact for user: %s and collected id: %s", response.status().code(), userId, vcardUid)));
+                        String.format("Unexpected status code: %d when deleted contact for user: %s and collected id: %s", response.status().code(), userId.value(), vcardUid)));
                 }).block();
     }
 }

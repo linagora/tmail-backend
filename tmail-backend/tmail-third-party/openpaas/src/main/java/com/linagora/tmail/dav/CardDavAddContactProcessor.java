@@ -46,7 +46,7 @@ public class CardDavAddContactProcessor implements ContactAddIndexingProcessor {
     private static final Logger LOGGER = LoggerFactory.getLogger(CardDavAddContactProcessor.class);
 
     private final DavClient davClient;
-    private final AsyncLoadingCache<Username, String> openPassUserIdLoader;
+    private final AsyncLoadingCache<Username, OpenPaaSUserId> openPassUserIdLoader;
 
     @Inject
     @Singleton
@@ -54,7 +54,7 @@ public class CardDavAddContactProcessor implements ContactAddIndexingProcessor {
                                       OpenPaasRestClient openPaasRestClient) {
         this.davClient = davClient;
 
-        AsyncCacheLoader<Username, String> openPaasUserIdCacheLoader = (key, executor) -> openPaasRestClient.searchOpenPaasUserId(key.asString())
+        AsyncCacheLoader<Username, OpenPaaSUserId> openPaasUserIdCacheLoader = (key, executor) -> openPaasRestClient.searchOpenPaasUserId(key)
             .subscribeOn(Schedulers.fromExecutor(executor))
             .toFuture();
 
@@ -69,9 +69,9 @@ public class CardDavAddContactProcessor implements ContactAddIndexingProcessor {
         return Mono.fromFuture(openPassUserIdLoader.get(username))
             .flatMap(openPassUserId -> {
                 CardDavCreationObjectRequest cardDavCreationObjectRequest = CardDavUtils.createObjectCreationRequest(Optional.of(contactFields.fullName()), contactFields.address());
-                return davClient.carddav().existsCollectedContact(username.asString(), openPassUserId, cardDavCreationObjectRequest.uid())
+                return davClient.carddav().existsCollectedContact(username, openPassUserId, cardDavCreationObjectRequest.uid())
                     .filter(FunctionalUtils.identityPredicate().negate())
-                    .flatMap(exists -> davClient.carddav().createCollectedContact(username.asString(), openPassUserId, cardDavCreationObjectRequest))
+                    .flatMap(exists -> davClient.carddav().createCollectedContact(username, openPassUserId, cardDavCreationObjectRequest))
                     .onErrorResume(error -> {
                         LOGGER.error("Error while creating collected contact if not exists.", error);
                         return Mono.empty();

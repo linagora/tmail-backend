@@ -46,6 +46,8 @@ import com.linagora.tmail.OpenPaasTestModule;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.dav.CardDavUtils;
 import com.linagora.tmail.dav.DavServerExtension;
+import com.linagora.tmail.dav.DavUid;
+import com.linagora.tmail.dav.OpenPaaSUserId;
 import com.linagora.tmail.dav.WireMockOpenPaaSServerExtension;
 import com.linagora.tmail.integration.ContactIndexingIntegrationContract;
 import com.linagora.tmail.james.app.CassandraExtension;
@@ -105,12 +107,12 @@ public class DistributedOpenpaasContactIndexingIntegrationTest extends ContactIn
             .appendMessage(BOB.asString(), BOB_SENT_MAILBOX, appendCommandTO(ANDRE.asString()));
 
         // Set up the scenario for openpaas & carddav extensions
-        String bobOpenPassUid = UUID.randomUUID().toString();
-        String andreContactUid = CardDavUtils.createContactUid(ANDRE.asMailAddress());
+        OpenPaaSUserId bobOpenPassUid = new OpenPaaSUserId(UUID.randomUUID().toString());
+        DavUid andreContactUid = CardDavUtils.createContactUid(ANDRE.asMailAddress());
 
-        openPaasServerExtension.setSearchEmailExist(BOB.asString(), bobOpenPassUid);
-        davServerExtension.setCollectedContactExists(BOB.asString(), bobOpenPassUid, andreContactUid, false);
-        davServerExtension.setCreateCollectedContact(BOB.asString(), bobOpenPassUid, andreContactUid);
+        openPaasServerExtension.setSearchEmailExist(BOB, bobOpenPassUid);
+        davServerExtension.setCollectedContactExists(BOB, bobOpenPassUid, andreContactUid, false);
+        davServerExtension.setCreateCollectedContact(BOB, bobOpenPassUid, andreContactUid);
 
         // Verify that the andre contact is not indexed
         given(jmapSpec)
@@ -153,6 +155,6 @@ public class DistributedOpenpaasContactIndexingIntegrationTest extends ContactIn
             .body("additionalInformation.failedUsers", empty());
 
         // Verify that the andre contact was created in carddav
-        davServerExtension.assertCreateCollectedContactWasCalled(BOB.asString(), bobOpenPassUid, andreContactUid, 1);
+        davServerExtension.assertCreateCollectedContactWasCalled(BOB, bobOpenPassUid, andreContactUid, 1);
     }
 }

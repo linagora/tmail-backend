@@ -40,6 +40,7 @@ import org.slf4j.LoggerFactory;
 
 import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier;
 import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults;
+import com.linagora.tmail.james.jmap.model.CalendarUidField;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -141,7 +142,7 @@ public class StandaloneEventRepository implements CalendarEventRepository {
     }
 
     @Override
-    public Publisher<Void> updateEvent(Username username, String eventUid, CalendarEventModifier patches) {
+    public Publisher<Void> updateEvent(Username username, CalendarUidField eventUid, CalendarEventModifier patches) {
         return Mono.error(new UnsupportedOperationException("updateEvent is not supported."));
     }
 }

@@ -28,6 +28,7 @@ import javax.net.ssl.SSLException;
 import jakarta.mail.internet.AddressException;
 
 import org.apache.james.core.MailAddress;
+import org.apache.james.core.Username;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -48,7 +49,7 @@ public class OpenPaasRestClientTest {
     void setup() throws SSLException {
         OpenPaasConfiguration openPaasConfig = new OpenPaasConfiguration(
             openPaasServerExtension.getBaseUrl(),
-            WireMockOpenPaaSServerExtension.ALICE_ID,
+            WireMockOpenPaaSServerExtension.ALICE_ID.value(),
             WireMockOpenPaaSServerExtension.GOOD_PASSWORD,
             OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED,
            new OpenPaasConfiguration.ContactConsumerConfiguration(
@@ -61,8 +62,8 @@ public class OpenPaasRestClientTest {
     @Test
     void shouldReturnUserMailAddressWhenUserIdAndAuthenticationTokenIsCorrect()
         throws AddressException {
-        assertThat(restClient.retrieveMailAddress(WireMockOpenPaaSServerExtension.ALICE_ID).block())
-            .isEqualTo(new MailAddress(WireMockOpenPaaSServerExtension.ALICE));
+        assertThat(restClient.retrieveMailAddress(WireMockOpenPaaSServerExtension.ALICE_ID.value()).block())
+            .isEqualTo(new MailAddress(WireMockOpenPaaSServerExtension.ALICE.asString()));
     }
 
     @Test
@@ -74,7 +75,7 @@ public class OpenPaasRestClientTest {
     void shouldThrowExceptionOnErrorStatusCode() throws SSLException {
         OpenPaasConfiguration openPaasConfig = new OpenPaasConfiguration(
             openPaasServerExtension.getBaseUrl(),
-            WireMockOpenPaaSServerExtension.ALICE_ID,
+            WireMockOpenPaaSServerExtension.ALICE_ID.value(),
             WireMockOpenPaaSServerExtension.BAD_PASSWORD,
             OPENPAAS_REST_CLIENT_TRUST_ALL_SSL_CERTS_DISABLED,
             new OpenPaasConfiguration.ContactConsumerConfiguration(
@@ -83,7 +84,7 @@ public class OpenPaasRestClientTest {
 
         restClient = new OpenPaasRestClient(openPaasConfig);
 
-        assertThatThrownBy(() -> restClient.retrieveMailAddress(WireMockOpenPaaSServerExtension.ALICE_ID).block())
+        assertThatThrownBy(() -> restClient.retrieveMailAddress(WireMockOpenPaaSServerExtension.ALICE_ID.value()).block())
             .isInstanceOf(OpenPaasRestClientException.class);
     }
 
@@ -101,7 +102,7 @@ public class OpenPaasRestClientTest {
 
     @Test
     void searchOpenPaasUserIdShouldReturnEmptyWhenResponseError() {
-        assertThat(restClient.searchOpenPaasUserId(WireMockOpenPaaSServerExtension.ERROR_MAIL).blockOptional())
+        assertThat(restClient.searchOpenPaasUserId(Username.of(WireMockOpenPaaSServerExtension.ERROR_MAIL)).blockOptional())
             .isEmpty();
     }
 }

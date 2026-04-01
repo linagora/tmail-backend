@@ -29,6 +29,7 @@ import jakarta.mail.internet.AddressException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.james.core.Domain;
 import org.apache.james.core.MailAddress;
+import org.apache.james.core.Username;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,6 +39,7 @@ import com.google.common.base.Preconditions;
 import com.linagora.tmail.HttpUtils;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.contact.UserSearchResponse;
+import com.linagora.tmail.dav.OpenPaaSUserId;
 
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
@@ -87,34 +89,33 @@ public class OpenPaasRestClient {
             .onErrorResume(e -> Mono.error(new OpenPaasRestClientException("Failed to retrieve user mail using OpenPaas id " + openPaasUserId, e)));
     }
 
-    public Mono<String> searchOpenPaasUserId(String email) {
-        Preconditions.checkArgument(StringUtils.isNotEmpty(email), "Email cannot be empty");
-
+    public Mono<OpenPaaSUserId> searchOpenPaasUserId(Username username) {
         return client.get()
-            .uri(String.format("/users?email=%s", email))
-            .responseSingle((statusCode, data) -> handleUserSearchResponse(email, statusCode, data))
+            .uri(String.format("/users?email=%s", username.asString()))
+            .responseSingle((statusCode, data) -> handleUserSearchResponse(username, statusCode, data))
             .map(UserSearchResponse::id)
+            .map(OpenPaaSUserId::new)
             .onErrorResume(e -> {
-                LOGGER.error("Failed to search OpenPaas user id by email {}", email, e);
+                LOGGER.error("Failed to search OpenPaas user id by email {}", username.asString(), e);
                 return Mono.empty();
             });
     }
 
-    private Mono<UserSearchResponse> handleUserSearchResponse(String email, HttpClientResponse httpClientResponse, ByteBufMono dataBuf) {
+    private Mono<UserSearchResponse> handleUserSearchResponse(Username username, HttpClientResponse httpClientResponse, ByteBufMono dataBuf) {
         return switch (httpClientResponse.status().code()) {
             case 200 -> dataBuf.asByteArray()
                 .flatMap(dataAsBytes -> Mono.fromCallable(() -> userSearchResponseDeserializer.deserialize(dataAsBytes))
                     .onErrorResume(e -> Mono.error(new OpenPaasRestClientException(
                         "Bad user response body format. Response: \n" + new String(dataAsBytes, StandardCharsets.UTF_8), e))))
                 .flatMap(list -> switch (list.size()) {
-                    case 1 -> Mono.just(list.getFirst()).filter(userSearchResponse -> email.equals(userSearchResponse.preferredEmail()));
+                    case 1 -> Mono.just(list.getFirst()).filter(userSearchResponse -> username.asString().equals(userSearchResponse.preferredEmail()));
                     case 0 -> {
-                        LOGGER.info("Unable to retrieve OpenPaas user id as no user found with email {}", email);
+                        LOGGER.info("Unable to retrieve OpenPaas user id as no user found with email {}", username.asString());
                         yield Mono.empty();
                     }
                     default -> {
                         LOGGER.warn("Multiple users found with email {}. Records: {}",
-                            email, list.stream().map(Record::toString).collect(Collectors.joining("\n ")));
+                            username.asString(), list.stream().map(Record::toString).collect(Collectors.joining("\n ")));
                         yield Mono.empty();
                     }
                 });

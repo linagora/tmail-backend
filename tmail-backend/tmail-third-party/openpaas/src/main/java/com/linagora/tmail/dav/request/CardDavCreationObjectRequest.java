@@ -25,6 +25,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.james.core.MailAddress;
 
 import com.google.common.base.Preconditions;
+import com.linagora.tmail.dav.DavUid;
 
 import ezvcard.VCard;
 import ezvcard.parameter.EmailType;
@@ -32,14 +33,14 @@ import ezvcard.property.StructuredName;
 import ezvcard.property.Uid;
 
 public record CardDavCreationObjectRequest(String version,
-                                           String uid,
+                                           DavUid uid,
                                            Optional<String> fullName,
                                            Optional<List<String>> nameList,
                                            Email email) {
 
     public CardDavCreationObjectRequest {
         Preconditions.checkArgument(StringUtils.isNotEmpty(version), "Version should not be empty");
-        Preconditions.checkArgument(StringUtils.isNotEmpty(uid), "Uid should not be empty");
+        Preconditions.checkArgument(uid != null, "Uid should not be null");
         Preconditions.checkArgument(email != null, "Email should not be null");
     }
 
@@ -72,7 +73,7 @@ public record CardDavCreationObjectRequest(String version,
             vCard.setStructuredName(structuredName);
         });
 
-        vCard.setUid(new Uid(uid));
+        vCard.setUid(new Uid(uid.value()));
         vCard.addEmail(email.value().asString(), email.type().toArray(new EmailType[0]));
         return ezvcard.Ezvcard.write(vCard)
             .prodId(false)

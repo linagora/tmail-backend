@@ -26,23 +26,28 @@ import org.apache.james.mailbox.model.MessageResult;
 
 import com.google.common.base.Preconditions;
 import com.google.common.collect.Iterators;
+import com.linagora.tmail.james.jmap.model.CalendarUidField;
 
-public record EventUid(String value) {
+public record DavUid(String value) {
     public static final String X_MEETING_UID_HEADER = "X-MEETING-UID";
 
-    public static EventUid fromMessageHeaders(MessageResult messageResult) {
+    public static DavUid fromCalendarUidField(CalendarUidField calendarUidField) {
+        return new DavUid(calendarUidField.value());
+    }
+
+    public static DavUid fromMessageHeaders(MessageResult messageResult) {
         try {
             Iterator<Header> headers = messageResult.getHeaders().headers();
             return Iterators.tryFind(headers, header -> header.getName().equals(X_MEETING_UID_HEADER)).toJavaUtil()
                 .map(Header::getValue)
-                .map(EventUid::new)
+                .map(DavUid::new)
                 .orElseThrow(() -> new RuntimeException("Unable to retrieve X_MEETING_UID_HEADER (VEVENT uid) from message with id '%s'".formatted(messageResult.getMessageId().serialize())));
         } catch (Exception e) {
             throw new RuntimeException("Failed reading messageResult headers", e);
         }
     }
 
-    public EventUid {
-        Preconditions.checkArgument(StringUtils.isNotEmpty(value), "VEvent id should not be empty");
+    public DavUid {
+        Preconditions.checkArgument(StringUtils.isNotEmpty(value), "DAV uid should not be empty");
     }
 }

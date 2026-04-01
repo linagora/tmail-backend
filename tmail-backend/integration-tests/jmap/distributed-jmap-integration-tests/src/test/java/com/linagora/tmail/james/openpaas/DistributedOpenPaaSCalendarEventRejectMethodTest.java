@@ -114,7 +114,7 @@ public class DistributedOpenPaaSCalendarEventRejectMethodTest extends LinagoraCa
             .getOpenPaaSProvisioningService()
             .createUser()
             .map(openPaasUser -> new User(openPaasUser.firstname() + " " + openPaasUser.lastname(),
-                openPaasUser.email(), LinagoraCalendarEventAcceptMethodContract.PASSWORD()))
+                openPaasUser.email().asString(), LinagoraCalendarEventAcceptMethodContract.PASSWORD()))
             .block();
     }
 }

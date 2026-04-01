@@ -47,7 +47,7 @@ public class OpenPaasTestModule extends AbstractModule {
     @Singleton
     public OpenPaasConfiguration provideOpenPaasServerExtension() {
         return new OpenPaasConfiguration(openPaasServerExtension.getBaseUrl(),
-            WireMockOpenPaaSServerExtension.ALICE_ID,
+            WireMockOpenPaaSServerExtension.ALICE_ID.value(),
             WireMockOpenPaaSServerExtension.GOOD_PASSWORD,
             false,
             DEFAULT_RESPONSE_TIMEOUT,
