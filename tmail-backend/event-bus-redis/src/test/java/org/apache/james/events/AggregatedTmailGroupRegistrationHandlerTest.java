@@ -19,6 +19,7 @@
 package org.apache.james.events;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.mock;
 
 import java.time.Duration;
@@ -86,6 +87,13 @@ public class AggregatedTmailGroupRegistrationHandlerTest {
 
         @Override
         public void restart() {
+        }
+    }
+
+    private static class FailingTmailGroupRegistrationHandler extends TestingTmailGroupRegistrationHandler {
+        @Override
+        public Registration register(EventListener.ReactiveEventListener listener, Group group) {
+            throw new RuntimeException("failure");
         }
     }
 
@@ -174,4 +182,35 @@ public class AggregatedTmailGroupRegistrationHandlerTest {
 
         assertThat(splitConfiguration.eventBusConfiguration().maxConcurrency()).isEqualTo(1);
     }
+
+    @Test
+    void registerShouldRollbackSuccessfulDelegatesWhenLaterDelegateFails() {
+        TestingTmailGroupRegistrationHandler first = new TestingTmailGroupRegistrationHandler();
+        TestingTmailGroupRegistrationHandler failing = new FailingTmailGroupRegistrationHandler();
+        TestingTmailGroupRegistrationHandler third = new TestingTmailGroupRegistrationHandler();
+
+        AggregatedTmailGroupRegistrationHandler testee = new AggregatedTmailGroupRegistrationHandler(List.of(first, failing, third));
+
+        assertThatThrownBy(() -> testee.register(LISTENER, GROUP))
+            .isInstanceOf(RuntimeException.class)
+            .hasMessage("failure");
+
+        assertThat(first.registerCount).hasValue(1);
+        assertThat(first.unregisterCount).hasValue(1);
+        assertThat(third.registerCount).hasValue(0);
+        assertThat(third.unregisterCount).hasValue(0);
+    }
+
+    @Test
+    void splitConcurrencyConfigurationShouldRejectNonPositivePartitionCount() {
+        RabbitMQEventBus.Configurations configurations = new RabbitMQEventBus.Configurations(
+            mock(RabbitMQConfiguration.class),
+            EventBusTestFixture.RETRY_BACKOFF_CONFIGURATION,
+            new EventBus.Configuration(2, Optional.empty()));
+
+        assertThatThrownBy(() -> AggregatedTmailGroupRegistrationHandler.splitConcurrencyConfiguration(configurations, 0))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("Partition count should be strictly positive");
+    }
+
 }

@@ -53,4 +53,14 @@ public class TmailRabbitEventBusConfigurationTest {
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessage("event.bus.partition.count must be strictly positive");
     }
+
+    @Test
+    void shouldRejectNegativePartitionCount() {
+        PropertiesConfiguration rabbitMqConfiguration = new PropertiesConfiguration();
+        rabbitMqConfiguration.addProperty("event.bus.partition.count", -1);
+
+        assertThatThrownBy(() -> TmailRabbitEventBusConfiguration.from(rabbitMqConfiguration))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("event.bus.partition.count must be strictly positive");
+    }
 }
