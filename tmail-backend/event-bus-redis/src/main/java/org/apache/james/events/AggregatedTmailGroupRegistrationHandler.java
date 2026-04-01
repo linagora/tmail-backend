@@ -102,11 +102,15 @@ public class AggregatedTmailGroupRegistrationHandler implements TmailGroupRegist
 
     @Override
     public Registration register(EventListener.ReactiveEventListener listener, Group group) {
-        ImmutableList<Registration> registrations = delegates.stream()
-            .map(delegate -> delegate.register(listener, group))
-            .collect(ImmutableList.toImmutableList());
+        ImmutableList.Builder<Registration> successfulRegistrations = ImmutableList.builder();
+        try {
+            delegates.forEach(delegate -> successfulRegistrations.add(delegate.register(listener, group)));
+        } catch (RuntimeException e) {
+            rollbackRegisteredRegistrations(successfulRegistrations.build());
+            throw e;
+        }
 
-        return () -> Flux.fromIterable(registrations)
+        return () -> Flux.fromIterable(successfulRegistrations.build())
             .concatMap(Registration::unregister)
             .then();
     }
@@ -122,6 +126,13 @@ public class AggregatedTmailGroupRegistrationHandler implements TmailGroupRegist
 
     private TmailGroupRegistrationHandler randomDelegate() {
         return delegates.get(ThreadLocalRandom.current().nextInt(delegates.size()));
+    }
+
+    private void rollbackRegisteredRegistrations(List<Registration> successfulRegistrations) {
+        Flux.fromIterable(successfulRegistrations)
+            .concatMap(registration -> Mono.from(registration.unregister()))
+            .then()
+            .block();
     }
 
 }
