@@ -40,7 +40,7 @@ public class CardDavCreationObjectRequestTest {
 
         CardDavCreationObjectRequest request = new CardDavCreationObjectRequest(
             "4.0",
-            "123",
+            new DavUid("123"),
             Optional.of("An Bach4"),
             Optional.of(List.of("An", "Bach4")),
             email);
@@ -65,7 +65,7 @@ public class CardDavCreationObjectRequestTest {
 
         CardDavCreationObjectRequest request = new CardDavCreationObjectRequest(
             "4.0",
-            "uid123",
+            new DavUid("uid123"),
             Optional.empty(),
             Optional.empty(),
             email);

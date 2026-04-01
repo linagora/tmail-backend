@@ -38,6 +38,7 @@ import java.net.URI;
 import java.time.Duration;
 
 import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.james.core.Username;
 import org.apache.james.util.ClassLoaderUtils;
 
 import com.github.tomakehurst.wiremock.client.MappingBuilder;
@@ -48,14 +49,15 @@ import com.github.tomakehurst.wiremock.matching.UrlPattern;
 import com.linagora.tmail.HttpUtils;
 import com.linagora.tmail.configuration.DavConfiguration;
 import com.linagora.tmail.dav.request.GetCalendarByEventIdRequestBody;
+import com.linagora.tmail.dav.OpenPaaSUserId;
 
 public class DavServerExtension extends WireMockExtension {
     public static final String ALICE_ID = "ALICE_ID";
     public static final String ALICE = "alice@james.org";
-    public static final DavUser ALICE_DAV_USER = new DavUser(ALICE_ID, ALICE);
+    public static final DavUser ALICE_DAV_USER = new DavUser(new OpenPaaSUserId(ALICE_ID), Username.of(ALICE));
     public static final String ALICE_CALENDAR_1 = "66e95872cf2c37001f0d2a09";
     public static final String ALICE_CALENDAR_2 = "0b4e80d7-7337-458f-852d-7ae8d72a74b2";
-    public static final EventUid ALICE_VEVENT_1 = new EventUid("ab3db856-a866-4a91-99a3-c84372eaee87");
+    public static final DavUid ALICE_VEVENT_1 = new DavUid("ab3db856-a866-4a91-99a3-c84372eaee87");
     public static final String ALICE_VEVENT_2 = "";
     public static final String ALICE_RECURRING_EVENT = "";
     public static final String ALICE_CALENDAR_OBJECT_1 = "/calendars/ALICE_ID/66e95872cf2c37001f0d2a09/sabredav-c23db537-7162-4b8d-b034-ab9436304959.ics";
@@ -148,34 +150,34 @@ public class DavServerExtension extends WireMockExtension {
                                 ClassLoaderUtils.getSystemResourceAsString("VCALENDAR1.ics")))));
     }
 
-    public void setCollectedContactExists(String openPassUserName, String openPassUserId, String collectedContactUid, boolean exists) {
+    public void setCollectedContactExists(Username openPassUserName, OpenPaaSUserId openPassUserId, DavUid collectedContactUid, boolean exists) {
         if (exists) {
             stubFor(
-                get("/addressbooks/%s/collected/%s.vcf".formatted(openPassUserId, collectedContactUid))
-                    .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(openPassUserName)))
+                get("/addressbooks/%s/collected/%s.vcf".formatted(openPassUserId.value(), collectedContactUid.value()))
+                    .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(openPassUserName.asString())))
                     .willReturn(
                         ok()));
 
         } else {
             stubFor(
-                get("/addressbooks/%s/collected/%s.vcf".formatted(openPassUserId, collectedContactUid))
-                    .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(openPassUserName)))
+                get("/addressbooks/%s/collected/%s.vcf".formatted(openPassUserId.value(), collectedContactUid.value()))
+                    .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(openPassUserName.asString())))
                     .willReturn(notFound()));
         }
     }
 
-    public void setCreateCollectedContact(String openPassUserName, String openPassUserId, String collectedContactUid) {
+    public void setCreateCollectedContact(Username openPassUserName, OpenPaaSUserId openPassUserId, DavUid collectedContactUid) {
         stubFor(
-            put("/addressbooks/%s/collected/%s.vcf".formatted(openPassUserId, collectedContactUid))
-                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(openPassUserName)))
+            put("/addressbooks/%s/collected/%s.vcf".formatted(openPassUserId.value(), collectedContactUid.value()))
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(openPassUserName.asString())))
                 .withHeader("Content-Type", equalTo("application/vcard"))
                 .willReturn(created()));
     }
 
-    public void setCreateCollectedContactAlreadyExists(String openPassUserName, String openPassUserId, String collectedContactUid) {
+    public void setCreateCollectedContactAlreadyExists(Username openPassUserName, OpenPaaSUserId openPassUserId, DavUid collectedContactUid) {
         stubFor(
-            put("/addressbooks/%s/collected/%s.vcf".formatted(openPassUserId, collectedContactUid))
-                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(openPassUserName)))
+            put("/addressbooks/%s/collected/%s.vcf".formatted(openPassUserId.value(), collectedContactUid.value()))
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(openPassUserName.asString())))
                 .withHeader("Content-Type", equalTo("application/vcard"))
                 .willReturn(noContent()));
     }
@@ -206,22 +208,22 @@ public class DavServerExtension extends WireMockExtension {
                 .willReturn(noContent()));
     }
 
-    public void assertCollectedContactExistsWasCalled(String openPassUserName, String openPassUserId, String collectedContactUid, int times) {
+    public void assertCollectedContactExistsWasCalled(Username openPassUserName, OpenPaaSUserId openPassUserId, DavUid collectedContactUid, int times) {
         verify(times,
             getRequestedFor(
-                urlEqualTo("/addressbooks/%s/collected/%s.vcf".formatted(openPassUserId,
-                    collectedContactUid)))
+                urlEqualTo("/addressbooks/%s/collected/%s.vcf".formatted(openPassUserId.value(),
+                    collectedContactUid.value())))
                 .withHeader("Authorization",
-                equalTo(createDelegatedBasicAuthenticationToken(openPassUserName))));
+                equalTo(createDelegatedBasicAuthenticationToken(openPassUserName.asString()))));
     }
 
-    public void assertCreateCollectedContactWasCalled(String openPassUserName, String openPassUserId, String collectedContactUid, int times) {
+    public void assertCreateCollectedContactWasCalled(Username openPassUserName, OpenPaaSUserId openPassUserId, DavUid collectedContactUid, int times) {
         verify(times,
             putRequestedFor(
-                urlEqualTo("/addressbooks/%s/collected/%s.vcf".formatted(openPassUserId,
-                    collectedContactUid)))
+                urlEqualTo("/addressbooks/%s/collected/%s.vcf".formatted(openPassUserId.value(),
+                    collectedContactUid.value())))
                 .withHeader("Authorization",
-                    equalTo(createDelegatedBasicAuthenticationToken(openPassUserName)))
+                    equalTo(createDelegatedBasicAuthenticationToken(openPassUserName.asString())))
                 .withHeader("Content-Type", equalTo("application/vcard")));
     }
 

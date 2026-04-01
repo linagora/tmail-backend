@@ -32,6 +32,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializerProvider;
 import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.github.fge.lambdas.Throwing;
+import com.linagora.tmail.dav.DavUid;
+import com.linagora.tmail.dav.OpenPaaSUserId;
 
 public class FreeBusySerializer {
     public static final FreeBusySerializer INSTANCE = new FreeBusySerializer();
@@ -43,6 +45,8 @@ public class FreeBusySerializer {
         SimpleModule module = new SimpleModule();
         module.addSerializer(Instant.class, new InstantSerializer());
         module.addDeserializer(Instant.class, new InstantDeserializer());
+        module.addSerializer(OpenPaaSUserId.class, new OpenPaaSUserIdSerializer());
+        module.addSerializer(DavUid.class, new DavUidSerializer());
         this.objectMapper.registerModule(module);
     }
 
@@ -80,6 +84,20 @@ public class FreeBusySerializer {
         @Override
         public Instant deserialize(JsonParser p, DeserializationContext ctxt) throws IOException {
             return Instant.from(FORMATTER.parse(p.getText()));
+        }
+    }
+
+    public static class OpenPaaSUserIdSerializer extends JsonSerializer<OpenPaaSUserId> {
+        @Override
+        public void serialize(OpenPaaSUserId value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
+            gen.writeString(value.value());
+        }
+    }
+
+    public static class DavUidSerializer extends JsonSerializer<DavUid> {
+        @Override
+        public void serialize(DavUid value, JsonGenerator gen, SerializerProvider serializers) throws IOException {
+            gen.writeString(value.value());
         }
     }
 }

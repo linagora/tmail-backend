@@ -40,6 +40,7 @@ import com.linagora.tmail.DockerOpenPaasSetup;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.OpenPaasUser;
 import com.linagora.tmail.dav.DavClient;
+import com.linagora.tmail.dav.OpenPaaSUserId;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.LinagoraCalendarEventAttendanceGetMethodContract;
@@ -122,8 +123,8 @@ public class MemoryLinagoraCalendarEventAttendanceGetMethodTest {
 
         private UserCredential newTestUser() {
             OpenPaasUser openPaasUser = dockerOpenPaasExtension.newTestUser();
-            davUsers.put(openPaasUser.email(), openPaasUser);
-            return new UserCredential(Username.of(openPaasUser.email()), "secret");
+            davUsers.put(openPaasUser.email().asString(), openPaasUser);
+            return new UserCredential(openPaasUser.email(), "secret");
         }
 
         @Override
@@ -157,10 +158,10 @@ public class MemoryLinagoraCalendarEventAttendanceGetMethodTest {
 
         @Override
         public void pushCalendarToDav(UserCredential userCredential, Calendar calendar, String eventUid) {
-            String openPaasUserId = davUsers.get(userCredential.username().asString()).id();
+            OpenPaaSUserId openPaasUserId = davUsers.get(userCredential.username().asString()).id();
             assertThat(openPaasUserId).isNotNull();
-            URI davCalendarUri = URI.create("/calendars/" + openPaasUserId + "/" + openPaasUserId + "/" + eventUid + ".ics");
-            davClient.createCalendar(userCredential.username().asString(), davCalendarUri, calendar).block();
+            URI davCalendarUri = URI.create("/calendars/" + openPaasUserId.value() + "/" + openPaasUserId.value() + "/" + eventUid + ".ics");
+            davClient.caldav().createCalendar(userCredential.username(), davCalendarUri, calendar).block();
         }
     }
 

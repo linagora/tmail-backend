@@ -64,6 +64,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.github.tomakehurst.wiremock.http.Body;
+import com.linagora.tmail.dav.OpenPaaSUserId;
 import com.linagora.tmail.dav.cal.FreeBusyRequest;
 import com.linagora.tmail.dav.cal.FreeBusyResponse;
 import com.linagora.tmail.dav.request.CardDavCreationObjectRequest;
@@ -73,8 +74,8 @@ import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
 import ezvcard.parameter.EmailType;
 
 class DavClientTest {
-    private static final String OPENPAAS_USER_NAME = "openpaasUserName1";
-    private static final String OPENPAAS_USER_ID = "openpaasUserId1";
+    private static final Username OPENPAAS_USER_NAME = Username.of("openpaasUserName1");
+    private static final OpenPaaSUserId OPENPAAS_USER_ID = new OpenPaaSUserId("openpaasUserId1");
     private static final DavUser OPEN_PAAS_DAV_USER = new DavUser(OPENPAAS_USER_ID, OPENPAAS_USER_NAME);
     private static final UnaryOperator<DavCalendarObject> DUMMY_CALENDAR_OBJECT_UPDATER = calendarObject -> calendarObject;
 
@@ -96,7 +97,7 @@ class DavClientTest {
 
     @Test
     void existsCollectedContactShouldReturnTrueWhenHTTPResponseIs200() {
-        String collectedContactUid = UUID.randomUUID().toString();
+        DavUid collectedContactUid = new DavUid(UUID.randomUUID().toString());
         davServerExtension.setCollectedContactExists(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, collectedContactUid, true);
         assertThat(client.carddav().existsCollectedContact(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, collectedContactUid).block())
             .isTrue();
@@ -104,7 +105,7 @@ class DavClientTest {
 
     @Test
     void existsCollectedContactShouldReturnFalseWhenHTTPResponseIs404() {
-        String collectedContactUid = UUID.randomUUID().toString();
+        DavUid collectedContactUid = new DavUid(UUID.randomUUID().toString());
         davServerExtension.setCollectedContactExists(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, collectedContactUid, false);
         assertThat(client.carddav().existsCollectedContact(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, collectedContactUid).block())
             .isFalse();
@@ -112,10 +113,10 @@ class DavClientTest {
 
     @Test
     void existsCollectedContactShouldReturnFalseWhenHTTPResponseIs500() {
-        String collectedContactUid = UUID.randomUUID().toString();
+        DavUid collectedContactUid = new DavUid(UUID.randomUUID().toString());
         davServerExtension.stubFor(
-            get("/addressbooks/%s/collected/%s.vcf".formatted(OPENPAAS_USER_ID, collectedContactUid))
-                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(OPENPAAS_USER_NAME)))
+            get("/addressbooks/%s/collected/%s.vcf".formatted(OPENPAAS_USER_ID.value(), collectedContactUid.value()))
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(OPENPAAS_USER_NAME.asString())))
                 .willReturn(serverError()));
 
         assertThatThrownBy(() -> client.carddav().existsCollectedContact(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, collectedContactUid).block())
@@ -124,7 +125,7 @@ class DavClientTest {
 
     @Test
     void createCollectedContactShouldNotThrowWhenHTTPResponseIs201() throws Exception {
-        String collectedContactUid = UUID.randomUUID().toString();
+        DavUid collectedContactUid = new DavUid(UUID.randomUUID().toString());
         davServerExtension.setCreateCollectedContact(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, collectedContactUid);
 
         CardDavCreationObjectRequest request = new CardDavCreationObjectRequest(
@@ -142,11 +143,11 @@ class DavClientTest {
 
     @Test
     void createCollectedContactShouldThrowWhenHTTPResponseIs404() throws Exception {
-        String collectedContactUid = UUID.randomUUID().toString();
+        DavUid collectedContactUid = new DavUid(UUID.randomUUID().toString());
 
         davServerExtension.stubFor(
-            put("/addressbooks/user1/collected/%s.vcf".formatted(collectedContactUid))
-                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(OPENPAAS_USER_NAME)))
+            put("/addressbooks/user1/collected/%s.vcf".formatted(collectedContactUid.value()))
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(OPENPAAS_USER_NAME.asString())))
                 .willReturn(notFound()));
 
         CardDavCreationObjectRequest request = new CardDavCreationObjectRequest(
@@ -174,8 +175,8 @@ class DavClientTest {
     @Test
     void findUserCalendarsShouldReturnEmptyWhenUserHasNoCalendars() {
         davServerExtension.stubFor(
-            propfind("/calendars/" + OPENPAAS_USER_ID)
-                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(OPENPAAS_USER_NAME)))
+            propfind("/calendars/" + OPENPAAS_USER_ID.value())
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(OPENPAAS_USER_NAME.asString())))
                 .willReturn(
                     aResponse()
                         .withResponseBody(
@@ -189,8 +190,8 @@ class DavClientTest {
     @Test
     void findUserCalendarsShouldReturnEmptyWhenUserHasOnlySystemCalendars() {
         davServerExtension.stubFor(
-            propfind("/calendars/" + OPENPAAS_USER_ID)
-                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(OPENPAAS_USER_NAME)))
+            propfind("/calendars/" + OPENPAAS_USER_ID.value())
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(OPENPAAS_USER_NAME.asString())))
                 .willReturn(
                     aResponse()
                         .withResponseBody(
@@ -204,8 +205,8 @@ class DavClientTest {
     @Test
     void findUserCalendarsShouldFailWhenHTTPResponseIsNot207() {
         davServerExtension.stubFor(
-            propfind("/calendars/" + OPENPAAS_USER_ID)
-                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(OPENPAAS_USER_NAME)))
+            propfind("/calendars/" + OPENPAAS_USER_ID.value())
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(OPENPAAS_USER_NAME.asString())))
                 .willReturn(ok()));
 
         assertThatThrownBy(() -> client.caldav().findUserCalendars(OPEN_PAAS_DAV_USER).collectList().block())
@@ -216,8 +217,8 @@ class DavClientTest {
     @Test
     void findUserCalendarsShouldNotFailWhenAnyOfUserCalendarsHrefsIsInvalid() {
         davServerExtension.stubFor(
-            propfind("/calendars/" + OPENPAAS_USER_ID)
-                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(OPENPAAS_USER_NAME)))
+            propfind("/calendars/" + OPENPAAS_USER_ID.value())
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(OPENPAAS_USER_NAME.asString())))
                 .willReturn(
                     aResponse()
                         .withResponseBody(
@@ -369,8 +370,8 @@ class DavClientTest {
         FreeBusyRequest freeBusyRequest = FreeBusyRequest.builder()
             .start(Instant.parse("2025-03-08T02:35:00Z"))
             .end(Instant.parse("2025-03-08T03:15:00Z"))
-            .user("67c913533f46f500576ed03e")
-            .uid("b787cb16-fbe8-478f-8877-c699f9e314d8")
+            .user(new OpenPaaSUserId("67c913533f46f500576ed03e"))
+            .uid(new DavUid("b787cb16-fbe8-478f-8877-c699f9e314d8"))
             .build();
 
         FreeBusyResponse freeBusyResponse = client.caldav().freeBusyQuery(ALICE_DAV_USER, freeBusyRequest).block();

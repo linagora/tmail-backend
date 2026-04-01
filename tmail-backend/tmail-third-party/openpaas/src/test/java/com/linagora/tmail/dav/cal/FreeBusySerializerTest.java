@@ -28,6 +28,9 @@ import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.linagora.tmail.dav.DavUid;
+import com.linagora.tmail.dav.OpenPaaSUserId;
+
 public class FreeBusySerializerTest {
 
     private FreeBusySerializer serializer;
@@ -42,8 +45,8 @@ public class FreeBusySerializerTest {
         FreeBusyRequest request = new FreeBusyRequest(
             Instant.parse("2025-03-08T02:35:00Z"),
             Instant.parse("2025-03-08T03:15:00Z"),
-            List.of("67c913533f46f500576ed03e"),
-            List.of("b787cb16-fbe8-478f-8877-c699f9e314d8")
+            List.of(new OpenPaaSUserId("67c913533f46f500576ed03e")),
+            List.of(new DavUid("b787cb16-fbe8-478f-8877-c699f9e314d8"))
         );
 
         assertThatJson(serializer.serialize(request))

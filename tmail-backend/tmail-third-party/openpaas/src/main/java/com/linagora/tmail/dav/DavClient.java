@@ -22,12 +22,12 @@ import javax.net.ssl.SSLException;
 
 import jakarta.inject.Inject;
 
+import com.linagora.tmail.configuration.DavConfiguration;
+
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import reactor.netty.http.client.HttpClient;
-
-import com.linagora.tmail.configuration.DavConfiguration;
 
 public class DavClient {
     private final CalDavClient calDav;

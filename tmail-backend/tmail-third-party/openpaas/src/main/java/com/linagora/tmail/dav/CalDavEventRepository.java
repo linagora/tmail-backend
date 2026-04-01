@@ -97,7 +97,7 @@ public class CalDavEventRepository implements CalendarEventRepository {
     private Mono<CalendarEventAttendanceResults> getAttendanceStatus(DavUser davUser, BlobId blobId) {
         return fetchCalendarObject(davUser, blobId)
             .flatMap(calendarEventParsed ->
-                Mono.justOrEmpty(OptionConverters.toJava(calendarEventParsed.getAttendanceStatus(davUser.username())))
+                Mono.justOrEmpty(OptionConverters.toJava(calendarEventParsed.getAttendanceStatus(davUser.username().asString())))
                     .flatMap(attendanceStatus -> freeBusyQuery(davUser, calendarEventParsed)
                         .map(freeBusyStatus -> EventAttendanceStatusEntry.of(blobId, attendanceStatus, FreeBusyStatus.FREE.equals(freeBusyStatus)))))
             .map(AttendanceResult()::done)
@@ -106,13 +106,13 @@ public class CalDavEventRepository implements CalendarEventRepository {
     }
 
     private Mono<CalendarEventParsed> fetchCalendarObject(DavUser davUser, BlobId blobId) {
-        MailboxSession session = sessionProvider.createSystemSession(Username.of(davUser.username()));
+        MailboxSession session = sessionProvider.createSystemSession(davUser.username());
 
         return Mono.from(calendarResolver.resolveRequestCalendar(blobId, session, OptionConverters.toScala(Optional.empty())))
             .flatMap(requestCalendar -> {
-                String eventUid = CalendarUidField.getEventUidFromCalendar(requestCalendar);
+                DavUid eventUid = DavUid.fromCalendarUidField(CalendarUidField.getEventUidFromCalendar(requestCalendar));
                 Optional<String> recurrenceId = RecurrenceIdField.getRecurrenceIdAsString(requestCalendar);
-                return davClient.caldav().getCalendarObject(davUser, new EventUid(eventUid))
+                return davClient.caldav().getCalendarObject(davUser, eventUid)
                     .switchIfEmpty(Mono.error(() -> new DavClientException("Unable to find any calendar objects containing VEVENT with id '%s'".formatted(eventUid))))
                     .map(davCalendarObject -> davCalendarObject.parse(recurrenceId));
             });
@@ -140,18 +140,18 @@ public class CalDavEventRepository implements CalendarEventRepository {
     private Mono<Void> setAttendanceStatus(Username username, BlobId blobId, AttendanceStatus attendanceStatus, MailboxSession session) {
         return calendarResolver.resolveRequestCalendar(blobId, session, OptionConverters.toScala(Optional.of(ImmutableMethod.REQUEST))).asJava()
             .flatMap(calendar -> {
-                String eventUid = CalendarUidField.getEventUidFromCalendar(calendar);
+                CalendarUidField eventUid = CalendarUidField.getEventUidFromCalendar(calendar);
                 CalendarEventModifier eventModifier = CalendarEventModifier.withPartStat(username.asString(), attendanceStatus.toPartStat(), calendar);
                 return updateEvent(username, eventUid, eventModifier);
             });
     }
 
     @Override
-    public Mono<Void> updateEvent(Username username, String eventUid, CalendarEventModifier eventModifier) {
+    public Mono<Void> updateEvent(Username username, CalendarUidField eventUid, CalendarEventModifier eventModifier) {
         UnaryOperator<DavCalendarObject> updateEventOperator = calendarObject -> calendarObject.withUpdatePatches(eventModifier);
         return davUserProvider.provide(username)
-            .flatMap(davUser -> davClient.caldav().getCalendarObjects(davUser, new EventUid(eventUid))
-                .switchIfEmpty(Flux.error(new CalendarEventNotFoundException(username.asString(), eventUid)))
+            .flatMap(davUser -> davClient.caldav().getCalendarObjects(davUser, DavUid.fromCalendarUidField(eventUid))
+                .switchIfEmpty(Flux.error(new CalendarEventNotFoundException(username, eventUid)))
                 .flatMap(calendarObject -> davClient.caldav().updateCalendarObject(davUser, calendarObject.uri(), updateEventOperator)
                     .thenReturn(Boolean.TRUE)
                     .onErrorResume(DavClientException.PermissionDenied.class, e -> {
@@ -159,7 +159,7 @@ public class CalDavEventRepository implements CalendarEventRepository {
                         return Mono.empty();
                     }))
                 .next()
-                .switchIfEmpty(Mono.error(new CalendarEventNotFoundException(username.asString(), eventUid)))
+                .switchIfEmpty(Mono.error(new CalendarEventNotFoundException(username, eventUid)))
                 .then());
     }
 

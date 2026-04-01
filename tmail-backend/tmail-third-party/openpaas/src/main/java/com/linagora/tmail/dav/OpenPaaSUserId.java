@@ -18,34 +18,12 @@
 
 package com.linagora.tmail.dav;
 
-import jakarta.inject.Inject;
+import org.apache.commons.lang3.StringUtils;
 
-import org.apache.james.core.Username;
+import com.google.common.base.Preconditions;
 
-import com.linagora.tmail.api.OpenPaasRestClient;
-
-import reactor.core.publisher.Mono;
-
-public class OpenPaasDavUserProvider implements DavUserProvider {
-    private final OpenPaasRestClient restClient;
-    private final DavClient davClient;
-
-    @Inject
-    public OpenPaasDavUserProvider(OpenPaasRestClient restClient, DavClient davClient) {
-        this.restClient = restClient;
-        this.davClient = davClient;
-    }
-
-    @Override
-    public Mono<DavUser> provide(Username username) {
-        return provideDavUser(username)
-            .switchIfEmpty(davClient.caldav().getPrincipal(username)
-                .then(provideDavUser(username))
-            .switchIfEmpty(Mono.error(() -> new RuntimeException("Unable to find user in Dav server with username '%s'".formatted(username.asString())))));
-    }
-
-    private Mono<DavUser> provideDavUser(Username username) {
-        return restClient.searchOpenPaasUserId(username)
-            .map(openPaasUserId -> new DavUser(openPaasUserId, username));
+public record OpenPaaSUserId(String value) {
+    public OpenPaaSUserId {
+        Preconditions.checkArgument(StringUtils.isNotEmpty(value), "OpenPaaS user id should not be empty");
     }
 }

@@ -22,8 +22,9 @@ import org.apache.james.core.Username;
 import org.reactivestreams.Publisher;
 
 import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier;
+import com.linagora.tmail.james.jmap.model.CalendarUidField;
 
 public interface CalendarEventRepository extends EventAttendanceRepository {
 
-    Publisher<Void> updateEvent(Username username, String eventUid, CalendarEventModifier patches);
+    Publisher<Void> updateEvent(Username username, CalendarUidField eventUid, CalendarEventModifier patches);
 }

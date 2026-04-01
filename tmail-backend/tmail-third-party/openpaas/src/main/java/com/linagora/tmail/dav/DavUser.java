@@ -18,5 +18,7 @@
 
 package com.linagora.tmail.dav;
 
-public record DavUser(String userId, String username) {
+import org.apache.james.core.Username;
+
+public record DavUser(OpenPaaSUserId userId, Username username) {
 }

@@ -26,6 +26,7 @@ import org.apache.james.core.MailAddress;
 import org.apache.james.user.api.UsersRepository;
 
 import com.google.common.hash.Hashing;
+import com.linagora.tmail.dav.DavUid;
 import com.linagora.tmail.dav.request.CardDavCreationObjectRequest;
 
 import ezvcard.parameter.EmailType;
@@ -44,9 +45,9 @@ public class CardDavUtils {
         return createObjectCreationRequest(Optional.empty(), email);
     }
 
-    public static String createContactUid(MailAddress email) {
-        return Hashing.sha1()
+    public static DavUid createContactUid(MailAddress email) {
+        return new DavUid(Hashing.sha1()
             .hashString(email.asString(), StandardCharsets.UTF_8)
-            .toString();
+            .toString());
     }
 }
