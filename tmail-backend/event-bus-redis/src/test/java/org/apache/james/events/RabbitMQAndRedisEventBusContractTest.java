@@ -113,7 +113,7 @@ abstract class RabbitMQAndRedisEventBusContractTest implements GroupContract.Sin
 
     @RegisterExtension
     static RabbitMQExtension rabbitMQExtension = RabbitMQExtension.singletonRabbitMQ()
-        .isolationPolicy(RabbitMQExtension.IsolationPolicy.STRONG);
+        .isolationPolicy(RabbitMQExtension.IsolationPolicy.WEAK);
 
     private RedisEventBusClientFactory redisEventBusClientFactory;
     private RabbitMQAndRedisEventBus eventBus;
@@ -178,7 +178,7 @@ abstract class RabbitMQAndRedisEventBusContractTest implements GroupContract.Sin
         eventBusWithKeyHandlerNotStarted.stop();
         Stream.concat(
             ALL_GROUPS.stream(),
-            Stream.of(GroupRegistrationHandler.GROUP))
+            Stream.of(TmailGroupRegistrationHandler.GROUP))
             .flatMap(group -> namingStrategies().stream()
                 .map(namingStrategy -> namingStrategy.workQueue(group)))
             .forEach(queueName -> rabbitMQExtension.getSender().delete(QueueSpecification.queue(queueName.asString())).block());
