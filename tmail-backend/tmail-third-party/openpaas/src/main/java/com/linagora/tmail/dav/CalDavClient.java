@@ -38,6 +38,7 @@ import com.linagora.tmail.dav.xml.DavResponse;
 import com.linagora.tmail.dav.xml.XMLUtil;
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
 
+import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpMethod;
@@ -75,6 +76,10 @@ public class CalDavClient {
         this.client = client;
     }
 
+    private static Mono<ByteBuf> asByteBuf(String s) {
+        return Mono.just(Unpooled.wrappedBuffer(s.getBytes(StandardCharsets.UTF_8)));
+    }
+
     public Mono<Void> updateCalendarObject(URI calendarObjectUri, UnaryOperator<DavCalendarObject> calendarObjectUpdater) {
         return getCalendarObjectByUri(calendarObjectUri)
             .map(calendarObjectUpdater)
@@ -90,7 +95,7 @@ public class CalDavClient {
                 .add(HttpHeaderNames.IF_MATCH, updatedCalendarObject.eTag()))
             .request(HttpMethod.PUT)
             .uri(updatedCalendarObject.uri().toString())
-            .send(Mono.just(Unpooled.wrappedBuffer(updatedCalendarObject.calendarData().toString().getBytes(StandardCharsets.UTF_8))))
+            .send(asByteBuf(updatedCalendarObject.calendarData().toString()))
             .responseSingle((response, responseContent) -> handleCalendarObjectUpdateResponse(updatedCalendarObject, response));
     }
 
@@ -130,7 +135,7 @@ public class CalDavClient {
                 .add(HttpHeaderNames.ACCEPT, "application/json, text/plain, */*"))
             .request(HttpMethod.POST)
             .uri(uri)
-            .send(Mono.just(Unpooled.wrappedBuffer(payload.getBytes(StandardCharsets.UTF_8))))
+            .send(asByteBuf(payload))
             .responseSingle((response, responseContent) -> {
                 if (response.status().code() == 200) {
                     return Mono.empty();
@@ -155,7 +160,7 @@ public class CalDavClient {
                 .add(HttpHeaderNames.CONTENT_TYPE, "application/xml"))
             .request(HttpMethod.valueOf("MKCALENDAR"))
             .uri(uri.toString())
-            .send(Mono.just(Unpooled.wrappedBuffer(mkcalendarBody.getBytes(StandardCharsets.UTF_8))))
+            .send(asByteBuf(mkcalendarBody))
             .responseSingle((response, responseContent) -> {
                 if (response.status().code() == 201) {
                     return ReactorUtils.logAsMono(() -> LOGGER.info("Calendar collection '{}' created successfully.", uri));
@@ -168,7 +173,7 @@ public class CalDavClient {
         return client.headers(headers -> headers.add(HttpHeaderNames.CONTENT_TYPE, "text/plain"))
             .request(HttpMethod.PUT)
             .uri(uri.toString())
-            .send(Mono.just(Unpooled.wrappedBuffer(calendarData.toString().getBytes(StandardCharsets.UTF_8))))
+            .send(asByteBuf(calendarData.toString()))
             .responseSingle((response, responseContent) -> {
                 if (response.status().code() == 201) {
                     return ReactorUtils.logAsMono(() -> LOGGER.info("Calendar object '{}' created successfully.", uri));
@@ -317,7 +322,7 @@ public class CalDavClient {
                 .add("Depth", "0"))
             .request(HttpMethod.valueOf("PROPFIND"))
             .uri("/")
-            .send(Mono.just(Unpooled.wrappedBuffer(PRINCIPAL_BODY_REQUEST.getBytes(StandardCharsets.UTF_8))))
+            .send(asByteBuf(PRINCIPAL_BODY_REQUEST))
             .responseSingle((response, byteBufMono) -> {
                 if (response.status() == HttpResponseStatus.MULTI_STATUS) {
                     return ReactorUtils.logAsMono(() -> LOGGER.info("User has been auto-provisioned successfully via principal endpoint."));
