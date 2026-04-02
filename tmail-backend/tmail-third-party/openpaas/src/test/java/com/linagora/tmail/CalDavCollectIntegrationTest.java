@@ -295,7 +295,7 @@ public class CalDavCollectIntegrationTest {
 
         sendMessage(sender, receiver, mail, mimeMessageId);
 
-        DavCalendarObject result = davClient.caldav().getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(mimeMessageId)).block();
+        DavCalendarObject result = davClient.caldav(receiver.email()).getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(mimeMessageId)).block();
         assertThat(result).isNotNull();
     }
 
@@ -306,7 +306,7 @@ public class CalDavCollectIntegrationTest {
 
         sendMessage(sender, notInvited, mail, mimeMessageId);
 
-        DavCalendarObject result = davClient.caldav().getCalendarObject(new DavUser(notInvited.id(), notInvited.email()), new DavUid(mimeMessageId)).block();
+        DavCalendarObject result = davClient.caldav(notInvited.email()).getCalendarObject(new DavUser(notInvited.id(), notInvited.email()), new DavUid(mimeMessageId)).block();
         assertThat(result).isNull();
     }
 
@@ -317,7 +317,7 @@ public class CalDavCollectIntegrationTest {
 
         sendMessage(receiver, sender, mail, mimeMessageId);
 
-        DavCalendarObject result = davClient.caldav().getCalendarObject(new DavUser(sender.id(), sender.email()), new DavUid(mimeMessageId)).block();
+        DavCalendarObject result = davClient.caldav(sender.email()).getCalendarObject(new DavUser(sender.id(), sender.email()), new DavUid(mimeMessageId)).block();
         assertThat(result).isNotNull();
     }
 
@@ -328,9 +328,9 @@ public class CalDavCollectIntegrationTest {
 
         sendMessage(sender, ImmutableList.of(receiver, notInvited), mail, mimeMessageId);
 
-        DavCalendarObject result1 = davClient.caldav().getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(mimeMessageId)).block();
+        DavCalendarObject result1 = davClient.caldav(receiver.email()).getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(mimeMessageId)).block();
 
-        DavCalendarObject result2 = davClient.caldav().getCalendarObject(new DavUser(notInvited.id(), notInvited.email()), new DavUid(mimeMessageId)).block();
+        DavCalendarObject result2 = davClient.caldav(notInvited.email()).getCalendarObject(new DavUser(notInvited.id(), notInvited.email()), new DavUid(mimeMessageId)).block();
 
         assertSoftly(softly -> {
             softly.assertThat(result1).isNotNull();
@@ -358,7 +358,7 @@ public class CalDavCollectIntegrationTest {
 
         sendMessage(sender, receiver, mail2, mimeMessageId2);
 
-        DavCalendarObject result = davClient.caldav().getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(calendarUid)).block();
+        DavCalendarObject result = davClient.caldav(receiver.email()).getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(calendarUid)).block();
         assertThat(result.calendarData().getComponent(Component.VEVENT).get().getProperty(Property.STATUS).get().getValue()).isEqualTo("CANCELLED");
     }
 
@@ -382,7 +382,7 @@ public class CalDavCollectIntegrationTest {
 
         sendMessage(sender, receiver, mail2, mimeMessageId2);
 
-        DavCalendarObject result = davClient.caldav().getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(calendarUid)).block();
+        DavCalendarObject result = davClient.caldav(receiver.email()).getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(calendarUid)).block();
         assertThat(result.calendarData().getComponent(Component.VEVENT).get().getProperty(Property.LOCATION).get().getValue())
             .isEqualTo("office2");
     }
@@ -413,7 +413,7 @@ public class CalDavCollectIntegrationTest {
 
         sendMessage(sender, receiver, mail2, mimeMessageId2);
 
-        DavCalendarObject result = davClient.caldav().getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(calendarUid)).block();
+        DavCalendarObject result = davClient.caldav(receiver.email()).getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(calendarUid)).block();
         assertThat(getVEventContainingRecurrenceId(result.calendarData()).get().getProperty(Property.RECURRENCE_ID).get().getValue())
             .isEqualTo("20170112T090000Z");
     }
@@ -453,7 +453,7 @@ public class CalDavCollectIntegrationTest {
                 .build());
         sendMessage(sender, receiver, mail3, mimeMessageId3);
 
-        DavCalendarObject result = davClient.caldav().getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(calendarUid)).block();
+        DavCalendarObject result = davClient.caldav(receiver.email()).getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(calendarUid)).block();
         assertThat(getVEventContainingRecurrenceId(result.calendarData()).get().getProperty(Property.LOCATION).get().getValue())
             .isEqualTo("office3");
     }
@@ -483,7 +483,7 @@ public class CalDavCollectIntegrationTest {
 
         sendMessage(sender, receiver, mail2, mimeMessageId2);
 
-        DavCalendarObject result = davClient.caldav().getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(calendarUid)).block();
+        DavCalendarObject result = davClient.caldav(receiver.email()).getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(calendarUid)).block();
         assertThat(result.calendarData().getComponent(Component.VEVENT).get().getProperty(Property.EXDATE).get().getValue())
             .isEqualTo("20170112T090000Z");
     }
@@ -524,7 +524,7 @@ public class CalDavCollectIntegrationTest {
                 .build());
         sendMessage(sender, receiver, mail3, mimeMessageId3);
 
-        DavCalendarObject result = davClient.caldav().getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(calendarUid)).block();
+        DavCalendarObject result = davClient.caldav(receiver.email()).getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(calendarUid)).block();
         assertThat(result.calendarData().getComponent(Component.VEVENT).get().getProperty(Property.EXDATE).get().getValue())
             .isEqualTo("20170112T090000Z");
         assertThat(getVEventContainingRecurrenceId(result.calendarData()))
@@ -553,7 +553,7 @@ public class CalDavCollectIntegrationTest {
         sendMessage(receiver, sender, replyMail, replyMimeMessageId);
 
         // The organizer's calendar should be updated with the attendee's PARTSTAT=ACCEPTED
-        DavCalendarObject result = davClient.caldav().getCalendarObject(new DavUser(sender.id(), sender.email()), new DavUid(calendarUid)).block();
+        DavCalendarObject result = davClient.caldav(sender.email()).getCalendarObject(new DavUser(sender.id(), sender.email()), new DavUid(calendarUid)).block();
         assertThat(result.calendarData().getComponent(Component.VEVENT).get()
             .getProperties(Property.ATTENDEE).stream()
             .map(p -> (Attendee) p)
@@ -582,7 +582,7 @@ public class CalDavCollectIntegrationTest {
         sendMessage(receiver, receiver, replyMail, replyMimeMessageId);
 
         // receiver is explicitly the ATTENDEE in the REPLY iCal, so no ITIP should be sent for them
-        DavCalendarObject result = davClient.caldav().getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(calendarUid)).block();
+        DavCalendarObject result = davClient.caldav(receiver.email()).getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(calendarUid)).block();
         assertThat(result).isNull();
     }
 

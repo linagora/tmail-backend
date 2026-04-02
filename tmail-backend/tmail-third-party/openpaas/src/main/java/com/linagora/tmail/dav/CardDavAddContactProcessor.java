@@ -69,9 +69,10 @@ public class CardDavAddContactProcessor implements ContactAddIndexingProcessor {
         return Mono.fromFuture(openPassUserIdLoader.get(username))
             .flatMap(openPassUserId -> {
                 CardDavCreationObjectRequest cardDavCreationObjectRequest = CardDavUtils.createObjectCreationRequest(Optional.of(contactFields.fullName()), contactFields.address());
-                return davClient.carddav().existsCollectedContact(username, openPassUserId, cardDavCreationObjectRequest.uid())
+                CardDavClient cardDavClient = davClient.carddav(username);
+                return cardDavClient.existsCollectedContact(openPassUserId, cardDavCreationObjectRequest.uid())
                     .filter(FunctionalUtils.identityPredicate().negate())
-                    .flatMap(exists -> davClient.carddav().createCollectedContact(username, openPassUserId, cardDavCreationObjectRequest))
+                    .flatMap(exists -> cardDavClient.createCollectedContact(openPassUserId, cardDavCreationObjectRequest))
                     .onErrorResume(error -> {
                         LOGGER.error("Error while creating collected contact if not exists.", error);
                         return Mono.empty();

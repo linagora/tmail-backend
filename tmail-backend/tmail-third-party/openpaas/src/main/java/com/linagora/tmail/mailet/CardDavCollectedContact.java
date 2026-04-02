@@ -35,6 +35,7 @@ import org.slf4j.LoggerFactory;
 
 import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.api.OpenPaasRestClient;
+import com.linagora.tmail.dav.CardDavClient;
 import com.linagora.tmail.dav.CardDavUtils;
 import com.linagora.tmail.dav.DavClient;
 import com.linagora.tmail.dav.OpenPaaSUserId;
@@ -97,9 +98,10 @@ public class CardDavCollectedContact extends GenericMailet {
     }
 
     private Mono<Void> createCollectedContactIfNotExists(Username sender, OpenPaaSUserId openPassUserId, CardDavCreationObjectRequest cardDavCreationObjectRequest) {
-        return davClient.carddav().existsCollectedContact(sender, openPassUserId, cardDavCreationObjectRequest.uid())
+        CardDavClient cardDavClient = davClient.carddav(sender);
+        return cardDavClient.existsCollectedContact(openPassUserId, cardDavCreationObjectRequest.uid())
             .filter(FunctionalUtils.identityPredicate().negate())
-            .flatMap(exists -> davClient.carddav().createCollectedContact(sender, openPassUserId, cardDavCreationObjectRequest))
+            .flatMap(exists -> cardDavClient.createCollectedContact(openPassUserId, cardDavCreationObjectRequest))
             .onErrorResume(error -> {
                 LOGGER.error("Error while creating collected contact if not exists.", error);
                 return Mono.empty();

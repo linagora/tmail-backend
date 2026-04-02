@@ -115,7 +115,7 @@ public class CalDavCollect extends GenericMailet {
     }
 
     private Mono<Void> synchronizeWithDavServer(byte[] json, DavUser davUser) {
-        return davClient.caldav().sendITIPRequest(davUser.username(),
+        return davClient.caldav(davUser.username()).sendITIPRequest(
             URI.create(CALENDAR_PATH + davUser.userId().value()),
             json);
     }

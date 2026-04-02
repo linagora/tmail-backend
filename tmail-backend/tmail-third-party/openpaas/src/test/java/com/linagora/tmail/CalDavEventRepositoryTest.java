@@ -146,7 +146,7 @@ class CalDavEventRepositoryTest {
 
     private void pushCalendarToDav(String username, CalendarEventHelper calendarEvent) {
         URI davCalendarUri = URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + calendarEvent.uid() + ".ics");
-        davClient.caldav().createCalendar(Username.of(username), davCalendarUri, calendarEvent.asCalendar()).block();
+        davClient.caldav(Username.of(username)).createCalendar(davCalendarUri, calendarEvent.asCalendar()).block();
     }
 
     @ParameterizedTest
@@ -232,7 +232,7 @@ class CalDavEventRepositoryTest {
 
         // Push calendar to Dav
         URI davCalendarUri = URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + eventUid + ".ics");
-        davClient.caldav().createCalendar(openPaasUser.email(), davCalendarUri, stringAsCalendar(calendarAsString)).block();
+        davClient.caldav(openPaasUser.email()).createCalendar(davCalendarUri, stringAsCalendar(calendarAsString)).block();
 
         // Setup blobId for the event, with recurrence id
         BlobId blobId = setupCalendarResolver(eventUid, Optional.of(recurrenceIdValue));
@@ -301,7 +301,7 @@ class CalDavEventRepositoryTest {
 
         // Push calendar to Dav
         URI davCalendarUri = URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + eventUid + ".ics");
-        davClient.caldav().createCalendar(openPaasUser.email(), davCalendarUri, stringAsCalendar(calendarAsString)).block();
+        davClient.caldav(openPaasUser.email()).createCalendar(davCalendarUri, stringAsCalendar(calendarAsString)).block();
 
         // Setup blobId for the event, with empty recurrence id
         BlobId blobId = setupCalendarResolver(eventUid, Optional.empty());
@@ -415,7 +415,7 @@ class CalDavEventRepositoryTest {
             "END:VEVENT\n" +
             "END:VCALENDAR\n";
 
-        davClient.caldav().createCalendar(openPaasUser.email(),
+        davClient.caldav(openPaasUser.email()).createCalendar(
                 URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + eventUidA + ".ics"),
                 CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(calendarWithFrancesTimeZone.getBytes(StandardCharsets.UTF_8))))
             .block();
@@ -440,7 +440,7 @@ class CalDavEventRepositoryTest {
             "END:VEVENT\n" +
             "END:VCALENDAR\n";
 
-        davClient.caldav().createCalendar(openPaasUser.email(),
+        davClient.caldav(openPaasUser.email()).createCalendar(
                 URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + eventUidB + ".ics"),
                 CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(calendarWithVietnamTimeZone.getBytes(StandardCharsets.UTF_8))))
             .block();
@@ -492,12 +492,12 @@ class CalDavEventRepositoryTest {
         Calendar calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(calendarAsString.getBytes(StandardCharsets.UTF_8)));
 
         // Create the event on organizer (OpenPaas user) calendar
-        davClient.caldav().createCalendar(openPaasUser.email(),
+        davClient.caldav(openPaasUser.email()).createCalendar(
                 URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + eventUidA + ".ics"),
                 calendar)
             .block();
         // Create the event on attendee (Alice) calendar
-        davClient.caldav().createCalendar(aliceOpenPaasUser.email(),
+        davClient.caldav(aliceOpenPaasUser.email()).createCalendar(
                 URI.create("/calendars/" + aliceOpenPaasUser.id().value() + "/" + aliceOpenPaasUser.id().value() + "/" + eventUidA + ".ics"),
                 calendar)
             .block();
@@ -528,8 +528,8 @@ class CalDavEventRepositoryTest {
         assertThatCode(() -> testee.updateEvent(openPaasUser.email(), new CalendarUidField(eventUidA), calendarEventModifier).block())
             .doesNotThrowAnyException();
 
-        DavCalendarObject openPaasUserCalendar = davClient.caldav().getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(eventUidA)).block();
-        DavCalendarObject aliceDavCalendarObject = davClient.caldav().getCalendarObject(new DavUser(aliceOpenPaasUser.id(), aliceOpenPaasUser.email()), new DavUid(eventUidA)).block();
+        DavCalendarObject openPaasUserCalendar = davClient.caldav(openPaasUser.email()).getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(eventUidA)).block();
+        DavCalendarObject aliceDavCalendarObject = davClient.caldav(aliceOpenPaasUser.email()).getCalendarObject(new DavUser(aliceOpenPaasUser.id(), aliceOpenPaasUser.email()), new DavUid(eventUidA)).block();
 
         // the event should be updated in both organizer (OpenPaas user) calendar and attendee (Alice) calendar
         assertThat(openPaasUserCalendar.uri()).isNotEqualTo(aliceDavCalendarObject.uri());
@@ -552,7 +552,7 @@ class CalDavEventRepositoryTest {
             "END:VEVENT\n" +
             "END:VCALENDAR\n";
 
-        davClient.caldav().createCalendar(openPaasUser.email(),
+        davClient.caldav(openPaasUser.email()).createCalendar(
                 URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + eventUidA + ".ics"),
                 CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(calendarWithFrancesTimeZone.getBytes(StandardCharsets.UTF_8))))
             .block();
@@ -564,7 +564,7 @@ class CalDavEventRepositoryTest {
         assertThatCode(() -> testee.updateEvent(testUser, new CalendarUidField(eventUidA), createRescheduledTimingModifier(proposedStartDate, proposedEndDate)).block())
             .doesNotThrowAnyException();
 
-        DavCalendarObject davCalendarObject = davClient.caldav().getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(eventUidA)).block();
+        DavCalendarObject davCalendarObject = davClient.caldav(openPaasUser.email()).getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(eventUidA)).block();
 
         String updatedCalendar = davCalendarObject.calendarData().toString();
         assertThat(updatedCalendar).contains("DTSTART;TZID=Europe/Paris:20250320T160000");
@@ -586,7 +586,7 @@ class CalDavEventRepositoryTest {
             "END:VEVENT\n" +
             "END:VCALENDAR\n";
 
-        davClient.caldav().createCalendar(openPaasUser.email(),
+        davClient.caldav(openPaasUser.email()).createCalendar(
                 URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + eventUidA + ".ics"),
                 CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(calendarWithFrancesTimeZone.getBytes(StandardCharsets.UTF_8))))
             .block();
@@ -630,7 +630,7 @@ class CalDavEventRepositoryTest {
             "END:VEVENT\n" +
             "END:VCALENDAR\n";
 
-        davClient.caldav().createCalendar(openPaasUser.email(),
+        davClient.caldav(openPaasUser.email()).createCalendar(
                 URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + eventUidA + ".ics"),
                 CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(calendarWithDifferentOrganizer.getBytes(StandardCharsets.UTF_8))))
             .block();
@@ -664,7 +664,7 @@ class CalDavEventRepositoryTest {
             "END:VEVENT\n" +
             "END:VCALENDAR\n";
 
-        davClient.caldav().createCalendar(openPaasUser.email(),
+        davClient.caldav(openPaasUser.email()).createCalendar(
                 URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + eventUidA + ".ics"),
                 CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(calendarWithFrancesTimeZone.getBytes(StandardCharsets.UTF_8))))
             .block();
@@ -688,7 +688,7 @@ class CalDavEventRepositoryTest {
         assertThatCode(() ->  testee.updateEvent(testUser, new CalendarUidField(eventUidA), calendarEventModifier).block())
             .doesNotThrowAnyException();
 
-        DavCalendarObject davCalendarObject = davClient.caldav().getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(eventUidA)).block();
+        DavCalendarObject davCalendarObject = davClient.caldav(openPaasUser.email()).getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(eventUidA)).block();
 
         String updatedCalendar = davCalendarObject.calendarData().toString();
         assertThat(updatedCalendar.replaceAll("(?m)^DTSTAMP:.*\\R?", "").trim())
@@ -725,9 +725,9 @@ class CalDavEventRepositoryTest {
         ZonedDateTime endDateOfEventA = startDateOfEventA.plusHours(2);
         CalendarEventHelper calendarEventA = new CalendarEventHelper(openPaasUser.email().asString(), PartStat.ACCEPTED, startDateOfEventA, endDateOfEventA);
         URI davCalendarUri = URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + calendarEventA.uid() + ".ics");
-        davClient.caldav().createCalendar(openPaasUser.email(), davCalendarUri, calendarEventA.asCalendar()).block();
+        davClient.caldav(openPaasUser.email()).createCalendar(davCalendarUri, calendarEventA.asCalendar()).block();
 
-        DavCalendarObject result = davClient.caldav().getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(calendarEventA.uid())).block();
+        DavCalendarObject result = davClient.caldav(openPaasUser.email()).getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(calendarEventA.uid())).block();
         assertThat(result).isNotNull();
     }
 
@@ -737,10 +737,10 @@ class CalDavEventRepositoryTest {
         ZonedDateTime endDateOfEventA = startDateOfEventA.plusHours(2);
         CalendarEventHelper calendarEventA = new CalendarEventHelper(openPaasUser.email().asString(), PartStat.ACCEPTED, startDateOfEventA, endDateOfEventA);
         URI davCalendarUri = URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + calendarEventA.uid() + ".ics");
-        davClient.caldav().createCalendar(openPaasUser.email(), davCalendarUri, calendarEventA.asCalendar()).block();
-        davClient.caldav().deleteCalendar(openPaasUser.email(), davCalendarUri).block();
+        davClient.caldav(openPaasUser.email()).createCalendar(davCalendarUri, calendarEventA.asCalendar()).block();
+        davClient.caldav(openPaasUser.email()).deleteCalendar(davCalendarUri).block();
 
-        DavCalendarObject result = davClient.caldav().getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(calendarEventA.uid())).block();
+        DavCalendarObject result = davClient.caldav(openPaasUser.email()).getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(calendarEventA.uid())).block();
         assertThat(result).isNull();
     }
 
@@ -756,7 +756,7 @@ class CalDavEventRepositoryTest {
             blobId).block())
             .doesNotThrowAnyException();
 
-        DavCalendarObject davCalendarObject = davClient.caldav().getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(calendarEvent.uid())).block();
+        DavCalendarObject davCalendarObject = davClient.caldav(openPaasUser.email()).getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(calendarEvent.uid())).block();
 
         assertThat(davCalendarObject.calendarData().toString())
             .contains("ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:user2@open-paas.org");
@@ -788,7 +788,7 @@ class CalDavEventRepositoryTest {
             "END:VEVENT\n" +
             "END:VCALENDAR\n";
 
-        davClient.caldav().createCalendar(openPaasUser.email(),
+        davClient.caldav(openPaasUser.email()).createCalendar(
                 URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + eventUidA + ".ics"),
                 CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(calendar.getBytes(StandardCharsets.UTF_8))))
             .block();
@@ -798,7 +798,7 @@ class CalDavEventRepositoryTest {
         assertThatCode(() -> testee.setAttendanceStatus(testUser,
             AttendanceStatus.Accepted, blobId).block()).doesNotThrowAnyException();
 
-        DavCalendarObject davCalendarObject = davClient.caldav().getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(eventUidA)).block();
+        DavCalendarObject davCalendarObject = davClient.caldav(openPaasUser.email()).getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(eventUidA)).block();
         String updatedCalendar = davCalendarObject.calendarData().toString();
         assertThat(updatedCalendar.replaceAll("(?m)^DTSTAMP:.*\\R?", "").trim())
             .isEqualToNormalizingNewlines("BEGIN:VCALENDAR\n" +
