@@ -26,6 +26,7 @@ import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.postgres.PostgresExtension;
 import org.apache.james.junit.categories.BasicFeature;
+import org.apache.james.webadmin.integration.probe.DeletedMessageVaultProbeModule;
 import org.apache.james.webadmin.integration.vault.DeletedMessageVaultIntegrationTest;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
@@ -54,7 +55,8 @@ public class TMailPostgresDeletedMessageVaultIntegrationTest extends DeletedMess
                 .disableSingleSave())
             .build())
         .server(configuration -> PostgresTmailServer.createServer(configuration)
-            .overrideWith(new LinagoraTestJMAPServerModule()))
+            .overrideWith(new LinagoraTestJMAPServerModule())
+            .overrideWith(new DeletedMessageVaultProbeModule()))
         .extension(PostgresExtension.empty())
         .extension(new ClockExtension())
         .build();
@@ -74,7 +76,7 @@ public class TMailPostgresDeletedMessageVaultIntegrationTest extends DeletedMess
     @Test
     @Override
     @Disabled("TmailBlobStoreDeletedMessageVault does not support this case")
-    public void vaultDeleteShouldDeleteAllMessagesHavingSameBlobContent() {
+    public void vaultDeleteShouldDeleteAllMessagesHavingSameBlobContent(GuiceJamesServer jmapServer) {
 
     }
 }

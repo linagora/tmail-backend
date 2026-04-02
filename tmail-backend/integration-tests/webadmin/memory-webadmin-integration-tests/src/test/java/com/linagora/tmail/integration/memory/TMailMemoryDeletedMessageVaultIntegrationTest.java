@@ -20,9 +20,11 @@ package com.linagora.tmail.integration.memory;
 
 import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
 
+import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.modules.vault.TestDeleteMessageVaultPreDeletionHookModule;
+import org.apache.james.webadmin.integration.probe.DeletedMessageVaultProbeModule;
 import org.apache.james.webadmin.integration.vault.DeletedMessageVaultIntegrationTest;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
@@ -45,7 +47,8 @@ public class TMailMemoryDeletedMessageVaultIntegrationTest extends DeletedMessag
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
-            .overrideWith(new TestDeleteMessageVaultPreDeletionHookModule()))
+            .overrideWith(new TestDeleteMessageVaultPreDeletionHookModule())
+            .overrideWith(new DeletedMessageVaultProbeModule()))
         .extension(new ClockExtension())
         .build();
 
@@ -57,7 +60,7 @@ public class TMailMemoryDeletedMessageVaultIntegrationTest extends DeletedMessag
     @Test
     @Override
     @Disabled("TmailBlobStoreDeletedMessageVault does not support this case")
-    public void vaultDeleteShouldDeleteAllMessagesHavingSameBlobContent() {
+    public void vaultDeleteShouldDeleteAllMessagesHavingSameBlobContent(GuiceJamesServer jmapServer) {
 
     }
 

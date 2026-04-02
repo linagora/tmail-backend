@@ -48,6 +48,7 @@ import org.apache.james.utils.WebAdminGuiceProbe;
 import org.apache.james.vault.DeletedMessage;
 import org.apache.james.vault.search.Query;
 import org.apache.james.webadmin.WebAdminUtils;
+import org.apache.james.webadmin.integration.probe.DeletedMessageVaultProbeModule;
 import org.apache.james.webadmin.integration.vault.DeletedMessageVaultIntegrationTest;
 import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Tag;
@@ -103,7 +104,8 @@ public class TMailDistributedDeletedMessageVaultIntegrationTest extends DeletedM
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding()
-                .to(TmailBlobStoreDeletedMessageVaultProbe.class)))
+                .to(TmailBlobStoreDeletedMessageVaultProbe.class))
+            .overrideWith(new DeletedMessageVaultProbeModule()))
         .build();
 
     @Override
@@ -122,7 +124,7 @@ public class TMailDistributedDeletedMessageVaultIntegrationTest extends DeletedM
     @Test
     @Override
     @Disabled("TmailBlobStoreDeletedMessageVault does not support this case")
-    public void vaultDeleteShouldDeleteAllMessagesHavingSameBlobContent() {
+    public void vaultDeleteShouldDeleteAllMessagesHavingSameBlobContent(GuiceJamesServer jmapServer) {
 
     }
 
