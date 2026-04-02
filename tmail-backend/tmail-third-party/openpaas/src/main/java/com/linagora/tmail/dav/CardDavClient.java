@@ -19,18 +19,14 @@
 package com.linagora.tmail.dav;
 
 import java.nio.charset.StandardCharsets;
-import java.util.function.UnaryOperator;
 
-import org.apache.james.core.Username;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.linagora.tmail.configuration.DavConfiguration;
 import com.linagora.tmail.dav.request.CardDavCreationObjectRequest;
 
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.HttpHeaderNames;
-import io.netty.handler.codec.http.HttpHeaders;
 import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.http.client.HttpClientResponse;
@@ -38,25 +34,16 @@ import reactor.netty.http.client.HttpClientResponse;
 public class CardDavClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(CardDavClient.class);
     private static final String COLLECTED_ADDRESS_BOOK_PATH = "/addressbooks/%s/collected/%s.vcf";
-    private static final String ACCEPT_VCARD_JSON = "application/vcard+json";
     private static final String CONTENT_TYPE_VCARD = "application/vcard";
 
     private final HttpClient client;
-    private final DavConfiguration config;
 
-    CardDavClient(HttpClient client, DavConfiguration config) {
+    CardDavClient(HttpClient client) {
         this.client = client;
-        this.config = config;
     }
 
-    private UnaryOperator<HttpHeaders> cardDavHeaders(Username username) {
-        return headers -> headers.add(HttpHeaderNames.ACCEPT, ACCEPT_VCARD_JSON)
-            .add(HttpHeaderNames.AUTHORIZATION, config.authenticationToken(username.asString()));
-    }
-
-    public Mono<Boolean> existsCollectedContact(Username username, OpenPaaSUserId userId, DavUid collectedId) {
-        return client.headers(headers -> cardDavHeaders(username).apply(headers))
-            .get()
+    public Mono<Boolean> existsCollectedContact(OpenPaaSUserId userId, DavUid collectedId) {
+        return client.get()
             .uri(String.format(COLLECTED_ADDRESS_BOOK_PATH, userId.value(), collectedId.value()))
             .responseSingle((response, byteBufMono) -> handleContactExistsResponse(response, userId, collectedId));
     }
@@ -71,13 +58,12 @@ public class CardDavClient {
         };
     }
 
-    public Mono<Void> createCollectedContact(Username username, OpenPaaSUserId userId, CardDavCreationObjectRequest request) {
-        return putCollectedContact(username, userId, request.uid(), request.toVCard().getBytes(StandardCharsets.UTF_8));
+    public Mono<Void> createCollectedContact(OpenPaaSUserId userId, CardDavCreationObjectRequest request) {
+        return putCollectedContact(userId, request.uid(), request.toVCard().getBytes(StandardCharsets.UTF_8));
     }
 
-    public Mono<Void> putCollectedContact(Username username, OpenPaaSUserId userId, DavUid vcardUid, byte[] vcardPayload) {
-        return client.headers(headers -> cardDavHeaders(username).apply(headers)
-                .add(HttpHeaderNames.CONTENT_TYPE, CONTENT_TYPE_VCARD))
+    public Mono<Void> putCollectedContact(OpenPaaSUserId userId, DavUid vcardUid, byte[] vcardPayload) {
+        return client.headers(headers -> headers.add(HttpHeaderNames.CONTENT_TYPE, CONTENT_TYPE_VCARD))
             .put()
             .uri(String.format(COLLECTED_ADDRESS_BOOK_PATH, userId.value(), vcardUid.value()))
             .send(Mono.just(Unpooled.wrappedBuffer(vcardPayload)))

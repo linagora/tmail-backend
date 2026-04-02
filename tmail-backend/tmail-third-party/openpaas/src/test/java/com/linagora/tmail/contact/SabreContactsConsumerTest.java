@@ -165,7 +165,7 @@ class SabreContactsConsumerTest {
     void shouldIndexContactInSearchEngineWhenCollectedContactIsCreated() throws Exception {
         MailAddress mailAddress = new MailAddress("vttran@exmaple.ltd");
         CardDavCreationObjectRequest creationObjectRequest = CardDavUtils.createObjectCreationRequest(Optional.of("Tung Tran"), mailAddress);
-        davClient.carddav().createCollectedContact(openPaasUser.email(), openPaasUser.id(), creationObjectRequest).block();
+        davClient.carddav(openPaasUser.email()).createCollectedContact(openPaasUser.id(), creationObjectRequest).block();
 
         awaitAtMost.untilAsserted(() -> assertThat(Flux.from(emailAddressContactSearchEngine.autoComplete(getAccountId(),
                 "tung", 255)).map(EmailAddressContact::fields)
@@ -191,7 +191,7 @@ class SabreContactsConsumerTest {
             END:VCARD
             """.formatted(fullName, uid, email1, email2);
 
-        davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), new DavUid(uid), vcard.getBytes(StandardCharsets.UTF_8)).block();
+        davClient.carddav(openPaasUser.email()).putCollectedContact(openPaasUser.id(), new DavUid(uid), vcard.getBytes(StandardCharsets.UTF_8)).block();
 
         // Then: both email addresses should be indexed and searchable
         awaitAtMost.untilAsserted(() -> assertThat(
@@ -234,7 +234,7 @@ class SabreContactsConsumerTest {
             END:VCARD
             """.formatted(fullName, uid.value(), email1, email2);
 
-        davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), uid, vcard.getBytes(StandardCharsets.UTF_8)).block();
+        davClient.carddav(openPaasUser.email()).putCollectedContact(openPaasUser.id(), uid, vcard.getBytes(StandardCharsets.UTF_8)).block();
 
         awaitAtMost.untilAsserted(() -> {
             assertThat(Flux.from(emailAddressContactSearchEngine.autoComplete(getAccountId(),
@@ -263,7 +263,7 @@ class SabreContactsConsumerTest {
         String updatedVcard = cardDavCreationObjectRequest.toVCard()
             .replace("Tung Tran", "Tung Tran Updated");
 
-        davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), cardDavCreationObjectRequest.uid(),
+        davClient.carddav(openPaasUser.email()).putCollectedContact(openPaasUser.id(), cardDavCreationObjectRequest.uid(),
             updatedVcard.getBytes(StandardCharsets.UTF_8)).block();
 
         // Then
@@ -291,7 +291,7 @@ class SabreContactsConsumerTest {
             END:VCARD
             """.formatted(originalName, uid, email1, email2);
 
-        davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), new DavUid(uid), vcard.getBytes(StandardCharsets.UTF_8)).block();
+        davClient.carddav(openPaasUser.email()).putCollectedContact(openPaasUser.id(), new DavUid(uid), vcard.getBytes(StandardCharsets.UTF_8)).block();
 
         awaitAtMost.untilAsserted(() -> {
             assertThat(Flux.from(emailAddressContactSearchEngine.autoComplete(getAccountId(),
@@ -304,7 +304,7 @@ class SabreContactsConsumerTest {
         // When: the full name is updated in the vCard
         String updatedVcard = vcard.replace(originalName, updatedName);
 
-        davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), new DavUid(uid), updatedVcard.getBytes(StandardCharsets.UTF_8)).block();
+        davClient.carddav(openPaasUser.email()).putCollectedContact(openPaasUser.id(), new DavUid(uid), updatedVcard.getBytes(StandardCharsets.UTF_8)).block();
 
         // Then: all emails should be reindexed with the updated full name
         awaitAtMost.untilAsserted(() -> assertThat(
@@ -331,12 +331,12 @@ class SabreContactsConsumerTest {
             EMAIL;TYPE=work:%s
             END:VCARD""".formatted(vcardUid, originEmail);
 
-        davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), new DavUid(vcardUid), vcard.getBytes(StandardCharsets.UTF_8)).block();
+        davClient.carddav(openPaasUser.email()).putCollectedContact(openPaasUser.id(), new DavUid(vcardUid), vcard.getBytes(StandardCharsets.UTF_8)).block();
         awaitContactIndexed(originEmail, "Tung Tran");
 
         // When: the contact is updated to replace the original email with a new one
         String vcardUpdated = vcard.replace(originEmail, newEmail);
-        davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), new DavUid(vcardUid), vcardUpdated.getBytes(StandardCharsets.UTF_8)).block();
+        davClient.carddav(openPaasUser.email()).putCollectedContact(openPaasUser.id(), new DavUid(vcardUid), vcardUpdated.getBytes(StandardCharsets.UTF_8)).block();
 
         // Then
         awaitAtMost.untilAsserted(() -> assertThat(Flux.from(emailAddressContactSearchEngine.autoComplete(getAccountId(),
@@ -357,7 +357,7 @@ class SabreContactsConsumerTest {
 
             MailAddress mailAddress = new MailAddress("tung@exmaple.ltd");
             CardDavCreationObjectRequest creationObjectRequest = CardDavUtils.createObjectCreationRequest(Optional.of("Tung Tran"), mailAddress);
-            davClient.carddav().createCollectedContact(openPaasUser.email(), openPaasUser.id(), creationObjectRequest).block();
+            davClient.carddav(openPaasUser.email()).createCollectedContact(openPaasUser.id(), creationObjectRequest).block();
 
             awaitAtMost.untilAsserted(() -> assertThat(Flux.from(emailAddressContactSearchEngine.autoComplete(getAccountId(),
                     "tung", 255)).map(EmailAddressContact::fields)
@@ -384,7 +384,7 @@ class SabreContactsConsumerTest {
 
             MailAddress mailAddress = new MailAddress("tung@exmaple.ltd");
             CardDavCreationObjectRequest creationObjectRequest = CardDavUtils.createObjectCreationRequest(Optional.of("Tung Tran"), mailAddress);
-            davClient.carddav().createCollectedContact(openPaasUser.email(), openPaasUser.id(), creationObjectRequest).block();
+            davClient.carddav(openPaasUser.email()).createCollectedContact(openPaasUser.id(), creationObjectRequest).block();
 
             awaitAtMost.untilAsserted(() -> assertThat(Flux.from(emailAddressContactSearchEngine.autoComplete(getAccountId(),
                     "tung", 255)).map(EmailAddressContact::fields)
@@ -415,7 +415,7 @@ class SabreContactsConsumerTest {
             END:VCARD
             """.formatted(originalName, uid, emailToKeep, emailToRemove);
 
-        davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), new DavUid(uid),
+        davClient.carddav(openPaasUser.email()).putCollectedContact(openPaasUser.id(), new DavUid(uid),
             originalVcard.getBytes(StandardCharsets.UTF_8)).block();
 
         awaitAtMost.untilAsserted(() -> {
@@ -443,7 +443,7 @@ class SabreContactsConsumerTest {
             """.formatted(updatedName, uid, emailToKeep, emailToAdd);
 
         // When
-        davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), new DavUid(uid), updatedVcard.getBytes(StandardCharsets.UTF_8)).block();
+        davClient.carddav(openPaasUser.email()).putCollectedContact(openPaasUser.id(), new DavUid(uid), updatedVcard.getBytes(StandardCharsets.UTF_8)).block();
 
         // Then
         // emailToRemove should be gone
@@ -491,8 +491,8 @@ class SabreContactsConsumerTest {
             EMAIL;TYPE=work:%s
             END:VCARD""".formatted(vcardUid2.value(), emailAddress);
 
-        davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), vcardUid1, vcard1.getBytes(StandardCharsets.UTF_8)).block();
-        davClient.carddav().putCollectedContact(openPaasUser.email(), openPaasUser.id(), vcardUid2, vcard2.getBytes(StandardCharsets.UTF_8)).block();
+        davClient.carddav(openPaasUser.email()).putCollectedContact(openPaasUser.id(), vcardUid1, vcard1.getBytes(StandardCharsets.UTF_8)).block();
+        davClient.carddav(openPaasUser.email()).putCollectedContact(openPaasUser.id(), vcardUid2, vcard2.getBytes(StandardCharsets.UTF_8)).block();
         awaitContactIndexed(emailAddress, "Tung Tran");
         awaitContactIndexed(emailAddress, "Java Member");
 
@@ -511,7 +511,7 @@ class SabreContactsConsumerTest {
         CardDavCreationObjectRequest cardDavCreationObjectRequest = CardDavUtils.createObjectCreationRequest(Optional.of(fullName),
             mailAddress1);
 
-        davClient.carddav().createCollectedContact(openPaasUser.email(), openPaasUser.id(), cardDavCreationObjectRequest).block();
+        davClient.carddav(openPaasUser.email()).createCollectedContact(openPaasUser.id(), cardDavCreationObjectRequest).block();
         awaitContactIndexed(mailAddress, fullName);
         return cardDavCreationObjectRequest;
     }

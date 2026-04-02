@@ -39,7 +39,7 @@ public class OpenPaasDavUserProvider implements DavUserProvider {
     @Override
     public Mono<DavUser> provide(Username username) {
         return provideDavUser(username)
-            .switchIfEmpty(davClient.caldav().getPrincipal(username)
+            .switchIfEmpty(davClient.caldav(username).getPrincipal()
                 .then(provideDavUser(username))
             .switchIfEmpty(Mono.error(() -> new RuntimeException("Unable to find user in Dav server with username '%s'".formatted(username.asString())))));
     }

@@ -161,7 +161,7 @@ public class MemoryLinagoraCalendarEventAttendanceGetMethodTest {
             OpenPaaSUserId openPaasUserId = davUsers.get(userCredential.username().asString()).id();
             assertThat(openPaasUserId).isNotNull();
             URI davCalendarUri = URI.create("/calendars/" + openPaasUserId.value() + "/" + openPaasUserId.value() + "/" + eventUid + ".ics");
-            davClient.caldav().createCalendar(userCredential.username(), davCalendarUri, calendar).block();
+            davClient.caldav(userCredential.username()).createCalendar(davCalendarUri, calendar).block();
         }
     }
 

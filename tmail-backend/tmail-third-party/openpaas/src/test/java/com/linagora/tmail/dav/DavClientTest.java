@@ -64,7 +64,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.github.tomakehurst.wiremock.http.Body;
-import com.linagora.tmail.dav.OpenPaaSUserId;
 import com.linagora.tmail.dav.cal.FreeBusyRequest;
 import com.linagora.tmail.dav.cal.FreeBusyResponse;
 import com.linagora.tmail.dav.request.CardDavCreationObjectRequest;
@@ -99,7 +98,7 @@ class DavClientTest {
     void existsCollectedContactShouldReturnTrueWhenHTTPResponseIs200() {
         DavUid collectedContactUid = new DavUid(UUID.randomUUID().toString());
         davServerExtension.setCollectedContactExists(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, collectedContactUid, true);
-        assertThat(client.carddav().existsCollectedContact(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, collectedContactUid).block())
+        assertThat(client.carddav(OPENPAAS_USER_NAME).existsCollectedContact(OPENPAAS_USER_ID, collectedContactUid).block())
             .isTrue();
     }
 
@@ -107,7 +106,7 @@ class DavClientTest {
     void existsCollectedContactShouldReturnFalseWhenHTTPResponseIs404() {
         DavUid collectedContactUid = new DavUid(UUID.randomUUID().toString());
         davServerExtension.setCollectedContactExists(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, collectedContactUid, false);
-        assertThat(client.carddav().existsCollectedContact(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, collectedContactUid).block())
+        assertThat(client.carddav(OPENPAAS_USER_NAME).existsCollectedContact(OPENPAAS_USER_ID, collectedContactUid).block())
             .isFalse();
     }
 
@@ -119,7 +118,7 @@ class DavClientTest {
                 .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(OPENPAAS_USER_NAME.asString())))
                 .willReturn(serverError()));
 
-        assertThatThrownBy(() -> client.carddav().existsCollectedContact(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, collectedContactUid).block())
+        assertThatThrownBy(() -> client.carddav(OPENPAAS_USER_NAME).existsCollectedContact(OPENPAAS_USER_ID, collectedContactUid).block())
             .isInstanceOf(DavClientException.class);
     }
 
@@ -137,7 +136,7 @@ class DavClientTest {
                 List.of(EmailType.HOME),
                 new MailAddress("anbach4@lina.com")));
 
-        assertThatCode(() -> client.carddav().createCollectedContact(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, request).block())
+        assertThatCode(() -> client.carddav(OPENPAAS_USER_NAME).createCollectedContact(OPENPAAS_USER_ID, request).block())
             .doesNotThrowAnyException();
     }
 
@@ -159,13 +158,13 @@ class DavClientTest {
                 List.of(EmailType.HOME),
                 new MailAddress("anbach4@lina.com")));
 
-        assertThatThrownBy(() -> client.carddav().createCollectedContact(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, request).block())
+        assertThatThrownBy(() -> client.carddav(OPENPAAS_USER_NAME).createCollectedContact(OPENPAAS_USER_ID, request).block())
             .isInstanceOf(DavClientException.class);
     }
 
     @Test
     void findUserCalendarsShouldSucceed() {
-        assertThat(client.caldav().findUserCalendars(ALICE_DAV_USER).collectList().block())
+        assertThat(client.caldav(ALICE_DAV_USER.username()).findUserCalendars(ALICE_DAV_USER).collectList().block())
             .hasSameElementsAs(
                 List.of(
                     URI.create("/calendars/ALICE_ID/66e95872cf2c37001f0d2a09/"),
@@ -183,7 +182,7 @@ class DavClientTest {
                             new Body(ClassLoaderUtils.getSystemResourceAsByteArray("EMPTY_MULTISTATUS_RESPONSE.xml")))
                         .withStatus(207)));
 
-        assertThat(client.caldav().findUserCalendars(OPEN_PAAS_DAV_USER).collectList().block())
+        assertThat(client.caldav(OPEN_PAAS_DAV_USER.username()).findUserCalendars(OPEN_PAAS_DAV_USER).collectList().block())
             .isEmpty();
     }
 
@@ -198,7 +197,7 @@ class DavClientTest {
                             new Body(ClassLoaderUtils.getSystemResourceAsByteArray("CALENDARS_CONTAINING_ONLY_INBOX_OUTBOX.xml")))
                         .withStatus(207)));
 
-        assertThat(client.caldav().findUserCalendars(OPEN_PAAS_DAV_USER).collectList().block())
+        assertThat(client.caldav(OPEN_PAAS_DAV_USER.username()).findUserCalendars(OPEN_PAAS_DAV_USER).collectList().block())
             .isEmpty();
     }
 
@@ -209,7 +208,7 @@ class DavClientTest {
                 .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(OPENPAAS_USER_NAME.asString())))
                 .willReturn(ok()));
 
-        assertThatThrownBy(() -> client.caldav().findUserCalendars(OPEN_PAAS_DAV_USER).collectList().block())
+        assertThatThrownBy(() -> client.caldav(OPEN_PAAS_DAV_USER.username()).findUserCalendars(OPEN_PAAS_DAV_USER).collectList().block())
             .isInstanceOf(DavClientException.class);
     }
 
@@ -225,14 +224,14 @@ class DavClientTest {
                             new Body(ClassLoaderUtils.getSystemResourceAsByteArray("CALENDARS_WITH_ONE_INVALID_HREF.xml")))
                         .withStatus(207)));
 
-        assertThat(client.caldav().findUserCalendars(OPEN_PAAS_DAV_USER).collectList().block())
+        assertThat(client.caldav(OPEN_PAAS_DAV_USER.username()).findUserCalendars(OPEN_PAAS_DAV_USER).collectList().block())
             .hasSameElementsAs(
                 List.of(URI.create("/calendars/openpaasUserId1/0b4e80d7-7337-458f-852d-7ae8d72a74b2/")));
     }
 
     @Test
     void getCalendarObjectContainingVEventShouldSucceed() {
-        assertThat(client.caldav().getCalendarObject(ALICE_DAV_USER, ALICE_VEVENT_1).map(DavCalendarObject::calendarData).block())
+        assertThat(client.caldav(ALICE_DAV_USER.username()).getCalendarObject(ALICE_DAV_USER, ALICE_VEVENT_1).map(DavCalendarObject::calendarData).block())
             .isEqualTo(CalendarEventParsed.parseICal4jCalendar(
                 ClassLoaderUtils.getSystemResourceAsSharedStream("VCALENDAR1.ics")));
     }
@@ -248,7 +247,7 @@ class DavClientTest {
                     new GetCalendarByEventIdRequestBody(ALICE_VEVENT_1).value()))
                 .willReturn(notFound()));
 
-        assertThat(client.caldav().getCalendarObject(ALICE_DAV_USER, ALICE_VEVENT_1).map(DavCalendarObject::calendarData).block())
+        assertThat(client.caldav(ALICE_DAV_USER.username()).getCalendarObject(ALICE_DAV_USER, ALICE_VEVENT_1).map(DavCalendarObject::calendarData).block())
             .isEqualTo(CalendarEventParsed.parseICal4jCalendar(
                 ClassLoaderUtils.getSystemResourceAsSharedStream("VCALENDAR1.ics")));
     }
@@ -283,19 +282,19 @@ class DavClientTest {
                                 ClassLoaderUtils.getSystemResourceAsByteArray("EMPTY_MULTISTATUS_RESPONSE.xml")))
                         .withStatus(207)));
 
-        assertThat(client.caldav().getCalendarObject(ALICE_DAV_USER, ALICE_VEVENT_1).map(DavCalendarObject::calendarData).block())
+        assertThat(client.caldav(ALICE_DAV_USER.username()).getCalendarObject(ALICE_DAV_USER, ALICE_VEVENT_1).map(DavCalendarObject::calendarData).block())
             .isEqualTo(null);
     }
 
     @Test
     void updateCalendarObjectShouldSucceed() {
-        assertThatCode(() -> client.caldav().updateCalendarObject(ALICE_DAV_USER, URI.create(ALICE_CALENDAR_OBJECT_1), DUMMY_CALENDAR_OBJECT_UPDATER).block())
+        assertThatCode(() -> client.caldav(ALICE_DAV_USER.username()).updateCalendarObject(URI.create(ALICE_CALENDAR_OBJECT_1), DUMMY_CALENDAR_OBJECT_UPDATER).block())
             .doesNotThrowAnyException();
     }
 
     @Test
     void updateCalendarObjectShouldFailsWhenHTTPStatusNot204() {
-        assertThatThrownBy(() -> client.caldav().updateCalendarObject(ALICE_DAV_USER, URI.create(ALICE_CALENDAR_OBJECT_2), DUMMY_CALENDAR_OBJECT_UPDATER).block())
+        assertThatThrownBy(() -> client.caldav(ALICE_DAV_USER.username()).updateCalendarObject(URI.create(ALICE_CALENDAR_OBJECT_2), DUMMY_CALENDAR_OBJECT_UPDATER).block())
             .isInstanceOf(DavClientException.class);
     }
 
@@ -307,7 +306,7 @@ class DavClientTest {
                 .withHeader("Accept", equalTo("application/xml"))
                 .willReturn(aResponse().withStatus(HttpStatus.SC_PRECONDITION_FAILED)));
 
-        assertThatThrownBy(() -> client.caldav().updateCalendarObject(ALICE_DAV_USER, URI.create(ALICE_CALENDAR_OBJECT_1), DUMMY_CALENDAR_OBJECT_UPDATER).block())
+        assertThatThrownBy(() -> client.caldav(ALICE_DAV_USER.username()).updateCalendarObject(URI.create(ALICE_CALENDAR_OBJECT_1), DUMMY_CALENDAR_OBJECT_UPDATER).block())
             .isInstanceOf(DavClientException.class);
 
         davServerExtension.verify(MAX_CALENDAR_OBJECT_UPDATE_RETRIES + 1,
@@ -319,7 +318,7 @@ class DavClientTest {
 
     @Test
     void getPrincipalShouldSucceed() {
-        assertThatCode(() -> client.caldav().getPrincipal(Username.of(ALICE)).block())
+        assertThatCode(() -> client.caldav(Username.of(ALICE)).getPrincipal().block())
             .doesNotThrowAnyException();
     }
 
@@ -374,7 +373,7 @@ class DavClientTest {
             .uid(new DavUid("b787cb16-fbe8-478f-8877-c699f9e314d8"))
             .build();
 
-        FreeBusyResponse freeBusyResponse = client.caldav().freeBusyQuery(ALICE_DAV_USER, freeBusyRequest).block();
+        FreeBusyResponse freeBusyResponse = client.caldav(ALICE_DAV_USER.username()).freeBusyQuery(ALICE_DAV_USER, freeBusyRequest).block();
         assertThat(freeBusyResponse.users().getFirst().calendars().getFirst().busy())
             .containsExactlyInAnyOrder( new FreeBusyResponse.BusyTime(
                 "2213afbb-d7c4-48fd-a7a4-919c56b745b0",
