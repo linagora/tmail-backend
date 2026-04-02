@@ -35,6 +35,7 @@ import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.MaybeSender;
 import org.apache.james.core.Username;
+import org.apache.james.events.TmailRabbitEventBusConfiguration;
 import org.apache.james.junit.categories.BasicFeature;
 import org.apache.james.mailbox.cassandra.ids.CassandraId;
 import org.apache.james.mailbox.cassandra.ids.CassandraMessageId;
@@ -101,6 +102,8 @@ public class TMailDistributedDeletedMessageVaultIntegrationTest extends DeletedM
         .extension(new AwsS3BlobStoreExtension())
         .extension(new ClockExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
+            .overrideWith(binder -> binder.bind(TmailRabbitEventBusConfiguration.class)
+                .toInstance(new TmailRabbitEventBusConfiguration(3)))
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding()
