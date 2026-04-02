@@ -74,8 +74,8 @@ public class RabbitMQAndRedisEventBus implements EventBus, Startable {
             this.redisEventBusConfiguration = redisEventBusConfiguration;
         }
 
-        public RabbitMQAndRedisEventBus create(EventBusId eventBusId, NamingStrategy namingStrategy, RoutingKeyConverter routingKeyConverter, EventSerializer eventSerializer, RabbitMQEventBus.Configurations configurations) {
-            return new RabbitMQAndRedisEventBus(namingStrategy, sender, receiverProvider, eventSerializer, routingKeyConverter, eventDeadLetters, metricFactory, channelPool, eventBusId, configurations, redisEventBusClientFactory, redisEventBusConfiguration);
+        public RabbitMQAndRedisEventBus create(EventBusId eventBusId, List<NamingStrategy> namingStrategies, RoutingKeyConverter routingKeyConverter, EventSerializer eventSerializer, RabbitMQEventBus.Configurations configurations) {
+            return new RabbitMQAndRedisEventBus(namingStrategies, sender, receiverProvider, eventSerializer, routingKeyConverter, eventDeadLetters, metricFactory, channelPool, eventBusId, configurations, redisEventBusClientFactory, redisEventBusConfiguration);
         }
     }
 
