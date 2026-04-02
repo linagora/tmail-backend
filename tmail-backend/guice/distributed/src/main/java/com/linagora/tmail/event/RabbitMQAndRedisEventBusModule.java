@@ -27,6 +27,7 @@ import static org.apache.james.events.NamingStrategy.MAILBOX_EVENT_NAMING_STRATE
 import static org.apache.james.modules.event.ContentDeletionEventBusModule.CONTENT_DELETION;
 
 import java.io.FileNotFoundException;
+import java.util.List;
 import java.util.Set;
 
 import jakarta.inject.Named;
@@ -39,6 +40,7 @@ import org.apache.james.backends.rabbitmq.SimpleConnectionPool;
 import org.apache.james.backends.redis.RedisConfiguration;
 import org.apache.james.core.healthcheck.HealthCheck;
 import org.apache.james.event.json.MailboxEventSerializer;
+import org.apache.james.events.AggregatedRabbitEventBusConsumerHealthCheck;
 import org.apache.james.events.CleanRedisEventBusService;
 import org.apache.james.events.EventBus;
 import org.apache.james.events.EventBusId;
@@ -48,7 +50,6 @@ import org.apache.james.events.EventListener;
 import org.apache.james.events.EventSerializer;
 import org.apache.james.events.EventSerializersAggregator;
 import org.apache.james.events.NamingStrategy;
-import org.apache.james.events.RabbitEventBusConsumerHealthCheck;
 import org.apache.james.events.RabbitMQAndRedisEventBus;
 import org.apache.james.events.RabbitMQContentDeletionEventBusDeadLetterQueueHealthCheck;
 import org.apache.james.events.RabbitMQEventBus;
@@ -109,10 +110,6 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
         Multibinder.newSetBinder(binder(), HealthCheck.class)
             .addBinding().to(RabbitMQMailboxEventBusDeadLetterQueueHealthCheck.class);
 
-        bind(EventBus.class).to(RabbitMQAndRedisEventBus.class);
-
-        bind(RabbitMQAndRedisEventBus.class).in(Scopes.SINGLETON);
-
         bind(EventBusId.class).annotatedWith(Names.named(InjectionKeys.JMAP)).toInstance(EventBusId.random());
 
         bind(EventBusId.class).annotatedWith(Names.named(CONTENT_DELETION)).toInstance(EventBusId.random());
@@ -152,15 +149,38 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     }
 
     @ProvidesIntoSet
-    HealthCheck healthCheck(RabbitMQAndRedisEventBus eventBus, NamingStrategy namingStrategy,
-                            SimpleConnectionPool connectionPool) {
-        return new RabbitEventBusConsumerHealthCheck(eventBus, namingStrategy, connectionPool,
+    HealthCheck mailboxConsumerHealthCheck(RabbitMQAndRedisEventBus eventBus, List<NamingStrategy> namingStrategies,
+                                           SimpleConnectionPool connectionPool) {
+        return new AggregatedRabbitEventBusConsumerHealthCheck(eventBus, namingStrategies, connectionPool,
             TmailGroupRegistrationHandler.GROUP);
     }
 
     @ProvidesIntoSet
     SimpleConnectionPool.ReconnectionHandler provideReconnectionHandler(RabbitMQAndRedisEventBus eventBus) {
         return new EventBusReconnectionHandler(eventBus);
+    }
+
+    @Provides
+    @Singleton
+    List<NamingStrategy> mailboxEventBusNamingStrategies(TmailRabbitEventBusConfiguration tmailRabbitEventBusConfiguration) {
+        return namingStrategiesFor(MAILBOX_EVENT_NAMING_STRATEGY.getEventBusName(), tmailRabbitEventBusConfiguration);
+    }
+
+    @Provides
+    @Singleton
+    RabbitMQAndRedisEventBus provideMailboxEventBus(RabbitMQAndRedisEventBus.Factory eventBusFactory,
+                                                    EventSerializer eventSerializer,
+                                                    EventBusId eventBusId,
+                                                    RoutingKeyConverter routingKeyConverter,
+                                                    RabbitMQEventBus.Configurations configurations,
+                                                    List<NamingStrategy> namingStrategies) {
+        return eventBusFactory.create(eventBusId, namingStrategies, routingKeyConverter, eventSerializer, configurations);
+    }
+
+    @Provides
+    @Singleton
+    EventBus provideMailboxEventBus(RabbitMQAndRedisEventBus eventBus) {
+        return eventBus;
     }
 
     @Provides
@@ -177,11 +197,19 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     @Provides
     @Singleton
     @Named(InjectionKeys.JMAP)
+    List<NamingStrategy> provideJmapNamingStrategies(TmailRabbitEventBusConfiguration tmailRabbitEventBusConfiguration) {
+        return namingStrategiesFor(JMAP_NAMING_STRATEGY.getEventBusName(), tmailRabbitEventBusConfiguration);
+    }
+
+    @Provides
+    @Singleton
+    @Named(InjectionKeys.JMAP)
     RabbitMQAndRedisEventBus provideJmapEventBus(RabbitMQAndRedisEventBus.Factory eventBusFactory,
                                                  JmapEventSerializer eventSerializer,
                                                  @Named(InjectionKeys.JMAP) EventBusId eventBusId,
-                                                 RabbitMQEventBus.Configurations configurations) {
-        return eventBusFactory.create(eventBusId, JMAP_NAMING_STRATEGY, new RoutingKeyConverter(ImmutableSet.of(new Factory())), eventSerializer, configurations);
+                                                 RabbitMQEventBus.Configurations configurations,
+                                                 @Named(InjectionKeys.JMAP) List<NamingStrategy> namingStrategies) {
+        return eventBusFactory.create(eventBusId, namingStrategies, new RoutingKeyConverter(ImmutableSet.of(new Factory())), eventSerializer, configurations);
     }
 
     @Provides
@@ -223,9 +251,10 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     }
 
     @ProvidesIntoSet
-    HealthCheck healthCheck(@Named(InjectionKeys.JMAP) RabbitMQAndRedisEventBus eventBus,
-                            SimpleConnectionPool connectionPool) {
-        return new RabbitEventBusConsumerHealthCheck(eventBus, JMAP_NAMING_STRATEGY, connectionPool,
+    HealthCheck jmapConsumerHealthCheck(@Named(InjectionKeys.JMAP) RabbitMQAndRedisEventBus eventBus,
+                                        @Named(InjectionKeys.JMAP) List<NamingStrategy> namingStrategies,
+                                        SimpleConnectionPool connectionPool) {
+        return new AggregatedRabbitEventBusConsumerHealthCheck(eventBus, namingStrategies, connectionPool,
             TmailGroupRegistrationHandler.GROUP);
     }
 
@@ -250,11 +279,19 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     @Provides
     @Singleton
     @Named(TMAIL_EVENT_BUS_INJECT_NAME)
+    List<NamingStrategy> provideTmailEventBusNamingStrategies(TmailRabbitEventBusConfiguration tmailRabbitEventBusConfiguration) {
+        return namingStrategiesFor(TMAIL_NAMING_STRATEGY.getEventBusName(), tmailRabbitEventBusConfiguration);
+    }
+
+    @Provides
+    @Singleton
+    @Named(TMAIL_EVENT_BUS_INJECT_NAME)
     RabbitMQAndRedisEventBus provideTmailEventBus(RabbitMQAndRedisEventBus.Factory eventBusFactory,
                                                   @Named(TMAIL_EVENT_BUS_INJECT_NAME) EventBusId eventBusId,
                                                   EventSerializersAggregator eventSerializersAggregator,
-                                                  RabbitMQEventBus.Configurations configurations) {
-        return eventBusFactory.create(eventBusId, TMAIL_NAMING_STRATEGY,
+                                                  RabbitMQEventBus.Configurations configurations,
+                                                  @Named(TMAIL_EVENT_BUS_INJECT_NAME) List<NamingStrategy> namingStrategies) {
+        return eventBusFactory.create(eventBusId, namingStrategies,
             new RoutingKeyConverter(ImmutableSet.of(new Factory(), new DisconnectorRegistrationKey.Factory())),
             eventSerializersAggregator,
             configurations);
@@ -275,11 +312,19 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     @Provides
     @Singleton
     @Named(CONTENT_DELETION)
+    List<NamingStrategy> provideContentDeletionNamingStrategies(TmailRabbitEventBusConfiguration tmailRabbitEventBusConfiguration) {
+        return namingStrategiesFor(CONTENT_DELETION_NAMING_STRATEGY.getEventBusName(), tmailRabbitEventBusConfiguration);
+    }
+
+    @Provides
+    @Singleton
+    @Named(CONTENT_DELETION)
     RabbitMQAndRedisEventBus provideContentDeletionEventBus(RabbitMQAndRedisEventBus.Factory eventBusFactory,
                                                             MailboxEventSerializer eventSerializer,
                                                             @Named(CONTENT_DELETION) EventBusId eventBusId,
-                                                            RabbitMQEventBus.Configurations configurations) {
-        return eventBusFactory.create(eventBusId, CONTENT_DELETION_NAMING_STRATEGY, new RoutingKeyConverter(ImmutableSet.of(new Factory())), eventSerializer, configurations);
+                                                            RabbitMQEventBus.Configurations configurations,
+                                                            @Named(CONTENT_DELETION) List<NamingStrategy> namingStrategies) {
+        return eventBusFactory.create(eventBusId, namingStrategies, new RoutingKeyConverter(ImmutableSet.of(new Factory())), eventSerializer, configurations);
     }
 
     @Provides
@@ -301,8 +346,9 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
 
     @ProvidesIntoSet
     HealthCheck provideContentDeletionConsumerHealthCheck(@Named(CONTENT_DELETION) RabbitMQAndRedisEventBus eventBus,
+                                                          @Named(CONTENT_DELETION) List<NamingStrategy> namingStrategies,
                                                           SimpleConnectionPool connectionPool) {
-        return new RabbitEventBusConsumerHealthCheck(eventBus, CONTENT_DELETION_NAMING_STRATEGY, connectionPool,
+        return new AggregatedRabbitEventBusConsumerHealthCheck(eventBus, namingStrategies, connectionPool,
             TmailGroupRegistrationHandler.GROUP);
     }
 
@@ -360,5 +406,9 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
                     .groupWorkQueueNames(TmailGroupRegistrationHandler.GROUP)
                 .stream())
             .collect(ImmutableSet.toImmutableSet());
+    }
+
+    private static List<NamingStrategy> namingStrategiesFor(EventBusName eventBusName, TmailRabbitEventBusConfiguration tmailRabbitEventBusConfiguration) {
+        return new TmailNamingStrategyFactory(eventBusName, tmailRabbitEventBusConfiguration).namingStrategies();
     }
 }
