@@ -30,6 +30,7 @@ import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.postgres.PostgresExtension;
 import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.core.healthcheck.ResultStatus;
+import org.apache.james.events.TmailRabbitEventBusConfiguration;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.utils.GuiceProbe;
 import org.apache.james.utils.WebAdminGuiceProbe;
@@ -63,6 +64,8 @@ class DistributedPostgresServerWithRedisEventBusTest implements JamesServerConcr
             .eventBusImpl(RABBITMQ_AND_REDIS)
             .build())
         .server(configuration -> PostgresTmailServer.createServer(configuration)
+            .overrideWith(binder -> binder.bind(TmailRabbitEventBusConfiguration.class)
+                .toInstance(new TmailRabbitEventBusConfiguration(3)))
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxManagerClassProbe.class))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(RabbitMQAndRedisEventBusProbe.class))

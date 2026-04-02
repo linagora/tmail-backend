@@ -37,6 +37,7 @@ import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.rabbitmq.DockerRabbitMQ;
 import org.apache.james.backends.redis.RedisExtension;
+import org.apache.james.events.TmailRabbitEventBusConfiguration;
 import org.apache.james.utils.GuiceProbe;
 import org.apache.james.vault.VaultConfiguration;
 import org.assertj.core.api.SoftAssertions;
@@ -196,7 +197,74 @@ class SchedulerReconnectionHandlerIntegrationTest {
                 .getQueuesToMonitor())
                 .contains("mailboxEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
                     "jmapEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
-                    "contentDeletionEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup");
+                    "contentDeletionEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
+                    "tmailEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup");
+        }
+    }
+
+    @Nested
+    class RedisEventBusWithPartitioning extends ContractTests {
+        private static final TmailRabbitEventBusConfiguration PARTITIONED_CONFIGURATION = new TmailRabbitEventBusConfiguration(3);
+
+        @RegisterExtension
+        static RabbitMQExtension rabbitMQExtension = new RabbitMQExtension();
+
+        @RegisterExtension
+        static JamesServerExtension testExtension =  new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
+            DistributedJamesConfiguration.builder()
+                .workingDirectory(tmpDir)
+                .configurationFromClasspath()
+                .blobStore(BlobStoreConfiguration.builder()
+                    .s3()
+                    .noSecondaryS3BlobStore()
+                    .disableCache()
+                    .deduplication()
+                    .noCryptoConfig()
+                    .enableSingleSave())
+                .searchConfiguration(SearchConfiguration.openSearch())
+                .eventBusKeysChoice(EventBusKeysChoice.REDIS)
+                .vaultConfiguration(VaultConfiguration.ENABLED_DEFAULT)
+                .build())
+            .server(configuration -> DistributedServer.createServer(configuration)
+                .overrideWith(new LinagoraTestJMAPServerModule())
+                .overrideWith(getOpenPaasModule(openPaasServerExtension, rabbitMQExtension))
+                .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxManagerClassProbe.class))
+                .overrideWith(binder -> binder.bind(ScheduledReconnectionHandler.ScheduledReconnectionHandlerConfiguration.class)
+                    .toInstance(new ScheduledReconnectionHandler.ScheduledReconnectionHandlerConfiguration(ENABLED, FAST_RECONNECTION_HANDLER_INTERVAL)))
+                .overrideWith(binder -> binder.bind(TmailRabbitEventBusConfiguration.class)
+                    .toInstance(PARTITIONED_CONFIGURATION))
+                .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(ScheduledReconnectionHandlerProbe.class))
+                .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(UsersRepositoryClassProbe.class)))
+            .extension(new DockerOpenSearchExtension())
+            .extension(new CassandraExtension())
+            .extension(rabbitMQExtension)
+            .extension(new RedisExtension())
+            .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
+            .build();
+
+        @Override
+        DockerRabbitMQ rabbitMQ() {
+            return rabbitMQExtension.dockerRabbitMQ();
+        }
+
+        @Test
+        void shouldMonitorPartitionedTMailEventBusGroupQueues(GuiceJamesServer jamesServer) {
+            // e.g. with 3 partitions
+            assertThat(jamesServer.getProbe(ScheduledReconnectionHandlerProbe.class)
+                .getQueuesToMonitor())
+                .contains(
+                    "mailboxEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
+                    "mailboxEvent-1-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
+                    "mailboxEvent-2-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
+                    "jmapEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
+                    "jmapEvent-1-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
+                    "jmapEvent-2-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
+                    "contentDeletionEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
+                    "contentDeletionEvent-1-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
+                    "contentDeletionEvent-2-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
+                    "tmailEvent-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
+                    "tmailEvent-1-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup",
+                    "tmailEvent-2-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup");
         }
     }
 
