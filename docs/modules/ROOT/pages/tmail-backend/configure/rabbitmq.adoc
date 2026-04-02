@@ -17,6 +17,43 @@ scheduled.consumer.reconnection.enabled=true
 scheduled.consumer.reconnection.interval=60s
 ....
 
+== RabbitMQ event bus partitioning
+
+Allow to enable partitioning on RabbitMQ event bus queues, to better leverage CPU resource on the RabbitMQ side.
+
+In order to activate it, in `rabbitmq.properties`:
+
+- `event.bus.partition.count`: Integer. Default to `1`. Number of partitions
+  for the RabbitMQ-backed group queue path. `1` keeps the current single-shard
+  behavior.
+
+Example configuration:
+
+....
+event.bus.partition.count=4
+....
+
+With partition count `1`, queue and exchange names remain unchanged.
+
+With partition count greater than `1`:
+
+* partition `0` keeps the current base names for backward compatibility
+* partitions `1..N-1` use suffixed queue and exchange names such as:
+  - `mailboxEvent-1-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup`
+  - `mailboxEvent-2-workQueue-org.apache.james.events.TmailGroupRegistrationHandler$GroupRegistrationHandlerGroup`
+* dead-letter exchange and queue stay shared across partitions
+* group events are dispatched to one partition, while listeners are registered
+  on all partitions
+
+Note:
+
+* RabbitMQ event bus partitioning is available only for the Twake Mail's
+RabbitMQ+Redis event bus implementation.
+* Partitioning does not apply to:
+  - the Redis-backed notification path
+  - the pure RabbitMQ event bus implementation
+  - James mail queue
+
 == Twake Workplace Settings Configuration
 
 The Twake Workplace settings module may require RabbitMQ configuration to function properly. The following properties should be added to `rabbitmq.properties`:
