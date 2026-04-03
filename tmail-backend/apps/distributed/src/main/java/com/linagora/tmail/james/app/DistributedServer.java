@@ -322,7 +322,7 @@ public class DistributedServer {
         new CassandraVacationModule(),
         new IMAPServerModule(),
         JMAP,
-        Boolean.getBoolean("james.tcnative.enabled") ? new TCNativeEncryptionModule() : new LegacyEncryptionModule(),
+        chooseSslStrategyModule(),
         new ManageSieveServerModule(),
         new ProtocolHandlerModule(),
         new SMTPServerModule(),
@@ -656,5 +656,12 @@ public class DistributedServer {
         return binder -> {
 
         };
+    }
+
+    private static Module chooseSslStrategyModule() {
+        if (Boolean.getBoolean("james.tcnative.enabled")) {
+            return new TCNativeEncryptionModule();
+        }
+        return new LegacyEncryptionModule();
     }
 }
