@@ -121,20 +121,9 @@ Date: 04/02/2026
 
 Issue: https://github.com/linagora/tmail-backend/issues/2115
 
-**Listener's name change**: The listener `LlmMailPrioritizationClassifierListener` has been renamed to `LlmMailBackendClassifierListener`.
-
-**Before:**
-```xml
-<listener>
-  <class>com.linagora.tmail.james.jmap.llm.LlmMailPrioritizationClassifierListener</class>
-</listener>
-```
-**After:**
-```xml
-<listener>
-    <class>com.linagora.tmail.james.jmap.llm.LlmMailBackendClassifierListener</class>
-</listener>
-```
+**Listener's name change**: The listener `LlmMailPrioritizationClassifierListener` has been renamed to
+`LlmMailBackendClassifierListener` (`com.linagora.tmail.listener.rag.LlmMailBackendClassifierListener`).
+This listener is registered automatically via dependency injection — no `listeners.xml` change is required.
 
 #### RabbitMQ Queue Cleanup
 

@@ -48,27 +48,16 @@ ALTER TABLE <keyspace>.domains ADD can_upgrade boolean;
 ALTER TABLE <keyspace>.domains ADD is_paying boolean;
 ```
 
-## Configuration changes
+## RabbitMQ cleanup
 
 ### LLM Mail Classifier Listener renamed
 
-The listener `LlmMailPrioritizationClassifierListener` has been renamed to `LlmMailBackendClassifierListener`.
+The listener `LlmMailPrioritizationClassifierListener` has been renamed to `LlmMailBackendClassifierListener`
+(`com.linagora.tmail.listener.rag.LlmMailBackendClassifierListener`). It is registered automatically via
+dependency injection — no `listeners.xml` change is required.
 
-Update your listener configuration:
-
-```xml
-<!-- Before -->
-<listener>
-  <class>com.linagora.tmail.james.jmap.llm.LlmMailPrioritizationClassifierListener</class>
-</listener>
-
-<!-- After -->
-<listener>
-    <class>com.linagora.tmail.james.jmap.llm.LlmMailBackendClassifierListener</class>
-</listener>
-```
-
-After deploying, delete the old RabbitMQ queue to avoid resource leaks:
+After deploying, delete the old RabbitMQ queue to avoid resource leaks and prevent the old listener from
+processing stale messages:
 
 ```
 mailboxEvent-workQueue-com.linagora.tmail.listener.rag.LlmMailPrioritizationClassifierListener$LlmMailPrioritizationClassifierGroup
