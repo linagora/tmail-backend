@@ -148,7 +148,7 @@ public class MemoryServer {
 
     public static final Module PROTOCOLS = Modules.combine(
         new IMAPServerModule(),
-        Boolean.getBoolean("james.tcnative.enabled") ? new TCNativeEncryptionModule() : new LegacyEncryptionModule(),
+        new LegacyEncryptionModule(),
         new ManageSieveServerModule(),
         new ProtocolHandlerModule(),
         new SMTPServerModule());
@@ -229,6 +229,7 @@ public class MemoryServer {
 
         return GuiceJamesServer.forConfiguration(configuration)
             .combineWith(MODULES)
+            .overrideWith(Boolean.getBoolean("james.tcnative.enabled") ? new TCNativeEncryptionModule() : new LegacyEncryptionModule())
             .combineWith(new UsersRepositoryModuleChooser(new MemoryUsersRepositoryModule())
                 .chooseModules(configuration.usersRepositoryImplementation()))
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))

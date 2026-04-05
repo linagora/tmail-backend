@@ -261,6 +261,7 @@ public class PostgresTmailServer {
     public static GuiceJamesServer createServer(PostgresTmailConfiguration configuration) {
         return GuiceJamesServer.forConfiguration(configuration)
             .combineWith(POSTGRES_MODULE_AGGREGATE.apply(configuration))
+            .overrideWith(Boolean.getBoolean("james.tcnative.enabled") ? new TCNativeEncryptionModule() : new LegacyEncryptionModule())
             .combineWith(chooseUserRepositoryModule(configuration))
             .combineWith(chooseBlobStoreModules(configuration))
             .combineWith(chooseRedisRateLimiterModule(configuration))
@@ -344,7 +345,7 @@ public class PostgresTmailServer {
     private static final Module PROTOCOLS = Modules.combine(
         JMAP_LINAGORA,
         new IMAPServerModule(),
-        Boolean.getBoolean("james.tcnative.enabled") ? new TCNativeEncryptionModule() : new LegacyEncryptionModule(),
+        new LegacyEncryptionModule(),
         new LMTPServerModule(),
         new ManageSieveServerModule(),
         new POP3ServerModule(),

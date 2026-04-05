@@ -322,7 +322,7 @@ public class DistributedServer {
         new CassandraVacationModule(),
         new IMAPServerModule(),
         JMAP,
-        chooseSslStrategyModule(),
+        new LegacyEncryptionModule(),
         new ManageSieveServerModule(),
         new ProtocolHandlerModule(),
         new SMTPServerModule(),
@@ -420,6 +420,7 @@ public class DistributedServer {
 
         return GuiceJamesServer.forConfiguration(configuration)
             .combineWith(MODULES)
+            .overrideWith(chooseSslStrategyModule())
             .combineWith(MailQueueViewChoice.ModuleChooser.choose(configuration.mailQueueViewChoice()))
             .combineWith(BlobStoreModulesChooser.chooseModules(blobStoreConfiguration,
                 BlobStoreModulesChooser.SingleSaveDeclarationModule.BackedStorage.CASSANDRA))
