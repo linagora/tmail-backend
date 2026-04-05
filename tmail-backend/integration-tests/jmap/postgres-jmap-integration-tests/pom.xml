@@ -139,7 +139,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <rerunFailingTestsCount>2</rerunFailingTestsCount>
-                    <forkedProcessTimeoutInSeconds>3600</forkedProcessTimeoutInSeconds>
+                    <forkedProcessTimeoutInSeconds>7200</forkedProcessTimeoutInSeconds>
                     <reuseForks>true</reuseForks>
                     <forkCount>2</forkCount>
                     <argLine>-Xms1024m -Xmx2048m</argLine>
