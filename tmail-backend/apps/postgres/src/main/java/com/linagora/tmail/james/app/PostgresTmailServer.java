@@ -261,7 +261,7 @@ public class PostgresTmailServer {
     public static GuiceJamesServer createServer(PostgresTmailConfiguration configuration) {
         return GuiceJamesServer.forConfiguration(configuration)
             .combineWith(POSTGRES_MODULE_AGGREGATE.apply(configuration))
-            .overrideWith(Boolean.getBoolean("james.tcnative.enabled") ? new TCNativeEncryptionModule() : new LegacyEncryptionModule())
+            .overrideWith(chooseSslStrategyModule())
             .combineWith(chooseUserRepositoryModule(configuration))
             .combineWith(chooseBlobStoreModules(configuration))
             .combineWith(chooseRedisRateLimiterModule(configuration))
@@ -416,6 +416,13 @@ public class PostgresTmailServer {
             bind(ListeningMessageSearchIndex.class).to(FakeMessageSearchIndex.class);
         }
     };
+
+    private static Module chooseSslStrategyModule() {
+        if (Boolean.getBoolean("james.tcnative.enabled")) {
+            return new TCNativeEncryptionModule();
+        }
+        return new LegacyEncryptionModule();
+    }
 
     private static Module chooseBlobStoreModules(PostgresTmailConfiguration configuration) {
         return Modules.combine(Modules.combine(BlobStoreModulesChooser.chooseModules(configuration.blobStoreConfiguration(),

@@ -229,7 +229,7 @@ public class MemoryServer {
 
         return GuiceJamesServer.forConfiguration(configuration)
             .combineWith(MODULES)
-            .overrideWith(Boolean.getBoolean("james.tcnative.enabled") ? new TCNativeEncryptionModule() : new LegacyEncryptionModule())
+            .overrideWith(chooseSslStrategyModule())
             .combineWith(new UsersRepositoryModuleChooser(new MemoryUsersRepositoryModule())
                 .chooseModules(configuration.usersRepositoryImplementation()))
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
@@ -245,6 +245,13 @@ public class MemoryServer {
                 binder.bind(GuiceLoader.class).to(NoopGuiceLoader.class);
                 binder.bind(NoopGuiceLoader.class).in(Singleton.class);
             });
+    }
+
+    private static Module chooseSslStrategyModule() {
+        if (Boolean.getBoolean("james.tcnative.enabled")) {
+            return new TCNativeEncryptionModule();
+        }
+        return new LegacyEncryptionModule();
     }
 
     private static Module chooseJmapModule(MemoryConfiguration configuration) {
