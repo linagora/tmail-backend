@@ -418,6 +418,12 @@
             <artifactId>wiremock-standalone</artifactId>
             <scope>test</scope>
         </dependency>
+        <!-- BoringSSL via Netty tcnative — enabled with -Djames.tcnative.enabled=true -->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-tcnative-boringssl-static</artifactId>
+            <version>${netty.tcnative.version}</version>
+        </dependency>
     </dependencies>
 
     <build>

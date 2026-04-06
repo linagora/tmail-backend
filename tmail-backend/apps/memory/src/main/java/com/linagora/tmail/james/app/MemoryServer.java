@@ -39,8 +39,10 @@ import org.apache.james.data.UsersRepositoryModuleChooser;
 import org.apache.james.jmap.JMAPListenerModule;
 import org.apache.james.modules.BlobExportMechanismModule;
 import org.apache.james.modules.BlobMemoryModule;
+import org.apache.james.modules.LegacyEncryptionModule;
 import org.apache.james.modules.MailboxModule;
 import org.apache.james.modules.MailetProcessingModule;
+import org.apache.james.modules.TCNativeEncryptionModule;
 import org.apache.james.modules.data.MemoryDataModule;
 import org.apache.james.modules.data.MemoryDelegationStoreModule;
 import org.apache.james.modules.data.MemoryDropListsModule;
@@ -146,6 +148,7 @@ public class MemoryServer {
 
     public static final Module PROTOCOLS = Modules.combine(
         new IMAPServerModule(),
+        new LegacyEncryptionModule(),
         new ManageSieveServerModule(),
         new ProtocolHandlerModule(),
         new SMTPServerModule());
@@ -226,6 +229,7 @@ public class MemoryServer {
 
         return GuiceJamesServer.forConfiguration(configuration)
             .combineWith(MODULES)
+            .overrideWith(chooseSslStrategyModule())
             .combineWith(new UsersRepositoryModuleChooser(new MemoryUsersRepositoryModule())
                 .chooseModules(configuration.usersRepositoryImplementation()))
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
@@ -241,6 +245,13 @@ public class MemoryServer {
                 binder.bind(GuiceLoader.class).to(NoopGuiceLoader.class);
                 binder.bind(NoopGuiceLoader.class).in(Singleton.class);
             });
+    }
+
+    private static Module chooseSslStrategyModule() {
+        if (Boolean.getBoolean("james.tcnative.enabled")) {
+            return new TCNativeEncryptionModule();
+        }
+        return new LegacyEncryptionModule();
     }
 
     private static Module chooseJmapModule(MemoryConfiguration configuration) {

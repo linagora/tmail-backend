@@ -55,9 +55,11 @@ import org.apache.james.mailbox.store.search.MessageSearchIndex;
 import org.apache.james.mailbox.store.search.SimpleMessageSearchIndex;
 import org.apache.james.modules.BlobExportMechanismModule;
 import org.apache.james.modules.DistributedTaskSerializationModule;
+import org.apache.james.modules.LegacyEncryptionModule;
 import org.apache.james.modules.MailboxModule;
 import org.apache.james.modules.MailetProcessingModule;
 import org.apache.james.modules.RunArgumentsModule;
+import org.apache.james.modules.TCNativeEncryptionModule;
 import org.apache.james.modules.blobstore.BlobStoreCacheModulesChooser;
 import org.apache.james.modules.data.PostgresDLPConfigurationStoreModule;
 import org.apache.james.modules.data.PostgresDataJmapModule;
@@ -259,6 +261,7 @@ public class PostgresTmailServer {
     public static GuiceJamesServer createServer(PostgresTmailConfiguration configuration) {
         return GuiceJamesServer.forConfiguration(configuration)
             .combineWith(POSTGRES_MODULE_AGGREGATE.apply(configuration))
+            .overrideWith(chooseSslStrategyModule())
             .combineWith(chooseUserRepositoryModule(configuration))
             .combineWith(chooseBlobStoreModules(configuration))
             .combineWith(chooseRedisRateLimiterModule(configuration))
@@ -342,6 +345,7 @@ public class PostgresTmailServer {
     private static final Module PROTOCOLS = Modules.combine(
         JMAP_LINAGORA,
         new IMAPServerModule(),
+        new LegacyEncryptionModule(),
         new LMTPServerModule(),
         new ManageSieveServerModule(),
         new POP3ServerModule(),
@@ -412,6 +416,13 @@ public class PostgresTmailServer {
             bind(ListeningMessageSearchIndex.class).to(FakeMessageSearchIndex.class);
         }
     };
+
+    private static Module chooseSslStrategyModule() {
+        if (Boolean.getBoolean("james.tcnative.enabled")) {
+            return new TCNativeEncryptionModule();
+        }
+        return new LegacyEncryptionModule();
+    }
 
     private static Module chooseBlobStoreModules(PostgresTmailConfiguration configuration) {
         return Modules.combine(Modules.combine(BlobStoreModulesChooser.chooseModules(configuration.blobStoreConfiguration(),

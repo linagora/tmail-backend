@@ -63,8 +63,10 @@ import org.apache.james.modules.BlobExportMechanismModule;
 import org.apache.james.modules.CassandraConsistencyTaskSerializationModule;
 import org.apache.james.modules.DistributedTaskManagerModule;
 import org.apache.james.modules.DistributedTaskSerializationModule;
+import org.apache.james.modules.LegacyEncryptionModule;
 import org.apache.james.modules.MailboxModule;
 import org.apache.james.modules.MailetProcessingModule;
+import org.apache.james.modules.TCNativeEncryptionModule;
 import org.apache.james.modules.data.CassandraDLPConfigurationStoreModule;
 import org.apache.james.modules.data.CassandraDropListsModule;
 import org.apache.james.modules.data.CassandraJmapModule;
@@ -320,6 +322,7 @@ public class DistributedServer {
         new CassandraVacationModule(),
         new IMAPServerModule(),
         JMAP,
+        new LegacyEncryptionModule(),
         new ManageSieveServerModule(),
         new ProtocolHandlerModule(),
         new SMTPServerModule(),
@@ -417,6 +420,7 @@ public class DistributedServer {
 
         return GuiceJamesServer.forConfiguration(configuration)
             .combineWith(MODULES)
+            .overrideWith(chooseSslStrategyModule())
             .combineWith(MailQueueViewChoice.ModuleChooser.choose(configuration.mailQueueViewChoice()))
             .combineWith(BlobStoreModulesChooser.chooseModules(blobStoreConfiguration,
                 BlobStoreModulesChooser.SingleSaveDeclarationModule.BackedStorage.CASSANDRA))
@@ -653,5 +657,12 @@ public class DistributedServer {
         return binder -> {
 
         };
+    }
+
+    private static Module chooseSslStrategyModule() {
+        if (Boolean.getBoolean("james.tcnative.enabled")) {
+            return new TCNativeEncryptionModule();
+        }
+        return new LegacyEncryptionModule();
     }
 }
