@@ -114,12 +114,12 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
     }
 
     @Override
-    public InputStream read(BucketName bucketName, BlobId blobId) throws ObjectStoreIOException, ObjectNotFoundException {
+    public InputStreamBlob read(BucketName bucketName, BlobId blobId) throws ObjectStoreIOException, ObjectNotFoundException {
         try {
             return primaryBlobStoreDAO.read(bucketName, blobId);
         } catch (Exception ex) {
             try {
-                InputStream inputStream = secondaryBlobStoreDAO.read(withSuffix(bucketName), blobId);
+                InputStreamBlob inputStream = secondaryBlobStoreDAO.read(withSuffix(bucketName), blobId);
                 LOGGER.warn("Fail to read from the first blob store with bucket name {} and blobId {}. Use second blob store", bucketName.asString(), blobId.asString(), ex);
                 return inputStream;
             } catch (Exception ex2) {
@@ -132,7 +132,7 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
     }
 
     @Override
-    public Mono<InputStream> readReactive(BucketName bucketName, BlobId blobId) {
+    public Mono<InputStreamBlob> readReactive(BucketName bucketName, BlobId blobId) {
         return Mono.from(primaryBlobStoreDAO.readReactive(bucketName, blobId))
             .onErrorResume(ex -> Mono.from(secondaryBlobStoreDAO.readReactive(withSuffix(bucketName), blobId))
                 .onErrorResume(ex2 -> {
@@ -145,7 +145,7 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
     }
 
     @Override
-    public Mono<byte[]> readBytes(BucketName bucketName, BlobId blobId) {
+    public Mono<BytesBlob> readBytes(BucketName bucketName, BlobId blobId) {
         return Mono.from(primaryBlobStoreDAO.readBytes(bucketName, blobId))
             .onErrorResume(ex -> Mono.from(secondaryBlobStoreDAO.readBytes(withSuffix(bucketName), blobId))
                 .onErrorResume(ex2 -> {
@@ -158,35 +158,46 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
     }
 
     @Override
-    public Mono<Void> save(BucketName bucketName, BlobId blobId, byte[] data) {
-        return Flux.merge(asSavingStatus(primaryBlobStoreDAO.save(bucketName, blobId, data), ObjectStorageIdentity.PRIMARY),
-                asSavingStatus(secondaryBlobStoreDAO.save(withSuffix(bucketName), blobId, data), ObjectStorageIdentity.SECONDARY))
+    public Mono<Void> save(BucketName bucketName, BlobId blobId, Blob blob) {
+        return switch (blob) {
+            case BytesBlob bytesBlob -> save(bucketName, blobId, bytesBlob);
+            case InputStreamBlob inputStreamBlob -> save(bucketName, blobId, inputStreamBlob);
+            case ByteSourceBlob byteSourceBlob -> save(bucketName, blobId, byteSourceBlob);
+        };
+    }
+
+    private Mono<Void> save(BucketName bucketName, BlobId blobId, BytesBlob bytesBlob) {
+        return Flux.merge(asSavingStatus(primaryBlobStoreDAO.save(bucketName, blobId, bytesBlob), ObjectStorageIdentity.PRIMARY),
+                asSavingStatus(secondaryBlobStoreDAO.save(withSuffix(bucketName), blobId, bytesBlob), ObjectStorageIdentity.SECONDARY))
             .collectList()
             .flatMap(savingStatuses -> merge(blobId, savingStatuses,
                 failedObjectStorage -> eventBus.dispatch(new FailedBlobEvents.BlobAddition(Event.EventId.random(), bucketName, blobId, failedObjectStorage), NO_REGISTRATION_KEYS)));
     }
 
-    @Override
-    public Mono<Void> save(BucketName bucketName, BlobId blobId, InputStream inputStream) {
+    private Mono<Void> save(BucketName bucketName, BlobId blobId, InputStreamBlob inputStreamBlob) {
         return Mono.using(
                 () -> new FileBackedOutputStream(FILE_THRESHOLD),
-                fileBackedOutputStream -> Mono.fromCallable(() -> IOUtils.copy(inputStream, fileBackedOutputStream))
-                    .flatMap(size -> Flux.merge(
-                            asSavingStatus(primaryBlobStoreDAO.save(bucketName, blobId, new FileBackedOutputStreamByteSource(fileBackedOutputStream, size)), ObjectStorageIdentity.PRIMARY),
-                            asSavingStatus(secondaryBlobStoreDAO.save(withSuffix(bucketName), blobId, new FileBackedOutputStreamByteSource(fileBackedOutputStream, size)), ObjectStorageIdentity.SECONDARY))
-                        .collectList()
-                        .flatMap(savingStatuses -> merge(blobId, savingStatuses,
-                            failedObjectStorage -> eventBus.dispatch(
-                                new FailedBlobEvents.BlobAddition(Event.EventId.random(), bucketName, blobId, failedObjectStorage),
-                                NO_REGISTRATION_KEYS)))),
+                fileBackedOutputStream -> Mono.fromCallable(() -> IOUtils.copy(inputStreamBlob.payload(), fileBackedOutputStream))
+                    .flatMap(size -> {
+                        ByteSourceBlob duplicatedBlob = ByteSourceBlob.of(
+                            new FileBackedOutputStreamByteSource(fileBackedOutputStream, size),
+                            inputStreamBlob.metadata());
+                        return Flux.merge(
+                                asSavingStatus(primaryBlobStoreDAO.save(bucketName, blobId, duplicatedBlob), ObjectStorageIdentity.PRIMARY),
+                                asSavingStatus(secondaryBlobStoreDAO.save(withSuffix(bucketName), blobId, duplicatedBlob), ObjectStorageIdentity.SECONDARY))
+                            .collectList()
+                            .flatMap(savingStatuses -> merge(blobId, savingStatuses,
+                                failedObjectStorage -> eventBus.dispatch(
+                                    new FailedBlobEvents.BlobAddition(Event.EventId.random(), bucketName, blobId, failedObjectStorage),
+                                    NO_REGISTRATION_KEYS)));
+                    }),
                 Throwing.consumer(FileBackedOutputStream::reset))
             .subscribeOn(Schedulers.boundedElastic());
     }
 
-    @Override
-    public Mono<Void> save(BucketName bucketName, BlobId blobId, ByteSource content) {
-        return Flux.merge(asSavingStatus(primaryBlobStoreDAO.save(bucketName, blobId, content), ObjectStorageIdentity.PRIMARY),
-                asSavingStatus(secondaryBlobStoreDAO.save(withSuffix(bucketName), blobId, content), ObjectStorageIdentity.SECONDARY))
+    private Mono<Void> save(BucketName bucketName, BlobId blobId, ByteSourceBlob byteSourceBlob) {
+        return Flux.merge(asSavingStatus(primaryBlobStoreDAO.save(bucketName, blobId, byteSourceBlob), ObjectStorageIdentity.PRIMARY),
+                asSavingStatus(secondaryBlobStoreDAO.save(withSuffix(bucketName), blobId, byteSourceBlob), ObjectStorageIdentity.SECONDARY))
             .collectList()
             .flatMap(savingStatuses -> merge(blobId, savingStatuses,
                 failedObjectStorage -> eventBus.dispatch(new FailedBlobEvents.BlobAddition(Event.EventId.random(), bucketName, blobId, failedObjectStorage), NO_REGISTRATION_KEYS)));
