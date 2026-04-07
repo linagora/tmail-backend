@@ -18,7 +18,6 @@
 
 package com.linagora.tmail.blob.blobid.list;
 
-import java.io.InputStream;
 import java.util.Collection;
 
 import org.apache.james.blob.api.BlobId;
@@ -28,8 +27,6 @@ import org.apache.james.blob.api.ObjectNotFoundException;
 import org.apache.james.blob.api.ObjectStoreException;
 import org.apache.james.blob.api.ObjectStoreIOException;
 import org.reactivestreams.Publisher;
-
-import com.google.common.io.ByteSource;
 
 import reactor.core.publisher.Mono;
 
@@ -47,68 +44,34 @@ public class SingleSaveBlobStoreDAO implements BlobStoreDAO {
     }
 
     @Override
-    public InputStream read(BucketName bucketName, BlobId blobId) throws ObjectStoreIOException, ObjectNotFoundException {
+    public InputStreamBlob read(BucketName bucketName, BlobId blobId) throws ObjectStoreIOException, ObjectNotFoundException {
         return blobStoreDAO.read(bucketName, blobId);
     }
 
     @Override
-    public Publisher<InputStream> readReactive(BucketName bucketName, BlobId blobId) {
+    public Publisher<InputStreamBlob> readReactive(BucketName bucketName, BlobId blobId) {
         return blobStoreDAO.readReactive(bucketName, blobId);
     }
 
     @Override
-    public Publisher<byte[]> readBytes(BucketName bucketName, BlobId blobId) {
+    public Publisher<BytesBlob> readBytes(BucketName bucketName, BlobId blobId) {
         return blobStoreDAO.readBytes(bucketName, blobId);
     }
 
     @Override
-    public Mono<Void> save(BucketName bucketName, BlobId blobId, byte[] data) {
+    public Mono<Void> save(BucketName bucketName, BlobId blobId, Blob blob) {
         if (defaultBucketName.equals(bucketName)) {
             return Mono.from(blobIdList.isStored(blobId))
                 .flatMap(isStored -> {
                     if (isStored) {
                         return Mono.empty();
                     }
-                    return Mono.from(blobStoreDAO.save(bucketName, blobId, data))
+                    return Mono.from(blobStoreDAO.save(bucketName, blobId, blob))
                         .then(Mono.from(blobIdList.store(blobId)))
                         .then();
                 });
         } else {
-            return Mono.from(blobStoreDAO.save(bucketName, blobId, data));
-        }
-    }
-
-    @Override
-    public Publisher<Void> save(BucketName bucketName, BlobId blobId, InputStream inputStream) {
-        if (defaultBucketName.equals(bucketName)) {
-            return Mono.from(blobIdList.isStored(blobId))
-                .flatMap(isStored -> {
-                    if (isStored) {
-                        return Mono.empty();
-                    }
-                    return Mono.from(blobStoreDAO.save(bucketName, blobId, inputStream))
-                        .then(Mono.from(blobIdList.store(blobId)))
-                        .then();
-                });
-        } else {
-            return Mono.from(blobStoreDAO.save(bucketName, blobId, inputStream));
-        }
-    }
-
-    @Override
-    public Publisher<Void> save(BucketName bucketName, BlobId blobId, ByteSource content) {
-        if (defaultBucketName.equals(bucketName)) {
-            return Mono.from(blobIdList.isStored(blobId))
-                .flatMap(isStored -> {
-                    if (isStored) {
-                        return Mono.empty();
-                    }
-                    return Mono.from(blobStoreDAO.save(bucketName, blobId, content))
-                        .then(Mono.from(blobIdList.store(blobId)))
-                        .then();
-                });
-        } else {
-            return Mono.from(blobStoreDAO.save(bucketName, blobId, content));
+            return Mono.from(blobStoreDAO.save(bucketName, blobId, blob));
         }
     }
 

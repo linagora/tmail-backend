@@ -25,7 +25,6 @@ import static org.apache.james.blob.objectstorage.aws.S3BlobStoreConfiguration.U
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.time.Duration;
@@ -137,16 +136,16 @@ public class SecondaryBlobStoreDAOWithEmptySuffixTest implements BlobStoreDAOCon
     public void readShouldReturnInputStreamWhenBlobDoesNotExistInThePrimaryBlobStore() {
         Mono.from(secondaryBlobStoreDAO.save(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
 
-        assertThat(testee.read(TEST_BUCKET_NAME, TEST_BLOB_ID))
-            .hasSameContentAs(new ByteArrayInputStream(SHORT_BYTEARRAY));
+        assertThat(testee.read(TEST_BUCKET_NAME, TEST_BLOB_ID).payload())
+            .hasSameContentAs(SHORT_BYTEARRAY.asInputStream().payload());
     }
 
     @Test
     public void readReactiveShouldReturnDataWhenBlobDoesNotExistInThePrimaryBlobStore() {
         Mono.from(secondaryBlobStoreDAO.save(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
 
-        assertThat(Mono.from(testee.readReactive(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
-            .hasSameContentAs(new ByteArrayInputStream(SHORT_BYTEARRAY));
+        assertThat(Mono.from(testee.readReactive(TEST_BUCKET_NAME, TEST_BLOB_ID)).block().payload())
+            .hasSameContentAs(SHORT_BYTEARRAY.asInputStream().payload());
     }
 
     @Test
@@ -156,8 +155,8 @@ public class SecondaryBlobStoreDAOWithEmptySuffixTest implements BlobStoreDAOCon
 
         primaryS3.pause();
 
-        assertThat(Mono.from(testee.readReactive(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
-            .hasSameContentAs(new ByteArrayInputStream(SHORT_BYTEARRAY));
+        assertThat(Mono.from(testee.readReactive(TEST_BUCKET_NAME, TEST_BLOB_ID)).block().payload())
+            .hasSameContentAs(SHORT_BYTEARRAY.asInputStream().payload());
     }
 
     @Test
@@ -167,8 +166,8 @@ public class SecondaryBlobStoreDAOWithEmptySuffixTest implements BlobStoreDAOCon
 
         secondaryS3.pause();
 
-        assertThat(Mono.from(testee.readReactive(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
-            .hasSameContentAs(new ByteArrayInputStream(SHORT_BYTEARRAY));
+        assertThat(Mono.from(testee.readReactive(TEST_BUCKET_NAME, TEST_BLOB_ID)).block().payload())
+            .hasSameContentAs(SHORT_BYTEARRAY.asInputStream().payload());
     }
 
     @Test
@@ -188,18 +187,18 @@ public class SecondaryBlobStoreDAOWithEmptySuffixTest implements BlobStoreDAOCon
     public void readBytesShouldReturnDataWhenBlobDoesNotExistInThePrimaryBlobStore() {
         Mono.from(secondaryBlobStoreDAO.save(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
 
-        assertThat(Mono.from(testee.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
-            .isEqualTo(SHORT_BYTEARRAY);
+        assertThat(Mono.from(testee.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block().payload())
+            .isEqualTo(SHORT_BYTEARRAY.payload());
     }
 
     @Test
     public void saveBytesShouldSaveDataToBothBlobStores() {
         Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
 
-        assertThat(Mono.from(primaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
-            .isEqualTo(SHORT_BYTEARRAY);
-        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID)).block())
-            .isEqualTo(SHORT_BYTEARRAY);
+        assertThat(Mono.from(primaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block().payload())
+            .isEqualTo(SHORT_BYTEARRAY.payload());
+        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID)).block().payload())
+            .isEqualTo(SHORT_BYTEARRAY.payload());
     }
 
     @Test
@@ -208,10 +207,10 @@ public class SecondaryBlobStoreDAOWithEmptySuffixTest implements BlobStoreDAOCon
         unpauseS3AfterAwhile(primaryS3);
         Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
 
-        assertThat(Mono.from(primaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
-            .isEqualTo(SHORT_BYTEARRAY);
-        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID)).block())
-            .isEqualTo(SHORT_BYTEARRAY);
+        assertThat(Mono.from(primaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block().payload())
+            .isEqualTo(SHORT_BYTEARRAY.payload());
+        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID)).block().payload())
+            .isEqualTo(SHORT_BYTEARRAY.payload());
     }
 
     @Test
@@ -220,59 +219,59 @@ public class SecondaryBlobStoreDAOWithEmptySuffixTest implements BlobStoreDAOCon
         unpauseS3AfterAwhile(secondaryS3);
         Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY)).block();
 
-        assertThat(Mono.from(primaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
-            .isEqualTo(SHORT_BYTEARRAY);
-        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID)).block())
-            .isEqualTo(SHORT_BYTEARRAY);
+        assertThat(Mono.from(primaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block().payload())
+            .isEqualTo(SHORT_BYTEARRAY.payload());
+        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID)).block().payload())
+            .isEqualTo(SHORT_BYTEARRAY.payload());
     }
 
     @Test
     public void saveInputStreamShouldSaveDataToBothBlobStores() {
-        Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, new ByteArrayInputStream(SHORT_BYTEARRAY))).block();
+        Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY.asInputStream())).block();
 
-        assertThat(Mono.from(primaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
-            .isEqualTo(SHORT_BYTEARRAY);
-        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID)).block())
-            .isEqualTo(SHORT_BYTEARRAY);
+        assertThat(Mono.from(primaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block().payload())
+            .isEqualTo(SHORT_BYTEARRAY.payload());
+        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID)).block().payload())
+            .isEqualTo(SHORT_BYTEARRAY.payload());
     }
 
     @Test
     public void saveInputStreamShouldEventuallySaveDataToBothBlobStoresWhenPrimaryStorageIsDown() {
         primaryS3.pause();
         unpauseS3AfterAwhile(primaryS3);
-        Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, new ByteArrayInputStream(SHORT_BYTEARRAY))).block();
+        Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY.asInputStream())).block();
 
-        assertThat(Mono.from(primaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
-            .isEqualTo(SHORT_BYTEARRAY);
-        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID)).block())
-            .isEqualTo(SHORT_BYTEARRAY);
+        assertThat(Mono.from(primaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block().payload())
+            .isEqualTo(SHORT_BYTEARRAY.payload());
+        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID)).block().payload())
+            .isEqualTo(SHORT_BYTEARRAY.payload());
     }
 
     @Test
     public void saveInputStreamShouldEventuallySaveDataToBothBlobStoresWhenSecondStorageIsDown() {
         secondaryS3.pause();
         unpauseS3AfterAwhile(secondaryS3);
-        Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, new ByteArrayInputStream(SHORT_BYTEARRAY))).block();
+        Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY.asInputStream())).block();
 
-        assertThat(Mono.from(primaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
-            .isEqualTo(SHORT_BYTEARRAY);
-        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID)).block())
-            .isEqualTo(SHORT_BYTEARRAY);
+        assertThat(Mono.from(primaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block().payload())
+            .isEqualTo(SHORT_BYTEARRAY.payload());
+        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID)).block().payload())
+            .isEqualTo(SHORT_BYTEARRAY.payload());
     }
 
     @Test
     public void saveByteSourceShouldSaveDataToBothBlobStores() {
-        Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, ByteSource.wrap(SHORT_BYTEARRAY))).block();
+        Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY.asByteSource())).block();
 
-        assertThat(Mono.from(primaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block())
-            .isEqualTo(SHORT_BYTEARRAY);
-        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID)).block())
-            .isEqualTo(SHORT_BYTEARRAY);
+        assertThat(Mono.from(primaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block().payload())
+            .isEqualTo(SHORT_BYTEARRAY.payload());
+        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID)).block().payload())
+            .isEqualTo(SHORT_BYTEARRAY.payload());
     }
 
     @Test
     public void deleteBlobShouldDeleteInBothBlobStores() {
-        Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, ByteSource.wrap(SHORT_BYTEARRAY))).block();
+        Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY.asByteSource())).block();
         Mono.from(testee.delete(TEST_BUCKET_NAME, TEST_BLOB_ID)).block();
 
         assertThat(Flux.from(primaryBlobStoreDAO.listBlobs(TEST_BUCKET_NAME)).collectList().block())
@@ -283,7 +282,7 @@ public class SecondaryBlobStoreDAOWithEmptySuffixTest implements BlobStoreDAOCon
 
     @Test
     public void deleteBlobShouldEventuallyDeleteInBothBlobStoresWhenPrimaryStorageIsDown() {
-        Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, ByteSource.wrap(SHORT_BYTEARRAY))).block();
+        Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY.asByteSource())).block();
 
         primaryS3.pause();
         unpauseS3AfterAwhile(primaryS3);
@@ -297,7 +296,7 @@ public class SecondaryBlobStoreDAOWithEmptySuffixTest implements BlobStoreDAOCon
 
     @Test
     public void deleteBlobShouldEventuallyDeleteInBothBlobStoresWhenSecondStorageIsDown() {
-        Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, ByteSource.wrap(SHORT_BYTEARRAY))).block();
+        Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY.asByteSource())).block();
 
         secondaryS3.pause();
         unpauseS3AfterAwhile(secondaryS3);
@@ -311,7 +310,7 @@ public class SecondaryBlobStoreDAOWithEmptySuffixTest implements BlobStoreDAOCon
 
     @Test
     public void deleteBlobsShouldDeleteInBothBlobStores() {
-        Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, ByteSource.wrap(SHORT_BYTEARRAY))).block();
+        Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY.asByteSource())).block();
         Mono.from(testee.delete(TEST_BUCKET_NAME, ImmutableList.of(TEST_BLOB_ID))).block();
 
         assertThat(Flux.from(primaryBlobStoreDAO.listBlobs(TEST_BUCKET_NAME)).collectList().block())
@@ -322,7 +321,7 @@ public class SecondaryBlobStoreDAOWithEmptySuffixTest implements BlobStoreDAOCon
 
     @Test
     public void deleteBlobsShouldEventuallyDeleteInBothBlobStoresWhenPrimaryStorageIsDown() {
-        Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, ByteSource.wrap(SHORT_BYTEARRAY))).block();
+        Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY.asByteSource())).block();
 
         primaryS3.pause();
         unpauseS3AfterAwhile(primaryS3);
@@ -336,7 +335,7 @@ public class SecondaryBlobStoreDAOWithEmptySuffixTest implements BlobStoreDAOCon
 
     @Test
     public void deleteBlobsShouldEventuallyDeleteInBothBlobStoresWhenSecondStorageIsDown() {
-        Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, ByteSource.wrap(SHORT_BYTEARRAY))).block();
+        Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY.asByteSource())).block();
 
         secondaryS3.pause();
         unpauseS3AfterAwhile(secondaryS3);
@@ -350,7 +349,7 @@ public class SecondaryBlobStoreDAOWithEmptySuffixTest implements BlobStoreDAOCon
 
     @Test
     public void deleteBucketShouldDeleteInBothBlobStores() {
-        Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, ByteSource.wrap(SHORT_BYTEARRAY))).block();
+        Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY.asByteSource())).block();
         Mono.from(testee.deleteBucket(TEST_BUCKET_NAME)).block();
 
         assertThat(Flux.from(primaryBlobStoreDAO.listBuckets()).collectList().block())
@@ -361,7 +360,7 @@ public class SecondaryBlobStoreDAOWithEmptySuffixTest implements BlobStoreDAOCon
 
     @Test
     public void deleteBucketShouldEventuallyDeleteInBothBlobStoresWhenPrimaryStorageIsDown() {
-        Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, ByteSource.wrap(SHORT_BYTEARRAY))).block();
+        Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY.asByteSource())).block();
 
         primaryS3.pause();
         unpauseS3AfterAwhile(primaryS3);
@@ -375,7 +374,7 @@ public class SecondaryBlobStoreDAOWithEmptySuffixTest implements BlobStoreDAOCon
 
     @Test
     public void deleteBucketShouldEventuallyDeleteInBothBlobStoresWhenSecondStorageIsDown() {
-        Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, ByteSource.wrap(SHORT_BYTEARRAY))).block();
+        Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, SHORT_BYTEARRAY.asByteSource())).block();
 
         secondaryS3.pause();
         unpauseS3AfterAwhile(secondaryS3);
@@ -392,7 +391,7 @@ public class SecondaryBlobStoreDAOWithEmptySuffixTest implements BlobStoreDAOCon
     public void saveInputStreamShouldThrowOnIOException() {
         BlobStoreDAO store = testee();
 
-        assertThatThrownBy(() -> Mono.from(store.save(TEST_BUCKET_NAME, TEST_BLOB_ID, getThrowingInputStream())).block())
+        assertThatThrownBy(() -> Mono.from(store.save(TEST_BUCKET_NAME, TEST_BLOB_ID, BlobStoreDAO.InputStreamBlob.of(getThrowingInputStream()))).block())
             .getCause()
             .isInstanceOf(IOException.class);
     }
@@ -402,12 +401,12 @@ public class SecondaryBlobStoreDAOWithEmptySuffixTest implements BlobStoreDAOCon
     public void saveByteSourceShouldThrowOnIOException() {
         BlobStoreDAO store = testee();
 
-        assertThatThrownBy(() -> Mono.from(store.save(TEST_BUCKET_NAME, TEST_BLOB_ID, new ByteSource() {
+        assertThatThrownBy(() -> Mono.from(store.save(TEST_BUCKET_NAME, TEST_BLOB_ID, BlobStoreDAO.ByteSourceBlob.of(new ByteSource() {
             @Override
             public InputStream openStream() throws IOException {
                 return getThrowingInputStream();
             }
-        })).block())
+        }))).block())
             .isInstanceOf(ObjectStoreException.class);
     }
 
