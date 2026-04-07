@@ -270,7 +270,7 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
             .filter(Identity::mayDelete)
             .hasElements()
             .filter(FunctionalUtils.identityPredicate().negate())
-            .flatMap(noIdentity -> Mono.from(identityRepository.save(user, asTeamMailboxIdentityRequest(teamMailboxAddress, identityName)))
+            .flatMap(noIdentity -> Mono.from(identityRepository.save(user, asIdentityRequest(teamMailboxAddress, identityName, Optional.empty(), TEAM_MAILBOX_IDENTITY_SORT_ORDER)))
                 .doOnSuccess(identity -> LOGGER.info("Created team mailbox identity for user {} with email {}", user.asString(), teamMailboxAddress.asString())))
             .then();
     }
@@ -318,45 +318,21 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
                     .collect(ImmutableMap.toImmutableMap(
                         Attribute::getName,
                         Attribute::getValue)))))
-                .map(signatureOptional -> signatureOptional
-                    .map(signature -> asIdentityRequest(mailAddress, identityDisplayName, signature))
-                    .orElseGet(() -> asIdentityRequest(mailAddress, identityDisplayName)));
+                .map(signatureOptional -> asIdentityRequest(mailAddress, identityDisplayName, signatureOptional, DEFAULT_IDENTITY_SORT_ORDER));
         } catch (AddressException e) {
             return Mono.error(e);
         }
     }
 
-    private IdentityCreationRequest asIdentityRequest(MailAddress mailAddress, String identityDisplayName) {
+    private IdentityCreationRequest asIdentityRequest(MailAddress mailAddress, String identityDisplayName, Optional<SignatureText> signatureOptional, int sortOrder) {
         return IdentityCreationRequest.fromJava(
             mailAddress,
             Optional.of(identityDisplayName),
             Optional.empty(),
             Optional.empty(),
-            Optional.of(DEFAULT_IDENTITY_SORT_ORDER),
-            Optional.empty(),
-            Optional.empty());
-    }
-
-    private IdentityCreationRequest asTeamMailboxIdentityRequest(MailAddress mailAddress, String identityDisplayName) {
-        return IdentityCreationRequest.fromJava(
-            mailAddress,
-            Optional.of(identityDisplayName),
-            Optional.empty(),
-            Optional.empty(),
-            Optional.of(TEAM_MAILBOX_IDENTITY_SORT_ORDER),
-            Optional.empty(),
-            Optional.empty());
-    }
-
-    private IdentityCreationRequest asIdentityRequest(MailAddress mailAddress, String identityDisplayName, SignatureText signatureText) {
-        return IdentityCreationRequest.fromJava(
-            mailAddress,
-            Optional.of(identityDisplayName),
-            Optional.empty(),
-            Optional.empty(),
-            Optional.of(DEFAULT_IDENTITY_SORT_ORDER),
-            Optional.ofNullable(signatureText.textSignature()),
-            Optional.ofNullable(signatureText.htmlSignature()));
+            Optional.of(sortOrder),
+            signatureOptional.map(SignatureText::textSignature),
+            signatureOptional.map(SignatureText::htmlSignature));
     }
 
     private String userBase(Domain domain) {
