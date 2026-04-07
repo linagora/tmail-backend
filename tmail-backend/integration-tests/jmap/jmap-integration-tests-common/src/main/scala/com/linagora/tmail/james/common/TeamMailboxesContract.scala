@@ -65,7 +65,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility
 import org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS
 import org.hamcrest.Matchers
-import org.hamcrest.Matchers.{containsString, equalTo, hasKey, hasSize}
+import org.hamcrest.Matchers.{equalTo, hasKey, hasSize}
 import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import play.api.libs.json.{JsArray, Json}
 import sttp.capabilities.WebSockets
@@ -437,14 +437,14 @@ trait TeamMailboxesContract {
            |            "mayRemoveItems": true,
            |            "maySetSeen": true,
            |            "maySetKeywords": true,
-           |            "mayCreateChild": false,
+           |            "mayCreateChild": true,
            |            "mayRename": false,
            |            "mayDelete": false,
-           |            "maySubmit": false
+           |            "maySubmit": true
            |          },
            |          "isSubscribed": true,
            |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["e", "i", "l", "p", "r", "s", "t", "w"]}
+           |          "rights": {"bob@domain.tld":["e", "i", "k", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -516,14 +516,14 @@ trait TeamMailboxesContract {
            |            "mayRemoveItems": true,
            |            "maySetSeen": true,
            |            "maySetKeywords": true,
-           |            "mayCreateChild": false,
+           |            "mayCreateChild": true,
            |            "mayRename": false,
            |            "mayDelete": false,
-           |            "maySubmit": false
+           |            "maySubmit": true
            |          },
            |          "isSubscribed": true,
            |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["e", "i", "l", "p", "r", "s", "t", "w"]}
+           |          "rights": {"bob@domain.tld":["e", "i", "k", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -595,14 +595,14 @@ trait TeamMailboxesContract {
            |            "mayRemoveItems": true,
            |            "maySetSeen": true,
            |            "maySetKeywords": true,
-           |            "mayCreateChild": false,
+           |            "mayCreateChild": true,
            |            "mayRename": false,
            |            "mayDelete": false,
-           |            "maySubmit": false
+           |            "maySubmit": true
            |          },
            |          "isSubscribed": true,
            |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["e", "i", "l", "p", "r", "s", "t", "w"]}
+           |          "rights": {"bob@domain.tld":["e", "i", "k", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -674,14 +674,14 @@ trait TeamMailboxesContract {
            |            "mayRemoveItems": true,
            |            "maySetSeen": true,
            |            "maySetKeywords": true,
-           |            "mayCreateChild": false,
+           |            "mayCreateChild": true,
            |            "mayRename": false,
            |            "mayDelete": false,
-           |            "maySubmit": false
+           |            "maySubmit": true
            |          },
            |          "isSubscribed": true,
            |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["e", "i", "l", "p", "r", "s", "t", "w"]}
+           |          "rights": {"bob@domain.tld":["e", "i", "k", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -753,14 +753,14 @@ trait TeamMailboxesContract {
            |            "mayRemoveItems": true,
            |            "maySetSeen": true,
            |            "maySetKeywords": true,
-           |            "mayCreateChild": false,
+           |            "mayCreateChild": true,
            |            "mayRename": false,
            |            "mayDelete": false,
-           |            "maySubmit": false
+           |            "maySubmit": true
            |          },
            |          "isSubscribed": true,
            |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["e", "i", "l", "p", "r", "s", "t", "w"]}
+           |          "rights": {"bob@domain.tld":["e", "i", "k", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -832,14 +832,14 @@ trait TeamMailboxesContract {
            |            "mayRemoveItems": true,
            |            "maySetSeen": true,
            |            "maySetKeywords": true,
-           |            "mayCreateChild": false,
+           |            "mayCreateChild": true,
            |            "mayRename": false,
            |            "mayDelete": false,
-           |            "maySubmit": false
+           |            "maySubmit": true
            |          },
            |          "isSubscribed": true,
            |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["e", "i", "l", "p", "r", "s", "t", "w"]}
+           |          "rights": {"bob@domain.tld":["e", "i", "k", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -1025,14 +1025,14 @@ trait TeamMailboxesContract {
            |            "mayRemoveItems": true,
            |            "maySetSeen": true,
            |            "maySetKeywords": true,
-           |            "mayCreateChild": false,
+           |            "mayCreateChild": true,
            |            "mayRename": false,
            |            "mayDelete": false,
-           |            "maySubmit": false
+           |            "maySubmit": true
            |          },
            |          "isSubscribed": true,
            |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["e", "i", "l", "p", "r", "s", "t", "w"]}
+           |          "rights": {"bob@domain.tld":["e", "i", "k", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -1339,15 +1339,15 @@ trait TeamMailboxesContract {
              |                "mayRemoveItems": true,
              |                "maySetSeen": true,
              |                "maySetKeywords": true,
-             |                "mayCreateChild": false,
+             |                "mayCreateChild": true,
              |                "mayRename": true,
              |                "mayDelete": true,
-             |                "maySubmit": false
+             |                "maySubmit": true
              |              },
              |              "isSubscribed": true,
              |              "namespace": "TeamMailbox[marketing@domain.tld]",
              |              "rights": {
-             |                "bob@domain.tld": [ "e", "i", "l", "p", "r", "s", "t", "w", "x" ]
+             |                "bob@domain.tld": [ "e", "i", "k", "l", "p", "r", "s", "t", "w", "x" ]
              |              }
              |            }
              |          ],
@@ -1744,7 +1744,7 @@ trait TeamMailboxesContract {
            |                    {
            |                        "id": "$id1",
            |                        "rights": {
-           |                            "bob@domain.tld": ["e", "i", "l", "p", "r", "s", "t", "w"]
+           |                            "bob@domain.tld": ["e", "i", "k", "l", "p", "r", "s", "t", "w"]
            |                        }
            |                    }
            |                ]
@@ -1838,15 +1838,15 @@ trait TeamMailboxesContract {
            |                            "mayRemoveItems": true,
            |                            "maySetSeen": true,
            |                            "maySetKeywords": true,
-           |                            "mayCreateChild": false,
+           |                            "mayCreateChild": true,
            |                            "mayRename": false,
            |                            "mayDelete": false,
-           |                            "maySubmit": false
+           |                            "maySubmit": true
            |                        },
            |                        "isSubscribed": true,
            |                        "namespace": "TeamMailbox[marketing@domain.tld]",
            |                        "rights": {
-           |                            "bob@domain.tld": ["e", "i",  "l", "p", "r", "s", "t", "w"]
+           |                            "bob@domain.tld": ["e", "i", "k", "l", "p", "r", "s", "t", "w"]
            |                        }
            |                    }
            |                ]
@@ -3608,15 +3608,15 @@ trait TeamMailboxesContract {
           |                            "mayRemoveItems": true,
           |                            "maySetSeen": true,
           |                            "maySetKeywords": true,
-          |                            "mayCreateChild": false,
+          |                            "mayCreateChild": true,
           |                            "mayRename": true,
           |                            "mayDelete": true,
-          |                            "maySubmit": false
+          |                            "maySubmit": true
           |                        },
           |                        "isSubscribed": true,
           |                        "namespace": "TeamMailbox[marketing@domain.tld]",
           |                        "rights": {
-          |                            "bob@domain.tld": [ "e", "i", "l", "p", "r", "s", "t", "w", "x" ]
+          |                            "bob@domain.tld": [ "e", "i", "k", "l", "p", "r", "s", "t", "w", "x" ]
           |                       }
           |                    }
           |                ],
