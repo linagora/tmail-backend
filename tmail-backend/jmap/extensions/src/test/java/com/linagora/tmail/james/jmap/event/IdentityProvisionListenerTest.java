@@ -174,14 +174,13 @@ public class IdentityProvisionListenerTest {
 
     @Test
     void shouldNotProvisionDefaultIdentityWhenUserAlreadyHasOne() throws AddressException {
-        IdentityCreationRequest creationRequest = IdentityCreationRequest.fromJava(
-            USER1.asMailAddress(),
-            Optional.of("user defined identity"),
-            Optional.empty(),
-            Optional.empty(),
-            Optional.of(1),
-            Optional.of("textSignature 1"),
-            Optional.of("htmlSignature 1"));
+        IdentityCreationRequest creationRequest = IdentityCreationRequestBuilder.builder()
+            .email(USER1.asMailAddress())
+            .name("user defined identity")
+            .sortOrder(1)
+            .textSignature("textSignature 1")
+            .htmlSignature("htmlSignature 1")
+            .build();
         Identity userDefinedIdentity = Mono.from(identityRepository.save(USER1, creationRequest)).block();
 
         // trigger INBOX creation

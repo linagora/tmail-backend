@@ -60,6 +60,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.mockito.Mockito;
 
 import com.google.common.collect.ImmutableMap;
+import com.linagora.tmail.james.jmap.event.IdentityCreationRequestBuilder;
 import com.linagora.tmail.james.jmap.label.LabelRepository;
 import com.linagora.tmail.james.jmap.label.MemoryLabelRepository;
 import com.linagora.tmail.james.jmap.model.Color;
@@ -188,23 +189,26 @@ public class MockLlmMailClassifierListenerTest implements LlmMailClassifierListe
 
         Integer highPriorityOrder = 1;
         Integer lowPriorityOrder = 2;
-        IdentityCreationRequest creationRequest1 = IdentityCreationRequest.fromJava(
-            ALICE.asMailAddress(),
-            Optional.of("Alice in wonderland"),
-            Optional.of(List.of(EmailAddress.from(Optional.of("reply name 1"), new MailAddress("reply1@domain.org")))),
-            Optional.of(List.of(EmailAddress.from(Optional.of("bcc name 1"), new MailAddress("bcc1@domain.org")))),
-            Optional.of(highPriorityOrder),
-            Optional.of("textSignature 1"),
-            Optional.of("htmlSignature 1"));
 
-        IdentityCreationRequest creationRequest2 = IdentityCreationRequest.fromJava(
-            ALICE.asMailAddress(),
-            Optional.of("Alice in borderland"),
-            Optional.of(List.of(EmailAddress.from(Optional.of("reply name 2"), new MailAddress("reply2@domain.org")))),
-            Optional.of(List.of(EmailAddress.from(Optional.of("bcc name 2"), new MailAddress("bcc2@domain.org")))),
-            Optional.of(lowPriorityOrder),
-            Optional.of("textSignature 2"),
-            Optional.of("htmlSignature 2"));
+        IdentityCreationRequest creationRequest1 = IdentityCreationRequestBuilder.builder()
+            .email(ALICE.asMailAddress())
+            .name("Alice in wonderland")
+            .replyTo(List.of(EmailAddress.from(Optional.of("reply name 1"), new MailAddress("reply1@domain.org"))))
+            .bcc(List.of(EmailAddress.from(Optional.of("bcc name 1"), new MailAddress("bcc1@domain.org"))))
+            .sortOrder(highPriorityOrder)
+            .textSignature("textSignature 1")
+            .htmlSignature("htmlSignature 1")
+            .build();
+
+        IdentityCreationRequest creationRequest2 = IdentityCreationRequestBuilder.builder()
+            .email(ALICE.asMailAddress())
+            .name("Alice in borderland")
+            .replyTo(List.of(EmailAddress.from(Optional.of("reply name 2"), new MailAddress("reply2@domain.org"))))
+            .bcc(List.of(EmailAddress.from(Optional.of("bcc name 2"), new MailAddress("bcc2@domain.org"))))
+            .sortOrder(lowPriorityOrder)
+            .textSignature("textSignature 2")
+            .htmlSignature("htmlSignature 2")
+            .build();
 
         Mono.from(identityRepository.save(ALICE, creationRequest1)).block();
         Mono.from(identityRepository.save(ALICE, creationRequest2)).block();

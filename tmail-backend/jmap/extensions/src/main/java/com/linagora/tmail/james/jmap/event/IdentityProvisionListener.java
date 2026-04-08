@@ -270,7 +270,11 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
             .filter(Identity::mayDelete)
             .hasElements()
             .filter(FunctionalUtils.identityPredicate().negate())
-            .flatMap(noIdentity -> Mono.from(identityRepository.save(user, asIdentityRequest(teamMailboxAddress, identityName, Optional.empty(), TEAM_MAILBOX_IDENTITY_SORT_ORDER)))
+            .flatMap(noIdentity -> Mono.from(identityRepository.save(user, IdentityCreationRequestBuilder.builder()
+                    .email(teamMailboxAddress)
+                    .name(identityName)
+                    .sortOrder(TEAM_MAILBOX_IDENTITY_SORT_ORDER)
+                    .build()))
                 .doOnSuccess(identity -> LOGGER.info("Created team mailbox identity for user {} with email {}", user.asString(), teamMailboxAddress.asString())))
             .then();
     }
@@ -318,21 +322,16 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
                     .collect(ImmutableMap.toImmutableMap(
                         Attribute::getName,
                         Attribute::getValue)))))
-                .map(signatureOptional -> asIdentityRequest(mailAddress, identityDisplayName, signatureOptional, DEFAULT_IDENTITY_SORT_ORDER));
+                .map(signatureOptional -> IdentityCreationRequestBuilder.builder()
+                    .email(mailAddress)
+                    .name(identityDisplayName)
+                    .sortOrder(DEFAULT_IDENTITY_SORT_ORDER)
+                    .textSignature(signatureOptional.map(SignatureText::textSignature))
+                    .htmlSignature(signatureOptional.map(SignatureText::htmlSignature))
+                    .build());
         } catch (AddressException e) {
             return Mono.error(e);
         }
-    }
-
-    private IdentityCreationRequest asIdentityRequest(MailAddress mailAddress, String identityDisplayName, Optional<SignatureText> signatureOptional, int sortOrder) {
-        return IdentityCreationRequest.fromJava(
-            mailAddress,
-            Optional.of(identityDisplayName),
-            Optional.empty(),
-            Optional.empty(),
-            Optional.of(sortOrder),
-            signatureOptional.map(SignatureText::textSignature),
-            signatureOptional.map(SignatureText::htmlSignature));
     }
 
     private String userBase(Domain domain) {
