@@ -18,7 +18,7 @@
 
 package com.linagora.tmail.james.jmap.firebase;
 
-import static com.linagora.tmail.james.jmap.firebase.FirebasePushClient.computeCollapseKey;
+import static com.linagora.tmail.james.jmap.firebase.FirebasePushClient.generateWebPushTopic;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.charset.StandardCharsets;
@@ -34,18 +34,16 @@ class FirebasePushClientCollapseKeyTest {
     private static final FirebaseToken ANY_TOKEN = new FirebaseToken("any_token");
 
     @Test
-    void collapseKeyShouldBeSha256Base64OfSortedKeysJoinedByNullByte() throws Exception {
+    void collapseKeyShouldBeSha256UrlSafeBase64Of32CharsOfSortedKeysJoinedByNullByte() throws Exception {
         FirebasePushRequest request = new FirebasePushRequest(
             Map.of("b:Email", "s1", "a:Email", "s2"),
             ANY_TOKEN, FirebasePushUrgency.NORMAL);
 
-        String collapseKey = computeCollapseKey(request);
-
         String joined = "a:Email\0b:Email";
         byte[] hash = MessageDigest.getInstance("SHA-256").digest(joined.getBytes(StandardCharsets.UTF_8));
-        String expected = Base64.getEncoder().encodeToString(hash);
+        String expected = Base64.getUrlEncoder().withoutPadding().encodeToString(hash).substring(0, 32);
 
-        assertThat(collapseKey).isEqualTo(expected);
+        assertThat(generateWebPushTopic(request)).isEqualTo(expected);
     }
 
     @Test
@@ -54,8 +52,8 @@ class FirebasePushClientCollapseKeyTest {
             Map.of("b:Email", "s1", "a:Email", "s2"),
             ANY_TOKEN, FirebasePushUrgency.NORMAL);
 
-        assertThat(computeCollapseKey(request))
-            .isEqualTo(computeCollapseKey(request));
+        assertThat(generateWebPushTopic(request))
+            .isEqualTo(generateWebPushTopic(request));
     }
 
     @Test
@@ -65,8 +63,8 @@ class FirebasePushClientCollapseKeyTest {
         FirebasePushRequest request2 = new FirebasePushRequest(
             Map.of("b:Email", "s1"), ANY_TOKEN, FirebasePushUrgency.NORMAL);
 
-        assertThat(computeCollapseKey(request1))
-            .isNotEqualTo(computeCollapseKey(request2));
+        assertThat(generateWebPushTopic(request1))
+            .isNotEqualTo(generateWebPushTopic(request2));
     }
 
     @Test
@@ -78,8 +76,8 @@ class FirebasePushClientCollapseKeyTest {
             Map.of("b:Email", "s2", "a:Email", "s1"),
             ANY_TOKEN, FirebasePushUrgency.NORMAL);
 
-        assertThat(computeCollapseKey(request1))
-            .isEqualTo(computeCollapseKey(request2));
+        assertThat(generateWebPushTopic(request1))
+            .isEqualTo(generateWebPushTopic(request2));
     }
 
     @Test
@@ -89,7 +87,25 @@ class FirebasePushClientCollapseKeyTest {
         FirebasePushRequest request2 = new FirebasePushRequest(
             Map.of("a:Email", "stateB"), ANY_TOKEN, FirebasePushUrgency.NORMAL);
 
-        assertThat(computeCollapseKey(request1))
-            .isEqualTo(computeCollapseKey(request2));
+        assertThat(generateWebPushTopic(request1))
+            .isEqualTo(generateWebPushTopic(request2));
+    }
+
+    @Test
+    void collapseKeyShouldBe32CharsLong() {
+        FirebasePushRequest request = new FirebasePushRequest(
+            Map.of("a:Email", "s1"), ANY_TOKEN, FirebasePushUrgency.NORMAL);
+
+        assertThat(generateWebPushTopic(request)).hasSize(32);
+    }
+
+    @Test
+    void collapseKeyShouldOnlyContainUrlSafeBase64Chars() {
+        FirebasePushRequest request = new FirebasePushRequest(
+            Map.of("a:Email", "s1", "b:Email", "s2"),
+            ANY_TOKEN, FirebasePushUrgency.NORMAL);
+
+        assertThat(generateWebPushTopic(request))
+            .matches("[A-Za-z0-9_-]+");
     }
 }

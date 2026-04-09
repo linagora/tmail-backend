@@ -100,7 +100,7 @@ public class FirebasePushClient {
     }
 
     private Message createFcmMessage(FirebasePushRequest pushRequest) {
-        String collapseKey = computeCollapseKey(pushRequest);
+        String collapseKey = generateWebPushTopic(pushRequest);
         if (pushRequest.urgency().equals(FirebasePushUrgency.NORMAL)) {
             return Message.builder()
                 .putAllData(pushRequest.stateChangesMap())
@@ -131,16 +131,19 @@ public class FirebasePushClient {
             .build();
     }
 
-    static String computeCollapseKey(FirebasePushRequest pushRequest) {
+    private static byte[] computePayloadHash(FirebasePushRequest pushRequest) {
         String joined = pushRequest.stateChangesMap().keySet().stream()
             .sorted()
             .collect(Collectors.joining("\0"));
         try {
-            byte[] hash = MessageDigest.getInstance("SHA-256").digest(joined.getBytes(StandardCharsets.UTF_8));
-            return Base64.getEncoder().encodeToString(hash);
+            return MessageDigest.getInstance("SHA-256").digest(joined.getBytes(StandardCharsets.UTF_8));
         } catch (NoSuchAlgorithmException e) {
             throw new RuntimeException("SHA-256 not available", e);
         }
+    }
+
+    static String generateWebPushTopic(FirebasePushRequest pushRequest) {
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(computePayloadHash(pushRequest)).substring(0, 32);
     }
 
     private ApnsConfig buildApnsConfig(FirebasePushRequest pushRequest, String collapseKey) {
