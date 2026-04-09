@@ -12,6 +12,8 @@ software documentation. Do not follow this guide blindly!
 
 Note: this section is in progress. It will be updated during all the development process until the release.
 
+## 1.0.16
+
 ### Adding read_only field to labels table
 
 Date: 12/03/2026
@@ -102,6 +104,8 @@ ALTER TABLE domains ADD COLUMN activated BOOLEAN;
 
 Note that existing domains prior to this addition without the activated field setup will be considered as unactivated.
 You need then to set manually existing domains to activated = true.
+
+## 1.0.15
 
 ### LLM Mail Classifier Listener renamed
 Date: 04/02/2026
