@@ -21,7 +21,12 @@ package com.linagora.tmail.james.jmap.firebase;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Base64;
 import java.util.concurrent.ExecutionException;
+import java.util.stream.Collectors;
 
 import jakarta.inject.Inject;
 
@@ -51,7 +56,9 @@ public class FirebasePushClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(FirebasePushClient.class);
     private static final Boolean DRY_RUN = true;
     private static final String APNS_URGENCY_HEADER = "apns-priority";
+    private static final String APNS_COLLAPSE_ID_HEADER = "apns-collapse-id";
     private static final String WEB_PUSH_URGENCY_HEADER = "Urgency";
+    private static final String WEB_PUSH_TOPIC_HEADER = "Topic";
     private static final String APNS_REQUIRED_NORMAL_PRIORITY = "5";
 
     private final FirebaseMessaging firebaseMessaging;
@@ -93,16 +100,19 @@ public class FirebasePushClient {
     }
 
     private Message createFcmMessage(FirebasePushRequest pushRequest) {
+        String collapseKey = generateWebPushTopic(pushRequest);
         if (pushRequest.urgency().equals(FirebasePushUrgency.NORMAL)) {
             return Message.builder()
                 .putAllData(pushRequest.stateChangesMap())
                 .setToken(pushRequest.token().value())
                 .setAndroidConfig(AndroidConfig.builder()
                     .setPriority(AndroidConfig.Priority.NORMAL)
+                    .setCollapseKey(collapseKey)
                     .build())
-                .setApnsConfig(buildApnsConfig(pushRequest))
+                .setApnsConfig(buildApnsConfig(pushRequest, collapseKey))
                 .setWebpushConfig(WebpushConfig.builder()
                     .putHeader(WEB_PUSH_URGENCY_HEADER, "normal")
+                    .putHeader(WEB_PUSH_TOPIC_HEADER, collapseKey)
                     .build())
                 .build();
         }
@@ -111,17 +121,35 @@ public class FirebasePushClient {
             .setToken(pushRequest.token().value())
             .setAndroidConfig(AndroidConfig.builder()
                 .setPriority(AndroidConfig.Priority.HIGH)
+                .setCollapseKey(collapseKey)
                 .build())
-            .setApnsConfig(buildApnsConfig(pushRequest))
+            .setApnsConfig(buildApnsConfig(pushRequest, collapseKey))
             .setWebpushConfig(WebpushConfig.builder()
                 .putHeader(WEB_PUSH_URGENCY_HEADER, "high")
+                .putHeader(WEB_PUSH_TOPIC_HEADER, collapseKey)
                 .build())
             .build();
     }
 
-    private ApnsConfig buildApnsConfig(FirebasePushRequest pushRequest) {
+    private static byte[] computePayloadHash(FirebasePushRequest pushRequest) {
+        String joined = pushRequest.stateChangesMap().keySet().stream()
+            .sorted()
+            .collect(Collectors.joining("\0"));
+        try {
+            return MessageDigest.getInstance("SHA-256").digest(joined.getBytes(StandardCharsets.UTF_8));
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("SHA-256 not available", e);
+        }
+    }
+
+    static String generateWebPushTopic(FirebasePushRequest pushRequest) {
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(computePayloadHash(pushRequest)).substring(0, 32);
+    }
+
+    private ApnsConfig buildApnsConfig(FirebasePushRequest pushRequest, String collapseKey) {
         return ApnsConfig.builder()
             .putHeader(APNS_URGENCY_HEADER, APNS_REQUIRED_NORMAL_PRIORITY)
+            .putHeader(APNS_COLLAPSE_ID_HEADER, collapseKey)
             .setAps(buildApsDictionary(pushRequest))
             .build();
     }
