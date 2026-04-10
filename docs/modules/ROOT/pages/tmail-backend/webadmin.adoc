@@ -1353,6 +1353,38 @@ Return codes:
 - `200` Successfully returned the aggregated data
 - `400` Missing the `hasSpecificQuota` query parameter
 
+== User Data Tiering
+
+This endpoint allows administrators to free up Cassandra storage for a given user by clearing
+derived or cached data that predates a given retention period.
+
+The following data is cleared:
+
+- JMAP `/changes` projection (`email_change` and `mailbox_change` tables) — fully deleted for the user
+- Thread guessing table (`thread_2`) — fully deleted for the user
+- For each message older than the tiering period:
+  - Fast view projection (subject, preview)
+  - Header blob store cache entry
+
+The operation is synchronous and returns once all deletions are complete. All errors on individual
+messages are silently ignored so that the operation is best-effort.
+
+=== Tier a user's data
+
+....
+curl -XPOST http://ip:port/users/{username}/data?tiering={duration}
+....
+
+Query parameters:
+
+- `tiering` (required): retention period expressed as an ISO-8601 duration or a shorthand such as
+  `30d`, `12h`, `1w`. Messages older than this period have their cached data evicted.
+
+Return codes:
+
+- `204` Operation completed successfully
+- `400` Invalid username or missing / unparseable `tiering` parameter
+
 == User Mails Search
 
 This route allows administrators to search through a user's mailbox for debugging purposes
