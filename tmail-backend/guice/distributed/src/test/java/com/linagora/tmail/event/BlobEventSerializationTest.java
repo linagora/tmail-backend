@@ -73,37 +73,37 @@ public class BlobEventSerializationTest {
 
     @Test
     void blobAdditionEventShouldBeWellSerialized() {
-        String json = tmailEventSerializer.toJson(BLOB_ADDTITION_EVENT);
+        String json = tmailEventSerializer.toJson(BLOB_ADDTITION_EVENT).json();
         assertThat(json).isEqualTo(BlOB_ADDITION_JSON);
     }
 
     @Test
     void blobAdditionEventShouldBeWellDeserialized() {
-        Event event = tmailEventSerializer.asEvent(BlOB_ADDITION_JSON);
+        Event event = tmailEventSerializer.asEvent(BlOB_ADDITION_JSON).event();
         assertThat(event).isEqualTo(BLOB_ADDTITION_EVENT);
     }
 
     @Test
     void blobsDeletionEventShouldBeWellSerialized() {
-        String json = tmailEventSerializer.toJson(BLOBS_DELETION_EVENT);
+        String json = tmailEventSerializer.toJson(BLOBS_DELETION_EVENT).json();
         assertThat(json).isEqualTo(BlOBS_DELETION_JSON);
     }
 
     @Test
     void blobsDeletionEventShouldBeWellDeserialized() {
-        Event event = tmailEventSerializer.asEvent(BlOBS_DELETION_JSON);
+        Event event = tmailEventSerializer.asEvent(BlOBS_DELETION_JSON).event();
         assertThat(event).isEqualTo(BLOBS_DELETION_EVENT);
     }
 
     @Test
     void bucketDeletionEventShouldBeWellSerialized() {
-        String json = tmailEventSerializer.toJson(BUCKET_DELETION_EVENT);
+        String json = tmailEventSerializer.toJson(BUCKET_DELETION_EVENT).json();
         assertThat(json).isEqualTo(BUCKET_DELETION_JSON);
     }
 
     @Test
     void bucketDeletionEventShouldBeWellDeserialized() {
-        Event event = tmailEventSerializer.asEvent(BUCKET_DELETION_JSON);
+        Event event = tmailEventSerializer.asEvent(BUCKET_DELETION_JSON).event();
         assertThat(event).isEqualTo(BUCKET_DELETION_EVENT);
     }
 }

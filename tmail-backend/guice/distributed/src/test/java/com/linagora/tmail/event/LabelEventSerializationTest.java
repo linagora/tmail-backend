@@ -25,7 +25,6 @@ import java.time.Instant;
 import org.apache.james.blob.api.PlainBlobId;
 import org.apache.james.core.Username;
 import org.apache.james.events.Event;
-import org.apache.james.jmap.mail.Keyword;
 import org.apache.james.server.blob.deduplication.GenerationAwareBlobId;
 import org.apache.james.utils.UpdatableTickingClock;
 import org.junit.jupiter.api.Test;
@@ -148,73 +147,73 @@ class LabelEventSerializationTest {
 
     @Test
     void labelCreatedShouldBeWellSerialized() {
-        assertThat(SERIALIZER.toJson(new LabelCreated(EVENT_ID, ALICE, LABEL_WITH_COLOR)))
+        assertThat(SERIALIZER.toJson(new LabelCreated(EVENT_ID, ALICE, LABEL_WITH_COLOR)).json())
             .isEqualTo(LABEL_CREATED_JSON);
     }
 
     @Test
     void labelCreatedShouldBeWellDeserialized() {
-        assertThat(SERIALIZER.asEvent(LABEL_CREATED_JSON))
+        assertThat(SERIALIZER.asEvent(LABEL_CREATED_JSON).event())
             .isEqualTo(new LabelCreated(EVENT_ID, ALICE, LABEL_WITH_COLOR));
     }
 
     @Test
     void labelCreatedWithDescriptionShouldBeWellSerialized() {
-        assertThat(SERIALIZER.toJson(new LabelCreated(EVENT_ID, ALICE, LABEL_WITH_COLOR_AND_DESCRIPTION)))
+        assertThat(SERIALIZER.toJson(new LabelCreated(EVENT_ID, ALICE, LABEL_WITH_COLOR_AND_DESCRIPTION)).json())
             .isEqualTo(LABEL_CREATED_WITH_DESCRIPTION_JSON);
     }
 
     @Test
     void labelCreatedWithDescriptionShouldBeWellDeserialized() {
-        assertThat(SERIALIZER.asEvent(LABEL_CREATED_WITH_DESCRIPTION_JSON))
+        assertThat(SERIALIZER.asEvent(LABEL_CREATED_WITH_DESCRIPTION_JSON).event())
             .isEqualTo(new LabelCreated(EVENT_ID, ALICE, LABEL_WITH_COLOR_AND_DESCRIPTION));
     }
 
     @Test
     void labelCreatedWithoutOptionalFieldsShouldBeWellSerialized() {
-        assertThat(SERIALIZER.toJson(new LabelCreated(EVENT_ID, ALICE, LABEL_MINIMAL)))
+        assertThat(SERIALIZER.toJson(new LabelCreated(EVENT_ID, ALICE, LABEL_MINIMAL)).json())
             .isEqualTo(LABEL_CREATED_MINIMAL_JSON);
     }
 
     @Test
     void labelCreatedWithoutOptionalFieldsShouldBeWellDeserialized() {
-        assertThat(SERIALIZER.asEvent(LABEL_CREATED_MINIMAL_JSON))
+        assertThat(SERIALIZER.asEvent(LABEL_CREATED_MINIMAL_JSON).event())
             .isEqualTo(new LabelCreated(EVENT_ID, ALICE, LABEL_MINIMAL));
     }
 
     @Test
     void labelUpdatedShouldBeWellSerialized() {
-        assertThat(SERIALIZER.toJson(new LabelUpdated(EVENT_ID, ALICE, LABEL_WITH_COLOR)))
+        assertThat(SERIALIZER.toJson(new LabelUpdated(EVENT_ID, ALICE, LABEL_WITH_COLOR)).json())
             .isEqualTo(LABEL_UPDATED_JSON);
     }
 
     @Test
     void labelUpdatedShouldBeWellDeserialized() {
-        assertThat(SERIALIZER.asEvent(LABEL_UPDATED_JSON))
+        assertThat(SERIALIZER.asEvent(LABEL_UPDATED_JSON).event())
             .isEqualTo(new LabelUpdated(EVENT_ID, ALICE, LABEL_WITH_COLOR));
     }
 
     @Test
     void labelDestroyedShouldBeWellSerialized() {
-        assertThat(SERIALIZER.toJson(new LabelDestroyed(EVENT_ID, ALICE, LABEL_ID)))
+        assertThat(SERIALIZER.toJson(new LabelDestroyed(EVENT_ID, ALICE, LABEL_ID)).json())
             .isEqualTo(LABEL_DESTROYED_JSON);
     }
 
     @Test
     void labelDestroyedShouldBeWellDeserialized() {
-        assertThat(SERIALIZER.asEvent(LABEL_DESTROYED_JSON))
+        assertThat(SERIALIZER.asEvent(LABEL_DESTROYED_JSON).event())
             .isEqualTo(new LabelDestroyed(EVENT_ID, ALICE, LABEL_ID));
     }
 
     @Test
     void labelUpdatedReadOnlyShouldBeWellSerialized() {
-        assertThat(SERIALIZER.toJson(new LabelUpdated(EVENT_ID, ALICE, LABEL_WITH_COLOR_READONLY)))
+        assertThat(SERIALIZER.toJson(new LabelUpdated(EVENT_ID, ALICE, LABEL_WITH_COLOR_READONLY)).json())
             .isEqualTo(LABEL_UPDATED_READONLY_JSON);
     }
 
     @Test
     void labelUpdatedReadOnlyShouldBeWellDeserialized() {
-        assertThat(SERIALIZER.asEvent(LABEL_UPDATED_READONLY_JSON))
+        assertThat(SERIALIZER.asEvent(LABEL_UPDATED_READONLY_JSON).event())
             .isEqualTo(new LabelUpdated(EVENT_ID, ALICE, LABEL_WITH_COLOR_READONLY));
     }
 
@@ -229,7 +228,7 @@ class LabelEventSerializationTest {
             "\"color\":\"#FF0000\"," +
             "\"description\":null" +
             "}";
-        assertThat(SERIALIZER.asEvent(legacyJson))
+        assertThat(SERIALIZER.asEvent(legacyJson).event())
             .isEqualTo(new LabelUpdated(EVENT_ID, ALICE, LABEL_WITH_COLOR));
     }
 
@@ -244,7 +243,7 @@ class LabelEventSerializationTest {
             "\"color\":\"#FF0000\"," +
             "\"description\":null" +
             "}";
-        assertThat(SERIALIZER.asEvent(legacyJson))
+        assertThat(SERIALIZER.asEvent(legacyJson).event())
             .isEqualTo(new LabelCreated(EVENT_ID, ALICE, LABEL_WITH_COLOR));
     }
 }

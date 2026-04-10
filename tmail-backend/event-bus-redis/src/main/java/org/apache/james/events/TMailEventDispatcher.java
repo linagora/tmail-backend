@@ -20,7 +20,6 @@ package org.apache.james.events;
 
 import static org.apache.james.events.GroupRegistration.DEFAULT_RETRY_COUNT;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
@@ -105,16 +104,16 @@ public class TMailEventDispatcher {
 
         return Mono.fromCallable(() -> eventSerializer.toJson(underlyingEvents))
             .flatMap(serializedEvent -> Mono.zipDelayError(
-                remoteGroupsDispatch(serializedEvent.getBytes(StandardCharsets.UTF_8), underlyingEvents),
-                keyEventDispatcher.remoteKeysDispatch(serializedEvent, keys)))
+                remoteGroupsDispatch(serializedEvent.jsonBytes(), underlyingEvents),
+                keyEventDispatcher.remoteKeysDispatch(serializedEvent.json(), keys)))
             .then();
     }
 
     private Mono<Void> dispatchToRemoteListeners(Event event, Set<RegistrationKey> keys) {
         return Mono.fromCallable(() -> eventSerializer.toJson(event))
             .flatMap(serializedEvent -> Mono.zipDelayError(
-                remoteGroupsDispatch(serializedEvent.getBytes(StandardCharsets.UTF_8), event),
-                keyEventDispatcher.remoteKeysDispatch(serializedEvent, keys)))
+                remoteGroupsDispatch(serializedEvent.jsonBytes(), event),
+                keyEventDispatcher.remoteKeysDispatch(serializedEvent.json(), keys)))
             .then();
     }
 
