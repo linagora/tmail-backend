@@ -78,7 +78,7 @@ class DisconnectionRequestedEventSerializerTest {
         Event.EventId eventId = Event.EventId.random();
         DisconnectionRequested event = new DisconnectionRequested(eventId, Set.of());
 
-        assertThat(testee.toJson(event)).isEqualTo("""
+        assertThat(testee.toJson(event).json()).isEqualTo("""
             {"eventId":"%s","usernames":[]}""".formatted(eventId.getId()));
     }
 }
