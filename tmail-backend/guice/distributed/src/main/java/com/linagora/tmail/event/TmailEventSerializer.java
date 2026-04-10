@@ -19,7 +19,7 @@
 package com.linagora.tmail.event;
 
 import java.util.Collection;
-import java.util.List;
+import java.util.Optional;
 
 import jakarta.inject.Inject;
 import jakarta.mail.internet.AddressException;
@@ -28,14 +28,16 @@ import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.BucketName;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
+import org.apache.james.events.DeserializationResult;
 import org.apache.james.events.Event;
 import org.apache.james.events.EventSerializer;
+import org.apache.james.events.SerializationResult;
 
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.ImmutableList;
+import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.blob.secondaryblobstore.FailedBlobEvents;
 import com.linagora.tmail.blob.secondaryblobstore.ObjectStorageIdentity;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
@@ -97,38 +99,39 @@ public class TmailEventSerializer implements EventSerializer {
     }
 
     @Override
-    public String toJson(Event event) {
+    public SerializationResult toJson(Event event) {
+
         try {
-            EventDTO eventDTO = toDTO(event);
-            return objectMapper.writeValueAsString(eventDTO);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            Optional<String> maybeEventDTO = toDTO(event)
+                .map(Throwing.function(objectMapper::writeValueAsString).sneakyThrow());
+            return SerializationResult.of(maybeEventDTO, "Unexpected value: " + event);
+        } catch (Exception e) {
+            return new SerializationResult.Failure(e.getMessage());
         }
     }
 
     @Override
-    public String toJson(Collection<Event> event) {
+    public SerializationResult toJson(Collection<Event> event) {
         if (event.size() != 1) {
-            throw new IllegalArgumentException("Not supported for multiple events, please serialize separately");
+            return new SerializationResult.Failure("Not supported for multiple events, please serialize separately");
         }
         return toJson(event.iterator().next());
     }
 
     @Override
-    public Event asEvent(String serialized) {
+    public DeserializationResult asEvent(String serialized) {
         try {
             EventDTO eventDTO = objectMapper.readValue(serialized, EventDTO.class);
-            return fromDTO(eventDTO);
+            return DeserializationResult.of(fromDTO(eventDTO), "Unexpected value: " + eventDTO);
         } catch (JsonProcessingException | AddressException e) {
-            throw new RuntimeException(e);
+            return new DeserializationResult.Failure(e.getMessage());
         }
     }
 
     @Override
-    public List<Event> asEvents(String serialized) {
-        return ImmutableList.of(asEvent(serialized));
+    public DeserializationResult asEvents(String serialized) {
+        return asEvent(serialized);
     }
-
 
     private Label dtoToLabel(String keyword, String displayName, String color, String description, Boolean readOnly) {
         return new Label(
@@ -140,8 +143,8 @@ public class TmailEventSerializer implements EventSerializer {
             Boolean.TRUE.equals(readOnly));
     }
 
-    private EventDTO toDTO(Event event) {
-        return switch (event) {
+    private Optional<EventDTO> toDTO(Event event) {
+        return Optional.ofNullable(switch (event) {
             case FailedBlobEvents.BlobAddition e -> new BlobAdditionDTO(e.getEventId().getId().toString(), FailedBlobEvents.BlobEvent.USERNAME.asString(),
                 e.bucketName().asString(), e.blobId().asString(), e.getFailedObjectStorage().name());
             case FailedBlobEvents.BlobsDeletion e -> new BlobsDeletionDTO(e.getEventId().getId().toString(), FailedBlobEvents.BlobEvent.USERNAME.asString(),
@@ -163,12 +166,12 @@ public class TmailEventSerializer implements EventSerializer {
                 e.updatedLabel().readOnly());
             case LabelDestroyed e -> new LabelDestroyedDTO(e.getEventId().getId().toString(), e.username().asString(),
                 e.labelId().toKeyword());
-            default -> throw new IllegalStateException("Unexpected value: " + event);
-        };
+            default -> null;
+        });
     }
 
-    private Event fromDTO(EventDTO eventDTO) throws AddressException {
-        return switch (eventDTO) {
+    private Optional<Event> fromDTO(EventDTO eventDTO) throws AddressException {
+        return Optional.ofNullable(switch (eventDTO) {
             case BlobAdditionDTO dto -> new FailedBlobEvents.BlobAddition(Event.EventId.of(dto.eventId()),
                 BucketName.of(dto.bucketName()), blobIdFactory.parse(dto.blobId()), ObjectStorageIdentity.valueOf(dto.failedObjectStorage()));
             case BlobsDeletionDTO dto -> new FailedBlobEvents.BlobsDeletion(Event.EventId.of(dto.eventId()),
@@ -183,7 +186,7 @@ public class TmailEventSerializer implements EventSerializer {
             case LabelUpdatedDTO dto -> new LabelUpdated(Event.EventId.of(dto.eventId()),
                 Username.of(dto.username()), dtoToLabel(dto.keyword(), dto.displayName(), dto.color(), dto.description(), dto.readOnly()));
             case LabelDestroyedDTO dto -> new LabelDestroyed(Event.EventId.of(dto.eventId()), Username.of(dto.username()), LabelId.fromKeyword(dto.keyword));
-            default -> throw new IllegalStateException("Unexpected value: " + eventDTO);
-        };
+            default -> null;
+        });
     }
 }

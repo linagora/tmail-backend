@@ -74,7 +74,7 @@ public class RedisKeyEventDispatcher {
     }
 
     private Mono<Void> dispatchToRemoteListeners(Event event, Set<RegistrationKey> keys) {
-        return Mono.fromCallable(() -> eventSerializer.toJson(event))
+        return Mono.fromCallable(() -> eventSerializer.toJson(event).json())
             .flatMap(serializedJson -> remoteKeysDispatch(serializedJson, keys))
             .then();
     }
@@ -88,7 +88,7 @@ public class RedisKeyEventDispatcher {
             .flatMap(e -> e.keys().stream())
             .collect(ImmutableSet.toImmutableSet());
 
-        return Mono.fromCallable(() -> eventSerializer.toJson(underlyingEvents))
+        return Mono.fromCallable(() -> eventSerializer.toJson(underlyingEvents).json())
             .flatMap(serializedJson -> remoteKeysDispatch(serializedJson, keys))
             .then();
     }

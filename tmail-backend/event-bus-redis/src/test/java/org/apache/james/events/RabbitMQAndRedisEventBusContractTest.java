@@ -479,7 +479,7 @@ abstract class RabbitMQAndRedisEventBusContractTest implements GroupContract.Sin
                     .blockFirst()
                     .getBody();
 
-                return eventSerializer.asEvent(new String(eventInBytes, StandardCharsets.UTF_8));
+                return eventSerializer.asEvent(new String(eventInBytes, StandardCharsets.UTF_8)).event();
             }
         }
     }

@@ -36,8 +36,10 @@ public class AIAnalysisNeededEventSerializerTest {
         Username username = Username.of("bob@example.com");
         AIAnalysisNeeded event = new AIAnalysisNeeded(eventId, username, InMemoryId.of(42), InMemoryMessageId.of(100));
 
-        String serialized = serializer.toJson(event);
-        Event deserialized = serializer.asEvent(serialized);
+        String serialized = serializer.toJson(event)
+            .json();
+        Event deserialized = serializer.asEvent(serialized)
+            .event();
 
         assertThat(deserialized).isInstanceOf(AIAnalysisNeeded.class);
         AIAnalysisNeeded aiAnalysisNeeded = (AIAnalysisNeeded) deserialized;
