@@ -216,7 +216,7 @@ class DefaultTmailGroupRegistrationHandler implements TmailGroupRegistrationHand
     }
 
     private Mono<List<Event>> deserializeEvents(byte[] eventAsBytes) {
-        return Mono.fromCallable(() -> eventSerializer.asEventsFromBytes(eventAsBytes));
+        return Mono.fromCallable(() -> eventSerializer.asEventsFromBytes(eventAsBytes).events());
     }
 
     private GroupRegistration newGroupRegistration(EventListener.ReactiveEventListener listener, Group group) {

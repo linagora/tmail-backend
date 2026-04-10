@@ -34,7 +34,8 @@ class DisconnectionRequestedEventSerializerTest {
         Set<Username> usernames = Set.of(Username.of("bob@domain.tld"), Username.of("alice@domain.tld"));
         DisconnectionRequested event = new DisconnectionRequested(Event.EventId.random(), usernames);
 
-        Event deserialized = testee.asEvent(testee.toJson(event));
+        Event deserialized = testee.asEvent(testee.toJson(event).json())
+            .event();
 
         DisconnectionRequested deserializedDisconnectionRequested = (DisconnectionRequested) deserialized;
         assertThat(deserializedDisconnectionRequested.getEventId()).isEqualTo(event.getEventId());
@@ -46,7 +47,8 @@ class DisconnectionRequestedEventSerializerTest {
     void roundTripShouldPreserveEmptyUsernamesToRepresentAllUsers() {
         DisconnectionRequested event = new DisconnectionRequested(Event.EventId.random(), Set.of());
 
-        Event deserialized = testee.asEvent(testee.toJson(event));
+        Event deserialized = testee.asEvent(testee.toJson(event).json())
+            .event();
 
         DisconnectionRequested deserializedDisconnectionRequested = (DisconnectionRequested) deserialized;
         assertThat(deserializedDisconnectionRequested.usernames()).isEmpty();
@@ -64,7 +66,7 @@ class DisconnectionRequestedEventSerializerTest {
             }
             """.formatted(eventId.getId());
 
-        Event deserialized = testee.asEvent(json);
+        Event deserialized = testee.asEvent(json).event();
 
         DisconnectionRequested deserializedDisconnectionRequested = (DisconnectionRequested) deserialized;
         assertThat(deserializedDisconnectionRequested.usernames()).isEmpty();
@@ -76,7 +78,7 @@ class DisconnectionRequestedEventSerializerTest {
         Event.EventId eventId = Event.EventId.random();
         DisconnectionRequested event = new DisconnectionRequested(eventId, Set.of());
 
-        assertThat(testee.toJson(event)).isEqualTo("""
+        assertThat(testee.toJson(event).json()).isEqualTo("""
             {"eventId":"%s","usernames":[]}""".formatted(eventId.getId()));
     }
 }

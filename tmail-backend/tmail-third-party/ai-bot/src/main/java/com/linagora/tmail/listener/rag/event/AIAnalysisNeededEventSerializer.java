@@ -19,19 +19,19 @@
 package com.linagora.tmail.listener.rag.event;
 
 import java.util.Collection;
-import java.util.List;
 
 import jakarta.inject.Inject;
 
 import org.apache.james.core.Username;
+import org.apache.james.events.DeserializationResult;
 import org.apache.james.events.Event;
 import org.apache.james.events.EventSerializer;
+import org.apache.james.events.SerializationResult;
 import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MessageId;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.google.common.collect.ImmutableList;
 
 public class AIAnalysisNeededEventSerializer implements EventSerializer {
     private record AIAnalysisNeededDTO(String eventId, String username, String mailboxId, String messageId) {
@@ -49,9 +49,9 @@ public class AIAnalysisNeededEventSerializer implements EventSerializer {
     }
 
     @Override
-    public String toJson(Event event) {
+    public SerializationResult toJson(Event event) {
         if (!(event instanceof AIAnalysisNeeded aiAnalysisNeeded)) {
-            throw new IllegalArgumentException("Unsupported event type: " + event.getClass().getName());
+            return new SerializationResult.Failure("Unsupported event type: " + event.getClass().getName());
         }
 
         try {
@@ -59,33 +59,33 @@ public class AIAnalysisNeededEventSerializer implements EventSerializer {
                 aiAnalysisNeeded.getUsername().asString(),
                 aiAnalysisNeeded.mailboxId().serialize(),
                 aiAnalysisNeeded.messageId().serialize());
-            return objectMapper.writeValueAsString(dto);
+            return new SerializationResult.Success(objectMapper.writeValueAsString(dto));
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            return new SerializationResult.Failure(e.getMessage());
         }
     }
 
     @Override
-    public String toJson(Collection<Event> events) {
+    public SerializationResult toJson(Collection<Event> events) {
         if (events.size() != 1) {
-            throw new IllegalArgumentException("Not supported for multiple events, please serialize separately");
+            return new SerializationResult.Failure("Not supported for multiple events, please serialize separately");
         }
         return toJson(events.iterator().next());
     }
 
     @Override
-    public Event asEvent(String serialized) {
+    public DeserializationResult asEvent(String serialized) {
         try {
             AIAnalysisNeededDTO dto = objectMapper.readValue(serialized, AIAnalysisNeededDTO.class);
-            return new AIAnalysisNeeded(Event.EventId.of(dto.eventId()), Username.of(dto.username()),
-                mailboxIdFactory.fromString(dto.mailboxId()), messageIdFactory.fromString(dto.messageId()));
+            return new DeserializationResult.Success(new AIAnalysisNeeded(Event.EventId.of(dto.eventId()), Username.of(dto.username()),
+                mailboxIdFactory.fromString(dto.mailboxId()), messageIdFactory.fromString(dto.messageId())));
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            return new DeserializationResult.Failure(e.getMessage());
         }
     }
 
     @Override
-    public List<Event> asEvents(String serialized) {
-        return ImmutableList.of(asEvent(serialized));
+    public DeserializationResult asEvents(String serialized) {
+        return asEvent(serialized);
     }
 }

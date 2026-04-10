@@ -27,8 +27,10 @@ import jakarta.inject.Inject;
 import jakarta.inject.Singleton;
 
 import org.apache.james.core.Username;
+import org.apache.james.events.DeserializationResult;
 import org.apache.james.events.Event;
 import org.apache.james.events.EventSerializer;
+import org.apache.james.events.SerializationResult;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -47,9 +49,9 @@ public class DisconnectionRequestedEventSerializer implements EventSerializer {
     }
 
     @Override
-    public String toJson(Event event) {
+    public SerializationResult toJson(Event event) {
         if (!(event instanceof DisconnectionRequested disconnectionRequested)) {
-            throw new IllegalArgumentException("Unsupported event: " + event);
+            return new SerializationResult.Failure("Unsupported event: " + event);
         }
 
         DisconnectionRequestedDTO dto = new DisconnectionRequestedDTO(
@@ -57,36 +59,36 @@ public class DisconnectionRequestedEventSerializer implements EventSerializer {
             disconnectionRequested.usernames().stream().map(Username::asString).toList());
 
         try {
-            return objectMapper.writeValueAsString(dto);
+            return new SerializationResult.Success(objectMapper.writeValueAsString(dto));
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            return new SerializationResult.Failure(e.getMessage());
         }
     }
 
     @Override
-    public String toJson(Collection<Event> event) {
+    public SerializationResult toJson(Collection<Event> event) {
         if (event.size() != 1) {
-            throw new IllegalArgumentException("Not supported for multiple events, please serialize separately");
+            return new SerializationResult.Failure("Not supported for multiple events, please serialize separately");
         }
         return toJson(event.iterator().next());
     }
 
     @Override
-    public Event asEvent(String serialized) {
+    public DeserializationResult asEvent(String serialized) {
         try {
             DisconnectionRequestedDTO dto = objectMapper.readValue(serialized, DisconnectionRequestedDTO.class);
             List<String> usernamesAsString = dto.usernames() == null ? ImmutableList.of() : dto.usernames();
             Set<Username> usernames = usernamesAsString.stream()
                 .map(Username::of)
                 .collect(Collectors.toSet());
-            return new DisconnectionRequested(Event.EventId.of(dto.eventId()), usernames);
+            return new DeserializationResult.Success(new DisconnectionRequested(Event.EventId.of(dto.eventId()), usernames));
         } catch (JsonProcessingException e) {
-            throw new RuntimeException(e);
+            return new DeserializationResult.Failure(e.getMessage());
         }
     }
 
     @Override
-    public List<Event> asEvents(String serialized) {
-        return List.of(asEvent(serialized));
+    public DeserializationResult asEvents(String serialized) {
+        return asEvent(serialized);
     }
 }

@@ -202,13 +202,14 @@ public class RedisKeyRegistrationHandler {
     public List<Event> toEvents(String eventAsJson) {
         // if the json is an array, we have multiple events
         if (StringUtils.trim(eventAsJson).startsWith("[")) {
-            return eventSerializer.asEvents(eventAsJson);
+            return eventSerializer.asEvents(eventAsJson)
+                .events();
         }
 
         try {
-            return List.of(eventSerializer.asEvent(eventAsJson));
+            return eventSerializer.asEvent(eventAsJson).events();
         } catch (RuntimeException exception) {
-            return eventSerializer.asEvents(eventAsJson);
+            return eventSerializer.asEvents(eventAsJson).events();
         }
     }
 
