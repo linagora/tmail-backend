@@ -158,9 +158,9 @@ public class CassandraUserDataTieringService implements UserDataTieringService {
         Mono<Void> clearFastView = Mono.from(messageFastViewProjection.delete(messageId));
 
         Mono<Void> clearThreadAndHeaderCache = metadata.getHeaderContent()
-            .map(blobId -> Mono.from(blobStore.readBytes(blobStore.getDefaultBucketName(), blobId))
+            .<Mono<Void>>map(blobId -> Mono.from(blobStore.readBytes(blobStore.getDefaultBucketName(), blobId))
                 .flatMap(headerBytes -> clearThreadEntries(username, headerBytes))
-                .then(Mono.from(blobStoreCacheCleaner.removeFromCache(blobId))))
+                .then(Mono.<Void>from(blobStoreCacheCleaner.removeFromCache(blobId))))
             .orElse(Mono.empty());
 
         Mono<Void> clearAttachments = cassandraMessageDAOV3.retrieveMessage(messageId, FetchType.METADATA)
