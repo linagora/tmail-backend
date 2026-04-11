@@ -188,6 +188,7 @@ import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.PostgresTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.listener.CollectTrustedContactsListenerModule;
+import com.linagora.tmail.listener.FilteringRuleReferenceUpdaterListenerModule;
 import com.linagora.tmail.mailbox.opensearch.TmailOpenSearchMailboxMappingModule;
 import com.linagora.tmail.mailbox.quota.postgres.PostgresUserQuotaReporterModule;
 import com.linagora.tmail.modules.data.PostgresKeywordEmailQueryViewModule;
@@ -398,7 +399,8 @@ public class PostgresTmailServer {
             new TMailIMAPModule(),
             QUOTA_USERNAME_SUPPLIER_MODULE,
             new EventBusDisconnectorModule(),
-            new CollectTrustedContactsListenerModule());
+            new CollectTrustedContactsListenerModule(),
+            new FilteringRuleReferenceUpdaterListenerModule());
 
     private static final Module SCANNING_QUOTA_SEARCH_MODULE = new AbstractModule() {
         @Override

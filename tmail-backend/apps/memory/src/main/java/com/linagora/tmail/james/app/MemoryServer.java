@@ -115,6 +115,7 @@ import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscovery
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.listener.CollectTrustedContactsListenerModule;
+import com.linagora.tmail.listener.FilteringRuleReferenceUpdaterListenerModule;
 import com.linagora.tmail.mailbox.quota.memory.MemoryUserQuotaReporterModule;
 import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingModule;
 import com.linagora.tmail.team.TMailScanningQuotaSearcherModule;
@@ -210,7 +211,8 @@ public class MemoryServer {
             new TMailIMAPModule(),
             new MemoryDownloadAllModule(),
             new EventBusDisconnectorModule(),
-            new CollectTrustedContactsListenerModule());
+            new CollectTrustedContactsListenerModule(),
+            new FilteringRuleReferenceUpdaterListenerModule());
 
     public static void main(String[] args) throws Exception {
         MemoryConfiguration configuration = MemoryConfiguration.builder()
