@@ -36,6 +36,8 @@ import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
+import org.apache.james.backends.redis.RedisExtension;
+import org.apache.james.core.Username;
 import org.apache.james.jmap.JmapGuiceProbe;
 import org.apache.james.jmap.JmapRFCCommonRequests;
 import org.apache.james.mailbox.DefaultMailboxes;
@@ -43,7 +45,6 @@ import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.modules.MailboxProbeImpl;
-import org.apache.james.modules.RabbitMQExtension;
 import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.GuiceProbe;
 import org.apache.james.utils.WebAdminGuiceProbe;
@@ -56,7 +57,6 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.datastax.oss.driver.api.core.CqlSession;
-import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
@@ -67,7 +67,6 @@ import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 
 class UserDataTieringIT {
-
     static class CassandraTieringProbe implements GuiceProbe {
         private final CqlSession session;
 
@@ -76,59 +75,28 @@ class UserDataTieringIT {
             this.session = session;
         }
 
-        boolean hasEmailChanges(String accountId) {
-            return !session.execute(
-                session.prepare("SELECT account_id FROM email_change WHERE account_id = ?")
-                    .bind().set(0, accountId, TypeCodecs.TEXT))
-                .all().isEmpty();
-        }
-
-        boolean hasMailboxChanges(String accountId) {
-            return !session.execute(
-                session.prepare("SELECT account_id FROM mailbox_change WHERE account_id = ?")
-                    .bind().set(0, accountId, TypeCodecs.TEXT))
-                .all().isEmpty();
-        }
-
-        boolean hasFastViewEntry(String messageId) {
-            return !session.execute(
-                session.prepare("SELECT \"messageId\" FROM message_fast_view_projection WHERE \"messageId\" = ?")
-                    .bind(java.util.UUID.fromString(messageId)))
-                .all().isEmpty();
-        }
-
-        long countEmailChanges(String accountId) {
-            return session.execute(
-                session.prepare("SELECT COUNT(*) FROM email_change WHERE account_id = ?")
-                    .bind().set(0, accountId, TypeCodecs.TEXT))
+        long countEmailChanges() {
+            return session.execute("SELECT COUNT(*) FROM email_change")
                 .one().getLong(0);
         }
 
-        long countMailboxChanges(String accountId) {
-            return session.execute(
-                session.prepare("SELECT COUNT(*) FROM mailbox_change WHERE account_id = ?")
-                    .bind().set(0, accountId, TypeCodecs.TEXT))
+        long countMailboxChanges() {
+            return session.execute("SELECT COUNT(*) FROM mailbox_change")
                 .one().getLong(0);
         }
 
-        long countThread2(String username) {
-            return session.execute(
-                session.prepare("SELECT COUNT(*) FROM thread_2 WHERE username = ?")
-                    .bind().set(0, username, TypeCodecs.TEXT))
+        long countThread2() {
+            return session.execute("SELECT COUNT(*) FROM thread_2 ")
                 .one().getLong(0);
         }
 
         long countFastViewEntries() {
-            return session.execute(
-                session.prepare("SELECT COUNT(*) FROM message_fast_view_projection")
-                    .bind())
+            return session.execute("SELECT COUNT(*) FROM message_fast_view_projection")
                 .one().getLong(0);
         }
 
         long countAttachmentV2() {
-            return session.execute(
-                session.prepare("SELECT COUNT(*) FROM \"attachmentV2\"")
-                    .bind())
+            return session.execute("SELECT COUNT(*) FROM attachmentV2")
                 .one().getLong(0);
         }
     }
@@ -163,15 +131,16 @@ class UserDataTieringIT {
         DistributedJamesConfiguration.builder()
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
+            .jmapEnabled(true)
             .blobStore(BlobStoreConfiguration.builder()
                 .s3()
                 .noSecondaryS3BlobStore()
-                .disableCache()
+                .enableCache()
                 .deduplication()
                 .noCryptoConfig()
                 .enableSingleSave())
             .searchConfiguration(SearchConfiguration.openSearch())
-            .eventBusKeysChoice(EventBusKeysChoice.RABBITMQ)
+            .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .build())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
@@ -180,6 +149,7 @@ class UserDataTieringIT {
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
         .extension(new RabbitMQExtension())
+        .extension(new RedisExtension())
         .extension(new AwsS3BlobStoreExtension())
         .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
@@ -195,10 +165,10 @@ class UserDataTieringIT {
             .addUser(BOB, PASSWORD);
 
         MailboxProbeImpl mailboxProbe = server.getProbe(MailboxProbeImpl.class);
-        mailboxProbe.createMailbox(MailboxPath.forUser(org.apache.james.core.Username.of(BOB), DefaultMailboxes.INBOX));
+        mailboxProbe.createMailbox(MailboxPath.forUser(Username.of(BOB), DefaultMailboxes.INBOX));
 
         InputStream multipartEml = new ByteArrayInputStream(MULTIPART_WITH_ATTACHMENT.getBytes(StandardCharsets.US_ASCII));
-        messageId = mailboxProbe.appendMessage(BOB, MailboxPath.inbox(org.apache.james.core.Username.of(BOB)),
+        messageId = mailboxProbe.appendMessage(BOB, MailboxPath.inbox(Username.of(BOB)),
             multipartEml, OLD_INTERNAL_DATE, false, new Flags()).getMessageId();
 
         WebAdminGuiceProbe webAdminProbe = server.getProbe(WebAdminGuiceProbe.class);
@@ -216,9 +186,9 @@ class UserDataTieringIT {
         bobCredential = JmapRFCCommonRequests.getUserCredential(BOB, PASSWORD);
 
         CassandraTieringProbe probe = server.getProbe(CassandraTieringProbe.class);
-        CALMLY_AWAIT.until(() -> probe.hasEmailChanges(bobCredential.accountId()));
-        CALMLY_AWAIT.until(() -> probe.hasMailboxChanges(bobCredential.accountId()));
-        CALMLY_AWAIT.until(() -> probe.hasFastViewEntry(messageId.serialize()));
+        CALMLY_AWAIT.until(() -> probe.countEmailChanges() > 0);
+        CALMLY_AWAIT.until(() -> probe.countMailboxChanges() > 0);
+        CALMLY_AWAIT.until(() -> probe.countFastViewEntries() > 0);
     }
 
     @Test
@@ -269,9 +239,9 @@ class UserDataTieringIT {
 
         // All tiered tables are empty
         CassandraTieringProbe probe = server.getProbe(CassandraTieringProbe.class);
-        assertThat(probe.countEmailChanges(bobCredential.accountId())).isZero();
-        assertThat(probe.countMailboxChanges(bobCredential.accountId())).isZero();
-        assertThat(probe.countThread2(BOB)).isZero();
+        assertThat(probe.countEmailChanges()).isZero();
+        assertThat(probe.countMailboxChanges()).isZero();
+        assertThat(probe.countThread2()).isZero();
         assertThat(probe.countFastViewEntries()).isZero();
         assertThat(probe.countAttachmentV2()).isZero();
     }
