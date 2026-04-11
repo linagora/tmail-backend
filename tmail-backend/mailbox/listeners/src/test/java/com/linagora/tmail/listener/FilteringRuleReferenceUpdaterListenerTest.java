@@ -162,6 +162,62 @@ class FilteringRuleReferenceUpdaterListenerTest {
     }
 
     @Test
+    void shouldDropRuleWhenLastMailboxIsDeletedAndNoOtherActionsPresent() throws Exception {
+        MailboxSession session = mailboxManager.createSystemSession(BOB);
+        MailboxPath folderBPath = MailboxPath.forUser(BOB, "FolderB");
+        MailboxId folderBId = mailboxManager.createMailbox(folderBPath, session).orElseThrow();
+
+        Rule rule = Rule.builder()
+            .id(RULE_ID_1)
+            .name("Move to FolderB only")
+            .conditionGroup(Rule.Condition.of(Rule.Condition.FixedField.SUBJECT, Rule.Condition.Comparator.CONTAINS, "hello"))
+            .action(Rule.Action.builder()
+                .setAppendInMailboxes(Rule.Action.AppendInMailboxes.withMailboxIds(folderBId.serialize()))
+                .setMarkAsSeen(false)
+                .setMarkAsImportant(false)
+                .setReject(false)
+                .setWithKeywords(List.of())
+                .build())
+            .build();
+        Mono.from(filteringManagement.defineRulesForUser(BOB, List.of(rule), Optional.empty())).block();
+
+        mailboxManager.deleteMailbox(folderBPath, session);
+
+        List<Rule> remaining = Mono.from(filteringManagement.listRulesForUser(BOB))
+            .block()
+            .getRules();
+        assertThat(remaining).isEmpty();
+    }
+
+    @Test
+    void shouldPreserveRuleWithEmptyAppendInMailboxesWhenOtherActionsRemain() throws Exception {
+        MailboxSession session = mailboxManager.createSystemSession(BOB);
+        MailboxPath folderBPath = MailboxPath.forUser(BOB, "FolderB");
+        MailboxId folderBId = mailboxManager.createMailbox(folderBPath, session).orElseThrow();
+
+        Rule rule = Rule.builder()
+            .id(RULE_ID_1)
+            .name("Mark as seen and move to FolderB")
+            .conditionGroup(Rule.Condition.of(Rule.Condition.FixedField.SUBJECT, Rule.Condition.Comparator.CONTAINS, "hello"))
+            .action(Rule.Action.builder()
+                .setAppendInMailboxes(Rule.Action.AppendInMailboxes.withMailboxIds(folderBId.serialize()))
+                .setMarkAsSeen(true)
+                .build())
+            .build();
+        Mono.from(filteringManagement.defineRulesForUser(BOB, List.of(rule), Optional.empty())).block();
+
+        mailboxManager.deleteMailbox(folderBPath, session);
+
+        List<Rule> remaining = Mono.from(filteringManagement.listRulesForUser(BOB))
+            .block()
+            .getRules();
+        assertThat(remaining).hasSize(1);
+        Rule preserved = remaining.get(0);
+        assertThat(preserved.getAction().getAppendInMailboxes().getMailboxIds()).isEmpty();
+        assertThat(preserved.getAction().isMarkAsSeen()).isTrue();
+    }
+
+    @Test
     void shouldPreserveOtherActionFieldsWhenRemovingMailboxFromRule() throws Exception {
         MailboxSession session = mailboxManager.createSystemSession(BOB);
         MailboxPath folderBPath = MailboxPath.forUser(BOB, "FolderB");

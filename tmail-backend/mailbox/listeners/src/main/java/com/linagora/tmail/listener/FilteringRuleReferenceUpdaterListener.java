@@ -40,8 +40,10 @@ import reactor.core.publisher.Mono;
 /**
  * Listens to mailbox deletion events and removes any filtering rules that
  * reference the deleted mailbox. If removing the mailbox reference from a
- * rule's appendInMailboxes action leaves the list empty, the entire rule is
- * dropped.
+ * rule's appendInMailboxes action leaves the list empty, the rule is dropped
+ * only when no other actions (markAsSeen, markAsImportant, reject, withKeywords,
+ * forward, moveTo) remain; otherwise the rule is preserved with an empty
+ * appendInMailboxes list.
  */
 public class FilteringRuleReferenceUpdaterListener implements EventListener.ReactiveGroupEventListener {
 
@@ -95,9 +97,20 @@ public class FilteringRuleReferenceUpdaterListener implements EventListener.Reac
             .then();
     }
 
+    private boolean hasNonAppendActions(Rule rule) {
+        Rule.Action action = rule.getAction();
+        return action.isMarkAsSeen()
+            || action.isMarkAsImportant()
+            || action.isReject()
+            || !action.getWithKeywords().isEmpty()
+            || action.getForward().isPresent()
+            || action.getMoveTo().isPresent();
+    }
+
     /**
-     * Returns the rule with the deleted mailbox removed from its appendInMailboxes action,
-     * or empty if the rule's only mailbox target was the deleted mailbox.
+     * Returns the rule with the deleted mailbox removed from its appendInMailboxes action.
+     * The rule is dropped only when the appendInMailboxes list becomes empty AND no other
+     * actions (markAsSeen, markAsImportant, reject, withKeywords, forward, moveTo) remain.
      */
     private Optional<Rule> removeDeletedMailbox(Rule rule, String deletedMailboxId) {
         ImmutableList<String> originalMailboxIds =
@@ -111,7 +124,7 @@ public class FilteringRuleReferenceUpdaterListener implements EventListener.Reac
             .filter(id -> !id.equals(deletedMailboxId))
             .collect(ImmutableList.toImmutableList());
 
-        if (filteredMailboxIds.isEmpty()) {
+        if (filteredMailboxIds.isEmpty() && !hasNonAppendActions(rule)) {
             return Optional.empty();
         }
 
