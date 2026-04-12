@@ -1365,9 +1365,9 @@ The following data is cleared:
 - For each message older than the tiering period:
   - Fast view projection (subject, preview)
   - Header blob store cache entry
+  - Attachments projection (attachment are still parseable via the raw Mime message as a fallback)
 
-The operation is synchronous and returns once all deletions are complete. All errors on individual
-messages are silently ignored so that the operation is best-effort.
+The operation is synchronous and returns once all deletions are complete. 
 
 === Tier a user's data
 
