@@ -148,7 +148,7 @@ public class CassandraUserDataTieringService implements UserDataTieringService {
             .filter(metadata -> metadata.getInternalDate()
                 .map(d -> d.before(tieringDate))
                 .orElse(false))
-            .flatMap(metadata -> applyTiering(username, metadata))
+            .flatMap(metadata -> applyTiering(username, metadata), LOW_CONCURRENCY)
             .then();
     }
 
