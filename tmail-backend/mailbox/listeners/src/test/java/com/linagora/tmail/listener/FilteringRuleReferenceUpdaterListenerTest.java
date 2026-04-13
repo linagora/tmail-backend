@@ -19,15 +19,25 @@
 package com.linagora.tmail.listener;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import java.util.List;
 import java.util.Optional;
 
 import org.apache.james.core.Username;
+import org.apache.james.events.Event;
+import org.apache.james.events.EventBus;
+import org.apache.james.events.RegistrationKey;
 import org.apache.james.eventsourcing.eventstore.memory.InMemoryEventStore;
 import org.apache.james.jmap.api.filtering.FilteringManagement;
 import org.apache.james.jmap.api.filtering.Rule;
 import org.apache.james.jmap.api.filtering.impl.EventSourcingFilteringManagement;
+import org.apache.james.jmap.change.StateChangeEvent;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
@@ -46,15 +56,18 @@ class FilteringRuleReferenceUpdaterListenerTest {
 
     private MailboxManager mailboxManager;
     private FilteringManagement filteringManagement;
+    private EventBus jmapEventBus;
 
     @BeforeEach
     void setUp() {
         InMemoryIntegrationResources resources = InMemoryIntegrationResources.defaultResources();
         mailboxManager = resources.getMailboxManager();
         filteringManagement = new EventSourcingFilteringManagement(new InMemoryEventStore());
+        jmapEventBus = mock(EventBus.class);
+        when(jmapEventBus.dispatch(any(Event.class), any(RegistrationKey.class))).thenReturn(Mono.empty());
 
         FilteringRuleReferenceUpdaterListener listener =
-            new FilteringRuleReferenceUpdaterListener(filteringManagement);
+            new FilteringRuleReferenceUpdaterListener(filteringManagement, jmapEventBus);
         resources.getEventBus().register(listener);
     }
 
@@ -249,5 +262,45 @@ class FilteringRuleReferenceUpdaterListenerTest {
             .containsExactly(folderCId.serialize());
         assertThat(updatedRule.getAction().isMarkAsSeen()).isTrue();
         assertThat(updatedRule.getAction().isMarkAsImportant()).isTrue();
+    }
+
+    @Test
+    void shouldDispatchStateChangeEventWhenRulesAreUpdated() throws Exception {
+        MailboxSession session = mailboxManager.createSystemSession(BOB);
+        MailboxPath folderPath = MailboxPath.forUser(BOB, "FolderB");
+        MailboxId folderId = mailboxManager.createMailbox(folderPath, session).orElseThrow();
+
+        Rule rule = Rule.builder()
+            .id(RULE_ID_1)
+            .name("Move to FolderB")
+            .conditionGroup(Rule.Condition.of(Rule.Condition.FixedField.SUBJECT, Rule.Condition.Comparator.CONTAINS, "hello"))
+            .action(Rule.Action.of(Rule.Action.AppendInMailboxes.withMailboxIds(folderId.serialize())))
+            .build();
+        Mono.from(filteringManagement.defineRulesForUser(BOB, List.of(rule), Optional.empty())).block();
+
+        mailboxManager.deleteMailbox(folderPath, session);
+
+        verify(jmapEventBus).dispatch(argThat(event -> event instanceof StateChangeEvent), any(RegistrationKey.class));
+    }
+
+    @Test
+    void shouldNotDispatchStateChangeEventWhenNoRulesAreAffected() throws Exception {
+        MailboxSession session = mailboxManager.createSystemSession(BOB);
+        MailboxPath folderBPath = MailboxPath.forUser(BOB, "FolderB");
+        MailboxPath folderCPath = MailboxPath.forUser(BOB, "FolderC");
+        mailboxManager.createMailbox(folderBPath, session).orElseThrow();
+        MailboxId folderCId = mailboxManager.createMailbox(folderCPath, session).orElseThrow();
+
+        Rule rule = Rule.builder()
+            .id(RULE_ID_1)
+            .name("Move to FolderC")
+            .conditionGroup(Rule.Condition.of(Rule.Condition.FixedField.SUBJECT, Rule.Condition.Comparator.CONTAINS, "hello"))
+            .action(Rule.Action.of(Rule.Action.AppendInMailboxes.withMailboxIds(folderCId.serialize())))
+            .build();
+        Mono.from(filteringManagement.defineRulesForUser(BOB, List.of(rule), Optional.empty())).block();
+
+        mailboxManager.deleteMailbox(folderBPath, session);
+
+        verify(jmapEventBus, never()).dispatch(any(Event.class), any(RegistrationKey.class));
     }
 }
