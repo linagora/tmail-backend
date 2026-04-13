@@ -207,6 +207,7 @@ import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.CassandraTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.listener.CollectTrustedContactsListenerModule;
+import com.linagora.tmail.listener.FilteringRuleReferenceUpdaterListenerModule;
 import com.linagora.tmail.mailbox.opensearch.TmailOpenSearchMailboxMappingModule;
 import com.linagora.tmail.mailbox.quota.cassandra.CassandraUserQuotaReporterModule;
 import com.linagora.tmail.modules.data.CassandraKeywordEmailQueryViewModule;
@@ -390,7 +391,8 @@ public class DistributedServer {
             new TeamMailboxModule(),
             new TMailMailboxSortOrderProviderModule(),
             new TMailIMAPModule(),
-            new CollectTrustedContactsListenerModule());
+            new CollectTrustedContactsListenerModule(),
+            new FilteringRuleReferenceUpdaterListenerModule());
 
     public static void main(String[] args) throws Exception {
         DistributedJamesConfiguration configuration = DistributedJamesConfiguration.builder()
