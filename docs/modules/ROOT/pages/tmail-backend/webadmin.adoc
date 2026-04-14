@@ -1361,11 +1361,11 @@ derived or cached data that predates a given retention period.
 The following data is cleared:
 
 - JMAP `/changes` projection (`email_change` and `mailbox_change` tables) — fully deleted for the user
-- Thread guessing table (`thread_2`) — fully deleted for the user
 - For each message older than the tiering period:
   - Fast view projection (subject, preview)
   - Header blob store cache entry
   - Attachments projection (attachment are still parseable via the raw Mime message as a fallback)
+  - Thread guessing table (`thread_2`) — deleted for this message
 
 The operation is synchronous and returns once all deletions are complete. 
 
