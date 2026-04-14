@@ -65,10 +65,33 @@ Add in `jvm.properties` configuration file:
 james.tcnative.enabled=true
 ```
 
+### Webadmin granular access control
+
+In WebAdmin, two new configurations have been added to manage access in a more granular way:
+
+- `password.readonly`: If provided, only GET and HEAD request are allowed, others operations are rejected.
+- `password.nodelete`: If provided, all operations except DELETE are permitted. 
+
+If you need granular password control in WebAdmin, add in `webadmin.properties`:
+
+```
+# Password authentication settings
+# Configure one or more passwords (comma separated) for WebAdmin authentication
+password=secret1,secret2
+
+# Read-only passwords - only allow GET requests
+# These passwords can only perform read operations
+password.readonly=aaa,bbb
+
+# No-delete passwords - allow all operations except DELETE
+# These passwords can perform read and write operations but not delete
+password.nodelete=ccc,ddd
+```
+
 ## Tmail deployment
 
 Please update your tmail-backend docker image to the following version: `linagora/tmail-backend:distributed-1.0.17`
 
 ## References
 
-* Official Twake Mail release notes: [TBD]
+* Official Twake Mail release notes: https://github.com/linagora/tmail-backend/releases/tag/1.0.17
