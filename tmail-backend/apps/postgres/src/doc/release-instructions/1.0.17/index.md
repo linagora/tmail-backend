@@ -79,4 +79,4 @@ Please update your tmail-backend docker image to the following version: `linagor
 
 ## References
 
-* Official Twake Mail release notes: [TBD]
+* Official Twake Mail release notes: https://github.com/linagora/tmail-backend/releases/tag/1.0.17
