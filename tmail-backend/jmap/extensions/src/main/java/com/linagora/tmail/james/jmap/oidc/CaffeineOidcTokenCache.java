@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.oidc;
 
+import java.util.List;
 import java.util.Optional;
 
 import jakarta.inject.Inject;
@@ -35,7 +36,6 @@ import com.google.common.collect.HashMultimap;
 import com.google.common.collect.Multimaps;
 import com.google.common.collect.SetMultimap;
 
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
@@ -71,9 +71,12 @@ public class CaffeineOidcTokenCache implements OidcTokenCache {
 
     @Override
     public Mono<Void> invalidate(Sid sid) {
-        return Flux.fromIterable(sidToTokens.get(sid))
-            .collectList()
-            .flatMap(tokenList -> Mono.fromRunnable(() -> cacheToken.synchronous().invalidateAll(tokenList)).subscribeOn(Schedulers.boundedElastic()))
+        List<Token> snapshot;
+        synchronized (sidToTokens) {
+            snapshot = List.copyOf(sidToTokens.get(sid));
+        }
+        return Mono.fromRunnable(() -> cacheToken.synchronous().invalidateAll(snapshot))
+            .subscribeOn(Schedulers.boundedElastic())
             .then(Mono.fromRunnable(() -> sidToTokens.removeAll(sid)))
             .then();
     }
