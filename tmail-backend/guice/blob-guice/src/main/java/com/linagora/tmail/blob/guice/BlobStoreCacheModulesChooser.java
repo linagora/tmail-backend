@@ -65,6 +65,11 @@ public class BlobStoreCacheModulesChooser {
     private static final Logger LOGGER = LoggerFactory.getLogger(BlobStoreCacheModulesChooser.class);
 
     static class CacheDisabledModule extends AbstractModule {
+        @Override
+        protected void configure() {
+            bind(BlobStoreCacheCleaner.class).to(NoopBlobStoreCacheCleaner.class);
+        }
+
         @Provides
         @Named(MetricableBlobStore.BLOB_STORE_IMPLEMENTATION)
         @Singleton
@@ -78,6 +83,7 @@ public class BlobStoreCacheModulesChooser {
         protected void configure() {
             bind(CassandraBlobStoreCache.class).in(Scopes.SINGLETON);
             bind(BlobStoreCache.class).to(CassandraBlobStoreCache.class);
+            bind(BlobStoreCacheCleaner.class).to(CassandraBlobStoreCacheCleaner.class);
 
             Multibinder.newSetBinder(binder(), CassandraDataDefinition.class, Names.named(InjectionNames.CACHE))
                 .addBinding()

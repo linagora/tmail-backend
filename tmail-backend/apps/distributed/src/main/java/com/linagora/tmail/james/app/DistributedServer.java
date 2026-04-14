@@ -211,6 +211,7 @@ import com.linagora.tmail.listener.FilteringRuleReferenceUpdaterListenerModule;
 import com.linagora.tmail.mailbox.opensearch.TmailOpenSearchMailboxMappingModule;
 import com.linagora.tmail.mailbox.quota.cassandra.CassandraUserQuotaReporterModule;
 import com.linagora.tmail.modules.data.CassandraKeywordEmailQueryViewModule;
+import com.linagora.tmail.modules.data.CassandraUserDataTieringModule;
 import com.linagora.tmail.modules.data.TMailCassandraDelegationStoreModule;
 import com.linagora.tmail.modules.data.TMailCassandraDeletedMessageVaultModule;
 import com.linagora.tmail.modules.data.TMailCassandraDomainListModule;
@@ -226,6 +227,7 @@ import com.linagora.tmail.webadmin.TeamMailboxVaultRoutesModule;
 import com.linagora.tmail.webadmin.archival.InboxArchivalTaskModule;
 import com.linagora.tmail.webadmin.cleanup.MailboxesCleanupModule;
 import com.linagora.tmail.webadmin.contact.aucomplete.ContactIndexingModule;
+import com.linagora.tmail.webadmin.data.UserDataTieringRoutesModule;
 import com.linagora.tmail.webadmin.jmap.PopulateKeywordEmailQueryViewTaskModule;
 import com.linagora.tmail.webadmin.label.LabelRoutesModule;
 import com.linagora.tmail.webadmin.mailbox.MailboxResourcesLocationRoutesModule;
@@ -288,7 +290,8 @@ public class DistributedServer {
         new InboxArchivalTaskModule(),
         new VacationRoutesModule(),
         new ContactIndexingModule(),
-        new PopulateKeywordEmailQueryViewTaskModule());
+        new PopulateKeywordEmailQueryViewTaskModule(),
+        new UserDataTieringRoutesModule());
 
     public static final Module JMAP = Modules.override(
         new TMailJMAPModule(),
@@ -392,7 +395,8 @@ public class DistributedServer {
             new TMailMailboxSortOrderProviderModule(),
             new TMailIMAPModule(),
             new CollectTrustedContactsListenerModule(),
-            new FilteringRuleReferenceUpdaterListenerModule());
+            new FilteringRuleReferenceUpdaterListenerModule(),
+            new CassandraUserDataTieringModule());
 
     public static void main(String[] args) throws Exception {
         DistributedJamesConfiguration configuration = DistributedJamesConfiguration.builder()
