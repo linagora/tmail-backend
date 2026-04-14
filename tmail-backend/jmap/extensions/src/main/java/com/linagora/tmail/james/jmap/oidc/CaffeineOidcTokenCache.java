@@ -73,7 +73,7 @@ public class CaffeineOidcTokenCache implements OidcTokenCache {
     public Mono<Void> invalidate(Sid sid) {
         return Flux.fromIterable(sidToTokens.get(sid))
             .collectList()
-            .flatMap(tokenList -> Mono.fromRunnable(() -> cacheToken.synchronous().invalidateAll(tokenList)))
+            .flatMap(tokenList -> Mono.fromRunnable(() -> cacheToken.synchronous().invalidateAll(tokenList)).subscribeOn(Schedulers.boundedElastic()))
             .then(Mono.fromRunnable(() -> sidToTokens.removeAll(sid)))
             .then();
     }
