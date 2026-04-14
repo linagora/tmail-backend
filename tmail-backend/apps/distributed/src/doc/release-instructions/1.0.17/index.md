@@ -57,9 +57,11 @@ If you wish to enable it, in `rabbitmq.properties`:
 event.bus.partition.count=4
 ```
 
-### Boring SSL (Mandatory)
+### Boring SSL
 
-Add in `jvm.properties` configuration file:
+This proves to provide better SSL handshake performance overall, and is recommended to enable.
+
+If you want so, add in `jvm.properties` configuration file:
 
 ```
 james.tcnative.enabled=true
