@@ -461,6 +461,10 @@
                                 <from>src/main/eml-template</from>
                                 <into>/root/eml-template</into>
                             </path>
+                            <path>
+                                <from>src/doc/release-instructions</from>
+                                <into>/root/doc/release-instructions</into>
+                            </path>
                         </paths>
                         <permissions>
                             <permission>
