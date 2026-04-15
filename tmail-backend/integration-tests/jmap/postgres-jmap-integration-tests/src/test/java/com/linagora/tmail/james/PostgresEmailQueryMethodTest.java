@@ -77,6 +77,7 @@ public class PostgresEmailQueryMethodTest implements EmailQueryMethodContract {
         .extension(PostgresExtension.empty())
         .extension(new DockerOpenSearchExtension())
         .extension(new ClockExtension())
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @Test
