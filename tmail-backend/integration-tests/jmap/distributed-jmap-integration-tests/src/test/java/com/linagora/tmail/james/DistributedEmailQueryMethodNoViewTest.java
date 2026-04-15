@@ -41,11 +41,10 @@ import com.linagora.tmail.james.app.DistributedServer;
 import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.app.RabbitMQExtension;
-import com.linagora.tmail.james.common.KeywordEmailQueryMethodContract;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
-public class DistributedEmailQueryMethodNoViewTest implements EmailQueryMethodContract, KeywordEmailQueryMethodContract {
+public class DistributedEmailQueryMethodNoViewTest implements EmailQueryMethodContract {
     @RegisterExtension
     static JamesServerExtension testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
         DistributedJamesConfiguration.builder()
