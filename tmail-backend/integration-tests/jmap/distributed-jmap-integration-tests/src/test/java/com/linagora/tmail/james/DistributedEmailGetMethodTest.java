@@ -28,13 +28,13 @@ package com.linagora.tmail.james;
 
 import static org.apache.james.MailsShouldBeWellReceived.CALMLY_AWAIT;
 import static org.apache.james.MailsShouldBeWellReceived.DOMAIN;
-import static org.apache.james.MailsShouldBeWellReceived.JAMES_USER;
 import static org.apache.james.MailsShouldBeWellReceived.PASSWORD;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Set;
+import java.util.UUID;
 
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
@@ -151,6 +151,7 @@ public class DistributedEmailGetMethodTest implements EmailGetMethodContract {
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding()
                 .to(MessageIdManagerProbe.class)))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @Override
@@ -165,13 +166,14 @@ public class DistributedEmailGetMethodTest implements EmailGetMethodContract {
             .getTestingSession()
             .recordStatements();
 
+        String jamesUser = "james-user-" + UUID.randomUUID() + "@" + DOMAIN;
         server.getProbe(DataProbeImpl.class).fluent()
             .addDomain(DOMAIN)
-            .addUser(JAMES_USER, PASSWORD);
+            .addUser(jamesUser, PASSWORD);
 
         MailboxProbeImpl mailboxProbe = server.getProbe(MailboxProbeImpl.class);
-        mailboxProbe.createMailbox("#private", JAMES_USER, DefaultMailboxes.INBOX);
-        MessageId messageId = mailboxProbe.appendMessage(JAMES_USER, MailboxPath.inbox(Username.of(JAMES_USER)),
+        mailboxProbe.createMailbox("#private", jamesUser, DefaultMailboxes.INBOX);
+        MessageId messageId = mailboxProbe.appendMessage(jamesUser, MailboxPath.inbox(Username.of(jamesUser)),
             MessageManager.AppendCommand.from(Message.Builder.of()
                 .setSubject("Subject")
                 .setBody("This is content of the message", StandardCharsets.UTF_8)
@@ -196,13 +198,14 @@ public class DistributedEmailGetMethodTest implements EmailGetMethodContract {
             .getTestingSession()
             .recordStatements();
 
+        String jamesUser = "james-user-" + UUID.randomUUID() + "@" + DOMAIN;
         server.getProbe(DataProbeImpl.class).fluent()
             .addDomain(DOMAIN)
-            .addUser(JAMES_USER, PASSWORD);
+            .addUser(jamesUser, PASSWORD);
 
         MailboxProbeImpl mailboxProbe = server.getProbe(MailboxProbeImpl.class);
-        mailboxProbe.createMailbox("#private", JAMES_USER, DefaultMailboxes.INBOX);
-        MessageId messageId = mailboxProbe.appendMessage(JAMES_USER, MailboxPath.inbox(Username.of(JAMES_USER)),
+        mailboxProbe.createMailbox("#private", jamesUser, DefaultMailboxes.INBOX);
+        MessageId messageId = mailboxProbe.appendMessage(jamesUser, MailboxPath.inbox(Username.of(jamesUser)),
                 MessageManager.AppendCommand.from(Message.Builder.of()
                     .setSubject("Subject")
                     .setBody("This is content of the message", StandardCharsets.UTF_8)
@@ -215,7 +218,7 @@ public class DistributedEmailGetMethodTest implements EmailGetMethodContract {
                 .isPresent());
 
         server.getProbe(MessageIdManagerProbe.class)
-            .delete(Set.of(messageId), Username.of(JAMES_USER))
+            .delete(Set.of(messageId), Username.of(jamesUser))
             .block();
 
         CALMLY_AWAIT
