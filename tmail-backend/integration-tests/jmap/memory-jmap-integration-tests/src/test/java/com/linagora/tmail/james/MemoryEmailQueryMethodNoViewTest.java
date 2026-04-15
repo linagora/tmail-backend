@@ -61,6 +61,7 @@ public class MemoryEmailQueryMethodNoViewTest implements EmailQueryMethodContrac
                     .randomPort()
                     .disableEmailQueryView()
                     .build())))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @Test

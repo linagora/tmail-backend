@@ -41,6 +41,7 @@ import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
+import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class DistributedEmailQueryMethodTest implements EmailQueryMethodContract {
     @RegisterExtension
@@ -63,6 +64,8 @@ public class DistributedEmailQueryMethodTest implements EmailQueryMethodContract
         .extension(new RabbitMQExtension())
         .extension(new RedisExtension())
         .extension(new AwsS3BlobStoreExtension())
-        .server(DistributedServer::createServer)
+        .server(configuration -> DistributedServer.createServer(configuration)
+            .overrideWith(new LinagoraTestJMAPServerModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }
