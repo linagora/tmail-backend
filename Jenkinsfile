@@ -1,6 +1,10 @@
 pipeline {
     agent any
 
+    tools {
+        jdk 'jdk_25'
+    }
+
     environment {
         DOCKER_HUB_CREDENTIAL = credentials('dockerHub')
     }
