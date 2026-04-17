@@ -1081,6 +1081,48 @@ Valid status includes:
 - `FAILED`: Error encountered while executing this step. Check the logs.
 - `ABORTED`: Won't be executed because of previous step failures.
 
+== Domain-scoped task management
+
+In multi-tenant deployments, a domain administrator may need to inspect or cancel tasks that belong to their domain without having access to the global `/tasks` API. The following endpoints expose domain-scoped task operations.
+
+A task is considered to belong to a domain when its additional information references a user of that domain, or the domain itself. If the task exists but does not belong to the requested domain, a `404` is returned — this is intentional and avoids leaking information about tasks belonging to other domains.
+
+=== Getting a domain-scoped task details
+
+....
+curl -XGET http://ip:port/domains/domain.tld/tasks/3294a976-ce63-491e-bd52-1b6f465ed7a2
+....
+
+Response codes:
+
+- `200` The task belongs to the domain; its execution report is returned
+- `400` Invalid task ID
+- `404` The domain does not exist, the task ID was not found, or the task does not belong to the domain
+
+=== Awaiting a domain-scoped task
+
+....
+curl -XGET http://ip:port/domains/domain.tld/tasks/3294a976-ce63-491e-bd52-1b6f465ed7a2/await
+....
+
+Response codes:
+
+- `200` The task belongs to the domain and completed (successfully or not)
+- `400` Invalid task ID
+- `404` The domain does not exist, the task ID was not found, or the task does not belong to the domain
+
+=== Cancelling a domain-scoped task
+
+....
+curl -XDELETE http://ip:port/domains/domain.tld/tasks/3294a976-ce63-491e-bd52-1b6f465ed7a2
+....
+
+Response codes:
+
+- `204` Cancellation request was accepted
+- `400` Invalid task ID
+- `404` The domain does not exist, the task ID was not found, or the task does not belong to the domain
+
 == Mailbox and message location
 
 === Look up a mailbox by ID

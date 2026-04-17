@@ -260,6 +260,10 @@
             <artifactId>tmail-webadmin-team-mailboxes</artifactId>
         </dependency>
         <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>tmail-webadmin-tmail-tasks</artifactId>
+        </dependency>
+        <dependency>
             <groupId>${james.groupId}</groupId>
             <artifactId>apache-mailet-icalendar</artifactId>
         </dependency>

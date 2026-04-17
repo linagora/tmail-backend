@@ -147,6 +147,10 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>tmail-webadmin-tmail-tasks</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>webadmin-email-address-contact</artifactId>
         </dependency>
         <dependency>
