@@ -31,6 +31,7 @@
         <class>com.linagora.tmail.listener.rag.LlmMailClassifierListener</class>
         <configuration>
             <!-- Optional: override the default system prompt -->
+            <systemPromptUrl>https://raw.githubusercontent.com/linagora/aiprompts/main/label-categorization/latest.json</systemPromptUrl>
             <systemPrompt>Custom LLM classifier instruction</systemPrompt>
             <!-- Optional: maximum characters of body sent to LLM (default 4000). Email body is truncated if longer. -->
             <maxBodyLength>4000</maxBodyLength>
