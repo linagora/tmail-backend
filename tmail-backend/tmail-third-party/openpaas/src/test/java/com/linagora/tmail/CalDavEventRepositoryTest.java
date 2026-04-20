@@ -57,6 +57,7 @@ import com.linagora.tmail.dav.DavUser;
 import com.linagora.tmail.dav.DavUid;
 import com.linagora.tmail.dav.OpenPaasDavUserProvider;
 import com.linagora.tmail.james.jmap.AttendanceStatus;
+import com.linagora.tmail.james.jmap.CalendarEventCancelledException;
 import com.linagora.tmail.james.jmap.CalendarEventNotFoundException;
 import com.linagora.tmail.james.jmap.calendar.CalendarEventHelper;
 import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier;
@@ -822,6 +823,35 @@ class CalDavEventRepositoryTest {
                 "ATTENDEE;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2;PARTSTAT=ACCEPTED:mailto:" + openPaasUser.email().asString() +"\n" +
                 "END:VEVENT\n" +
                 "END:VCALENDAR\n".trim());
+    }
+
+    @Test
+    void setAttendanceStatusShouldThrowWhenEventIsCancelled() {
+        String eventUid = UUID.randomUUID().toString();
+        String cancelledCalendar = "BEGIN:VCALENDAR\n" +
+            "VERSION:2.0\n" +
+            "PRODID:-//Sabre//Sabre VObject 4.5.7//EN\n" +
+            "BEGIN:VEVENT\n" +
+            "UID:" + eventUid + "\n" +
+            "DTSTART;TZID=Europe/Paris:20260424T123000\n" +
+            "DTEND;TZID=Europe/Paris:20260424T133000\n" +
+            "ORGANIZER;CN=organizer:mailto:organizer@open-paas.org\n" +
+            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2:mailto:" + openPaasUser.email().asString() + "\n" +
+            "STATUS:CANCELLED\n" +
+            "DTSTAMP:20260420T134701Z\n" +
+            "END:VEVENT\n" +
+            "END:VCALENDAR\n";
+
+        davClient.caldav(openPaasUser.email()).createCalendar(
+                URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + eventUid + ".ics"),
+                CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(cancelledCalendar.getBytes(StandardCharsets.UTF_8))))
+            .block();
+
+        BlobId blobId = setupCalendarResolver(eventUid);
+
+        assertThatThrownBy(() -> testee.setAttendanceStatus(testUser, AttendanceStatus.Accepted, blobId).block())
+            .isInstanceOf(CalendarEventCancelledException.class)
+            .hasMessageContaining("Calendar event is cancelled");
     }
 
     private Calendar stringAsCalendar(String input) {

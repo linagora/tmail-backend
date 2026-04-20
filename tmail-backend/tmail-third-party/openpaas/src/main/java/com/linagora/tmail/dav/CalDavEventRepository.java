@@ -39,6 +39,7 @@ import org.slf4j.LoggerFactory;
 import com.linagora.tmail.dav.cal.FreeBusyRequest;
 import com.linagora.tmail.dav.cal.FreeBusyResponse;
 import com.linagora.tmail.james.jmap.AttendanceStatus;
+import com.linagora.tmail.james.jmap.CalendarEventCancelledException;
 import com.linagora.tmail.james.jmap.CalendarEventNotFoundException;
 import com.linagora.tmail.james.jmap.CalendarEventRepository;
 import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier;
@@ -49,6 +50,9 @@ import com.linagora.tmail.james.jmap.model.CalendarUidField;
 import com.linagora.tmail.james.jmap.model.EventAttendanceStatusEntry;
 import com.linagora.tmail.james.jmap.model.RecurrenceIdField;
 
+import net.fortuna.ical4j.model.Component;
+import net.fortuna.ical4j.model.component.VEvent;
+import net.fortuna.ical4j.model.property.Status;
 import net.fortuna.ical4j.model.property.immutable.ImmutableMethod;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -152,15 +156,34 @@ public class CalDavEventRepository implements CalendarEventRepository {
         return davUserProvider.provide(username)
             .flatMap(davUser -> davClient.caldav(davUser.username()).getCalendarObjects(davUser, DavUid.fromCalendarUidField(eventUid))
                 .switchIfEmpty(Flux.error(new CalendarEventNotFoundException(username, eventUid)))
-                .flatMap(calendarObject -> davClient.caldav(davUser.username()).updateCalendarObject(calendarObject.uri(), updateEventOperator)
-                    .thenReturn(Boolean.TRUE)
-                    .onErrorResume(DavClientException.PermissionDenied.class, e -> {
-                        LOGGER.debug("Skipping calendar object '{}': permission denied, likely a delegated calendar", calendarObject.uri());
-                        return Mono.empty();
-                    }))
+                .flatMap(calendarObject -> doUpdateCalendarObject(davUser, calendarObject, username, eventUid, updateEventOperator))
                 .next()
                 .switchIfEmpty(Mono.error(new CalendarEventNotFoundException(username, eventUid)))
                 .then());
+    }
+
+    private Mono<Boolean> doUpdateCalendarObject(DavUser davUser, DavCalendarObject calendarObject,
+                                                  Username username, CalendarUidField eventUid,
+                                                  UnaryOperator<DavCalendarObject> updateEventOperator) {
+        if (isCancelled(calendarObject)) {
+            return Mono.error(new CalendarEventCancelledException(username, eventUid));
+        }
+        return davClient.caldav(davUser.username()).updateCalendarObject(calendarObject.uri(), updateEventOperator)
+            .thenReturn(Boolean.TRUE)
+            .onErrorResume(DavClientException.PermissionDenied.class, e -> {
+                LOGGER.debug("Skipping calendar object '{}': permission denied, likely a delegated calendar", calendarObject.uri());
+                return Mono.empty();
+            });
+    }
+
+    private boolean isCancelled(DavCalendarObject calendarObject) {
+        return calendarObject.calendarData().getComponents(Component.VEVENT).stream()
+            .filter(c -> c instanceof VEvent)
+            .map(c -> (VEvent) c)
+            .findFirst()
+            .map(VEvent::getStatus)
+            .map(status -> Status.VALUE_CANCELLED.equals(status.getValue()))
+            .orElse(false);
     }
 
 }
