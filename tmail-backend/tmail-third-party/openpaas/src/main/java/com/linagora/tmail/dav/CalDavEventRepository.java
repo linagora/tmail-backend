@@ -168,14 +168,19 @@ public class CalDavEventRepository implements CalendarEventRepository {
                                                   Username username, CalendarUidField eventUid,
                                                   UnaryOperator<DavCalendarObject> updateEventOperator,
                                                   CalendarEventModifier eventModifier) {
-        if (isCancelled(calendarObject, eventModifier)) {
-            return Mono.error(new CalendarEventCancelledException(username, eventUid));
-        }
+        // Cancellation is checked after the write: PermissionDenied is the only reliable delegated-calendar guard.
+        // Writing PARTSTAT on a cancelled event is acceptable (invisible to the user); the error below prevents a false success.
         return davClient.caldav(davUser.username()).updateCalendarObject(calendarObject.uri(), updateEventOperator)
             .thenReturn(Boolean.TRUE)
             .onErrorResume(DavClientException.PermissionDenied.class, e -> {
                 LOGGER.debug("Skipping calendar object '{}': permission denied, likely a delegated calendar", calendarObject.uri());
                 return Mono.empty();
+            })
+            .flatMap(updated -> {
+                if (isCancelled(calendarObject, eventModifier)) {
+                    return Mono.<Boolean>error(new CalendarEventCancelledException(username, eventUid));
+                }
+                return Mono.just(Boolean.TRUE);
             });
     }
 
