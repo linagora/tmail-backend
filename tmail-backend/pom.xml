@@ -99,6 +99,7 @@
         <module>webadmin/webadmin-jmap-labels</module>
         <module>webadmin/webadmin-team-mailboxes</module>
         <module>webadmin/webadmin-rate-limit</module>
+        <module>webadmin/webadmin-tmail-tasks</module>
         <module>healthcheck</module>
 
         <module>event-bus-redis</module>
@@ -316,6 +317,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>tmail-webadmin-team-mailboxes</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>tmail-webadmin-tmail-tasks</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

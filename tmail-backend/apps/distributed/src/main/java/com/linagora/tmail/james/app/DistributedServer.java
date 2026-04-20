@@ -227,6 +227,7 @@ import com.linagora.tmail.webadmin.TeamMailboxVaultRoutesModule;
 import com.linagora.tmail.webadmin.archival.InboxArchivalTaskModule;
 import com.linagora.tmail.webadmin.cleanup.MailboxesCleanupModule;
 import com.linagora.tmail.webadmin.contact.aucomplete.ContactIndexingModule;
+import com.linagora.tmail.webadmin.data.DomainTasksModule;
 import com.linagora.tmail.webadmin.data.UserDataTieringRoutesModule;
 import com.linagora.tmail.webadmin.jmap.PopulateKeywordEmailQueryViewTaskModule;
 import com.linagora.tmail.webadmin.label.LabelRoutesModule;
@@ -286,6 +287,7 @@ public class DistributedServer {
         new EmailAddressContactRoutesModule(),
         new UserIdentityModule(),
         new MailboxesCleanupModule(),
+        new DomainTasksModule(),
         new MailboxResourcesLocationRoutesModule(),
         new InboxArchivalTaskModule(),
         new VacationRoutesModule(),
