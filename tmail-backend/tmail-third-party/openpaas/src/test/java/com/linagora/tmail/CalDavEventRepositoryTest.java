@@ -854,6 +854,82 @@ class CalDavEventRepositoryTest {
             .hasMessageContaining("Calendar event is cancelled");
     }
 
+    @Test
+    void setAttendanceStatusShouldThrowWhenTargetedRecurrenceOverrideIsCancelled() {
+        String eventUid = UUID.randomUUID().toString();
+        String calendarWithCancelledOverride = "BEGIN:VCALENDAR\n" +
+            "VERSION:2.0\n" +
+            "PRODID:-//Sabre//Sabre VObject 4.5.7//EN\n" +
+            "BEGIN:VEVENT\n" +
+            "UID:" + eventUid + "\n" +
+            "DTSTART;TZID=Europe/Paris:20250328T090000\n" +
+            "DTEND;TZID=Europe/Paris:20250328T100000\n" +
+            "RRULE:FREQ=WEEKLY;COUNT=4;BYDAY=WE\n" +
+            "ORGANIZER;CN=organizer:mailto:organizer@open-paas.org\n" +
+            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:" + openPaasUser.email().asString() + "\n" +
+            "END:VEVENT\n" +
+            "BEGIN:VEVENT\n" +
+            "UID:" + eventUid + "\n" +
+            "DTSTART;TZID=Europe/Paris:20250409T090000\n" +
+            "DTEND;TZID=Europe/Paris:20250409T100000\n" +
+            "RECURRENCE-ID;TZID=Europe/Paris:20250409T090000\n" +
+            "ORGANIZER;CN=organizer:mailto:organizer@open-paas.org\n" +
+            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:" + openPaasUser.email().asString() + "\n" +
+            "STATUS:CANCELLED\n" +
+            "DTSTAMP:20250401T000000Z\n" +
+            "END:VEVENT\n" +
+            "END:VCALENDAR\n";
+
+        davClient.caldav(openPaasUser.email()).createCalendar(
+                URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + eventUid + ".ics"),
+                CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(calendarWithCancelledOverride.getBytes(StandardCharsets.UTF_8))))
+            .block();
+
+        BlobId blobId = setupCalendarResolver(eventUid, Optional.of("RECURRENCE-ID;TZID=Europe/Paris:20250409T090000"));
+
+        assertThatThrownBy(() -> testee.setAttendanceStatus(testUser, AttendanceStatus.Accepted, blobId).block())
+            .isInstanceOf(CalendarEventCancelledException.class)
+            .hasMessageContaining("Calendar event is cancelled");
+    }
+
+    @Test
+    void setAttendanceStatusShouldSucceedForMasterWhenOnlyOverrideIsCancelled() {
+        String eventUid = UUID.randomUUID().toString();
+        String calendarWithCancelledOverride = "BEGIN:VCALENDAR\n" +
+            "VERSION:2.0\n" +
+            "PRODID:-//Sabre//Sabre VObject 4.5.7//EN\n" +
+            "BEGIN:VEVENT\n" +
+            "UID:" + eventUid + "\n" +
+            "DTSTART;TZID=Europe/Paris:20250328T090000\n" +
+            "DTEND;TZID=Europe/Paris:20250328T100000\n" +
+            "RRULE:FREQ=WEEKLY;COUNT=4;BYDAY=WE\n" +
+            "ORGANIZER;CN=organizer:mailto:organizer@open-paas.org\n" +
+            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:" + openPaasUser.email().asString() + "\n" +
+            "END:VEVENT\n" +
+            "BEGIN:VEVENT\n" +
+            "UID:" + eventUid + "\n" +
+            "DTSTART;TZID=Europe/Paris:20250409T090000\n" +
+            "DTEND;TZID=Europe/Paris:20250409T100000\n" +
+            "RECURRENCE-ID;TZID=Europe/Paris:20250409T090000\n" +
+            "ORGANIZER;CN=organizer:mailto:organizer@open-paas.org\n" +
+            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:" + openPaasUser.email().asString() + "\n" +
+            "STATUS:CANCELLED\n" +
+            "DTSTAMP:20250401T000000Z\n" +
+            "END:VEVENT\n" +
+            "END:VCALENDAR\n";
+
+        davClient.caldav(openPaasUser.email()).createCalendar(
+                URI.create("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + eventUid + ".ics"),
+                CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(calendarWithCancelledOverride.getBytes(StandardCharsets.UTF_8))))
+            .block();
+
+        // No RECURRENCE-ID in the resolver: targets the master event, which is not cancelled
+        BlobId blobId = setupCalendarResolver(eventUid);
+
+        assertThatCode(() -> testee.setAttendanceStatus(testUser, AttendanceStatus.Accepted, blobId).block())
+            .doesNotThrowAnyException();
+    }
+
     private Calendar stringAsCalendar(String input) {
         return CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(input.getBytes(StandardCharsets.UTF_8)));
     }
