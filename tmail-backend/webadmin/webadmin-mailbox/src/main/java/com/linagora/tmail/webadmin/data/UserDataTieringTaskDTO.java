@@ -19,6 +19,7 @@
 package com.linagora.tmail.webadmin.data;
 
 import java.time.Duration;
+import java.util.Optional;
 
 import org.apache.james.core.Username;
 import org.apache.james.json.DTOModule;
@@ -31,14 +32,33 @@ import com.linagora.tmail.tiering.UserDataTieringService;
 public record UserDataTieringTaskDTO(
     @JsonProperty("type") String type,
     @JsonProperty("username") String username,
-    @JsonProperty("tieringSeconds") long tieringSeconds
+    @JsonProperty("tieringSeconds") long tieringSeconds,
+    @JsonProperty("runningOptions") Optional<RunningOptionsDTO> runningOptions
 ) implements TaskDTO {
+
+    public record RunningOptionsDTO(@JsonProperty("messagesPerSecond") int messagesPerSecond) {
+        public static RunningOptionsDTO of(RunningOptions options) {
+            return new RunningOptionsDTO(options.messagesPerSecond());
+        }
+
+        public RunningOptions asDomainObject() {
+            return new RunningOptions(messagesPerSecond);
+        }
+    }
 
     public static TaskDTOModule<UserDataTieringTask, UserDataTieringTaskDTO> module(UserDataTieringService service) {
         return DTOModule.forDomainObject(UserDataTieringTask.class)
             .convertToDTO(UserDataTieringTaskDTO.class)
-            .toDomainObjectConverter(dto -> new UserDataTieringTask(service, Username.of(dto.username()), Duration.ofSeconds(dto.tieringSeconds())))
-            .toDTOConverter((task, type) -> new UserDataTieringTaskDTO(type, task.getUsername().asString(), task.getTiering().getSeconds()))
+            .toDomainObjectConverter(dto -> new UserDataTieringTask(
+                service,
+                Username.of(dto.username()),
+                Duration.ofSeconds(dto.tieringSeconds()),
+                dto.runningOptions().map(RunningOptionsDTO::asDomainObject).orElse(RunningOptions.DEFAULT)))
+            .toDTOConverter((task, type) -> new UserDataTieringTaskDTO(
+                type,
+                task.getUsername().asString(),
+                task.getTiering().getSeconds(),
+                Optional.of(RunningOptionsDTO.of(task.getRunningOptions()))))
             .typeName(UserDataTieringTask.TASK_TYPE.asString())
             .withFactory(TaskDTOModule::new);
     }

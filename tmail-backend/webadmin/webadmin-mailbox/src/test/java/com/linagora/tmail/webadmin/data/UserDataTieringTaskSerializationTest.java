@@ -38,12 +38,15 @@ class UserDataTieringTaskSerializationTest {
     @Test
     void taskShouldBeSerializable() throws Exception {
         JsonSerializationVerifier.dtoModule(UserDataTieringTaskDTO.module(tieringService))
-            .bean(new UserDataTieringTask(tieringService, BOB, TIERING))
+            .bean(new UserDataTieringTask(tieringService, BOB, TIERING, RunningOptions.DEFAULT))
             .json("""
                 {
                   "type": "UserDataTieringTask",
                   "username": "bob@domain.tld",
-                  "tieringSeconds": 2592000
+                  "tieringSeconds": 2592000,
+                  "runningOptions": {
+                    "messagesPerSecond": 50
+                  }
                 }""")
             .verify();
     }

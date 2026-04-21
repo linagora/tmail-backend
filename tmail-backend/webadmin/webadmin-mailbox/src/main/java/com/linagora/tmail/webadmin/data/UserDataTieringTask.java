@@ -32,6 +32,8 @@ import com.google.common.annotations.VisibleForTesting;
 import com.linagora.tmail.tiering.UserDataTieringContext;
 import com.linagora.tmail.tiering.UserDataTieringService;
 
+import reactor.core.publisher.Mono;
+
 public class UserDataTieringTask implements Task {
 
     public static final TaskType TASK_TYPE = TaskType.of("UserDataTieringTask");
@@ -40,6 +42,7 @@ public class UserDataTieringTask implements Task {
         Instant timestamp,
         String username,
         long tieringSeconds,
+        RunningOptions runningOptions,
         long tieredMessageCount,
         long failedMessageCount
     ) implements TaskExecutionDetails.AdditionalInformation {
@@ -50,6 +53,7 @@ public class UserDataTieringTask implements Task {
                 Clock.systemUTC().instant(),
                 task.username.asString(),
                 task.tiering.getSeconds(),
+                task.runningOptions,
                 snapshot.tieredMessageCount(),
                 snapshot.failedMessageCount());
         }
@@ -58,19 +62,21 @@ public class UserDataTieringTask implements Task {
     private final UserDataTieringService tieringService;
     private final Username username;
     private final Duration tiering;
+    private final RunningOptions runningOptions;
     private final UserDataTieringContext context;
 
-    public UserDataTieringTask(UserDataTieringService tieringService, Username username, Duration tiering) {
+    public UserDataTieringTask(UserDataTieringService tieringService, Username username, Duration tiering, RunningOptions runningOptions) {
         this.tieringService = tieringService;
         this.username = username;
         this.tiering = tiering;
+        this.runningOptions = runningOptions;
         this.context = new UserDataTieringContext();
     }
 
     @Override
     public Result run() {
-        return tieringService.tierUserData(username, tiering, context)
-            .thenReturn(context.snapshot().failedMessageCount() > 0 ? Result.PARTIAL : Result.COMPLETED)
+        return tieringService.tierUserData(username, tiering, context, runningOptions.messagesPerSecond())
+            .then(Mono.fromSupplier(() -> context.snapshot().failedMessageCount() > 0 ? Result.PARTIAL : Result.COMPLETED))
             .block();
     }
 
@@ -90,6 +96,10 @@ public class UserDataTieringTask implements Task {
 
     public Duration getTiering() {
         return tiering;
+    }
+
+    public RunningOptions getRunningOptions() {
+        return runningOptions;
     }
 
     @VisibleForTesting

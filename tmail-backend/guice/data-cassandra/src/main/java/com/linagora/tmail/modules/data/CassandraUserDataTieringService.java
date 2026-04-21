@@ -61,6 +61,7 @@ import org.apache.james.mime4j.codec.DecodeMonitor;
 import org.apache.james.mime4j.dom.Message;
 import org.apache.james.mime4j.message.DefaultMessageBuilder;
 import org.apache.james.mime4j.stream.MimeConfig;
+import org.apache.james.util.ReactorUtils;
 import org.apache.james.util.streams.Limit;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -82,7 +83,8 @@ public class CassandraUserDataTieringService implements UserDataTieringService {
     private static final Logger LOGGER = LoggerFactory.getLogger(CassandraUserDataTieringService.class);
     private static final String EMAIL_CHANGE_TABLE = "email_change";
     private static final String MAILBOX_CHANGE_TABLE = "mailbox_change";
-    private static final int LOW_CONCURRENCY = 8;
+    private static final Duration PERIOD = Duration.ofSeconds(1);
+    private static final int MAILBOX_CONCURRENCY = 4;
 
     private final CassandraAsyncExecutor executor;
     private final PreparedStatement deleteEmailChanges;
@@ -126,14 +128,14 @@ public class CassandraUserDataTieringService implements UserDataTieringService {
     }
 
     @Override
-    public Mono<Void> tierUserData(Username username, Duration tiering, UserDataTieringContext context) {
+    public Mono<Void> tierUserData(Username username, Duration tiering, UserDataTieringContext context, int messagesPerSecond) {
         Date tieringDate = Date.from(Instant.now().minus(tiering));
         AccountId accountId = AccountId.fromUsername(username);
         MailboxSession session = mailboxManager.createSystemSession(username);
 
         return Mono.when(
             clearChanges(accountId),
-            clearOldMessageProjections(username, tieringDate, session, context));
+            clearOldMessageProjections(username, tieringDate, session, context, messagesPerSecond));
     }
 
     private Mono<Void> clearChanges(AccountId accountId) {
@@ -143,14 +145,18 @@ public class CassandraUserDataTieringService implements UserDataTieringService {
                 .set(ACCOUNT_ID, accountId.getIdentifier(), TypeCodecs.TEXT)));
     }
 
-    private Mono<Void> clearOldMessageProjections(Username username, Date tieringDate, MailboxSession session, UserDataTieringContext context) {
+    private Mono<Void> clearOldMessageProjections(Username username, Date tieringDate, MailboxSession session,
+                                                    UserDataTieringContext context, int messagesPerSecond) {
         return mailboxManager.search(MailboxQuery.privateMailboxesBuilder(session).build(), session)
             .map(metaData -> (CassandraId) metaData.getId())
-            .flatMap(mailboxId -> cassandraMessageIdDAO.retrieveMessages(mailboxId, MessageRange.all(), Limit.unlimited()), LOW_CONCURRENCY)
+            .flatMap(mailboxId -> cassandraMessageIdDAO.retrieveMessages(mailboxId, MessageRange.all(), Limit.unlimited()), MAILBOX_CONCURRENCY)
             .filter(metadata -> metadata.getInternalDate()
                 .map(d -> d.before(tieringDate))
                 .orElse(false))
-            .flatMap(metadata -> applyTiering(username, metadata, context), LOW_CONCURRENCY)
+            .transform(ReactorUtils.<CassandraMessageMetadata, Void>throttle()
+                .elements(messagesPerSecond)
+                .per(PERIOD)
+                .forOperation(metadata -> applyTiering(username, metadata, context)))
             .then();
     }
 
@@ -171,7 +177,7 @@ public class CassandraUserDataTieringService implements UserDataTieringService {
             .then();
 
         return Mono.when(clearFastView, clearThreadAndHeaderCache, clearAttachments)
-            .doOnSuccess(__ -> context.incrementTiered())
+            .doOnSuccess(any -> context.incrementTiered())
             .onErrorResume(e -> {
                 LOGGER.warn("Failed to apply tiering for message {}", messageId, e);
                 context.incrementFailed();

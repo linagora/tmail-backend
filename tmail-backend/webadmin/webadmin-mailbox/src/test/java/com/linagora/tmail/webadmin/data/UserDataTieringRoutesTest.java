@@ -54,7 +54,7 @@ class UserDataTieringRoutesTest {
     @BeforeEach
     void setUp() {
         tieringService = mock(UserDataTieringService.class);
-        org.mockito.Mockito.when(tieringService.tierUserData(any(), any(), any())).thenReturn(Mono.empty());
+        org.mockito.Mockito.when(tieringService.tierUserData(any(), any(), any(), org.mockito.ArgumentMatchers.anyInt())).thenReturn(Mono.empty());
 
         taskManager = new MemoryTaskManager(new Hostname("foo"));
 
@@ -109,6 +109,33 @@ class UserDataTieringRoutesTest {
         .then()
             .body("status", Matchers.is("completed"))
             .body("type", Matchers.is(UserDataTieringTask.TASK_TYPE.asString()));
+    }
+
+    @Test
+    void postShouldAcceptCustomMessagesPerSecond() {
+        String taskId = given()
+            .queryParam("tiering", "30d")
+            .queryParam("messagesPerSecond", "100")
+        .when()
+            .post("/users/bob@example.com/data")
+        .then()
+            .statusCode(HttpStatus.CREATED_201)
+            .extract()
+            .jsonPath()
+            .getString("taskId");
+
+        assertThat(taskId).isNotEmpty();
+    }
+
+    @Test
+    void postShouldReturn400WhenMessagesPerSecondIsInvalid() {
+        given()
+            .queryParam("tiering", "30d")
+            .queryParam("messagesPerSecond", "0")
+        .when()
+            .post("/users/bob@example.com/data")
+        .then()
+            .statusCode(HttpStatus.BAD_REQUEST_400);
     }
 
     @Test
