@@ -81,7 +81,7 @@ public class CassandraUserDataTieringService implements UserDataTieringService {
     private static final Logger LOGGER = LoggerFactory.getLogger(CassandraUserDataTieringService.class);
     private static final String EMAIL_CHANGE_TABLE = "email_change";
     private static final String MAILBOX_CHANGE_TABLE = "mailbox_change";
-    private static final int LOW_CONCURRENCY = 2;
+    private static final int LOW_CONCURRENCY = 8;
 
     private final CassandraAsyncExecutor executor;
     private final PreparedStatement deleteEmailChanges;
