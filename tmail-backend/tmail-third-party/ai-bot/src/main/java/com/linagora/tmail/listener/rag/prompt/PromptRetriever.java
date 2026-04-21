@@ -18,11 +18,30 @@
 package com.linagora.tmail.listener.rag.prompt;
 
 import java.net.URL;
+import java.util.Optional;
 
 import reactor.core.publisher.Mono;
 
 
 public interface PromptRetriever {
-    Mono<String> retrievePrompt(URL url);
+
+    public record Prompts(Optional<String> system, Optional<String> user) {
+
+        public Prompts {
+            system = system.map(String::trim).filter(s -> !s.isBlank());
+            user = user.map(String::trim).filter(s -> !s.isBlank());
+        }
+
+        public String systemOrThrow(String promptName) {
+            return system.orElseThrow(() ->
+                new PromptRetrievalException("No system prompt found for promptName='" + promptName + "'"));
+        }
+
+        public String userOrThrow(String promptName) {
+            return user.orElseThrow(() ->
+                new PromptRetrievalException("No user prompt found for promptName='" + promptName + "'"));
+        }
+    }
+    Mono<Prompts> retrievePrompts(URL url, String promptName);
 
 }
