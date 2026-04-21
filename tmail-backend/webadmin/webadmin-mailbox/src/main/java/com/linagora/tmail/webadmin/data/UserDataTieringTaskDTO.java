@@ -16,24 +16,35 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.tiering;
+package com.linagora.tmail.webadmin.data;
 
 import java.time.Duration;
 
 import org.apache.james.core.Username;
+import org.apache.james.json.DTOModule;
+import org.apache.james.server.task.json.dto.TaskDTO;
+import org.apache.james.server.task.json.dto.TaskDTOModule;
 
-import reactor.core.publisher.Mono;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.linagora.tmail.tiering.UserDataTieringService;
 
-public interface UserDataTieringService {
-    /**
-     * Tiers user data by:
-     * - Clearing the JMAP /changes projection (email and mailbox changes)
-     * - Clearing the thread-guessing table for the user
-     * - For messages older than {@code tiering}, clearing their fast-view projection,
-     *   clearing their attachments
-     *   and evicting their header blobs from the blob-store cache
-     *
-     * Per-message successes and failures are reported to {@code context}.
-     */
-    Mono<Void> tierUserData(Username username, Duration tiering, UserDataTieringContext context);
+public record UserDataTieringTaskDTO(
+    @JsonProperty("type") String type,
+    @JsonProperty("username") String username,
+    @JsonProperty("tieringSeconds") long tieringSeconds
+) implements TaskDTO {
+
+    public static TaskDTOModule<UserDataTieringTask, UserDataTieringTaskDTO> module(UserDataTieringService service) {
+        return DTOModule.forDomainObject(UserDataTieringTask.class)
+            .convertToDTO(UserDataTieringTaskDTO.class)
+            .toDomainObjectConverter(dto -> new UserDataTieringTask(service, Username.of(dto.username()), Duration.ofSeconds(dto.tieringSeconds())))
+            .toDTOConverter((task, type) -> new UserDataTieringTaskDTO(type, task.getUsername().asString(), task.getTiering().getSeconds()))
+            .typeName(UserDataTieringTask.TASK_TYPE.asString())
+            .withFactory(TaskDTOModule::new);
+    }
+
+    @Override
+    public String getType() {
+        return type;
+    }
 }

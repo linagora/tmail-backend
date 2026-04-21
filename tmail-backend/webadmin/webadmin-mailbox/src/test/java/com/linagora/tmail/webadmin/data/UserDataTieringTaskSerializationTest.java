@@ -16,24 +16,35 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.tiering;
+package com.linagora.tmail.webadmin.data;
+
+import static org.mockito.Mockito.mock;
 
 import java.time.Duration;
 
+import org.apache.james.JsonSerializationVerifier;
 import org.apache.james.core.Username;
+import org.junit.jupiter.api.Test;
 
-import reactor.core.publisher.Mono;
+import com.linagora.tmail.tiering.UserDataTieringService;
 
-public interface UserDataTieringService {
-    /**
-     * Tiers user data by:
-     * - Clearing the JMAP /changes projection (email and mailbox changes)
-     * - Clearing the thread-guessing table for the user
-     * - For messages older than {@code tiering}, clearing their fast-view projection,
-     *   clearing their attachments
-     *   and evicting their header blobs from the blob-store cache
-     *
-     * Per-message successes and failures are reported to {@code context}.
-     */
-    Mono<Void> tierUserData(Username username, Duration tiering, UserDataTieringContext context);
+class UserDataTieringTaskSerializationTest {
+
+    private static final Username BOB = Username.of("bob@domain.tld");
+    private static final Duration TIERING = Duration.ofDays(30);
+
+    private final UserDataTieringService tieringService = mock(UserDataTieringService.class);
+
+    @Test
+    void taskShouldBeSerializable() throws Exception {
+        JsonSerializationVerifier.dtoModule(UserDataTieringTaskDTO.module(tieringService))
+            .bean(new UserDataTieringTask(tieringService, BOB, TIERING))
+            .json("""
+                {
+                  "type": "UserDataTieringTask",
+                  "username": "bob@domain.tld",
+                  "tieringSeconds": 2592000
+                }""")
+            .verify();
+    }
 }
