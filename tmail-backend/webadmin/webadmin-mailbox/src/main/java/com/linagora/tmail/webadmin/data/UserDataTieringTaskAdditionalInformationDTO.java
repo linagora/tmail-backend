@@ -19,18 +19,21 @@
 package com.linagora.tmail.webadmin.data;
 
 import java.time.Instant;
+import java.util.Optional;
 
 import org.apache.james.json.DTOModule;
 import org.apache.james.server.task.json.dto.AdditionalInformationDTO;
 import org.apache.james.server.task.json.dto.AdditionalInformationDTOModule;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.linagora.tmail.webadmin.data.UserDataTieringTaskDTO.RunningOptionsDTO;
 
 public record UserDataTieringTaskAdditionalInformationDTO(
     @JsonProperty("type") String type,
     @JsonProperty("timestamp") Instant timestamp,
     @JsonProperty("username") String username,
     @JsonProperty("tieringSeconds") long tieringSeconds,
+    @JsonProperty("runningOptions") Optional<RunningOptionsDTO> runningOptions,
     @JsonProperty("tieredMessageCount") long tieredMessageCount,
     @JsonProperty("failedMessageCount") long failedMessageCount
 ) implements AdditionalInformationDTO {
@@ -50,6 +53,7 @@ public record UserDataTieringTaskAdditionalInformationDTO(
             info.timestamp(),
             info.username(),
             info.tieringSeconds(),
+            Optional.of(RunningOptionsDTO.of(info.runningOptions())),
             info.tieredMessageCount(),
             info.failedMessageCount());
     }
@@ -59,6 +63,7 @@ public record UserDataTieringTaskAdditionalInformationDTO(
             timestamp,
             username,
             tieringSeconds,
+            runningOptions.map(RunningOptionsDTO::asDomainObject).orElse(RunningOptions.DEFAULT),
             tieredMessageCount,
             failedMessageCount);
     }

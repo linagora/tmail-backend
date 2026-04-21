@@ -18,35 +18,13 @@
 
 package com.linagora.tmail.webadmin.data;
 
-import java.time.Instant;
+import com.google.common.base.Preconditions;
 
-import org.apache.james.JsonSerializationVerifier;
-import org.junit.jupiter.api.Test;
+public record RunningOptions(int messagesPerSecond) {
 
-class UserDataTieringTaskAdditionalInformationDTOTest {
+    public static final RunningOptions DEFAULT = new RunningOptions(50);
 
-    @Test
-    void beanTest() throws Exception {
-        JsonSerializationVerifier.dtoModule(UserDataTieringTaskAdditionalInformationDTO.module())
-            .bean(new UserDataTieringTask.AdditionalInformation(
-                Instant.parse("2007-12-03T10:15:30.00Z"),
-                "bob@domain.tld",
-                2592000L,
-                RunningOptions.DEFAULT,
-                42L,
-                3L))
-            .json("""
-                {
-                  "type": "UserDataTieringTask",
-                  "timestamp": "2007-12-03T10:15:30Z",
-                  "username": "bob@domain.tld",
-                  "tieringSeconds": 2592000,
-                  "runningOptions": {
-                    "messagesPerSecond": 50
-                  },
-                  "tieredMessageCount": 42,
-                  "failedMessageCount": 3
-                }""")
-            .verify();
+    public RunningOptions {
+        Preconditions.checkArgument(messagesPerSecond > 0, "'messagesPerSecond' must be strictly positive");
     }
 }

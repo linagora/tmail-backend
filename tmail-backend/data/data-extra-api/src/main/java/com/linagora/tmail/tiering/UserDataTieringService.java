@@ -35,5 +35,5 @@ public interface UserDataTieringService {
      *
      * Per-message successes and failures are reported to {@code context}.
      */
-    Mono<Void> tierUserData(Username username, Duration tiering, UserDataTieringContext context);
+    Mono<Void> tierUserData(Username username, Duration tiering, UserDataTieringContext context, int messagesPerSecond);
 }

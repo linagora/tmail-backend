@@ -43,6 +43,7 @@ public class UserDataTieringRoutes implements Routes {
     private static final String USERNAME_PARAM = ":username";
     private static final String DATA_PATH = BASE_PATH + "/" + USERNAME_PARAM + "/data";
     private static final String TIERING_PARAM = "tiering";
+    private static final String MESSAGES_PER_SECOND_PARAM = "messagesPerSecond";
 
     private final UserDataTieringService tieringService;
     private final TaskManager taskManager;
@@ -69,7 +70,23 @@ public class UserDataTieringRoutes implements Routes {
     private UserDataTieringTask createTask(Request request) {
         Username username = parseUsername(request.params(USERNAME_PARAM));
         Duration tiering = parseTiering(request.queryParams(TIERING_PARAM));
-        return new UserDataTieringTask(tieringService, username, tiering);
+        RunningOptions runningOptions = parseMessagesPerSecond(request.queryParams(MESSAGES_PER_SECOND_PARAM));
+        return new UserDataTieringTask(tieringService, username, tiering, runningOptions);
+    }
+
+    private RunningOptions parseMessagesPerSecond(String rawMessagesPerSecond) {
+        if (rawMessagesPerSecond == null) {
+            return RunningOptions.DEFAULT;
+        }
+        try {
+            return new RunningOptions(Integer.parseInt(rawMessagesPerSecond));
+        } catch (IllegalArgumentException e) {
+            throw ErrorResponder.builder()
+                .statusCode(HttpStatus.BAD_REQUEST_400)
+                .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+                .message("Invalid messagesPerSecond value '" + rawMessagesPerSecond + "'. Expected a strictly positive integer.")
+                .haltError();
+        }
     }
 
     private Username parseUsername(String rawUsername) {
