@@ -22,7 +22,6 @@ import java.util.Optional;
 
 import reactor.core.publisher.Mono;
 
-
 public interface PromptRetriever {
 
     public record Prompts(Optional<String> system, Optional<String> user) {

@@ -19,6 +19,8 @@
 package com.linagora.tmail.listener.rag;
 
 import java.io.IOException;
+import java.net.URI;
+import java.net.URL;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -65,6 +67,8 @@ import com.linagora.tmail.james.jmap.model.DisplayName;
 import com.linagora.tmail.james.jmap.model.Label;
 import com.linagora.tmail.james.jmap.model.LabelId;
 import com.linagora.tmail.listener.rag.event.AIAnalysisNeeded;
+import com.linagora.tmail.listener.rag.prompt.HttpPromptRetriever;
+import com.linagora.tmail.listener.rag.prompt.PromptRetriever;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -77,7 +81,10 @@ import reactor.core.publisher.Mono;
 import scala.jdk.javaapi.OptionConverters;
 
 public class LlmMailBackendClassifierListener implements EventListener.ReactiveGroupEventListener {
+    private static final String SYSTEM_PROMPT_URL_PARAM = "systemPromptUrl";
     public static final String LLM_MAIL_CLASSIFIER_CONFIGURATION = "llm-classifier-listener-configuration";
+    private static final String PROMPT_NAME_PARAM = "PromptName";
+    public static final String DEFAULT_PROMPT_NAME = "classify-email";
 
     public static class LlmMailPrioritizationBackendClassifierGroup extends Group {
 
@@ -127,16 +134,61 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
     Return ONLY the label IDs. No explanations.
     """;
 
+    private static final String DEFAULT_USER_PROMPT = """ 
+                Username (of the person receiving this mail) is %s. His/her mail address is %s.
+                Below is the content of the email:
+                        
+                From: %s
+                To: %s
+                Subject: %s
+                 
+                Body:
+                %s
+                        
+                ## AVAILABLE LABELS
+                %s
+
+               Classify this email and assign relevant labels.
+                """;
+
     private final MailboxManager mailboxManager;
     private final MessageIdManager messageIdManager;
     private final StreamingChatLanguageModel chatLanguageModel;
     private final HtmlTextExtractor htmlTextExtractor;
     private final MetricFactory metricFactory;
     private final IdentityRepository identityRepository;
-    private final String systemPrompt;
+    private volatile String systemPrompt;
+    private volatile String userPrompt;
     private final int maxBodyLength;
     private final LabelRepository labelRepository;
     private final boolean reviewModeEnabled;
+
+    private Mono<PromptRetriever.Prompts> extractPrompts(HierarchicalConfiguration<ImmutableNode> configuration,
+                                                         PromptRetriever promptRetriever) {
+        String inlineSystem = Optional.ofNullable(configuration.getString(SYSTEM_PROMPT_PARAM, null))
+            .filter(s -> !s.isBlank())
+            .orElse(DEFAULT_SYSTEM_PROMPT);
+
+        Optional<URL> urlOpt = Optional.ofNullable(configuration.getString(SYSTEM_PROMPT_URL_PARAM, null))
+            .map(String::trim)
+            .filter(s -> !s.isBlank())
+            .map(s -> {
+                try {
+                    return URI.create(s).toURL();
+                } catch (Exception e) {
+                    throw new IllegalArgumentException("Invalid " + SYSTEM_PROMPT_URL_PARAM + ": " + s, e);
+                }
+            });
+
+        String promptName = Optional.ofNullable(configuration.getString(PROMPT_NAME_PARAM, null))
+            .map(String::trim)
+            .filter(s -> !s.isBlank())
+            .orElse(DEFAULT_PROMPT_NAME);
+
+        URL url = urlOpt.get();
+
+        return promptRetriever.retrievePrompts(url, promptName);
+    }
 
     @Inject
     public LlmMailBackendClassifierListener(MailboxManager mailboxManager,
@@ -147,6 +199,7 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
                                             MetricFactory metricFactory,
                                             LabelRepository labelRepository,
                                             @Named(LLM_MAIL_CLASSIFIER_CONFIGURATION) HierarchicalConfiguration<ImmutableNode> configuration) {
+
         this.mailboxManager = mailboxManager;
         this.messageIdManager = messageIdManager;
         this.chatLanguageModel = chatLanguageModel;
@@ -160,6 +213,15 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
         this.maxBodyLength = configuration.getInt(MAX_BODY_LENGTH_PARAM, DEFAULT_MAX_BODY_LENGTH);
         Preconditions.checkArgument(maxBodyLength > 0, "'maxBodyLength' must be strictly positive");
         this.reviewModeEnabled = Boolean.parseBoolean(System.getProperty("tmail.ai.needsaction.relevance.review", "false"));
+
+        PromptRetriever promptRetriever = new HttpPromptRetriever();
+        extractPrompts(configuration, promptRetriever)
+            .doOnNext(loaded -> {
+                this.systemPrompt = loaded.system().orElse(DEFAULT_SYSTEM_PROMPT);
+                this.userPrompt = loaded.user().orElse(DEFAULT_USER_PROMPT);
+                LOGGER.info("Prompts initialized");
+            })
+            .subscribe();
     }
 
     @Override
@@ -287,24 +349,9 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
             .doOnNext(labels -> LOGGER.debug("Retrieved {} labels for user {}", labels.size(), username.asString()));
     }
 
-    record LlmUserPrompt(String userDisplayName, String user, String textContent, String sender, String to, String subject, String labelsInfo) {
+    record LlmUserPrompt(String userDisplayName, String user, String textContent, String sender, String to, String subject, String labelsInfo, String userPrompt) {
         String correspondingUserPrompt() {
-            return """ 
-                Username (of the person receiving this mail) is %s. His/her mail address is %s.
-                Below is the content of the email:
-                        
-                From: %s
-                To: %s
-                Subject: %s
-                 
-                Body:
-                %s
-                        
-                ## AVAILABLE LABELS
-                %s
-
-               Classify this email and assign relevant labels.
-                """.formatted(userDisplayName, user, sender, to, subject, textContent, labelsInfo);
+            return userPrompt.formatted(userDisplayName, user, sender, to, subject, textContent, labelsInfo);
         }
     }
 
@@ -326,7 +373,7 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
             MessageContentExtractor.MessageContent messageContent = new MessageContentExtractor().extract(message.parsed());
             Optional<String> maybeBody = messageContent.extractMainTextContent(htmlTextExtractor);
 
-            return new LlmUserPrompt(userContext.displayName(), username.asString(), truncateBody(maybeBody.orElse("")), from, to, subject, labelsInfo);
+            return new LlmUserPrompt(userContext.displayName(), username.asString(), truncateBody(maybeBody.orElse("")), from, to, subject, labelsInfo, userPrompt);
     }
 
     private String buildLabelsInfo(UserContext userContext) {
