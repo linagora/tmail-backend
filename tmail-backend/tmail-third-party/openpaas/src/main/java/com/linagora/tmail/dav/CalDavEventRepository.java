@@ -21,6 +21,7 @@ package com.linagora.tmail.dav;
 import static com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults.AttendanceResult;
 import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
+import java.time.temporal.Temporal;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
@@ -39,6 +40,7 @@ import org.slf4j.LoggerFactory;
 import com.linagora.tmail.dav.cal.FreeBusyRequest;
 import com.linagora.tmail.dav.cal.FreeBusyResponse;
 import com.linagora.tmail.james.jmap.AttendanceStatus;
+import com.linagora.tmail.james.jmap.CalendarEventCancelledException;
 import com.linagora.tmail.james.jmap.CalendarEventNotFoundException;
 import com.linagora.tmail.james.jmap.CalendarEventRepository;
 import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier;
@@ -49,6 +51,10 @@ import com.linagora.tmail.james.jmap.model.CalendarUidField;
 import com.linagora.tmail.james.jmap.model.EventAttendanceStatusEntry;
 import com.linagora.tmail.james.jmap.model.RecurrenceIdField;
 
+import net.fortuna.ical4j.model.Component;
+import net.fortuna.ical4j.model.component.VEvent;
+import net.fortuna.ical4j.model.property.RecurrenceId;
+import net.fortuna.ical4j.model.property.Status;
 import net.fortuna.ical4j.model.property.immutable.ImmutableMethod;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -152,15 +158,44 @@ public class CalDavEventRepository implements CalendarEventRepository {
         return davUserProvider.provide(username)
             .flatMap(davUser -> davClient.caldav(davUser.username()).getCalendarObjects(davUser, DavUid.fromCalendarUidField(eventUid))
                 .switchIfEmpty(Flux.error(new CalendarEventNotFoundException(username, eventUid)))
-                .flatMap(calendarObject -> davClient.caldav(davUser.username()).updateCalendarObject(calendarObject.uri(), updateEventOperator)
-                    .thenReturn(Boolean.TRUE)
-                    .onErrorResume(DavClientException.PermissionDenied.class, e -> {
-                        LOGGER.debug("Skipping calendar object '{}': permission denied, likely a delegated calendar", calendarObject.uri());
-                        return Mono.empty();
-                    }))
+                .flatMap(calendarObject -> doUpdateCalendarObject(davUser, calendarObject, username, eventUid, updateEventOperator, eventModifier))
                 .next()
                 .switchIfEmpty(Mono.error(new CalendarEventNotFoundException(username, eventUid)))
                 .then());
+    }
+
+    private Mono<Boolean> doUpdateCalendarObject(DavUser davUser, DavCalendarObject calendarObject,
+                                                  Username username, CalendarUidField eventUid,
+                                                  UnaryOperator<DavCalendarObject> updateEventOperator,
+                                                  CalendarEventModifier eventModifier) {
+        // Cancellation is checked after the write: PermissionDenied is the only reliable delegated-calendar guard.
+        // Writing PARTSTAT on a cancelled event is acceptable (invisible to the user); the error below prevents a false success.
+        return davClient.caldav(davUser.username()).updateCalendarObject(calendarObject.uri(), updateEventOperator)
+            .thenReturn(Boolean.TRUE)
+            .onErrorResume(DavClientException.PermissionDenied.class, e -> {
+                LOGGER.debug("Skipping calendar object '{}': permission denied, likely a delegated calendar", calendarObject.uri());
+                return Mono.empty();
+            })
+            .flatMap(updated -> {
+                if (isCancelled(calendarObject, eventModifier)) {
+                    return Mono.<Boolean>error(new CalendarEventCancelledException(username, eventUid));
+                }
+                return Mono.just(Boolean.TRUE);
+            });
+    }
+
+    private boolean isCancelled(DavCalendarObject calendarObject, CalendarEventModifier eventModifier) {
+        Optional<RecurrenceId<Temporal>> recurrenceId = scala.jdk.javaapi.OptionConverters.toJava(eventModifier.recurrenceId());
+        return calendarObject.calendarData().getComponents(Component.VEVENT).stream()
+            .filter(c -> c instanceof VEvent)
+            .map(c -> (VEvent) c)
+            .filter(vEvent -> recurrenceId
+                .map(rid -> rid.equals(vEvent.getRecurrenceId()))
+                .orElseGet(() -> vEvent.getRecurrenceId() == null))
+            .findFirst()
+            .map(VEvent::getStatus)
+            .map(status -> Status.VALUE_CANCELLED.equals(status.getValue()))
+            .orElse(false);
     }
 
 }

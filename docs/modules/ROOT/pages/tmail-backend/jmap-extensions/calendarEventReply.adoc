@@ -97,13 +97,47 @@ If the blob id has been found but is not generate & reply email, the server woul
 }, "c1" ]]
 ```
 
+When deployed with OpenPaaS CalDAV, if the event referenced by the blob does not exist in the user's CalDAV calendar (e.g. the organizer deleted the event without sending a CANCEL iTIP), the server would respond:
+
+```
+[[ "CalendarEvent/accept",
+{
+    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+    "notAccepted": {
+        "0f9f65ab-dc7b-4146-850f-6e4881093965": {
+            "type": "eventNotFound",
+            "description": "The event you reply to does not exist on your calendar"
+        }
+    }
+}, "c1" ]]
+```
+
+When deployed with OpenPaaS CalDAV, if the event referenced by the blob exists in the user's CalDAV calendar but has `STATUS:CANCELLED` (e.g. the organizer deleted the event and OpenPaaS propagated the cancellation to the attendee's calendar), the server would respond:
+
+```
+[[ "CalendarEvent/accept",
+{
+    "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+    "notAccepted": {
+        "0f9f65ab-dc7b-4146-850f-6e4881093965": {
+            "type": "eventCancelled",
+            "description": "The event you reply to has been cancelled"
+        }
+    }
+}, "c1" ]]
+```
+
 == CalendarEvent/reject
 Similarly to CalendarEvent/accept, CalendarEvent/reject function in a similar manner.
 However, in the response properties, 'rejected' replace 'accepted', while 'notRejected' replace 'notAccepted'.
 
+All error cases described for `CalendarEvent/accept` (`notFound`, `invalidPatch`, `eventNotFound`, `eventCancelled`) apply identically to this method.
+
 == CalendarEvent/maybe
 Similarly to CalendarEvent/accept, CalendarEvent/maybe function in a similar manner.
 However, in the response properties, 'maybe' replace 'accepted', while 'notMaybe' replace 'notAccepted'.
+
+All error cases described for `CalendarEvent/accept` (`notFound`, `invalidPatch`, `eventNotFound`, `eventCancelled`) apply identically to this method.
 
 == CalendarEventAttendance/get
 This method allow clients to get the attendance status of a calendar event invitation.
