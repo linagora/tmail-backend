@@ -1409,7 +1409,7 @@ The following data is cleared:
   - Attachments projection (attachment are still parseable via the raw Mime message as a fallback)
   - Thread guessing table (`thread_2`) — deleted for this message
 
-The operation is synchronous and returns once all deletions are complete. 
+The operation is asynchronous and returns a task identifier that can be polled for completion.
 
 === Tier a user's data
 
@@ -1421,11 +1421,15 @@ Query parameters:
 
 - `tiering` (required): retention period expressed as an ISO-8601 duration or a shorthand such as
   `30d`, `12h`, `1w`. Messages older than this period have their cached data evicted.
+- `messagesPerSecond` (optional, default: 50): maximum number of messages processed per second.
+  Lower values reduce pressure on Cassandra and the blob store during large accounts.
 
 Return codes:
 
-- `204` Operation completed successfully
-- `400` Invalid username or missing / unparseable `tiering` parameter
+- `201` Task created — response body contains `{"taskId": "<id>"}`.
+  Use `GET /tasks/{taskId}/await` to wait for completion and inspect metrics
+  (`tieredMessageCount`, `failedMessageCount`) in the task's `additionalInformation`.
+- `400` Invalid username, missing / unparseable `tiering`, or invalid `messagesPerSecond`
 
 == User Mails Search
 
