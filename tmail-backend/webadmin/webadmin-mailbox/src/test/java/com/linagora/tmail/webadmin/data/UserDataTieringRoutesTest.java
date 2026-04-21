@@ -20,21 +20,22 @@ package com.linagora.tmail.webadmin.data;
 
 import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.when;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
-import static org.mockito.Mockito.when;
 
-import java.time.Duration;
-
-import org.apache.james.core.Username;
+import org.apache.james.server.task.json.dto.DTOConverter;
+import org.apache.james.task.Hostname;
+import org.apache.james.task.MemoryTaskManager;
 import org.apache.james.webadmin.WebAdminServer;
 import org.apache.james.webadmin.WebAdminUtils;
+import org.apache.james.webadmin.routes.TasksRoutes;
 import org.apache.james.webadmin.utils.JsonTransformer;
 import org.eclipse.jetty.http.HttpStatus;
+import org.hamcrest.Matchers;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -46,18 +47,21 @@ import reactor.core.publisher.Mono;
 
 class UserDataTieringRoutesTest {
 
-    private static final Username BOB = Username.of("bob@example.com");
-
     private WebAdminServer webAdminServer;
     private UserDataTieringService tieringService;
+    private MemoryTaskManager taskManager;
 
     @BeforeEach
     void setUp() {
         tieringService = mock(UserDataTieringService.class);
-        when(tieringService.tierUserData(any(), any())).thenReturn(Mono.empty());
+        org.mockito.Mockito.when(tieringService.tierUserData(any(), any(), any())).thenReturn(Mono.empty());
+
+        taskManager = new MemoryTaskManager(new Hostname("foo"));
 
         webAdminServer = WebAdminUtils.createWebAdminServer(
-                new UserDataTieringRoutes(tieringService, new JsonTransformer()))
+                new UserDataTieringRoutes(tieringService, taskManager, new JsonTransformer()),
+                new TasksRoutes(taskManager, new JsonTransformer(),
+                    DTOConverter.of(UserDataTieringTaskAdditionalInformationDTO.module())))
             .start();
 
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer).build();
@@ -67,38 +71,44 @@ class UserDataTieringRoutesTest {
     @AfterEach
     void tearDown() {
         webAdminServer.destroy();
+        taskManager.stop();
     }
 
     @Test
-    void postShouldReturn204OnSuccess() {
-        given()
+    void postShouldReturn201WithTaskId() {
+        String taskId = given()
             .queryParam("tiering", "30d")
         .when()
             .post("/users/bob@example.com/data")
         .then()
-            .statusCode(HttpStatus.NO_CONTENT_204);
+            .statusCode(HttpStatus.CREATED_201)
+            .body("taskId", notNullValue())
+            .extract()
+            .jsonPath()
+            .getString("taskId");
+
+        assertThat(taskId).isNotEmpty();
     }
 
     @Test
-    void postShouldDelegateToService() {
-        given()
+    void taskShouldCompleteSuccessfully() {
+        String taskId = given()
             .queryParam("tiering", "30d")
-        .when()
-            .post("/users/bob@example.com/data");
-
-        verify(tieringService).tierUserData(eq(BOB), eq(Duration.ofDays(30)));
-    }
-
-    @Test
-    void postShouldAcceptHourDuration() {
-        given()
-            .queryParam("tiering", "24h")
         .when()
             .post("/users/bob@example.com/data")
         .then()
-            .statusCode(HttpStatus.NO_CONTENT_204);
+            .statusCode(HttpStatus.CREATED_201)
+            .extract()
+            .jsonPath()
+            .getString("taskId");
 
-        verify(tieringService).tierUserData(eq(BOB), eq(Duration.ofHours(24)));
+        given()
+            .basePath(TasksRoutes.BASE)
+        .when()
+            .get(taskId + "/await")
+        .then()
+            .body("status", Matchers.is("completed"))
+            .body("type", Matchers.is(UserDataTieringTask.TASK_TYPE.asString()));
     }
 
     @Test

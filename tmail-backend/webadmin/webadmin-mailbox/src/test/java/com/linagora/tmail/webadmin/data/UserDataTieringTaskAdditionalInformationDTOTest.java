@@ -16,24 +16,33 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.tiering;
+package com.linagora.tmail.webadmin.data;
 
-import java.time.Duration;
+import java.time.Instant;
 
-import org.apache.james.core.Username;
+import org.apache.james.JsonSerializationVerifier;
+import org.junit.jupiter.api.Test;
 
-import reactor.core.publisher.Mono;
+class UserDataTieringTaskAdditionalInformationDTOTest {
 
-public interface UserDataTieringService {
-    /**
-     * Tiers user data by:
-     * - Clearing the JMAP /changes projection (email and mailbox changes)
-     * - Clearing the thread-guessing table for the user
-     * - For messages older than {@code tiering}, clearing their fast-view projection,
-     *   clearing their attachments
-     *   and evicting their header blobs from the blob-store cache
-     *
-     * Per-message successes and failures are reported to {@code context}.
-     */
-    Mono<Void> tierUserData(Username username, Duration tiering, UserDataTieringContext context);
+    @Test
+    void beanTest() throws Exception {
+        JsonSerializationVerifier.dtoModule(UserDataTieringTaskAdditionalInformationDTO.module())
+            .bean(new UserDataTieringTask.AdditionalInformation(
+                Instant.parse("2007-12-03T10:15:30.00Z"),
+                "bob@domain.tld",
+                2592000L,
+                42L,
+                3L))
+            .json("""
+                {
+                  "type": "UserDataTieringTask",
+                  "timestamp": "2007-12-03T10:15:30Z",
+                  "username": "bob@domain.tld",
+                  "tieringSeconds": 2592000,
+                  "tieredMessageCount": 42,
+                  "failedMessageCount": 3
+                }""")
+            .verify();
+    }
 }

@@ -70,6 +70,7 @@ import com.datastax.oss.driver.api.core.cql.PreparedStatement;
 import com.datastax.oss.driver.api.core.type.codec.TypeCodecs;
 import com.google.common.hash.Hashing;
 import com.linagora.tmail.blob.guice.BlobStoreCacheCleaner;
+import com.linagora.tmail.tiering.UserDataTieringContext;
 import com.linagora.tmail.tiering.UserDataTieringService;
 
 import reactor.core.publisher.Flux;
@@ -125,13 +126,14 @@ public class CassandraUserDataTieringService implements UserDataTieringService {
     }
 
     @Override
-    public Mono<Void> tierUserData(Username username, Duration tiering) {
+    public Mono<Void> tierUserData(Username username, Duration tiering, UserDataTieringContext context) {
         Date tieringDate = Date.from(Instant.now().minus(tiering));
         AccountId accountId = AccountId.fromUsername(username);
         MailboxSession session = mailboxManager.createSystemSession(username);
 
-        return clearChanges(accountId)
-            .then(clearOldMessageProjections(username, tieringDate, session));
+        return Mono.when(
+            clearChanges(accountId),
+            clearOldMessageProjections(username, tieringDate, session, context));
     }
 
     private Mono<Void> clearChanges(AccountId accountId) {
@@ -141,18 +143,18 @@ public class CassandraUserDataTieringService implements UserDataTieringService {
                 .set(ACCOUNT_ID, accountId.getIdentifier(), TypeCodecs.TEXT)));
     }
 
-    private Mono<Void> clearOldMessageProjections(Username username, Date tieringDate, MailboxSession session) {
+    private Mono<Void> clearOldMessageProjections(Username username, Date tieringDate, MailboxSession session, UserDataTieringContext context) {
         return mailboxManager.search(MailboxQuery.privateMailboxesBuilder(session).build(), session)
             .map(metaData -> (CassandraId) metaData.getId())
             .flatMap(mailboxId -> cassandraMessageIdDAO.retrieveMessages(mailboxId, MessageRange.all(), Limit.unlimited()), LOW_CONCURRENCY)
             .filter(metadata -> metadata.getInternalDate()
                 .map(d -> d.before(tieringDate))
                 .orElse(false))
-            .flatMap(metadata -> applyTiering(username, metadata), LOW_CONCURRENCY)
+            .flatMap(metadata -> applyTiering(username, metadata, context), LOW_CONCURRENCY)
             .then();
     }
 
-    private Mono<Void> applyTiering(Username username, CassandraMessageMetadata metadata) {
+    private Mono<Void> applyTiering(Username username, CassandraMessageMetadata metadata, UserDataTieringContext context) {
         CassandraMessageId messageId = (CassandraMessageId) metadata.getComposedMessageId().getComposedMessageId().getMessageId();
 
         Mono<Void> clearFastView = Mono.from(messageFastViewProjection.delete(messageId));
@@ -168,7 +170,13 @@ public class CassandraUserDataTieringService implements UserDataTieringService {
             .flatMap(attachment -> cassandraAttachmentDAOV2.delete(attachment.getAttachmentId()))
             .then();
 
-        return Mono.when(clearFastView, clearThreadAndHeaderCache, clearAttachments);
+        return Mono.when(clearFastView, clearThreadAndHeaderCache, clearAttachments)
+            .doOnSuccess(__ -> context.incrementTiered())
+            .onErrorResume(e -> {
+                LOGGER.warn("Failed to apply tiering for message {}", messageId, e);
+                context.incrementFailed();
+                return Mono.empty();
+            });
     }
 
     private Mono<Void> clearThreadEntries(Username username, byte[] headerBytes) {

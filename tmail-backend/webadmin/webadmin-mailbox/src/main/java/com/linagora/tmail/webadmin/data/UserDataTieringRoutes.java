@@ -24,14 +24,17 @@ import java.time.temporal.ChronoUnit;
 import jakarta.inject.Inject;
 
 import org.apache.james.core.Username;
+import org.apache.james.task.TaskManager;
 import org.apache.james.util.DurationParser;
 import org.apache.james.webadmin.Routes;
+import org.apache.james.webadmin.tasks.TaskFromRequest;
 import org.apache.james.webadmin.utils.ErrorResponder;
 import org.apache.james.webadmin.utils.JsonTransformer;
 import org.eclipse.jetty.http.HttpStatus;
 
 import com.linagora.tmail.tiering.UserDataTieringService;
 
+import spark.Request;
 import spark.Service;
 
 public class UserDataTieringRoutes implements Routes {
@@ -42,11 +45,13 @@ public class UserDataTieringRoutes implements Routes {
     private static final String TIERING_PARAM = "tiering";
 
     private final UserDataTieringService tieringService;
+    private final TaskManager taskManager;
     private final JsonTransformer jsonTransformer;
 
     @Inject
-    public UserDataTieringRoutes(UserDataTieringService tieringService, JsonTransformer jsonTransformer) {
+    public UserDataTieringRoutes(UserDataTieringService tieringService, TaskManager taskManager, JsonTransformer jsonTransformer) {
         this.tieringService = tieringService;
+        this.taskManager = taskManager;
         this.jsonTransformer = jsonTransformer;
     }
 
@@ -57,15 +62,14 @@ public class UserDataTieringRoutes implements Routes {
 
     @Override
     public void define(Service service) {
-        service.post(DATA_PATH, (request, response) -> {
-            Username username = parseUsername(request.params(USERNAME_PARAM));
-            Duration tiering = parseTiering(request.queryParams(TIERING_PARAM));
+        TaskFromRequest taskFromRequest = this::createTask;
+        service.post(DATA_PATH, taskFromRequest.asRoute(taskManager), jsonTransformer);
+    }
 
-            tieringService.tierUserData(username, tiering).block();
-
-            response.status(HttpStatus.NO_CONTENT_204);
-            return "";
-        }, jsonTransformer);
+    private UserDataTieringTask createTask(Request request) {
+        Username username = parseUsername(request.params(USERNAME_PARAM));
+        Duration tiering = parseTiering(request.queryParams(TIERING_PARAM));
+        return new UserDataTieringTask(tieringService, username, tiering);
     }
 
     private Username parseUsername(String rawUsername) {
