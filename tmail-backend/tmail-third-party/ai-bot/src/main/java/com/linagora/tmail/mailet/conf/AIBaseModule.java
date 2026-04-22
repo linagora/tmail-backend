@@ -47,6 +47,7 @@ import com.google.inject.name.Names;
 import com.linagora.tmail.listener.rag.LlmMailBackendClassifierListener;
 import com.linagora.tmail.listener.rag.LlmMailClassifierListener;
 import com.linagora.tmail.listener.rag.event.AIAnalysisNeededEventSerializer;
+import com.linagora.tmail.listener.rag.prompt.ConfigurationPromptRetriever;
 import com.linagora.tmail.mailet.AIBotConfig;
 import com.linagora.tmail.mailet.AIRedactionalHelper;
 import com.linagora.tmail.mailet.LangchainAIRedactionalHelper;
@@ -91,6 +92,11 @@ public class AIBaseModule extends AbstractModule {
             .flatMap(Optional::stream)
             .findFirst()
             .orElseGet(BaseHierarchicalConfiguration::new);
+    }
+
+    @Provides
+    public static ConfigurationPromptRetriever provideConfigurationPromptRetriever(@Named(LLM_MAIL_CLASSIFIER_CONFIGURATION) HierarchicalConfiguration<ImmutableNode> configuration) {
+        return ConfigurationPromptRetriever.from(configuration);
     }
 
     @ProvidesIntoSet

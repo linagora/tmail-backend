@@ -27,6 +27,7 @@ import java.util.List;
 import java.util.Optional;
 
 import com.linagora.tmail.james.jmap.model.Label;
+import com.linagora.tmail.listener.rag.prompt.ConfigurationPromptRetriever;
 import jakarta.mail.Flags;
 
 import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
@@ -88,6 +89,7 @@ public class LinagoraLlmMailClassifierListenerTest implements LlmMailClassifierL
     private JmapSettingsRepositoryJavaUtils jmapSettingsRepositoryUtils;
     private LlmMailClassifierListener listener;
     private LlmMailBackendClassifierListener backendListener;
+    private ConfigurationPromptRetriever configurationPromptRetriever;
     private LabelRepository labelRepository;
     private EventBus tmailEventBus;
     private String label1Id;
@@ -131,7 +133,8 @@ public class LinagoraLlmMailClassifierListenerTest implements LlmMailClassifierL
         aliceCustomMailbox = mailboxManager.getMailbox(MailboxPath.forUser(ALICE, "customMailbox"), aliceSession);
 
         listenerConfig = new BaseHierarchicalConfiguration();
-
+        listenerConfig.addProperty("systemPrompt", ConfigurationPromptRetriever.DEFAULT_SYSTEM_PROMPT);
+        configurationPromptRetriever = ConfigurationPromptRetriever.from(listenerConfig);
         AIBotConfig aiBotConfig = new AIBotConfig(
             Optional.ofNullable(System.getenv("LLM_API_KEY")).orElse("change-me"),
             new LlmModel("openai/gpt-oss-120b"),
@@ -166,7 +169,8 @@ public class LinagoraLlmMailClassifierListenerTest implements LlmMailClassifierL
             identityRepository,
             metricFactory,
             labelRepository,
-            listenerConfig);
+            listenerConfig,
+            configurationPromptRetriever);
 
         jmapSettingsRepositoryUtils().reset(ALICE, ImmutableMap.of("ai.label-categorization.enabled", "true"));
         System.setProperty("tmail.ai.label.relevance.audit.track", "true");
@@ -219,7 +223,8 @@ public class LinagoraLlmMailClassifierListenerTest implements LlmMailClassifierL
             identityRepository,
             new RecordingMetricFactory(),
             labelRepository,
-            overrideConfig);
+            overrideConfig,
+            ConfigurationPromptRetriever.from(overrideConfig));
     }
 
     @Override

@@ -34,6 +34,8 @@ public class HttpPromptRetriever implements PromptRetriever {
 
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
+    private final URL url;
+    private final String promptName;
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record AiPromptsBundle(List<PromptDefinition> prompts) {
@@ -44,13 +46,16 @@ public class HttpPromptRetriever implements PromptRetriever {
         public record MessageDefinition(String role, String content) { }
     }
 
-    public HttpPromptRetriever(HttpClient httpClient, ObjectMapper objectMapper) {
+    public HttpPromptRetriever(HttpClient httpClient, ObjectMapper objectMapper, URL url, String promptName) {
         this.httpClient = httpClient;
         this.objectMapper = objectMapper;
+        this.url = url;
+        this.promptName = promptName;
     }
 
-    public HttpPromptRetriever() {
-        this(HttpClient.create().responseTimeout(TIMEOUT), new ObjectMapper());
+    public HttpPromptRetriever(URL url, String promptName) {
+        this(HttpClient.create().responseTimeout(TIMEOUT), new ObjectMapper(), url, promptName);
+
     }
 
     public Mono<String> loadPromptUrl(URL url) {
@@ -70,7 +75,7 @@ public class HttpPromptRetriever implements PromptRetriever {
     }
 
     @Override
-    public Mono<Prompts> retrievePrompts(URL url, String promptName) {
+    public Mono<Prompts> retrievePrompts() {
         return loadPromptUrl(url)
             .flatMap(json -> Mono.fromCallable(() -> objectMapper.readValue(json, AiPromptsBundle.class)))
             .flatMap(bundle -> Mono.justOrEmpty(extractPrompts(bundle, promptName))
@@ -78,32 +83,32 @@ public class HttpPromptRetriever implements PromptRetriever {
                     "Prompt '" + promptName + "' not found"))));
     }
 
-    private Optional<Prompts> extractPrompts(AiPromptsBundle bundle, String promptName) {
+    private Optional<AiPromptsBundle.PromptDefinition> findPrompt(AiPromptsBundle bundle, String promptName) {
         if (bundle == null || bundle.prompts() == null) {
             return Optional.empty();
         }
-
         return bundle.prompts().stream()
             .filter(p -> promptName.equals(p.name()))
-            .findFirst()
-            .map(prompt -> {
-                List<AiPromptsBundle.MessageDefinition> messages = prompt.messages();
-                if (messages == null) {
-                    return new Prompts(Optional.empty(), Optional.empty());
-                }
+            .findFirst();
+    }
 
-                Optional<String> system = messages.stream()
-                    .filter(m -> "system".equalsIgnoreCase(m.role()))
-                    .map(AiPromptsBundle.MessageDefinition::content)
-                    .findFirst();
+    private static Optional<String> findMessageContent(List<AiPromptsBundle.MessageDefinition> messages, String role) {
+        if (messages == null) {
+            return Optional.empty();
+        }
+        return messages.stream()
+            .filter(m -> role.equalsIgnoreCase(m.role()))
+            .map(AiPromptsBundle.MessageDefinition::content)
+            .findFirst();
+    }
 
-                Optional<String> user = messages.stream()
-                    .filter(m -> "user".equalsIgnoreCase(m.role()))
-                    .map(AiPromptsBundle.MessageDefinition::content)
-                    .findFirst();
+    private Optional<Prompts> extractPrompts(AiPromptsBundle bundle, String promptName) {
 
-                return new Prompts(system, user);
-            });
+        return findPrompt(bundle, promptName).map(prompt -> {
+            Optional<String> system = findMessageContent(prompt.messages(), "system");
+            Optional<String> user = findMessageContent(prompt.messages(), "user");
+            return Prompts.of(system, user);
+        });
     }
 
 }

@@ -19,8 +19,6 @@
 package com.linagora.tmail.listener.rag;
 
 import java.io.IOException;
-import java.net.URI;
-import java.net.URL;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -67,6 +65,7 @@ import com.linagora.tmail.james.jmap.model.DisplayName;
 import com.linagora.tmail.james.jmap.model.Label;
 import com.linagora.tmail.james.jmap.model.LabelId;
 import com.linagora.tmail.listener.rag.event.AIAnalysisNeeded;
+import com.linagora.tmail.listener.rag.prompt.ConfigurationPromptRetriever;
 import com.linagora.tmail.listener.rag.prompt.HttpPromptRetriever;
 import com.linagora.tmail.listener.rag.prompt.PromptRetriever;
 
@@ -162,33 +161,7 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
     private final int maxBodyLength;
     private final LabelRepository labelRepository;
     private final boolean reviewModeEnabled;
-
-    private Mono<PromptRetriever.Prompts> extractPrompts(HierarchicalConfiguration<ImmutableNode> configuration,
-                                                         PromptRetriever promptRetriever) {
-        String inlineSystem = Optional.ofNullable(configuration.getString(SYSTEM_PROMPT_PARAM, null))
-            .filter(s -> !s.isBlank())
-            .orElse(DEFAULT_SYSTEM_PROMPT);
-
-        Optional<URL> urlOpt = Optional.ofNullable(configuration.getString(SYSTEM_PROMPT_URL_PARAM, null))
-            .map(String::trim)
-            .filter(s -> !s.isBlank())
-            .map(s -> {
-                try {
-                    return URI.create(s).toURL();
-                } catch (Exception e) {
-                    throw new IllegalArgumentException("Invalid " + SYSTEM_PROMPT_URL_PARAM + ": " + s, e);
-                }
-            });
-
-        String promptName = Optional.ofNullable(configuration.getString(PROMPT_NAME_PARAM, null))
-            .map(String::trim)
-            .filter(s -> !s.isBlank())
-            .orElse(DEFAULT_PROMPT_NAME);
-
-        URL url = urlOpt.get();
-
-        return promptRetriever.retrievePrompts(url, promptName);
-    }
+    private final ConfigurationPromptRetriever configurationPromptRetriever;
 
     @Inject
     public LlmMailBackendClassifierListener(MailboxManager mailboxManager,
@@ -198,7 +171,8 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
                                             IdentityRepository identityRepository,
                                             MetricFactory metricFactory,
                                             LabelRepository labelRepository,
-                                            @Named(LLM_MAIL_CLASSIFIER_CONFIGURATION) HierarchicalConfiguration<ImmutableNode> configuration) {
+                                            @Named(LLM_MAIL_CLASSIFIER_CONFIGURATION) HierarchicalConfiguration<ImmutableNode> configuration,
+                                            ConfigurationPromptRetriever configurationPromptRetriever) {
 
         this.mailboxManager = mailboxManager;
         this.messageIdManager = messageIdManager;
@@ -206,22 +180,22 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
         this.htmlTextExtractor = htmlTextExtractor;
         this.identityRepository = identityRepository;
         this.metricFactory = metricFactory;
-        this.systemPrompt = Optional.ofNullable(configuration.getString(SYSTEM_PROMPT_PARAM, null))
-            .filter(s -> !s.isBlank())
-            .orElse(DEFAULT_SYSTEM_PROMPT);
         this.labelRepository = labelRepository;
         this.maxBodyLength = configuration.getInt(MAX_BODY_LENGTH_PARAM, DEFAULT_MAX_BODY_LENGTH);
         Preconditions.checkArgument(maxBodyLength > 0, "'maxBodyLength' must be strictly positive");
         this.reviewModeEnabled = Boolean.parseBoolean(System.getProperty("tmail.ai.needsaction.relevance.review", "false"));
-
-        PromptRetriever promptRetriever = new HttpPromptRetriever();
-        extractPrompts(configuration, promptRetriever)
-            .doOnNext(loaded -> {
-                this.systemPrompt = loaded.system().orElse(DEFAULT_SYSTEM_PROMPT);
-                this.userPrompt = loaded.user().orElse(DEFAULT_USER_PROMPT);
-                LOGGER.info("Prompts initialized");
-            })
-            .subscribe();
+        this.configurationPromptRetriever = configurationPromptRetriever;
+        this.userPrompt = DEFAULT_USER_PROMPT;
+        if (configurationPromptRetriever.getSystemPromptUrl().isEmpty()) {
+            LOGGER.info("No system prompt URL provided, using default system prompt.");
+            this.systemPrompt = configurationPromptRetriever.getSystemPrompt();
+            this.userPrompt = DEFAULT_USER_PROMPT;
+        } else {
+            PromptRetriever promptRetriever = new HttpPromptRetriever(configurationPromptRetriever.getSystemPromptUrl().get(), configurationPromptRetriever.getPromptName());
+            PromptRetriever.Prompts prompts = promptRetriever.retrievePrompts().block();
+            this.systemPrompt = prompts.systemOrThrow();
+            this.userPrompt = prompts.userOrThrow();
+        }
     }
 
     @Override

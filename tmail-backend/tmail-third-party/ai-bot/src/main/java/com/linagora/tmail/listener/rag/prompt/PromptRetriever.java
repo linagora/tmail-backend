@@ -17,7 +17,6 @@
  ********************************************************************/
 package com.linagora.tmail.listener.rag.prompt;
 
-import java.net.URL;
 import java.util.Optional;
 
 import reactor.core.publisher.Mono;
@@ -31,16 +30,32 @@ public interface PromptRetriever {
             user = user.map(String::trim).filter(s -> !s.isBlank());
         }
 
-        public String systemOrThrow(String promptName) {
+        public String systemOrThrow() {
             return system.orElseThrow(() ->
-                new PromptRetrievalException("No system prompt found for promptName='" + promptName + "'"));
+                new PromptRetrievalException("No system prompt found "));
         }
 
-        public String userOrThrow(String promptName) {
+        public String userOrThrow() {
             return user.orElseThrow(() ->
-                new PromptRetrievalException("No user prompt found for promptName='" + promptName + "'"));
+                new PromptRetrievalException("No user prompt found "));
+        }
+
+        public static Prompts empty() {
+            return new Prompts(Optional.empty(), Optional.empty());
+        }
+
+        public static Prompts ofSystem(String system) {
+            return new Prompts(Optional.ofNullable(system), Optional.empty());
+        }
+
+        public static Prompts ofUser(String user) {
+            return new Prompts(Optional.empty(), Optional.ofNullable(user));
+        }
+
+        public static Prompts of(Optional<String> system, Optional<String> user) {
+            return new Prompts(system, user);
         }
     }
-    Mono<Prompts> retrievePrompts(URL url, String promptName);
+    Mono<Prompts> retrievePrompts();
 
 }

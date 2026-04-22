@@ -35,15 +35,19 @@ public class HttpPromptRetrieverTest {
 
     private WireMockServer wireMockServer;
     private HttpPromptRetriever httpPromptRetriever;
+    private URL url;
+    private String promptName;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         wireMockServer = new WireMockServer(WireMockConfiguration.wireMockConfig().dynamicPort());
         wireMockServer.start();
 
         configureFor("localhost", wireMockServer.port());
+        promptName = "classify-email";
+        url = new URL("http://localhost:" + wireMockServer.port() + "/prompts/email/latest.json");
 
-        httpPromptRetriever = new HttpPromptRetriever(); // uses HttpClient.create()
+        httpPromptRetriever = new HttpPromptRetriever(url, promptName);
     }
 
     @AfterEach
@@ -76,9 +80,7 @@ public class HttpPromptRetrieverTest {
                 .withHeader("Content-Type", "application/json; charset=utf-8")
                 .withBody(body.getBytes(StandardCharsets.UTF_8))));
 
-        URL url = new URL("http://localhost:" + wireMockServer.port() + "/prompts/email/latest.json");
-
-        StepVerifier.create(httpPromptRetriever.retrievePrompts(url, "classify-email"))
+        StepVerifier.create(httpPromptRetriever.retrievePrompts())
             .assertNext(prompts -> {
                 assertThat(prompts.system()).isEqualTo(Optional.of("SYSTEM_PROMPT_CONTENT"));
                 assertThat(prompts.user()).isEqualTo(Optional.of("USER_PROMPT_CONTENT {{input}}"));
@@ -109,9 +111,7 @@ public class HttpPromptRetrieverTest {
                 .withHeader("Content-Type", "application/json; charset=utf-8")
                 .withBody(body)));
 
-        URL url = new URL("http://localhost:" + wireMockServer.port() + "/prompts/email/latest.json");
-
-        StepVerifier.create(httpPromptRetriever.retrievePrompts(url, "classify-email"))
+        StepVerifier.create(httpPromptRetriever.retrievePrompts())
             .expectErrorSatisfies(err -> {
                 assertThat(err).isInstanceOf(PromptRetrievalException.class);
                 assertThat(err.getMessage()).contains("Prompt 'classify-email' not found");
@@ -141,9 +141,7 @@ public class HttpPromptRetrieverTest {
                 .withHeader("Content-Type", "application/json; charset=utf-8")
                 .withBody(body)));
 
-        URL url = new URL("http://localhost:" + wireMockServer.port() + "/prompts/email/latest.json");
-
-        StepVerifier.create(httpPromptRetriever.retrievePrompts(url, "classify-email"))
+        StepVerifier.create(httpPromptRetriever.retrievePrompts())
             .assertNext(prompts -> {
                 assertThat(prompts.system()).isEmpty();
                 assertThat(prompts.user()).contains("USER_ONLY");
@@ -156,9 +154,7 @@ public class HttpPromptRetrieverTest {
         wireMockServer.stubFor(get(urlEqualTo("/prompts/email/latest.json"))
             .willReturn(aResponse().withStatus(500)));
 
-        URL url = new URL("http://localhost:" + wireMockServer.port() + "/prompts/email/latest.json");
-
-        StepVerifier.create(httpPromptRetriever.retrievePrompts(url, "classify-email"))
+        StepVerifier.create(httpPromptRetriever.retrievePrompts())
             .expectErrorSatisfies(err -> {
                 assertThat(err).isInstanceOf(PromptRetrievalException.class);
                 assertThat(err.getMessage()).contains("Prompt download failed (500)");
