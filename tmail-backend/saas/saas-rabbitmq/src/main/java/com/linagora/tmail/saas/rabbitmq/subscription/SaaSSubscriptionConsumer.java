@@ -87,11 +87,17 @@ public class SaaSSubscriptionConsumer implements Closeable, Startable {
     public void declareExchangeAndQueue(String exchange, String queue, String deadLetter) {
         Flux.concat(
                 declareExchange(exchange),
+                sender.declareExchange(ExchangeSpecification.exchange(deadLetter)
+                    .durable(DURABLE).type(BuiltinExchangeType.FANOUT.getType())),
                 sender.declareQueue(QueueSpecification
                     .queue(deadLetter)
                     .durable(DURABLE)
                     .arguments(queueArgumentSupplier()
                         .build())),
+                sender.bind(BindingSpecification.binding()
+                    .exchange(deadLetter)
+                    .queue(deadLetter)
+                    .routingKey("")),
                 sender.declareQueue(QueueSpecification
                     .queue(queue)
                     .durable(DURABLE)
