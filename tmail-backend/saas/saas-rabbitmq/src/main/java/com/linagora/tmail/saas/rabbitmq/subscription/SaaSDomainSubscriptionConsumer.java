@@ -89,11 +89,17 @@ public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
         Flux.concat(
                 declareExchange(saasSubscriptionRabbitMQConfiguration.exchange()),
                 declareExchange(saasSubscriptionRabbitMQConfiguration.configurationExchange()),
+                sender.declareExchange(ExchangeSpecification.exchange(SAAS_DOMAIN_SUBSCRIPTION_DEAD_LETTER_QUEUE)
+                    .durable(DURABLE).type(BuiltinExchangeType.FANOUT.getType())),
                 sender.declareQueue(QueueSpecification
                     .queue(SAAS_DOMAIN_SUBSCRIPTION_DEAD_LETTER_QUEUE)
                     .durable(DURABLE)
                     .arguments(queueArgumentSupplier()
                         .build())),
+                sender.bind(BindingSpecification.binding()
+                    .exchange(SAAS_DOMAIN_SUBSCRIPTION_DEAD_LETTER_QUEUE)
+                    .queue(SAAS_DOMAIN_SUBSCRIPTION_DEAD_LETTER_QUEUE)
+                    .routingKey("")),
                 sender.declareQueue(QueueSpecification
                     .queue(SAAS_DOMAIN_SUBSCRIPTION_QUEUE)
                     .durable(DURABLE)

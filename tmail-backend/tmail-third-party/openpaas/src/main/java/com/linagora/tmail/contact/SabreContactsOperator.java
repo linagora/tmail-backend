@@ -84,11 +84,17 @@ public class SabreContactsOperator implements Startable, SimpleConnectionPool.Re
         Flux.concat(
                 sender.declareExchange(ExchangeSpecification.exchange(exchange)
                     .durable(DURABLE).type(BuiltinExchangeType.FANOUT.getType())),
+                sender.declareExchange(ExchangeSpecification.exchange(deadLetter)
+                    .durable(DURABLE).type(BuiltinExchangeType.FANOUT.getType())),
                 sender.declareQueue(QueueSpecification
                     .queue(deadLetter)
                     .durable(DURABLE)
                     .arguments(queueArgumentSupplier()
                         .build())),
+                sender.bind(BindingSpecification.binding()
+                    .exchange(deadLetter)
+                    .queue(deadLetter)
+                    .routingKey(EMPTY_ROUTING_KEY)),
                 sender.declareQueue(QueueSpecification
                     .queue(queue)
                     .durable(DURABLE)
