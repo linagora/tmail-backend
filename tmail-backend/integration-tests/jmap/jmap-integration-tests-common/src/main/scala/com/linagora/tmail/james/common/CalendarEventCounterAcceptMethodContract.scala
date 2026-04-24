@@ -830,7 +830,7 @@ trait CalendarEventCounterAcceptMethodContract {
          |DTSTART;TZID=Europe/Paris:20250409T110000
          |DTEND;TZID=Europe/Paris:20250409T120000
          |ORGANIZER;CN=John1 Doe1:${bobCredential.username.asString()}
-         |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto::${aliceCredential.username.asString()}
+         |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:${aliceCredential.username.asString()}
          |END:VEVENT
          |END:VCALENDAR""".stripMargin.asCalendar()
 
