@@ -72,7 +72,7 @@ pipeline {
                   ).trim()
                   def comments = readJSON text: commentsJson
                   for (comment in comments) {
-                    if (comment.body.trim() == 'Build this please') {
+                    if (comment.body.trim().toLowerCase() == 'build this please') {
                       def commenter = comment.user.login
                       def commenterStatus = sh(
                         script: """curl -s -o /dev/null -w "%{http_code}" \
