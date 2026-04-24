@@ -39,6 +39,8 @@ import org.apache.james.blob.objectstorage.aws.S3RequestOption;
 import org.apache.james.blob.objectstorage.aws.sse.S3SSECConfiguration;
 import org.apache.james.blob.objectstorage.aws.sse.S3SSECustomerKeyFactory;
 import org.apache.james.blob.postgres.PostgresBlobStoreDAO;
+import org.apache.james.blob.zstd.CompressionConfiguration;
+import org.apache.james.blob.zstd.ZstdBlobStoreDAO;
 import org.apache.james.events.EventBus;
 import org.apache.james.events.EventListener;
 import org.apache.james.eventsourcing.Event;
@@ -84,6 +86,7 @@ public class BlobStoreModulesChooser {
     public static final String INITIAL_BLOBSTORE_DAO = "initial_blobstore_dao";
     public static final String MAYBE_SECONDARY_BLOBSTORE = "maybe_secondary_blob_store_dao";
     public static final String MAYBE_ENCRYPTION_BLOBSTORE = "maybe_encryption_blob_store_dao";
+    public static final String MAYBE_COMPRESSION_BLOBSTORE = "maybe_compression_blob_store_dao";
     public static final String MAYBE_SINGLE_SAVE_BLOBSTORE = "maybe_single_save_blob_store_dao";
     public static final String SECOND_BLOB_STORE_DAO = "second_blob_store_dao";
     public static final String TMAIL_EVENT_BUS_INJECT_NAME = "TMAIL_EVENT_BUS";
@@ -226,6 +229,36 @@ public class BlobStoreModulesChooser {
         }
     }
 
+    static class CompressionModule extends AbstractModule {
+        private final CompressionConfiguration compressionConfiguration;
+
+        CompressionModule(CompressionConfiguration compressionConfiguration) {
+            this.compressionConfiguration = compressionConfiguration;
+        }
+
+        @Provides
+        CompressionConfiguration compressionConfiguration() {
+            return compressionConfiguration;
+        }
+
+        @Provides
+        @Singleton
+        @Named(MAYBE_COMPRESSION_BLOBSTORE)
+        BlobStoreDAO provideCompressionBlobStoreDAO(@Named(MAYBE_ENCRYPTION_BLOBSTORE) BlobStoreDAO blobStoreDAO,
+                                                    MetricFactory metricFactory) {
+            return new ZstdBlobStoreDAO(blobStoreDAO, compressionConfiguration, metricFactory);
+        }
+    }
+
+    static class NoCompressionModule extends AbstractModule {
+        @Provides
+        @Singleton
+        @Named(MAYBE_COMPRESSION_BLOBSTORE)
+        BlobStoreDAO provideNoCompressionBlobStoreDAO(@Named(MAYBE_ENCRYPTION_BLOBSTORE) BlobStoreDAO blobStoreDAO) {
+            return blobStoreDAO;
+        }
+    }
+
     public static class SingleSaveDeclarationModule extends AbstractModule {
         public enum BackedStorage {
             CASSANDRA,
@@ -250,7 +283,7 @@ public class BlobStoreModulesChooser {
         @Provides
         @Singleton
         @Named(MAYBE_SINGLE_SAVE_BLOBSTORE)
-        BlobStoreDAO provideSingleSaveBlobStoreDAO(@Named(MAYBE_ENCRYPTION_BLOBSTORE) BlobStoreDAO blobStoreDAO,
+        BlobStoreDAO provideSingleSaveBlobStoreDAO(@Named(MAYBE_COMPRESSION_BLOBSTORE) BlobStoreDAO blobStoreDAO,
                                                    BlobIdList blobIdList,
                                                    BucketName defaultBucketName) {
             return new SingleSaveBlobStoreDAO(blobStoreDAO, blobIdList, defaultBucketName);
@@ -262,7 +295,7 @@ public class BlobStoreModulesChooser {
         @Provides
         @Singleton
         @Named(MAYBE_SINGLE_SAVE_BLOBSTORE)
-        public BlobStoreDAO provideMultiSaveblobStoreDAO(@Named(MAYBE_ENCRYPTION_BLOBSTORE) BlobStoreDAO blobStoreDAO) {
+        public BlobStoreDAO provideMultiSaveblobStoreDAO(@Named(MAYBE_COMPRESSION_BLOBSTORE) BlobStoreDAO blobStoreDAO) {
             return blobStoreDAO;
         }
     }
@@ -277,6 +310,13 @@ public class BlobStoreModulesChooser {
         return cryptoConfig
             .map(configuration -> (Module) new EncryptionModule(configuration))
             .orElse(new NoEncryptionModule());
+    }
+
+    public static Module chooseCompressionModule(CompressionConfiguration compressionConfiguration) {
+        if (compressionConfiguration.enabled()) {
+            return new CompressionModule(compressionConfiguration);
+        }
+        return new NoCompressionModule();
     }
 
     public static Module chooseSaveDeclarationModule(boolean singleSaveEnabled, SingleSaveDeclarationModule.BackedStorage backedSingleSaveStorage) {
@@ -327,6 +367,7 @@ public class BlobStoreModulesChooser {
             .add(chooseBlobStoreDAOModule(blobStoreConfiguration.implementation()))
             .add(chooseSecondaryObjectStorageModule(blobStoreConfiguration.maybeSecondaryS3BlobStoreConfiguration()))
             .add(chooseEncryptionModule(blobStoreConfiguration.cryptoConfig()))
+            .add(chooseCompressionModule(blobStoreConfiguration.compressionConfiguration()))
             .add(chooseSaveDeclarationModule(blobStoreConfiguration.singleSaveEnabled(), backedSingleSaveStorage))
             .add(new BaseObjectStorageModule())
             .addAll(chooseStoragePolicyModule(blobStoreConfiguration.storageStrategy()))

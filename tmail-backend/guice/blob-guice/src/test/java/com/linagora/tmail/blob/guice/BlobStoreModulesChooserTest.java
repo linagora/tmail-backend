@@ -21,6 +21,7 @@ package com.linagora.tmail.blob.guice;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.james.blob.aes.CryptoConfig;
+import org.apache.james.blob.zstd.CompressionConfiguration;
 import org.junit.jupiter.api.Test;
 
 public class BlobStoreModulesChooserTest {
@@ -45,13 +46,44 @@ public class BlobStoreModulesChooserTest {
             .noSecondaryS3BlobStore()
             .disableCache()
             .passthrough()
-            .cryptoConfig(CryptoConfig.builder()
+            .withCryptoConfig(CryptoConfig.builder()
                 .password("myPass".toCharArray())
                 // Hex.encode("salty".getBytes(StandardCharsets.UTF_8))
                 .salt("73616c7479")
                 .build())
+            .compressionConfig(CompressionConfiguration.disabled())
             .disableSingleSave()))
             .filteredOn(module -> module instanceof BlobStoreModulesChooser.EncryptionModule)
+            .hasSize(1);
+    }
+
+    @Test
+    void provideBlobStoreShouldReturnNoCompressionWhenNoneConfigured() {
+        assertThat(BlobStoreModulesChooser.chooseModules(BlobStoreConfiguration.builder()
+            .s3()
+            .noSecondaryS3BlobStore()
+            .disableCache()
+            .deduplication()
+            .noCryptoConfig()
+            .disableSingleSave()))
+            .filteredOn(module -> module instanceof BlobStoreModulesChooser.NoCompressionModule)
+            .hasSize(1);
+    }
+
+    @Test
+    void provideBlobStoreShouldReturnCompressionWhenConfigured() {
+        assertThat(BlobStoreModulesChooser.chooseModules(BlobStoreConfiguration.builder()
+            .s3()
+            .noSecondaryS3BlobStore()
+            .disableCache()
+            .passthrough()
+            .withNoCryptoConfig()
+            .compressionConfig(CompressionConfiguration.builder()
+                .enabled(true)
+                .threshold(1)
+                .build())
+            .disableSingleSave()))
+            .filteredOn(module -> module instanceof BlobStoreModulesChooser.CompressionModule)
             .hasSize(1);
     }
 

@@ -27,9 +27,11 @@ import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.james.blob.aes.CryptoConfig;
+import org.apache.james.blob.zstd.CompressionConfiguration;
 import org.apache.james.modules.mailbox.ConfigurationComponent;
 import org.apache.james.server.blob.deduplication.StorageStrategy;
 import org.apache.james.server.core.filesystem.FileSystemImpl;
+import org.apache.james.util.Size;
 import org.apache.james.utils.PropertiesProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +43,7 @@ public record BlobStoreConfiguration(BlobStoreImplName implementation,
                                      boolean cacheEnabled,
                                      StorageStrategy storageStrategy,
                                      Optional<CryptoConfig> cryptoConfig,
+                                     CompressionConfiguration compressionConfiguration,
                                      boolean singleSaveEnabled) {
     private static final Logger LOGGER = LoggerFactory.getLogger(BlobStoreConfiguration.class);
 
@@ -104,17 +107,34 @@ public record BlobStoreConfiguration(BlobStoreImplName implementation,
 
     @FunctionalInterface
     public interface RequireCryptoConfig {
-        RequireSingleSave cryptoConfig(Optional<CryptoConfig> cryptoConfig);
+        RequireCompressionConfig cryptoConfig(Optional<CryptoConfig> cryptoConfig);
 
-        default RequireSingleSave noCryptoConfig() {
+        default RequireCompressionConfig withNoCryptoConfig() {
             return cryptoConfig(Optional.empty());
         }
 
-        default RequireSingleSave cryptoConfig(CryptoConfig cryptoConfig) {
+        default RequireSingleSave noCryptoConfig() {
+            return withNoCryptoConfig().noCompressionConfig();
+        }
+
+        default RequireCompressionConfig withCryptoConfig(CryptoConfig cryptoConfig) {
             return cryptoConfig(Optional.of(cryptoConfig));
         }
+
+        default RequireSingleSave cryptoConfig(CryptoConfig cryptoConfig) {
+            return withCryptoConfig(cryptoConfig).noCompressionConfig();
+        }
     }
-    
+
+    @FunctionalInterface
+    public interface RequireCompressionConfig {
+        RequireSingleSave compressionConfig(CompressionConfiguration compressionConfiguration);
+
+        default RequireSingleSave noCompressionConfig() {
+            return compressionConfig(CompressionConfiguration.disabled());
+        }
+    }
+
     @FunctionalInterface
     public interface RequireSingleSave {
         BlobStoreConfiguration enableSingleSave(boolean enable);
@@ -129,8 +149,9 @@ public record BlobStoreConfiguration(BlobStoreImplName implementation,
     }
 
     public static RequireImplementation builder() {
-        return implementation -> secondaryS3BlobStoreConfig -> enableCache -> storageStrategy -> cryptoConfig -> enableSingleSave ->
-            new BlobStoreConfiguration(implementation, secondaryS3BlobStoreConfig, enableCache, storageStrategy, cryptoConfig, enableSingleSave);
+        return implementation -> secondaryS3BlobStoreConfig -> enableCache -> storageStrategy -> cryptoConfig -> compressionConfiguration -> enableSingleSave ->
+            new BlobStoreConfiguration(implementation, secondaryS3BlobStoreConfig, enableCache, storageStrategy, cryptoConfig,
+                compressionConfiguration, enableSingleSave);
     }
 
     public enum BlobStoreImplName {
@@ -168,6 +189,9 @@ public record BlobStoreConfiguration(BlobStoreImplName implementation,
     static final String ENCRYPTION_ENABLE_PROPERTY = "encryption.aes.enable";
     static final String ENCRYPTION_PASSWORD_PROPERTY = "encryption.aes.password";
     static final String ENCRYPTION_SALT_PROPERTY = "encryption.aes.salt";
+    static final String COMPRESSION_ENABLE_PROPERTY = "compression.enabled";
+    static final String COMPRESSION_THRESHOLD_PROPERTY = "compression.threshold";
+    static final String COMPRESSION_MIN_RATIO_PROPERTY = "compression.min-ratio";
     static final boolean CACHE_ENABLED = true;
     static final String DEDUPLICATION_ENABLE_PROPERTY = "deduplication.enable";
     static final String SINGLE_SAVE_ENABLE_PROPERTY = "single.save.enable";
@@ -212,6 +236,7 @@ public record BlobStoreConfiguration(BlobStoreImplName implementation,
                     the mails sharing the same content once one is deleted.
                     Upgrade note: If you are upgrading from James 3.5 or older, the deduplication was enabled."""));
         Optional<CryptoConfig> cryptoConfig = parseCryptoConfig(configuration);
+        CompressionConfiguration compressionConfiguration = parseCompressionConfiguration(configuration);
 
         boolean singleSaveEnabled = configuration.getBoolean(SINGLE_SAVE_ENABLE_PROPERTY, false);
 
@@ -222,6 +247,7 @@ public record BlobStoreConfiguration(BlobStoreImplName implementation,
                 .enableCache(cacheEnabled)
                 .deduplication()
                 .cryptoConfig(cryptoConfig)
+                .compressionConfig(compressionConfiguration)
                 .enableSingleSave(singleSaveEnabled);
         } else {
             return builder()
@@ -230,6 +256,7 @@ public record BlobStoreConfiguration(BlobStoreImplName implementation,
                 .enableCache(cacheEnabled)
                 .passthrough()
                 .cryptoConfig(cryptoConfig)
+                .compressionConfig(compressionConfiguration)
                 .enableSingleSave(singleSaveEnabled);
         }
     }
@@ -243,6 +270,20 @@ public record BlobStoreConfiguration(BlobStoreImplName implementation,
                 .build());
         }
         return Optional.empty();
+    }
+
+    private static CompressionConfiguration parseCompressionConfiguration(Configuration configuration) {
+        return CompressionConfiguration.builder()
+            .enabled(configuration.getBoolean(COMPRESSION_ENABLE_PROPERTY, CompressionConfiguration.DISABLED))
+            .threshold(Optional.ofNullable(configuration.getString(COMPRESSION_THRESHOLD_PROPERTY, null))
+                .map(StringUtils::trim)
+                .filter(StringUtils::isNotBlank)
+                .map(StringUtils::deleteWhitespace)
+                .map(Size::parse)
+                .map(Size::asBytes)
+                .orElse(CompressionConfiguration.DEFAULT_THRESHOLD))
+            .minRatio(configuration.getFloat(COMPRESSION_MIN_RATIO_PROPERTY, CompressionConfiguration.DEFAULT_MIN_RATIO))
+            .build();
     }
 
     private static Optional<SecondaryS3BlobStoreConfiguration> parseS3BlobStoreConfiguration(Configuration configuration) throws ConfigurationException {

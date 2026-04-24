@@ -26,6 +26,7 @@ import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.commons.configuration2.ex.ConversionException;
 import org.apache.james.FakePropertiesProvider;
 import org.apache.james.blob.aes.CryptoConfig;
+import org.apache.james.blob.zstd.CompressionConfiguration;
 import org.apache.james.modules.mailbox.ConfigurationComponent;
 import org.apache.james.server.blob.deduplication.StorageStrategy;
 import org.junit.jupiter.api.Test;
@@ -129,6 +130,37 @@ public class BlobStoreConfigurationTest {
                     .salt("73616c7479")
                     .build())
                 .disableSingleSave());
+    }
+
+    @Test
+    void compressionShouldBeDisabledByDefault() throws Exception {
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("deduplication.enable", false);
+        FakePropertiesProvider propertyProvider = FakePropertiesProvider.builder()
+            .register(ConfigurationComponent.NAME, configuration)
+            .build();
+
+        assertThat(BlobStoreConfiguration.parse(propertyProvider).compressionConfiguration())
+            .isEqualTo(CompressionConfiguration.disabled());
+    }
+
+    @Test
+    void compressionShouldParseAllProperties() throws Exception {
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("deduplication.enable", false);
+        configuration.addProperty("compression.enabled", true);
+        configuration.addProperty("compression.threshold", "8K");
+        configuration.addProperty("compression.min-ratio", "0.75");
+        FakePropertiesProvider propertyProvider = FakePropertiesProvider.builder()
+            .register(ConfigurationComponent.NAME, configuration)
+            .build();
+
+        assertThat(BlobStoreConfiguration.parse(propertyProvider).compressionConfiguration())
+            .isEqualTo(CompressionConfiguration.builder()
+                .enabled(true)
+                .threshold(8 * 1024)
+                .minRatio(0.75F)
+                .build());
     }
 
     @Test
