@@ -51,7 +51,7 @@ pipeline {
           steps {
             script {
               if (env.CHANGE_FORK) {
-                def forkOwner = env.CHANGE_FORK
+                def forkOwner = env.CHANGE_FORK.split('/')[0]
                 def memberStatus = sh(
                   script: """curl -s -o /dev/null -w "%{http_code}" \
                     -H "Authorization: token \${GITHUB_CREDENTIAL_PSW}" \
@@ -70,7 +70,7 @@ pipeline {
                       "https://api.github.com/repos/linagora/tmail-backend/issues/\${CHANGE_ID}/comments" """,
                     returnStdout: true
                   ).trim()
-                  def comments = readJSON text: commentsJson
+                  def comments = new groovy.json.JsonSlurper().parseText(commentsJson)
                   for (comment in comments) {
                     if (comment.body.trim().toLowerCase() == 'build this please') {
                       def commenter = comment.user.login
