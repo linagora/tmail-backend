@@ -148,7 +148,7 @@ public class BlobStoreConfigurationTest {
     void compressionShouldParseAllProperties() throws Exception {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("deduplication.enable", false);
-        configuration.addProperty("compression.enabled", true);
+        configuration.addProperty("compression.enable", true);
         configuration.addProperty("compression.threshold", "8K");
         configuration.addProperty("compression.min-ratio", "0.75");
         FakePropertiesProvider propertyProvider = FakePropertiesProvider.builder()
