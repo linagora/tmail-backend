@@ -56,7 +56,9 @@ import com.linagora.tmail.james.jmap.model.RecurrenceIdField;
 
 import net.fortuna.ical4j.model.Calendar;
 import net.fortuna.ical4j.model.Component;
+import net.fortuna.ical4j.model.Property;
 import net.fortuna.ical4j.model.component.VEvent;
+import net.fortuna.ical4j.model.property.Organizer;
 import net.fortuna.ical4j.model.property.RecurrenceId;
 import net.fortuna.ical4j.model.property.Status;
 import net.fortuna.ical4j.model.property.immutable.ImmutableMethod;
@@ -163,10 +165,26 @@ public class CalDavEventRepository implements CalendarEventRepository {
         return davUserProvider.provide(username)
             .flatMap(davUser -> {
                 try {
+                    VEvent vevent = (VEvent) calendar.getComponent(Component.VEVENT)
+                        .orElseThrow(() -> new RuntimeException("No VEVENT found in calendar"));
+
+                    String organizerEmail = Optional.ofNullable(vevent.getOrganizer())
+                        .map(Organizer::getCalAddress)
+                        .map(uri -> uri.getSchemeSpecificPart().isEmpty() ? uri.toString() : uri.getSchemeSpecificPart())
+                        .orElse(username.asString());
+
                     ObjectMapper mapper = new ObjectMapper();
                     ObjectNode node = mapper.createObjectNode();
                     node.put("ical", calendar.toString());
+                    node.put("sender", organizerEmail);
                     node.put("recipient", username.asString());
+                    node.put("replyTo", organizerEmail);
+                    vevent.getUid().ifPresent(uid -> node.put("uid", uid.getValue()));
+                    vevent.getDateStamp().ifPresent(ds -> node.put("dtstamp", ds.getValue()));
+                    calendar.getProperty(Property.METHOD).ifPresent(m -> node.put("method", m.getValue()));
+                    Optional.ofNullable(vevent.getSequence()).ifPresent(seq -> node.put("sequence", seq.getValue()));
+                    Optional.ofNullable(vevent.getRecurrenceId()).ifPresent(rid -> node.put("recurrence-id", rid.getValue()));
+
                     return davClient.caldav(username).sendITIPRequest(
                         URI.create(CalDavClient.CALENDAR_PATH + davUser.userId().value()),
                         mapper.writeValueAsBytes(node));
