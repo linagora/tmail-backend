@@ -303,7 +303,6 @@ public class RestrictiveCalDavCollectIntegrationTest {
     private void pushCalendarToDav(OpenPaasUser user, String calendarUid, String location) {
         String ics = "BEGIN:VCALENDAR\r\n" +
             "VERSION:2.0\r\n" +
-            "METHOD:REQUEST\r\n" +
             "BEGIN:VEVENT\r\n" +
             "UID:" + calendarUid + "\r\n" +
             "DTSTART:20170111T090000Z\r\n" +

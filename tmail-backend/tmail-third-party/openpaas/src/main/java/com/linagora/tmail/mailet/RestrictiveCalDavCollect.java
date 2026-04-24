@@ -31,7 +31,6 @@ import jakarta.mail.MessagingException;
 
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
-import org.apache.mailet.Attribute;
 import org.apache.mailet.AttributeName;
 import org.apache.mailet.AttributeUtils;
 import org.apache.mailet.AttributeValue;
@@ -63,14 +62,12 @@ import reactor.core.publisher.Mono;
  *
  * For non-REPLY methods (REQUEST, CANCEL, …):
  *   - If the event already exists in the user's CalDAV calendar → synchronize via ITIP as usual.
- *   - If the event does not exist → set the {@link #CALENDAR_EVENT_NOT_IMPORTED} mail attribute
- *     so that downstream mailets can signal the pending invitation to the client.
+ *   - If the event does not exist → do nothing.
  *
  * For REPLY: same behaviour as CalDavCollect (organizer receives attendee's response).
  */
 public class RestrictiveCalDavCollect extends GenericMailet {
 
-    public static final AttributeName CALENDAR_EVENT_NOT_IMPORTED = AttributeName.of("calendarEventNotImported");
     public static final String SOURCE_ATTRIBUTE_NAME = "source";
     public static final String DEFAULT_SOURCE_ATTRIBUTE_NAME = "icalendarJson";
 
@@ -125,7 +122,7 @@ public class RestrictiveCalDavCollect extends GenericMailet {
                     }
                 } else if (concernsRecipient(mailAddress, calendar)) {
                     davUserProvider.provide(Username.of(mailAddress.asString()))
-                        .flatMap(davUser -> syncOrMarkPending(json, mail, recipient, calendar, davUser))
+                        .flatMap(davUser -> syncIfEventExists(json, calendar, davUser))
                         .block();
                 }
             } catch (Exception e) {
@@ -134,12 +131,10 @@ public class RestrictiveCalDavCollect extends GenericMailet {
         }
     }
 
-    private Mono<Void> syncOrMarkPending(byte[] json, Mail mail, String recipient, Calendar calendar, DavUser davUser) {
+    private Mono<Void> syncIfEventExists(byte[] json, Calendar calendar, DavUser davUser) {
         DavUid eventUid = DavUid.fromCalendarUidField(CalendarUidField.getEventUidFromCalendar(calendar));
         return davClient.caldav(davUser.username()).getCalendarObject(davUser, eventUid)
-            .flatMap(existing -> synchronizeWithDavServer(json, davUser))
-            .switchIfEmpty(Mono.fromRunnable(() ->
-                mail.setAttribute(new Attribute(CALENDAR_EVENT_NOT_IMPORTED, AttributeValue.of(recipient)))));
+            .flatMap(existing -> synchronizeWithDavServer(json, davUser));
     }
 
     private Mono<Void> synchronizeWithDavServer(byte[] json, DavUser davUser) {
