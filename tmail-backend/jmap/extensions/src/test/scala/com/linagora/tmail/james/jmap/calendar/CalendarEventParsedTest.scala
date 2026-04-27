@@ -636,8 +636,8 @@ class CalendarEventParsedTest {
 
     val result = CalendarEventParsed.from(new ByteArrayInputStream(icsPayload.getBytes()))
 
-    assertThat(result).hasSize(1)
-    assertThat(result.head.participants.list).hasSize(2)
+    assertThat(result.asJava).hasSize(1)
+    assertThat(result.head.participants.list.asJava).hasSize(2)
     assertThat(result.head.participants.list.head.mailto.map(_.serialize()).get).isEqualTo("bob@example.com")
     assertThat(result.head.participants.list(1).mailto.isEmpty).isTrue
   }
