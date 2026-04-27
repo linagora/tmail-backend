@@ -65,6 +65,11 @@ import reactor.core.publisher.Mono;
  *   - If the event does not exist → do nothing.
  *
  * For REPLY: same behaviour as CalDavCollect (organizer receives attendee's response).
+ *
+ * The alignmentMode parameter controls sender validation against the ITIP payload:
+ *   - strict (default): the From address must exactly match the ORGANIZER (REQUEST/CANCEL) or an ATTENDEE (REPLY).
+ *   - sameDomain: the From address must share the same domain as the ORGANIZER or an ATTENDEE.
+ *   - none: no constraint.
  */
 public class RestrictiveCalDavCollect extends GenericMailet {
 
@@ -78,6 +83,7 @@ public class RestrictiveCalDavCollect extends GenericMailet {
     private final DavClient davClient;
     private final DavUserProvider davUserProvider;
     private AttributeName sourceAttributeName;
+    private AlignmentMode alignmentMode;
 
     @Inject
     public RestrictiveCalDavCollect(DavClient davClient, DavUserProvider davUserProvider) {
@@ -88,6 +94,12 @@ public class RestrictiveCalDavCollect extends GenericMailet {
     @Override
     public void init() throws MessagingException {
         sourceAttributeName = AttributeName.of(getInitParameter(SOURCE_ATTRIBUTE_NAME, DEFAULT_SOURCE_ATTRIBUTE_NAME));
+        String alignmentModeParam = getInitParameter(AlignmentMode.PARAMETER_NAME, "strict");
+        try {
+            alignmentMode = AlignmentMode.fromString(alignmentModeParam);
+        } catch (IllegalArgumentException e) {
+            throw new MessagingException("Invalid " + AlignmentMode.PARAMETER_NAME + ": " + alignmentModeParam, e);
+        }
     }
 
     @Override
@@ -108,11 +120,16 @@ public class RestrictiveCalDavCollect extends GenericMailet {
         JsonNode jsonNode = convertToJson(json, mail.getName());
         String icalContent = jsonNode.path("ical").asText();
         String recipient = jsonNode.path("recipient").asText();
+        String senderAsString = jsonNode.path("sender").asText();
 
         if (!icalContent.isEmpty() && !recipient.isEmpty()) {
             try {
                 MailAddress mailAddress = new MailAddress(recipient);
                 Calendar calendar = parseICalString(icalContent);
+
+                if (!isSenderAlignmentSatisfied(senderAsString, calendar, mail.getName())) {
+                    return;
+                }
 
                 if (isReply(calendar)) {
                     if (!isExplicitAttendee(mailAddress, calendar)) {
@@ -129,6 +146,75 @@ public class RestrictiveCalDavCollect extends GenericMailet {
                 LOGGER.error("Error while handling calendar in mail {} with recipient {}", mail.getName(), recipient, e);
             }
         }
+    }
+
+    private boolean isSenderAlignmentSatisfied(String senderAsString, Calendar calendar, String mailName) {
+        if (alignmentMode == AlignmentMode.NONE) {
+            return true;
+        }
+        if (senderAsString.isEmpty()) {
+            LOGGER.warn("Skipping ITIP for mail {}: sender field is missing and alignmentMode is {}", mailName, alignmentMode);
+            return false;
+        }
+        try {
+            MailAddress senderAddress = new MailAddress(senderAsString);
+            if (passesAlignmentCheck(senderAddress, calendar)) {
+                return true;
+            }
+            LOGGER.warn("Skipping ITIP for mail {}: sender {} does not match ITIP payload constraints (alignmentMode={})", mailName, senderAsString, alignmentMode);
+            return false;
+        } catch (Exception e) {
+            LOGGER.warn("Skipping ITIP for mail {}: invalid sender address {}", mailName, senderAsString);
+            return false;
+        }
+    }
+
+    private boolean passesAlignmentCheck(MailAddress sender, Calendar calendar) {
+        if (isReply(calendar)) {
+            return isSenderAlignedWithAnyAttendee(sender, calendar);
+        }
+        return isSenderAlignedWithOrganizer(sender, calendar);
+    }
+
+    private boolean isSenderAlignedWithOrganizer(MailAddress sender, Calendar calendar) {
+        return calendar.getComponents(Component.VEVENT).stream()
+            .filter(VEvent.class::isInstance)
+            .map(VEvent.class::cast)
+            .anyMatch(event -> Optional.ofNullable(event.getOrganizer())
+                .map(Organizer::getCalAddress)
+                .map(URI::getSchemeSpecificPart)
+                .flatMap(RestrictiveCalDavCollect::toMailAddressSilently)
+                .map(organizer -> isSenderAlignedWith(sender, organizer))
+                .orElse(false));
+    }
+
+    private boolean isSenderAlignedWithAnyAttendee(MailAddress sender, Calendar calendar) {
+        return calendar.getComponents(Component.VEVENT).stream()
+            .filter(VEvent.class::isInstance)
+            .map(VEvent.class::cast)
+            .anyMatch(event -> event.getProperties(Property.ATTENDEE).stream()
+                .map(attendee -> (Attendee) attendee)
+                .map(Attendee::getCalAddress)
+                .map(URI::getSchemeSpecificPart)
+                .flatMap(addr -> toMailAddressSilently(addr).stream())
+                .anyMatch(attendeeAddr -> isSenderAlignedWith(sender, attendeeAddr)));
+    }
+
+    private static Optional<MailAddress> toMailAddressSilently(String address) {
+        try {
+            return Optional.of(new MailAddress(address));
+        } catch (Exception e) {
+            LOGGER.info("Skipping invalid mail address in iCal payload: {}", address);
+            return Optional.empty();
+        }
+    }
+
+    private boolean isSenderAlignedWith(MailAddress sender, MailAddress address) {
+        return switch (alignmentMode) {
+            case STRICT -> sender.equals(address);
+            case SAME_DOMAIN -> sender.getDomain().equals(address.getDomain());
+            case NONE -> true;
+        };
     }
 
     private Mono<Void> syncIfEventExists(byte[] json, Calendar calendar, DavUser davUser) {
