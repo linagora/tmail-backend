@@ -131,17 +131,7 @@ public class RestrictiveCalDavCollect extends GenericMailet {
                     return;
                 }
 
-                if (isReply(calendar)) {
-                    if (!isExplicitAttendee(mailAddress, calendar)) {
-                        davUserProvider.provide(Username.of(mailAddress.asString()))
-                            .flatMap(davUser -> synchronizeWithDavServer(json, davUser))
-                            .block();
-                    }
-                } else if (concernsRecipient(mailAddress, calendar)) {
-                    davUserProvider.provide(Username.of(mailAddress.asString()))
-                        .flatMap(davUser -> syncIfEventExists(json, calendar, davUser))
-                        .block();
-                }
+                synchronizeIfEligible(mailAddress, calendar, json);
             } catch (Exception e) {
                 LOGGER.error("Error while handling calendar in mail {} with recipient {}", mail.getName(), recipient, e);
             }
@@ -215,6 +205,20 @@ public class RestrictiveCalDavCollect extends GenericMailet {
             case SAME_DOMAIN -> sender.getDomain().equals(address.getDomain());
             case NONE -> true;
         };
+    }
+
+    private void synchronizeIfEligible(MailAddress mailAddress, Calendar calendar, byte[] json) {
+        if (isReply(calendar)) {
+            if (!isExplicitAttendee(mailAddress, calendar)) {
+                davUserProvider.provide(Username.of(mailAddress.asString()))
+                    .flatMap(davUser -> synchronizeWithDavServer(json, davUser))
+                    .block();
+            }
+        } else if (concernsRecipient(mailAddress, calendar)) {
+            davUserProvider.provide(Username.of(mailAddress.asString()))
+                .flatMap(davUser -> syncIfEventExists(json, calendar, davUser))
+                .block();
+        }
     }
 
     private Mono<Void> syncIfEventExists(byte[] json, Calendar calendar, DavUser davUser) {
