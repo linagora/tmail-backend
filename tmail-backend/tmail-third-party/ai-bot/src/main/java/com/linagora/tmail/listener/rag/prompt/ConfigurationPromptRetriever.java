@@ -25,11 +25,14 @@ import java.util.Optional;
 import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.tree.ImmutableNode;
 
-public class ConfigurationPromptRetriever {
+import reactor.core.publisher.Mono;
+
+public class ConfigurationPromptRetriever implements  PromptRetriever {
     private static final String SYSTEM_PROMPT_URL_PARAM = "systemPromptUrl";
     private static final String PROMPT_NAME_PARAM = "promptName";
     private static final String SYSTEM_PROMPT_PARAM = "systemPrompt";
-    private static final String DEFAULT_PROMPT_NAME = "classify-email";
+    private static final String USER_PROMPT_PARAM = "userPrompt";
+    private static final String DEFAULT_PROMPT_NAME = "classify-email-generic";
 
     public static final String DEFAULT_SYSTEM_PROMPT = """
     Analyze the email and select labels that best match its content and intent.
@@ -51,14 +54,31 @@ public class ConfigurationPromptRetriever {
     Return ONLY the label IDs. No explanations.
     """;
 
-    private final String systemPrompt;
+    private static final String DEFAULT_USER_PROMPT = """ 
+                Username (of the person receiving this mail) is %s. His/her mail address is %s.
+                Below is the content of the email:
+                        
+                From: %s
+                To: %s
+                Subject: %s
+                 
+                Body:
+                %s
+                        
+                ## AVAILABLE LABELS
+                %s
+
+               Classify this email and assign relevant labels.
+                """;
+
     private final Optional<URL> systemPromptUrl;
     private final String promptName;
+    private final Prompts inlinePrompts;
 
-    public ConfigurationPromptRetriever(String systemPrompt, Optional<URL> systemPromptUrl, String promptName) {
-        this.systemPrompt = systemPrompt;
+    public ConfigurationPromptRetriever(Prompts inlinePrompts, Optional<URL> systemPromptUrl, String promptName) {
         this.systemPromptUrl = systemPromptUrl;
         this.promptName = promptName;
+        this.inlinePrompts = inlinePrompts;
     }
 
     public static ConfigurationPromptRetriever from(HierarchicalConfiguration<ImmutableNode>  configuration) {
@@ -73,13 +93,18 @@ public class ConfigurationPromptRetriever {
             throw new IllegalArgumentException("Only one of " + SYSTEM_PROMPT_PARAM + " or " + SYSTEM_PROMPT_URL_PARAM + " parameters should be provided, but both are present.");
         }
 
+        String userPrompt = Optional.ofNullable(configuration.getString(USER_PROMPT_PARAM, null))
+            .filter(s -> !s.isBlank()).orElse(DEFAULT_USER_PROMPT);
+
         String inlineSystem = configuredSystemPrompt.orElse(DEFAULT_SYSTEM_PROMPT);
 
         String promptName = Optional.ofNullable(configuration.getString(PROMPT_NAME_PARAM, null))
             .filter(s -> !s.isBlank())
             .orElse(DEFAULT_PROMPT_NAME);
 
-        return new ConfigurationPromptRetriever(inlineSystem, systemPromptUrl, promptName);
+        Prompts inlinePrompts = Prompts.of(Optional.of(inlineSystem), Optional.of(userPrompt));
+
+        return new ConfigurationPromptRetriever(inlinePrompts, systemPromptUrl, promptName);
     }
 
     private static Optional<URL> baseURLStringToURL(String baseUrlString) {
@@ -90,8 +115,16 @@ public class ConfigurationPromptRetriever {
         }
     }
 
-    public String getSystemPrompt() {
-        return systemPrompt;
+    @Override
+    public Mono<Prompts> retrievePrompts() {
+        if (systemPromptUrl.isEmpty()) {
+            return Mono.just(inlinePrompts);
+        }
+        return new HttpPromptRetriever(systemPromptUrl.get(), promptName).retrievePrompts();
+    }
+
+    public Prompts getInlinePrompts() {
+        return inlinePrompts;
     }
 
     public Optional<URL> getSystemPromptUrl() {

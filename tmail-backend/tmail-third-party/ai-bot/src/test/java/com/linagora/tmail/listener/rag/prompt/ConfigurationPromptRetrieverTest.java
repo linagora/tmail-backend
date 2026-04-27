@@ -17,30 +17,38 @@
  ********************************************************************/
 package com.linagora.tmail.listener.rag.prompt;
 
+import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+
 import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
 import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.tree.ImmutableNode;
 import org.junit.jupiter.api.Test;
 
-import java.net.URL;
+import reactor.test.StepVerifier;
 
-import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
-import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
+import java.net.URL;
 
 public class ConfigurationPromptRetrieverTest {
     private static final String SYSTEM_PROMPT_PARAM = "systemPrompt";
     private static final String SYSTEM_PROMPT_URL_PARAM = "systemPromptUrl";
     private static final String PROMPT_NAME_PARAM = "promptName";
+    private static final String USER_PROMPT_PARAM = "userPrompt";
 
     @Test
-    void fromShouldUseDefaultSystemPromptAndDefaultPromptNameWhenNothingConfigured() {
+    void fromShouldUseDefaultInlinePromptsAndDefaultPromptNameWhenNothingConfigured() {
         HierarchicalConfiguration<ImmutableNode> configuration = new BaseHierarchicalConfiguration();
 
         ConfigurationPromptRetriever result = ConfigurationPromptRetriever.from(configuration);
 
-        assertThat(result.getSystemPrompt()).isNotBlank();
         assertThat(result.getSystemPromptUrl()).isEmpty();
-        assertThat(result.getPromptName()).isEqualTo("classify-email");
+        assertThat(result.getPromptName()).isEqualTo("classify-email-generic");
+
+        assertThat(result.getInlinePrompts().system()).isPresent();
+        assertThat(result.getInlinePrompts().system().get().trim()).isEqualTo(ConfigurationPromptRetriever.DEFAULT_SYSTEM_PROMPT.trim());
+
+        assertThat(result.getInlinePrompts().user()).isPresent();
+        assertThat(result.getInlinePrompts().user().get()).isNotBlank();
     }
 
     @Test
@@ -50,9 +58,20 @@ public class ConfigurationPromptRetrieverTest {
 
         ConfigurationPromptRetriever result = ConfigurationPromptRetriever.from(configuration);
 
-        assertThat(result.getSystemPrompt()).isEqualTo("inline-system");
         assertThat(result.getSystemPromptUrl()).isEmpty();
-        assertThat(result.getPromptName()).isEqualTo("classify-email");
+        assertThat(result.getPromptName()).isEqualTo("classify-email-generic");
+        assertThat(result.getInlinePrompts().system()).contains("inline-system");
+    }
+
+    @Test
+    void fromShouldUseInlineUserPromptWhenProvided() {
+        HierarchicalConfiguration<ImmutableNode> configuration = new BaseHierarchicalConfiguration();
+        configuration.addProperty(USER_PROMPT_PARAM, "inline-user-template %s");
+
+        ConfigurationPromptRetriever result = ConfigurationPromptRetriever.from(configuration);
+
+        assertThat(result.getSystemPromptUrl()).isEmpty();
+        assertThat(result.getInlinePrompts().user()).contains("inline-user-template %s");
     }
 
     @Test
@@ -67,8 +86,9 @@ public class ConfigurationPromptRetrieverTest {
         URL url = result.getSystemPromptUrl().get();
         assertThat(url.toExternalForm()).isEqualTo("https://example.com/prompts/latest.json");
         assertThat(result.getPromptName()).isEqualTo("my-prompt");
-        assertThat(result.getSystemPrompt().isEmpty());
 
+        assertThat(result.getInlinePrompts().system()).isPresent();
+        assertThat(result.getInlinePrompts().user()).isPresent();
     }
 
     @Test
@@ -83,15 +103,36 @@ public class ConfigurationPromptRetrieverTest {
     }
 
     @Test
-    void fromShouldIgnoreBlankInlineSystemPrompt() {
+    void fromShouldIgnoreBlankInlineSystemPromptAndFallbackToDefault() {
         HierarchicalConfiguration<ImmutableNode> configuration = new BaseHierarchicalConfiguration();
         configuration.addProperty(SYSTEM_PROMPT_PARAM, "   ");
 
         ConfigurationPromptRetriever result = ConfigurationPromptRetriever.from(configuration);
 
-        assertThat(result.getSystemPrompt()).isEqualTo(ConfigurationPromptRetriever.DEFAULT_SYSTEM_PROMPT);
         assertThat(result.getSystemPromptUrl()).isEmpty();
-        assertThat(result.getPromptName().isEmpty());
+        assertThat(result.getInlinePrompts().system().get().trim()).contains(ConfigurationPromptRetriever.DEFAULT_SYSTEM_PROMPT.trim());
+    }
+
+    @Test
+    void fromShouldIgnoreBlankInlineUserPromptAndFallbackToDefault() {
+        HierarchicalConfiguration<ImmutableNode> configuration = new BaseHierarchicalConfiguration();
+        configuration.addProperty(USER_PROMPT_PARAM, "   ");
+
+        ConfigurationPromptRetriever result = ConfigurationPromptRetriever.from(configuration);
+
+        assertThat(result.getSystemPromptUrl()).isEmpty();
+        assertThat(result.getInlinePrompts().user()).isPresent();
+        assertThat(result.getInlinePrompts().user().get()).isNotBlank();
+    }
+
+    @Test
+    void fromShouldThrowRuntimeExceptionOnInvalidUrl() {
+        HierarchicalConfiguration<ImmutableNode> configuration = new BaseHierarchicalConfiguration();
+        configuration.addProperty(SYSTEM_PROMPT_URL_PARAM, "http://bad host");
+
+        assertThatThrownBy(() -> ConfigurationPromptRetriever.from(configuration))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Invalid prompt URL");
     }
 
     @Test
@@ -105,12 +146,18 @@ public class ConfigurationPromptRetrieverTest {
     }
 
     @Test
-    void fromShouldThrowRuntimeExceptionOnInvalidUrl() {
+    void retrievePromptsShouldReturnInlinePromptsWhenNoUrlConfigured() {
         HierarchicalConfiguration<ImmutableNode> configuration = new BaseHierarchicalConfiguration();
-        configuration.addProperty(SYSTEM_PROMPT_URL_PARAM, "http://bad host");
+        configuration.addProperty(SYSTEM_PROMPT_PARAM, "inline-system");
+        configuration.addProperty(USER_PROMPT_PARAM, "inline-user");
 
-        assertThatThrownBy(() -> ConfigurationPromptRetriever.from(configuration))
-            .isInstanceOf(IllegalArgumentException.class)
-            .hasMessageContaining("Invalid prompt URL");
+        ConfigurationPromptRetriever retriever = ConfigurationPromptRetriever.from(configuration);
+
+        StepVerifier.create(retriever.retrievePrompts())
+            .assertNext(prompts -> {
+                assertThat(prompts.system()).contains("inline-system");
+                assertThat(prompts.user()).contains("inline-user");
+            })
+            .verifyComplete();
     }
 }

@@ -48,6 +48,7 @@ import com.linagora.tmail.listener.rag.LlmMailBackendClassifierListener;
 import com.linagora.tmail.listener.rag.LlmMailClassifierListener;
 import com.linagora.tmail.listener.rag.event.AIAnalysisNeededEventSerializer;
 import com.linagora.tmail.listener.rag.prompt.ConfigurationPromptRetriever;
+import com.linagora.tmail.listener.rag.prompt.PromptRetriever;
 import com.linagora.tmail.mailet.AIBotConfig;
 import com.linagora.tmail.mailet.AIRedactionalHelper;
 import com.linagora.tmail.mailet.LangchainAIRedactionalHelper;
@@ -63,6 +64,7 @@ public class AIBaseModule extends AbstractModule {
     @Override
     protected void configure() {
         bind(AIRedactionalHelper.class).to(LangchainAIRedactionalHelper.class);
+        bind(PromptRetriever.class).to(ConfigurationPromptRetriever.class);
 
         Multibinder<Group> deadLetterIgnoredGroups = Multibinder.newSetBinder(binder(), Group.class, Names.named(DEAD_LETTERS_IGNORED_GROUPS));
         deadLetterIgnoredGroups.addBinding().toInstance(RagListener.GROUP);

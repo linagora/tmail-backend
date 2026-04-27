@@ -24,6 +24,7 @@ import java.util.Optional;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 
 import reactor.core.publisher.Mono;
 import reactor.netty.http.client.HttpClient;
@@ -31,9 +32,10 @@ import reactor.netty.http.client.HttpClient;
 public class HttpPromptRetriever implements PromptRetriever {
 
     private static final Duration TIMEOUT = Duration.ofSeconds(5);
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper()
+        .registerModule(new Jdk8Module());
 
     private final HttpClient httpClient;
-    private final ObjectMapper objectMapper;
     private final URL url;
     private final String promptName;
 
@@ -46,16 +48,14 @@ public class HttpPromptRetriever implements PromptRetriever {
         public record MessageDefinition(String role, String content) { }
     }
 
-    public HttpPromptRetriever(HttpClient httpClient, ObjectMapper objectMapper, URL url, String promptName) {
+    public HttpPromptRetriever(HttpClient httpClient, URL url, String promptName) {
         this.httpClient = httpClient;
-        this.objectMapper = objectMapper;
         this.url = url;
         this.promptName = promptName;
     }
 
     public HttpPromptRetriever(URL url, String promptName) {
-        this(HttpClient.create().responseTimeout(TIMEOUT), new ObjectMapper(), url, promptName);
-
+        this(HttpClient.create().responseTimeout(TIMEOUT), url, promptName);
     }
 
     public Mono<String> loadPromptUrl(URL url) {
@@ -77,7 +77,7 @@ public class HttpPromptRetriever implements PromptRetriever {
     @Override
     public Mono<Prompts> retrievePrompts() {
         return loadPromptUrl(url)
-            .flatMap(json -> Mono.fromCallable(() -> objectMapper.readValue(json, AiPromptsBundle.class)))
+            .flatMap(json -> Mono.fromCallable(() -> OBJECT_MAPPER.readValue(json, AiPromptsBundle.class)))
             .flatMap(bundle -> Mono.justOrEmpty(extractPrompts(bundle, promptName))
                 .switchIfEmpty(Mono.error(new PromptRetrievalException(
                     "Prompt '" + promptName + "' not found"))));

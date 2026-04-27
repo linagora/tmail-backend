@@ -56,6 +56,7 @@ public interface PromptRetriever {
             return new Prompts(system, user);
         }
     }
+
     Mono<Prompts> retrievePrompts();
 
 }

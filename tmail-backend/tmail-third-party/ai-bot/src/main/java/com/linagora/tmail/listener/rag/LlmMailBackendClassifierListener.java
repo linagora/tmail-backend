@@ -19,6 +19,7 @@
 package com.linagora.tmail.listener.rag;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -66,7 +67,6 @@ import com.linagora.tmail.james.jmap.model.Label;
 import com.linagora.tmail.james.jmap.model.LabelId;
 import com.linagora.tmail.listener.rag.event.AIAnalysisNeeded;
 import com.linagora.tmail.listener.rag.prompt.ConfigurationPromptRetriever;
-import com.linagora.tmail.listener.rag.prompt.HttpPromptRetriever;
 import com.linagora.tmail.listener.rag.prompt.PromptRetriever;
 
 import dev.langchain4j.data.message.ChatMessage;
@@ -113,42 +113,6 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
     private static final String DUAL_LABELING_PROPERTY = "tmail.ai.label.relevance.audit.track";
     private static final Boolean DUAL_LABELING_ENABLED = Boolean.parseBoolean(System.getProperty(DUAL_LABELING_PROPERTY, "false"));
     public static final String GUESSED_LABEL_SUFFIX = "-save";
-    private static final String DEFAULT_SYSTEM_PROMPT = """
-    Analyze the email and select labels that best match its content and intent.
-
-    Selection criteria:
-    - Only assign a label when you are highly confident it applies — when in doubt, omit it
-    - Choose labels whose descriptions match the email's topic, intent, or category
-    - Prioritize specificity: prefer specific labels over generic ones
-
-    OUTPUT FORMAT:
-    Return label IDs as comma-separated values with no spaces.
-
-    Examples:
-    - needs-action,label_work
-    - label_personal
-    - needs-action
-    - (empty if no labels match)
-
-    Return ONLY the label IDs. No explanations.
-    """;
-
-    private static final String DEFAULT_USER_PROMPT = """ 
-                Username (of the person receiving this mail) is %s. His/her mail address is %s.
-                Below is the content of the email:
-                        
-                From: %s
-                To: %s
-                Subject: %s
-                 
-                Body:
-                %s
-                        
-                ## AVAILABLE LABELS
-                %s
-
-               Classify this email and assign relevant labels.
-                """;
 
     private final MailboxManager mailboxManager;
     private final MessageIdManager messageIdManager;
@@ -185,17 +149,9 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
         Preconditions.checkArgument(maxBodyLength > 0, "'maxBodyLength' must be strictly positive");
         this.reviewModeEnabled = Boolean.parseBoolean(System.getProperty("tmail.ai.needsaction.relevance.review", "false"));
         this.configurationPromptRetriever = configurationPromptRetriever;
-        this.userPrompt = DEFAULT_USER_PROMPT;
-        if (configurationPromptRetriever.getSystemPromptUrl().isEmpty()) {
-            LOGGER.info("No system prompt URL provided, using default system prompt.");
-            this.systemPrompt = configurationPromptRetriever.getSystemPrompt();
-            this.userPrompt = DEFAULT_USER_PROMPT;
-        } else {
-            PromptRetriever promptRetriever = new HttpPromptRetriever(configurationPromptRetriever.getSystemPromptUrl().get(), configurationPromptRetriever.getPromptName());
-            PromptRetriever.Prompts prompts = promptRetriever.retrievePrompts().block();
-            this.systemPrompt = prompts.systemOrThrow();
-            this.userPrompt = prompts.userOrThrow();
-        }
+        PromptRetriever.Prompts prompts = configurationPromptRetriever.retrievePrompts().block(Duration.ofSeconds(5));
+        this.systemPrompt = prompts.systemOrThrow();
+        this.userPrompt = prompts.userOrThrow();
     }
 
     @Override
@@ -281,10 +237,10 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
                 message.messageResult().getMessageId().serialize(), message.messageResult().getMailboxId().serialize(), session.getUser(), e));
     }
 
-    private Mono<Void> performLlmClassification(LlmMailClassifierListener.ParsedMessage message, MailboxSession session, LlmUserPrompt userPrompt, UserContext userContext) {
+    private Mono<Void> performLlmClassification(LlmMailClassifierListener.ParsedMessage message, MailboxSession session, LlmUserPrompt llmUserPrompt, UserContext userContext) {
         return Mono.from(metricFactory.decoratePublisherWithTimerMetric("llm-mail-prioritization-classifier",
-                callLlm(systemPrompt, userPrompt.correspondingUserPrompt())))
-            .doOnNext(llmOutput -> emitStructureLog(userPrompt, llmOutput, userContext))
+                callLlm(systemPrompt, llmUserPrompt.correspondingUserPrompt(this.userPrompt))))
+            .doOnNext(llmOutput -> emitStructureLog(llmUserPrompt, llmOutput, userContext))
             .flatMap(llmOutput -> addFlags(message.messageResult(), session, llmOutput.flagsToSet(userContext)));
     }
 
@@ -323,8 +279,8 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
             .doOnNext(labels -> LOGGER.debug("Retrieved {} labels for user {}", labels.size(), username.asString()));
     }
 
-    record LlmUserPrompt(String userDisplayName, String user, String textContent, String sender, String to, String subject, String labelsInfo, String userPrompt) {
-        String correspondingUserPrompt() {
+    record LlmUserPrompt(String userDisplayName, String user, String textContent, String sender, String to, String subject, String labelsInfo) {
+        String correspondingUserPrompt(String userPrompt) {
             return userPrompt.formatted(userDisplayName, user, sender, to, subject, textContent, labelsInfo);
         }
     }
@@ -347,7 +303,7 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
             MessageContentExtractor.MessageContent messageContent = new MessageContentExtractor().extract(message.parsed());
             Optional<String> maybeBody = messageContent.extractMainTextContent(htmlTextExtractor);
 
-            return new LlmUserPrompt(userContext.displayName(), username.asString(), truncateBody(maybeBody.orElse("")), from, to, subject, labelsInfo, userPrompt);
+            return new LlmUserPrompt(userContext.displayName(), username.asString(), truncateBody(maybeBody.orElse("")), from, to, subject, labelsInfo);
     }
 
     private String buildLabelsInfo(UserContext userContext) {
