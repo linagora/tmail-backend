@@ -614,6 +614,35 @@ class CalendarEventParsedTest {
   }
 
   @Test
+  def parseShouldSucceedWhenAttendeeHasMalformedMailto(): Unit = {
+    val icsPayload =
+      """BEGIN:VCALENDAR
+        |VERSION:2.0
+        |PRODID:-//Sabre//Sabre VObject 4.5.7//EN
+        |CALSCALE:GREGORIAN
+        |METHOD:REQUEST
+        |BEGIN:VEVENT
+        |UID:e315dff9-8eeb-416f-a315-aef24d3af06b
+        |DTSTART;TZID=Europe/Paris:20260520T123000
+        |DTEND;TZID=Europe/Paris:20260520T133000
+        |SUMMARY:Test event
+        |ORGANIZER;CN=Alice:mailto:alice@example.com
+        |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CN=Bob:mailto:bob@example.com
+        |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;CUTYPE=INDIVIDUAL:mailto:Radia%20OUBRAHAM%20%3Croubraham@example.com%3E
+        |DTSTAMP:20260423T070116Z
+        |END:VEVENT
+        |END:VCALENDAR
+        |""".stripMargin
+
+    val result = CalendarEventParsed.from(new ByteArrayInputStream(icsPayload.getBytes()))
+
+    assertThat(result).hasSize(1)
+    assertThat(result.head.participants.list).hasSize(2)
+    assertThat(result.head.participants.list.head.mailto.map(_.serialize()).get).isEqualTo("bob@example.com")
+    assertThat(result.head.participants.list(1).mailto.isEmpty).isTrue
+  }
+
+  @Test
   def parseCounterEventShouldSucceed(): Unit = {
     val icsPayload =
       """BEGIN:VCALENDAR

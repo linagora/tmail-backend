@@ -288,7 +288,7 @@ object CalendarOrganizerField {
           .map(_.getValue),
           mailto = Option(organizer.getCalAddress)
             .map(_.getSchemeSpecificPart)
-            .map(new MailAddress(_))))
+            .flatMap(address => Try(new MailAddress(address)).toOption)))
 }
 case class CalendarOrganizerField(name: Option[String], mailto: Option[MailAddress]) {
   def asMailAddressString(): Option[String] = mailto.map(_.asString())
@@ -339,7 +339,7 @@ object CalendarAttendeeMailTo {
   def from(attendee: Attendee): Option[CalendarAttendeeMailTo] =
     Option(attendee.getCalAddress)
       .map(_.getSchemeSpecificPart)
-      .map(new MailAddress(_))
+      .flatMap(address => Try(new MailAddress(address)).toOption)
       .map(CalendarAttendeeMailTo(_))
 }
 case class CalendarAttendeeMailTo(value: MailAddress) extends AnyVal {
