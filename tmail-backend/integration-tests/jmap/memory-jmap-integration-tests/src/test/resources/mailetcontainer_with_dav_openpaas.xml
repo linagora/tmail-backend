@@ -78,7 +78,7 @@
                 <rawSource>rawIcalendar2</rawSource>
                 <onMailetException>ignore</onMailetException>
             </mailet>
-            <mailet match="All" class="com.linagora.tmail.mailet.CalDavCollect">
+            <mailet notmatch="IsMarkedAsSpam=org.apache.james.rspamd.status" class="com.linagora.tmail.mailet.CalDavCollect">
                 <source>icalendarAsJson2</source>
             </mailet>
             <!-- End of ICAL pipeline -->
