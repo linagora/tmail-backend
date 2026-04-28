@@ -826,6 +826,22 @@ class CalDavEventRepositoryTest {
     }
 
     @Test
+    void setAttendanceStatusShouldSucceedWhenEventMissingFromCalDAVByImportingViaITIP() {
+        // Event is in the resolver (blob) but has NOT been pushed to CalDAV yet
+        String eventUid = UUID.randomUUID().toString();
+        BlobId blobId = setupCalendarResolver(eventUid);
+
+        assertThatCode(() -> testee.setAttendanceStatus(testUser, AttendanceStatus.Accepted, blobId).block())
+            .doesNotThrowAnyException();
+
+        DavCalendarObject davCalendarObject = davClient.caldav(openPaasUser.email())
+            .getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(eventUid)).block();
+
+        assertThat(davCalendarObject).isNotNull();
+        assertThat(davCalendarObject.calendarData().toString()).contains("PARTSTAT=ACCEPTED");
+    }
+
+    @Test
     void setAttendanceStatusShouldThrowWhenEventIsCancelled() {
         String eventUid = UUID.randomUUID().toString();
         String cancelledCalendar = "BEGIN:VCALENDAR\n" +
