@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.listener;
 
+import static com.linagora.tmail.listener.CollectTrustedContactsListener.CARDDAV_COLLECT_LIMIT_PROPERTY;
 import static com.linagora.tmail.listener.CollectTrustedContactsListener.TO_BE_COLLECTED_FLAG;
 import static jakarta.mail.Flags.Flag.FLAGGED;
 import static jakarta.mail.Flags.Flag.SEEN;
@@ -42,7 +43,9 @@ import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mime4j.dom.Message;
 import org.apache.james.mime4j.field.address.DefaultAddressParser;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.reactivestreams.Publisher;
 
@@ -303,6 +306,92 @@ class CollectTrustedContactsListenerTest {
     private void addFlags(ComposedMessageId composedMessageId, Flags flags) throws Exception {
         mailboxManager.getMailbox(bobInboxId, bobMailboxSession)
             .setFlags(flags, MessageManager.FlagsUpdateMode.ADD, MessageRange.one(composedMessageId.getUid()), bobMailboxSession);
+    }
+
+    @Nested
+    class CollectLimitTest {
+
+        @AfterEach
+        void tearDown() {
+            System.clearProperty(CARDDAV_COLLECT_LIMIT_PROPERTY);
+        }
+
+        @Test
+        void shouldIndexOnlyUpToLimitContactsWhenLimitIsSet() throws Exception {
+            System.setProperty(CARDDAV_COLLECT_LIMIT_PROPERTY, "2");
+
+            Message message = Message.Builder.of()
+                .setFrom("Alice <alice@domain.tld>")
+                .setTo(BOB.asString(), "Carol <carol@domain.tld>")
+                .setCc(DefaultAddressParser.DEFAULT.parseMailbox("David <david@domain.tld>"))
+                .setBody("Body", StandardCharsets.UTF_8)
+                .build();
+            appendMessage(bobInboxId, message, new Flags(TO_BE_COLLECTED_FLAG));
+
+            assertThat(capturingContactAddIndexingProcessor.invocationCount()).isEqualTo(2);
+        }
+
+        @Test
+        void shouldIndexAllContactsWhenLimitExceedsContactCount() throws Exception {
+            System.setProperty(CARDDAV_COLLECT_LIMIT_PROPERTY, "100");
+
+            Message message = Message.Builder.of()
+                .setFrom("Alice <alice@domain.tld>")
+                .setTo(BOB.asString(), "Carol <carol@domain.tld>")
+                .setCc(DefaultAddressParser.DEFAULT.parseMailbox("David <david@domain.tld>"))
+                .setBody("Body", StandardCharsets.UTF_8)
+                .build();
+            appendMessage(bobInboxId, message, new Flags(TO_BE_COLLECTED_FLAG));
+
+            assertThat(capturingContactAddIndexingProcessor.indexedAddresses())
+                .containsExactlyInAnyOrder(ALICE_ADDRESS, CAROL_ADDRESS, DAVID_ADDRESS);
+        }
+
+        @Test
+        void shouldIndexAllContactsWhenLimitIsZero() throws Exception {
+            System.setProperty(CARDDAV_COLLECT_LIMIT_PROPERTY, "0");
+
+            Message message = Message.Builder.of()
+                .setFrom("Alice <alice@domain.tld>")
+                .setTo(BOB.asString(), "Carol <carol@domain.tld>")
+                .setCc(DefaultAddressParser.DEFAULT.parseMailbox("David <david@domain.tld>"))
+                .setBody("Body", StandardCharsets.UTF_8)
+                .build();
+            appendMessage(bobInboxId, message, new Flags(TO_BE_COLLECTED_FLAG));
+
+            assertThat(capturingContactAddIndexingProcessor.indexedAddresses())
+                .containsExactlyInAnyOrder(ALICE_ADDRESS, CAROL_ADDRESS, DAVID_ADDRESS);
+        }
+
+        @Test
+        void shouldIndexAllContactsWhenLimitIsNegative() throws Exception {
+            System.setProperty(CARDDAV_COLLECT_LIMIT_PROPERTY, "-1");
+
+            Message message = Message.Builder.of()
+                .setFrom("Alice <alice@domain.tld>")
+                .setTo(BOB.asString(), "Carol <carol@domain.tld>")
+                .setCc(DefaultAddressParser.DEFAULT.parseMailbox("David <david@domain.tld>"))
+                .setBody("Body", StandardCharsets.UTF_8)
+                .build();
+            appendMessage(bobInboxId, message, new Flags(TO_BE_COLLECTED_FLAG));
+
+            assertThat(capturingContactAddIndexingProcessor.indexedAddresses())
+                .containsExactlyInAnyOrder(ALICE_ADDRESS, CAROL_ADDRESS, DAVID_ADDRESS);
+        }
+
+        @Test
+        void shouldIndexAllContactsWhenLimitPropertyIsNotSet() throws Exception {
+            Message message = Message.Builder.of()
+                .setFrom("Alice <alice@domain.tld>")
+                .setTo(BOB.asString(), "Carol <carol@domain.tld>")
+                .setCc(DefaultAddressParser.DEFAULT.parseMailbox("David <david@domain.tld>"))
+                .setBody("Body", StandardCharsets.UTF_8)
+                .build();
+            appendMessage(bobInboxId, message, new Flags(TO_BE_COLLECTED_FLAG));
+
+            assertThat(capturingContactAddIndexingProcessor.indexedAddresses())
+                .containsExactlyInAnyOrder(ALICE_ADDRESS, CAROL_ADDRESS, DAVID_ADDRESS);
+        }
     }
 
 }
