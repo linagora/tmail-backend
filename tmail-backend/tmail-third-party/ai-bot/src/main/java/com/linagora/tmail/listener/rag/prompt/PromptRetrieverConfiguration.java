@@ -17,17 +17,14 @@
  ********************************************************************/
 package com.linagora.tmail.listener.rag.prompt;
 
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URL;
 import java.util.Optional;
 
 import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.tree.ImmutableNode;
 
-import reactor.core.publisher.Mono;
+import com.linagora.tmail.listener.rag.prompt.PromptRetriever.Prompts;
 
-public class ConfigurationPromptRetriever implements  PromptRetriever {
+public class PromptRetrieverConfiguration {
     private static final String SYSTEM_PROMPT_URL_PARAM = "systemPromptUrl";
     private static final String PROMPT_NAME_PARAM = "promptName";
     private static final String SYSTEM_PROMPT_PARAM = "systemPrompt";
@@ -54,7 +51,7 @@ public class ConfigurationPromptRetriever implements  PromptRetriever {
     Return ONLY the label IDs. No explanations.
     """;
 
-    private static final String DEFAULT_USER_PROMPT = """ 
+    public static final String DEFAULT_USER_PROMPT = """ 
                 Username (of the person receiving this mail) is %s. His/her mail address is %s.
                 Below is the content of the email:
                         
@@ -69,25 +66,24 @@ public class ConfigurationPromptRetriever implements  PromptRetriever {
                 %s
 
                Classify this email and assign relevant labels.
-                """;
+               """;
 
-    private final Optional<URL> systemPromptUrl;
+    private final Optional<String> systemPromptUrl;
     private final String promptName;
     private final Prompts inlinePrompts;
 
-    public ConfigurationPromptRetriever(Prompts inlinePrompts, Optional<URL> systemPromptUrl, String promptName) {
+    public PromptRetrieverConfiguration(Prompts inlinePrompts, Optional<String> systemPromptUrl, String promptName) {
         this.systemPromptUrl = systemPromptUrl;
         this.promptName = promptName;
         this.inlinePrompts = inlinePrompts;
     }
 
-    public static ConfigurationPromptRetriever from(HierarchicalConfiguration<ImmutableNode>  configuration) {
+    public static PromptRetrieverConfiguration from(HierarchicalConfiguration<ImmutableNode>  configuration) {
         Optional<String> configuredSystemPrompt = Optional.ofNullable(configuration.getString(SYSTEM_PROMPT_PARAM, null))
             .filter(s -> !s.isBlank());
 
-        Optional<URL> systemPromptUrl = Optional.ofNullable(configuration.getString(SYSTEM_PROMPT_URL_PARAM, null))
-            .filter(s -> !s.isBlank())
-            .flatMap(ConfigurationPromptRetriever::baseURLStringToURL);
+        Optional<String> systemPromptUrl = Optional.ofNullable(configuration.getString(SYSTEM_PROMPT_URL_PARAM, null))
+            .filter(s -> !s.isBlank());
 
         if (configuredSystemPrompt.isPresent() && systemPromptUrl.isPresent()) {
             throw new IllegalArgumentException("Only one of " + SYSTEM_PROMPT_PARAM + " or " + SYSTEM_PROMPT_URL_PARAM + " parameters should be provided, but both are present.");
@@ -102,32 +98,16 @@ public class ConfigurationPromptRetriever implements  PromptRetriever {
             .filter(s -> !s.isBlank())
             .orElse(DEFAULT_PROMPT_NAME);
 
-        Prompts inlinePrompts = Prompts.of(Optional.of(inlineSystem), Optional.of(userPrompt));
+        Prompts inlinePrompts = new Prompts(inlineSystem, userPrompt);
 
-        return new ConfigurationPromptRetriever(inlinePrompts, systemPromptUrl, promptName);
-    }
-
-    private static Optional<URL> baseURLStringToURL(String baseUrlString) {
-        try {
-            return Optional.of(URI.create(baseUrlString).toURL());
-        } catch (MalformedURLException | IllegalArgumentException e) {
-            throw new IllegalArgumentException("Invalid prompt URL", e);
-        }
-    }
-
-    @Override
-    public Mono<Prompts> retrievePrompts() {
-        if (systemPromptUrl.isEmpty()) {
-            return Mono.just(inlinePrompts);
-        }
-        return new HttpPromptRetriever(systemPromptUrl.get(), promptName).retrievePrompts();
+        return new PromptRetrieverConfiguration(inlinePrompts, systemPromptUrl, promptName);
     }
 
     public Prompts getInlinePrompts() {
         return inlinePrompts;
     }
 
-    public Optional<URL> getSystemPromptUrl() {
+    public Optional<String> getSystemPromptUrl() {
         return systemPromptUrl;
     }
 

@@ -60,7 +60,7 @@ public class HttpPromptRetriever implements PromptRetriever {
 
     public Mono<String> loadPromptUrl(URL url) {
         if (url == null) {
-            return Mono.error(new PromptRetrievalException("Prompt URL must not be null"));
+            return Mono.error(new RuntimeException("Prompt URL must not be null"));
         }
         return httpClient
             .get()
@@ -68,7 +68,7 @@ public class HttpPromptRetriever implements PromptRetriever {
             .responseSingle((response, content) -> {
                 int code = response.status().code();
                 if (code != 200) {
-                    return Mono.error(new PromptRetrievalException("Prompt download failed (" + code + ") for " + url.toExternalForm()));
+                    return Mono.error(new RuntimeException("Prompt download failed (" + code + ") for " + url.toExternalForm()));
                 }
                 return content.asString();
             });
@@ -79,7 +79,7 @@ public class HttpPromptRetriever implements PromptRetriever {
         return loadPromptUrl(url)
             .flatMap(json -> Mono.fromCallable(() -> OBJECT_MAPPER.readValue(json, AiPromptsBundle.class)))
             .flatMap(bundle -> Mono.justOrEmpty(extractPrompts(bundle, promptName))
-                .switchIfEmpty(Mono.error(new PromptRetrievalException(
+                .switchIfEmpty(Mono.error(new RuntimeException(
                     "Prompt '" + promptName + "' not found"))));
     }
 
@@ -105,10 +105,12 @@ public class HttpPromptRetriever implements PromptRetriever {
     private Optional<Prompts> extractPrompts(AiPromptsBundle bundle, String promptName) {
 
         return findPrompt(bundle, promptName).map(prompt -> {
-            Optional<String> system = findMessageContent(prompt.messages(), "system");
-            Optional<String> user = findMessageContent(prompt.messages(), "user");
-            return Prompts.of(system, user);
+            String system = findMessageContent(prompt.messages(), "system")
+                .orElseThrow(() -> new RuntimeException("No system prompt found for prompt '" + promptName + "'"));
+            String user = findMessageContent(prompt.messages(), "user")
+                .orElseThrow(() -> new RuntimeException("No userTemplate prompt found for prompt '" + promptName + "'"));
+
+            return new Prompts(system, user);
         });
     }
-
 }

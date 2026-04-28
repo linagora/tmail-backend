@@ -17,21 +17,35 @@
  ********************************************************************/
 package com.linagora.tmail.listener.rag.prompt;
 
+import java.net.MalformedURLException;
+import java.net.URI;
+import java.net.URL;
+import java.util.Optional;
+
 import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.tree.ImmutableNode;
 
-import reactor.core.publisher.Mono;
+public class DefaultPromptRetrieverFactory implements PromptRetriever.Factory {
 
-public interface PromptRetriever {
+    @Override
+    public PromptRetriever create(HierarchicalConfiguration<ImmutableNode> configuration) {
+        PromptRetrieverConfiguration configPromptRetriever = PromptRetrieverConfiguration.from(configuration);
 
-    public record Prompts(String system, String userTemplate) {
+        if (configPromptRetriever.getSystemPromptUrl().isEmpty()) {
+            return new InlinePromptRetriever(configPromptRetriever.getInlinePrompts());
+        }
 
+        URL systemPromptUrl = baseURLStringToURL(configPromptRetriever.getSystemPromptUrl().get())
+            .orElseThrow(() -> new IllegalArgumentException("Invalid system prompt URL"));
+
+        return new HttpPromptRetriever(systemPromptUrl, configPromptRetriever.getPromptName());
     }
 
-    Mono<Prompts> retrievePrompts();
-
-    interface Factory {
-        PromptRetriever create(HierarchicalConfiguration<ImmutableNode> configuration);
+    private static Optional<URL> baseURLStringToURL(String baseUrlString) {
+        try {
+            return Optional.of(URI.create(baseUrlString).toURL());
+        } catch (MalformedURLException | IllegalArgumentException e) {
+            throw new IllegalArgumentException("Invalid prompt URL", e);
+        }
     }
-
 }

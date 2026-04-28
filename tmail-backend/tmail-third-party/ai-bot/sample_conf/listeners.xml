@@ -36,10 +36,9 @@
             <!-- Option A: remote prompt (recommended for ops) -->
             <systemPromptUrl>https://files.twake.app/prompts/email/latest.json</systemPromptUrl>
             <promptName>classify-email-generic</promptName>
-            <userPrompt>custom user prompt template </userPrompt>
             <!-- Option B: inline prompt (uncomment to use, and remove/comment systemPromptUrl) -->
-            <!--
-            <systemPrompt>Custom LLM classifier instruction</systemPrompt>-->
+            <!--<systemPrompt>Custom LLM classifier instruction</systemPrompt>-->
+            <!-- <userPrompt>custom user prompt template </userPrompt>-->
             <!-- Optional: maximum characters of body sent to LLM (default 4000). Email body is truncated if longer. -->
             <maxBodyLength>4000</maxBodyLength>
         </configuration>

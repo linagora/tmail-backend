@@ -47,7 +47,7 @@ import com.google.inject.name.Names;
 import com.linagora.tmail.listener.rag.LlmMailBackendClassifierListener;
 import com.linagora.tmail.listener.rag.LlmMailClassifierListener;
 import com.linagora.tmail.listener.rag.event.AIAnalysisNeededEventSerializer;
-import com.linagora.tmail.listener.rag.prompt.ConfigurationPromptRetriever;
+import com.linagora.tmail.listener.rag.prompt.DefaultPromptRetrieverFactory;
 import com.linagora.tmail.listener.rag.prompt.PromptRetriever;
 import com.linagora.tmail.mailet.AIBotConfig;
 import com.linagora.tmail.mailet.AIRedactionalHelper;
@@ -64,8 +64,8 @@ public class AIBaseModule extends AbstractModule {
     @Override
     protected void configure() {
         bind(AIRedactionalHelper.class).to(LangchainAIRedactionalHelper.class);
-        bind(PromptRetriever.class).to(ConfigurationPromptRetriever.class);
-
+        bind(PromptRetriever.Factory.class).toInstance(
+            new DefaultPromptRetrieverFactory());
         Multibinder<Group> deadLetterIgnoredGroups = Multibinder.newSetBinder(binder(), Group.class, Names.named(DEAD_LETTERS_IGNORED_GROUPS));
         deadLetterIgnoredGroups.addBinding().toInstance(RagListener.GROUP);
         deadLetterIgnoredGroups.addBinding().toInstance(LlmMailClassifierListener.GROUP);
@@ -94,11 +94,6 @@ public class AIBaseModule extends AbstractModule {
             .flatMap(Optional::stream)
             .findFirst()
             .orElseGet(BaseHierarchicalConfiguration::new);
-    }
-
-    @Provides
-    public static ConfigurationPromptRetriever provideConfigurationPromptRetriever(@Named(LLM_MAIL_CLASSIFIER_CONFIGURATION) HierarchicalConfiguration<ImmutableNode> configuration) {
-        return ConfigurationPromptRetriever.from(configuration);
     }
 
     @ProvidesIntoSet

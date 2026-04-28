@@ -82,8 +82,8 @@ public class HttpPromptRetrieverTest {
 
         StepVerifier.create(httpPromptRetriever.retrievePrompts())
             .assertNext(prompts -> {
-                assertThat(prompts.system()).isEqualTo(Optional.of("SYSTEM_PROMPT_CONTENT"));
-                assertThat(prompts.user()).isEqualTo(Optional.of("USER_PROMPT_CONTENT {{input}}"));
+                assertThat(prompts.system()).isEqualTo("SYSTEM_PROMPT_CONTENT");
+                assertThat(prompts.userTemplate()).isEqualTo("USER_PROMPT_CONTENT {{input}}");
             })
             .verifyComplete();
     }
@@ -113,7 +113,7 @@ public class HttpPromptRetrieverTest {
 
         StepVerifier.create(httpPromptRetriever.retrievePrompts())
             .expectErrorSatisfies(err -> {
-                assertThat(err).isInstanceOf(PromptRetrievalException.class);
+                assertThat(err).isInstanceOf(RuntimeException.class);
                 assertThat(err.getMessage()).contains("Prompt 'classify-email' not found");
             })
             .verify();
@@ -142,11 +142,10 @@ public class HttpPromptRetrieverTest {
                 .withBody(body)));
 
         StepVerifier.create(httpPromptRetriever.retrievePrompts())
-            .assertNext(prompts -> {
-                assertThat(prompts.system()).isEmpty();
-                assertThat(prompts.user()).contains("USER_ONLY");
-            })
-            .verifyComplete();
+            .expectErrorMatches(throwable ->
+                throwable instanceof RuntimeException
+                    && throwable.getMessage().toLowerCase().contains("system"))
+            .verify();
     }
 
     @Test
@@ -156,7 +155,7 @@ public class HttpPromptRetrieverTest {
 
         StepVerifier.create(httpPromptRetriever.retrievePrompts())
             .expectErrorSatisfies(err -> {
-                assertThat(err).isInstanceOf(PromptRetrievalException.class);
+                assertThat(err).isInstanceOf(RuntimeException.class);
                 assertThat(err.getMessage()).contains("Prompt download failed (500)");
             })
             .verify();

@@ -15,15 +15,20 @@
  *  PURPOSE. See the GNU Affero General Public License for          *
  *  more details.                                                   *
  ********************************************************************/
-
 package com.linagora.tmail.listener.rag.prompt;
 
-public class PromptRetrievalException extends RuntimeException {
-    public PromptRetrievalException(String message, Throwable cause) {
-        super(message, cause);
+import reactor.core.publisher.Mono;
+
+public class InlinePromptRetriever implements PromptRetriever {
+
+    private final Prompts prompts;
+
+    public InlinePromptRetriever(Prompts prompts) {
+        this.prompts = prompts;
     }
 
-    public PromptRetrievalException(String message) {
-        super(message);
+    @Override
+    public Mono<Prompts> retrievePrompts() {
+        return Mono.just(prompts);
     }
 }
