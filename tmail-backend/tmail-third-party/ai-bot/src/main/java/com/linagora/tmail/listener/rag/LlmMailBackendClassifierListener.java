@@ -19,6 +19,7 @@
 package com.linagora.tmail.listener.rag;
 
 import java.io.IOException;
+import java.time.Duration;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
@@ -65,6 +66,7 @@ import com.linagora.tmail.james.jmap.model.DisplayName;
 import com.linagora.tmail.james.jmap.model.Label;
 import com.linagora.tmail.james.jmap.model.LabelId;
 import com.linagora.tmail.listener.rag.event.AIAnalysisNeeded;
+import com.linagora.tmail.listener.rag.prompt.PromptRetriever;
 
 import dev.langchain4j.data.message.ChatMessage;
 import dev.langchain4j.data.message.SystemMessage;
@@ -100,32 +102,12 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
     }
     
     private static final Logger LOGGER = LoggerFactory.getLogger(LlmMailBackendClassifierListener.class);
-    private static final String SYSTEM_PROMPT_PARAM = "systemPrompt";
     private static final String MAX_BODY_LENGTH_PARAM = "maxBodyLength";
     private static final int DEFAULT_MAX_BODY_LENGTH = 4000;
     private static final int MAX_PREVIEW_LENGTH = 255;
     private static final String DUAL_LABELING_PROPERTY = "tmail.ai.label.relevance.audit.track";
     private static final Boolean DUAL_LABELING_ENABLED = Boolean.parseBoolean(System.getProperty(DUAL_LABELING_PROPERTY, "false"));
     public static final String GUESSED_LABEL_SUFFIX = "-save";
-    private static final String DEFAULT_SYSTEM_PROMPT = """
-    Analyze the email and select labels that best match its content and intent.
-
-    Selection criteria:
-    - Only assign a label when you are highly confident it applies — when in doubt, omit it
-    - Choose labels whose descriptions match the email's topic, intent, or category
-    - Prioritize specificity: prefer specific labels over generic ones
-
-    OUTPUT FORMAT:
-    Return label IDs as comma-separated values with no spaces.
-
-    Examples:
-    - needs-action,label_work
-    - label_personal
-    - needs-action
-    - (empty if no labels match)
-
-    Return ONLY the label IDs. No explanations.
-    """;
 
     private final MailboxManager mailboxManager;
     private final MessageIdManager messageIdManager;
@@ -133,7 +115,7 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
     private final HtmlTextExtractor htmlTextExtractor;
     private final MetricFactory metricFactory;
     private final IdentityRepository identityRepository;
-    private final String systemPrompt;
+    private final PromptRetriever.Prompts prompts;
     private final int maxBodyLength;
     private final LabelRepository labelRepository;
     private final boolean reviewModeEnabled;
@@ -146,20 +128,23 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
                                             IdentityRepository identityRepository,
                                             MetricFactory metricFactory,
                                             LabelRepository labelRepository,
-                                            @Named(LLM_MAIL_CLASSIFIER_CONFIGURATION) HierarchicalConfiguration<ImmutableNode> configuration) {
+                                            @Named(LLM_MAIL_CLASSIFIER_CONFIGURATION) HierarchicalConfiguration<ImmutableNode> configuration,
+                                            PromptRetriever.Factory promptRetrieverFactory) {
+
         this.mailboxManager = mailboxManager;
         this.messageIdManager = messageIdManager;
         this.chatLanguageModel = chatLanguageModel;
         this.htmlTextExtractor = htmlTextExtractor;
         this.identityRepository = identityRepository;
         this.metricFactory = metricFactory;
-        this.systemPrompt = Optional.ofNullable(configuration.getString(SYSTEM_PROMPT_PARAM, null))
-            .filter(s -> !s.isBlank())
-            .orElse(DEFAULT_SYSTEM_PROMPT);
         this.labelRepository = labelRepository;
         this.maxBodyLength = configuration.getInt(MAX_BODY_LENGTH_PARAM, DEFAULT_MAX_BODY_LENGTH);
         Preconditions.checkArgument(maxBodyLength > 0, "'maxBodyLength' must be strictly positive");
         this.reviewModeEnabled = Boolean.parseBoolean(System.getProperty("tmail.ai.needsaction.relevance.review", "false"));
+        PromptRetriever retriever = promptRetrieverFactory.create(configuration);
+        this.prompts = retriever
+            .retrievePrompts()
+            .block(Duration.ofSeconds(5));
     }
 
     @Override
@@ -245,10 +230,10 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
                 message.messageResult().getMessageId().serialize(), message.messageResult().getMailboxId().serialize(), session.getUser(), e));
     }
 
-    private Mono<Void> performLlmClassification(LlmMailClassifierListener.ParsedMessage message, MailboxSession session, LlmUserPrompt userPrompt, UserContext userContext) {
+    private Mono<Void> performLlmClassification(LlmMailClassifierListener.ParsedMessage message, MailboxSession session, LlmUserPrompt llmUserPrompt, UserContext userContext) {
         return Mono.from(metricFactory.decoratePublisherWithTimerMetric("llm-mail-prioritization-classifier",
-                callLlm(systemPrompt, userPrompt.correspondingUserPrompt())))
-            .doOnNext(llmOutput -> emitStructureLog(userPrompt, llmOutput, userContext))
+                callLlm(prompts.systemOrThrow(), llmUserPrompt.correspondingUserPrompt(prompts.userOrThrow()))))
+            .doOnNext(llmOutput -> emitStructureLog(llmUserPrompt, llmOutput, userContext))
             .flatMap(llmOutput -> addFlags(message.messageResult(), session, llmOutput.flagsToSet(userContext)));
     }
 
@@ -288,23 +273,8 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
     }
 
     record LlmUserPrompt(String userDisplayName, String user, String textContent, String sender, String to, String subject, String labelsInfo) {
-        String correspondingUserPrompt() {
-            return """ 
-                Username (of the person receiving this mail) is %s. His/her mail address is %s.
-                Below is the content of the email:
-                        
-                From: %s
-                To: %s
-                Subject: %s
-                 
-                Body:
-                %s
-                        
-                ## AVAILABLE LABELS
-                %s
-
-               Classify this email and assign relevant labels.
-                """.formatted(userDisplayName, user, sender, to, subject, textContent, labelsInfo);
+        String correspondingUserPrompt(String userPrompt) {
+            return userPrompt.formatted(userDisplayName, user, sender, to, subject, textContent, labelsInfo);
         }
     }
 

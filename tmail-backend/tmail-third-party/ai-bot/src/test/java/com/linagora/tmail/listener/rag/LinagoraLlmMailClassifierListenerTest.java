@@ -26,7 +26,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
-import com.linagora.tmail.james.jmap.model.Label;
 import jakarta.mail.Flags;
 
 import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
@@ -61,10 +60,14 @@ import com.linagora.tmail.james.jmap.label.LabelRepository;
 import com.linagora.tmail.james.jmap.label.MemoryLabelRepository;
 import com.linagora.tmail.james.jmap.model.Color;
 import com.linagora.tmail.james.jmap.model.DisplayName;
+import com.linagora.tmail.james.jmap.model.Label;
 import com.linagora.tmail.james.jmap.model.LabelCreationRequest;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
 import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
+import com.linagora.tmail.listener.rag.prompt.ConfigurationPromptRetriever;
+import com.linagora.tmail.listener.rag.prompt.DefaultPromptRetrieverFactory;
+import com.linagora.tmail.listener.rag.prompt.PromptRetriever;
 import com.linagora.tmail.mailet.AIBotConfig;
 import com.linagora.tmail.mailet.LlmModel;
 import com.linagora.tmail.mailet.StreamChatLanguageModelFactory;
@@ -88,6 +91,7 @@ public class LinagoraLlmMailClassifierListenerTest implements LlmMailClassifierL
     private JmapSettingsRepositoryJavaUtils jmapSettingsRepositoryUtils;
     private LlmMailClassifierListener listener;
     private LlmMailBackendClassifierListener backendListener;
+    private PromptRetriever.Factory promptRetrieverFactory;
     private LabelRepository labelRepository;
     private EventBus tmailEventBus;
     private String label1Id;
@@ -131,7 +135,8 @@ public class LinagoraLlmMailClassifierListenerTest implements LlmMailClassifierL
         aliceCustomMailbox = mailboxManager.getMailbox(MailboxPath.forUser(ALICE, "customMailbox"), aliceSession);
 
         listenerConfig = new BaseHierarchicalConfiguration();
-
+        listenerConfig.addProperty("systemPrompt", ConfigurationPromptRetriever.DEFAULT_SYSTEM_PROMPT);
+        promptRetrieverFactory = new DefaultPromptRetrieverFactory();
         AIBotConfig aiBotConfig = new AIBotConfig(
             Optional.ofNullable(System.getenv("LLM_API_KEY")).orElse("change-me"),
             new LlmModel("openai/gpt-oss-120b"),
@@ -166,7 +171,8 @@ public class LinagoraLlmMailClassifierListenerTest implements LlmMailClassifierL
             identityRepository,
             metricFactory,
             labelRepository,
-            listenerConfig);
+            listenerConfig,
+            promptRetrieverFactory);
 
         jmapSettingsRepositoryUtils().reset(ALICE, ImmutableMap.of("ai.label-categorization.enabled", "true"));
         System.setProperty("tmail.ai.label.relevance.audit.track", "true");
@@ -219,7 +225,8 @@ public class LinagoraLlmMailClassifierListenerTest implements LlmMailClassifierL
             identityRepository,
             new RecordingMetricFactory(),
             labelRepository,
-            overrideConfig);
+            overrideConfig,
+            new DefaultPromptRetrieverFactory());
     }
 
     @Override
