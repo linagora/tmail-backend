@@ -26,6 +26,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.OptionalLong;
 import java.util.stream.Stream;
 
 import jakarta.inject.Inject;
@@ -69,6 +70,12 @@ public class CollectTrustedContactsListener implements EventListener.ReactiveGro
     }
 
     public static final String TO_BE_COLLECTED_FLAG = "$to_be_collected";
+    public static final String CARDDAV_COLLECT_LIMIT_PROPERTY = "tmail.carddav.collect.limit";
+    private static final OptionalLong COLLECT_LIMIT = Optional.ofNullable(System.getProperty(CARDDAV_COLLECT_LIMIT_PROPERTY))
+        .stream()
+        .mapToLong(Long::parseLong)
+        .filter(l -> l > 0)
+        .findFirst();
     private static final Group GROUP = new CollectTrustedContactsListenerGroup();
     private static final Logger LOGGER = LoggerFactory.getLogger(CollectTrustedContactsListener.class);
 
@@ -130,11 +137,19 @@ public class CollectTrustedContactsListener implements EventListener.ReactiveGro
     private Mono<Void> collectContacts(Username username, List<MessageId> messageIds) {
         MailboxSession mailboxSession = mailboxManager.createSystemSession(username);
 
-        return Flux.from(messageIdManager.getMessagesReactive(messageIds, FetchGroup.HEADERS, mailboxSession))
-            .flatMap(messageResult -> extractContacts(messageResult, username))
+        Flux<ContactFields> contacts = Flux.from(messageIdManager.getMessagesReactive(messageIds, FetchGroup.HEADERS, mailboxSession))
+            .flatMap(messageResult -> extractContacts(messageResult, username));
+
+        return applyCollectLimit(contacts)
             .flatMap(contact -> Mono.from(contactAddIndexingProcessor.process(username, contact)), LOW_CONCURRENCY)
             .then();
     }
+
+    private <T> Flux<T> applyCollectLimit(Flux<T> flux) {
+        return COLLECT_LIMIT.isPresent() ? flux.take(COLLECT_LIMIT.getAsLong()) : flux;
+    }
+
+
 
     private boolean hasTrustedFlag(MailboxEvents.Added addedEvent) {
         return addedEvent.getAdded()
@@ -162,7 +177,7 @@ public class CollectTrustedContactsListener implements EventListener.ReactiveGro
     private Flux<ContactFields> extractContacts(MessageResult messageResult, Username username) {
         return parseMessage(messageResult)
             .flatMapMany(parsedMessage -> Flux.fromStream(allMailboxes(parsedMessage))
-                .flatMap(mailbox -> Mono.justOrEmpty(asContact(mailbox, username))))
+                .flatMap(mailbox -> Mono.justOrEmpty(asContact(mailbox, username)), LOW_CONCURRENCY))
             .filter(contact -> !isEventUser(contact, username));
     }
 

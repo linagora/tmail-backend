@@ -20,6 +20,7 @@ package com.linagora.tmail.mailet;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.OptionalLong;
 
 import jakarta.inject.Inject;
 import jakarta.mail.MessagingException;
@@ -27,6 +28,7 @@ import jakarta.mail.MessagingException;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
 import org.apache.james.util.FunctionalUtils;
+import org.apache.james.util.ReactorUtils;
 import org.apache.mailet.AttributeUtils;
 import org.apache.mailet.Mail;
 import org.apache.mailet.base.GenericMailet;
@@ -49,6 +51,12 @@ import reactor.core.publisher.Mono;
  */
 public class CardDavCollectedContact extends GenericMailet {
     private static final Logger LOGGER = LoggerFactory.getLogger(CardDavCollectedContact.class);
+    static final String CARDDAV_COLLECT_LIMIT_PROPERTY = "tmail.carddav.collect.limit";
+    private static final OptionalLong COLLECT_LIMIT = Optional.ofNullable(System.getProperty(CARDDAV_COLLECT_LIMIT_PROPERTY))
+        .stream()
+        .mapToLong(Long::parseLong)
+        .filter(l -> l > 0)
+        .findFirst();
 
     private final OpenPaasRestClient openPaasRestClient;
     private final DavClient davClient;
@@ -91,11 +99,16 @@ public class CardDavCollectedContact extends GenericMailet {
 
     private Mono<Void> collectedContactProcess(Username senderUsername, List<MailAddress> recipients) {
         return openPaasRestClient.searchOpenPaasUserId(senderUsername)
-            .flatMapMany(openPassUserId -> Flux.fromIterable(recipients)
+            .flatMapMany(openPassUserId -> applyCollectLimit(Flux.fromIterable(recipients))
                 .map(CardDavUtils::createObjectCreationRequest)
-                .flatMap(cardDavCreationObjectRequest -> createCollectedContactIfNotExists(senderUsername, openPassUserId, cardDavCreationObjectRequest)))
+                .flatMap(cardDavCreationObjectRequest -> createCollectedContactIfNotExists(senderUsername, openPassUserId, cardDavCreationObjectRequest), ReactorUtils.LOW_CONCURRENCY))
             .then();
     }
+
+    private <T> Flux<T> applyCollectLimit(Flux<T> flux) {
+        return COLLECT_LIMIT.isPresent() ? flux.take(COLLECT_LIMIT.getAsLong()) : flux;
+    }
+
 
     private Mono<Void> createCollectedContactIfNotExists(Username sender, OpenPaaSUserId openPassUserId, CardDavCreationObjectRequest cardDavCreationObjectRequest) {
         CardDavClient cardDavClient = davClient.carddav(sender);
