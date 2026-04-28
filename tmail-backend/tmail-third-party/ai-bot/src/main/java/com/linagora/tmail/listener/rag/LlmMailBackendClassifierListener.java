@@ -66,7 +66,6 @@ import com.linagora.tmail.james.jmap.model.DisplayName;
 import com.linagora.tmail.james.jmap.model.Label;
 import com.linagora.tmail.james.jmap.model.LabelId;
 import com.linagora.tmail.listener.rag.event.AIAnalysisNeeded;
-import com.linagora.tmail.listener.rag.prompt.ConfigurationPromptRetriever;
 import com.linagora.tmail.listener.rag.prompt.PromptRetriever;
 
 import dev.langchain4j.data.message.ChatMessage;
@@ -80,10 +79,7 @@ import reactor.core.publisher.Mono;
 import scala.jdk.javaapi.OptionConverters;
 
 public class LlmMailBackendClassifierListener implements EventListener.ReactiveGroupEventListener {
-    private static final String SYSTEM_PROMPT_URL_PARAM = "systemPromptUrl";
     public static final String LLM_MAIL_CLASSIFIER_CONFIGURATION = "llm-classifier-listener-configuration";
-    private static final String PROMPT_NAME_PARAM = "PromptName";
-    public static final String DEFAULT_PROMPT_NAME = "classify-email";
 
     public static class LlmMailPrioritizationBackendClassifierGroup extends Group {
 
@@ -106,7 +102,6 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
     }
     
     private static final Logger LOGGER = LoggerFactory.getLogger(LlmMailBackendClassifierListener.class);
-    private static final String SYSTEM_PROMPT_PARAM = "systemPrompt";
     private static final String MAX_BODY_LENGTH_PARAM = "maxBodyLength";
     private static final int DEFAULT_MAX_BODY_LENGTH = 4000;
     private static final int MAX_PREVIEW_LENGTH = 255;
@@ -120,12 +115,10 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
     private final HtmlTextExtractor htmlTextExtractor;
     private final MetricFactory metricFactory;
     private final IdentityRepository identityRepository;
-    private volatile String systemPrompt;
-    private volatile String userPrompt;
+    private final PromptRetriever.Prompts prompts;
     private final int maxBodyLength;
     private final LabelRepository labelRepository;
     private final boolean reviewModeEnabled;
-    private final ConfigurationPromptRetriever configurationPromptRetriever;
 
     @Inject
     public LlmMailBackendClassifierListener(MailboxManager mailboxManager,
@@ -136,7 +129,7 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
                                             MetricFactory metricFactory,
                                             LabelRepository labelRepository,
                                             @Named(LLM_MAIL_CLASSIFIER_CONFIGURATION) HierarchicalConfiguration<ImmutableNode> configuration,
-                                            ConfigurationPromptRetriever configurationPromptRetriever) {
+                                            PromptRetriever.Factory promptRetrieverFactory) {
 
         this.mailboxManager = mailboxManager;
         this.messageIdManager = messageIdManager;
@@ -148,10 +141,10 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
         this.maxBodyLength = configuration.getInt(MAX_BODY_LENGTH_PARAM, DEFAULT_MAX_BODY_LENGTH);
         Preconditions.checkArgument(maxBodyLength > 0, "'maxBodyLength' must be strictly positive");
         this.reviewModeEnabled = Boolean.parseBoolean(System.getProperty("tmail.ai.needsaction.relevance.review", "false"));
-        this.configurationPromptRetriever = configurationPromptRetriever;
-        PromptRetriever.Prompts prompts = configurationPromptRetriever.retrievePrompts().block(Duration.ofSeconds(5));
-        this.systemPrompt = prompts.systemOrThrow();
-        this.userPrompt = prompts.userOrThrow();
+        PromptRetriever retriever = promptRetrieverFactory.create(configuration);
+        this.prompts = retriever
+            .retrievePrompts()
+            .block(Duration.ofSeconds(5));
     }
 
     @Override
@@ -239,7 +232,7 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
 
     private Mono<Void> performLlmClassification(LlmMailClassifierListener.ParsedMessage message, MailboxSession session, LlmUserPrompt llmUserPrompt, UserContext userContext) {
         return Mono.from(metricFactory.decoratePublisherWithTimerMetric("llm-mail-prioritization-classifier",
-                callLlm(systemPrompt, llmUserPrompt.correspondingUserPrompt(this.userPrompt))))
+                callLlm(prompts.systemOrThrow(), llmUserPrompt.correspondingUserPrompt(prompts.userOrThrow()))))
             .doOnNext(llmOutput -> emitStructureLog(llmUserPrompt, llmOutput, userContext))
             .flatMap(llmOutput -> addFlags(message.messageResult(), session, llmOutput.flagsToSet(userContext)));
     }

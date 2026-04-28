@@ -20,14 +20,12 @@ package com.linagora.tmail.listener.rag.prompt;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
+import java.net.URL;
+
 import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
 import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.tree.ImmutableNode;
 import org.junit.jupiter.api.Test;
-
-import reactor.test.StepVerifier;
-
-import java.net.URL;
 
 public class ConfigurationPromptRetrieverTest {
     private static final String SYSTEM_PROMPT_PARAM = "systemPrompt";
@@ -153,11 +151,8 @@ public class ConfigurationPromptRetrieverTest {
 
         ConfigurationPromptRetriever retriever = ConfigurationPromptRetriever.from(configuration);
 
-        StepVerifier.create(retriever.retrievePrompts())
-            .assertNext(prompts -> {
-                assertThat(prompts.system()).contains("inline-system");
-                assertThat(prompts.user()).contains("inline-user");
-            })
-            .verifyComplete();
+        assertThat(retriever.getInlinePrompts().user().get()).isEqualTo("inline-user");
+        assertThat(retriever.getInlinePrompts().system().get()).isEqualTo("inline-system");
+        assertThat(retriever.getSystemPromptUrl()).isEmpty();
     }
 }

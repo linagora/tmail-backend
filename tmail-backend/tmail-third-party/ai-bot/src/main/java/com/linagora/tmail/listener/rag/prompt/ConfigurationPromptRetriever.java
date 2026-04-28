@@ -27,7 +27,7 @@ import org.apache.commons.configuration2.tree.ImmutableNode;
 
 import reactor.core.publisher.Mono;
 
-public class ConfigurationPromptRetriever implements  PromptRetriever {
+public class ConfigurationPromptRetriever implements PromptRetriever {
     private static final String SYSTEM_PROMPT_URL_PARAM = "systemPromptUrl";
     private static final String PROMPT_NAME_PARAM = "promptName";
     private static final String SYSTEM_PROMPT_PARAM = "systemPrompt";
@@ -117,10 +117,7 @@ public class ConfigurationPromptRetriever implements  PromptRetriever {
 
     @Override
     public Mono<Prompts> retrievePrompts() {
-        if (systemPromptUrl.isEmpty()) {
-            return Mono.just(inlinePrompts);
-        }
-        return new HttpPromptRetriever(systemPromptUrl.get(), promptName).retrievePrompts();
+        return Mono.just(inlinePrompts);
     }
 
     public Prompts getInlinePrompts() {

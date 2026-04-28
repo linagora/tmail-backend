@@ -17,53 +17,18 @@
  ********************************************************************/
 package com.linagora.tmail.listener.rag.prompt;
 
-import java.util.Optional;
-
 import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.tree.ImmutableNode;
 
-import reactor.core.publisher.Mono;
+public class DefaultPromptRetrieverFactory implements PromptRetriever.Factory {
 
-public interface PromptRetriever {
+    @Override
+    public PromptRetriever create(HierarchicalConfiguration<ImmutableNode> configuration) {
+        ConfigurationPromptRetriever configPromptRetriever = ConfigurationPromptRetriever.from(configuration);
 
-    public record Prompts(Optional<String> system, Optional<String> user) {
-
-        public Prompts {
-            system = system.map(String::trim).filter(s -> !s.isBlank());
-            user = user.map(String::trim).filter(s -> !s.isBlank());
+        if (configPromptRetriever.getSystemPromptUrl().isEmpty()) {
+            return configPromptRetriever;
         }
-
-        public String systemOrThrow() {
-            return system.orElseThrow(() ->
-                new PromptRetrievalException("No system prompt found "));
-        }
-
-        public String userOrThrow() {
-            return user.orElseThrow(() ->
-                new PromptRetrievalException("No user prompt found "));
-        }
-
-        public static Prompts empty() {
-            return new Prompts(Optional.empty(), Optional.empty());
-        }
-
-        public static Prompts ofSystem(String system) {
-            return new Prompts(Optional.ofNullable(system), Optional.empty());
-        }
-
-        public static Prompts ofUser(String user) {
-            return new Prompts(Optional.empty(), Optional.ofNullable(user));
-        }
-
-        public static Prompts of(Optional<String> system, Optional<String> user) {
-            return new Prompts(system, user);
-        }
+        return new HttpPromptRetriever(configPromptRetriever.getSystemPromptUrl().get(), configPromptRetriever.getPromptName());
     }
-
-    Mono<Prompts> retrievePrompts();
-
-    interface Factory {
-        PromptRetriever create(HierarchicalConfiguration<ImmutableNode> configuration);
-    }
-
 }

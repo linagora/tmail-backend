@@ -25,7 +25,8 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
-import com.linagora.tmail.listener.rag.prompt.ConfigurationPromptRetriever;
+import com.linagora.tmail.listener.rag.prompt.DefaultPromptRetrieverFactory;
+import com.linagora.tmail.listener.rag.prompt.PromptRetriever;
 import jakarta.mail.Flags;
 import jakarta.mail.internet.AddressException;
 
@@ -107,7 +108,7 @@ public class MockLlmMailClassifierListenerTest implements LlmMailClassifierListe
     private LlmMailClassifierListener listener;
     private LlmMailBackendClassifierListener backendListener;
     private LabelRepository labelRepository;
-    private ConfigurationPromptRetriever configurationPromptRetriever;
+    private PromptRetriever.Factory promptRetrieverFactory;
     private EventBus tmailEventBus;
     private String label1Id;
     private String label2Id;
@@ -154,7 +155,7 @@ public class MockLlmMailClassifierListenerTest implements LlmMailClassifierListe
         jmapSettingsRepository = new MemoryJmapSettingsRepository();
         jmapSettingsRepositoryUtils = new JmapSettingsRepositoryJavaUtils(jmapSettingsRepository);
         labelRepository = new MemoryLabelRepository(tmailEventBus);
-        configurationPromptRetriever = ConfigurationPromptRetriever.from(listenerConfig);
+        promptRetrieverFactory = new DefaultPromptRetrieverFactory();
         Label label1 = Mono.from(labelRepository.addLabel(ALICE, new LabelCreationRequest(new DisplayName("label1"), scala.Option.apply(new Color("#0000")), scala.Option.apply("label1 description"), false))).block();
         label1Id = label1.keyword();
         Label label2 =Mono.from(labelRepository.addLabel(ALICE, new LabelCreationRequest(new DisplayName("label2"), scala.Option.apply(new Color("#0000")), scala.Option.apply("label2 description"), false))).block();
@@ -178,7 +179,7 @@ public class MockLlmMailClassifierListenerTest implements LlmMailClassifierListe
             metricFactory,
             labelRepository,
             listenerConfig,
-            configurationPromptRetriever);
+            promptRetrieverFactory);
 
         jmapSettingsRepositoryUtils().reset(ALICE, ImmutableMap.of("ai.label-categorization.enabled", "true"));
     }
@@ -263,7 +264,7 @@ public class MockLlmMailClassifierListenerTest implements LlmMailClassifierListe
             new RecordingMetricFactory(),
             labelRepository,
             overrideConfig,
-            ConfigurationPromptRetriever.from(overrideConfig));
+            promptRetrieverFactory);
     }
 
     @Override
