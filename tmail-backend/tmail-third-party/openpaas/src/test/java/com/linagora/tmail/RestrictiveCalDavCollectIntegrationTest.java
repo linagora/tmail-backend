@@ -103,7 +103,9 @@ public class RestrictiveCalDavCollectIntegrationTest {
                                      String dtStart,
                                      String dtEnd,
                                      String recurrenceId,
-                                     String lastModified) {
+                                     String lastModified,
+                                     EmailTemplateUser organizer,
+                                     EmailTemplateUser icsAttendee) {
         public Function<String, String> base64Encode() {
             return (obj) -> Base64.getEncoder().encodeToString(obj.getBytes(StandardCharsets.UTF_8));
         }
@@ -125,6 +127,8 @@ public class RestrictiveCalDavCollectIntegrationTest {
             private Optional<String> dtEnd = Optional.empty();
             private Optional<String> recurrenceId = Optional.empty();
             private Optional<String> lastModified = Optional.empty();
+            private Optional<EmailTemplateUser> organizer = Optional.empty();
+            private Optional<EmailTemplateUser> icsAttendee = Optional.empty();
 
             public Builder sender(EmailTemplateUser sender) { this.sender = sender; return this; }
             public Builder receiver(EmailTemplateUser receiver) { this.receiver = receiver; return this; }
@@ -133,6 +137,8 @@ public class RestrictiveCalDavCollectIntegrationTest {
             public Builder method(String method) { this.method = Optional.of(method); return this; }
             public Builder sequence(String sequence) { this.sequence = Optional.of(sequence); return this; }
             public Builder location(String location) { this.location = Optional.of(location); return this; }
+            public Builder organizer(EmailTemplateUser organizer) { this.organizer = Optional.of(organizer); return this; }
+            public Builder icsAttendee(EmailTemplateUser icsAttendee) { this.icsAttendee = Optional.of(icsAttendee); return this; }
 
             public EmailTemplateData build() {
                 Preconditions.checkNotNull(sender, "sender is required");
@@ -143,7 +149,8 @@ public class RestrictiveCalDavCollectIntegrationTest {
                     method.orElse("REQUEST"), sequence.orElse("0"),
                     dtStamp.orElse("20170106T115036Z"), location.orElse("office"),
                     dtStart.orElse("20170111T090000Z"), dtEnd.orElse("20170111T100000Z"),
-                    recurrenceId.orElse("20170112T090000Z"), lastModified.orElse("20170106T115036Z"));
+                    recurrenceId.orElse("20170112T090000Z"), lastModified.orElse("20170106T115036Z"),
+                    organizer.orElse(sender), icsAttendee.orElse(sender));
             }
         }
     }
@@ -165,6 +172,10 @@ public class RestrictiveCalDavCollectIntegrationTest {
 
     @BeforeEach
     void setUpJamesServer(@TempDir File temporaryFolder) throws Exception {
+        startServer(temporaryFolder, "strict");
+    }
+
+    private void startServer(File dir, String alignmentMode) throws Exception {
         jamesServer = TemporaryJamesServer.builder()
             .withBase(Modules.combine(MemoryJamesServerMain.SMTP_AND_IMAP_MODULE,
                 new OpenPaasModule()))
@@ -204,9 +215,10 @@ public class RestrictiveCalDavCollectIntegrationTest {
                             .addProperty(ICALToJsonAttribute.RAW_SOURCE_ATTRIBUTE_NAME, "rawIcalendar"))
                         .addMailet(MailetConfiguration.builder()
                             .matcher(All.class)
-                            .mailet(RestrictiveCalDavCollect.class))
+                            .mailet(RestrictiveCalDavCollect.class)
+                            .addProperty("alignmentMode", alignmentMode))
                         .addMailetsFrom(CommonProcessors.deliverOnlyTransport())))
-            .build(temporaryFolder);
+            .build(dir);
 
         jamesServer.start();
 
@@ -299,6 +311,159 @@ public class RestrictiveCalDavCollectIntegrationTest {
             .orElse(""))
             .isEqualTo("ACCEPTED");
     }
+
+    // ---- alignmentMode tests ----
+
+    @Test
+    void alignmentModeStrictShouldSkipRequestUpdateWhenOrganizerDoesNotMatchSender() throws Exception {
+        String calendarUid = UUID.randomUUID().toString();
+        pushCalendarToDav(receiver, calendarUid, "office");
+
+        String mimeMessageId = UUID.randomUUID().toString();
+        EmailTemplateUser fakeOrganizer = new EmailTemplateUser("Fake Org", "fake-org@" + OpenPaaSProvisioningService.DOMAIN);
+        String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache",
+            EmailTemplateData.builder()
+                .sender(toTemplateUser(sender))
+                .receiver(toTemplateUser(receiver))
+                .mimeMessageId(mimeMessageId)
+                .calendarUid(calendarUid)
+                .sequence("1")
+                .location("office2")
+                .organizer(fakeOrganizer)
+                .build());
+
+        sendMessage(sender, receiver, mail, mimeMessageId);
+
+        DavCalendarObject result = davClient.caldav(receiver.email())
+            .getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(calendarUid)).block();
+        // Location must stay "office" — update was rejected
+        assertThat(result.calendarData().getComponent(Component.VEVENT).get()
+            .getProperty(Property.LOCATION).get().getValue())
+            .isEqualTo("office");
+    }
+
+    @Test
+    void alignmentModeStrictShouldSkipCancelWhenOrganizerDoesNotMatchSender() throws Exception {
+        String calendarUid = UUID.randomUUID().toString();
+        pushCalendarToDav(receiver, calendarUid, "office");
+
+        String cancelMsgId = UUID.randomUUID().toString();
+        EmailTemplateUser fakeOrganizer = new EmailTemplateUser("Fake Org", "fake-org@" + OpenPaaSProvisioningService.DOMAIN);
+        String cancelMail = generateMail("template/emailWithAliceInviteBob.eml.mustache",
+            EmailTemplateData.builder()
+                .sender(toTemplateUser(sender))
+                .receiver(toTemplateUser(receiver))
+                .mimeMessageId(cancelMsgId)
+                .calendarUid(calendarUid)
+                .method("CANCEL")
+                .organizer(fakeOrganizer)
+                .build());
+
+        sendMessage(sender, receiver, cancelMail, cancelMsgId);
+
+        DavCalendarObject result = davClient.caldav(receiver.email())
+            .getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(calendarUid)).block();
+        // Event must still exist (not null) and must NOT have been cancelled
+        assertThat(result).isNotNull();
+        assertThat(result.calendarData().getComponent(Component.VEVENT).get()
+            .getProperty(Property.STATUS)
+            .map(Property::getValue)
+            .orElse("NONE"))
+            .isNotEqualTo("CANCELLED");
+    }
+
+    @Test
+    void alignmentModeStrictShouldSkipReplyWhenSenderNotInAttendees() throws Exception {
+        String calendarUid = UUID.randomUUID().toString();
+        pushCalendarToDav(sender, calendarUid, "office");
+
+        String replyMsgId = UUID.randomUUID().toString();
+        EmailTemplateUser differentAttendee = new EmailTemplateUser("Other", "other@" + OpenPaaSProvisioningService.DOMAIN);
+        String replyMail = generateMail("template/emailReplyWithoutOrganizer.eml.mustache",
+            EmailTemplateData.builder()
+                .sender(toTemplateUser(receiver))
+                .receiver(toTemplateUser(sender))
+                .mimeMessageId(replyMsgId)
+                .calendarUid(calendarUid)
+                .icsAttendee(differentAttendee)
+                .build());
+
+        sendMessage(receiver, sender, replyMail, replyMsgId);
+
+        DavCalendarObject result = davClient.caldav(sender.email())
+            .getCalendarObject(new DavUser(sender.id(), sender.email()), new DavUid(calendarUid)).block();
+        assertThat(result.calendarData().getComponent(Component.VEVENT).get()
+            .getProperties(Property.ATTENDEE).stream()
+            .map(p -> (Attendee) p)
+            .filter(a -> a.getCalAddress().getSchemeSpecificPart().equalsIgnoreCase(receiver.email().asString()))
+            .findFirst()
+            .flatMap(a -> a.getParameter("PARTSTAT"))
+            .map(parameter -> ((Parameter) parameter).getValue())
+            .orElse("NEEDS-ACTION"))
+            .isEqualTo("NEEDS-ACTION");
+    }
+
+    @Test
+    void alignmentModeSameDomainShouldAllowRequestUpdateWhenOrganizerHasSameDomain(@TempDir File altDir) throws Exception {
+        jamesServer.shutdown();
+        startServer(altDir, "sameDomain");
+
+        String calendarUid = UUID.randomUUID().toString();
+        pushCalendarToDav(receiver, calendarUid, "office");
+
+        String mimeMessageId = UUID.randomUUID().toString();
+        EmailTemplateUser sameDomainOrganizer = new EmailTemplateUser("Same Domain Org", "same-domain-org@" + OpenPaaSProvisioningService.DOMAIN);
+        String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache",
+            EmailTemplateData.builder()
+                .sender(toTemplateUser(sender))
+                .receiver(toTemplateUser(receiver))
+                .mimeMessageId(mimeMessageId)
+                .calendarUid(calendarUid)
+                .sequence("1")
+                .location("office2")
+                .organizer(sameDomainOrganizer)
+                .build());
+
+        sendMessage(sender, receiver, mail, mimeMessageId);
+
+        DavCalendarObject result = davClient.caldav(receiver.email())
+            .getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(calendarUid)).block();
+        assertThat(result.calendarData().getComponent(Component.VEVENT).get()
+            .getProperty(Property.LOCATION).get().getValue())
+            .isEqualTo("office2");
+    }
+
+    @Test
+    void alignmentModeNoneShouldAllowRequestUpdateWithAnyOrganizer(@TempDir File altDir) throws Exception {
+        jamesServer.shutdown();
+        startServer(altDir, "none");
+
+        String calendarUid = UUID.randomUUID().toString();
+        pushCalendarToDav(receiver, calendarUid, "office");
+
+        String mimeMessageId = UUID.randomUUID().toString();
+        EmailTemplateUser externalOrganizer = new EmailTemplateUser("External Org", "organizer@external.tld");
+        String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache",
+            EmailTemplateData.builder()
+                .sender(toTemplateUser(sender))
+                .receiver(toTemplateUser(receiver))
+                .mimeMessageId(mimeMessageId)
+                .calendarUid(calendarUid)
+                .sequence("1")
+                .location("office2")
+                .organizer(externalOrganizer)
+                .build());
+
+        sendMessage(sender, receiver, mail, mimeMessageId);
+
+        DavCalendarObject result = davClient.caldav(receiver.email())
+            .getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(calendarUid)).block();
+        assertThat(result.calendarData().getComponent(Component.VEVENT).get()
+            .getProperty(Property.LOCATION).get().getValue())
+            .isEqualTo("office2");
+    }
+
+    // ---- end alignmentMode tests ----
 
     private void pushCalendarToDav(OpenPaasUser user, String calendarUid, String location) {
         String ics = "BEGIN:VCALENDAR\r\n" +

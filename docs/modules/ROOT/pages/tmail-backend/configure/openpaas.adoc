@@ -53,9 +53,25 @@ This mailet synchronizes calendars in mails with dav server (create, update, del
 
 === Parameters
 
-The mailet configuration requires the following parameters:
+* `source`: name of the mail attribute containing the JSON-encoded iCal data. Must match the `destination` attribute of the upstream `ICALToJsonAttribute` mailet. Default: `icalendarJson`.
+* `alignmentMode`: controls how the mail `From` address is validated against the ITIP payload before the event is forwarded to the DAV server. Default: `strict`.
++
+[cols="1,3"]
+|===
+| Value | Behaviour
 
-* `source`: source for this mailet. the value must be same as the value of `destination` attribute in ICALToJsonAttribute mailet.
+| `strict` (default)
+| For `REQUEST`/`CANCEL`: the `From` address must exactly match the `ORGANIZER` in the iCal payload. +
+  For `REPLY`: the `From` address must exactly match at least one `ATTENDEE`.
+
+| `sameDomain`
+| Same checks as `strict`, but only the domain part of the address is compared (e.g. `alice@example.com` and `bob@example.com` are considered aligned).
+
+| `none`
+| No validation is performed — any `From` address is accepted. This is the most permissive setting.
+|===
++
+When the alignment check fails the ITIP is silently dropped and a warning is logged.
 
 === Example
 This configuration contains all mailets necessary to read ics attachments in mail and send them to dav server.
@@ -88,5 +104,57 @@ This configuration contains all mailets necessary to read ics attachments in mai
 </mailet>
 <mailet match="All" class="com.linagora.tmail.mailet.CalDavCollect">
     <source>icalendarAsJson2</source>
+    <alignmentMode>strict</alignmentMode>
+</mailet>
+----
+
+== RestrictiveCalDavCollect
+
+Like `CalDavCollect` but does **not** auto-import new events into a user's calendar.
+
+For `REQUEST`/`CANCEL` methods: the ITIP is forwarded to the DAV server only if the event already exists in the recipient's CalDAV calendar. Unknown events are silently ignored.
+
+For `REPLY`: behaves identically to `CalDavCollect` — the organizer's calendar is updated with the attendee's response regardless of whether the event was previously known.
+
+=== Parameters
+
+* `source`: same as `CalDavCollect`. Default: `icalendarJson`.
+* `alignmentMode`: same semantics as `CalDavCollect`. Default: `strict`.
++
+For `REQUEST`: the alignment check is applied *before* the event-existence check. A misaligned `REQUEST` is dropped even if the event already exists.
++
+`CANCEL` and `REPLY` follow the same validation rules as `CalDavCollect`.
+
+=== Example
+
+[source,xml]
+----
+<mailet match="All" class="StripAttachment">
+    <mimeType>text/calendar</mimeType>
+    <attribute>rawIcalendar2</attribute>
+    <onMailetException>ignore</onMailetException>
+</mailet>
+<mailet match="All" class="MimeDecodingMailet">
+    <attribute>rawIcalendar2</attribute>
+    <onMailetException>ignore</onMailetException>
+</mailet>
+<mailet match="All" class="ICalendarParser">
+    <sourceAttribute>rawIcalendar2</sourceAttribute>
+    <destinationAttribute>icalendar2</destinationAttribute>
+    <onMailetException>ignore</onMailetException>
+</mailet>
+<mailet match="All" class="ICALToHeader">
+    <attribute>icalendar2</attribute>
+    <onMailetException>ignore</onMailetException>
+</mailet>
+<mailet match="All" class="org.apache.james.transport.mailets.ICALToJsonAttribute">
+    <source>icalendar2</source>
+    <destination>icalendarAsJson2</destination>
+    <rawSource>rawIcalendar2</rawSource>
+    <onMailetException>ignore</onMailetException>
+</mailet>
+<mailet match="All" class="com.linagora.tmail.mailet.RestrictiveCalDavCollect">
+    <source>icalendarAsJson2</source>
+    <alignmentMode>strict</alignmentMode>
 </mailet>
 ----
