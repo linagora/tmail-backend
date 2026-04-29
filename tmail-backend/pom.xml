@@ -113,7 +113,7 @@
         <firebase-admin-sdk.version>9.3.0</firebase-admin-sdk.version>
         <bouncycastle.version>1.82</bouncycastle.version>
         <mongodb.version>5.5.1</mongodb.version>
-        <netty.tcnative.version>2.0.65.Final</netty.tcnative.version>
+        <netty.tcnative.version>2.0.77.Final</netty.tcnative.version>
         <scala.base>2.13</scala.base>
     </properties>
 
