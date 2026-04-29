@@ -38,7 +38,7 @@ public class ConfigurationPromptRetrieverTest {
         PromptRetrieverConfiguration result = PromptRetrieverConfiguration.from(configuration);
 
         assertThat(result.getSystemPromptUrl()).isEmpty();
-        assertThat(result.getPromptName()).isEqualTo("classify-email-generic");
+        assertThat(result.getPromptName().value()).isEqualTo("classify-email-generic");
 
         assertThat(result.getInlinePrompts().system()).contains(PromptRetrieverConfiguration.DEFAULT_SYSTEM_PROMPT);
 
@@ -53,7 +53,7 @@ public class ConfigurationPromptRetrieverTest {
         PromptRetrieverConfiguration result = PromptRetrieverConfiguration.from(configuration);
 
         assertThat(result.getSystemPromptUrl()).isEmpty();
-        assertThat(result.getPromptName()).isEqualTo("classify-email-generic");
+        assertThat(result.getPromptName().value()).isEqualTo("classify-email-generic");
         assertThat(result.getInlinePrompts().system()).contains("inline-system");
     }
 
@@ -78,7 +78,7 @@ public class ConfigurationPromptRetrieverTest {
 
         assertThat(result.getSystemPromptUrl()).isPresent();
         assertThat(result.getSystemPromptUrl().get()).isEqualTo("https://example.com/prompts/latest.json");
-        assertThat(result.getPromptName()).isEqualTo("my-prompt");
+        assertThat(result.getPromptName().value()).isEqualTo("my-prompt");
 
         assertThat(result.getInlinePrompts().system()).contains(PromptRetrieverConfiguration.DEFAULT_SYSTEM_PROMPT);
         assertThat(result.getInlinePrompts().userTemplate()).contains(PromptRetrieverConfiguration.DEFAULT_USER_PROMPT);

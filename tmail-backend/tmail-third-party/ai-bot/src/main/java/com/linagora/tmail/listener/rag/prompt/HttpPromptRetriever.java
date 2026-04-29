@@ -37,7 +37,7 @@ public class HttpPromptRetriever implements PromptRetriever {
 
     private final HttpClient httpClient;
     private final URL url;
-    private final String promptName;
+    private final PromptName promptName;
 
     @JsonIgnoreProperties(ignoreUnknown = true)
     public record AiPromptsBundle(List<PromptDefinition> prompts) {
@@ -48,13 +48,13 @@ public class HttpPromptRetriever implements PromptRetriever {
         public record MessageDefinition(String role, String content) { }
     }
 
-    public HttpPromptRetriever(HttpClient httpClient, URL url, String promptName) {
+    public HttpPromptRetriever(HttpClient httpClient, URL url, PromptName promptName) {
         this.httpClient = httpClient;
         this.url = url;
         this.promptName = promptName;
     }
 
-    public HttpPromptRetriever(URL url, String promptName) {
+    public HttpPromptRetriever(URL url, PromptName promptName) {
         this(HttpClient.create().responseTimeout(TIMEOUT), url, promptName);
     }
 
@@ -80,19 +80,19 @@ public class HttpPromptRetriever implements PromptRetriever {
             .flatMap(json -> Mono.fromCallable(() -> OBJECT_MAPPER.readValue(json, AiPromptsBundle.class)))
             .flatMap(bundle -> Mono.justOrEmpty(extractPrompts(bundle, promptName))
                 .switchIfEmpty(Mono.error(new RuntimeException(
-                    "Prompt '" + promptName + "' not found"))));
+                    "Prompt '" + promptName.value() + "' not found"))));
     }
 
-    private Optional<AiPromptsBundle.PromptDefinition> findPrompt(AiPromptsBundle bundle, String promptName) {
+    private Optional<AiPromptsBundle.PromptDefinition> findPrompt(AiPromptsBundle bundle, PromptName promptName) {
         if (bundle == null || bundle.prompts() == null) {
             return Optional.empty();
         }
         return bundle.prompts().stream()
-            .filter(p -> promptName.equals(p.name()))
+            .filter(p -> promptName.value().equals(p.name()))
             .findFirst();
     }
 
-    private static Optional<String> findMessageContent(List<AiPromptsBundle.MessageDefinition> messages, String role) {
+    private static Optional<String> findMessageContent(List<AiPromptsBundle.MessageDefinition> messages, Role role) {
         if (messages == null) {
             return Optional.empty();
         }
@@ -102,13 +102,13 @@ public class HttpPromptRetriever implements PromptRetriever {
             .findFirst();
     }
 
-    private Optional<Prompts> extractPrompts(AiPromptsBundle bundle, String promptName) {
+    private Optional<Prompts> extractPrompts(AiPromptsBundle bundle, PromptName promptName) {
 
         return findPrompt(bundle, promptName).map(prompt -> {
-            String system = findMessageContent(prompt.messages(), "system")
-                .orElseThrow(() -> new RuntimeException("No system prompt found for prompt '" + promptName + "'"));
-            String user = findMessageContent(prompt.messages(), "user")
-                .orElseThrow(() -> new RuntimeException("No userTemplate prompt found for prompt '" + promptName + "'"));
+            String system = findMessageContent(prompt.messages(), Role.system())
+                .orElseThrow(() -> new RuntimeException("No system prompt found for prompt '" + promptName.value() + "'"));
+            String user = findMessageContent(prompt.messages(), Role.user())
+                .orElseThrow(() -> new RuntimeException("No userTemplate prompt found for prompt '" + promptName.value() + "'"));
 
             return new Prompts(system, user);
         });

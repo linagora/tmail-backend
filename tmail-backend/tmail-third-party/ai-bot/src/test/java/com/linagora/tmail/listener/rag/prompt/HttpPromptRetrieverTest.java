@@ -36,7 +36,7 @@ public class HttpPromptRetrieverTest {
     private WireMockServer wireMockServer;
     private HttpPromptRetriever httpPromptRetriever;
     private URL url;
-    private String promptName;
+    private PromptRetriever.PromptName promptName;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -44,7 +44,7 @@ public class HttpPromptRetrieverTest {
         wireMockServer.start();
 
         configureFor("localhost", wireMockServer.port());
-        promptName = "classify-email";
+        promptName = new PromptRetriever.PromptName("classify-email");
         url = new URL("http://localhost:" + wireMockServer.port() + "/prompts/email/latest.json");
 
         httpPromptRetriever = new HttpPromptRetriever(url, promptName);

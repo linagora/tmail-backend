@@ -28,6 +28,30 @@ public interface PromptRetriever {
 
     }
 
+    public record PromptName(String value) {
+
+    }
+
+    public record Role(String value) {
+        public Role {
+            if (value == null || value.isBlank()) {
+                throw new IllegalArgumentException("Role must not be null/blank");
+            }
+        }
+
+        public static Role system() {
+            return new Role("system");
+        }
+
+        public static Role user() {
+            return new Role("user");
+        }
+
+        public boolean equalsIgnoreCase(String other) {
+            return other != null && value.equalsIgnoreCase(other);
+        }
+    }
+
     Mono<Prompts> retrievePrompts();
 
     interface Factory {

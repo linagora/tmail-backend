@@ -69,10 +69,10 @@ public class PromptRetrieverConfiguration {
                """;
 
     private final Optional<String> systemPromptUrl;
-    private final String promptName;
+    private final PromptRetriever.PromptName promptName;
     private final Prompts inlinePrompts;
 
-    public PromptRetrieverConfiguration(Prompts inlinePrompts, Optional<String> systemPromptUrl, String promptName) {
+    public PromptRetrieverConfiguration(Prompts inlinePrompts, Optional<String> systemPromptUrl, PromptRetriever.PromptName promptName) {
         this.systemPromptUrl = systemPromptUrl;
         this.promptName = promptName;
         this.inlinePrompts = inlinePrompts;
@@ -100,7 +100,7 @@ public class PromptRetrieverConfiguration {
 
         Prompts inlinePrompts = new Prompts(inlineSystem, userPrompt);
 
-        return new PromptRetrieverConfiguration(inlinePrompts, systemPromptUrl, promptName);
+        return new PromptRetrieverConfiguration(inlinePrompts, systemPromptUrl, new PromptRetriever.PromptName(promptName));
     }
 
     public Prompts getInlinePrompts() {
@@ -111,7 +111,7 @@ public class PromptRetrieverConfiguration {
         return systemPromptUrl;
     }
 
-    public String getPromptName() {
+    public PromptRetriever.PromptName getPromptName() {
         return promptName;
     }
 }
