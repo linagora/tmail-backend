@@ -58,6 +58,7 @@ import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.linagora.tmail.james.jmap.contact.ContactAddIndexingProcessor;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 
@@ -71,7 +72,8 @@ public class CollectTrustedContactsListener implements EventListener.ReactiveGro
 
     public static final String TO_BE_COLLECTED_FLAG = "$to_be_collected";
     public static final String CARDDAV_COLLECT_LIMIT_PROPERTY = "tmail.carddav.collect.limit";
-    private static final OptionalLong COLLECT_LIMIT = Optional.ofNullable(System.getProperty(CARDDAV_COLLECT_LIMIT_PROPERTY))
+    @VisibleForTesting
+    static OptionalLong COLLECT_LIMIT = Optional.ofNullable(System.getProperty(CARDDAV_COLLECT_LIMIT_PROPERTY))
         .stream()
         .mapToLong(Long::parseLong)
         .filter(l -> l > 0)

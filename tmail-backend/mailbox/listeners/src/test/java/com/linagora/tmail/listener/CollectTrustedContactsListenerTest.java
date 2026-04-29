@@ -18,7 +18,6 @@
 
 package com.linagora.tmail.listener;
 
-import static com.linagora.tmail.listener.CollectTrustedContactsListener.CARDDAV_COLLECT_LIMIT_PROPERTY;
 import static com.linagora.tmail.listener.CollectTrustedContactsListener.TO_BE_COLLECTED_FLAG;
 import static jakarta.mail.Flags.Flag.FLAGGED;
 import static jakarta.mail.Flags.Flag.SEEN;
@@ -29,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.OptionalLong;
 
 import jakarta.mail.Flags;
 
@@ -313,12 +313,12 @@ class CollectTrustedContactsListenerTest {
 
         @AfterEach
         void tearDown() {
-            System.clearProperty(CARDDAV_COLLECT_LIMIT_PROPERTY);
+            CollectTrustedContactsListener.COLLECT_LIMIT = OptionalLong.empty();
         }
 
         @Test
         void shouldIndexOnlyUpToLimitContactsWhenLimitIsSet() throws Exception {
-            System.setProperty(CARDDAV_COLLECT_LIMIT_PROPERTY, "2");
+            CollectTrustedContactsListener.COLLECT_LIMIT = OptionalLong.of(2);
 
             Message message = Message.Builder.of()
                 .setFrom("Alice <alice@domain.tld>")
@@ -333,7 +333,7 @@ class CollectTrustedContactsListenerTest {
 
         @Test
         void shouldIndexAllContactsWhenLimitExceedsContactCount() throws Exception {
-            System.setProperty(CARDDAV_COLLECT_LIMIT_PROPERTY, "100");
+            CollectTrustedContactsListener.COLLECT_LIMIT = OptionalLong.of(100);
 
             Message message = Message.Builder.of()
                 .setFrom("Alice <alice@domain.tld>")
@@ -349,7 +349,7 @@ class CollectTrustedContactsListenerTest {
 
         @Test
         void shouldIndexAllContactsWhenLimitIsZero() throws Exception {
-            System.setProperty(CARDDAV_COLLECT_LIMIT_PROPERTY, "0");
+            CollectTrustedContactsListener.COLLECT_LIMIT = OptionalLong.empty();
 
             Message message = Message.Builder.of()
                 .setFrom("Alice <alice@domain.tld>")
@@ -365,7 +365,7 @@ class CollectTrustedContactsListenerTest {
 
         @Test
         void shouldIndexAllContactsWhenLimitIsNegative() throws Exception {
-            System.setProperty(CARDDAV_COLLECT_LIMIT_PROPERTY, "-1");
+            CollectTrustedContactsListener.COLLECT_LIMIT = OptionalLong.empty();
 
             Message message = Message.Builder.of()
                 .setFrom("Alice <alice@domain.tld>")
