@@ -43,6 +43,10 @@ import org.apache.james.core.Username;
 import org.apache.james.dnsservice.api.DNSService;
 import org.apache.james.domainlist.lib.DomainListConfiguration;
 import org.apache.james.domainlist.memory.MemoryDomainList;
+import org.apache.james.events.InVMEventBus;
+import org.apache.james.events.MemoryEventDeadLetters;
+import org.apache.james.events.RetryBackoffConfiguration;
+import org.apache.james.events.delivery.InVmEventDelivery;
 import org.apache.james.jmap.api.identity.DefaultIdentitySupplier;
 import org.apache.james.jmap.api.identity.IdentityCreationRequest;
 import org.apache.james.jmap.api.identity.IdentityRepository;
@@ -56,6 +60,7 @@ import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.store.StoreSubscriptionManager;
 import org.apache.james.metrics.api.NoopGaugeRegistry;
+import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.apache.james.rrt.api.CanSendFrom;
 import org.apache.james.rrt.api.RecipientRewriteTableConfiguration;
 import org.apache.james.rrt.lib.AliasReverseResolverImpl;
@@ -99,6 +104,10 @@ public class IdentityProvisionListenerTest {
     private TeamMailboxRepository teamMailboxRepository;
     private MemoryJmapSettingsRepository jmapSettingsRepository;
 
+    private static InVMEventBus createEventBus() {
+        return new InVMEventBus(new InVmEventDelivery(new RecordingMetricFactory()), RetryBackoffConfiguration.FAST, new MemoryEventDeadLetters());
+    }
+
     @BeforeAll
     static void setUpAll() {
         ldapContainer.start();
@@ -117,7 +126,7 @@ public class IdentityProvisionListenerTest {
             mailboxManager.getMapperFactory(), mailboxManager.getEventBus());
         teamMailboxRepository = new TeamMailboxRepositoryImpl(mailboxManager, subscriptionManager, mailboxManager.getMapperFactory(), Set.of());
         LdapRepositoryConfiguration ldapRepositoryConfiguration = LdapRepositoryConfiguration.from(ldapRepositoryConfigurationWithVirtualHosting(ldapContainer));
-        identityRepository = new IdentityRepository(new MemoryCustomIdentityDAO(),
+        identityRepository = new IdentityRepository(new MemoryCustomIdentityDAO(createEventBus()),
             createDefaultIdentitySupplier(ldapRepositoryConfiguration, teamMailboxRepository, mailboxManager));
         jmapSettingsRepository = new MemoryJmapSettingsRepository();
         testee = new IdentityProvisionListener(ldapRepositoryConfiguration, identityRepository,
@@ -462,7 +471,7 @@ public class IdentityProvisionListenerTest {
         SubscriptionManager freshSubscriptionManager = new StoreSubscriptionManager(freshMailboxManager.getMapperFactory(),
             freshMailboxManager.getMapperFactory(), freshMailboxManager.getEventBus());
         TeamMailboxRepository freshTeamMailboxRepository = new TeamMailboxRepositoryImpl(freshMailboxManager, freshSubscriptionManager, freshMailboxManager.getMapperFactory(), Set.of());
-        IdentityRepository freshIdentityRepository = new IdentityRepository(new MemoryCustomIdentityDAO(),
+        IdentityRepository freshIdentityRepository = new IdentityRepository(new MemoryCustomIdentityDAO(createEventBus()),
             createDefaultIdentitySupplier(ldapRepositoryConfiguration, freshTeamMailboxRepository, freshMailboxManager));
         IdentityProvisionListener freshTestee = new IdentityProvisionListener(ldapRepositoryConfiguration, freshIdentityRepository,
             new DefaultSignatureTextFactory(new MemoryJmapSettingsRepository(),
@@ -493,7 +502,7 @@ public class IdentityProvisionListenerTest {
         SubscriptionManager freshSubscriptionManager = new StoreSubscriptionManager(freshMailboxManager.getMapperFactory(),
             freshMailboxManager.getMapperFactory(), freshMailboxManager.getEventBus());
         TeamMailboxRepository freshTeamMailboxRepository = new TeamMailboxRepositoryImpl(freshMailboxManager, freshSubscriptionManager, freshMailboxManager.getMapperFactory(), Set.of());
-        IdentityRepository freshIdentityRepository = new IdentityRepository(new MemoryCustomIdentityDAO(),
+        IdentityRepository freshIdentityRepository = new IdentityRepository(new MemoryCustomIdentityDAO(createEventBus()),
             createDefaultIdentitySupplier(ldapRepositoryConfiguration, freshTeamMailboxRepository, freshMailboxManager));
         IdentityProvisionListener freshTestee = new IdentityProvisionListener(ldapRepositoryConfiguration, freshIdentityRepository,
             new DefaultSignatureTextFactory(new MemoryJmapSettingsRepository(),
@@ -524,7 +533,7 @@ public class IdentityProvisionListenerTest {
         SubscriptionManager freshSubscriptionManager = new StoreSubscriptionManager(freshMailboxManager.getMapperFactory(),
             freshMailboxManager.getMapperFactory(), freshMailboxManager.getEventBus());
         TeamMailboxRepository freshTeamMailboxRepository = new TeamMailboxRepositoryImpl(freshMailboxManager, freshSubscriptionManager, freshMailboxManager.getMapperFactory(), Set.of());
-        IdentityRepository freshIdentityRepository = new IdentityRepository(new MemoryCustomIdentityDAO(),
+        IdentityRepository freshIdentityRepository = new IdentityRepository(new MemoryCustomIdentityDAO(createEventBus()),
             createDefaultIdentitySupplier(ldapRepositoryConfiguration, freshTeamMailboxRepository, freshMailboxManager));
         IdentityProvisionListener freshTestee = new IdentityProvisionListener(ldapRepositoryConfiguration, freshIdentityRepository,
             new DefaultSignatureTextFactory(new MemoryJmapSettingsRepository(),
