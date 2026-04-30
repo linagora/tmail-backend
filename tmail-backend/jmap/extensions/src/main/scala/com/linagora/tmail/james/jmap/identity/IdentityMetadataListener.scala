@@ -120,7 +120,9 @@ class IdentityMetadataListener @Inject()(mailboxManager: MailboxManager,
 
   private def deleteIdentityAnnotations(username: Username, identityIds: Set[IdentityId]): SMono[Unit] = {
     val session = mailboxManager.createSystemSession(username)
-    getOrProvisionInbox(username, session)
+    SMono.fromPublisher(mailboxManager.getMailboxReactive(MailboxPath.inbox(username), session))
+      .map(_.getId)
+      .onErrorResume { case _: MailboxNotFoundException => SMono.empty }
       .flatMap { mailboxId =>
         val annotationMapper = mapperFactory.getAnnotationMapper(session)
         SFlux.fromIterable(identityIds)
