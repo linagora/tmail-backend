@@ -1,0 +1,52 @@
+= IMAP Identities
+
+Allows IMAP clients to retrieve JMAP custom identities (read only)
+
+Syntax
+
+...
+A1 GETMETADATA "INBOX" (DEPTH infinity) /private/vendor/tmail/identities
+* METADATA "INBOX" (/private/vendor/tmail/identities/a1b2c3d4/id "2c9f1b12-b35a-43e6-9af2-0106fb53a943" /private/vendor/tmail/identities/a1b2c3d4/displayname "Work" /private/vendor/tmail/identities/a1b2c3d4/sortorder "100" /private/vendor/tmail/identities/a1b2c3d4/html "<b>Best regards</b>" /private/vendor/tmail/identities/a1b2c3d4/text "Best regards" /private/vendor/tmail/identities/a1b2c3d4/maydelete "true" /private/vendor/tmail/identities/a1b2c3d4/replyto "Boss <boss@domain.tld>")
+A1 OK GETMETADATA completed.
+...
+
+== Annotation structure
+
+Each custom identity is stored as a set of annotations on the user's `INBOX` mailbox, grouped under a prefix derived from the identity's UUID:
+
+....
+/private/vendor/tmail/identities/<hash>/<field>
+....
+
+Where `<hash>` is the murmur3-32 (fixed seed) hash of the identity UUID string. The following fields are exposed:
+
+[cols="1,2"]
+|===
+|Field |Description
+
+|`id`
+|The identity UUID.
+
+|`displayname`
+|The identity display name.
+
+|`sortorder`
+|The sort order (integer).
+
+|`html`
+|The HTML signature.
+
+|`text`
+|The plain-text signature.
+
+|`maydelete`
+|Whether this identity can be deleted (`true` or `false`).
+
+|`replyto`
+|The reply-to address(es), formatted as `Name <email>, ...`. Absent when no reply-to is set.
+
+|`bcc`
+|The BCC address(es), formatted as `Name <email>, ...`. Absent when no BCC is set.
+|===
+
+Annotations are updated automatically whenever the corresponding JMAP identity is created, updated, or deleted.
