@@ -77,7 +77,7 @@ object JMAPExtensionConfiguration {
           case Success(value) => value
           case Failure(error) => throw new MissingArgumentException("Invalid language tag in the configuration file." + error.getMessage)
         }))
-        .fold(_ => Set.empty, identity))
+        .fold(_ => Set.empty, x => x))
 
     val emailRecoveryActionConfiguration: EmailRecoveryActionConfiguration = EmailRecoveryActionConfiguration.from(configuration)
 

@@ -87,6 +87,7 @@ import com.linagora.tmail.disconnector.DisconnectionRequestedEventSerializer;
 import com.linagora.tmail.disconnector.DisconnectorNotificationRegistration;
 import com.linagora.tmail.disconnector.DisconnectorRegistrationKey;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactListener;
+import com.linagora.tmail.james.jmap.identity.IdentityMetadataListener;
 import com.linagora.tmail.james.jmap.label.LabelMetadataListener;
 
 public class RabbitMQAndRedisEventBusModule extends AbstractModule {
@@ -127,6 +128,15 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
             Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class, Names.named(TMAIL_EVENT_BUS_INJECT_NAME));
         tmailListenerBinder.addBinding().to(EmailAddressContactListener.class);
         tmailListenerBinder.addBinding().to(LabelMetadataListener.class);
+    }
+
+    @ProvidesIntoSet
+    InitializationOperation registerIdentityMetadataListener(
+            @Named(InjectionKeys.JMAP) EventBus jmapEventBus,
+            IdentityMetadataListener identityMetadataListener) {
+        return InitilizationOperationBuilder
+            .forClass(IdentityMetadataListener.class)
+            .init(() -> jmapEventBus.register(identityMetadataListener, identityMetadataListener.getDefaultGroup()));
     }
 
     @ProvidesIntoSet

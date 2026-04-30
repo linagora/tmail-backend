@@ -37,6 +37,7 @@ import com.google.inject.name.Named;
 import com.google.inject.name.Names;
 import com.linagora.tmail.disconnector.DisconnectorNotificationRegistration;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactListener;
+import com.linagora.tmail.james.jmap.identity.IdentityMetadataListener;
 import com.linagora.tmail.james.jmap.label.LabelMetadataListener;
 
 public class MemoryTmailEventBusModule extends AbstractModule {
@@ -59,6 +60,15 @@ public class MemoryTmailEventBusModule extends AbstractModule {
                     tmailListeners.forEach(tmailEventBus::register);
                     disconnectorNotificationRegistration.register();
                 });
+    }
+
+    @ProvidesIntoSet
+    public InitializationOperation registerIdentityMetadataListener(
+            @Named("JMAP") EventBus jmapEventBus,
+            IdentityMetadataListener identityMetadataListener) {
+        return InitilizationOperationBuilder
+                .forClass(IdentityMetadataListener.class)
+                .init(() -> jmapEventBus.register(identityMetadataListener, identityMetadataListener.getDefaultGroup()));
     }
 
     @Provides
