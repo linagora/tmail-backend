@@ -78,7 +78,7 @@ public abstract class RspamdScannerIntegrationContract {
     }
 
     @Test
-    void messageShouldMoveToInboxWhenNotSpam() throws IOException {
+    public void messageShouldMoveToInboxWhenNotSpam() throws IOException {
         assertThatCode(() -> messageSender.authenticate(BOB.asString(), BOB_PASSWORD)
             .sendMessage(BOB.asString(), ALICE.asString()))
             .doesNotThrowAnyException();
