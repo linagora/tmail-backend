@@ -101,6 +101,8 @@ class IdentityMetadataListener @Inject()(mailboxManager: MailboxManager,
           MailboxAnnotation.newInstance(textKey(id), identity.textSignature.name)))
         val writeMayDelete = SMono.fromPublisher(annotationMapper.insertAnnotationReactive(mailboxId,
           MailboxAnnotation.newInstance(mayDeleteKey(id), identity.mayDelete.value.toString)))
+        val writeEmail = SMono.fromPublisher(annotationMapper.insertAnnotationReactive(mailboxId,
+          MailboxAnnotation.newInstance(emailKey(id), identity.email.asString)))
         val writeReplyTo = identity.replyTo match {
           case Some(list) => SMono.fromPublisher(annotationMapper.insertAnnotationReactive(mailboxId,
             MailboxAnnotation.newInstance(replyToKey(id), formatEmailList(list))))
@@ -113,7 +115,7 @@ class IdentityMetadataListener @Inject()(mailboxManager: MailboxManager,
         }
 
         writeId.`then`(writeSortOrder).`then`(writeDisplayName).`then`(writeHtml)
-          .`then`(writeText).`then`(writeMayDelete).`then`(writeReplyTo).`then`(writeBcc)
+          .`then`(writeText).`then`(writeMayDelete).`then`(writeEmail).`then`(writeReplyTo).`then`(writeBcc)
       }
       .`then`()
   }
@@ -133,6 +135,7 @@ class IdentityMetadataListener @Inject()(mailboxManager: MailboxManager,
               .`then`(SMono.fromPublisher(annotationMapper.deleteAnnotationReactive(mailboxId, htmlKey(identityId))))
               .`then`(SMono.fromPublisher(annotationMapper.deleteAnnotationReactive(mailboxId, textKey(identityId))))
               .`then`(SMono.fromPublisher(annotationMapper.deleteAnnotationReactive(mailboxId, mayDeleteKey(identityId))))
+              .`then`(SMono.fromPublisher(annotationMapper.deleteAnnotationReactive(mailboxId, emailKey(identityId))))
               .`then`(SMono.fromPublisher(annotationMapper.deleteAnnotationReactive(mailboxId, replyToKey(identityId))))
               .`then`(SMono.fromPublisher(annotationMapper.deleteAnnotationReactive(mailboxId, bccKey(identityId))))
           }
@@ -164,6 +167,9 @@ class IdentityMetadataListener @Inject()(mailboxManager: MailboxManager,
 
   private def mayDeleteKey(id: IdentityId): MailboxAnnotationKey =
     new MailboxAnnotationKey(s"${annotationPrefix(id)}/maydelete")
+
+  private def emailKey(id: IdentityId): MailboxAnnotationKey =
+    new MailboxAnnotationKey(s"${annotationPrefix(id)}/email")
 
   private def replyToKey(id: IdentityId): MailboxAnnotationKey =
     new MailboxAnnotationKey(s"${annotationPrefix(id)}/replyto")
