@@ -189,6 +189,14 @@ class IdentityMetadataListenerTest {
   }
 
   @Test
+  def identityCreatedShouldWriteEmailAnnotation(): Unit = {
+    dispatch(CustomIdentityCreated(EventId.random(), ALICE, IDENTITY))
+
+    assertThat(annotations.asJava)
+      .contains(annotation(s"$ID_1_PREFIX/email", "alice@domain.tld"))
+  }
+
+  @Test
   def identityCreatedShouldNotWriteReplyToAnnotationWhenAbsent(): Unit = {
     dispatch(CustomIdentityCreated(EventId.random(), ALICE, IDENTITY_2))
 
@@ -250,6 +258,7 @@ class IdentityMetadataListenerTest {
         new MailboxAnnotationKey(s"$ID_1_PREFIX/html"),
         new MailboxAnnotationKey(s"$ID_1_PREFIX/text"),
         new MailboxAnnotationKey(s"$ID_1_PREFIX/maydelete"),
+        new MailboxAnnotationKey(s"$ID_1_PREFIX/email"),
         new MailboxAnnotationKey(s"$ID_1_PREFIX/replyto"),
         new MailboxAnnotationKey(s"$ID_1_PREFIX/bcc"))
   }

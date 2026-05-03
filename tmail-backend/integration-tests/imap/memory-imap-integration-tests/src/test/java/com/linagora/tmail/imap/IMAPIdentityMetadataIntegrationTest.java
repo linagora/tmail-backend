@@ -108,6 +108,17 @@ class IMAPIdentityMetadataIntegrationTest {
     }
 
     @Test
+    void getMetadataShouldReturnEmailAnnotationAfterIdentityCreated(GuiceJamesServer server) throws Exception {
+        Identity identity = server.getProbe(JmapGuiceIdentityProbe.class).addIdentity(ALICE, "Work identity");
+        String prefix = annotationPrefix(identity);
+
+        assertThat(imapClient.connect(IMAP_HOST, imapPort)
+            .login(ALICE, PASSWORD)
+            .sendCommand("GETMETADATA \"INBOX\" (DEPTH infinity) /private/vendor/tmail/identities"))
+            .contains(prefix + "/email \"alice@domain.tld\"");
+    }
+
+    @Test
     void getMetadataShouldReturnReplyToAnnotationWhenProvided(GuiceJamesServer server) throws Exception {
         Identity identity = server.getProbe(JmapGuiceIdentityProbe.class)
             .addIdentityWithReplyTo(ALICE, "Work identity", "boss@domain.tld");
