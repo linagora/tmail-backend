@@ -33,7 +33,6 @@ import java.util.Optional;
 import java.util.function.Function;
 
 import jakarta.inject.Inject;
-import jakarta.inject.Named;
 
 import org.apache.james.backends.postgres.utils.PostgresExecutor;
 import org.apache.james.core.Username;
@@ -53,16 +52,16 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class PostgresKeywordEmailQueryView implements KeywordEmailQueryView {
-    private final PostgresExecutor postgresExecutor;
+    private final PostgresExecutor.Factory executorFactory;
 
     @Inject
-    public PostgresKeywordEmailQueryView(@Named(PostgresExecutor.BY_PASS_RLS_INJECT) PostgresExecutor postgresExecutor) {
-        this.postgresExecutor = postgresExecutor;
+    public PostgresKeywordEmailQueryView(PostgresExecutor.Factory executorFactory) {
+        this.executorFactory = executorFactory;
     }
 
     @Override
     public Mono<Void> save(Username username, Keyword keyword, Instant receivedAt, MessageId messageId, ThreadId threadId) {
-        return postgresExecutor.executeVoid(dslContext -> Mono.from(dslContext.insertInto(TABLE_NAME)
+        return executorFactory.create(username.getDomainPart()).executeVoid(dslContext -> Mono.from(dslContext.insertInto(TABLE_NAME)
             .set(USERNAME, username.asString())
             .set(KEYWORD, keyword.flagName())
             .set(RECEIVED_AT, OffsetDateTime.ofInstant(receivedAt, ZoneOffset.UTC))
@@ -74,7 +73,7 @@ public class PostgresKeywordEmailQueryView implements KeywordEmailQueryView {
 
     @Override
     public Mono<Void> delete(Username username, Keyword keyword, Instant receivedAt, MessageId messageId) {
-        return postgresExecutor.executeVoid(dslContext -> Mono.from(dslContext.deleteFrom(TABLE_NAME)
+        return executorFactory.create(username.getDomainPart()).executeVoid(dslContext -> Mono.from(dslContext.deleteFrom(TABLE_NAME)
             .where(USERNAME.eq(username.asString()))
             .and(KEYWORD.eq(keyword.flagName()))
             .and(RECEIVED_AT.eq(OffsetDateTime.ofInstant(receivedAt, ZoneOffset.UTC)))
@@ -83,14 +82,15 @@ public class PostgresKeywordEmailQueryView implements KeywordEmailQueryView {
 
     @Override
     public Flux<MessageId> listMessagesByKeyword(Username username, Keyword keyword, Options options) {
+        PostgresExecutor executor = executorFactory.create(username.getDomainPart());
         return EmailQueryViewUtils.QueryViewExtender.of(options.limit(), options.collapseThread())
-            .resolve(backendFetchLimit -> postgresExecutor.executeRows(dslContext -> Flux.from(buildSelectStatement(dslContext, username, keyword, options, backendFetchLimit)))
+            .resolve(backendFetchLimit -> executor.executeRows(dslContext -> Flux.from(buildSelectStatement(dslContext, username, keyword, options, backendFetchLimit)))
                 .map(asEmailEntry()));
     }
 
     @Override
     public Mono<Void> clearAll() {
-        return postgresExecutor.executeVoid(dslContext -> Mono.from(dslContext.truncate(TABLE_NAME)));
+        return executorFactory.create().executeVoid(dslContext -> Mono.from(dslContext.truncate(TABLE_NAME)));
     }
 
     private SelectLimitPercentStep buildSelectStatement(DSLContext dslContext, Username username, Keyword keyword, Options options, Limit backendFetchLimit) {
