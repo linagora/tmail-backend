@@ -18,14 +18,10 @@
 
 package com.linagora.tmail.integration.distributed;
 
-import java.io.IOException;
-
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
@@ -65,9 +61,4 @@ public class DistributedRspamdScannerIntegrationTest extends RspamdScannerIntegr
             .overrideWith(new LinagoraTestJMAPServerModule()))
         .build();
 
-    @Disabled("CF https://github.com/linagora/tmail-backend/issues/2367")
-    @Test
-    @Override
-    public void messageShouldMoveToInboxWhenNotSpam() throws IOException {
-    }
 }
