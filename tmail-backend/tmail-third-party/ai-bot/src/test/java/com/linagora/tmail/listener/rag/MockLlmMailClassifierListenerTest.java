@@ -25,8 +25,6 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
-import com.linagora.tmail.listener.rag.prompt.DefaultPromptRetrieverFactory;
-import com.linagora.tmail.listener.rag.prompt.PromptRetriever;
 import jakarta.mail.Flags;
 import jakarta.mail.internet.AddressException;
 
@@ -72,6 +70,8 @@ import com.linagora.tmail.james.jmap.model.LabelCreationRequest;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
 import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
+import com.linagora.tmail.listener.rag.prompt.DefaultPromptRetrieverFactory;
+import com.linagora.tmail.listener.rag.prompt.PromptRetriever;
 
 import dev.langchain4j.data.message.AiMessage;
 import dev.langchain4j.data.message.ChatMessage;
@@ -151,7 +151,7 @@ public class MockLlmMailClassifierListenerTest implements LlmMailClassifierListe
         aliceCustomMailbox = mailboxManager.getMailbox(spamMailboxPath, aliceSession);
 
         listenerConfig = new BaseHierarchicalConfiguration();
-        identityRepository = setUpIdentityRepository();
+        identityRepository = setUpIdentityRepository(tmailEventBus);
         jmapSettingsRepository = new MemoryJmapSettingsRepository();
         jmapSettingsRepositoryUtils = new JmapSettingsRepositoryJavaUtils(jmapSettingsRepository);
         labelRepository = new MemoryLabelRepository(tmailEventBus);
@@ -184,13 +184,13 @@ public class MockLlmMailClassifierListenerTest implements LlmMailClassifierListe
         jmapSettingsRepositoryUtils().reset(ALICE, ImmutableMap.of("ai.label-categorization.enabled", "true"));
     }
 
-    public static IdentityRepository setUpIdentityRepository() throws AddressException {
+    public static IdentityRepository setUpIdentityRepository(EventBus eventBus) throws AddressException {
         DefaultIdentitySupplier identityFactory = mock(DefaultIdentitySupplier.class);
         Mockito.when(identityFactory.listIdentities(ALICE))
             .thenReturn(Flux.just(IdentityFixture.ALICE_SERVER_SET_IDENTITY()));
         Mockito.when(identityFactory.userCanSendFrom(any(), any()))
             .thenReturn(SMono.just(true));
-        IdentityRepository identityRepository = new IdentityRepository(new MemoryCustomIdentityDAO(), identityFactory);
+        IdentityRepository identityRepository = new IdentityRepository(new MemoryCustomIdentityDAO(eventBus), identityFactory);
 
         Integer highPriorityOrder = 1;
         Integer lowPriorityOrder = 2;
