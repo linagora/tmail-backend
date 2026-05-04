@@ -79,8 +79,19 @@ public abstract class RspamdScannerIntegrationContract {
 
     @Test
     public void messageShouldMoveToInboxWhenNotSpam() throws IOException {
+        String message = "From: " + BOB.asString() + "\r\n" +
+            "To: " + ALICE.asString() + "\r\n" +
+            "Subject: test\r\n" +
+            "Date: Mon, 4 May 2026 04:00:00 +0000\r\n" +
+            "Message-ID: <not-spam-message@example.com>\r\n" +
+            "MIME-Version: 1.0\r\n" +
+            "Content-Type: text/plain; charset=UTF-8\r\n" +
+            "\r\n" +
+            "content\r\n" +
+            ".\r\n";
+
         assertThatCode(() -> messageSender.authenticate(BOB.asString(), BOB_PASSWORD)
-            .sendMessage(BOB.asString(), ALICE.asString()))
+            .sendMessageWithHeaders(BOB.asString(), ALICE.asString(), message))
             .doesNotThrowAnyException();
 
         imapClient.login(ALICE, ALICE_PASSWORD)

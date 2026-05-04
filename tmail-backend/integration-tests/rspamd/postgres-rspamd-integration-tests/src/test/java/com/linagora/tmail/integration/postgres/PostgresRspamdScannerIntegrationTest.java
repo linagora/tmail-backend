@@ -18,14 +18,10 @@
 
 package com.linagora.tmail.integration.postgres;
 
-import java.io.IOException;
-
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.postgres.PostgresExtension;
-import org.junit.jupiter.api.Disabled;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
@@ -57,10 +53,4 @@ public class PostgresRspamdScannerIntegrationTest extends RspamdScannerIntegrati
         .server(configuration -> PostgresTmailServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule()))
         .build();
-
-    @Disabled("CF https://github.com/linagora/tmail-backend/issues/2367")
-    @Test
-    @Override
-    public void messageShouldMoveToInboxWhenNotSpam() throws IOException {
-    }
 }
