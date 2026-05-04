@@ -39,7 +39,7 @@ public class PostgresKeywordEmailQueryViewTest implements KeywordEmailQueryViewC
 
     @Override
     public KeywordEmailQueryView testee() {
-        return new PostgresKeywordEmailQueryView(postgresExtension.getDefaultPostgresExecutor());
+        return new PostgresKeywordEmailQueryView(postgresExtension.getExecutorFactory());
     }
 
     @Override
