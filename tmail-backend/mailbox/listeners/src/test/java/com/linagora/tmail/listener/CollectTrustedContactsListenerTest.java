@@ -28,6 +28,7 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.OptionalLong;
 
 import jakarta.mail.Flags;
 
@@ -42,7 +43,9 @@ import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageRange;
 import org.apache.james.mime4j.dom.Message;
 import org.apache.james.mime4j.field.address.DefaultAddressParser;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.reactivestreams.Publisher;
 
@@ -303,6 +306,92 @@ class CollectTrustedContactsListenerTest {
     private void addFlags(ComposedMessageId composedMessageId, Flags flags) throws Exception {
         mailboxManager.getMailbox(bobInboxId, bobMailboxSession)
             .setFlags(flags, MessageManager.FlagsUpdateMode.ADD, MessageRange.one(composedMessageId.getUid()), bobMailboxSession);
+    }
+
+    @Nested
+    class CollectLimitTest {
+
+        @AfterEach
+        void tearDown() {
+            CollectTrustedContactsListener.COLLECT_LIMIT = OptionalLong.empty();
+        }
+
+        @Test
+        void shouldIndexOnlyUpToLimitContactsWhenLimitIsSet() throws Exception {
+            CollectTrustedContactsListener.COLLECT_LIMIT = OptionalLong.of(2);
+
+            Message message = Message.Builder.of()
+                .setFrom("Alice <alice@domain.tld>")
+                .setTo(BOB.asString(), "Carol <carol@domain.tld>")
+                .setCc(DefaultAddressParser.DEFAULT.parseMailbox("David <david@domain.tld>"))
+                .setBody("Body", StandardCharsets.UTF_8)
+                .build();
+            appendMessage(bobInboxId, message, new Flags(TO_BE_COLLECTED_FLAG));
+
+            assertThat(capturingContactAddIndexingProcessor.invocationCount()).isEqualTo(2);
+        }
+
+        @Test
+        void shouldIndexAllContactsWhenLimitExceedsContactCount() throws Exception {
+            CollectTrustedContactsListener.COLLECT_LIMIT = OptionalLong.of(100);
+
+            Message message = Message.Builder.of()
+                .setFrom("Alice <alice@domain.tld>")
+                .setTo(BOB.asString(), "Carol <carol@domain.tld>")
+                .setCc(DefaultAddressParser.DEFAULT.parseMailbox("David <david@domain.tld>"))
+                .setBody("Body", StandardCharsets.UTF_8)
+                .build();
+            appendMessage(bobInboxId, message, new Flags(TO_BE_COLLECTED_FLAG));
+
+            assertThat(capturingContactAddIndexingProcessor.indexedAddresses())
+                .containsExactlyInAnyOrder(ALICE_ADDRESS, CAROL_ADDRESS, DAVID_ADDRESS);
+        }
+
+        @Test
+        void shouldIndexAllContactsWhenLimitIsZero() throws Exception {
+            CollectTrustedContactsListener.COLLECT_LIMIT = OptionalLong.empty();
+
+            Message message = Message.Builder.of()
+                .setFrom("Alice <alice@domain.tld>")
+                .setTo(BOB.asString(), "Carol <carol@domain.tld>")
+                .setCc(DefaultAddressParser.DEFAULT.parseMailbox("David <david@domain.tld>"))
+                .setBody("Body", StandardCharsets.UTF_8)
+                .build();
+            appendMessage(bobInboxId, message, new Flags(TO_BE_COLLECTED_FLAG));
+
+            assertThat(capturingContactAddIndexingProcessor.indexedAddresses())
+                .containsExactlyInAnyOrder(ALICE_ADDRESS, CAROL_ADDRESS, DAVID_ADDRESS);
+        }
+
+        @Test
+        void shouldIndexAllContactsWhenLimitIsNegative() throws Exception {
+            CollectTrustedContactsListener.COLLECT_LIMIT = OptionalLong.empty();
+
+            Message message = Message.Builder.of()
+                .setFrom("Alice <alice@domain.tld>")
+                .setTo(BOB.asString(), "Carol <carol@domain.tld>")
+                .setCc(DefaultAddressParser.DEFAULT.parseMailbox("David <david@domain.tld>"))
+                .setBody("Body", StandardCharsets.UTF_8)
+                .build();
+            appendMessage(bobInboxId, message, new Flags(TO_BE_COLLECTED_FLAG));
+
+            assertThat(capturingContactAddIndexingProcessor.indexedAddresses())
+                .containsExactlyInAnyOrder(ALICE_ADDRESS, CAROL_ADDRESS, DAVID_ADDRESS);
+        }
+
+        @Test
+        void shouldIndexAllContactsWhenLimitPropertyIsNotSet() throws Exception {
+            Message message = Message.Builder.of()
+                .setFrom("Alice <alice@domain.tld>")
+                .setTo(BOB.asString(), "Carol <carol@domain.tld>")
+                .setCc(DefaultAddressParser.DEFAULT.parseMailbox("David <david@domain.tld>"))
+                .setBody("Body", StandardCharsets.UTF_8)
+                .build();
+            appendMessage(bobInboxId, message, new Flags(TO_BE_COLLECTED_FLAG));
+
+            assertThat(capturingContactAddIndexingProcessor.indexedAddresses())
+                .containsExactlyInAnyOrder(ALICE_ADDRESS, CAROL_ADDRESS, DAVID_ADDRESS);
+        }
     }
 
 }
