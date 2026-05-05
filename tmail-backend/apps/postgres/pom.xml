@@ -257,6 +257,10 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>webadmin-domain-signature-templates</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>tmail-webadmin-team-mailboxes</artifactId>
         </dependency>
         <dependency>
