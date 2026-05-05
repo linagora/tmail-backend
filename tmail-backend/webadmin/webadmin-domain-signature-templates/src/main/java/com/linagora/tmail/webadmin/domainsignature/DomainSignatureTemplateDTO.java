@@ -46,10 +46,16 @@ public record DomainSignatureTemplateDTO(
     }
 
     public DomainSignatureTemplate toDomain() {
+        if (signatures == null) {
+            throw new IllegalArgumentException("'signatures' field is mandatory");
+        }
         Map<java.util.Locale, SignatureText> templates = signatures.stream()
             .collect(Collectors.toMap(
                 entry -> java.util.Locale.forLanguageTag(entry.language()),
-                entry -> new SignatureText(entry.textSignature(), entry.htmlSignature())));
+                entry -> new SignatureText(entry.textSignature(), entry.htmlSignature()),
+                (a, b) -> {
+                    throw new IllegalArgumentException("Duplicate language tag in signatures");
+                }));
         return new DomainSignatureTemplate(templates);
     }
 }
