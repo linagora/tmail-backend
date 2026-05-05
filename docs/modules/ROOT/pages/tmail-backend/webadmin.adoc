@@ -1568,3 +1568,95 @@ Return codes:
 - `200` Successfully returned the list of matching mails
 - `400` Missing or blank `reason`, invalid `limit`/`offset`, unknown sort property, or malformed JSON body
 
+== Domain Signature Templates
+
+Administrators can manage per-language email signature templates at the domain level.
+These templates are used by the `IdentityProvisionListener` (with the
+`DomainBasedSignatureTemplateEngine` provider) to populate the default identity signature
+of newly provisioned users, based on their preferred language.
+
+Template text supports `{ldap:attributeName}` placeholders.
+When `IdentityProvisionListener` provisions a user, it fetches that user's LDAP entry and
+substitutes every `{ldap:xxx}` placeholder with the matching LDAP attribute value.
+Unknown or missing attributes are left as-is.
+
+=== Getting signature templates for a domain
+
+....
+curl -XGET http://ip:port/domains/domain.tld/signature-templates
+....
+
+Returns the stored signature templates for the given domain.
+
+Return codes:
+
+- `200` Templates found and returned
+- `404` Domain does not exist, or no templates stored for this domain
+
+Example response:
+
+....
+{
+  "signatures": [
+    {
+      "language": "en",
+      "textSignature": "Best regards",
+      "htmlSignature": "<p>Best regards</p>"
+    },
+    {
+      "language": "fr",
+      "textSignature": "Cordialement",
+      "htmlSignature": "<p>Cordialement</p>"
+    }
+  ]
+}
+....
+
+=== Storing signature templates for a domain
+
+....
+curl -XPUT http://ip:port/domains/domain.tld/signature-templates \
+  -H 'Content-Type: application/json' \
+  --data-raw '{
+    "signatures": [
+      {
+        "language": "en",
+        "textSignature": "Best regards,\n{ldap:givenName} {ldap:sn}\n{ldap:title}",
+        "htmlSignature": "<p>Best regards,<br/>{ldap:givenName} {ldap:sn}<br/>{ldap:title}</p>"
+      },
+      {
+        "language": "fr",
+        "textSignature": "Cordialement,\n{ldap:givenName} {ldap:sn}\n{ldap:title}",
+        "htmlSignature": "<p>Cordialement,<br/>{ldap:givenName} {ldap:sn}<br/>{ldap:title}</p>"
+      }
+    ]
+  }'
+....
+
+Creates or replaces the signature templates for the given domain.
+The `signatures` list must contain at least one entry.
+
+LDAP attributes available by default: `givenName`, `sn`, and the LDAP username attribute.
+Additional attributes can be exposed via `extraAttributes` in the `IdentityProvisionListener`
+configuration (e.g. `telephoneNumber`, `title`).
+
+Return codes:
+
+- `204` Templates stored successfully
+- `400` Request body is missing or `signatures` is empty
+- `404` Domain does not exist
+
+=== Deleting signature templates for a domain
+
+....
+curl -XDELETE http://ip:port/domains/domain.tld/signature-templates
+....
+
+Removes all signature templates for the given domain.
+This operation is idempotent: deleting from a domain that has no templates returns 204.
+
+Return codes:
+
+- `204` Templates deleted (or were already absent)
+- `404` Domain does not exist
+
