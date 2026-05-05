@@ -16,22 +16,17 @@
  *  more details.                                                   *
  *******************************************************************/
 
-package com.linagora.tmail.webadmin.domainsignature;
+package com.linagora.tmail.james.jmap.domainsignature;
 
-import org.apache.james.webadmin.Routes;
+public record ApplyResult(int applied, int skipped, int error) {
+    public static final ApplyResult APPLIED = new ApplyResult(1, 0, 0);
+    public static final ApplyResult SKIPPED = new ApplyResult(0, 1, 0);
+    public static final ApplyResult ERROR   = new ApplyResult(0, 0, 1);
 
-import com.google.inject.AbstractModule;
-import com.google.inject.multibindings.Multibinder;
-import com.google.inject.multibindings.OptionalBinder;
-import com.linagora.tmail.james.jmap.domainsignature.DomainSignatureTemplateApplyService;
-
-public class DomainSignatureTemplateRoutesModule extends AbstractModule {
-
-    @Override
-    protected void configure() {
-        Multibinder.newSetBinder(binder(), Routes.class)
-            .addBinding()
-            .to(DomainSignatureTemplateRoutes.class);
-        OptionalBinder.newOptionalBinder(binder(), DomainSignatureTemplateApplyService.class);
+    public ApplyResult merge(ApplyResult other) {
+        return new ApplyResult(
+            applied + other.applied,
+            skipped + other.skipped,
+            error   + other.error);
     }
 }

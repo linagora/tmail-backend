@@ -209,6 +209,7 @@ import com.linagora.tmail.webadmin.archival.InboxArchivalTaskModule;
 import com.linagora.tmail.webadmin.cleanup.MailboxesCleanupModule;
 import com.linagora.tmail.webadmin.contact.aucomplete.ContactIndexingModule;
 import com.linagora.tmail.webadmin.data.DomainTasksModule;
+import com.linagora.tmail.webadmin.domainsignature.DomainSignatureTemplateApplyServiceModule;
 import com.linagora.tmail.webadmin.domainsignature.DomainSignatureTemplateRoutesModule;
 import com.linagora.tmail.webadmin.jmap.PopulateKeywordEmailQueryViewTaskModule;
 import com.linagora.tmail.webadmin.label.LabelRoutesModule;
@@ -315,6 +316,7 @@ public class PostgresTmailServer {
         new TeamMailboxRoutesModule(),
         new TeamMailboxVaultRoutesModule(),
         new LabelRoutesModule(),
+        new DomainSignatureTemplateApplyServiceModule(),
         new DomainSignatureTemplateRoutesModule(),
         new UserIdentityModule(),
         new ContactIndexingModule(),

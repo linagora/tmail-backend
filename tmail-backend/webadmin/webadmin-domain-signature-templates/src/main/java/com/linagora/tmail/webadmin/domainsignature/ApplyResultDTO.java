@@ -18,20 +18,15 @@
 
 package com.linagora.tmail.webadmin.domainsignature;
 
-import org.apache.james.webadmin.Routes;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import com.linagora.tmail.james.jmap.domainsignature.ApplyResult;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.multibindings.Multibinder;
-import com.google.inject.multibindings.OptionalBinder;
-import com.linagora.tmail.james.jmap.domainsignature.DomainSignatureTemplateApplyService;
+public record ApplyResultDTO(
+    @JsonProperty("applied") int applied,
+    @JsonProperty("skipped") int skipped,
+    @JsonProperty("error") int error) {
 
-public class DomainSignatureTemplateRoutesModule extends AbstractModule {
-
-    @Override
-    protected void configure() {
-        Multibinder.newSetBinder(binder(), Routes.class)
-            .addBinding()
-            .to(DomainSignatureTemplateRoutes.class);
-        OptionalBinder.newOptionalBinder(binder(), DomainSignatureTemplateApplyService.class);
+    public static ApplyResultDTO from(ApplyResult result) {
+        return new ApplyResultDTO(result.applied(), result.skipped(), result.error());
     }
 }
