@@ -1,0 +1,133 @@
+= Unauthenticated Blob Access
+:navtitle: Unauthenticated Blob Access
+
+This extension allows an authenticated JMAP client to generate a short-lived token for a blob. The token can then be
+used to download that blob from a dedicated unauthenticated HTTP endpoint.
+
+This is intended for backend-to-backend flows where another service, such as Twake Drive, needs to fetch an email
+attachment and store it on behalf of the user.
+
+== Additions to the capability object
+
+Servers supporting the JMAP unauthenticated blob access extension need to advertise it via the
+`com:linagora:params:jmap:unauthenticated:blob:access` capability.
+
+The value of this property in the JMAP session capabilities property is an object with the following fields:
+
+- *endpoint*: `String`. The unauthenticated download endpoint URL template.
+- *tokenTtlInSeconds*: `UnsignedInt`. The token validity duration, in seconds.
+
+Example:
+
+....
+{
+  "com:linagora:params:jmap:unauthenticated:blob:access": {
+    "endpoint": "https://jmap.example.com/unauthenticatedDownload/{accountId}/{blobId}?token={token}",
+    "tokenTtlInSeconds": 300
+  }
+}
+....
+
+The endpoint template must contain the following variables:
+
+- `accountId`: the account id owning the blob.
+- `blobId`: the blob id to download.
+- `token`: the generated access token.
+
+== Unauthenticated download route
+
+Servers implementing the JMAP unauthenticated blob access extension need to expose the following unauthenticated download
+route:
+
+....
+GET /unauthenticatedDownload/{accountId}/{blobId}?token={token}
+....
+
+Where:
+
+- `accountId`: *String*. The account id owning the blob.
+- `blobId`: *String*. The blob id to download.
+- `token`: *String*. The generated access token.
+
+It returns the blob content when the token grants access to the requested blob.
+
+Return codes:
+
+- `200`: blob content returned successfully.
+- `401`: missing, invalid, or expired token. The server should not expose whether `accountId` or `blobId`
+  exists, to avoid resource enumeration.
+- `404`: token is valid but the blob cannot be resolved.
+
+== UnauthenticatedBlobAccess
+
+The `UnauthenticatedBlobAccess` object represents a temporary access token for a blob.
+
+It has the following field:
+
+- *token*: `String`. Server-set. The token to be used with the unauthenticated download endpoint.
+
+Tokens are reusable until they expire. Generating a new token for the same account and blob replaces the previous token:
+the latest token remains valid until its TTL expires and the previous token no longer grants access.
+
+== UnauthenticatedBlobAccess/set
+
+Standard */set* method as described in Section 5.3, RFC8620. Only `create` is supported.
+
+For `create`, each key of the `create` object is the `blobId` to grant temporary access to. The value is an empty object.
+
+The JMAP server needs to ensure that:
+
+- the blob exists.
+- the blob belongs to the requested account.
+- the authenticated user is allowed to access the blob.
+
+`update` and `destroy` are not supported.
+
+== Examples
+
+=== UnauthenticatedBlobAccess/set create
+
+Request:
+
+....
+{
+  "using": [
+    "urn:ietf:params:jmap:core",
+    "com:linagora:params:jmap:unauthenticated:blob:access"
+  ],
+  "methodCalls": [
+    [
+      "UnauthenticatedBlobAccess/set",
+      {
+        "accountId": "ACCOUNT_ID",
+        "create": {
+          "BLOB_ID_1": {}
+        }
+      },
+      "c1"
+    ]
+  ]
+}
+....
+
+Response:
+
+....
+{
+  "sessionState": "75128d00-03e7-11ee-be56-0242ac120002",
+  "methodResponses": [
+    [
+      "UnauthenticatedBlobAccess/set",
+      {
+        "accountId": "ACCOUNT_ID",
+        "created": {
+          "BLOB_ID_1": {
+            "token": "TOKEN_VALUE"
+          }
+        }
+      },
+      "c1"
+    ]
+  ]
+}
+....
