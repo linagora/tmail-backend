@@ -103,6 +103,10 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>webadmin-domain-signature-templates</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>webadmin-jmap-labels</artifactId>
         </dependency>
         <dependency>

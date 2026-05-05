@@ -152,6 +152,7 @@ import com.linagora.tmail.james.app.modules.jmap.MemoryTmailEventBusModule;
 import com.linagora.tmail.james.jmap.TMailJMAPModule;
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngineModule;
 import com.linagora.tmail.james.jmap.contact.RabbitMQEmailAddressContactModule;
+import com.linagora.tmail.james.jmap.event.PostgresDomainSignatureTemplateRepositoryModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseCommonModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.firebase.PostgresFirebaseRepositoryModule;
@@ -208,6 +209,7 @@ import com.linagora.tmail.webadmin.archival.InboxArchivalTaskModule;
 import com.linagora.tmail.webadmin.cleanup.MailboxesCleanupModule;
 import com.linagora.tmail.webadmin.contact.aucomplete.ContactIndexingModule;
 import com.linagora.tmail.webadmin.data.DomainTasksModule;
+import com.linagora.tmail.webadmin.domainsignature.DomainSignatureTemplateRoutesModule;
 import com.linagora.tmail.webadmin.jmap.PopulateKeywordEmailQueryViewTaskModule;
 import com.linagora.tmail.webadmin.label.LabelRoutesModule;
 import com.linagora.tmail.webadmin.mailbox.MailboxResourcesLocationRoutesModule;
@@ -313,6 +315,7 @@ public class PostgresTmailServer {
         new TeamMailboxRoutesModule(),
         new TeamMailboxVaultRoutesModule(),
         new LabelRoutesModule(),
+        new DomainSignatureTemplateRoutesModule(),
         new UserIdentityModule(),
         new ContactIndexingModule(),
         new WebAdminMailOverWebModule(),
@@ -395,6 +398,7 @@ public class PostgresTmailServer {
             new RateLimitsRoutesModule(),
             new EmailAddressContactRoutesModule(),
             new PostgresLabelRepositoryModule(),
+            new PostgresDomainSignatureTemplateRepositoryModule(),
             new PostgresJmapSettingsRepositoryModule(),
             new PostgresPublicAssetRepositoryModule(),
             new PostgresTicketStoreModule(),

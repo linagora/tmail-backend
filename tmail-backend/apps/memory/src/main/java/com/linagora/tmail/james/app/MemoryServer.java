@@ -78,6 +78,7 @@ import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
 import com.linagora.tmail.disconnector.EventBusDisconnectorModule;
 import com.linagora.tmail.imap.TMailIMAPModule;
+import com.linagora.tmail.james.app.modules.jmap.MemoryDomainSignatureTemplateRepositoryModule;
 import com.linagora.tmail.james.app.modules.jmap.MemoryDownloadAllModule;
 import com.linagora.tmail.james.app.modules.jmap.MemoryFirebaseSubscriptionRepositoryModule;
 import com.linagora.tmail.james.app.modules.jmap.MemoryJmapSettingsRepositoryModule;
@@ -130,6 +131,7 @@ import com.linagora.tmail.webadmin.archival.InboxArchivalTaskModule;
 import com.linagora.tmail.webadmin.cleanup.MailboxesCleanupModule;
 import com.linagora.tmail.webadmin.contact.aucomplete.ContactIndexingModule;
 import com.linagora.tmail.webadmin.data.DomainTasksModule;
+import com.linagora.tmail.webadmin.domainsignature.DomainSignatureTemplateRoutesModule;
 import com.linagora.tmail.webadmin.label.LabelRoutesModule;
 import com.linagora.tmail.webadmin.mailbox.MailboxResourcesLocationRoutesModule;
 import com.linagora.tmail.webadmin.quota.UserQuotaReporterRoutesModule;
@@ -194,6 +196,7 @@ public class MemoryServer {
           new TeamMailboxRoutesModule(),
           new TeamMailboxVaultRoutesModule(),
           new LabelRoutesModule(),
+          new DomainSignatureTemplateRoutesModule(),
           new DKIMMailetModule())
         .with(new TeamMailboxModule(),
             new TMailScanningQuotaSearcherModule(),
@@ -205,6 +208,7 @@ public class MemoryServer {
             new InMemoryEmailAddressContactSearchEngineModule(),
             new MemoryTmailEventBusModule(),
             new EmailAddressContactRoutesModule(),
+            new MemoryDomainSignatureTemplateRepositoryModule(),
             new MemoryLabelRepositoryModule(),
             new MemoryKeywordEmailQueryViewModule(),
             new MemoryJmapSettingsRepositoryModule(),
