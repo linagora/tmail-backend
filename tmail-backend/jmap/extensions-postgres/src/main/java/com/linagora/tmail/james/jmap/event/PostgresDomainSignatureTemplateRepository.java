@@ -69,13 +69,14 @@ public class PostgresDomainSignatureTemplateRepository implements DomainSignatur
 
     @Override
     public Mono<Void> store(Domain domain, DomainSignatureTemplate template) {
+        String serialized = serialize(template);
         return postgresExecutor.executeVoid(dsl -> Mono.from(
             dsl.insertInto(org.apache.james.domainlist.postgres.PostgresDomainDataDefinition.PostgresDomainTable.TABLE_NAME,
                     DOMAIN, SIGNATURE_TEMPLATES)
-                .values(domain.asString(), jsonb(serialize(template)))
+                .values(domain.asString(), jsonb(serialized))
                 .onConflict(DOMAIN)
                 .doUpdate()
-                .set(SIGNATURE_TEMPLATES, jsonb(serialize(template)))));
+                .set(SIGNATURE_TEMPLATES, jsonb(serialized))));
     }
 
     @Override
