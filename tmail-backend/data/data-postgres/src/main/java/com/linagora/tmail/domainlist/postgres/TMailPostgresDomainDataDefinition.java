@@ -38,6 +38,7 @@ import org.apache.james.backends.postgres.PostgresIndex;
 import org.apache.james.backends.postgres.PostgresTable;
 import org.apache.james.domainlist.postgres.PostgresDomainDataDefinition;
 import org.jooq.Field;
+import org.jooq.JSONB;
 import org.jooq.Record;
 import org.jooq.Table;
 import org.jooq.impl.DSL;
@@ -51,6 +52,7 @@ public interface TMailPostgresDomainDataDefinition {
         Field<Boolean> ACTIVATED = DSL.field("activated", SQLDataType.BOOLEAN);
         Field<Boolean> CAN_UPGRADE = DSL.field("can_upgrade", SQLDataType.BOOLEAN);
         Field<Boolean> IS_PAYING = DSL.field("is_paying", SQLDataType.BOOLEAN);
+        Field<JSONB> SIGNATURE_TEMPLATES = DSL.field("signature_templates", SQLDataType.JSONB);
 
         PostgresTable TABLE = PostgresTable.name(TABLE_NAME.getName())
             .createTableStep(((dsl, tableName) -> dsl.createTableIfNotExists(tableName)
@@ -64,6 +66,7 @@ public interface TMailPostgresDomainDataDefinition {
                 .column(ACTIVATED)
                 .column(CAN_UPGRADE)
                 .column(IS_PAYING)
+                .column(SIGNATURE_TEMPLATES)
                 .primaryKey(DOMAIN)))
             .disableRowLevelSecurity()
             .build();
