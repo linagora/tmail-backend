@@ -84,6 +84,8 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
     private static final int DEFAULT_IDENTITY_SORT_ORDER = 0;
     private static final int TEAM_MAILBOX_IDENTITY_SORT_ORDER = 10;
     private static final String APPLY_WHEN_PATH = "defaultText.applyWhen";
+    private static final String PROVIDER_PATH = "defaultText.provider";
+    private static final String DOMAIN_BASED_PROVIDER = "DomainBasedSignatureTemplateEngine";
 
     private final LDAPConnectionPool ldapConnectionPool;
     private final IdentityRepository identityRepository;
@@ -106,7 +108,7 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
         this.ldapConnectionPool = ldapConnectionPool;
         this.ldapConfiguration = ldapConfiguration;
         this.identityRepository = identityRepository;
-        this.signatureTextFactory = new DefaultSignatureTextFactory(jmapSettingsRepository, listenerConfig, resolveApplyWhenFilter(listenerConfig, guiceLoader));
+        this.signatureTextFactory = resolveSignatureTextFactory(jmapSettingsRepository, guiceLoader, listenerConfig);
         this.objectClassFilter = Filter.createEqualityFilter("objectClass", ldapConfiguration.getUserObjectClass());
         this.userExtraFilter = Optional.ofNullable(ldapConfiguration.getFilter())
             .map(Throwing.function(Filter::create).sneakyThrow());
@@ -119,6 +121,24 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
             .add(surnameAttribute)
             .add(usernameAttribute)
             .build();
+    }
+
+    private SignatureTextFactory resolveSignatureTextFactory(JmapSettingsRepository jmapSettingsRepository,
+                                                              GuiceLoader guiceLoader,
+                                                              HierarchicalConfiguration<ImmutableNode> listenerConfig) {
+        String provider = listenerConfig.getString(PROVIDER_PATH, null);
+        if (provider != null && !provider.isBlank()) {
+            String fqdn = DOMAIN_BASED_PROVIDER.equals(provider)
+                ? DomainBasedSignatureTextFactory.class.getName() : provider;
+            try {
+                return guiceLoader.<SignatureTextFactory>withNamingSheme(NamingScheme.IDENTITY)
+                    .instantiate(new ClassName(fqdn));
+            } catch (Exception e) {
+                throw new IllegalArgumentException("Failed to load SignatureTextFactory '%s'".formatted(provider), e);
+            }
+        }
+        return new DefaultSignatureTextFactory(jmapSettingsRepository, listenerConfig,
+            resolveApplyWhenFilter(listenerConfig, guiceLoader));
     }
 
     private ApplyWhenFilter resolveApplyWhenFilter(HierarchicalConfiguration<ImmutableNode> listenerConfig, GuiceLoader guiceLoader) {
