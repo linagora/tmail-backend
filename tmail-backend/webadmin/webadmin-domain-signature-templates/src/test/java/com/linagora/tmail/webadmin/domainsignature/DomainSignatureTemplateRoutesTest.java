@@ -31,6 +31,7 @@ import static org.mockito.Mockito.when;
 
 import java.util.Locale;
 import java.util.Map;
+import java.util.Optional;
 
 import org.apache.james.core.Domain;
 import org.apache.james.domainlist.api.DomainList;
@@ -64,7 +65,7 @@ class DomainSignatureTemplateRoutesTest {
         when(domainList.containsDomain(DOMAIN)).thenReturn(true);
 
         DomainSignatureTemplateRoutes routes = new DomainSignatureTemplateRoutes(
-            repository, domainList, new JsonTransformer());
+            repository, domainList, new JsonTransformer(), Optional.empty());
         webAdminServer = WebAdminUtils.createWebAdminServer(routes).start();
 
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer).build();

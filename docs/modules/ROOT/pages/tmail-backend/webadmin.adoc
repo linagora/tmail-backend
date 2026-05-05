@@ -1660,3 +1660,38 @@ Return codes:
 - `204` Templates deleted (or were already absent)
 - `404` Domain does not exist
 
+=== Applying domain signature templates to existing users
+
+....
+curl -XPOST http://ip:port/domains/domain.tld/signature-templates?action=apply
+....
+
+Applies the domain signature template to all users of the domain who do not yet have a signature
+on their default JMAP identity. Users who already have a non-empty signature are skipped.
+
+LDAP attribute placeholders (e.g. `{ldap:givenName}`) are resolved at apply time using the same
+LDAP connection used by `IdentityProvisionListener`.
+
+Response body:
+
+[source,json]
+----
+{"applied":12,"skipped":3,"error":0}
+----
+
+[cols="1,3"]
+|===
+| Field | Description
+
+| applied | Number of users whose signature was set
+| skipped | Number of users skipped (already had a signature, or no template matched their locale)
+| error   | Number of users for whom the operation failed (details logged server-side)
+|===
+
+Return codes:
+
+- `200` Operation completed; see body for counts
+- `404` Domain does not exist, or has no stored signature template
+- `400` Unknown `action` query parameter
+- `501` Apply service not available in this deployment (no LDAP)
+
