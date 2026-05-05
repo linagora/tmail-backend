@@ -95,10 +95,13 @@ Configuration keys:
 
 Signature provisioning is controlled by the optional `defaultText` block:
 
+- `defaultText.provider`: Optional. Selects the signature engine. When absent, static per-locale signatures defined in the configuration are used. Supported values:
+** `DomainBasedSignatureTemplateEngine` — reads signatures from the domain-level repository managed via WebAdmin (see xref:tmail-backend/webadmin.adoc#_domain_signature_templates[Domain Signature Templates]).
+** Any fully-qualified class name implementing `SignatureTextFactory`, instantiated via Guice.
 - `defaultText.applyWhen`: Optional FQDN of an `ApplyWhenFilter` implementation loaded via Guice. Defaults to always-eligible.
-- `defaultText.defaultLanguage`: Fallback language. Defaults to `en`.
-- `defaultText.<locale>.textSignature`: Plain-text signature for a locale.
-- `defaultText.<locale>.htmlSignature`: HTML signature for a locale.
+- `defaultText.defaultLanguage`: Fallback language when no per-locale match is found. Defaults to `en`. Only used by the static provider.
+- `defaultText.<locale>.textSignature`: Plain-text signature for a locale. Only used by the static provider.
+- `defaultText.<locale>.htmlSignature`: HTML signature for a locale. Only used by the static provider.
 
 Signature templates support LDAP attribute interpolation using `+{ldap:attributeName}+`.
 `givenName`, `sn`, and the username attribute are always fetched; additional attributes must be declared via `extraAttributes`.
@@ -127,6 +130,35 @@ If a placeholder references an unknown or empty attribute it is left as-is.
   </listener>
 </listeners>
 ----
+
+=== Domain-Based Signature Engine
+
+Instead of static per-locale blocks, signatures can be managed at the domain level via WebAdmin
+and resolved dynamically at provisioning time:
+
+[source,xml]
+----
+<listeners>
+  <listener>
+    <class>com.linagora.tmail.james.jmap.event.IdentityProvisionListener</class>
+    <configuration>
+      <defaultText>
+        <provider>DomainBasedSignatureTemplateEngine</provider>
+      </defaultText>
+    </configuration>
+  </listener>
+</listeners>
+----
+
+The user's JMAP `language` setting is checked first; English is used as the final fallback.
+Users whose domain has no stored template receive an identity with no signature.
+
+Template text supports `{ldap:attributeName}` placeholders (same syntax as the static provider):
+`givenName`, `sn`, and the LDAP username attribute are always available; additional attributes
+require `extraAttributes` to be configured on the listener.
+
+See xref:tmail-backend/webadmin.adoc#_domain_signature_templates[Domain Signature Templates] for
+the WebAdmin API to manage templates.
 
 === SaaS Signature Enrichment
 

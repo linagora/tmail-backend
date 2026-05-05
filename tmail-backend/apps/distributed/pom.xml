@@ -163,6 +163,10 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>webadmin-domain-signature-templates</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>welcome-listener</artifactId>
         </dependency>
         <dependency>

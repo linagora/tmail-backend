@@ -167,6 +167,7 @@ import com.linagora.tmail.imap.TMailIMAPModule;
 import com.linagora.tmail.james.jmap.ContactSupportCapabilitiesModule;
 import com.linagora.tmail.james.jmap.TMailJMAPModule;
 import com.linagora.tmail.james.jmap.contact.RabbitMQEmailAddressContactModule;
+import com.linagora.tmail.james.jmap.event.CassandraDomainSignatureTemplateRepositoryModule;
 import com.linagora.tmail.james.jmap.firebase.CassandraFirebaseSubscriptionRepositoryModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseCommonModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
@@ -230,6 +231,8 @@ import com.linagora.tmail.webadmin.contact.aucomplete.ContactIndexingModule;
 import com.linagora.tmail.webadmin.data.DomainTasksModule;
 import com.linagora.tmail.webadmin.data.UserDataTieringRoutesModule;
 import com.linagora.tmail.webadmin.data.UserDataTieringTaskModule;
+import com.linagora.tmail.webadmin.domainsignature.DomainSignatureTemplateApplyServiceModule;
+import com.linagora.tmail.webadmin.domainsignature.DomainSignatureTemplateRoutesModule;
 import com.linagora.tmail.webadmin.jmap.PopulateKeywordEmailQueryViewTaskModule;
 import com.linagora.tmail.webadmin.label.LabelRoutesModule;
 import com.linagora.tmail.webadmin.mailbox.MailboxResourcesLocationRoutesModule;
@@ -280,6 +283,8 @@ public class DistributedServer {
         new TeamMailboxModule(),
         new TeamMailboxRoutesModule(),
         new LabelRoutesModule(),
+        new DomainSignatureTemplateApplyServiceModule(),
+        new DomainSignatureTemplateRoutesModule(),
         new SieveRoutesModule(),
         new WebAdminServerModule(),
         new WebAdminReIndexingTaskSerializationModule(),
@@ -383,6 +388,7 @@ public class DistributedServer {
             REQUIRE_TASK_MANAGER_MODULE,
             new DistributedTaskManagerModule()))
         .with(new CassandraLabelRepositoryModule(),
+            new CassandraDomainSignatureTemplateRepositoryModule(),
             new CassandraRateLimitingModule(),
             new CassandraUserQuotaReporterModule(),
             new CassandraJmapSettingsRepositoryModule(),

@@ -1568,3 +1568,130 @@ Return codes:
 - `200` Successfully returned the list of matching mails
 - `400` Missing or blank `reason`, invalid `limit`/`offset`, unknown sort property, or malformed JSON body
 
+== Domain Signature Templates
+
+Administrators can manage per-language email signature templates at the domain level.
+These templates are used by the `IdentityProvisionListener` (with the
+`DomainBasedSignatureTemplateEngine` provider) to populate the default identity signature
+of newly provisioned users, based on their preferred language.
+
+Template text supports `{ldap:attributeName}` placeholders.
+When `IdentityProvisionListener` provisions a user, it fetches that user's LDAP entry and
+substitutes every `{ldap:xxx}` placeholder with the matching LDAP attribute value.
+Unknown or missing attributes are left as-is.
+
+=== Getting signature templates for a domain
+
+....
+curl -XGET http://ip:port/domains/domain.tld/signature-templates
+....
+
+Returns the stored signature templates for the given domain.
+
+Return codes:
+
+- `200` Templates found and returned
+- `404` Domain does not exist, or no templates stored for this domain
+
+Example response:
+
+....
+{
+  "signatures": [
+    {
+      "language": "en",
+      "textSignature": "Best regards",
+      "htmlSignature": "<p>Best regards</p>"
+    },
+    {
+      "language": "fr",
+      "textSignature": "Cordialement",
+      "htmlSignature": "<p>Cordialement</p>"
+    }
+  ]
+}
+....
+
+=== Storing signature templates for a domain
+
+....
+curl -XPUT http://ip:port/domains/domain.tld/signature-templates \
+  -H 'Content-Type: application/json' \
+  --data-raw '{
+    "signatures": [
+      {
+        "language": "en",
+        "textSignature": "Best regards,\n{ldap:givenName} {ldap:sn}\n{ldap:title}",
+        "htmlSignature": "<p>Best regards,<br/>{ldap:givenName} {ldap:sn}<br/>{ldap:title}</p>"
+      },
+      {
+        "language": "fr",
+        "textSignature": "Cordialement,\n{ldap:givenName} {ldap:sn}\n{ldap:title}",
+        "htmlSignature": "<p>Cordialement,<br/>{ldap:givenName} {ldap:sn}<br/>{ldap:title}</p>"
+      }
+    ]
+  }'
+....
+
+Creates or replaces the signature templates for the given domain.
+The `signatures` list must contain at least one entry.
+
+LDAP attributes available by default: `givenName`, `sn`, and the LDAP username attribute.
+Additional attributes can be exposed via `extraAttributes` in the `IdentityProvisionListener`
+configuration (e.g. `telephoneNumber`, `title`).
+
+Return codes:
+
+- `204` Templates stored successfully
+- `400` Request body is missing or `signatures` is empty
+- `404` Domain does not exist
+
+=== Deleting signature templates for a domain
+
+....
+curl -XDELETE http://ip:port/domains/domain.tld/signature-templates
+....
+
+Removes all signature templates for the given domain.
+This operation is idempotent: deleting from a domain that has no templates returns 204.
+
+Return codes:
+
+- `204` Templates deleted (or were already absent)
+- `404` Domain does not exist
+
+=== Applying domain signature templates to existing users
+
+....
+curl -XPOST http://ip:port/domains/domain.tld/signature-templates?action=apply
+....
+
+Applies the domain signature template to all users of the domain who do not yet have a signature
+on their default JMAP identity. Users who already have a non-empty signature are skipped.
+
+LDAP attribute placeholders (e.g. `{ldap:givenName}`) are resolved at apply time using the same
+LDAP connection used by `IdentityProvisionListener`.
+
+Response body:
+
+[source,json]
+----
+{"applied":12,"skipped":3,"error":0}
+----
+
+[cols="1,3"]
+|===
+| Field | Description
+
+| applied | Number of users whose signature was set
+| skipped | Number of users skipped (already had a signature, or no template matched their locale)
+| error   | Number of users for whom the operation failed (details logged server-side)
+|===
+
+Return codes:
+
+- `200` Operation completed; see body for counts
+- `404` Domain does not exist, or has no stored signature template
+- `400` Unknown `action` query parameter
+- `501` Apply service not available in this deployment (no LDAP)
+

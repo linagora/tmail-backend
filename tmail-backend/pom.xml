@@ -99,6 +99,7 @@
         <module>webadmin/webadmin-jmap-labels</module>
         <module>webadmin/webadmin-team-mailboxes</module>
         <module>webadmin/webadmin-rate-limit</module>
+        <module>webadmin/webadmin-domain-signature-templates</module>
         <module>webadmin/webadmin-tmail-tasks</module>
         <module>healthcheck</module>
 
@@ -337,6 +338,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>webadmin-rate-limit</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>webadmin-domain-signature-templates</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
