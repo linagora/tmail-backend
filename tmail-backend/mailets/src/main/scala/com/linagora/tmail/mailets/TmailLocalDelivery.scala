@@ -69,6 +69,7 @@ class TmailLocalDelivery @Inject()(usersRepository: UsersRepository,
         .metric(metricFactory.generate(LOCAL_DELIVERED_MAILS_METRIC_NAME))
         .build)
       .consume(getInitParameter("consume", true))
+      .onMailetException(getInitParameter("onMailetException", Mail.ERROR))
       .retries(MailetUtil.getInitParameterAsInteger(getInitParameter("retries"), Optional.of(MailDispatcher.RETRIES)))
       .mailetContext(getMailetContext)
       .usersRepository(usersRepository)
