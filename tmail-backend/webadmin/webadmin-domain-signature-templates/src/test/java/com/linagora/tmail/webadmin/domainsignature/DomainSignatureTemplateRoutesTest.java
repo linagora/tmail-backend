@@ -67,6 +67,7 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import com.linagora.tmail.james.jmap.domainsignature.DomainSignatureTemplateApplyService;
+import com.linagora.tmail.james.jmap.domainsignature.Options;
 import com.linagora.tmail.james.jmap.event.DomainBasedSignatureTextFactory;
 import com.linagora.tmail.james.jmap.event.DomainSignatureTemplate;
 import com.linagora.tmail.james.jmap.event.IdentityCreationRequestBuilder;
@@ -491,6 +492,43 @@ class DomainSignatureTemplateRoutesTest {
             assertThatJson(body).node("applied").isEqualTo(1);
             assertThatJson(body).node("skipped").isEqualTo(1);
             assertThatJson(body).node("error").isEqualTo(0);
+        }
+
+        @Test
+        void postShouldOverwriteExistingSignatureWhenParamIsTrue() throws Exception {
+            ldapRepository.store(LDAP_DOMAIN, new DomainSignatureTemplate(Map.of(
+                Locale.ENGLISH, new SignatureText("new text", "<p>new html</p>")))).block();
+            saveDefaultIdentity("bob@domain.tld", "existing text", "<p>existing html</p>");
+
+            String body = given()
+                .queryParam("action", "apply")
+                .queryParam("overwriteExistingSignatures", "true")
+            .when()
+                .post(LDAP_DOMAIN_PATH)
+            .then()
+                .statusCode(OK_200)
+                .extract().body().asString();
+
+            assertThatJson(body).node("applied").isEqualTo(1);
+            assertThatJson(body).node("skipped").isEqualTo(1); // ALICE: no saved identity
+        }
+
+        @Test
+        void postShouldNotOverwriteExistingSignatureByDefault() throws Exception {
+            ldapRepository.store(LDAP_DOMAIN, new DomainSignatureTemplate(Map.of(
+                Locale.ENGLISH, new SignatureText("new text", "<p>new html</p>")))).block();
+            saveDefaultIdentity("bob@domain.tld", "existing text", "<p>existing html</p>");
+
+            String body = given()
+                .queryParam("action", "apply")
+            .when()
+                .post(LDAP_DOMAIN_PATH)
+            .then()
+                .statusCode(OK_200)
+                .extract().body().asString();
+
+            assertThatJson(body).node("applied").isEqualTo(0);
+            assertThatJson(body).node("skipped").isEqualTo(2);
         }
 
         @Test

@@ -53,6 +53,7 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.linagora.tmail.james.jmap.domainsignature.Options;
 import com.linagora.tmail.james.jmap.event.DomainBasedSignatureTextFactory;
 import com.linagora.tmail.james.jmap.event.DomainSignatureTemplate;
 import com.linagora.tmail.james.jmap.event.IdentityCreationRequestBuilder;
@@ -141,7 +142,7 @@ class DomainSignatureTemplateApplyServiceTest {
         signatureRepo.store(DOMAIN, new DomainSignatureTemplate(Map.of(Locale.ENGLISH, EN_SIG))).block();
         saveDefaultIdentity(BOB, "", "");
 
-        ApplyResult result = testee.apply(DOMAIN).block();
+        ApplyResult result = testee.apply(DOMAIN, Options.DEFAULT()).block();
 
         assertThat(result.applied()).isEqualTo(1);
         assertThat(result.skipped()).isEqualTo(1); // ALICE: no saved identity → skipped
@@ -155,7 +156,7 @@ class DomainSignatureTemplateApplyServiceTest {
         signatureRepo.store(DOMAIN, new DomainSignatureTemplate(Map.of(Locale.ENGLISH, EN_SIG))).block();
         saveDefaultIdentity(BOB, "existing text", "<p>existing html</p>");
 
-        ApplyResult result = testee.apply(DOMAIN).block();
+        ApplyResult result = testee.apply(DOMAIN, Options.DEFAULT()).block();
 
         assertThat(result.applied()).isEqualTo(0);
         assertThat(result.skipped()).isEqualTo(2); // BOB: existing sig + ALICE: no saved identity
@@ -163,10 +164,24 @@ class DomainSignatureTemplateApplyServiceTest {
     }
 
     @Test
+    void applyShouldOverwriteExistingSignatureWhenOptionEnabled() throws Exception {
+        signatureRepo.store(DOMAIN, new DomainSignatureTemplate(Map.of(Locale.ENGLISH, EN_SIG))).block();
+        saveDefaultIdentity(BOB, "existing text", "<p>existing html</p>");
+
+        ApplyResult result = testee.apply(DOMAIN, new Options(true)).block();
+
+        assertThat(result.applied()).isEqualTo(1);
+        assertThat(result.skipped()).isEqualTo(1); // ALICE: no saved identity → skipped
+        assertThat(result.error()).isEqualTo(0);
+        assertThat(defaultIdentitySignatureText(BOB)).isEqualTo("en text");
+        assertThat(defaultIdentitySignatureHtml(BOB)).isEqualTo("<p>en html</p>");
+    }
+
+    @Test
     void applyShouldReturn404WhenNoDomainTemplate() {
         org.junit.jupiter.api.Assertions.assertThrows(
             DomainTemplateNotFoundException.class,
-            () -> testee.apply(DOMAIN).block());
+            () -> testee.apply(DOMAIN, Options.DEFAULT()).block());
     }
 
     @Test
@@ -177,7 +192,7 @@ class DomainSignatureTemplateApplyServiceTest {
         signatureRepo.store(DOMAIN, new DomainSignatureTemplate(Map.of(Locale.ENGLISH, template))).block();
         saveDefaultIdentity(BOB, "", "");
 
-        testee.apply(DOMAIN).block();
+        testee.apply(DOMAIN, Options.DEFAULT()).block();
 
         assertThat(defaultIdentitySignatureText(BOB)).isEqualTo("Regards, John Doe");
         assertThat(defaultIdentitySignatureHtml(BOB)).isEqualTo("<p>Regards, John Doe</p>");
@@ -194,7 +209,7 @@ class DomainSignatureTemplateApplyServiceTest {
         DomainSignatureTemplateApplyService brokenTestee = new DomainSignatureTemplateApplyService(
             signatureRepo, usersRepository, signatureFactory, identityRepository, closedPool, ldapRepositoryConfiguration);
 
-        ApplyResult result = brokenTestee.apply(DOMAIN).block();
+        ApplyResult result = brokenTestee.apply(DOMAIN, Options.DEFAULT()).block();
 
         assertThat(result.error()).isEqualTo(2);
         assertThat(result.applied()).isEqualTo(0);
@@ -208,7 +223,7 @@ class DomainSignatureTemplateApplyServiceTest {
         Mono.from(jmapSettingsRepo.updatePartial(BOB, JmapSettingsPatch$.MODULE$.toUpsert(LANGUAGE_KEY, "fr"))).block();
         saveDefaultIdentity(BOB, "", "");
 
-        testee.apply(DOMAIN).block();
+        testee.apply(DOMAIN, Options.DEFAULT()).block();
 
         assertThat(defaultIdentitySignatureText(BOB)).isEqualTo("fr text");
         assertThat(defaultIdentitySignatureHtml(BOB)).isEqualTo("<p>fr html</p>");
@@ -220,7 +235,7 @@ class DomainSignatureTemplateApplyServiceTest {
         saveDefaultIdentity(BOB, "", "");
         saveDefaultIdentity(ALICE, "existing", "<p>existing</p>");
 
-        ApplyResult result = testee.apply(DOMAIN).block();
+        ApplyResult result = testee.apply(DOMAIN, Options.DEFAULT()).block();
 
         assertThat(result.applied()).isEqualTo(1);
         assertThat(result.skipped()).isEqualTo(1);

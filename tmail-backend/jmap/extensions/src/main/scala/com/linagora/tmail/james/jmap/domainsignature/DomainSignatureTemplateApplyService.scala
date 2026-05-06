@@ -35,6 +35,12 @@ import reactor.core.publisher.{Flux, Mono}
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 
+case class Options(overwriteExistingSignatures: Boolean)
+
+object Options {
+  val DEFAULT: Options = Options(overwriteExistingSignatures = false)
+}
+
 class DomainSignatureTemplateApplyService @Inject()(
     repository: DomainSignatureTemplateRepository,
     usersRepository: UsersRepository,
@@ -45,30 +51,30 @@ class DomainSignatureTemplateApplyService @Inject()(
 
   private val logger = LoggerFactory.getLogger(classOf[DomainSignatureTemplateApplyService])
 
-  def apply(domain: Domain): Mono[ApplyResult] =
+  def apply(domain: Domain, options: Options): Mono[ApplyResult] =
     repository.get(domain)
       .flatMap(opt => opt.toScala
-        .fold[Mono[ApplyResult]](Mono.error(new DomainTemplateNotFoundException(domain)))(_ => applyForDomain(domain)))
+        .fold[Mono[ApplyResult]](Mono.error(new DomainTemplateNotFoundException(domain)))(_ => applyForDomain(domain, options)))
 
-  private def applyForDomain(domain: Domain): Mono[ApplyResult] =
+  private def applyForDomain(domain: Domain, options: Options): Mono[ApplyResult] =
     Flux.from(usersRepository.listUsersOfADomainReactive(domain))
-      .flatMap((user: Username) => applyForUser(user), ReactorUtils.LOW_CONCURRENCY)
+      .flatMap((user: Username) => applyForUser(user, options), ReactorUtils.LOW_CONCURRENCY)
       .reduce(new ApplyResult(0, 0, 0), (a: ApplyResult, b: ApplyResult) => a.merge(b))
 
-  private def applyForUser(user: Username): Mono[ApplyResult] =
+  private def applyForUser(user: Username, options: Options): Mono[ApplyResult] =
     Flux.from(identityRepository.list(user))
       .filter((identity: Identity) => identity.mayDelete.value)
       .filter((identity: Identity) => identity.sortOrder == 0)
       .next()
-      .flatMap((identity: Identity) => updateIdentitySignature(user, identity))
+      .flatMap((identity: Identity) => updateIdentitySignature(user, identity, options))
       .defaultIfEmpty(ApplyResult.SKIPPED)
       .onErrorResume { e =>
         logger.warn("Failed to apply signature for user {}", user.asString(), e)
         Mono.just(ApplyResult.ERROR)
       }
 
-  private def updateIdentitySignature(user: Username, identity: Identity): Mono[ApplyResult] =
-    if (identity.textSignature.name.nonEmpty || identity.htmlSignature.name.nonEmpty)
+  private def updateIdentitySignature(user: Username, identity: Identity, options: Options): Mono[ApplyResult] =
+    if (!options.overwriteExistingSignatures && (identity.textSignature.name.nonEmpty || identity.htmlSignature.name.nonEmpty))
       Mono.just(ApplyResult.SKIPPED)
     else
       signatureTextFactory.forUser(user)

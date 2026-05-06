@@ -37,6 +37,7 @@ import org.eclipse.jetty.http.HttpStatus;
 
 import com.linagora.tmail.james.jmap.domainsignature.DomainSignatureTemplateApplyService;
 import com.linagora.tmail.james.jmap.domainsignature.DomainTemplateNotFoundException;
+import com.linagora.tmail.james.jmap.domainsignature.Options;
 import com.linagora.tmail.james.jmap.event.DomainSignatureTemplateRepository;
 
 import spark.Request;
@@ -51,6 +52,7 @@ public class DomainSignatureTemplateRoutes implements Routes {
         DOMAINS_BASE + SEPARATOR + DOMAIN_PARAM + SEPARATOR + "signature-templates";
     private static final String ACTION_PARAM = "action";
     private static final String APPLY_ACTION = "apply";
+    private static final String OVERWRITE_EXISTING_SIGNATURES_PARAM = "overwriteExistingSignatures";
 
     private final DomainSignatureTemplateRepository repository;
     private final DomainList domainList;
@@ -112,7 +114,7 @@ public class DomainSignatureTemplateRoutes implements Routes {
         Domain domain = extractDomain(req);
         assertDomainExists(domain);
         try {
-            return ApplyResultDTO.from(applyService.get().apply(domain).block());
+            return ApplyResultDTO.from(applyService.get().apply(domain, parseOptions(req)).block());
         } catch (DomainTemplateNotFoundException e) {
             throw ErrorResponder.builder()
                 .statusCode(HttpStatus.NOT_FOUND_404)
@@ -177,5 +179,11 @@ public class DomainSignatureTemplateRoutes implements Routes {
                 .message("Domain '%s' does not exist", domain.asString())
                 .haltError();
         }
+    }
+
+    private Options parseOptions(Request req) {
+        boolean overwriteExistingSignatures = Boolean.parseBoolean(
+            req.queryParamOrDefault(OVERWRITE_EXISTING_SIGNATURES_PARAM, "false"));
+        return new Options(overwriteExistingSignatures);
     }
 }
