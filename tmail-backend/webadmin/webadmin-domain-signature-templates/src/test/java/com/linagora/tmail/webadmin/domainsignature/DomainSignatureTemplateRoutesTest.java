@@ -459,7 +459,7 @@ class DomainSignatureTemplateRoutesTest {
 
             String body = given()
                 .queryParam("action", "apply")
-                .queryParam("overwriteExistingSignatures", "true")
+                .queryParam("overwriteExistingSignatures")
             .when()
                 .post(DOMAIN_PATH)
             .then()

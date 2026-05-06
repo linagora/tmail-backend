@@ -1672,6 +1672,14 @@ on their default JMAP identity. Users who already have a non-empty signature are
 LDAP attribute placeholders (e.g. `{ldap:givenName}`) are resolved at apply time using the same
 LDAP connection used by `IdentityProvisionListener`.
 
+Optional query parameters:
+
+- `overwriteExistingSignatures` — when present, overwrites existing signatures instead of skipping users who already have one.
+
+....
+curl -XPOST http://ip:port/domains/domain.tld/signature-templates?action=apply&overwriteExistingSignatures
+....
+
 Response body:
 
 [source,json]
@@ -1684,7 +1692,7 @@ Response body:
 | Field | Description
 
 | applied | Number of users whose signature was set
-| skipped | Number of users skipped (already had a signature, or no template matched their locale)
+| skipped | Number of users skipped (no stored identity, or signature already present and overwrite not requested, or no template matched their locale)
 | error   | Number of users for whom the operation failed (details logged server-side)
 |===
 
@@ -1693,5 +1701,6 @@ Return codes:
 - `200` Operation completed; see body for counts
 - `404` Domain does not exist, or has no stored signature template
 - `400` Unknown `action` query parameter
-- `501` Apply service not available in this deployment (no LDAP)
+
+Note: this endpoint is only available in LDAP-based deployments.
 

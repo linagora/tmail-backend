@@ -173,8 +173,6 @@ public class DomainSignatureTemplateRoutes implements Routes {
     }
 
     private Options parseOptions(Request req) {
-        boolean overwriteExistingSignatures = Boolean.parseBoolean(
-            req.queryParamOrDefault(OVERWRITE_EXISTING_SIGNATURES_PARAM, "false"));
-        return new Options(overwriteExistingSignatures);
+        return new Options(req.queryParams().contains(OVERWRITE_EXISTING_SIGNATURES_PARAM));
     }
 }
