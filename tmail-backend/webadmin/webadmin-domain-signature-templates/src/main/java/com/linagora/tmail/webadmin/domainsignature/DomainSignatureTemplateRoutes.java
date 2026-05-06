@@ -21,8 +21,6 @@ package com.linagora.tmail.webadmin.domainsignature;
 import static org.apache.james.webadmin.Constants.SEPARATOR;
 import static spark.Spark.halt;
 
-import java.util.Optional;
-
 import jakarta.inject.Inject;
 
 import org.apache.james.core.Domain;
@@ -58,13 +56,13 @@ public class DomainSignatureTemplateRoutes implements Routes {
     private final DomainList domainList;
     private final JsonTransformer jsonTransformer;
     private final JsonExtractor<DomainSignatureTemplateDTO> jsonExtractor;
-    private final Optional<DomainSignatureTemplateApplyService> applyService;
+    private final DomainSignatureTemplateApplyService applyService;
 
     @Inject
     public DomainSignatureTemplateRoutes(DomainSignatureTemplateRepository repository,
                                          DomainList domainList,
                                          JsonTransformer jsonTransformer,
-                                         Optional<DomainSignatureTemplateApplyService> applyService) {
+                                         DomainSignatureTemplateApplyService applyService) {
         this.repository = repository;
         this.domainList = domainList;
         this.jsonTransformer = jsonTransformer;
@@ -104,17 +102,10 @@ public class DomainSignatureTemplateRoutes implements Routes {
     }
 
     private Object applyTemplate(Request req, Response res) throws DomainListException {
-        if (applyService.isEmpty()) {
-            throw ErrorResponder.builder()
-                .statusCode(HttpStatus.NOT_IMPLEMENTED_501)
-                .type(ErrorResponder.ErrorType.SERVER_ERROR)
-                .message("Domain signature template apply service is not available in this deployment")
-                .haltError();
-        }
         Domain domain = extractDomain(req);
         assertDomainExists(domain);
         try {
-            return ApplyResultDTO.from(applyService.get().apply(domain, parseOptions(req)).block());
+            return ApplyResultDTO.from(applyService.apply(domain, parseOptions(req)).block());
         } catch (DomainTemplateNotFoundException e) {
             throw ErrorResponder.builder()
                 .statusCode(HttpStatus.NOT_FOUND_404)

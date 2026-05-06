@@ -24,13 +24,11 @@ import static io.restassured.http.ContentType.JSON;
 import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
 import static org.eclipse.jetty.http.HttpStatus.BAD_REQUEST_400;
 import static org.eclipse.jetty.http.HttpStatus.NOT_FOUND_404;
-import static org.eclipse.jetty.http.HttpStatus.NOT_IMPLEMENTED_501;
 import static org.eclipse.jetty.http.HttpStatus.NO_CONTENT_204;
 import static org.eclipse.jetty.http.HttpStatus.OK_200;
 
 import java.util.Locale;
 import java.util.Map;
-import java.util.Optional;
 
 import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.plist.PropertyListConfiguration;
@@ -67,7 +65,6 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
 import com.linagora.tmail.james.jmap.domainsignature.DomainSignatureTemplateApplyService;
-import com.linagora.tmail.james.jmap.domainsignature.Options;
 import com.linagora.tmail.james.jmap.event.DomainBasedSignatureTextFactory;
 import com.linagora.tmail.james.jmap.event.DomainSignatureTemplate;
 import com.linagora.tmail.james.jmap.event.IdentityCreationRequestBuilder;
@@ -77,28 +74,75 @@ import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
 import com.unboundid.ldap.sdk.LDAPConnectionPool;
 
 import io.restassured.RestAssured;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 class DomainSignatureTemplateRoutesTest {
 
-    private static final Domain DOMAIN = Domain.of("linagora.com");
-    private static final String DOMAIN_PATH = "/domains/linagora.com/signature-templates";
+    private static final String LDAP_ADMIN_PASSWORD = "mysecretpassword";
+    private static final Domain DOMAIN = Domain.of("domain.tld");
+    private static final String DOMAIN_PATH = "/domains/domain.tld/signature-templates";
+
+    static LdapGenericContainer ldapContainer = LdapGenericContainer.builder()
+        .domain("domain.tld")
+        .password(LDAP_ADMIN_PASSWORD)
+        .dockerFilePrefix("domain-signature-ldap/")
+        .build();
+
+    @BeforeAll
+    static void setUpAll() {
+        ldapContainer.start();
+    }
+
+    @AfterAll
+    static void tearDownAll() {
+        ldapContainer.stop();
+    }
 
     private WebAdminServer webAdminServer;
     private MemoryDomainSignatureTemplateRepository repository;
     private SimpleDomainList domainList;
+    private IdentityRepository identityRepository;
 
     @BeforeEach
     void setUp() throws Exception {
+        HierarchicalConfiguration<ImmutableNode> ldapConfig = ldapConfig();
+        LdapRepositoryConfiguration ldapRepositoryConfiguration = LdapRepositoryConfiguration.from(ldapConfig);
+        LDAPConnectionPool ldapConnectionPool = new LDAPConnectionFactory(ldapRepositoryConfiguration).getLdapConnectionPool();
+
+        ReadOnlyUsersLDAPRepository usersRepository = new ReadOnlyUsersLDAPRepository(
+            new SimpleDomainList(), new NoopGaugeRegistry(), ldapConnectionPool, ldapRepositoryConfiguration);
+        usersRepository.configure(ldapConfig);
+        usersRepository.init();
+
         repository = new MemoryDomainSignatureTemplateRepository();
+        MemoryJmapSettingsRepository jmapSettingsRepo = new MemoryJmapSettingsRepository();
+        DomainBasedSignatureTextFactory signatureFactory = new DomainBasedSignatureTextFactory(repository, jmapSettingsRepo);
+
+        InVMEventBus eventBus = new InVMEventBus(
+            new InVmEventDelivery(new RecordingMetricFactory()),
+            RetryBackoffConfiguration.FAST,
+            new MemoryEventDeadLetters());
+        MemoryCustomIdentityDAO identityDAO = new MemoryCustomIdentityDAO(eventBus);
+
+        SimpleDomainList identityDomainList = new SimpleDomainList();
+        identityDomainList.addDomain(DOMAIN);
+        MemoryRecipientRewriteTable rrt = new MemoryRecipientRewriteTable();
+        rrt.setConfiguration(RecipientRewriteTableConfiguration.DEFAULT_ENABLED);
+        CanSendFromImpl canSendFrom = new CanSendFromImpl(new AliasReverseResolverImpl(rrt));
+        MemoryUsersRepository usersRepoForIdentity = MemoryUsersRepository.withVirtualHosting(identityDomainList);
+        DefaultIdentitySupplier defaultIdentitySupplier = new DefaultIdentitySupplier(canSendFrom, usersRepoForIdentity);
+        identityRepository = new IdentityRepository(identityDAO, defaultIdentitySupplier);
+
+        DomainSignatureTemplateApplyService applyService = new DomainSignatureTemplateApplyService(
+            repository, usersRepository, signatureFactory,
+            identityRepository, ldapConnectionPool, ldapRepositoryConfiguration);
+
         domainList = new SimpleDomainList();
         domainList.addDomain(DOMAIN);
 
         DomainSignatureTemplateRoutes routes = new DomainSignatureTemplateRoutes(
-            repository, domainList, new JsonTransformer(), Optional.empty());
+            repository, domainList, new JsonTransformer(), applyService);
         webAdminServer = WebAdminUtils.createWebAdminServer(routes).start();
-
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer).build();
     }
 
@@ -292,99 +336,12 @@ class DomainSignatureTemplateRoutesTest {
 
     @Nested
     class PostApply {
-
-        private static final String LDAP_ADMIN_PASSWORD = "mysecretpassword";
-        private static final Domain LDAP_DOMAIN = Domain.of("domain.tld");
-        private static final String LDAP_DOMAIN_PATH = "/domains/domain.tld/signature-templates";
-
-        static LdapGenericContainer ldapContainer = LdapGenericContainer.builder()
-            .domain("domain.tld")
-            .password(LDAP_ADMIN_PASSWORD)
-            .dockerFilePrefix("domain-signature-ldap/")
-            .build();
-
-        private MemoryDomainSignatureTemplateRepository ldapRepository;
-        private SimpleDomainList ldapDomainList;
-        private IdentityRepository identityRepository;
-
-        @BeforeAll
-        static void setUpLdap() {
-            ldapContainer.start();
-        }
-
-        @AfterAll
-        static void tearDownLdap() {
-            ldapContainer.stop();
-        }
-
-        @BeforeEach
-        void setUp() throws Exception {
-            webAdminServer.destroy();
-
-            HierarchicalConfiguration<ImmutableNode> ldapConfig = ldapConfig();
-            LdapRepositoryConfiguration ldapRepositoryConfiguration = LdapRepositoryConfiguration.from(ldapConfig);
-            LDAPConnectionPool ldapConnectionPool = new LDAPConnectionFactory(ldapRepositoryConfiguration).getLdapConnectionPool();
-
-            ReadOnlyUsersLDAPRepository usersRepository = new ReadOnlyUsersLDAPRepository(
-                new SimpleDomainList(), new NoopGaugeRegistry(), ldapConnectionPool, ldapRepositoryConfiguration);
-            usersRepository.configure(ldapConfig);
-            usersRepository.init();
-
-            ldapRepository = new MemoryDomainSignatureTemplateRepository();
-            MemoryJmapSettingsRepository jmapSettingsRepo = new MemoryJmapSettingsRepository();
-            DomainBasedSignatureTextFactory signatureFactory = new DomainBasedSignatureTextFactory(ldapRepository, jmapSettingsRepo);
-
-            InVMEventBus eventBus = new InVMEventBus(
-                new InVmEventDelivery(new RecordingMetricFactory()),
-                RetryBackoffConfiguration.FAST,
-                new MemoryEventDeadLetters());
-            MemoryCustomIdentityDAO identityDAO = new MemoryCustomIdentityDAO(eventBus);
-
-            SimpleDomainList identityDomainList = new SimpleDomainList();
-            identityDomainList.addDomain(LDAP_DOMAIN);
-            MemoryRecipientRewriteTable rrt = new MemoryRecipientRewriteTable();
-            rrt.setConfiguration(RecipientRewriteTableConfiguration.DEFAULT_ENABLED);
-            CanSendFromImpl canSendFrom = new CanSendFromImpl(new AliasReverseResolverImpl(rrt));
-            MemoryUsersRepository usersRepoForIdentity = MemoryUsersRepository.withVirtualHosting(identityDomainList);
-            DefaultIdentitySupplier defaultIdentitySupplier = new DefaultIdentitySupplier(canSendFrom, usersRepoForIdentity);
-            identityRepository = new IdentityRepository(identityDAO, defaultIdentitySupplier);
-
-            DomainSignatureTemplateApplyService applyService = new DomainSignatureTemplateApplyService(
-                ldapRepository, usersRepository, signatureFactory,
-                identityRepository, ldapConnectionPool, ldapRepositoryConfiguration);
-
-            ldapDomainList = new SimpleDomainList();
-            ldapDomainList.addDomain(LDAP_DOMAIN);
-
-            repository = ldapRepository;
-            DomainSignatureTemplateRoutes routes = new DomainSignatureTemplateRoutes(
-                ldapRepository, ldapDomainList, new JsonTransformer(), Optional.of(applyService));
-            webAdminServer = WebAdminUtils.createWebAdminServer(routes).start();
-            RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer).build();
-        }
-
-        @Test
-        void postShouldReturn501WhenServiceNotConfigured() {
-            webAdminServer.destroy();
-            DomainSignatureTemplateRoutes routes = new DomainSignatureTemplateRoutes(
-                ldapRepository, ldapDomainList, new JsonTransformer(), Optional.empty());
-            webAdminServer = WebAdminUtils.createWebAdminServer(routes).start();
-            RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer).build();
-
-            given()
-                .queryParam("action", "apply")
-            .when()
-                .post(LDAP_DOMAIN_PATH)
-            .then()
-                .statusCode(NOT_IMPLEMENTED_501);
-        }
-
         @Test
         void postShouldReturn400WhenUnknownAction() {
             given()
                 .queryParam("action", "unknown")
             .when()
-                .post(LDAP_DOMAIN_PATH)
+                .post(DOMAIN_PATH)
             .then()
                 .statusCode(BAD_REQUEST_400);
         }
@@ -392,7 +349,7 @@ class DomainSignatureTemplateRoutesTest {
         @Test
         void postShouldReturn400WhenNoActionParam() {
             when()
-                .post(LDAP_DOMAIN_PATH)
+                .post(DOMAIN_PATH)
             .then()
                 .statusCode(BAD_REQUEST_400);
         }
@@ -410,20 +367,20 @@ class DomainSignatureTemplateRoutesTest {
             given()
                 .queryParam("action", "apply")
             .when()
-                .post(LDAP_DOMAIN_PATH)
+                .post(DOMAIN_PATH)
             .then()
                 .statusCode(NOT_FOUND_404);
         }
 
         @Test
         void postShouldReturn200WhenTemplateExists() {
-            ldapRepository.store(LDAP_DOMAIN, new DomainSignatureTemplate(Map.of(
+            repository.store(DOMAIN, new DomainSignatureTemplate(Map.of(
                 Locale.ENGLISH, new SignatureText("Best regards", "<p>Best regards</p>")))).block();
 
             String body = given()
                 .queryParam("action", "apply")
             .when()
-                .post(LDAP_DOMAIN_PATH)
+                .post(DOMAIN_PATH)
             .then()
                 .statusCode(OK_200)
                 .contentType(JSON)
@@ -438,13 +395,13 @@ class DomainSignatureTemplateRoutesTest {
 
         @Test
         void postShouldReturnSkippedForAllUsersWhenNoIdentityStored() {
-            ldapRepository.store(LDAP_DOMAIN, new DomainSignatureTemplate(Map.of(
+            repository.store(DOMAIN, new DomainSignatureTemplate(Map.of(
                 Locale.ENGLISH, new SignatureText("Best regards", "<p>Best regards</p>")))).block();
 
             String body = given()
                 .queryParam("action", "apply")
             .when()
-                .post(LDAP_DOMAIN_PATH)
+                .post(DOMAIN_PATH)
             .then()
                 .statusCode(OK_200)
                 .extract().body().asString();
@@ -456,7 +413,7 @@ class DomainSignatureTemplateRoutesTest {
 
         @Test
         void postShouldReturnAppliedForUsersWithEmptyDefaultIdentity() throws Exception {
-            ldapRepository.store(LDAP_DOMAIN, new DomainSignatureTemplate(Map.of(
+            repository.store(DOMAIN, new DomainSignatureTemplate(Map.of(
                 Locale.ENGLISH, new SignatureText("Best regards", "<p>Best regards</p>")))).block();
             saveDefaultIdentity("bob@domain.tld", "", "");
             saveDefaultIdentity("alice@domain.tld", "", "");
@@ -464,7 +421,7 @@ class DomainSignatureTemplateRoutesTest {
             String body = given()
                 .queryParam("action", "apply")
             .when()
-                .post(LDAP_DOMAIN_PATH)
+                .post(DOMAIN_PATH)
             .then()
                 .statusCode(OK_200)
                 .extract().body().asString();
@@ -476,7 +433,7 @@ class DomainSignatureTemplateRoutesTest {
 
         @Test
         void postShouldSkipUsersWithExistingSignatures() throws Exception {
-            ldapRepository.store(LDAP_DOMAIN, new DomainSignatureTemplate(Map.of(
+            repository.store(DOMAIN, new DomainSignatureTemplate(Map.of(
                 Locale.ENGLISH, new SignatureText("Best regards", "<p>Best regards</p>")))).block();
             saveDefaultIdentity("bob@domain.tld", "existing text", "<p>existing</p>");
             saveDefaultIdentity("alice@domain.tld", "", "");
@@ -484,7 +441,7 @@ class DomainSignatureTemplateRoutesTest {
             String body = given()
                 .queryParam("action", "apply")
             .when()
-                .post(LDAP_DOMAIN_PATH)
+                .post(DOMAIN_PATH)
             .then()
                 .statusCode(OK_200)
                 .extract().body().asString();
@@ -496,7 +453,7 @@ class DomainSignatureTemplateRoutesTest {
 
         @Test
         void postShouldOverwriteExistingSignatureWhenParamIsTrue() throws Exception {
-            ldapRepository.store(LDAP_DOMAIN, new DomainSignatureTemplate(Map.of(
+            repository.store(DOMAIN, new DomainSignatureTemplate(Map.of(
                 Locale.ENGLISH, new SignatureText("new text", "<p>new html</p>")))).block();
             saveDefaultIdentity("bob@domain.tld", "existing text", "<p>existing html</p>");
 
@@ -504,7 +461,7 @@ class DomainSignatureTemplateRoutesTest {
                 .queryParam("action", "apply")
                 .queryParam("overwriteExistingSignatures", "true")
             .when()
-                .post(LDAP_DOMAIN_PATH)
+                .post(DOMAIN_PATH)
             .then()
                 .statusCode(OK_200)
                 .extract().body().asString();
@@ -515,14 +472,14 @@ class DomainSignatureTemplateRoutesTest {
 
         @Test
         void postShouldNotOverwriteExistingSignatureByDefault() throws Exception {
-            ldapRepository.store(LDAP_DOMAIN, new DomainSignatureTemplate(Map.of(
+            repository.store(DOMAIN, new DomainSignatureTemplate(Map.of(
                 Locale.ENGLISH, new SignatureText("new text", "<p>new html</p>")))).block();
             saveDefaultIdentity("bob@domain.tld", "existing text", "<p>existing html</p>");
 
             String body = given()
                 .queryParam("action", "apply")
             .when()
-                .post(LDAP_DOMAIN_PATH)
+                .post(DOMAIN_PATH)
             .then()
                 .statusCode(OK_200)
                 .extract().body().asString();
@@ -533,7 +490,7 @@ class DomainSignatureTemplateRoutesTest {
 
         @Test
         void postShouldInterpolateLdapAttributesFromRealDirectory() throws Exception {
-            ldapRepository.store(LDAP_DOMAIN, new DomainSignatureTemplate(Map.of(
+            repository.store(DOMAIN, new DomainSignatureTemplate(Map.of(
                 Locale.ENGLISH, new SignatureText(
                     "Regards, {ldap:givenName} {ldap:sn}",
                     "<p>Regards, {ldap:givenName} {ldap:sn}</p>")))).block();
@@ -543,27 +500,13 @@ class DomainSignatureTemplateRoutesTest {
             String body = given()
                 .queryParam("action", "apply")
             .when()
-                .post(LDAP_DOMAIN_PATH)
+                .post(DOMAIN_PATH)
             .then()
                 .statusCode(OK_200)
                 .extract().body().asString();
 
             assertThatJson(body).node("applied").isEqualTo(2);
             assertThatJson(body).node("error").isEqualTo(0);
-        }
-
-        private static HierarchicalConfiguration<ImmutableNode> ldapConfig() {
-            PropertyListConfiguration configuration = new PropertyListConfiguration();
-            configuration.addProperty("[@ldapHost]", ldapContainer.getLdapHost());
-            configuration.addProperty("[@principal]", "cn=admin,dc=domain,dc=tld");
-            configuration.addProperty("[@credentials]", LDAP_ADMIN_PASSWORD);
-            configuration.addProperty("[@userBase]", "ou=people,dc=domain,dc=tld");
-            configuration.addProperty("[@userObjectClass]", "inetOrgPerson");
-            configuration.addProperty("[@userIdAttribute]", "mail");
-            configuration.addProperty("[@connectionTimeout]", "2000");
-            configuration.addProperty("[@readTimeout]", "2000");
-            configuration.addProperty("supportsVirtualHosting", true);
-            return configuration;
         }
 
         private void saveDefaultIdentity(String email, String text, String html) throws Exception {
@@ -578,17 +521,17 @@ class DomainSignatureTemplateRoutesTest {
         }
     }
 
-    @Nested
-    class PostApplyResponseBody {
-
-        @Test
-        void postShouldReturn501WhenServiceNotConfigured() {
-            given()
-                .queryParam("action", "apply")
-            .when()
-                .post(DOMAIN_PATH)
-            .then()
-                .statusCode(NOT_IMPLEMENTED_501);
-        }
+    private static HierarchicalConfiguration<ImmutableNode> ldapConfig() {
+        PropertyListConfiguration configuration = new PropertyListConfiguration();
+        configuration.addProperty("[@ldapHost]", ldapContainer.getLdapHost());
+        configuration.addProperty("[@principal]", "cn=admin,dc=domain,dc=tld");
+        configuration.addProperty("[@credentials]", LDAP_ADMIN_PASSWORD);
+        configuration.addProperty("[@userBase]", "ou=people,dc=domain,dc=tld");
+        configuration.addProperty("[@userObjectClass]", "inetOrgPerson");
+        configuration.addProperty("[@userIdAttribute]", "mail");
+        configuration.addProperty("[@connectionTimeout]", "2000");
+        configuration.addProperty("[@readTimeout]", "2000");
+        configuration.addProperty("supportsVirtualHosting", true);
+        return configuration;
     }
 }

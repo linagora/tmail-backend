@@ -22,7 +22,6 @@ import org.apache.james.webadmin.Routes;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.multibindings.Multibinder;
-import com.google.inject.multibindings.OptionalBinder;
 import com.linagora.tmail.james.jmap.domainsignature.DomainSignatureTemplateApplyService;
 
 public class DomainSignatureTemplateRoutesModule extends AbstractModule {
@@ -32,6 +31,6 @@ public class DomainSignatureTemplateRoutesModule extends AbstractModule {
         Multibinder.newSetBinder(binder(), Routes.class)
             .addBinding()
             .to(DomainSignatureTemplateRoutes.class);
-        OptionalBinder.newOptionalBinder(binder(), DomainSignatureTemplateApplyService.class);
+        bind(DomainSignatureTemplateApplyService.class);
     }
 }
