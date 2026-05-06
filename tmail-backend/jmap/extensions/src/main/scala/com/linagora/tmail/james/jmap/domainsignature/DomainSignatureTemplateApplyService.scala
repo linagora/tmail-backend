@@ -47,10 +47,8 @@ class DomainSignatureTemplateApplyService @Inject()(
 
   def apply(domain: Domain): Mono[ApplyResult] =
     repository.get(domain)
-      .flatMap { opt =>
-        if (opt.isPresent) applyForDomain(domain)
-        else Mono.error(new DomainTemplateNotFoundException(domain))
-      }
+      .flatMap(opt => opt.toScala
+        .fold[Mono[ApplyResult]](Mono.error(new DomainTemplateNotFoundException(domain)))(_ => applyForDomain(domain)))
 
   private def applyForDomain(domain: Domain): Mono[ApplyResult] =
     Flux.from(usersRepository.listUsersOfADomainReactive(domain))
@@ -74,10 +72,8 @@ class DomainSignatureTemplateApplyService @Inject()(
       Mono.just(ApplyResult.SKIPPED)
     else
       signatureTextFactory.forUser(user)
-        .flatMap { opt =>
-          if (opt.isPresent) doApplySignature(user, identity, opt.get())
-          else Mono.just(ApplyResult.SKIPPED)
-        }
+        .flatMap(opt => opt.toScala
+          .fold[Mono[ApplyResult]](Mono.just(ApplyResult.SKIPPED))(doApplySignature(user, identity, _)))
 
   private def doApplySignature(user: Username, identity: Identity, signature: SignatureText): Mono[ApplyResult] =
     Mono.fromCallable(() => fetchLdapAttributes(user))
