@@ -74,12 +74,15 @@ class DomainSignatureTemplateApplyService @Inject()(
       }
 
   private def updateIdentitySignature(user: Username, identity: Identity, options: Options): Mono[ApplyResult] =
-    if (!options.overwriteExistingSignatures && (identity.textSignature.name.nonEmpty || identity.htmlSignature.name.nonEmpty))
-      Mono.just(ApplyResult.SKIPPED)
-    else
+    if (options.overwriteExistingSignatures || signatureIsEmpty(identity))
       signatureTextFactory.forUser(user)
         .flatMap(opt => opt.toScala
           .fold[Mono[ApplyResult]](Mono.just(ApplyResult.SKIPPED))(doApplySignature(user, identity, _)))
+    else
+      Mono.just(ApplyResult.SKIPPED)
+
+  private def signatureIsEmpty(identity: Identity): Boolean =
+    identity.textSignature.name.isEmpty && identity.htmlSignature.name.isEmpty
 
   private def doApplySignature(user: Username, identity: Identity, signature: SignatureText): Mono[ApplyResult] =
     Mono.fromCallable(() => fetchLdapAttributes(user))
