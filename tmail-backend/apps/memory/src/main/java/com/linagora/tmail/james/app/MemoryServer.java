@@ -196,7 +196,6 @@ public class MemoryServer {
           new TeamMailboxRoutesModule(),
           new TeamMailboxVaultRoutesModule(),
           new LabelRoutesModule(),
-          new DomainSignatureTemplateRoutesModule(),
           new DKIMMailetModule())
         .with(new TeamMailboxModule(),
             new TMailScanningQuotaSearcherModule(),
@@ -240,6 +239,7 @@ public class MemoryServer {
             .overrideWith(chooseSslStrategyModule())
             .combineWith(new UsersRepositoryModuleChooser(new MemoryUsersRepositoryModule())
                 .chooseModules(configuration.usersRepositoryImplementation()))
+            .combineWith(chooseDomainSignatureModule(configuration.usersRepositoryImplementation()))
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
             .combineWith(chooseLinagoraServiceDiscovery(configuration.linagoraServicesDiscoveryModuleChooserConfiguration()))
             .combineWith(choosePop3ServerModule(configuration))
@@ -268,6 +268,13 @@ public class MemoryServer {
         }
         return binder -> {
         };
+    }
+
+    private static List<Module> chooseDomainSignatureModule(UsersRepositoryModuleChooser.Implementation implementation) {
+        if (implementation == UsersRepositoryModuleChooser.Implementation.LDAP) {
+            return List.of(new DomainSignatureTemplateRoutesModule());
+        }
+        return List.of();
     }
 
     private static List<Module> chooseFirebase(FirebaseModuleChooserConfiguration moduleChooserConfiguration) {
