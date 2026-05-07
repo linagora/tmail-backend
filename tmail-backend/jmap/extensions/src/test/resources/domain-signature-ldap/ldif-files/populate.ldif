@@ -1,0 +1,21 @@
+dn: ou=people, dc=domain,dc=tld
+ou: people
+objectClass: organizationalUnit
+
+dn: uid=bob, ou=people, dc=domain,dc=tld
+objectClass: inetOrgPerson
+uid: bob
+cn: bob
+givenName: John
+sn: Doe
+mail: bob@domain.tld
+userPassword: secret
+
+dn: uid=alice, ou=people, dc=domain,dc=tld
+objectClass: inetOrgPerson
+uid: alice
+cn: alice
+givenName: Alice
+sn: Smith
+mail: alice@domain.tld
+userPassword: secret

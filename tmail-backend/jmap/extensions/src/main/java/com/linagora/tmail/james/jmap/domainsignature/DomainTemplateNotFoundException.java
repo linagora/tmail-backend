@@ -16,21 +16,12 @@
  *  more details.                                                   *
  *******************************************************************/
 
-package com.linagora.tmail.webadmin.domainsignature;
+package com.linagora.tmail.james.jmap.domainsignature;
 
-import org.apache.james.webadmin.Routes;
+import org.apache.james.core.Domain;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.multibindings.Multibinder;
-import com.linagora.tmail.james.jmap.domainsignature.DomainSignatureTemplateApplyService;
-
-public class DomainSignatureTemplateRoutesModule extends AbstractModule {
-
-    @Override
-    protected void configure() {
-        Multibinder.newSetBinder(binder(), Routes.class)
-            .addBinding()
-            .to(DomainSignatureTemplateRoutes.class);
-        bind(DomainSignatureTemplateApplyService.class);
+public class DomainTemplateNotFoundException extends RuntimeException {
+    public DomainTemplateNotFoundException(Domain domain) {
+        super("No signature template found for domain: " + domain.asString());
     }
 }

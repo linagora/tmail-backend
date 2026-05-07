@@ -18,6 +18,7 @@
 
 package com.linagora.tmail;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.apache.commons.configuration2.HierarchicalConfiguration;
@@ -56,17 +57,22 @@ public class UsersRepositoryModuleChooser {
     }
 
     private final DatabaseCombinedUserRequireModule<?> databaseCombinedUserRequireModule;
-
     private final Module defaultModule;
+    private final List<Module> ldapOnlyModules;
 
     public UsersRepositoryModuleChooser(DatabaseCombinedUserRequireModule<?> databaseCombinedUserRequireModule, Module defaultModule) {
+        this(databaseCombinedUserRequireModule, defaultModule, List.of());
+    }
+
+    public UsersRepositoryModuleChooser(DatabaseCombinedUserRequireModule<?> databaseCombinedUserRequireModule, Module defaultModule, List<Module> ldapOnlyModules) {
         this.databaseCombinedUserRequireModule = databaseCombinedUserRequireModule;
         this.defaultModule = defaultModule;
+        this.ldapOnlyModules = ldapOnlyModules;
     }
 
     public Module chooseModule(Implementation implementation) {
         return switch (implementation) {
-            case LDAP -> new LdapUsersRepositoryModule();
+            case LDAP -> Modules.combine(new LdapUsersRepositoryModule(), Modules.combine(ldapOnlyModules));
             case COMBINED -> Modules.override(defaultModule).with(Modules.combine(new CombinedUsersRepositoryModule(), databaseCombinedUserRequireModule));
             case DEFAULT -> defaultModule;
         };

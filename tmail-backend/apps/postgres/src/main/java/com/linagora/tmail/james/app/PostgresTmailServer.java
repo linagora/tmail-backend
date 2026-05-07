@@ -315,7 +315,6 @@ public class PostgresTmailServer {
         new TeamMailboxRoutesModule(),
         new TeamMailboxVaultRoutesModule(),
         new LabelRoutesModule(),
-        new DomainSignatureTemplateRoutesModule(),
         new UserIdentityModule(),
         new ContactIndexingModule(),
         new WebAdminMailOverWebModule(),
@@ -488,7 +487,8 @@ public class PostgresTmailServer {
         return Modules.combine(TMailPostgresUsersRepositoryModule.USER_CONFIGURATION_MODULE,
             new UsersRepositoryModuleChooser(
                 DatabaseCombinedUserRequireModule.of(PostgresUsersDAO.class),
-                new TMailPostgresUsersRepositoryModule())
+                new TMailPostgresUsersRepositoryModule(),
+                List.of(new DomainSignatureTemplateRoutesModule()))
                 .chooseModule(configuration.usersRepositoryImplementation()));
     }
 

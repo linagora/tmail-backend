@@ -33,9 +33,13 @@ import org.apache.james.webadmin.utils.JsonExtractor;
 import org.apache.james.webadmin.utils.JsonTransformer;
 import org.eclipse.jetty.http.HttpStatus;
 
+import com.linagora.tmail.james.jmap.domainsignature.DomainSignatureTemplateApplyService;
+import com.linagora.tmail.james.jmap.domainsignature.DomainTemplateNotFoundException;
+import com.linagora.tmail.james.jmap.domainsignature.Options;
 import com.linagora.tmail.james.jmap.event.DomainSignatureTemplateRepository;
 
 import spark.Request;
+import spark.Response;
 import spark.Service;
 
 public class DomainSignatureTemplateRoutes implements Routes {
@@ -44,20 +48,26 @@ public class DomainSignatureTemplateRoutes implements Routes {
     private static final String DOMAIN_PARAM = ":domain";
     static final String SIGNATURE_TEMPLATES_PATH =
         DOMAINS_BASE + SEPARATOR + DOMAIN_PARAM + SEPARATOR + "signature-templates";
+    private static final String ACTION_PARAM = "action";
+    private static final String APPLY_ACTION = "apply";
+    private static final String OVERWRITE_EXISTING_SIGNATURES_PARAM = "overwriteExistingSignatures";
 
     private final DomainSignatureTemplateRepository repository;
     private final DomainList domainList;
     private final JsonTransformer jsonTransformer;
     private final JsonExtractor<DomainSignatureTemplateDTO> jsonExtractor;
+    private final DomainSignatureTemplateApplyService applyService;
 
     @Inject
     public DomainSignatureTemplateRoutes(DomainSignatureTemplateRepository repository,
                                          DomainList domainList,
-                                         JsonTransformer jsonTransformer) {
+                                         JsonTransformer jsonTransformer,
+                                         DomainSignatureTemplateApplyService applyService) {
         this.repository = repository;
         this.domainList = domainList;
         this.jsonTransformer = jsonTransformer;
         this.jsonExtractor = new JsonExtractor<>(DomainSignatureTemplateDTO.class);
+        this.applyService = applyService;
     }
 
     @Override
@@ -76,6 +86,33 @@ public class DomainSignatureTemplateRoutes implements Routes {
             deleteTemplate(req);
             return halt(HttpStatus.NO_CONTENT_204);
         });
+        service.post(SIGNATURE_TEMPLATES_PATH, this::handlePost, jsonTransformer);
+    }
+
+    private Object handlePost(Request req, Response res) throws DomainListException {
+        String action = req.queryParams(ACTION_PARAM);
+        if (APPLY_ACTION.equals(action)) {
+            return applyTemplate(req, res);
+        }
+        throw ErrorResponder.builder()
+            .statusCode(HttpStatus.BAD_REQUEST_400)
+            .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+            .message("Unknown action: '%s'", action)
+            .haltError();
+    }
+
+    private Object applyTemplate(Request req, Response res) throws DomainListException {
+        Domain domain = extractDomain(req);
+        assertDomainExists(domain);
+        try {
+            return ApplyResultDTO.from(applyService.apply(domain, parseOptions(req)).block());
+        } catch (DomainTemplateNotFoundException e) {
+            throw ErrorResponder.builder()
+                .statusCode(HttpStatus.NOT_FOUND_404)
+                .type(ErrorResponder.ErrorType.NOT_FOUND)
+                .message(e.getMessage())
+                .haltError();
+        }
     }
 
     private Object getTemplate(Request request) throws DomainListException {
@@ -133,5 +170,9 @@ public class DomainSignatureTemplateRoutes implements Routes {
                 .message("Domain '%s' does not exist", domain.asString())
                 .haltError();
         }
+    }
+
+    private Options parseOptions(Request req) {
+        return new Options(req.queryParams().contains(OVERWRITE_EXISTING_SIGNATURES_PARAM));
     }
 }

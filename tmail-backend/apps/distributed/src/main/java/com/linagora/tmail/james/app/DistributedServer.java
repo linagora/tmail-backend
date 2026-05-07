@@ -282,7 +282,6 @@ public class DistributedServer {
         new TeamMailboxModule(),
         new TeamMailboxRoutesModule(),
         new LabelRoutesModule(),
-        new DomainSignatureTemplateRoutesModule(),
         new SieveRoutesModule(),
         new WebAdminServerModule(),
         new WebAdminReIndexingTaskSerializationModule(),
@@ -441,7 +440,8 @@ public class DistributedServer {
             .combineWith(BlobStoreCacheModulesChooser.chooseModules(blobStoreConfiguration))
             .combineWith(new UsersRepositoryModuleChooser(
                 DatabaseCombinedUserRequireModule.of(CassandraUsersDAO.class),
-                new CassandraUsersRepositoryModule()).chooseModule(configuration.usersRepositoryImplementation()))
+                new CassandraUsersRepositoryModule(),
+                List.of(new DomainSignatureTemplateRoutesModule())).chooseModule(configuration.usersRepositoryImplementation()))
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
             .combineWith(chooseLinagoraServicesDiscovery(configuration.linagoraServicesDiscoveryModuleChooserConfiguration()))
             .combineWith(chooseRedisRateLimiterModule(configuration))
