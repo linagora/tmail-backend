@@ -7,10 +7,8 @@
 Two new frozen map columns have been added to the `domains` Cassandra table to store per-language
 email signature templates.
 
-These columns are added automatically at startup via the data definition migration mechanism. No
-manual CQL migration is required.
 
-If for some reason you need to apply them manually:
+To apply them manually:
 
 ```cql
 ALTER TABLE domains ADD signature_text_per_language frozen<map<text, text>>;
