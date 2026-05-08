@@ -73,7 +73,9 @@ public class UsersRepositoryModuleChooser {
     public Module chooseModule(Implementation implementation) {
         return switch (implementation) {
             case LDAP -> Modules.combine(new LdapUsersRepositoryModule(), Modules.combine(ldapOnlyModules));
-            case COMBINED -> Modules.override(defaultModule).with(Modules.combine(new CombinedUsersRepositoryModule(), databaseCombinedUserRequireModule));
+            case COMBINED -> Modules.combine(
+                Modules.override(defaultModule).with(Modules.combine(new CombinedUsersRepositoryModule(), databaseCombinedUserRequireModule)),
+                Modules.combine(ldapOnlyModules));
             case DEFAULT -> defaultModule;
         };
     }
