@@ -7,10 +7,7 @@
 A new JSONB column `signature_templates` has been added to the `domains` Postgres table to store
 per-language email signature templates.
 
-This column is added automatically at startup via the data definition migration mechanism. No manual
-SQL migration is required.
-
-If for some reason you need to apply it manually:
+To apply it manually:
 
 ```sql
 ALTER TABLE domains ADD COLUMN signature_templates jsonb;
