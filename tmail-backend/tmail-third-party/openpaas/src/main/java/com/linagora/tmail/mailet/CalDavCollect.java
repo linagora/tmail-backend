@@ -41,7 +41,6 @@ import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.dav.DavClient;
 import com.linagora.tmail.dav.DavUser;
 import com.linagora.tmail.dav.DavUserProvider;
@@ -255,7 +254,7 @@ public class CalDavCollect extends GenericMailet {
             .map(attendee -> (Attendee) attendee)
             .map(Attendee::getCalAddress)
             .map(URI::getSchemeSpecificPart)
-            .map(Throwing.function(MailAddress::new))
+            .flatMap(address -> toMailAddressSilently(address).stream())
             .anyMatch(mailAddress::equals);
     }
 
@@ -263,7 +262,7 @@ public class CalDavCollect extends GenericMailet {
         return Optional.ofNullable(event.getOrganizer())
             .map(Organizer::getCalAddress)
             .map(URI::getSchemeSpecificPart)
-            .map(Throwing.function(MailAddress::new))
+            .flatMap(CalDavCollect::toMailAddressSilently)
             .map(mailAddress::equals)
             .orElse(false);
     }
