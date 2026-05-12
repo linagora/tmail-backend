@@ -1,5 +1,7 @@
 pipeline {
-    agent any
+    agent {
+        label 'heavy'
+    }
 
     tools {
         jdk 'jdk_25'
