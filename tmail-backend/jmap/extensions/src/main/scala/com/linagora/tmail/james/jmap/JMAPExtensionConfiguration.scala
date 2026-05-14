@@ -81,6 +81,8 @@ object JMAPExtensionConfiguration {
 
     val emailRecoveryActionConfiguration: EmailRecoveryActionConfiguration = EmailRecoveryActionConfiguration.from(configuration)
 
+    val unauthenticatedBlobAccessConfiguration: UnauthenticatedBlobAccessConfiguration = UnauthenticatedBlobAccessConfiguration.from(configuration)
+
     val webFingerConfiguration: WebFingerConfiguration = WebFingerConfiguration.parse(configuration)
 
     val readOnlySettingsProviders: Option[java.util.List[String]] = Optional.ofNullable(configuration.getList(classOf[String], SETTINGS_READONLY_PROPERTIES_PROVIDERS, null)).toScala
@@ -93,6 +95,7 @@ object JMAPExtensionConfiguration {
       ticketIpValidationEnable = ticketIpValidationEnable,
       calendarEventReplySupportedLanguagesConfig = calendarEventReplySupportedLanguagesConfig,
       emailRecoveryActionConfiguration = emailRecoveryActionConfiguration,
+      unauthenticatedBlobAccessConfiguration = unauthenticatedBlobAccessConfiguration,
       webFingerConfiguration = webFingerConfiguration,
       readOnlySettingsProviders = readOnlySettingsProviders,
       viewKeywordQueryEnabled = viewKeywordQueryEnabled)
@@ -105,6 +108,7 @@ case class JMAPExtensionConfiguration(publicAssetTotalSizeLimit: PublicAssetTota
                                       ticketIpValidationEnable: TicketIpValidationEnable = TICKET_IP_VALIDATION_ENABLED,
                                       calendarEventReplySupportedLanguagesConfig: CalendarEventReplySupportedLanguagesConfig = CALENDAR_EVENT_REPLY_SUPPORTED_LANGUAGES_DEFAULT,
                                       emailRecoveryActionConfiguration: EmailRecoveryActionConfiguration = EmailRecoveryActionConfiguration.DEFAULT,
+                                      unauthenticatedBlobAccessConfiguration: UnauthenticatedBlobAccessConfiguration = UnauthenticatedBlobAccessConfiguration.DEFAULT,
                                       webFingerConfiguration: WebFingerConfiguration = WebFingerConfiguration.DEFAULT,
                                       readOnlySettingsProviders: Option[java.util.List[String]] = None,
                                       viewKeywordQueryEnabled: Boolean = false) {
@@ -118,6 +122,23 @@ case class JMAPExtensionConfiguration(publicAssetTotalSizeLimit: PublicAssetTota
 case class TicketIpValidationEnable(value: Boolean)
 
 case class CalendarEventReplySupportedLanguagesConfig(supportedLanguages: Set[Locale])
+
+object UnauthenticatedBlobAccessConfiguration {
+  val TOKEN_TTL_PROPERTY: String = "unauthenticated.blob.access.token.ttl"
+  val DEFAULT_TOKEN_TTL: Duration = Duration.ofSeconds(300)
+  val DEFAULT: UnauthenticatedBlobAccessConfiguration = UnauthenticatedBlobAccessConfiguration(DEFAULT_TOKEN_TTL)
+
+  def from(configuration: Configuration): UnauthenticatedBlobAccessConfiguration = {
+    val tokenTtl: Duration = Duration.ofSeconds(configuration.getLong(TOKEN_TTL_PROPERTY, DEFAULT_TOKEN_TTL.getSeconds))
+
+    Preconditions.checkArgument(!tokenTtl.isZero && !tokenTtl.isNegative,
+      s"`$TOKEN_TTL_PROPERTY` must be strictly positive.".asInstanceOf[Object])
+
+    UnauthenticatedBlobAccessConfiguration(tokenTtl)
+  }
+}
+
+case class UnauthenticatedBlobAccessConfiguration(tokenTtl: Duration)
 
 object EmailRecoveryActionConfiguration {
   val DEFAULT_MAX_EMAIL_RECOVERY_PER_REQUEST: Long = 5

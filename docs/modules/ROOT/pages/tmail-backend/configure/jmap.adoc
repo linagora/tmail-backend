@@ -72,6 +72,9 @@ Example: `emailRecoveryAction.restorationHorizon=10d`
 | `oidc.token.cache.maxSize`
 | Optional. Configures the maximum number of OIDC tokens to cache in memory. Example: `10000`. Defaults to 10000 tokens.
 
+| `unauthenticated.blob.access.token.ttl`
+| Optional. Configures the TTL of unauthenticated blob access tokens, in seconds. Example: `300`. Defaults to 300 seconds.
+
 | `settings.readonly.properties.providers`
 | Optional, defaults to empty. Configures a list of fully qualified class names of `ReadOnlyPropertyProvider` implementations to be used.
 Example: `settings.readonly.properties.providers=com.linagora.tmail.james.jmap.settings.FixedLanguageReadOnlyPropertyProvider`

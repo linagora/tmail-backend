@@ -18,6 +18,8 @@
 
 package com.linagora.tmail.james.jmap
 
+import java.time.Duration
+
 import org.apache.commons.configuration2.PropertiesConfiguration
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
 import org.junit.jupiter.api.Test
@@ -69,6 +71,41 @@ class JMAPExtensionConfigurationTest {
 
     assertThat(JMAPExtensionConfiguration.from(configuration).supportHttpLink.isEmpty).isTrue
     assertThat(JMAPExtensionConfiguration.from(configuration).supportHttpLink.isEmpty).isTrue
+  }
+
+  @Test
+  def unauthenticatedBlobAccessConfigurationShouldDefaultTokenTtl(): Unit = {
+    val configuration = new PropertiesConfiguration
+
+    assertThat(JMAPExtensionConfiguration.from(configuration).unauthenticatedBlobAccessConfiguration.tokenTtl)
+      .isEqualTo(Duration.ofSeconds(300))
+  }
+
+  @Test
+  def unauthenticatedBlobAccessConfigurationShouldParseTokenTtl(): Unit = {
+    val configuration = new PropertiesConfiguration
+    configuration.addProperty("unauthenticated.blob.access.token.ttl", "600")
+
+    assertThat(JMAPExtensionConfiguration.from(configuration).unauthenticatedBlobAccessConfiguration.tokenTtl)
+      .isEqualTo(Duration.ofMinutes(10))
+  }
+
+  @Test
+  def unauthenticatedBlobAccessConfigurationShouldRejectZeroTokenTtl(): Unit = {
+    val configuration = new PropertiesConfiguration
+    configuration.addProperty("unauthenticated.blob.access.token.ttl", "0")
+
+    assertThatThrownBy(() => JMAPExtensionConfiguration.from(configuration))
+      .isInstanceOf(classOf[IllegalArgumentException])
+  }
+
+  @Test
+  def unauthenticatedBlobAccessConfigurationShouldRejectNegativeTokenTtl(): Unit = {
+    val configuration = new PropertiesConfiguration
+    configuration.addProperty("unauthenticated.blob.access.token.ttl", "-1")
+
+    assertThatThrownBy(() => JMAPExtensionConfiguration.from(configuration))
+      .isInstanceOf(classOf[IllegalArgumentException])
   }
 
 }
