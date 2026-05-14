@@ -51,6 +51,10 @@ class TMailJMAPModule extends AbstractModule {
   def provideJMAPExtensionConfiguration(@Named("jmap") configuration: Configuration): JMAPExtensionConfiguration = JMAPExtensionConfiguration.from(configuration)
 
   @Provides
+  def provideUnauthenticatedBlobAccessConfiguration(jmapExtensionConfiguration: JMAPExtensionConfiguration): UnauthenticatedBlobAccessConfiguration =
+    jmapExtensionConfiguration.unauthenticatedBlobAccessConfiguration
+
+  @Provides
   def providePublicAssetTotalSizeLimit(jmapExtensionConfiguration: JMAPExtensionConfiguration): PublicAssetTotalSizeLimit = jmapExtensionConfiguration.publicAssetTotalSizeLimit
 
   @Provides
