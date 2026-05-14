@@ -26,7 +26,6 @@
 
 package com.linagora.tmail;
 
-import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
@@ -39,16 +38,11 @@ import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
 
-public record DockerOpenPaasExtension(DockerOpenPaasSetup dockerOpenPaasSetup) implements BeforeAllCallback, AfterAllCallback, ParameterResolver {
+public record DockerOpenPaasExtension(DockerOpenPaasSetup dockerOpenPaasSetup) implements BeforeAllCallback, ParameterResolver {
 
     @Override
     public void beforeAll(ExtensionContext extensionContext) {
         dockerOpenPaasSetup.start();
-    }
-
-    @Override
-    public void afterAll(ExtensionContext extensionContext) {
-        dockerOpenPaasSetup.stop();
     }
 
     @Override

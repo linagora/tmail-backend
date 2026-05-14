@@ -86,6 +86,8 @@ public class DockerOpenPaasSetup {
 
     private final ComposeContainer environment;
     private OpenPaaSProvisioningService openPaaSProvisioningService;
+    private boolean started;
+    private boolean shutdownHookRegistered;
 
     {
         MountableFile mountableFile = MountableFile.forClasspathResource("docker-openpaas-setup.yml");
@@ -101,13 +103,34 @@ public class DockerOpenPaasSetup {
                 .withStartupTimeout(Duration.ofMinutes(3)));
     }
 
-    public void start() {
+    public synchronized void start() {
+        if (started) {
+            return;
+        }
+
         environment.start();
         openPaaSProvisioningService = new OpenPaaSProvisioningService(getMongoDbIpAddress().toString());
+        started = true;
+        registerShutdownHook();
     }
 
-    public void stop() {
+    public synchronized void stop() {
+        if (!started) {
+            return;
+        }
+
         environment.stop();
+        started = false;
+        openPaaSProvisioningService = null;
+    }
+
+    private void registerShutdownHook() {
+        if (shutdownHookRegistered) {
+            return;
+        }
+
+        Runtime.getRuntime().addShutdownHook(new Thread(this::stop, "docker-openpaas-setup-shutdown-hook"));
+        shutdownHookRegistered = true;
     }
 
     public ContainerState getOpenPaasContainer() {
