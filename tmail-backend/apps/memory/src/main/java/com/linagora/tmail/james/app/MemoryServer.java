@@ -85,6 +85,7 @@ import com.linagora.tmail.james.app.modules.jmap.MemoryJmapSettingsRepositoryMod
 import com.linagora.tmail.james.app.modules.jmap.MemoryKeywordEmailQueryViewModule;
 import com.linagora.tmail.james.app.modules.jmap.MemoryLabelRepositoryModule;
 import com.linagora.tmail.james.app.modules.jmap.MemoryTmailEventBusModule;
+import com.linagora.tmail.james.app.modules.jmap.MemoryUnauthenticatedDownloadTokenRepositoryModule;
 import com.linagora.tmail.james.app.modules.jmap.PublicAssetsMemoryModule;
 import com.linagora.tmail.james.jmap.ContactSupportCapabilitiesModule;
 import com.linagora.tmail.james.jmap.TMailJMAPModule;
@@ -211,6 +212,7 @@ public class MemoryServer {
             new MemoryLabelRepositoryModule(),
             new MemoryKeywordEmailQueryViewModule(),
             new MemoryJmapSettingsRepositoryModule(),
+            new MemoryUnauthenticatedDownloadTokenRepositoryModule(),
             new PublicAssetsMemoryModule(),
             new TMailMailboxSortOrderProviderModule(),
             new TMailIMAPModule(),
