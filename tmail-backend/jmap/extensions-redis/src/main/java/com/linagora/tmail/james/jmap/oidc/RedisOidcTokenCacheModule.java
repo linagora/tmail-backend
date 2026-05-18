@@ -42,6 +42,7 @@ import io.lettuce.core.AbstractRedisClient;
 import io.lettuce.core.RedisClient;
 import io.lettuce.core.RedisURI;
 import io.lettuce.core.cluster.RedisClusterClient;
+import io.lettuce.core.cluster.api.StatefulRedisClusterConnection;
 import io.lettuce.core.codec.StringCodec;
 import io.lettuce.core.masterreplica.MasterReplica;
 import io.lettuce.core.masterreplica.StatefulRedisMasterReplicaConnection;
@@ -72,8 +73,9 @@ public class RedisOidcTokenCacheModule extends AbstractModule {
 
             case ClusterRedisConfiguration clusterConfiguration -> {
                 RedisClusterClient client = (RedisClusterClient) rawClient;
-                client.connect().setReadFrom(clusterConfiguration.readFrom());
-                yield RedisTokenCacheCommands.of(client.connect(StringCodec.UTF8).reactive());
+                StatefulRedisClusterConnection<String, String> connection = client.connect(StringCodec.UTF8);
+                connection.setReadFrom(clusterConfiguration.readFrom());
+                yield RedisTokenCacheCommands.of(connection.reactive());
             }
 
             case SentinelRedisConfiguration sentinelConf -> {
