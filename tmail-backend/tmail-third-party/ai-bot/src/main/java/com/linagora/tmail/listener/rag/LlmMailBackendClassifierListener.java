@@ -273,7 +273,14 @@ public class LlmMailBackendClassifierListener implements EventListener.ReactiveG
     }
 
     record LlmUserPromptParameters(String userDisplayName, String user, String textContent, String sender, String to, String subject, String labelsInfo) {
+        private static final String INPUT_PLACEHOLDER = "{{input}}";
+
         String correspondingUserPrompt(String userPrompt) {
+            if (userPrompt.contains(INPUT_PLACEHOLDER)) {
+                String input = String.format("From: %s\nTo: %s\nSubject: %s\n\nBody:\n%s\n\n## AVAILABLE LABELS\n%s",
+                    sender, to, subject, textContent, labelsInfo);
+                return userPrompt.replace(INPUT_PLACEHOLDER, input);
+            }
             return userPrompt.formatted(userDisplayName, user, sender, to, subject, textContent, labelsInfo);
         }
     }
