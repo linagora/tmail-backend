@@ -166,6 +166,7 @@ import com.linagora.tmail.healthcheck.TasksHeathCheckModule;
 import com.linagora.tmail.imap.TMailIMAPModule;
 import com.linagora.tmail.james.jmap.ContactSupportCapabilitiesModule;
 import com.linagora.tmail.james.jmap.TMailJMAPModule;
+import com.linagora.tmail.james.jmap.blob.RedisUnauthenticatedBlobDownloadTokenRepositoryModule;
 import com.linagora.tmail.james.jmap.contact.RabbitMQEmailAddressContactModule;
 import com.linagora.tmail.james.jmap.event.CassandraDomainSignatureTemplateRepositoryModule;
 import com.linagora.tmail.james.jmap.firebase.CassandraFirebaseSubscriptionRepositoryModule;
@@ -461,6 +462,7 @@ public class DistributedServer {
             .overrideWith(overrideEventBusModule(configuration))
             .overrideWith(chooseDropListsModule(configuration))
             .overrideWith(chooseJmapOidc(configuration))
+            .overrideWith(chooseUnauthenticatedBlobAccessModules(configuration))
             .overrideWith(chooseKeywordEmailQueryListener(configuration))
             .overrideWith(QUOTA_USERNAME_SUPPLIER_MODULE);
     }
@@ -662,6 +664,13 @@ public class DistributedServer {
         return binder -> {
 
         };
+    }
+
+    private static Module chooseUnauthenticatedBlobAccessModules(DistributedJamesConfiguration configuration) {
+        if (configuration.jmapEnabled()) {
+            return new RedisUnauthenticatedBlobDownloadTokenRepositoryModule();
+        }
+        return Modules.EMPTY_MODULE;
     }
 
     private static Module chooseKeywordEmailQueryListener(DistributedJamesConfiguration configuration) {
