@@ -150,6 +150,7 @@ import com.linagora.tmail.healthcheck.TasksHeathCheckModule;
 import com.linagora.tmail.imap.TMailIMAPModule;
 import com.linagora.tmail.james.app.modules.jmap.MemoryTmailEventBusModule;
 import com.linagora.tmail.james.jmap.TMailJMAPModule;
+import com.linagora.tmail.james.jmap.blob.RedisUnauthenticatedBlobDownloadTokenRepositoryModule;
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngineModule;
 import com.linagora.tmail.james.jmap.contact.RabbitMQEmailAddressContactModule;
 import com.linagora.tmail.james.jmap.event.PostgresDomainSignatureTemplateRepositoryModule;
@@ -284,6 +285,7 @@ public class PostgresTmailServer {
             .overrideWith(chooseJmapModule(configuration))
             .overrideWith(chooseTaskManagerModules(configuration))
             .overrideWith(chooseJmapOidc(configuration))
+            .overrideWith(chooseUnauthenticatedBlobAccessModules(configuration))
             .overrideWith(chooseTWPSettingsModule(configuration.twpSettingsModuleChooserConfiguration()))
             .overrideWith(chooseEventBusModules(configuration.eventBusImpl()))
             .overrideWith(chooseKeywordEmailQueryListener(configuration));
@@ -584,6 +586,13 @@ public class PostgresTmailServer {
         return binder -> {
 
         };
+    }
+
+    private static Module chooseUnauthenticatedBlobAccessModules(PostgresTmailConfiguration configuration) {
+        if (configuration.jmapEnabled()) {
+            return new RedisUnauthenticatedBlobDownloadTokenRepositoryModule();
+        }
+        return Modules.EMPTY_MODULE;
     }
 
     private static List<Module> chooseOpenPaasModule(OpenPaasModuleChooserConfiguration openPaasModuleChooserConfiguration) {

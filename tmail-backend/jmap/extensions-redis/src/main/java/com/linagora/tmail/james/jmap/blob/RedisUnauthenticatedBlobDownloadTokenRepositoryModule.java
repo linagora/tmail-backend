@@ -14,13 +14,12 @@
  *  warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR         *
  *  PURPOSE. See the GNU Affero General Public License for          *
  *  more details.                                                   *
- *******************************************************************/
+ ********************************************************************/
 
-package com.linagora.tmail.james.jmap.oidc;
+package com.linagora.tmail.james.jmap.blob;
 
 import java.io.FileNotFoundException;
 import java.util.List;
-import java.util.function.Function;
 
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.backends.redis.ClusterRedisConfiguration;
@@ -48,55 +47,48 @@ import io.lettuce.core.codec.StringCodec;
 import io.lettuce.core.masterreplica.MasterReplica;
 import io.lettuce.core.masterreplica.StatefulRedisMasterReplicaConnection;
 
-public class RedisOidcTokenCacheModule extends AbstractModule {
-    public static final Logger LOGGER = LoggerFactory.getLogger(RedisOidcTokenCacheModule.class);
+public class RedisUnauthenticatedBlobDownloadTokenRepositoryModule extends AbstractModule {
+    private static final Logger LOGGER = LoggerFactory.getLogger(RedisUnauthenticatedBlobDownloadTokenRepositoryModule.class);
 
     @Override
     protected void configure() {
-        bind(OidcTokenCache.class).to(RedisOidcTokenCache.class)
+        bind(UnauthenticatedBlobDownloadTokenRepository.class).to(RedisUnauthenticatedBlobDownloadTokenRepository.class)
             .in(Scopes.SINGLETON);
     }
 
     @Provides
     @Singleton
-    public RedisOidcTokenCache provideRedisOIDCTokenCache(RedisClientFactory redisClientFactory,
-                                                          RedisConfiguration redisConfiguration,
-                                                          OidcTokenCacheConfiguration oidcTokenCacheConfiguration,
-                                                          TokenInfoResolver tokenInfoResolver) {
-
+    public RedisUnauthenticatedBlobDownloadTokenRepositoryCommands provideRedisUnauthenticatedBlobDownloadTokenRepositoryCommands(RedisClientFactory redisClientFactory,
+                                                                                                                                  RedisConfiguration redisConfiguration) {
         AbstractRedisClient rawClient = redisClientFactory.rawRedisClient();
 
-        Function<AbstractRedisClient, RedisClient> toRedisClient = client -> (RedisClient) rawClient;
-
-        RedisTokenCacheCommands redisReactiveCommands = switch (redisConfiguration) {
+        return switch (redisConfiguration) {
             case StandaloneRedisConfiguration ignored ->
-                RedisTokenCacheCommands.of(toRedisClient.apply(rawClient).connect(StringCodec.UTF8).reactive());
+                RedisUnauthenticatedBlobDownloadTokenRepositoryCommands.of(((RedisClient) rawClient).connect(StringCodec.UTF8).reactive());
 
             case ClusterRedisConfiguration clusterConfiguration -> {
                 RedisClusterClient client = (RedisClusterClient) rawClient;
                 StatefulRedisClusterConnection<String, String> connection = client.connect(StringCodec.UTF8);
                 connection.setReadFrom(clusterConfiguration.readFrom());
-                yield RedisTokenCacheCommands.of(connection.reactive());
+                yield RedisUnauthenticatedBlobDownloadTokenRepositoryCommands.of(connection.reactive());
             }
 
-            case SentinelRedisConfiguration sentinelConf -> {
-                StatefulRedisMasterReplicaConnection<String, String> sentinelConnection = MasterReplica.connect(toRedisClient.apply(rawClient), StringCodec.UTF8, sentinelConf.redisURI());
-                sentinelConnection.setReadFrom(sentinelConf.readFrom());
-                yield RedisTokenCacheCommands.of(sentinelConnection.reactive());
+            case SentinelRedisConfiguration sentinelConfiguration -> {
+                StatefulRedisMasterReplicaConnection<String, String> sentinelConnection = MasterReplica.connect((RedisClient) rawClient, StringCodec.UTF8, sentinelConfiguration.redisURI());
+                sentinelConnection.setReadFrom(sentinelConfiguration.readFrom());
+                yield RedisUnauthenticatedBlobDownloadTokenRepositoryCommands.of(sentinelConnection.reactive());
             }
 
-            case MasterReplicaRedisConfiguration replicaConf -> {
-                List<RedisURI> uris = RedisConfigurationUtils.asJavaRedisUris(replicaConf.redisURI());
-                StatefulRedisMasterReplicaConnection<String, String> masterReplicaConnection = MasterReplica.connect(toRedisClient.apply(rawClient), StringCodec.UTF8, uris);
-                masterReplicaConnection.setReadFrom(replicaConf.readFrom());
-                yield RedisTokenCacheCommands.of(masterReplicaConnection.reactive());
+            case MasterReplicaRedisConfiguration replicaConfiguration -> {
+                List<RedisURI> uris = RedisConfigurationUtils.asJavaRedisUris(replicaConfiguration.redisURI());
+                StatefulRedisMasterReplicaConnection<String, String> masterReplicaConnection = MasterReplica.connect((RedisClient) rawClient, StringCodec.UTF8, uris);
+                masterReplicaConnection.setReadFrom(replicaConfiguration.readFrom());
+                yield RedisUnauthenticatedBlobDownloadTokenRepositoryCommands.of(masterReplicaConnection.reactive());
             }
 
             default ->
                 throw new RuntimeException("Unknown redis configuration type: " + redisConfiguration.getClass().getName());
         };
-
-        return new RedisOidcTokenCache(tokenInfoResolver, oidcTokenCacheConfiguration, redisReactiveCommands);
     }
 
     @Provides
@@ -105,7 +97,7 @@ public class RedisOidcTokenCacheModule extends AbstractModule {
         try {
             return RedisConfiguration.from(propertiesProvider.getConfiguration("redis"));
         } catch (FileNotFoundException e) {
-            LOGGER.error("Missing `redis.properties` configuration file for Redis OIDC token cache usage.");
+            LOGGER.error("Missing `redis.properties` configuration file for unauthenticated blob access token storage.");
             throw e;
         }
     }
