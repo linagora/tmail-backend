@@ -21,7 +21,6 @@ package com.linagora.tmail.james.jmap.blob;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
-import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -54,7 +53,7 @@ public class MemoryUnauthenticatedBlobDownloadTokenRepository implements Unauthe
     @Override
     public Mono<UnauthenticatedBlobDownloadToken> generate(AccountId accountId, BlobId blobId) {
         return Mono.fromCallable(() -> {
-            UnauthenticatedBlobDownloadToken token = new UnauthenticatedBlobDownloadToken(UUID.randomUUID());
+            UnauthenticatedBlobDownloadToken token = UnauthenticatedBlobDownloadToken.generate();
             store.put(new TokenKey(accountId, blobId), new StoredToken(token, clock.instant().plus(tokenTtl)));
             return token;
         });

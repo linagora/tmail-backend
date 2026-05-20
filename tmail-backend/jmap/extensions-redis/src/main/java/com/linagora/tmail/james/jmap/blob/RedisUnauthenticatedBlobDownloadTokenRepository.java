@@ -20,7 +20,6 @@ package com.linagora.tmail.james.jmap.blob;
 
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
-import java.util.UUID;
 
 import jakarta.inject.Inject;
 
@@ -62,7 +61,7 @@ public class RedisUnauthenticatedBlobDownloadTokenRepository implements Unauthen
 
     @Override
     public Mono<UnauthenticatedBlobDownloadToken> generate(AccountId accountId, BlobId blobId) {
-        return Mono.fromCallable(() -> new UnauthenticatedBlobDownloadToken(UUID.randomUUID()))
+        return Mono.fromCallable(UnauthenticatedBlobDownloadToken::generate)
             .flatMap(token -> redisCommands.set(resolveKey(accountId, blobId), hashToken(token), tokenTtl)
                 .thenReturn(token));
     }
