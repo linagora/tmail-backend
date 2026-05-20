@@ -19,6 +19,7 @@
 package com.linagora.tmail.james.jmap.blob;
 
 import java.io.FileNotFoundException;
+import java.time.Duration;
 import java.util.List;
 
 import org.apache.commons.configuration2.ex.ConfigurationException;
@@ -58,32 +59,35 @@ public class RedisUnauthenticatedBlobDownloadTokenRepositoryModule extends Abstr
 
     @Provides
     @Singleton
-    public RedisUnauthenticatedBlobDownloadTokenRepositoryCommands provideRedisUnauthenticatedBlobDownloadTokenRepositoryCommands(RedisClientFactory redisClientFactory,
-                                                                                                                                  RedisConfiguration redisConfiguration) {
+    public RedisUnauthenticatedBlobDownloadTokenRepositoryCommands provideRedisUnauthenticatedBlobDownloadTokenRepositoryCommands(
+        RedisClientFactory redisClientFactory,
+        RedisConfiguration redisConfiguration,
+        RedisUnauthenticatedBlobDownloadTokenRepositoryConfiguration configuration) {
         AbstractRedisClient rawClient = redisClientFactory.rawRedisClient();
+        Duration commandTimeout = configuration.commandTimeout();
 
         return switch (redisConfiguration) {
             case StandaloneRedisConfiguration ignored ->
-                RedisUnauthenticatedBlobDownloadTokenRepositoryCommands.of(((RedisClient) rawClient).connect(StringCodec.UTF8).reactive());
+                RedisUnauthenticatedBlobDownloadTokenRepositoryCommands.of(((RedisClient) rawClient).connect(StringCodec.UTF8).reactive(), commandTimeout);
 
             case ClusterRedisConfiguration clusterConfiguration -> {
                 RedisClusterClient client = (RedisClusterClient) rawClient;
                 StatefulRedisClusterConnection<String, String> connection = client.connect(StringCodec.UTF8);
                 connection.setReadFrom(clusterConfiguration.readFrom());
-                yield RedisUnauthenticatedBlobDownloadTokenRepositoryCommands.of(connection.reactive());
+                yield RedisUnauthenticatedBlobDownloadTokenRepositoryCommands.of(connection.reactive(), commandTimeout);
             }
 
             case SentinelRedisConfiguration sentinelConfiguration -> {
                 StatefulRedisMasterReplicaConnection<String, String> sentinelConnection = MasterReplica.connect((RedisClient) rawClient, StringCodec.UTF8, sentinelConfiguration.redisURI());
                 sentinelConnection.setReadFrom(sentinelConfiguration.readFrom());
-                yield RedisUnauthenticatedBlobDownloadTokenRepositoryCommands.of(sentinelConnection.reactive());
+                yield RedisUnauthenticatedBlobDownloadTokenRepositoryCommands.of(sentinelConnection.reactive(), commandTimeout);
             }
 
             case MasterReplicaRedisConfiguration replicaConfiguration -> {
                 List<RedisURI> uris = RedisConfigurationUtils.asJavaRedisUris(replicaConfiguration.redisURI());
                 StatefulRedisMasterReplicaConnection<String, String> masterReplicaConnection = MasterReplica.connect((RedisClient) rawClient, StringCodec.UTF8, uris);
                 masterReplicaConnection.setReadFrom(replicaConfiguration.readFrom());
-                yield RedisUnauthenticatedBlobDownloadTokenRepositoryCommands.of(masterReplicaConnection.reactive());
+                yield RedisUnauthenticatedBlobDownloadTokenRepositoryCommands.of(masterReplicaConnection.reactive(), commandTimeout);
             }
 
             default ->
@@ -99,6 +103,17 @@ public class RedisUnauthenticatedBlobDownloadTokenRepositoryModule extends Abstr
         } catch (FileNotFoundException e) {
             LOGGER.error("Missing `redis.properties` configuration file for unauthenticated blob access token storage.");
             throw e;
+        }
+    }
+
+    @Provides
+    @Singleton
+    public RedisUnauthenticatedBlobDownloadTokenRepositoryConfiguration redisUnauthenticatedBlobDownloadTokenRepositoryConfiguration(PropertiesProvider propertiesProvider) throws ConfigurationException {
+        try {
+            return RedisUnauthenticatedBlobDownloadTokenRepositoryConfiguration.from(propertiesProvider.getConfiguration("redis"));
+        } catch (FileNotFoundException e) {
+            LOGGER.info("Missing `redis.properties` configuration file -> using default RedisUnauthenticatedBlobDownloadTokenRepositoryConfiguration");
+            return RedisUnauthenticatedBlobDownloadTokenRepositoryConfiguration.DEFAULT;
         }
     }
 }

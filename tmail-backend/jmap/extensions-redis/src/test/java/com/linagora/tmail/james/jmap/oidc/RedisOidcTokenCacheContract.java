@@ -46,7 +46,7 @@ public abstract class RedisOidcTokenCacheContract extends OidcTokenCacheContract
         RedisConfiguration redisConfiguration = redisConfiguration();
         RedisClientFactory redisClientFactory = new RedisClientFactory(FileSystemImpl.forTesting(), redisConfiguration);
         redisOIDCTokenCache = new RedisOidcTokenCacheModule().provideRedisOIDCTokenCache(redisClientFactory, redisConfiguration,
-            OidcTokenCacheConfiguration.DEFAULT, tokenInfoResolver);
+            OidcTokenCacheConfiguration.DEFAULT, RedisOidcTokenCacheConfiguration.DEFAULT, tokenInfoResolver);
     }
 
     @Override

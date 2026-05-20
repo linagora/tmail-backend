@@ -28,40 +28,41 @@ import io.lettuce.core.cluster.api.reactive.RedisClusterReactiveCommands;
 import reactor.core.publisher.Mono;
 
 public class RedisUnauthenticatedBlobDownloadTokenRepositoryCommands {
-    public static RedisUnauthenticatedBlobDownloadTokenRepositoryCommands of(RedisReactiveCommands<String, String> commands) {
-        return new RedisUnauthenticatedBlobDownloadTokenRepositoryCommands(commands, commands);
+    public static RedisUnauthenticatedBlobDownloadTokenRepositoryCommands of(RedisReactiveCommands<String, String> commands, Duration commandTimeout) {
+        return new RedisUnauthenticatedBlobDownloadTokenRepositoryCommands(commands, commands, commandTimeout);
     }
 
-    public static RedisUnauthenticatedBlobDownloadTokenRepositoryCommands of(RedisClusterReactiveCommands<String, String> commands) {
-        return new RedisUnauthenticatedBlobDownloadTokenRepositoryCommands(commands, commands);
+    public static RedisUnauthenticatedBlobDownloadTokenRepositoryCommands of(RedisClusterReactiveCommands<String, String> commands, Duration commandTimeout) {
+        return new RedisUnauthenticatedBlobDownloadTokenRepositoryCommands(commands, commands, commandTimeout);
     }
-
-    private static final Duration REDIS_REACTOR_TIMEOUT = Duration.ofSeconds(3);
 
     private final RedisStringReactiveCommands<String, String> stringCommands;
     private final RedisKeyReactiveCommands<String, String> keyCommands;
+    private final Duration commandTimeout;
 
     public RedisUnauthenticatedBlobDownloadTokenRepositoryCommands(RedisStringReactiveCommands<String, String> stringCommands,
-                                                                   RedisKeyReactiveCommands<String, String> keyCommands) {
+                                                                   RedisKeyReactiveCommands<String, String> keyCommands,
+                                                                   Duration commandTimeout) {
         this.stringCommands = stringCommands;
         this.keyCommands = keyCommands;
+        this.commandTimeout = commandTimeout;
     }
 
     public Mono<Void> set(String key, String value, Duration ttl) {
         return stringCommands.psetex(key, ttl.toMillis(), value)
-            .timeout(REDIS_REACTOR_TIMEOUT)
+            .timeout(commandTimeout)
             .then();
     }
 
     public Mono<Optional<String>> get(String key) {
         return stringCommands.get(key)
-            .timeout(REDIS_REACTOR_TIMEOUT)
+            .timeout(commandTimeout)
             .map(Optional::of)
             .defaultIfEmpty(Optional.empty());
     }
 
     Mono<Long> ttl(String key) {
         return keyCommands.pttl(key)
-            .timeout(REDIS_REACTOR_TIMEOUT);
+            .timeout(commandTimeout);
     }
 }
