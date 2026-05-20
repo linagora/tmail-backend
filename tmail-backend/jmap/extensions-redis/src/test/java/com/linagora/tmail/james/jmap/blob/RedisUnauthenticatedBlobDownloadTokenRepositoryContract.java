@@ -31,6 +31,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.linagora.tmail.james.jmap.UnauthenticatedBlobAccessConfiguration;
+import com.linagora.tmail.james.jmap.redis.RedisReactiveCommandsFactory;
 
 public abstract class RedisUnauthenticatedBlobDownloadTokenRepositoryContract implements UnauthenticatedBlobDownloadTokenRepositoryContract {
     protected static final AccountId ACCOUNT_ID = AccountId.fromString("accountId");
@@ -48,7 +49,7 @@ public abstract class RedisUnauthenticatedBlobDownloadTokenRepositoryContract im
         RedisConfiguration redisConfiguration = redisConfiguration();
         RedisClientFactory redisClientFactory = new RedisClientFactory(FileSystemImpl.forTesting(), redisConfiguration);
         redisCommands = new RedisUnauthenticatedBlobDownloadTokenRepositoryModule()
-            .provideRedisUnauthenticatedBlobDownloadTokenRepositoryCommands(redisClientFactory, redisConfiguration,
+            .provideRedisUnauthenticatedBlobDownloadTokenRepositoryCommands(new RedisReactiveCommandsFactory(redisClientFactory, redisConfiguration),
                 RedisUnauthenticatedBlobDownloadTokenRepositoryConfiguration.DEFAULT);
 
         repository = new RedisUnauthenticatedBlobDownloadTokenRepository(redisCommands, new UnauthenticatedBlobAccessConfiguration(TOKEN_TTL));

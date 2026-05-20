@@ -20,16 +20,9 @@ package com.linagora.tmail.james.jmap.oidc;
 
 import java.io.FileNotFoundException;
 import java.time.Duration;
-import java.util.List;
-import java.util.function.Function;
 
 import org.apache.commons.configuration2.ex.ConfigurationException;
-import org.apache.james.backends.redis.ClusterRedisConfiguration;
-import org.apache.james.backends.redis.MasterReplicaRedisConfiguration;
-import org.apache.james.backends.redis.RedisClientFactory;
 import org.apache.james.backends.redis.RedisConfiguration;
-import org.apache.james.backends.redis.SentinelRedisConfiguration;
-import org.apache.james.backends.redis.StandaloneRedisConfiguration;
 import org.apache.james.utils.PropertiesProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -38,16 +31,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Scopes;
 import com.google.inject.Singleton;
-import com.linagora.tmail.james.jmap.redis.RedisConfigurationUtils;
-
-import io.lettuce.core.AbstractRedisClient;
-import io.lettuce.core.RedisClient;
-import io.lettuce.core.RedisURI;
-import io.lettuce.core.cluster.RedisClusterClient;
-import io.lettuce.core.cluster.api.StatefulRedisClusterConnection;
-import io.lettuce.core.codec.StringCodec;
-import io.lettuce.core.masterreplica.MasterReplica;
-import io.lettuce.core.masterreplica.StatefulRedisMasterReplicaConnection;
+import com.linagora.tmail.james.jmap.redis.RedisReactiveCommandsFactory;
 
 public class RedisOidcTokenCacheModule extends AbstractModule {
     public static final Logger LOGGER = LoggerFactory.getLogger(RedisOidcTokenCacheModule.class);
@@ -60,44 +44,14 @@ public class RedisOidcTokenCacheModule extends AbstractModule {
 
     @Provides
     @Singleton
-    public RedisOidcTokenCache provideRedisOIDCTokenCache(RedisClientFactory redisClientFactory,
-                                                          RedisConfiguration redisConfiguration,
+    public RedisOidcTokenCache provideRedisOIDCTokenCache(RedisReactiveCommandsFactory redisReactiveCommandsFactory,
                                                           OidcTokenCacheConfiguration oidcTokenCacheConfiguration,
                                                           RedisOidcTokenCacheConfiguration redisOidcTokenCacheConfiguration,
                                                           TokenInfoResolver tokenInfoResolver) {
-
-        AbstractRedisClient rawClient = redisClientFactory.rawRedisClient();
         Duration commandTimeout = redisOidcTokenCacheConfiguration.commandTimeout();
-
-        Function<AbstractRedisClient, RedisClient> toRedisClient = client -> (RedisClient) rawClient;
-
-        RedisTokenCacheCommands redisReactiveCommands = switch (redisConfiguration) {
-            case StandaloneRedisConfiguration ignored ->
-                RedisTokenCacheCommands.of(toRedisClient.apply(rawClient).connect(StringCodec.UTF8).reactive(), commandTimeout);
-
-            case ClusterRedisConfiguration clusterConfiguration -> {
-                RedisClusterClient client = (RedisClusterClient) rawClient;
-                StatefulRedisClusterConnection<String, String> connection = client.connect(StringCodec.UTF8);
-                connection.setReadFrom(clusterConfiguration.readFrom());
-                yield RedisTokenCacheCommands.of(connection.reactive());
-            }
-
-            case SentinelRedisConfiguration sentinelConf -> {
-                StatefulRedisMasterReplicaConnection<String, String> sentinelConnection = MasterReplica.connect(toRedisClient.apply(rawClient), StringCodec.UTF8, sentinelConf.redisURI());
-                sentinelConnection.setReadFrom(sentinelConf.readFrom());
-                yield RedisTokenCacheCommands.of(sentinelConnection.reactive(), commandTimeout);
-            }
-
-            case MasterReplicaRedisConfiguration replicaConf -> {
-                List<RedisURI> uris = RedisConfigurationUtils.asJavaRedisUris(replicaConf.redisURI());
-                StatefulRedisMasterReplicaConnection<String, String> masterReplicaConnection = MasterReplica.connect(toRedisClient.apply(rawClient), StringCodec.UTF8, uris);
-                masterReplicaConnection.setReadFrom(replicaConf.readFrom());
-                yield RedisTokenCacheCommands.of(masterReplicaConnection.reactive(), commandTimeout);
-            }
-
-            default ->
-                throw new RuntimeException("Unknown redis configuration type: " + redisConfiguration.getClass().getName());
-        };
+        RedisTokenCacheCommands redisReactiveCommands = redisReactiveCommandsFactory.create(
+            commands -> RedisTokenCacheCommands.of(commands, commandTimeout),
+            commands -> RedisTokenCacheCommands.of(commands, commandTimeout));
 
         return new RedisOidcTokenCache(tokenInfoResolver, oidcTokenCacheConfiguration, redisReactiveCommands);
     }
