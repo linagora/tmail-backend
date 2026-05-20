@@ -20,15 +20,9 @@ package com.linagora.tmail.james.jmap.blob;
 
 import java.io.FileNotFoundException;
 import java.time.Duration;
-import java.util.List;
 
 import org.apache.commons.configuration2.ex.ConfigurationException;
-import org.apache.james.backends.redis.ClusterRedisConfiguration;
-import org.apache.james.backends.redis.MasterReplicaRedisConfiguration;
-import org.apache.james.backends.redis.RedisClientFactory;
 import org.apache.james.backends.redis.RedisConfiguration;
-import org.apache.james.backends.redis.SentinelRedisConfiguration;
-import org.apache.james.backends.redis.StandaloneRedisConfiguration;
 import org.apache.james.utils.PropertiesProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -37,16 +31,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Scopes;
 import com.google.inject.Singleton;
-import com.linagora.tmail.james.jmap.redis.RedisConfigurationUtils;
-
-import io.lettuce.core.AbstractRedisClient;
-import io.lettuce.core.RedisClient;
-import io.lettuce.core.RedisURI;
-import io.lettuce.core.cluster.RedisClusterClient;
-import io.lettuce.core.cluster.api.StatefulRedisClusterConnection;
-import io.lettuce.core.codec.StringCodec;
-import io.lettuce.core.masterreplica.MasterReplica;
-import io.lettuce.core.masterreplica.StatefulRedisMasterReplicaConnection;
+import com.linagora.tmail.james.jmap.redis.RedisReactiveCommandsFactory;
 
 public class RedisUnauthenticatedBlobDownloadTokenRepositoryModule extends AbstractModule {
     private static final Logger LOGGER = LoggerFactory.getLogger(RedisUnauthenticatedBlobDownloadTokenRepositoryModule.class);
@@ -60,39 +45,13 @@ public class RedisUnauthenticatedBlobDownloadTokenRepositoryModule extends Abstr
     @Provides
     @Singleton
     public RedisUnauthenticatedBlobDownloadTokenRepositoryCommands provideRedisUnauthenticatedBlobDownloadTokenRepositoryCommands(
-        RedisClientFactory redisClientFactory,
-        RedisConfiguration redisConfiguration,
+        RedisReactiveCommandsFactory redisReactiveCommandsFactory,
         RedisUnauthenticatedBlobDownloadTokenRepositoryConfiguration configuration) {
-        AbstractRedisClient rawClient = redisClientFactory.rawRedisClient();
         Duration commandTimeout = configuration.commandTimeout();
 
-        return switch (redisConfiguration) {
-            case StandaloneRedisConfiguration ignored ->
-                RedisUnauthenticatedBlobDownloadTokenRepositoryCommands.of(((RedisClient) rawClient).connect(StringCodec.UTF8).reactive(), commandTimeout);
-
-            case ClusterRedisConfiguration clusterConfiguration -> {
-                RedisClusterClient client = (RedisClusterClient) rawClient;
-                StatefulRedisClusterConnection<String, String> connection = client.connect(StringCodec.UTF8);
-                connection.setReadFrom(clusterConfiguration.readFrom());
-                yield RedisUnauthenticatedBlobDownloadTokenRepositoryCommands.of(connection.reactive(), commandTimeout);
-            }
-
-            case SentinelRedisConfiguration sentinelConfiguration -> {
-                StatefulRedisMasterReplicaConnection<String, String> sentinelConnection = MasterReplica.connect((RedisClient) rawClient, StringCodec.UTF8, sentinelConfiguration.redisURI());
-                sentinelConnection.setReadFrom(sentinelConfiguration.readFrom());
-                yield RedisUnauthenticatedBlobDownloadTokenRepositoryCommands.of(sentinelConnection.reactive(), commandTimeout);
-            }
-
-            case MasterReplicaRedisConfiguration replicaConfiguration -> {
-                List<RedisURI> uris = RedisConfigurationUtils.asJavaRedisUris(replicaConfiguration.redisURI());
-                StatefulRedisMasterReplicaConnection<String, String> masterReplicaConnection = MasterReplica.connect((RedisClient) rawClient, StringCodec.UTF8, uris);
-                masterReplicaConnection.setReadFrom(replicaConfiguration.readFrom());
-                yield RedisUnauthenticatedBlobDownloadTokenRepositoryCommands.of(masterReplicaConnection.reactive(), commandTimeout);
-            }
-
-            default ->
-                throw new RuntimeException("Unknown redis configuration type: " + redisConfiguration.getClass().getName());
-        };
+        return redisReactiveCommandsFactory.create(
+            commands -> RedisUnauthenticatedBlobDownloadTokenRepositoryCommands.of(commands, commandTimeout),
+            commands -> RedisUnauthenticatedBlobDownloadTokenRepositoryCommands.of(commands, commandTimeout));
     }
 
     @Provides
