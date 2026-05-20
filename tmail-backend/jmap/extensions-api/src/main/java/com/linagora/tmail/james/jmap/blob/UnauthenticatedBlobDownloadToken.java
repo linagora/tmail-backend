@@ -23,6 +23,10 @@ import java.util.UUID;
 import com.google.common.base.Preconditions;
 
 public record UnauthenticatedBlobDownloadToken(UUID value) {
+    public static UnauthenticatedBlobDownloadToken generate() {
+        return new UnauthenticatedBlobDownloadToken(UUID.randomUUID());
+    }
+
     public UnauthenticatedBlobDownloadToken {
         Preconditions.checkNotNull(value);
     }
