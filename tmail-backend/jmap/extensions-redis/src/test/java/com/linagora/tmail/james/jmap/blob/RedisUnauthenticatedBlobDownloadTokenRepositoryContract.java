@@ -48,7 +48,8 @@ public abstract class RedisUnauthenticatedBlobDownloadTokenRepositoryContract im
         RedisConfiguration redisConfiguration = redisConfiguration();
         RedisClientFactory redisClientFactory = new RedisClientFactory(FileSystemImpl.forTesting(), redisConfiguration);
         redisCommands = new RedisUnauthenticatedBlobDownloadTokenRepositoryModule()
-            .provideRedisUnauthenticatedBlobDownloadTokenRepositoryCommands(redisClientFactory, redisConfiguration);
+            .provideRedisUnauthenticatedBlobDownloadTokenRepositoryCommands(redisClientFactory, redisConfiguration,
+                RedisUnauthenticatedBlobDownloadTokenRepositoryConfiguration.DEFAULT);
 
         repository = new RedisUnauthenticatedBlobDownloadTokenRepository(redisCommands, new UnauthenticatedBlobAccessConfiguration(TOKEN_TTL));
     }

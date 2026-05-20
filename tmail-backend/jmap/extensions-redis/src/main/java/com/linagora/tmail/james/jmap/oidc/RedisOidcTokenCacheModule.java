@@ -19,6 +19,7 @@
 package com.linagora.tmail.james.jmap.oidc;
 
 import java.io.FileNotFoundException;
+import java.time.Duration;
 import java.util.List;
 import java.util.function.Function;
 
@@ -62,15 +63,17 @@ public class RedisOidcTokenCacheModule extends AbstractModule {
     public RedisOidcTokenCache provideRedisOIDCTokenCache(RedisClientFactory redisClientFactory,
                                                           RedisConfiguration redisConfiguration,
                                                           OidcTokenCacheConfiguration oidcTokenCacheConfiguration,
+                                                          RedisOidcTokenCacheConfiguration redisOidcTokenCacheConfiguration,
                                                           TokenInfoResolver tokenInfoResolver) {
 
         AbstractRedisClient rawClient = redisClientFactory.rawRedisClient();
+        Duration commandTimeout = redisOidcTokenCacheConfiguration.commandTimeout();
 
         Function<AbstractRedisClient, RedisClient> toRedisClient = client -> (RedisClient) rawClient;
 
         RedisTokenCacheCommands redisReactiveCommands = switch (redisConfiguration) {
             case StandaloneRedisConfiguration ignored ->
-                RedisTokenCacheCommands.of(toRedisClient.apply(rawClient).connect(StringCodec.UTF8).reactive());
+                RedisTokenCacheCommands.of(toRedisClient.apply(rawClient).connect(StringCodec.UTF8).reactive(), commandTimeout);
 
             case ClusterRedisConfiguration clusterConfiguration -> {
                 RedisClusterClient client = (RedisClusterClient) rawClient;
@@ -82,14 +85,14 @@ public class RedisOidcTokenCacheModule extends AbstractModule {
             case SentinelRedisConfiguration sentinelConf -> {
                 StatefulRedisMasterReplicaConnection<String, String> sentinelConnection = MasterReplica.connect(toRedisClient.apply(rawClient), StringCodec.UTF8, sentinelConf.redisURI());
                 sentinelConnection.setReadFrom(sentinelConf.readFrom());
-                yield RedisTokenCacheCommands.of(sentinelConnection.reactive());
+                yield RedisTokenCacheCommands.of(sentinelConnection.reactive(), commandTimeout);
             }
 
             case MasterReplicaRedisConfiguration replicaConf -> {
                 List<RedisURI> uris = RedisConfigurationUtils.asJavaRedisUris(replicaConf.redisURI());
                 StatefulRedisMasterReplicaConnection<String, String> masterReplicaConnection = MasterReplica.connect(toRedisClient.apply(rawClient), StringCodec.UTF8, uris);
                 masterReplicaConnection.setReadFrom(replicaConf.readFrom());
-                yield RedisTokenCacheCommands.of(masterReplicaConnection.reactive());
+                yield RedisTokenCacheCommands.of(masterReplicaConnection.reactive(), commandTimeout);
             }
 
             default ->
@@ -107,6 +110,17 @@ public class RedisOidcTokenCacheModule extends AbstractModule {
         } catch (FileNotFoundException e) {
             LOGGER.error("Missing `redis.properties` configuration file for Redis OIDC token cache usage.");
             throw e;
+        }
+    }
+
+    @Provides
+    @Singleton
+    public RedisOidcTokenCacheConfiguration redisOidcTokenCacheConfiguration(PropertiesProvider propertiesProvider) throws ConfigurationException {
+        try {
+            return RedisOidcTokenCacheConfiguration.from(propertiesProvider.getConfiguration("redis"));
+        } catch (FileNotFoundException e) {
+            LOGGER.info("Missing `redis.properties` configuration file -> using default RedisOidcTokenCacheConfiguration");
+            return RedisOidcTokenCacheConfiguration.DEFAULT;
         }
     }
 }
