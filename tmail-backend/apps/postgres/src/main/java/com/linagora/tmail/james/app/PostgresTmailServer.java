@@ -102,7 +102,7 @@ import org.apache.james.modules.server.JmapUploadCleanupModule;
 import org.apache.james.modules.server.MailQueueRoutesModule;
 import org.apache.james.modules.server.MailRepositoriesRoutesModule;
 import org.apache.james.modules.server.MailboxRoutesModule;
-import org.apache.james.modules.server.MailboxesExportRoutesModule;
+import org.apache.james.modules.server.MailboxesBackupRoutesModule;
 import org.apache.james.modules.server.MessagesRoutesModule;
 import org.apache.james.modules.server.RabbitMailQueueRoutesModule;
 import org.apache.james.modules.server.ReIndexingModule;
@@ -302,7 +302,7 @@ public class PostgresTmailServer {
         new MailboxesCleanupModule(),
         new DomainTasksModule(),
         new MailboxResourcesLocationRoutesModule(),
-        new MailboxesExportRoutesModule(),
+        new MailboxesBackupRoutesModule(),
         new MailQueueRoutesModule(),
         new MailRepositoriesRoutesModule(),
         new MessagesRoutesModule(),
