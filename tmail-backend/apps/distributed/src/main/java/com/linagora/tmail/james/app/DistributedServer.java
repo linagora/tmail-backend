@@ -112,7 +112,7 @@ import org.apache.james.modules.server.JmapUploadCleanupModule;
 import org.apache.james.modules.server.MailQueueRoutesModule;
 import org.apache.james.modules.server.MailRepositoriesRoutesModule;
 import org.apache.james.modules.server.MailboxRoutesModule;
-import org.apache.james.modules.server.MailboxesExportRoutesModule;
+import org.apache.james.modules.server.MailboxesBackupRoutesModule;
 import org.apache.james.modules.server.MessagesRoutesModule;
 import org.apache.james.modules.server.RabbitMailQueueRoutesModule;
 import org.apache.james.modules.server.ReIndexingModule;
@@ -273,7 +273,7 @@ public class DistributedServer {
         new InconsistencySolvingRoutesModule(),
         new JmapTasksModule(),
         new JmapUploadCleanupModule(),
-        new MailboxesExportRoutesModule(),
+        new MailboxesBackupRoutesModule(),
         new MailboxRoutesModule(),
         new MailQueueRoutesModule(),
         new MailRepositoriesRoutesModule(),
