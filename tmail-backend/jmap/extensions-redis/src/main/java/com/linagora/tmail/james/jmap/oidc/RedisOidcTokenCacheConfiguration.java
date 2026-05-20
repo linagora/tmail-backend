@@ -16,18 +16,29 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.james.jmap.blob;
+package com.linagora.tmail.james.jmap.oidc;
 
-import java.util.UUID;
+import java.time.Duration;
+import java.util.Optional;
+
+import org.apache.commons.configuration2.Configuration;
+import org.apache.james.util.DurationParser;
 
 import com.google.common.base.Preconditions;
 
-public record UnauthenticatedBlobDownloadToken(UUID value) {
-    public static UnauthenticatedBlobDownloadToken generate() {
-        return new UnauthenticatedBlobDownloadToken(UUID.randomUUID());
+public record RedisOidcTokenCacheConfiguration(Duration commandTimeout) {
+    public static final String COMMAND_TIMEOUT_PROPERTY = "oidc.token.cache.redis.command.timeout";
+    public static final Duration DEFAULT_COMMAND_TIMEOUT = Duration.ofSeconds(3);
+    public static final RedisOidcTokenCacheConfiguration DEFAULT = new RedisOidcTokenCacheConfiguration(DEFAULT_COMMAND_TIMEOUT);
+
+    public static RedisOidcTokenCacheConfiguration from(Configuration configuration) {
+        return new RedisOidcTokenCacheConfiguration(
+            Optional.ofNullable(configuration.getString(COMMAND_TIMEOUT_PROPERTY, null))
+                .map(DurationParser::parse)
+                .orElse(DEFAULT_COMMAND_TIMEOUT));
     }
 
-    public UnauthenticatedBlobDownloadToken {
-        Preconditions.checkNotNull(value);
+    public RedisOidcTokenCacheConfiguration {
+        Preconditions.checkArgument(!commandTimeout.isZero() && !commandTimeout.isNegative(), "commandTimeout must be positive");
     }
 }

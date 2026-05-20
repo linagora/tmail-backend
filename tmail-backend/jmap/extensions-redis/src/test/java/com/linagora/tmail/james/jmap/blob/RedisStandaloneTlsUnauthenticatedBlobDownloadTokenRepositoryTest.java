@@ -14,20 +14,20 @@
  *  warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR         *
  *  PURPOSE. See the GNU Affero General Public License for          *
  *  more details.                                                   *
- ********************************************************************/
+ *******************************************************************/
 
 package com.linagora.tmail.james.jmap.blob;
 
-import java.util.UUID;
+import org.apache.james.backends.redis.RedisConfiguration;
+import org.apache.james.backends.redis.RedisTLSExtension;
+import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.google.common.base.Preconditions;
+public class RedisStandaloneTlsUnauthenticatedBlobDownloadTokenRepositoryTest extends RedisUnauthenticatedBlobDownloadTokenRepositoryContract {
+    @RegisterExtension
+    static RedisTLSExtension redisExtension = new RedisTLSExtension();
 
-public record UnauthenticatedBlobDownloadToken(UUID value) {
-    public static UnauthenticatedBlobDownloadToken generate() {
-        return new UnauthenticatedBlobDownloadToken(UUID.randomUUID());
-    }
-
-    public UnauthenticatedBlobDownloadToken {
-        Preconditions.checkNotNull(value);
+    @Override
+    public RedisConfiguration redisConfiguration() {
+        return redisExtension.getRedisContainer().getConfiguration();
     }
 }

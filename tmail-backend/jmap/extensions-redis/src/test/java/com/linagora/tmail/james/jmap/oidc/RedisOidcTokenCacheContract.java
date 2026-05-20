@@ -34,6 +34,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.Timeout;
 
 import com.google.common.hash.Hashing;
+import com.linagora.tmail.james.jmap.redis.RedisReactiveCommandsFactory;
 
 public abstract class RedisOidcTokenCacheContract extends OidcTokenCacheContract {
 
@@ -45,8 +46,9 @@ public abstract class RedisOidcTokenCacheContract extends OidcTokenCacheContract
     void setUp() {
         RedisConfiguration redisConfiguration = redisConfiguration();
         RedisClientFactory redisClientFactory = new RedisClientFactory(FileSystemImpl.forTesting(), redisConfiguration);
-        redisOIDCTokenCache = new RedisOidcTokenCacheModule().provideRedisOIDCTokenCache(redisClientFactory, redisConfiguration,
-            OidcTokenCacheConfiguration.DEFAULT, tokenInfoResolver);
+        RedisReactiveCommandsFactory redisReactiveCommandsFactory = new RedisReactiveCommandsFactory(redisClientFactory, redisConfiguration);
+        redisOIDCTokenCache = new RedisOidcTokenCacheModule().provideRedisOIDCTokenCache(redisReactiveCommandsFactory,
+            OidcTokenCacheConfiguration.DEFAULT, RedisOidcTokenCacheConfiguration.DEFAULT, tokenInfoResolver);
     }
 
     @Override

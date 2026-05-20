@@ -12,6 +12,12 @@ Specified to TMail backend, we can configure the following configurations in the
 | eventBus.redis.timeout
 | Timeout for Redis event bus operations. Optional. Duration. Default to `10seconds`.
 
+| unauthenticated.blob.access.redis.command.timeout
+| Timeout for unauthenticated blob access Redis commands. Optional. Duration. Default to `3 seconds`.
+
+| oidc.token.cache.redis.command.timeout
+| Timeout for OIDC token cache Redis commands. Optional. Duration. Default to `3 seconds`.
+
 |===
 
 Additionally, Twake mail allows executing some listeners in a synchronous fashion upon dispatching. They are then

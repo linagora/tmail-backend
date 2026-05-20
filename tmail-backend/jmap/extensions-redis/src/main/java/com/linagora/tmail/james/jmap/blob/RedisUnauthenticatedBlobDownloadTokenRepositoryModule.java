@@ -14,9 +14,9 @@
  *  warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR         *
  *  PURPOSE. See the GNU Affero General Public License for          *
  *  more details.                                                   *
- *******************************************************************/
+ ********************************************************************/
 
-package com.linagora.tmail.james.jmap.oidc;
+package com.linagora.tmail.james.jmap.blob;
 
 import java.io.FileNotFoundException;
 import java.time.Duration;
@@ -33,27 +33,25 @@ import com.google.inject.Scopes;
 import com.google.inject.Singleton;
 import com.linagora.tmail.james.jmap.redis.RedisReactiveCommandsFactory;
 
-public class RedisOidcTokenCacheModule extends AbstractModule {
-    public static final Logger LOGGER = LoggerFactory.getLogger(RedisOidcTokenCacheModule.class);
+public class RedisUnauthenticatedBlobDownloadTokenRepositoryModule extends AbstractModule {
+    private static final Logger LOGGER = LoggerFactory.getLogger(RedisUnauthenticatedBlobDownloadTokenRepositoryModule.class);
 
     @Override
     protected void configure() {
-        bind(OidcTokenCache.class).to(RedisOidcTokenCache.class)
+        bind(UnauthenticatedBlobDownloadTokenRepository.class).to(RedisUnauthenticatedBlobDownloadTokenRepository.class)
             .in(Scopes.SINGLETON);
     }
 
     @Provides
     @Singleton
-    public RedisOidcTokenCache provideRedisOIDCTokenCache(RedisReactiveCommandsFactory redisReactiveCommandsFactory,
-                                                          OidcTokenCacheConfiguration oidcTokenCacheConfiguration,
-                                                          RedisOidcTokenCacheConfiguration redisOidcTokenCacheConfiguration,
-                                                          TokenInfoResolver tokenInfoResolver) {
-        Duration commandTimeout = redisOidcTokenCacheConfiguration.commandTimeout();
-        RedisTokenCacheCommands redisReactiveCommands = redisReactiveCommandsFactory.create(
-            commands -> RedisTokenCacheCommands.of(commands, commandTimeout),
-            commands -> RedisTokenCacheCommands.of(commands, commandTimeout));
+    public RedisUnauthenticatedBlobDownloadTokenRepositoryCommands provideRedisUnauthenticatedBlobDownloadTokenRepositoryCommands(
+        RedisReactiveCommandsFactory redisReactiveCommandsFactory,
+        RedisUnauthenticatedBlobDownloadTokenRepositoryConfiguration configuration) {
+        Duration commandTimeout = configuration.commandTimeout();
 
-        return new RedisOidcTokenCache(tokenInfoResolver, oidcTokenCacheConfiguration, redisReactiveCommands);
+        return redisReactiveCommandsFactory.create(
+            commands -> RedisUnauthenticatedBlobDownloadTokenRepositoryCommands.of(commands, commandTimeout),
+            commands -> RedisUnauthenticatedBlobDownloadTokenRepositoryCommands.of(commands, commandTimeout));
     }
 
     @Provides
@@ -62,19 +60,19 @@ public class RedisOidcTokenCacheModule extends AbstractModule {
         try {
             return RedisConfiguration.from(propertiesProvider.getConfiguration("redis"));
         } catch (FileNotFoundException e) {
-            LOGGER.error("Missing `redis.properties` configuration file for Redis OIDC token cache usage.");
+            LOGGER.error("Missing `redis.properties` configuration file for unauthenticated blob access token storage.");
             throw e;
         }
     }
 
     @Provides
     @Singleton
-    public RedisOidcTokenCacheConfiguration redisOidcTokenCacheConfiguration(PropertiesProvider propertiesProvider) throws ConfigurationException {
+    public RedisUnauthenticatedBlobDownloadTokenRepositoryConfiguration redisUnauthenticatedBlobDownloadTokenRepositoryConfiguration(PropertiesProvider propertiesProvider) throws ConfigurationException {
         try {
-            return RedisOidcTokenCacheConfiguration.from(propertiesProvider.getConfiguration("redis"));
+            return RedisUnauthenticatedBlobDownloadTokenRepositoryConfiguration.from(propertiesProvider.getConfiguration("redis"));
         } catch (FileNotFoundException e) {
-            LOGGER.info("Missing `redis.properties` configuration file -> using default RedisOidcTokenCacheConfiguration");
-            return RedisOidcTokenCacheConfiguration.DEFAULT;
+            LOGGER.info("Missing `redis.properties` configuration file -> using default RedisUnauthenticatedBlobDownloadTokenRepositoryConfiguration");
+            return RedisUnauthenticatedBlobDownloadTokenRepositoryConfiguration.DEFAULT;
         }
     }
 }

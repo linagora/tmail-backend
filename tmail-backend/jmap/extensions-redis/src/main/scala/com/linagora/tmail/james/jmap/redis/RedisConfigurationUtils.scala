@@ -16,7 +16,7 @@
   *  more details.                                                   *
  *******************************************************************/
 
-package com.linagora.tmail.james.jmap.oidc
+package com.linagora.tmail.james.jmap.redis
 
 import io.lettuce.core.RedisURI
 import org.apache.james.backends.redis.RedisUris.RedisUris
