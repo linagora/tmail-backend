@@ -253,7 +253,7 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>webadmin-jmap-labels</artifactId>
+            <artifactId>webadmin-jmap</artifactId>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
