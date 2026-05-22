@@ -44,6 +44,7 @@ import scala.jdk.OptionConverters._
 
 class CalendarEventModifierTest {
   val DATE_TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmssX")
+  val LOCAL_DATE_TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyyMMdd'T'HHmmss")
   val START_DATE_SAMPLE_VALUE = "20250320T150000Z"
   val END_DATE_SAMPLE_VALUE = "20250320T160000Z"
   val START_DATE_SAMPLE: ZonedDateTime = ZonedDateTime.parse(START_DATE_SAMPLE_VALUE, DATE_TIME_FORMATTER)
@@ -292,15 +293,18 @@ class CalendarEventModifierTest {
         |END:VCALENDAR
         |""".stripMargin.getBytes("UTF-8")))
 
-    val updatedCalendar = testee.of(CalendarEventTimingUpdatePatch(
-      START_DATE_SAMPLE.minusHours(1).withZoneSameInstant(ZoneId.of("UTC")), END_DATE_SAMPLE.withZoneSameInstant(ZoneId.of("UTC"))))
+    val jakartaZone = ZoneId.of("Asia/Jakarta")
+    val updatedStartDate = START_DATE_SAMPLE.minusHours(1).withZoneSameInstant(ZoneId.of("UTC"))
+    val updatedEndDate = END_DATE_SAMPLE.withZoneSameInstant(ZoneId.of("UTC"))
+
+    val updatedCalendar = testee.of(CalendarEventTimingUpdatePatch(updatedStartDate, updatedEndDate))
       .apply(originalCalendar).toString
 
     assertThat(updatedCalendar)
-      .contains("DTSTART;TZID=Asia/Jakarta:20250320T213000")
+      .contains(s"DTSTART;TZID=Asia/Jakarta:${updatedStartDate.withZoneSameInstant(jakartaZone).format(LOCAL_DATE_TIME_FORMATTER)}")
 
     assertThat(updatedCalendar)
-      .contains("DTEND;TZID=Asia/Jakarta:20250320T233000")
+      .contains(s"DTEND;TZID=Asia/Jakarta:${updatedEndDate.withZoneSameInstant(jakartaZone).format(LOCAL_DATE_TIME_FORMATTER)}")
   }
 
   @Test

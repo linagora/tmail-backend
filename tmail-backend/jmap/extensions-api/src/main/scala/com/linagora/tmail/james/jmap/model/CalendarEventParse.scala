@@ -580,7 +580,7 @@ object CalendarEventParsed {
 
   def parseICal4jCalendar(calendarContent: InputStream): Calendar = {
     new CalendarBuilder(CalendarParserFactory.getInstance.get,
-      new ContentHandlerContext().withSupressInvalidProperties(true),
+      new ContentHandlerContext().withSuppressInvalidProperties(true),
       TimeZoneRegistryFactory.getInstance.createRegistry)
       .build(calendarContent)
   }
