@@ -31,6 +31,7 @@ import org.apache.james.core.Username;
 import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.domainlist.api.DomainListException;
 import org.apache.james.user.api.UsersRepository;
+import org.apache.james.util.ReactorUtils;
 import org.apache.james.webadmin.Routes;
 import org.apache.james.webadmin.utils.ErrorResponder;
 import org.apache.james.webadmin.utils.JsonTransformer;
@@ -79,7 +80,8 @@ public class JmapSettingsReportRoutes implements Routes {
     private Map<String, Map<String, Long>> getReport(Request request) throws DomainListException {
         return listUsers(Optional.ofNullable(request.queryParams(DOMAIN_PARAM)))
             .flatMap(username -> Mono.from(jmapSettingsRepository.get(username))
-                .flatMapIterable(settings -> CollectionConverters.<JmapSettingsKey, JmapSettingsValue>asJava(settings.settings()).entrySet()))
+                .flatMapIterable(settings -> CollectionConverters.<JmapSettingsKey, JmapSettingsValue>asJava(settings.settings()).entrySet()),
+                ReactorUtils.DEFAULT_CONCURRENCY)
             .collect(Collectors.groupingBy(
                 entry -> entry.getKey().asString(),
                 Collectors.groupingBy(
