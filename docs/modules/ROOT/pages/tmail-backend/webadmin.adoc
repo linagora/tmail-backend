@@ -744,6 +744,49 @@ Return codes:
 - `204` The label was successfully deleted (idempotent — also returned if the label did not exist)
 - `404` The user does not exist
 
+== JMAP Settings
+
+JMAP settings are user-level key/value preferences stored server-side and accessible via the JMAP protocol. Each key must be non-empty, at most 255 characters, and composed only of alphanumeric characters plus `.`, `-`, `_`, and `#`. Values are plain strings.
+
+=== Get JMAP settings of a user
+
+....
+curl -XGET http://ip:port/users/user@domain.tld/jmap/settings
+....
+
+Returns the user's settings as a flat JSON object:
+
+....
+{
+  "language": "fr",
+  "trash.cleanup.enabled": "true",
+  "trash.cleanup.period": "monthly"
+}
+....
+
+An empty object `{}` is returned when the user has no stored settings.
+
+Return codes:
+
+- `200` The settings were successfully retrieved
+- `404` The user does not exist
+
+=== Set JMAP settings of a user
+
+....
+curl -XPUT http://ip:port/users/user@domain.tld/jmap/settings \
+  -H "Content-Type: application/json" \
+  -d '{"language": "fr", "trash.cleanup.enabled": "true"}'
+....
+
+Fully replaces the user's settings with the provided map. Omitted keys are removed. Pass `{}` to clear all settings.
+
+Return codes:
+
+- `204` The settings were successfully stored
+- `400` One or more keys are invalid (too long, empty, or contain disallowed characters)
+- `404` The user does not exist
+
 == Rate limiting
 
 === Update rate limits of a user
@@ -1394,6 +1437,44 @@ Return codes:
 
 - `200` Successfully returned the aggregated data
 - `400` Missing the `hasSpecificQuota` query parameter
+
+== JMAP Settings reports
+
+Returns an aggregated view of all JMAP settings values across users, useful for auditing configuration adoption. The response is a two-level map: settings key → settings value → number of users with that combination.
+
+=== Get JMAP settings usage report
+
+....
+curl -XGET http://ip:port/jmap/settings/reports
+....
+
+Optionally restrict to a single domain:
+
+....
+curl -XGET "http://ip:port/jmap/settings/reports?domain=linagora.com"
+....
+
+Response example:
+
+....
+{
+  "language": {
+    "fr": 234,
+    "en": 345
+  },
+  "trash.cleanup.enabled": {
+    "true": 112,
+    "false": 467
+  }
+}
+....
+
+Users with no stored settings are omitted from the counts. Keys and values that no user has set do not appear in the response.
+
+Return codes:
+
+- `200` The report was successfully generated
+- `404` The specified domain does not exist
 
 == User Data Tiering
 
