@@ -233,8 +233,9 @@ import com.linagora.tmail.webadmin.data.DomainTasksModule;
 import com.linagora.tmail.webadmin.data.UserDataTieringRoutesModule;
 import com.linagora.tmail.webadmin.data.UserDataTieringTaskModule;
 import com.linagora.tmail.webadmin.domainsignature.DomainSignatureTemplateRoutesModule;
-import com.linagora.tmail.webadmin.jmap.PopulateKeywordEmailQueryViewTaskModule;
 import com.linagora.tmail.webadmin.jmap.JmapSettingsReportRoutesModule;
+import com.linagora.tmail.webadmin.jmap.JmapSettingsRoutesModule;
+import com.linagora.tmail.webadmin.jmap.PopulateKeywordEmailQueryViewTaskModule;
 import com.linagora.tmail.webadmin.label.LabelRoutesModule;
 import com.linagora.tmail.webadmin.mailbox.MailboxResourcesLocationRoutesModule;
 import com.linagora.tmail.webadmin.quota.UserQuotaReporterRoutesModule;
@@ -285,6 +286,7 @@ public class DistributedServer {
         new TeamMailboxRoutesModule(),
         new LabelRoutesModule(),
         new JmapSettingsReportRoutesModule(),
+        new JmapSettingsRoutesModule(),
         new SieveRoutesModule(),
         new WebAdminServerModule(),
         new WebAdminReIndexingTaskSerializationModule(),
