@@ -133,6 +133,7 @@ import com.linagora.tmail.webadmin.cleanup.MailboxesCleanupModule;
 import com.linagora.tmail.webadmin.contact.aucomplete.ContactIndexingModule;
 import com.linagora.tmail.webadmin.data.DomainTasksModule;
 import com.linagora.tmail.webadmin.domainsignature.DomainSignatureTemplateRoutesModule;
+import com.linagora.tmail.webadmin.jmap.JmapSettingsReportRoutesModule;
 import com.linagora.tmail.webadmin.label.LabelRoutesModule;
 import com.linagora.tmail.webadmin.mailbox.MailboxResourcesLocationRoutesModule;
 import com.linagora.tmail.webadmin.quota.UserQuotaReporterRoutesModule;
@@ -197,6 +198,7 @@ public class MemoryServer {
           new TeamMailboxRoutesModule(),
           new TeamMailboxVaultRoutesModule(),
           new LabelRoutesModule(),
+          new JmapSettingsReportRoutesModule(),
           new DKIMMailetModule())
         .with(new TeamMailboxModule(),
             new TMailScanningQuotaSearcherModule(),
