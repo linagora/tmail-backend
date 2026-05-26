@@ -167,6 +167,7 @@ import com.linagora.tmail.imap.TMailIMAPModule;
 import com.linagora.tmail.james.jmap.ContactSupportCapabilitiesModule;
 import com.linagora.tmail.james.jmap.TMailJMAPModule;
 import com.linagora.tmail.james.jmap.blob.RedisUnauthenticatedBlobDownloadTokenRepositoryModule;
+import com.linagora.tmail.james.jmap.blob.UnauthenticatedBlobAccessJmapModule;
 import com.linagora.tmail.james.jmap.contact.RabbitMQEmailAddressContactModule;
 import com.linagora.tmail.james.jmap.event.CassandraDomainSignatureTemplateRepositoryModule;
 import com.linagora.tmail.james.jmap.firebase.CassandraFirebaseSubscriptionRepositoryModule;
@@ -672,7 +673,15 @@ public class DistributedServer {
 
     private static Module chooseUnauthenticatedBlobAccessModules(DistributedJamesConfiguration configuration) {
         if (configuration.jmapEnabled()) {
-            return new RedisUnauthenticatedBlobDownloadTokenRepositoryModule();
+            try {
+                configuration.propertiesProvider().getConfiguration("redis");
+                return Modules.combine(new UnauthenticatedBlobAccessJmapModule(), new RedisUnauthenticatedBlobDownloadTokenRepositoryModule());
+            } catch (FileNotFoundException e) {
+                LOGGER.warn("JMAP unauthenticated blob access is disabled because Redis storage is not available.");
+                return Modules.EMPTY_MODULE;
+            } catch (ConfigurationException e) {
+                throw new RuntimeException(e);
+            }
         }
         return Modules.EMPTY_MODULE;
     }
