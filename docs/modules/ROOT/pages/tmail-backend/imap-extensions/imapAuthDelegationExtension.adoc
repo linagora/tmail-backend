@@ -38,12 +38,12 @@ a002 AUTHENTICATE PLAIN base64_encoded_string(minister@domain.tld\0secretary@dom
 
 The syntax will be:
 ```
-a002 AUTHENTICATE PLAIN base64_encoded_string([authorize-id+authenticate-id]\0password)
+a002 AUTHENTICATE PLAIN base64_encoded_string(\0[authentication_id+authorize_id]\0password)
 ```
 
 Example:
 ```
-a002 AUTHENTICATE PLAIN base64_encoded_string(secretary+minister@domain.tld\0secretary_password)
+a002 AUTHENTICATE PLAIN base64_encoded_string(\0secretary+minister@domain.tld\0secretary_password)
 ```
 
 == How to deploy this extension
