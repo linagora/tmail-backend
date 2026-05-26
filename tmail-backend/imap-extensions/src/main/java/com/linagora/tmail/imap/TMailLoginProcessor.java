@@ -19,6 +19,7 @@
 package com.linagora.tmail.imap;
 
 import java.util.Optional;
+import java.util.function.Predicate;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.james.core.Username;
@@ -30,12 +31,14 @@ import org.apache.james.imap.message.request.LoginRequest;
 import org.apache.james.imap.processor.LoginProcessor;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.metrics.api.MetricFactory;
-import org.apache.james.util.MDCBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.inject.Inject;
 
 public class TMailLoginProcessor extends LoginProcessor {
     private static final String DELEGATION_SPLIT_CHARACTER = "+";
+    private static final Logger LOGGER = LoggerFactory.getLogger(TMailLoginProcessor.class);
 
     @Inject
     public TMailLoginProcessor(MailboxManager mailboxManager, StatusResponseFactory factory,
@@ -45,29 +48,34 @@ public class TMailLoginProcessor extends LoginProcessor {
 
     @Override
     protected void processRequest(LoginRequest request, ImapSession session, Responder responder) {
+        if (session.isPlainAuthDisallowed()) {
+            LOGGER.warn("Login rejected because it is disabled or not allowed over insecure channel");
+            no(request, responder, HumanReadableText.DISABLED_LOGIN);
+            return;
+        }
+
         Username requestUserid = request.getUserid();
+        String requestPassword = request.getPassword();
         String localPart = requestUserid.getLocalPart();
         if (!localPart.contains(DELEGATION_SPLIT_CHARACTER)) {
-            super.processRequest(request, session, responder);
+            doPasswordAuth(noDelegation(requestUserid, requestPassword), session, request, responder);
         } else {
-            String delegatedUser = StringUtils.substringBefore(localPart, DELEGATION_SPLIT_CHARACTER);
-            String ownerUser = StringUtils.substringAfter(localPart, DELEGATION_SPLIT_CHARACTER);
+            String authenticationId = StringUtils.substringBefore(localPart, DELEGATION_SPLIT_CHARACTER);
+            String authorizationId = StringUtils.substringAfter(localPart, DELEGATION_SPLIT_CHARACTER);
 
-            if (StringUtils.isAnyEmpty(delegatedUser, ownerUser)) {
-                no(request, responder, HumanReadableText.INVALID_LOGIN);
-                return;
+            if (StringUtils.isAnyEmpty(authenticationId, authorizationId)) {
+                authFailure(session, request, responder, HumanReadableText.INVALID_CREDENTIALS,
+                    Optional.of(authenticationId).filter(Predicate.not(String::isEmpty)).map(Username::of),
+                    Optional.of(authorizationId).filter(Predicate.not(String::isEmpty)).map(Username::of),
+                    "Malformed authentication command."
+                 );
+            } else {
+                Username authenticationUser = Username.of(authenticationId).withDefaultDomain(requestUserid.getDomainPart());
+                Username authorizationUser = Username.of(authorizationId).withDefaultDomain(requestUserid.getDomainPart());
+
+                AuthenticationAttempt authenticationAttempt = new AuthenticationAttempt(Optional.of(authorizationUser), authenticationUser, requestPassword);
+                doPasswordAuthWithDelegation(authenticationAttempt, session, request, responder);
             }
-
-            Username authenticationId = Username.of(delegatedUser).withDefaultDomain(requestUserid.getDomainPart());
-            Username delegateUsername = Username.of(ownerUser).withDefaultDomain(requestUserid.getDomainPart());
-
-            AuthenticationAttempt authenticationAttempt = new AuthenticationAttempt(Optional.of(delegateUsername), authenticationId, request.getPassword());
-            doAuthWithDelegation(authenticationAttempt, session, request, responder);
         }
-    }
-
-    @Override
-    protected MDCBuilder mdc(LoginRequest request) {
-        return super.mdc(request);
     }
 }
