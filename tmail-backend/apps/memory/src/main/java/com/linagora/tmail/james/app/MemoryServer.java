@@ -89,6 +89,7 @@ import com.linagora.tmail.james.app.modules.jmap.MemoryUnauthenticatedDownloadTo
 import com.linagora.tmail.james.app.modules.jmap.PublicAssetsMemoryModule;
 import com.linagora.tmail.james.jmap.ContactSupportCapabilitiesModule;
 import com.linagora.tmail.james.jmap.TMailJMAPModule;
+import com.linagora.tmail.james.jmap.blob.UnauthenticatedBlobAccessJmapModule;
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngineModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseCommonModule;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
@@ -185,6 +186,7 @@ public class MemoryServer {
         new MailboxResourcesLocationRoutesModule(),
         new InboxArchivalTaskModule(),
         new ContactSupportCapabilitiesModule(),
+        new UnauthenticatedBlobAccessJmapModule(),
         new DownloadAllRoutesModule(),
         new MailboxClearMethodModule(),
         new FolderFilteringActionMethodModule())
