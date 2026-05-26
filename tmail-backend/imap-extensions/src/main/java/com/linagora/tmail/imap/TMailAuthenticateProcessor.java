@@ -23,7 +23,6 @@ import java.util.List;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.james.core.Username;
-import org.apache.james.imap.api.display.HumanReadableText;
 import org.apache.james.imap.api.message.request.ImapRequest;
 import org.apache.james.imap.api.message.response.StatusResponseFactory;
 import org.apache.james.imap.api.process.ImapSession;
@@ -48,14 +47,13 @@ public class TMailAuthenticateProcessor extends AuthenticateProcessor {
     }
 
     @Override
-    protected void doPlainAuth(String initialClientResponse, ImapSession session, ImapRequest request, Responder responder) {
+    protected void parseAndDoPlainAuth(String initialClientResponse, ImapSession session, ImapRequest request, Responder responder) {
         AuthenticationAttempt authenticationAttempt = parseDelegationAttempt(initialClientResponse);
         if (authenticationAttempt.isDelegation()) {
-            doAuthWithDelegation(authenticationAttempt, session, request, responder);
+            doPasswordAuthWithDelegation(authenticationAttempt, session, request, responder);
         } else {
-            doAuth(authenticationAttempt, session, request, responder, HumanReadableText.AUTHENTICATION_FAILED);
+            doPasswordAuth(authenticationAttempt, session, request, responder);
         }
-        session.stopDetectingCommandInjection();
     }
 
     private AuthenticationAttempt parseDelegationAttempt(String initialClientResponse) {
@@ -80,10 +78,10 @@ public class TMailAuthenticateProcessor extends AuthenticateProcessor {
         if (!localPart.contains(DELEGATION_SPLIT_CHARACTER)) {
             return noDelegation(user, tokens.get(1));
         }
-        String authId = StringUtils.substringAfter(localPart, DELEGATION_SPLIT_CHARACTER);
-        String delegateId = StringUtils.substringBefore(localPart, DELEGATION_SPLIT_CHARACTER);
-        Username authUser = Username.of(authId).withDefaultDomain(user.getDomainPart());
-        Username delegateUser = Username.of(delegateId).withDefaultDomain(user.getDomainPart());
-        return delegation(authUser, delegateUser, tokens.get(1));
+        String authenticationId = StringUtils.substringBefore(localPart, DELEGATION_SPLIT_CHARACTER);
+        String authorizationId = StringUtils.substringAfter(localPart, DELEGATION_SPLIT_CHARACTER);
+        Username authenticationUser = Username.of(authenticationId).withDefaultDomain(user.getDomainPart());
+        Username authorizationUser = Username.of(authorizationId).withDefaultDomain(user.getDomainPart());
+        return delegation(authorizationUser, authenticationUser, tokens.get(1));
     }
 }
