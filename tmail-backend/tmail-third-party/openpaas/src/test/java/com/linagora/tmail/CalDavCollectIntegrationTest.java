@@ -39,7 +39,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.function.Function;
 
 import org.apache.james.MemoryJamesServerMain;
+import org.apache.james.jmap.mail.BlobId;
+import org.apache.james.jmap.routes.BlobResolutionResult;
 import org.apache.james.jmap.routes.BlobResolver;
+import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.model.MultimailboxesSearchQuery;
 import org.apache.james.mailbox.model.SearchQuery;
@@ -63,6 +66,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
+import org.reactivestreams.Publisher;
 
 import com.github.mustachejava.DefaultMustacheFactory;
 import com.github.mustachejava.Mustache;
@@ -256,7 +260,17 @@ public class CalDavCollectIntegrationTest {
 
                 @ProvidesIntoSet
                 public BlobResolver provideFakeBlobResolver() {
-                    return (blobId, mailboxSession) -> Mono.empty();
+                    return new BlobResolver() {
+                        @Override
+                        public Publisher<BlobResolutionResult> resolve(BlobId blobId, MailboxSession mailboxSession) {
+                            return Mono.empty();
+                        }
+
+                        @Override
+                        public Publisher<Boolean> validateAccess(BlobId blobId, MailboxSession mailboxSession) {
+                            return Mono.just(false);
+                        }
+                    };
                 }
             })
             .withOverrides(openPaasExtension.openpaasModule())

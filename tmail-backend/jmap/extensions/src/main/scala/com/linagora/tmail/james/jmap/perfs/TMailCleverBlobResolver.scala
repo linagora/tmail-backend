@@ -18,6 +18,8 @@
 
 package com.linagora.tmail.james.jmap.perfs
 
+import java.lang.Boolean.TRUE
+
 import jakarta.inject.Inject
 import org.apache.james.jmap.mail.BlobId
 import org.apache.james.jmap.routes.{AttachmentBlobResolver, BlobResolutionResult, BlobResolver, MessagePartBlobResolver, NonApplicable}
@@ -31,4 +33,14 @@ class TMailCleverBlobResolver @Inject() (messagePartBlobResolver: MessagePartBlo
       case NonApplicable => messagePartBlobResolver.resolve(blobId, mailboxSession)
       case any => SMono.just(any)
     }
+
+  override def validateAccess(blobId: BlobId, mailboxSession: MailboxSession): SMono[java.lang.Boolean] =
+    attachmentBlobResolver.validateAccess(blobId, mailboxSession)
+      .flatMap { hasAccess =>
+        if (hasAccess.booleanValue()) {
+          SMono.just(TRUE)
+        } else {
+          messagePartBlobResolver.validateAccess(blobId, mailboxSession)
+        }
+      }
 }
