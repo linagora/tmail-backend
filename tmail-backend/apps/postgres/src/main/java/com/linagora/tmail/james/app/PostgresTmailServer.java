@@ -21,12 +21,10 @@ package com.linagora.tmail.james.app;
 import static com.linagora.tmail.OpenPaasModule.DavModule.CALDAV_SUPPORTED;
 import static com.linagora.tmail.OpenPaasModule.DavModule.CALDAV_SUPPORT_MODULE_PROVIDER;
 
-import java.io.FileNotFoundException;
 import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 
-import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.james.ExtraProperties;
 import org.apache.james.GuiceJamesServer;
@@ -150,11 +148,9 @@ import com.linagora.tmail.event.TMailJMAPListenerModule;
 import com.linagora.tmail.event.TmailEventModule;
 import com.linagora.tmail.healthcheck.TasksHeathCheckModule;
 import com.linagora.tmail.imap.TMailIMAPModule;
+import com.linagora.tmail.james.app.module.PostgresUnauthenticatedBlobAccessModuleChooser;
 import com.linagora.tmail.james.app.modules.jmap.MemoryTmailEventBusModule;
-import com.linagora.tmail.james.app.modules.jmap.MemoryUnauthenticatedDownloadTokenRepositoryModule;
 import com.linagora.tmail.james.jmap.TMailJMAPModule;
-import com.linagora.tmail.james.jmap.blob.RedisUnauthenticatedBlobDownloadTokenRepositoryModule;
-import com.linagora.tmail.james.jmap.blob.UnauthenticatedBlobAccessJmapModule;
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngineModule;
 import com.linagora.tmail.james.jmap.contact.RabbitMQEmailAddressContactModule;
 import com.linagora.tmail.james.jmap.event.PostgresDomainSignatureTemplateRepositoryModule;
@@ -598,24 +594,9 @@ public class PostgresTmailServer {
 
     private static Module chooseUnauthenticatedBlobAccessModules(PostgresTmailConfiguration configuration) {
         if (configuration.jmapEnabled()) {
-            return Modules.combine(
-                new UnauthenticatedBlobAccessJmapModule(),
-                chooseUnauthenticatedBlobDownloadTokenRepository(configuration));
+            return PostgresUnauthenticatedBlobAccessModuleChooser.chooseModule(configuration.unauthenticatedBlobAccessChoice());
         }
         return Modules.EMPTY_MODULE;
-    }
-
-    private static Module chooseUnauthenticatedBlobDownloadTokenRepository(PostgresTmailConfiguration configuration) {
-        try {
-            configuration.propertiesProvider().getConfiguration("redis");
-            LOGGER.info("Using Redis for Unauthenticated Blob Access repository");
-            return new RedisUnauthenticatedBlobDownloadTokenRepositoryModule();
-        } catch (FileNotFoundException e) {
-            LOGGER.warn("Using memory implementation for Unauthenticated Blob Access repository. Avoid using this in a distributed environment.");
-            return new MemoryUnauthenticatedDownloadTokenRepositoryModule();
-        } catch (ConfigurationException e) {
-            throw new RuntimeException(e);
-        }
     }
 
     private static List<Module> chooseOpenPaasModule(OpenPaasModuleChooserConfiguration openPaasModuleChooserConfiguration) {

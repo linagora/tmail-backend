@@ -18,25 +18,17 @@
 
 package com.linagora.tmail.james;
 
-import static com.linagora.tmail.common.TemporaryTmailServerUtils.BASE_CONFIGURATION_FILE_NAMES;
 import static com.linagora.tmail.james.app.PostgresTmailConfiguration.EventBusImpl.IN_MEMORY;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
+import static com.linagora.tmail.james.app.module.PostgresUnauthenticatedBlobAccessModuleChooser.UnauthenticatedBlobAccessChoice.REDIS;
 
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
-import org.apache.james.server.core.configuration.Configuration;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
-import com.linagora.tmail.common.TemporaryTmailServerUtils;
 import com.linagora.tmail.james.app.PostgresTmailConfiguration;
 import com.linagora.tmail.james.app.PostgresTmailServer;
 import com.linagora.tmail.james.common.LabelChangesMethodContract;
@@ -53,7 +45,7 @@ public class PostgresUnauthenticatedBlobAccessSetMethodTest implements Unauthent
     static JamesServerExtension testExtension = new JamesServerBuilder<PostgresTmailConfiguration>(tmpDir ->
         PostgresTmailConfiguration.builder()
             .workingDirectory(tmpDir)
-            .configurationPath(setupConfigurationPath(tmpDir))
+            .configurationFromClasspath()
             .blobStore(BlobStoreConfiguration.builder()
                 .postgres()
                 .disableCache()
@@ -63,6 +55,7 @@ public class PostgresUnauthenticatedBlobAccessSetMethodTest implements Unauthent
             .searchConfiguration(SearchConfiguration.scanning())
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.ENABLED)
             .eventBusImpl(IN_MEMORY)
+            .unauthenticatedBlobAccessChoice(REDIS)
             .build())
         .server(configuration -> PostgresTmailServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
@@ -73,20 +66,4 @@ public class PostgresUnauthenticatedBlobAccessSetMethodTest implements Unauthent
         .extension(REDIS_EXTENSION)
         .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
-
-    private static Configuration.ConfigurationPath setupConfigurationPath(File workingDir) {
-        TemporaryTmailServerUtils serverUtils = new TemporaryTmailServerUtils(workingDir, ImmutableList.<String>builder()
-            .addAll(BASE_CONFIGURATION_FILE_NAMES)
-            .add("usersrepository.xml")
-            .build());
-
-        try {
-            Files.writeString(serverUtils.getConfigFolder().resolve("redis.properties"),
-                "redisURL=" + REDIS_EXTENSION.dockerRedis().redisURI() + "\n");
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-
-        return serverUtils.getConfigurationPath();
-    }
 }
