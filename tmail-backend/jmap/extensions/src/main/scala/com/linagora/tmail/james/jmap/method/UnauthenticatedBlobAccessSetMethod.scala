@@ -132,14 +132,17 @@ class UnauthenticatedBlobAccessSetCreatePerformer @Inject()(val tokenRepository:
       case _ => Left(SetError.invalidArguments(SetErrorDescription("create value must be an empty object")))
     }
 
-  private def parseBlobIds(blobIdAsString: String): Either[SetError, BlobIds] =
-    (for {
+  private def parseBlobIds(blobIdAsString: String): Either[SetError, BlobIds] = {
+    val blobIdsTry: Try[BlobIds] = for {
       jmapBlobId <- JmapBlobId.of(blobIdAsString)
       blobStoreBlobId <- Try(blobIdFactory.parse(blobIdAsString))
-    } yield BlobIds(jmapBlobId, blobStoreBlobId)) match {
+    } yield BlobIds(jmapBlobId, blobStoreBlobId)
+
+    blobIdsTry match {
       case Success(blobIds) => Right(blobIds)
       case Failure(e) => Left(SetError.invalidArguments(SetErrorDescription(e.getMessage)))
     }
+  }
 
   private def toJavaAccountId(accountId: AccountId): JavaAccountId =
     JavaAccountId.fromString(accountId.id.value)
