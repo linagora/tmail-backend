@@ -19,8 +19,9 @@
 package com.linagora.tmail.james.jmap.method
 
 import java.io.{ByteArrayInputStream, InputStream}
+import java.lang.Boolean.{FALSE, TRUE}
 
-import com.linagora.tmail.encrypted.{EncryptedAttachmentBlobId, EncryptedEmailContentStore}
+import com.linagora.tmail.encrypted.{EncryptedAttachmentBlobId, EncryptedEmailContentStore, AttachmentNotFoundException => EncryptedAttachmentNotFoundException}
 import jakarta.inject.Inject
 import org.apache.james.blob.api.BlobStore
 import org.apache.james.blob.api.BlobStore.StoragePolicy
@@ -54,4 +55,14 @@ class EncryptedAttachmentBlobResolver @Inject()(encryptedEmailContentStore: Encr
             .flatMap((blobStoreId: org.apache.james.blob.api.BlobId) =>
               SMono(blobStore.readBytes(blobStore.getDefaultBucketName, blobStoreId, StoragePolicy.LOW_COST)))
             .map(bytes => EncryptedAttachmentBlob(blobId, bytes)))))
+
+  override def validateAccess(blobId: BlobId, mailboxSession: MailboxSession): Publisher[java.lang.Boolean] =
+    EncryptedAttachmentBlobId.parse(messageIdFactory, blobId.value.value)
+      .fold(_ => SMono.just(FALSE),
+        encryptedId => SMono(encryptedEmailContentStore.retrieveAttachmentContent(encryptedId.messageId, encryptedId.position))
+          .map(_ => TRUE)
+          .onErrorResume {
+            case _: EncryptedAttachmentNotFoundException => SMono.just(FALSE)
+            case e => SMono.error[java.lang.Boolean](e)
+          })
 }

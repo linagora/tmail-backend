@@ -39,8 +39,11 @@ import jakarta.mail.MessagingException;
 import org.apache.james.MemoryJamesServerMain;
 import org.apache.james.core.Username;
 import org.apache.james.core.builder.MimeMessageBuilder;
+import org.apache.james.jmap.mail.BlobId;
+import org.apache.james.jmap.routes.BlobResolutionResult;
 import org.apache.james.jmap.routes.BlobResolver;
 import org.apache.james.mailbox.DefaultMailboxes;
+import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.model.ComposedMessageId;
 import org.apache.james.mailbox.model.MailboxPath;
@@ -63,6 +66,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
+import org.reactivestreams.Publisher;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
@@ -126,7 +130,17 @@ public class CardDavCollectedContactIntegrationTest {
 
                 @ProvidesIntoSet
                 public BlobResolver provideFakeBlobResolver() {
-                    return (blobId, mailboxSession) -> Mono.empty();
+                    return new BlobResolver() {
+                        @Override
+                        public Publisher<BlobResolutionResult> resolve(BlobId blobId, MailboxSession mailboxSession) {
+                            return Mono.empty();
+                        }
+
+                        @Override
+                        public Publisher<Boolean> validateAccess(BlobId blobId, MailboxSession mailboxSession) {
+                            return Mono.just(false);
+                        }
+                    };
                 }
             })
             .withMailetContainer(TemporaryJamesServer.defaultMailetContainerConfiguration()
