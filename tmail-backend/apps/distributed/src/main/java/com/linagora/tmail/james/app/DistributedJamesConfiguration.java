@@ -41,6 +41,7 @@ import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
+import com.linagora.tmail.james.app.module.UnauthenticatedBlobAccessModuleChooser;
 import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.oidc.JMAPOidcConfiguration;
@@ -67,6 +68,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                                             ExtensionConfiguration extentionConfiguration,
                                             boolean oidcEnabled,
                                             OidcTokenCacheModuleChooser.OidcTokenCacheChoice oidcTokenCacheChoice,
+                                            UnauthenticatedBlobAccessModuleChooser.UnauthenticatedBlobAccessChoice unauthenticatedBlobAccessChoice,
                                             boolean keywordEmailQueryViewEnabled) implements Configuration {
     public static class Builder {
         private Optional<SearchConfiguration> searchConfiguration;
@@ -87,6 +89,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
         private Optional<ExtensionConfiguration> extentionConfiguration;
         private Optional<Boolean> oidcEnabled;
         private Optional<OidcTokenCacheModuleChooser.OidcTokenCacheChoice> oidcTokenStorageChoice;
+        private Optional<UnauthenticatedBlobAccessModuleChooser.UnauthenticatedBlobAccessChoice> unauthenticatedBlobAccessChoice;
         private Optional<Boolean> keywordEmailQueryViewEnabled;
 
         private Builder() {
@@ -108,6 +111,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             extentionConfiguration = Optional.empty();
             oidcEnabled = Optional.empty();
             oidcTokenStorageChoice = Optional.empty();
+            unauthenticatedBlobAccessChoice = Optional.empty();
             keywordEmailQueryViewEnabled = Optional.empty();
         }
 
@@ -219,6 +223,11 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             return this;
         }
 
+        public Builder unauthenticatedBlobAccessChoice(UnauthenticatedBlobAccessModuleChooser.UnauthenticatedBlobAccessChoice unauthenticatedBlobAccessChoice) {
+            this.unauthenticatedBlobAccessChoice = Optional.of(unauthenticatedBlobAccessChoice);
+            return this;
+        }
+
         public Builder keywordEmailQueryViewEnabled(boolean enable) {
             this.keywordEmailQueryViewEnabled = Optional.of(enable);
             return this;
@@ -324,6 +333,9 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             OidcTokenCacheModuleChooser.OidcTokenCacheChoice oidcTokenCacheChoice = this.oidcTokenStorageChoice.orElseGet(Throwing.supplier(
                 () -> OidcTokenCacheModuleChooser.OidcTokenCacheChoice.from(propertiesProvider)));
 
+            UnauthenticatedBlobAccessModuleChooser.UnauthenticatedBlobAccessChoice unauthenticatedBlobAccessChoice = this.unauthenticatedBlobAccessChoice.orElseGet(Throwing.supplier(
+                () -> UnauthenticatedBlobAccessModuleChooser.UnauthenticatedBlobAccessChoice.from(propertiesProvider)));
+
             boolean keywordEmailQueryViewEnabled = this.keywordEmailQueryViewEnabled.orElseGet(() -> {
                 try {
                     return JMAPExtensionConfiguration.from(propertiesProvider.getConfiguration("jmap")).viewKeywordQueryEnabled();
@@ -355,6 +367,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 extentionConfiguration,
                 oidcEnabled,
                 oidcTokenCacheChoice,
+                unauthenticatedBlobAccessChoice,
                 keywordEmailQueryViewEnabled);
         }
     }

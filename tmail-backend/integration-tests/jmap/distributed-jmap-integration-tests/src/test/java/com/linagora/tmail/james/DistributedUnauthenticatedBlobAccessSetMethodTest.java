@@ -18,12 +18,7 @@
 
 package com.linagora.tmail.james;
 
-import static com.linagora.tmail.common.TemporaryTmailServerUtils.BASE_CONFIGURATION_FILE_NAMES;
-
-import java.io.File;
-import java.io.IOException;
-import java.io.UncheckedIOException;
-import java.nio.file.Files;
+import static com.linagora.tmail.james.app.module.UnauthenticatedBlobAccessModuleChooser.UnauthenticatedBlobAccessChoice.REDIS;
 
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
@@ -31,12 +26,9 @@ import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
-import org.apache.james.server.core.configuration.Configuration;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
-import com.linagora.tmail.common.TemporaryTmailServerUtils;
 import com.linagora.tmail.james.app.CassandraExtension;
 import com.linagora.tmail.james.app.DistributedJamesConfiguration;
 import com.linagora.tmail.james.app.DistributedServer;
@@ -55,7 +47,7 @@ public class DistributedUnauthenticatedBlobAccessSetMethodTest implements Unauth
     static JamesServerExtension testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
         DistributedJamesConfiguration.builder()
             .workingDirectory(tmpDir)
-            .configurationPath(setupConfigurationPath(tmpDir))
+            .configurationFromClasspath()
             .blobStore(BlobStoreConfiguration.builder()
                 .s3()
                 .noSecondaryS3BlobStore()
@@ -65,6 +57,7 @@ public class DistributedUnauthenticatedBlobAccessSetMethodTest implements Unauth
                 .disableSingleSave())
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
+            .unauthenticatedBlobAccessChoice(REDIS)
             .searchConfiguration(SearchConfiguration.openSearch())
             .build())
         .extension(new DockerOpenSearchExtension())
@@ -78,19 +71,4 @@ public class DistributedUnauthenticatedBlobAccessSetMethodTest implements Unauth
             .overrideWith(new UnauthenticatedBlobAccessTokenRepositoryProbeModule()))
         .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
-
-    private static Configuration.ConfigurationPath setupConfigurationPath(File workingDir) {
-        TemporaryTmailServerUtils serverUtils = new TemporaryTmailServerUtils(workingDir, ImmutableList.<String>builder()
-            .addAll(BASE_CONFIGURATION_FILE_NAMES)
-            .build());
-
-        try {
-            Files.writeString(serverUtils.getConfigFolder().resolve("redis.properties"),
-                "redisURL=" + REDIS_EXTENSION.dockerRedis().redisURI() + "\n");
-        } catch (IOException e) {
-            throw new UncheckedIOException(e);
-        }
-
-        return serverUtils.getConfigurationPath();
-    }
 }
