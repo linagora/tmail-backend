@@ -120,7 +120,7 @@
                 <configuration>
                     <reuseForks>true</reuseForks>
                     <forkCount>2</forkCount>
-                    <argLine>-Xms1524m -Xmx2548m</argLine>
+                    <argLine>-Xms1524m -Xmx3048m</argLine>
                     <!-- Fail tests longer than 30 minutes, prevent form random locking tests -->
                     <forkedProcessTimeoutInSeconds>1800</forkedProcessTimeoutInSeconds>
                 </configuration>
