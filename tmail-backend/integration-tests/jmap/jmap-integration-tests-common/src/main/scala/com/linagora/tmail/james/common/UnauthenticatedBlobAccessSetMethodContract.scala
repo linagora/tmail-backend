@@ -156,7 +156,7 @@ trait UnauthenticatedBlobAccessSetMethodContract {
   }
 
   @Test
-  def createShouldReturnTokenForAccessibleBlob(server: GuiceJamesServer): Unit = {
+  def shouldGrantAccessForUploadBlob(server: GuiceJamesServer): Unit = {
     val blobId: String = uploadBlob(server, bobUsername, BOB_PASSWORD, bobAccountId)
     val response: String = createAccess(server, bobAccountId, blobId)
     val token: String = createdToken(response, blobId)
@@ -194,6 +194,24 @@ trait UnauthenticatedBlobAccessSetMethodContract {
            |    }
            |}""".stripMargin)
     assertThat(tokenProbe(server).isValid(bobAccountId, messageBlobId, token)).isTrue
+  }
+
+  @Test
+  def shouldGrantAccessForMessagePartBlob(server: GuiceJamesServer): Unit = {
+    val messageId = appendMessage(server, bobUsername)
+    val messagePartBlobId: String = firstTextBodyBlobId(server, bobUsername, BOB_PASSWORD, bobAccountId, messageId)
+    val response: String = createAccess(server, bobAccountId, messagePartBlobId)
+    val token: String = createdToken(response, messagePartBlobId)
+
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].created")
+      .isEqualTo(
+        s"""{
+           |    "$messagePartBlobId": {
+           |        "token": "$${json-unit.ignore}"
+           |    }
+           |}""".stripMargin)
+    assertThat(tokenProbe(server).isValid(bobAccountId, messagePartBlobId, token)).isTrue
   }
 
   @Test
@@ -313,7 +331,8 @@ trait UnauthenticatedBlobAccessSetMethodContract {
   @Test
   def foreignUploadedBlobShouldReturnNotCreatedNotFound(server: GuiceJamesServer): Unit = {
     val andreBlobId: String = uploadBlob(server, andreUsername, ANDRE_PASSWORD, andreAccountId)
-    val response: String = createAccess(server, bobAccountId, andreBlobId)
+    val response: String = createAccess(server, bobAccountId, andreBlobId,
+      username = bobUsername, password = BOB_PASSWORD)
 
     // Bob should not be granted access to Andre's blob
     assertThatJson(response)
@@ -323,6 +342,59 @@ trait UnauthenticatedBlobAccessSetMethodContract {
            |    "$andreBlobId": {
            |        "type": "notFound",
            |        "description": "Blob BlobId($andreBlobId) could not be found"
+           |    }
+           |}""".stripMargin)
+  }
+
+  @Test
+  def foreignMessagePartBlobShouldReturnNotCreatedNotFound(server: GuiceJamesServer): Unit = {
+    val andreMessageId = appendMessage(server, andreUsername)
+    val andreMessagePartBlobId: String = firstTextBodyBlobId(server, andreUsername, ANDRE_PASSWORD, andreAccountId, andreMessageId)
+    val response: String = createAccess(server, bobAccountId, andreMessagePartBlobId,
+      username = bobUsername, password = BOB_PASSWORD)
+
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].notCreated")
+      .isEqualTo(
+        s"""{
+           |    "$andreMessagePartBlobId": {
+           |        "type": "notFound",
+           |        "description": "Blob BlobId($andreMessagePartBlobId) could not be found"
+           |    }
+           |}""".stripMargin)
+  }
+
+  @Test
+  def foreignMessageBlobShouldReturnNotCreatedNotFound(server: GuiceJamesServer): Unit = {
+    val andreMessageBlobId = appendMessage(server, andreUsername).serialize()
+    val response: String = createAccess(server, bobAccountId, andreMessageBlobId,
+      username = bobUsername, password = BOB_PASSWORD)
+
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].notCreated")
+      .isEqualTo(
+        s"""{
+           |    "$andreMessageBlobId": {
+           |        "type": "notFound",
+           |        "description": "Blob BlobId($andreMessageBlobId) could not be found"
+           |    }
+           |}""".stripMargin)
+  }
+
+  @Test
+  def foreignAttachmentBlobShouldReturnNotCreatedNotFound(server: GuiceJamesServer): Unit = {
+    val andreMessageId = appendMessageFromResource(server, andreUsername, "emailWithTextAttachment.eml")
+    val andreAttachmentBlobId: String = firstAttachmentBlobId(server, andreUsername, ANDRE_PASSWORD, andreAccountId, andreMessageId)
+    val response: String = createAccess(server, bobAccountId, andreAttachmentBlobId,
+      username = bobUsername, password = BOB_PASSWORD)
+
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].notCreated")
+      .isEqualTo(
+        s"""{
+           |    "$andreAttachmentBlobId": {
+           |        "type": "notFound",
+           |        "description": "Blob BlobId($andreAttachmentBlobId) could not be found"
            |    }
            |}""".stripMargin)
   }
@@ -660,6 +732,34 @@ trait UnauthenticatedBlobAccessSetMethodContract {
       .contentType(JSON)
       .extract()
       .path("methodResponses[0][1].list[0].attachments[0].blobId")
+
+  private def firstTextBodyBlobId(server: GuiceJamesServer,
+                                  username: Username,
+                                  password: String,
+                                  accountId: String,
+                                  messageId: MessageId): String =
+    `given`(authenticatedSpec(server, username, password))
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail"],
+           |  "methodCalls": [[
+           |    "Email/get",
+           |    {
+           |      "accountId": "$accountId",
+           |      "ids": ["${messageId.serialize()}"],
+           |      "properties": ["textBody"],
+           |      "bodyProperties": ["blobId"]
+           |    },
+           |    "c1"
+           |  ]]
+           |}""".stripMargin)
+    .when()
+      .post()
+    .`then`()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .path("methodResponses[0][1].list[0].textBody[0].blobId")
 
   private def createAccess(server: GuiceJamesServer,
                            accountId: String,

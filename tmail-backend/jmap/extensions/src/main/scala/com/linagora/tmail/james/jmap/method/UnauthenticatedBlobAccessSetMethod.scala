@@ -32,7 +32,7 @@ import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.{AccountId, Invocation, JmapRfc8621Configuration, SessionTranslator, SetError}
 import org.apache.james.jmap.mail.{BlobId => JmapBlobId}
 import org.apache.james.jmap.method.{InvocationWithContext, MethodRequiringAccountId}
-import org.apache.james.jmap.routes.{Blob, BlobNotFoundException, BlobResolvers, SessionSupplier}
+import org.apache.james.jmap.routes.{BlobNotFoundException, BlobResolvers, SessionSupplier}
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.metrics.api.MetricFactory
 import org.apache.james.util.ReactorUtils
@@ -112,9 +112,11 @@ class UnauthenticatedBlobAccessSetCreatePerformer @Inject()(val tokenRepository:
                      createValue: JsValue): SMono[UnauthenticatedBlobAccessCreationResult] =
     validateCreateEntry(blobIdAsString, createValue) match {
       case Left(error) => SMono.just(UnauthenticatedBlobAccessCreationFailure(blobIdAsString, error))
-      case Right(blobIds) => blobResolvers.resolve(blobIds.jmapBlobId, mailboxSession)
-        .flatMap(blob => SMono(tokenRepository.generate(toJavaAccountId(accountId), blobIds.blobStoreBlobId))
-          .doFinally(_ => closeBlobContentAsync(blob)))
+      case Right(blobIds) => blobResolvers.validateAccess(blobIds.jmapBlobId, mailboxSession)
+        .flatMap {
+          case hasAccess if hasAccess.booleanValue() => SMono(tokenRepository.generate(toJavaAccountId(accountId), blobIds.blobStoreBlobId))
+          case _ => SMono.error(BlobNotFoundException(blobIds.jmapBlobId))
+        }
         .map(token => UnauthenticatedBlobAccessCreationSuccess(blobIdAsString, UnauthenticatedBlobAccessCreationResponse(token.value().toString)): UnauthenticatedBlobAccessCreationResult)
         .onErrorResume(error => SMono.just(UnauthenticatedBlobAccessCreationFailure(blobIdAsString, asSetError(error))))
     }
@@ -141,15 +143,6 @@ class UnauthenticatedBlobAccessSetCreatePerformer @Inject()(val tokenRepository:
 
   private def toJavaAccountId(accountId: AccountId): JavaAccountId =
     JavaAccountId.fromString(accountId.id.value)
-
-  private def closeBlobContentAsync(blob: Blob): Unit =
-    SMono.fromCallable(() => blob.content.close())
-      .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
-      .onErrorResume(e => {
-        LOGGER.warn("Failed to close resolved blob content", e)
-        SMono.empty[Unit]
-      })
-      .subscribe()
 
   private def asSetError(error: Throwable): SetError =
     error match {
