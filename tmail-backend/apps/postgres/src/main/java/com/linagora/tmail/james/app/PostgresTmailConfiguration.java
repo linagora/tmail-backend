@@ -44,6 +44,7 @@ import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
+import com.linagora.tmail.james.app.module.PostgresUnauthenticatedBlobAccessModuleChooser;
 import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.oidc.JMAPOidcConfiguration;
@@ -67,6 +68,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
                                          EventBusImpl eventBusImpl,
                                          boolean oidcEnabled,
                                          OidcTokenCacheModuleChooser.OidcTokenCacheChoice oidcTokenCacheChoice,
+                                         PostgresUnauthenticatedBlobAccessModuleChooser.UnauthenticatedBlobAccessChoice unauthenticatedBlobAccessChoice,
                                          boolean keywordEmailQueryViewEnabled) implements Configuration {
 
     public enum EventBusImpl {
@@ -129,6 +131,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
         private Optional<EventBusImpl> eventBusImpl;
         private Optional<Boolean> oidcEnabled;
         private Optional<OidcTokenCacheModuleChooser.OidcTokenCacheChoice> oidcTokenStorageChoice;
+        private Optional<PostgresUnauthenticatedBlobAccessModuleChooser.UnauthenticatedBlobAccessChoice> unauthenticatedBlobAccessChoice;
         private Optional<Boolean> keywordEmailQueryViewEnabled;
 
         private Builder() {
@@ -148,6 +151,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
             eventBusImpl = Optional.empty();
             oidcEnabled = Optional.empty();
             oidcTokenStorageChoice = Optional.empty();
+            unauthenticatedBlobAccessChoice = Optional.empty();
             keywordEmailQueryViewEnabled = Optional.empty();
         }
 
@@ -249,6 +253,11 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
             return this;
         }
 
+        public Builder unauthenticatedBlobAccessChoice(PostgresUnauthenticatedBlobAccessModuleChooser.UnauthenticatedBlobAccessChoice unauthenticatedBlobAccessChoice) {
+            this.unauthenticatedBlobAccessChoice = Optional.of(unauthenticatedBlobAccessChoice);
+            return this;
+        }
+
         public Builder keywordEmailQueryViewEnabled(boolean enable) {
             this.keywordEmailQueryViewEnabled = Optional.of(enable);
             return this;
@@ -326,6 +335,9 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
             OidcTokenCacheModuleChooser.OidcTokenCacheChoice oidcTokenCacheChoice = this.oidcTokenStorageChoice.orElseGet(Throwing.supplier(
                 () -> OidcTokenCacheModuleChooser.OidcTokenCacheChoice.from(propertiesProvider)));
 
+            PostgresUnauthenticatedBlobAccessModuleChooser.UnauthenticatedBlobAccessChoice unauthenticatedBlobAccessChoice = this.unauthenticatedBlobAccessChoice.orElseGet(Throwing.supplier(
+                () -> PostgresUnauthenticatedBlobAccessModuleChooser.UnauthenticatedBlobAccessChoice.from(propertiesProvider)));
+
             boolean keywordEmailQueryViewEnabled = this.keywordEmailQueryViewEnabled.orElseGet(() -> {
                 try {
                     return JMAPExtensionConfiguration.from(propertiesProvider.getConfiguration("jmap")).viewKeywordQueryEnabled();
@@ -354,6 +366,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
                 eventBusImpl,
                 oidcEnabled,
                 oidcTokenCacheChoice,
+                unauthenticatedBlobAccessChoice,
                 keywordEmailQueryViewEnabled);
         }
 
