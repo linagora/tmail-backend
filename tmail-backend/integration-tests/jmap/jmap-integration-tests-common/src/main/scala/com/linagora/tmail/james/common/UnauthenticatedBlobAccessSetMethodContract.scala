@@ -67,7 +67,7 @@ class UnauthenticatedBlobAccessTokenRepositoryProbe @Inject()(repository: Unauth
   def isValid(accountId: String, blobId: String, token: String): Boolean =
     repository.check(JavaAccountId.fromString(accountId), blobIdFactory.parse(blobId), new UnauthenticatedBlobDownloadToken(UUID.fromString(token)))
       .block()
-      .booleanValue()
+      .isPresent
 }
 
 class UnauthenticatedBlobAccessTokenRepositoryProbeModule extends AbstractModule {

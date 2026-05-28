@@ -20,7 +20,7 @@ package com.linagora.tmail.james.jmap.blob
 
 import java.time.{Duration, Instant}
 
-import com.linagora.tmail.james.jmap.blob.UnauthenticatedBlobDownloadTokenRepositoryContract.{ACCOUNT_ID, BLOB_ID}
+import com.linagora.tmail.james.jmap.blob.UnauthenticatedBlobDownloadTokenRepositoryContract.{ACCOUNT_ID, BLOB_ID, USERNAME}
 import org.apache.james.utils.UpdatableTickingClock
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
@@ -42,7 +42,7 @@ class MemoryUnauthenticatedBlobDownloadTokenRepositoryTest extends Unauthenticat
 
   @Test
   def expiredTokenShouldBeRemovedLazily(): Unit = {
-    val token = repository.generate(ACCOUNT_ID, BLOB_ID).block()
+    val token = repository.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block()
 
     advanceClockAfterTtl()
     repository.check(ACCOUNT_ID, BLOB_ID, token).block()

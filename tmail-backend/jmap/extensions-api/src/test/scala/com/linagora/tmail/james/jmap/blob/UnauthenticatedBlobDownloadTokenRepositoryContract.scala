@@ -20,8 +20,9 @@ package com.linagora.tmail.james.jmap.blob
 
 import java.util.UUID
 
-import com.linagora.tmail.james.jmap.blob.UnauthenticatedBlobDownloadTokenRepositoryContract.{ACCOUNT_ID, ACCOUNT_ID_2, BLOB_ID, BLOB_ID_2, RANDOM_TOKEN}
+import com.linagora.tmail.james.jmap.blob.UnauthenticatedBlobDownloadTokenRepositoryContract.{ACCOUNT_ID, ACCOUNT_ID_2, BLOB_ID, BLOB_ID_2, RANDOM_TOKEN, USERNAME, USERNAME_2}
 import org.apache.james.blob.api.PlainBlobId
+import org.apache.james.core.Username
 import org.apache.james.jmap.api.model.AccountId
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
@@ -31,6 +32,8 @@ object UnauthenticatedBlobDownloadTokenRepositoryContract {
   val ACCOUNT_ID_2: AccountId = AccountId.fromString("accountId2")
   val BLOB_ID: PlainBlobId = new PlainBlobId.Factory().parse("blobId")
   val BLOB_ID_2: PlainBlobId = new PlainBlobId.Factory().parse("blobId2")
+  val USERNAME: Username = Username.of("bob@domain.tld")
+  val USERNAME_2: Username = Username.of("alice@domain.tld")
   val RANDOM_TOKEN: UnauthenticatedBlobDownloadToken = new UnauthenticatedBlobDownloadToken(UUID.fromString("54b372bb-106c-46e3-a5f3-307eaf37b363"))
 }
 
@@ -39,92 +42,92 @@ trait UnauthenticatedBlobDownloadTokenRepositoryContract {
   def advanceClockAfterTtl(): Unit
 
   @Test
-  def unknownTokenShouldReturnFalse(): Unit =
+  def unknownTokenShouldReturnEmpty(): Unit =
     assertThat(testee.check(ACCOUNT_ID, BLOB_ID, RANDOM_TOKEN).block())
-      .isFalse
+      .isEmpty
 
   @Test
-  def generatedTokenShouldValidate(): Unit = {
-    val token = testee.generate(ACCOUNT_ID, BLOB_ID).block()
+  def generatedTokenShouldReturnUsername(): Unit = {
+    val token = testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block()
 
     assertThat(testee.check(ACCOUNT_ID, BLOB_ID, token).block())
-      .isTrue
+      .contains(USERNAME)
   }
 
   @Test
-  def wrongTokenShouldReturnFalse(): Unit = {
-    testee.generate(ACCOUNT_ID, BLOB_ID).block()
+  def wrongTokenShouldReturnEmpty(): Unit = {
+    testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block()
 
     assertThat(testee.check(ACCOUNT_ID, BLOB_ID, RANDOM_TOKEN).block())
-      .isFalse
+      .isEmpty
   }
 
   @Test
-  def correctTokenWithWrongAccountShouldReturnFalse(): Unit = {
-    val token = testee.generate(ACCOUNT_ID, BLOB_ID).block()
+  def correctTokenWithWrongAccountShouldReturnEmpty(): Unit = {
+    val token = testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block()
 
     assertThat(testee.check(ACCOUNT_ID_2, BLOB_ID, token).block())
-      .isFalse
+      .isEmpty
   }
 
   @Test
-  def correctTokenWithWrongBlobShouldReturnFalse(): Unit = {
-    val token = testee.generate(ACCOUNT_ID, BLOB_ID).block()
+  def correctTokenWithWrongBlobShouldReturnEmpty(): Unit = {
+    val token = testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block()
 
     assertThat(testee.check(ACCOUNT_ID, BLOB_ID_2, token).block())
-      .isFalse
+      .isEmpty
   }
 
   @Test
   def generatingANewTokenShouldInvalidatePreviousTokenForSameBlob(): Unit = {
-    val firstToken = testee.generate(ACCOUNT_ID, BLOB_ID).block()
-    val secondToken = testee.generate(ACCOUNT_ID, BLOB_ID).block()
+    val firstToken = testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block()
+    val secondToken = testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block()
 
     assertThat(testee.check(ACCOUNT_ID, BLOB_ID, firstToken).block())
-      .isFalse
+      .isEmpty
     assertThat(testee.check(ACCOUNT_ID, BLOB_ID, secondToken).block())
-      .isTrue
+      .contains(USERNAME)
   }
 
   @Test
   def tokensForDifferentBlobsShouldBeIndependent(): Unit = {
-    val firstToken = testee.generate(ACCOUNT_ID, BLOB_ID).block()
-    val secondToken = testee.generate(ACCOUNT_ID, BLOB_ID_2).block()
+    val firstToken = testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block()
+    val secondToken = testee.generate(ACCOUNT_ID, BLOB_ID_2, USERNAME).block()
 
     assertThat(testee.check(ACCOUNT_ID, BLOB_ID, firstToken).block())
-      .isTrue
+      .contains(USERNAME)
     assertThat(testee.check(ACCOUNT_ID, BLOB_ID_2, secondToken).block())
-      .isTrue
+      .contains(USERNAME)
   }
 
   @Test
   def tokensForDifferentAccountsShouldBeIndependent(): Unit = {
-    val firstToken = testee.generate(ACCOUNT_ID, BLOB_ID).block()
-    val secondToken = testee.generate(ACCOUNT_ID_2, BLOB_ID).block()
+    val firstToken = testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block()
+    val secondToken = testee.generate(ACCOUNT_ID_2, BLOB_ID, USERNAME_2).block()
 
     assertThat(testee.check(ACCOUNT_ID, BLOB_ID, firstToken).block())
-      .isTrue
+      .contains(USERNAME)
     assertThat(testee.check(ACCOUNT_ID_2, BLOB_ID, secondToken).block())
-      .isTrue
+      .contains(USERNAME_2)
   }
 
   @Test
   def tokenShouldBeReusableDuringTtl(): Unit = {
-    val token = testee.generate(ACCOUNT_ID, BLOB_ID).block()
+    val token = testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block()
 
     assertThat(testee.check(ACCOUNT_ID, BLOB_ID, token).block())
-      .isTrue
+      .contains(USERNAME)
     assertThat(testee.check(ACCOUNT_ID, BLOB_ID, token).block())
-      .isTrue
+      .contains(USERNAME)
   }
 
   @Test
   def tokenShouldRejectAfterTtl(): Unit = {
-    val token = testee.generate(ACCOUNT_ID, BLOB_ID).block()
+    val token = testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block()
 
     advanceClockAfterTtl()
 
     assertThat(testee.check(ACCOUNT_ID, BLOB_ID, token).block())
-      .isFalse
+      .isEmpty
   }
 }
