@@ -114,7 +114,7 @@ class UnauthenticatedBlobAccessSetCreatePerformer @Inject()(val tokenRepository:
       case Left(error) => SMono.just(UnauthenticatedBlobAccessCreationFailure(blobIdAsString, error))
       case Right(blobIds) => blobResolvers.validateAccess(blobIds.jmapBlobId, mailboxSession)
         .flatMap {
-          case hasAccess if hasAccess.booleanValue() => SMono(tokenRepository.generate(toJavaAccountId(accountId), blobIds.blobStoreBlobId))
+          case hasAccess if hasAccess.booleanValue() => SMono(tokenRepository.generate(toJavaAccountId(accountId), blobIds.blobStoreBlobId, mailboxSession.getUser))
           case _ => SMono.error(BlobNotFoundException(blobIds.jmapBlobId))
         }
         .map(token => UnauthenticatedBlobAccessCreationSuccess(blobIdAsString, UnauthenticatedBlobAccessCreationResponse(token.value().toString)): UnauthenticatedBlobAccessCreationResult)

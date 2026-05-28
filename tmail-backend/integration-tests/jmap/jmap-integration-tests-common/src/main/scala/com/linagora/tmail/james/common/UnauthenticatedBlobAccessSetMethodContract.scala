@@ -19,8 +19,8 @@
 package com.linagora.tmail.james.common
 
 import java.nio.charset.StandardCharsets
-import java.util.UUID
 import java.util.concurrent.atomic.AtomicReference
+import java.util.{Optional, UUID}
 
 import com.google.common.hash.Hashing
 import com.google.inject.AbstractModule
@@ -65,9 +65,12 @@ object UnauthenticatedBlobAccessSetMethodContract {
 class UnauthenticatedBlobAccessTokenRepositoryProbe @Inject()(repository: UnauthenticatedBlobDownloadTokenRepository,
                                                               blobIdFactory: BlobId.Factory) extends GuiceProbe {
   def isValid(accountId: String, blobId: String, token: String): Boolean =
+    username(accountId, blobId, token)
+      .isPresent
+
+  def username(accountId: String, blobId: String, token: String): Optional[Username] =
     repository.check(JavaAccountId.fromString(accountId), blobIdFactory.parse(blobId), new UnauthenticatedBlobDownloadToken(UUID.fromString(token)))
       .block()
-      .isPresent
 }
 
 class UnauthenticatedBlobAccessTokenRepositoryProbeModule extends AbstractModule {
@@ -177,6 +180,7 @@ trait UnauthenticatedBlobAccessSetMethodContract {
            |    "c1"
            |]""".stripMargin)
     assertThat(tokenProbe(server).isValid(bobAccountId, blobId, token)).isTrue
+    assertThat(tokenProbe(server).username(bobAccountId, blobId, token)).contains(bobUsername)
   }
 
   @Test
@@ -421,6 +425,7 @@ trait UnauthenticatedBlobAccessSetMethodContract {
 
     // THEN the blob should be granted under Andre accountId, not bob accountId
     assertThat(tokenProbe(server).isValid(andreAccountId, andreBlobId, token)).isTrue
+    assertThat(tokenProbe(server).username(andreAccountId, andreBlobId, token)).contains(andreUsername)
     assertThat(tokenProbe(server).isValid(bobAccountId, andreBlobId, token)).isFalse
   }
 
