@@ -42,4 +42,11 @@ Specified to TMail backend, we can configure the following configurations in the
 | attachment.filename.ngram.heuristic.enabled
 | Allows a heuristic search when ngram is enabled. It will do the ngram search for attachment filename only if the number of characters in the search is less than 6 characters. If disabled there is no limit (but could have a significant performance cost). Optional. Defaults to false.
 
+| opensearch.mailbox.body.language
+| Language analyzer to use for message body and attachment text content indexing (`text_body`, `html_body`, `attachments.text_content`).
+Enables stemming and language-specific stopwords for the configured language, improving search recall for morphologically rich languages.
+Accepted values: any built-in OpenSearch language analyzer name — `arabic`, `armenian`, `basque`, `bengali`, `brazilian`, `bulgarian`, `catalan`, `cjk`, `czech`, `danish`, `dutch`, `english`, `estonian`, `finnish`, `french`, `galician`, `german`, `greek`, `hindi`, `hungarian`, `indonesian`, `irish`, `italian`, `latvian`, `lithuanian`, `norwegian`, `persian`, `portuguese`, `romanian`, `russian`, `sorani`, `spanish`, `swedish`, `thai`, `turkish`.
+Optional. Defaults to `standard` (no stemming, language-agnostic).
+*Changing this setting requires a full reindex of all mailboxes.*
+
 |===
