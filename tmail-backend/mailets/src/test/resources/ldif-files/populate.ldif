@@ -73,6 +73,16 @@ mail: bob@james.org
 userPassword: secret
 description: Extra user
 
+dn: uid=john-doe, ou=people, dc=james,dc=org
+objectClass: inetOrgPerson
+uid: john-doe
+cn: john-doe
+sn: Doe
+givenName: John
+displayName: John Doe
+mail: john-doe@james.org
+userPassword: secret
+
 dn: cn=mygroup, ou=lists, dc=james,dc=org
 objectclass: groupofnames
 cn: mygroup
