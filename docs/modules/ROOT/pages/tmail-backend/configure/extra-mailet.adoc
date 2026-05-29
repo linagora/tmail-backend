@@ -152,3 +152,145 @@ To gradually increase sending volume when warming up a new IP address:
   <gateway>established-smtp-gateway.example.com</gateway>
 </mailet>
 ....
+
+== SuspiciousDisplayName
+
+=== Purpose
+
+The `SuspiciousDisplayName` matcher detects display name usurpation: an external sender sets a
+`From` display name that matches the LDAP `displayName` of a local user, making the email appear
+to come from a trusted colleague.
+
+Use cases:
+
+* *Phishing detection*: Flag inbound emails where the display name impersonates a known internal
+  user
+* *Security pipeline*: Route suspicious emails to a quarantine processor or add a warning header
+  before delivery
+
+=== How it works
+
+For each email the matcher:
+
+1. Parses the `From` header display name using MIME4J
+2. Strips punctuation (`()[]{}.,<>:;`) from each token, removes tokens shorter than 3 characters
+   and removes configurable stop words (default: `Mr`, `Mme`, `Mrs`, `Ms`, `Dr`, `M`, `Me`, `Prof`)
+3. Builds an LDAP AND-substring filter: `(&(displayName=*token1*)(displayName=*token2*)...)`
+4. Searches the configured user base — because the filter applies to a *single* LDAP entry,
+   partial token combinations such as `Alice Doe` or `John Martin` do not match a user named
+   `John Doe`
+5. If a match is found, additionally checks that the sender's envelope address does not correspond
+   to that LDAP user — a legitimate user sending with their own display name is not flagged
+
+=== Configuration
+
+The matcher condition has the following optional syntax:
+
+....
+SuspiciousDisplayName[=<userBase>][?stopWords=<csv>]
+....
+
+[cols="1,1,3", options="header"]
+|===
+|Part
+|Default
+|Description
+
+|`<userBase>`
+|`userBase` from `usersrepository.xml`
+|LDAP DN under which to search for users, e.g. `ou=people,dc=james,dc=org`
+
+|`stopWords`
+|`Mr,Mme,Mrs,Ms,Dr,M,Me,Prof`
+|Comma-separated list of tokens to ignore during tokenization (case-insensitive).
+ Providing this parameter *replaces* the default list entirely.
+|===
+
+==== Examples
+
+*Minimal — uses configured userBase and default stop words:*
+
+....
+<mailet matcher="SuspiciousDisplayName" class="AddHeader">
+  <name>X-Suspicious-DisplayName</name>
+  <value>true</value>
+</mailet>
+....
+
+*Explicit userBase:*
+
+....
+<mailet matcher="SuspiciousDisplayName=ou=people,dc=james,dc=org" class="AddHeader">
+  <name>X-Suspicious-DisplayName</name>
+  <value>true</value>
+</mailet>
+....
+
+*Custom stop words (replaces defaults):*
+
+....
+<mailet matcher="SuspiciousDisplayName=ou=people,dc=james,dc=org?stopWords=Mr,Mme,Mrs,Dr,Prof"
+        class="AddHeader">
+  <name>X-Suspicious-DisplayName</name>
+  <value>true</value>
+</mailet>
+....
+
+*Typical security pipeline — combine with a local-sender exclusion:*
+
+....
+<mailet matcher="And(Not(HostIsLocal),SuspiciousDisplayName=ou=people,dc=james,dc=org)"
+        class="AddHeader">
+  <name>X-Suspicious-DisplayName</name>
+  <value>true</value>
+</mailet>
+....
+
+== SuspiciousDomainInDisplayName
+
+=== Purpose
+
+The `SuspiciousDomainInDisplayName` matcher flags emails whose `From` display name contains a
+reference to a local domain (either as a bare domain or embedded in an email address), which is
+a common trick to make an external email appear to originate from inside the organisation.
+
+Examples of suspicious display names when `linagora.com` is a local domain:
+
+* `"John from linagora.com" <attacker@evil.org>`
+* `"john@linagora.com" <attacker@evil.org>`
+* `"John (linagora.com)" <attacker@evil.org>`
+
+=== How it works
+
+For each email the matcher:
+
+1. Parses the `From` header display name using MIME4J
+2. Splits the display name on whitespace, common punctuation and `@` using Guava `CharMatcher`;
+   leading/trailing dots and commas are trimmed from each token
+3. Retains only tokens that contain a dot (domain-like candidates)
+4. Attempts `Domain.of(token)` on each candidate — invalid tokens are silently ignored
+5. Skips any domain that equals the sender's own envelope domain (a sender legitimately
+   referencing their own domain is not suspicious)
+6. Checks the remaining candidates against `MailetContext.isLocalServer` — the first local
+   domain found triggers a match
+
+=== Configuration
+
+No condition parameter is required. The list of local domains is taken directly from the
+server's configured domain list.
+
+....
+<mailet matcher="SuspiciousDomainInDisplayName" class="AddHeader">
+  <name>X-Suspicious-Domain</name>
+  <value>true</value>
+</mailet>
+....
+
+*Typical security pipeline — combine with a local-sender exclusion:*
+
+....
+<mailet matcher="And(Not(HostIsLocal),SuspiciousDomainInDisplayName)" class="AddHeader">
+  <name>X-Suspicious-Domain</name>
+  <value>true</value>
+</mailet>
+....
