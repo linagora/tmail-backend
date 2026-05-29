@@ -19,6 +19,8 @@
 
 package com.linagora.tmail.mailbox.opensearch;
 
+import java.time.LocalDate;
+import java.time.ZoneOffset;
 import java.util.Collection;
 
 import jakarta.inject.Inject;
@@ -59,7 +61,7 @@ public class TmailQueryConverter extends QueryConverter {
             .gauss(new DecayFunction.Builder()
                 .field(JsonMessageConstants.DATE)
                 .placement(new DecayPlacement.Builder()
-                    .origin(JsonData.of("now"))
+                    .origin(JsonData.of(LocalDate.now(ZoneOffset.UTC).toString()))
                     .scale(JsonData.of("365d"))
                     .offset(JsonData.of("30d"))
                     .decay(0.5)
