@@ -98,8 +98,8 @@ class SuspiciousDomainInDisplayNameTest {
     }
 
     @Test
-    void shouldNotMatchWhenDomainInDisplayNameMatchesSenderDomain() throws Exception {
-        // john@linagora.com legitimately mentions his own domain in his display name
+    void shouldNotMatchWhenFromHeaderAddressDomainMatchesDomainInDisplayName() throws Exception {
+        // From: "John from linagora.com" <john@linagora.com> — From address domain == display name domain
         MailAddress localSender = newAddress("john@linagora.com");
 
         Collection<MailAddress> matched = testee.match(mailWithFromDisplayName("John from linagora.com", localSender));
@@ -108,11 +108,47 @@ class SuspiciousDomainInDisplayNameTest {
     }
 
     @Test
-    void shouldMatchWhenDisplayNameDomainIsLocalButDifferentFromSenderDomain() throws Exception {
-        // attacker@evil.org puts a local domain that is not their own → suspicious
+    void shouldMatchWhenFromHeaderAddressDomainDiffersFromDisplayNameDomain() throws Exception {
+        // From: "John from linagora.com" <attacker@evil.org> — From address domain != display name domain
         Collection<MailAddress> matched = testee.match(mailWithFromDisplayName("John from linagora.com", SENDER));
 
         assertThat(matched).containsOnly(RECIPIENT);
+    }
+
+    @Test
+    void shouldMatchWhenEnvelopeDomainIsLocalButFromHeaderDomainIsNot() throws Exception {
+        // MAIL FROM: attacker@linagora.com, From: "John from linagora.com" <attacker@evil.org>
+        // Envelope domain matches, but From header address domain doesn't → suspicious
+        MailAddress envelopeSender = newAddress("attacker@linagora.com");
+        MimeMessage message = MimeMessageBuilder.mimeMessageBuilder()
+            .addFrom(new InternetAddress("attacker@evil.org", "John from linagora.com"))
+            .build();
+        FakeMail mail = FakeMail.builder()
+            .name("test")
+            .sender(envelopeSender)
+            .recipient(RECIPIENT)
+            .mimeMessage(message)
+            .build();
+
+        assertThat(testee.match(mail)).containsOnly(RECIPIENT);
+    }
+
+    @Test
+    void shouldNotMatchWhenFromHeaderDomainIsLocalEvenIfEnvelopeDomainDiffers() throws Exception {
+        // MAIL FROM: forwarder@other.com (forwarding), From: "John from linagora.com" <john@linagora.com>
+        // From header address domain matches display name domain → not suspicious
+        MailAddress envelopeSender = newAddress("forwarder@other.com");
+        MimeMessage message = MimeMessageBuilder.mimeMessageBuilder()
+            .addFrom(new InternetAddress("john@linagora.com", "John from linagora.com"))
+            .build();
+        FakeMail mail = FakeMail.builder()
+            .name("test")
+            .sender(envelopeSender)
+            .recipient(RECIPIENT)
+            .mimeMessage(message)
+            .build();
+
+        assertThat(testee.match(mail)).isEmpty();
     }
 
     // --- no-match cases ---

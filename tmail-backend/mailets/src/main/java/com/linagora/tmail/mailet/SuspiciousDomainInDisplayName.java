@@ -26,6 +26,7 @@ import jakarta.mail.MessagingException;
 
 import org.apache.james.core.Domain;
 import org.apache.james.core.MailAddress;
+import org.apache.james.mime4j.dom.address.Mailbox;
 import org.apache.james.mime4j.field.address.LenientAddressParser;
 import org.apache.mailet.Mail;
 import org.apache.mailet.base.GenericMatcher;
@@ -68,19 +69,27 @@ public class SuspiciousDomainInDisplayName extends GenericMatcher {
 
     @Override
     public Collection<MailAddress> match(Mail mail) throws MessagingException {
-        Optional<Domain> senderDomain = mail.getMaybeSender().asOptional()
-            .map(MailAddress::getDomain);
+        Optional<Mailbox> fromMailbox = extractFromMailbox(mail);
 
-        boolean suspicious = extractFromDisplayName(mail)
+        Optional<Domain> fromAddressDomain = fromMailbox
+            .map(Mailbox::getDomain)
+            .filter(domain -> domain != null && !domain.isBlank())
+            .flatMap(this::tryParseDomain);
+
+        boolean suspicious = fromMailbox
+            .map(Mailbox::getName)
+            .filter(name -> name != null && !name.isBlank())
             .map(this::extractDomains)
             .orElse(Stream.empty())
-            .filter(domain -> senderDomain.map(sd -> !sd.equals(domain)).orElse(true))
+            .filter(domain -> fromAddressDomain.map(fromDomain -> !fromDomain.equals(domain)).orElse(true))
             .anyMatch(domain -> getMailetContext().isLocalServer(domain));
 
-        return suspicious ? mail.getRecipients() : ImmutableList.of();
+        return Optional.of(mail.getRecipients())
+            .filter(recipients -> suspicious)
+            .orElse(ImmutableList.of());
     }
 
-    private Optional<String> extractFromDisplayName(Mail mail) throws MessagingException {
+    private Optional<Mailbox> extractFromMailbox(Mail mail) throws MessagingException {
         String[] fromHeaders = mail.getMessage().getHeader("From");
         if (fromHeaders == null || fromHeaders.length == 0) {
             return Optional.empty();
@@ -89,9 +98,7 @@ public class SuspiciousDomainInDisplayName extends GenericMatcher {
             .parseAddressList(fromHeaders[0])
             .flatten()
             .stream()
-            .findFirst()
-            .map(mailbox -> mailbox.getName())
-            .filter(name -> name != null && !name.isBlank());
+            .findFirst();
     }
 
     private Stream<Domain> extractDomains(String displayName) {

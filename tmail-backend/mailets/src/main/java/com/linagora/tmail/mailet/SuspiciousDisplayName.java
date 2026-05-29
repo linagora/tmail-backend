@@ -57,15 +57,15 @@ import com.unboundid.ldap.sdk.SearchScope;
  * <p>Configuration:</p>
  * <pre><code>
  * &lt;!-- userBase from LdapRepositoryConfiguration, default stop words --&gt;
- * &lt;mailet matcher="SuspiciousDisplayName" class="AddHeader"&gt;
+ * &lt;mailet match="SuspiciousDisplayName" class="AddHeader"&gt;
  *   &lt;name&gt;X-Suspicious-DisplayName&lt;/name&gt;&lt;value&gt;true&lt;/value&gt;
  * &lt;/mailet&gt;
  *
  * &lt;!-- explicit userBase --&gt;
- * &lt;mailet matcher="SuspiciousDisplayName=ou=people,dc=james,dc=org" class="AddHeader"&gt; ... &lt;/mailet&gt;
+ * &lt;mailet match="SuspiciousDisplayName=ou=people,dc=james,dc=org" class="AddHeader"&gt; ... &lt;/mailet&gt;
  *
  * &lt;!-- explicit userBase + custom stop words --&gt;
- * &lt;mailet matcher="SuspiciousDisplayName=ou=people,dc=james,dc=org?stopWords=Mr,Mme,Mrs,Dr" class="AddHeader"&gt;
+ * &lt;mailet match="SuspiciousDisplayName=ou=people,dc=james,dc=org?stopWords=Mr,Mme,Mrs,Dr" class="AddHeader"&gt;
  *   ...
  * &lt;/mailet&gt;
  * </code></pre>
@@ -145,14 +145,7 @@ public class SuspiciousDisplayName extends GenericMatcher {
 
     private boolean isSuspicious(List<String> tokens, Optional<MailAddress> sender) {
         try {
-            Filter[] subFilters = tokens.stream()
-                .map(token -> Filter.createSubstringFilter(
-                    DISPLAY_NAME_ATTRIBUTE, null, new String[]{token}, null))
-                .toArray(Filter[]::new);
-
-            Filter filter = subFilters.length == 1
-                ? subFilters[0]
-                : Filter.createANDFilter(subFilters);
+            Filter filter = createLdapFilter(tokens);
 
             List<SearchResultEntry> entries = ldapConnectionPool
                 .search(userBase, SearchScope.SUB, filter,
@@ -169,6 +162,19 @@ public class SuspiciousDisplayName extends GenericMatcher {
                 .orElse(true);
         } catch (LDAPSearchException e) {
             throw new RuntimeException("Failed searching LDAP for suspicious display name", e);
+        }
+    }
+
+    private Filter createLdapFilter(List<String> tokens) {
+        Filter[] subFilters = tokens.stream()
+            .map(token -> Filter.createSubstringFilter(
+                DISPLAY_NAME_ATTRIBUTE, null, new String[]{token}, null))
+            .toArray(Filter[]::new);
+
+        if (subFilters.length == 1) {
+            return subFilters[0];
+        } else {
+            return Filter.createANDFilter(subFilters);
         }
     }
 
