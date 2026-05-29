@@ -38,10 +38,14 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.io.StringWriter;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.ZoneId;
+import java.time.temporal.ChronoUnit;
+import java.util.Date;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 
 import org.apache.james.backends.opensearch.DockerOpenSearchExtension;
@@ -71,6 +75,7 @@ import org.apache.james.mailbox.opensearch.MailboxIdRoutingKeyFactory;
 import org.apache.james.mailbox.opensearch.MailboxIndexCreationUtil;
 import org.apache.james.mailbox.opensearch.OpenSearchMailboxConfiguration;
 import org.apache.james.mailbox.opensearch.events.OpenSearchListeningMessageSearchIndex;
+import org.apache.james.mailbox.opensearch.json.JsonMessageConstants;
 import org.apache.james.mailbox.opensearch.json.MessageToOpenSearchJson;
 import org.apache.james.mailbox.opensearch.query.QueryConverter;
 import org.apache.james.mailbox.opensearch.search.OpenSearchSearcher;
@@ -110,6 +115,7 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 
+import org.opensearch.client.json.JsonData;
 import reactor.core.publisher.Flux;
 
 public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTest {
@@ -957,6 +963,57 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
                 .of()
                 .setBody("testmail", StandardCharsets.UTF_8)
                 .addField(new RawField("Subject", subject)));
+    }
+
+    @Test
+    void dateDecayShouldFavorRecentMessagesWhenEnabled() throws Exception {
+        MailboxPath mailboxPath = MailboxPath.forUser(USERNAME, "dateDecayTestMailbox");
+        MailboxId mailboxId = storeMailboxManager.createMailbox(mailboxPath, session).get();
+        MessageManager messageManager = storeMailboxManager.getMailbox(mailboxId, session);
+
+        String uniqueBody = "unique_decay_test_body_" + UUID.randomUUID();
+
+        ComposedMessageId oldMessage = messageManager.appendMessage(
+            MessageManager.AppendCommand.builder()
+                .withInternalDate(Date.from(Instant.now().minus(3 * 365, ChronoUnit.DAYS)))
+                .build(Message.Builder.of().setBody(uniqueBody, StandardCharsets.UTF_8)),
+            session).getId();
+
+        ComposedMessageId recentMessage = messageManager.appendMessage(
+            MessageManager.AppendCommand.from(
+                Message.Builder.of().setBody(uniqueBody, StandardCharsets.UTF_8)),
+            session).getId();
+
+        awaitMessageCount(List.of(mailboxId), SearchQuery.matchAll(), 2);
+
+        TmailOpenSearchMailboxConfiguration decayConfig = TmailOpenSearchMailboxConfiguration.builder()
+            .dateBasedDecayEnabled(true)
+            .build();
+        TmailQueryConverter decayQueryConverter = new TmailQueryConverter(
+            new TmailCriterionConverter(openSearchMailboxConfiguration(), decayConfig),
+            decayConfig);
+        OpenSearchSearcher decaySearcher = new OpenSearchSearcher(
+            client, decayQueryConverter, 10,
+            readAliasName, new MailboxIdRoutingKeyFactory());
+
+        List<MessageId> results = decaySearcher.search(
+                ImmutableList.of(mailboxId),
+                SearchQuery.of(SearchQuery.bodyContains(uniqueBody)),
+                Optional.empty(),
+                ImmutableList.of(JsonMessageConstants.MESSAGE_ID),
+                false)
+            .<MessageId>handle((hit, sink) -> {
+                JsonData messageId = hit.fields().get(JsonMessageConstants.MESSAGE_ID);
+                if (messageId != null) {
+                    sink.next(messageIdFactory.fromString(messageId.toJson().asJsonArray().getString(0)));
+                }
+            })
+            .collectList()
+            .block();
+
+        assertThat(results).containsExactly(
+            recentMessage.getMessageId(),
+            oldMessage.getMessageId());
     }
 
     protected void awaitForOpenSearch(Query query, long totalHits) {

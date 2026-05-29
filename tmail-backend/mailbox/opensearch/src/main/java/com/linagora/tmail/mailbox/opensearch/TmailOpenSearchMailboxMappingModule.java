@@ -32,6 +32,7 @@ import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.mailbox.opensearch.MailboxMappingFactory;
 import org.apache.james.mailbox.opensearch.query.CriterionConverter;
+import org.apache.james.mailbox.opensearch.query.QueryConverter;
 import org.apache.james.utils.PropertiesProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -52,6 +53,9 @@ public class TmailOpenSearchMailboxMappingModule extends AbstractModule {
 
         bind(TmailCriterionConverter.class).in(Scopes.SINGLETON);
         bind(CriterionConverter.class).to(TmailCriterionConverter.class);
+
+        bind(TmailQueryConverter.class).in(Scopes.SINGLETON);
+        bind(QueryConverter.class).to(TmailQueryConverter.class);
     }
 
     @Provides

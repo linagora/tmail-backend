@@ -38,6 +38,7 @@ public class TmailOpenSearchMailboxConfiguration {
         private Optional<Boolean> attachmentFilenameNgramEnabled;
         private Optional<Boolean> attachmentFilenameNgramHeuristicEnabled;
         private Optional<String> bodyLanguage;
+        private Optional<Boolean> dateBasedDecayEnabled;
 
         Builder() {
             subjectNgramEnabled = Optional.empty();
@@ -45,6 +46,7 @@ public class TmailOpenSearchMailboxConfiguration {
             attachmentFilenameNgramEnabled = Optional.empty();
             attachmentFilenameNgramHeuristicEnabled = Optional.empty();
             bodyLanguage = Optional.empty();
+            dateBasedDecayEnabled = Optional.empty();
         }
 
         public Builder subjectNgramEnabled(Boolean subjectNgramEnabled) {
@@ -72,13 +74,19 @@ public class TmailOpenSearchMailboxConfiguration {
             return this;
         }
 
+        public Builder dateBasedDecayEnabled(Boolean dateBasedDecayEnabled) {
+            this.dateBasedDecayEnabled = Optional.ofNullable(dateBasedDecayEnabled);
+            return this;
+        }
+
         public TmailOpenSearchMailboxConfiguration build() {
             return new TmailOpenSearchMailboxConfiguration(
                 subjectNgramEnabled.orElse(DEFAULT_SUBJECT_NGRAM_DISABLED),
                 subjectNgramHeuristicEnabled.orElse(DEFAULT_SUBJECT_NGRAM_HEURISTIC_DISABLED),
                 attachmentFilenameNgramEnabled.orElse(DEFAULT_ATTACHMENT_FILENAME_NGRAM_DISABLED),
                 attachmentFilenameNgramHeuristicEnabled.orElse(DEFAULT_ATTACHMENT_FILENAME_NGRAM_HEURISTIC_DISABLED),
-                bodyLanguage
+                bodyLanguage,
+                dateBasedDecayEnabled.orElse(DEFAULT_DATE_BASED_DECAY_DISABLED)
             );
         }
     }
@@ -94,6 +102,7 @@ public class TmailOpenSearchMailboxConfiguration {
             .attachmentFilenameNgramEnabled(configuration.getBoolean(ATTACHMENT_FILENAME_NGRAM_ENABLED, null))
             .attachmentFilenameNgramHeuristicEnabled(configuration.getBoolean(ATTACHMENT_FILENAME_NGRAM_HEURISTIC_ENABLED, null))
             .bodyLanguage(configuration.getString(BODY_LANGUAGE, null))
+            .dateBasedDecayEnabled(configuration.getBoolean(DATE_BASED_DECAY_ENABLED, null))
             .build();
     }
 
@@ -102,11 +111,13 @@ public class TmailOpenSearchMailboxConfiguration {
     private static final String ATTACHMENT_FILENAME_NGRAM_ENABLED = "attachment.filename.ngram.enabled";
     private static final String ATTACHMENT_FILENAME_NGRAM_HEURISTIC_ENABLED = "attachment.filename.ngram.heuristic.enabled";
     public static final String BODY_LANGUAGE = "opensearch.mailbox.body.language";
+    public static final String DATE_BASED_DECAY_ENABLED = "opensearch.mailbox.score.date.based.decay.enabled";
     private static final boolean DEFAULT_SUBJECT_NGRAM_DISABLED = false;
     private static final boolean DEFAULT_SUBJECT_NGRAM_HEURISTIC_DISABLED = false;
     private static final boolean DEFAULT_ATTACHMENT_FILENAME_NGRAM_DISABLED = false;
     private static final boolean DEFAULT_ATTACHMENT_FILENAME_NGRAM_HEURISTIC_DISABLED = false;
     private static final String STANDARD_ANALYZER = "standard";
+    public static final boolean DEFAULT_DATE_BASED_DECAY_DISABLED = false;
 
     public static final TmailOpenSearchMailboxConfiguration DEFAULT_CONFIGURATION = builder().build();
 
@@ -115,15 +126,17 @@ public class TmailOpenSearchMailboxConfiguration {
     private final boolean attachmentFilenameNgramEnabled;
     private final boolean attachmentFilenameNgramHeuristicEnabled;
     private final Optional<String> bodyLanguage;
+    private final boolean dateBasedDecayEnabled;
 
     private TmailOpenSearchMailboxConfiguration(boolean subjectNgramEnabled, boolean subjectNgramHeuristicEnabled,
                                                 boolean attachmentFilenameNgramEnabled, boolean attachmentFilenameNgramHeuristicEnabled,
-                                                Optional<String> bodyLanguage) {
+                                                Optional<String> bodyLanguage, boolean dateBasedDecayEnabled) {
         this.subjectNgramEnabled = subjectNgramEnabled;
         this.subjectNgramHeuristicEnabled = subjectNgramHeuristicEnabled;
         this.attachmentFilenameNgramEnabled = attachmentFilenameNgramEnabled;
         this.attachmentFilenameNgramHeuristicEnabled = attachmentFilenameNgramHeuristicEnabled;
         this.bodyLanguage = bodyLanguage;
+        this.dateBasedDecayEnabled = dateBasedDecayEnabled;
     }
 
     public boolean subjectNgramEnabled() {
@@ -146,6 +159,10 @@ public class TmailOpenSearchMailboxConfiguration {
         return bodyLanguage.orElse(STANDARD_ANALYZER);
     }
 
+    public boolean dateBasedDecayEnabled() {
+        return dateBasedDecayEnabled;
+    }
+
     @Override
     public final boolean equals(Object o) {
         if (o instanceof TmailOpenSearchMailboxConfiguration) {
@@ -155,7 +172,8 @@ public class TmailOpenSearchMailboxConfiguration {
                 && Objects.equals(this.subjectNgramHeuristicEnabled, that.subjectNgramHeuristicEnabled)
                 && Objects.equals(this.attachmentFilenameNgramEnabled, that.attachmentFilenameNgramEnabled)
                 && Objects.equals(this.attachmentFilenameNgramHeuristicEnabled, that.attachmentFilenameNgramHeuristicEnabled)
-                && Objects.equals(this.bodyLanguage, that.bodyLanguage);
+                && Objects.equals(this.bodyLanguage, that.bodyLanguage)
+                && Objects.equals(this.dateBasedDecayEnabled, that.dateBasedDecayEnabled);
         }
         return false;
     }
@@ -163,6 +181,6 @@ public class TmailOpenSearchMailboxConfiguration {
     @Override
     public final int hashCode() {
         return Objects.hash(subjectNgramEnabled, subjectNgramHeuristicEnabled, attachmentFilenameNgramEnabled,
-            attachmentFilenameNgramHeuristicEnabled, bodyLanguage);
+            attachmentFilenameNgramHeuristicEnabled, bodyLanguage, dateBasedDecayEnabled);
     }
 }

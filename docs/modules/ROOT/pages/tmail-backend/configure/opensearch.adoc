@@ -49,4 +49,9 @@ Accepted values: any built-in OpenSearch language analyzer name — `arabic`, `a
 Optional. Defaults to `standard` (no stemming, language-agnostic).
 *Changing this setting requires a full reindex of all mailboxes.*
 
+| opensearch.mailbox.score.date.based.decay.enabled
+| When enabled, relevance-based searches (no explicit sort) apply a Gaussian date decay on the message date field,
+favouring recent messages. Messages newer than 30 days are not penalised; the decay factor reaches 0.5 at one year old.
+Optional. Defaults to false.
+
 |===
