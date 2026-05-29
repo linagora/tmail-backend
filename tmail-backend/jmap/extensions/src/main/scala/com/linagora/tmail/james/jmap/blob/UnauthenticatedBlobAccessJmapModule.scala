@@ -21,6 +21,8 @@ package com.linagora.tmail.james.jmap.blob
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
 import com.linagora.tmail.james.jmap.method.{UnauthenticatedBlobAccessCapabilityFactory, UnauthenticatedBlobAccessSetMethod}
+import com.linagora.tmail.james.jmap.routes.UnauthenticatedBlobAccessDownloadRoutes
+import org.apache.james.jmap.JMAPRoutes
 import org.apache.james.jmap.core.CapabilityFactory
 import org.apache.james.jmap.method.Method
 
@@ -33,5 +35,9 @@ class UnauthenticatedBlobAccessJmapModule extends AbstractModule {
     Multibinder.newSetBinder(binder(), classOf[Method])
       .addBinding()
       .to(classOf[UnauthenticatedBlobAccessSetMethod])
+
+    Multibinder.newSetBinder(binder(), classOf[JMAPRoutes])
+      .addBinding()
+      .to(classOf[UnauthenticatedBlobAccessDownloadRoutes])
   }
 }
