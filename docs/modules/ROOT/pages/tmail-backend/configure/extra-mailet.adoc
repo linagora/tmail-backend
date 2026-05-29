@@ -211,7 +211,7 @@ SuspiciousDisplayName[=<userBase>][?stopWords=<csv>]
 *Minimal — uses configured userBase and default stop words:*
 
 ....
-<mailet matcher="SuspiciousDisplayName" class="AddHeader">
+<mailet match="SuspiciousDisplayName" class="AddHeader">
   <name>X-Suspicious-DisplayName</name>
   <value>true</value>
 </mailet>
@@ -220,7 +220,7 @@ SuspiciousDisplayName[=<userBase>][?stopWords=<csv>]
 *Explicit userBase:*
 
 ....
-<mailet matcher="SuspiciousDisplayName=ou=people,dc=james,dc=org" class="AddHeader">
+<mailet match="SuspiciousDisplayName=ou=people,dc=james,dc=org" class="AddHeader">
   <name>X-Suspicious-DisplayName</name>
   <value>true</value>
 </mailet>
@@ -229,17 +229,7 @@ SuspiciousDisplayName[=<userBase>][?stopWords=<csv>]
 *Custom stop words (replaces defaults):*
 
 ....
-<mailet matcher="SuspiciousDisplayName=ou=people,dc=james,dc=org?stopWords=Mr,Mme,Mrs,Dr,Prof"
-        class="AddHeader">
-  <name>X-Suspicious-DisplayName</name>
-  <value>true</value>
-</mailet>
-....
-
-*Typical security pipeline — combine with a local-sender exclusion:*
-
-....
-<mailet matcher="And(Not(HostIsLocal),SuspiciousDisplayName=ou=people,dc=james,dc=org)"
+<mailet match="SuspiciousDisplayName=ou=people,dc=james,dc=org?stopWords=Mr,Mme,Mrs,Dr,Prof"
         class="AddHeader">
   <name>X-Suspicious-DisplayName</name>
   <value>true</value>
@@ -280,17 +270,10 @@ No condition parameter is required. The list of local domains is taken directly 
 server's configured domain list.
 
 ....
-<mailet matcher="SuspiciousDomainInDisplayName" class="AddHeader">
+<mailet match="SuspiciousDomainInDisplayName" class="AddHeader">
   <name>X-Suspicious-Domain</name>
   <value>true</value>
 </mailet>
 ....
 
-*Typical security pipeline — combine with a local-sender exclusion:*
-
-....
-<mailet matcher="And(Not(HostIsLocal),SuspiciousDomainInDisplayName)" class="AddHeader">
-  <name>X-Suspicious-Domain</name>
-  <value>true</value>
-</mailet>
 ....
