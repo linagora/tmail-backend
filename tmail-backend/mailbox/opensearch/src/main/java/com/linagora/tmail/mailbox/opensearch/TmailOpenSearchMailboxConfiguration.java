@@ -37,12 +37,14 @@ public class TmailOpenSearchMailboxConfiguration {
         private Optional<Boolean> subjectNgramHeuristicEnabled;
         private Optional<Boolean> attachmentFilenameNgramEnabled;
         private Optional<Boolean> attachmentFilenameNgramHeuristicEnabled;
+        private Optional<String> bodyLanguage;
 
         Builder() {
             subjectNgramEnabled = Optional.empty();
             subjectNgramHeuristicEnabled = Optional.empty();
             attachmentFilenameNgramEnabled = Optional.empty();
             attachmentFilenameNgramHeuristicEnabled = Optional.empty();
+            bodyLanguage = Optional.empty();
         }
 
         public Builder subjectNgramEnabled(Boolean subjectNgramEnabled) {
@@ -65,12 +67,18 @@ public class TmailOpenSearchMailboxConfiguration {
             return this;
         }
 
+        public Builder bodyLanguage(String bodyLanguage) {
+            this.bodyLanguage = Optional.ofNullable(bodyLanguage);
+            return this;
+        }
+
         public TmailOpenSearchMailboxConfiguration build() {
             return new TmailOpenSearchMailboxConfiguration(
                 subjectNgramEnabled.orElse(DEFAULT_SUBJECT_NGRAM_DISABLED),
                 subjectNgramHeuristicEnabled.orElse(DEFAULT_SUBJECT_NGRAM_HEURISTIC_DISABLED),
                 attachmentFilenameNgramEnabled.orElse(DEFAULT_ATTACHMENT_FILENAME_NGRAM_DISABLED),
-                attachmentFilenameNgramHeuristicEnabled.orElse(DEFAULT_ATTACHMENT_FILENAME_NGRAM_HEURISTIC_DISABLED)
+                attachmentFilenameNgramHeuristicEnabled.orElse(DEFAULT_ATTACHMENT_FILENAME_NGRAM_HEURISTIC_DISABLED),
+                bodyLanguage
             );
         }
     }
@@ -85,6 +93,7 @@ public class TmailOpenSearchMailboxConfiguration {
             .subjectNgramHeuristicEnabled(configuration.getBoolean(SUBJECT_NGRAM_HEURISTIC_ENABLED, null))
             .attachmentFilenameNgramEnabled(configuration.getBoolean(ATTACHMENT_FILENAME_NGRAM_ENABLED, null))
             .attachmentFilenameNgramHeuristicEnabled(configuration.getBoolean(ATTACHMENT_FILENAME_NGRAM_HEURISTIC_ENABLED, null))
+            .bodyLanguage(configuration.getString(BODY_LANGUAGE, null))
             .build();
     }
 
@@ -92,10 +101,12 @@ public class TmailOpenSearchMailboxConfiguration {
     private static final String SUBJECT_NGRAM_HEURISTIC_ENABLED = "subject.ngram.heuristic.enabled";
     private static final String ATTACHMENT_FILENAME_NGRAM_ENABLED = "attachment.filename.ngram.enabled";
     private static final String ATTACHMENT_FILENAME_NGRAM_HEURISTIC_ENABLED = "attachment.filename.ngram.heuristic.enabled";
+    public static final String BODY_LANGUAGE = "opensearch.mailbox.body.language";
     private static final boolean DEFAULT_SUBJECT_NGRAM_DISABLED = false;
     private static final boolean DEFAULT_SUBJECT_NGRAM_HEURISTIC_DISABLED = false;
     private static final boolean DEFAULT_ATTACHMENT_FILENAME_NGRAM_DISABLED = false;
     private static final boolean DEFAULT_ATTACHMENT_FILENAME_NGRAM_HEURISTIC_DISABLED = false;
+    private static final String STANDARD_ANALYZER = "standard";
 
     public static final TmailOpenSearchMailboxConfiguration DEFAULT_CONFIGURATION = builder().build();
 
@@ -103,13 +114,16 @@ public class TmailOpenSearchMailboxConfiguration {
     private final boolean subjectNgramHeuristicEnabled;
     private final boolean attachmentFilenameNgramEnabled;
     private final boolean attachmentFilenameNgramHeuristicEnabled;
+    private final Optional<String> bodyLanguage;
 
     private TmailOpenSearchMailboxConfiguration(boolean subjectNgramEnabled, boolean subjectNgramHeuristicEnabled,
-                                                boolean attachmentFilenameNgramEnabled, boolean attachmentFilenameNgramHeuristicEnabled) {
+                                                boolean attachmentFilenameNgramEnabled, boolean attachmentFilenameNgramHeuristicEnabled,
+                                                Optional<String> bodyLanguage) {
         this.subjectNgramEnabled = subjectNgramEnabled;
         this.subjectNgramHeuristicEnabled = subjectNgramHeuristicEnabled;
         this.attachmentFilenameNgramEnabled = attachmentFilenameNgramEnabled;
         this.attachmentFilenameNgramHeuristicEnabled = attachmentFilenameNgramHeuristicEnabled;
+        this.bodyLanguage = bodyLanguage;
     }
 
     public boolean subjectNgramEnabled() {
@@ -128,6 +142,10 @@ public class TmailOpenSearchMailboxConfiguration {
         return attachmentFilenameNgramHeuristicEnabled;
     }
 
+    public String bodyAnalyzer() {
+        return bodyLanguage.orElse(STANDARD_ANALYZER);
+    }
+
     @Override
     public final boolean equals(Object o) {
         if (o instanceof TmailOpenSearchMailboxConfiguration) {
@@ -136,13 +154,15 @@ public class TmailOpenSearchMailboxConfiguration {
             return Objects.equals(this.subjectNgramEnabled, that.subjectNgramEnabled)
                 && Objects.equals(this.subjectNgramHeuristicEnabled, that.subjectNgramHeuristicEnabled)
                 && Objects.equals(this.attachmentFilenameNgramEnabled, that.attachmentFilenameNgramEnabled)
-                && Objects.equals(this.attachmentFilenameNgramHeuristicEnabled, that.attachmentFilenameNgramHeuristicEnabled);
+                && Objects.equals(this.attachmentFilenameNgramHeuristicEnabled, that.attachmentFilenameNgramHeuristicEnabled)
+                && Objects.equals(this.bodyLanguage, that.bodyLanguage);
         }
         return false;
     }
 
     @Override
     public final int hashCode() {
-        return Objects.hash(subjectNgramEnabled, subjectNgramHeuristicEnabled, attachmentFilenameNgramEnabled, attachmentFilenameNgramHeuristicEnabled);
+        return Objects.hash(subjectNgramEnabled, subjectNgramHeuristicEnabled, attachmentFilenameNgramEnabled,
+            attachmentFilenameNgramHeuristicEnabled, bodyLanguage);
     }
 }

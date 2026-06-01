@@ -300,10 +300,10 @@ public class TmailMailboxMappingFactory implements MailboxMappingFactory {
                 .keyword(new KeywordProperty.Builder().build())
                 .build())
             .put(JsonMessageConstants.TEXT_BODY, new Property.Builder()
-                .text(new TextProperty.Builder().analyzer(STANDARD).build())
+                .text(new TextProperty.Builder().analyzer(tmailOpenSearchMailboxConfiguration.bodyAnalyzer()).build())
                 .build())
             .put(JsonMessageConstants.HTML_BODY, new Property.Builder()
-                .text(new TextProperty.Builder().analyzer(STANDARD).build())
+                .text(new TextProperty.Builder().analyzer(tmailOpenSearchMailboxConfiguration.bodyAnalyzer()).build())
                 .build())
             .put(JsonMessageConstants.HAS_ATTACHMENT, new Property.Builder()
                 .boolean_(new BooleanProperty.Builder().build())
@@ -313,7 +313,7 @@ public class TmailMailboxMappingFactory implements MailboxMappingFactory {
                     .properties(ImmutableMap.of(
                         JsonMessageConstants.Attachment.FILENAME, buildAttachmentFilenameProperty(),
                         JsonMessageConstants.Attachment.TEXT_CONTENT, new Property.Builder()
-                            .text(new TextProperty.Builder().analyzer(STANDARD).build())
+                            .text(new TextProperty.Builder().analyzer(tmailOpenSearchMailboxConfiguration.bodyAnalyzer()).build())
                             .build(),
                         JsonMessageConstants.Attachment.MEDIA_TYPE, new Property.Builder()
                             .keyword(new KeywordProperty.Builder().build())
