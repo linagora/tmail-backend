@@ -54,7 +54,7 @@ import reactor.netty.http.server.{HttpServerRequest, HttpServerResponse}
 
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
-import scala.util.Try
+import scala.util.{Failure, Success, Try}
 
 object UnauthenticatedBlobAccessDownloadRoutes {
   val LOGGER: Logger = LoggerFactory.getLogger(classOf[UnauthenticatedBlobAccessDownloadRoutes])
@@ -106,7 +106,7 @@ class UnauthenticatedBlobAccessDownloadRoutes @Inject()(val tokenRepository: Una
             Option(request.param(accountIdParam)).getOrElse(""),
             Option(request.param(blobIdParam)).getOrElse(""),
             e)
-          respondDetails(response, ProblemDetails(status = INTERNAL_SERVER_ERROR, detail = e.getMessage))
+          respondDetails(response, ProblemDetails(status = INTERNAL_SERVER_ERROR, detail = "Internal server error"))
       }
       .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
       .asJava()
@@ -123,18 +123,20 @@ class UnauthenticatedBlobAccessDownloadRoutes @Inject()(val tokenRepository: Una
       }
 
   private def parseRequest(request: HttpServerRequest): (JavaAccountId, BlobStoreBlobId, JmapBlobId, UnauthenticatedBlobDownloadToken) = {
-    val accountId: AccountId = Id.validate(request.param(accountIdParam))
-      .fold(_ => throw InvalidUnauthenticatedBlobAccessTokenException(), id => AccountId(id))
-    val blobIdAsString: String = request.param(blobIdParam)
-    val blobStoreBlobId: BlobStoreBlobId = Try(blobIdFactory.parse(blobIdAsString))
-      .getOrElse(throw InvalidUnauthenticatedBlobAccessTokenException())
-    val jmapBlobId: JmapBlobId = JmapBlobId.of(blobIdAsString)
-      .fold(_ => throw InvalidUnauthenticatedBlobAccessTokenException(), blobId => blobId)
-    val token: UnauthenticatedBlobDownloadToken = queryParam(request, tokenParam)
-      .flatMap(value => Try(new UnauthenticatedBlobDownloadToken(UUID.fromString(value))).toOption)
-      .getOrElse(throw InvalidUnauthenticatedBlobAccessTokenException())
+    val parsedRequest: Try[(JavaAccountId, BlobStoreBlobId, JmapBlobId, UnauthenticatedBlobDownloadToken)] = for {
+      accountId <- Id.validate(request.param(accountIdParam))
+        .fold(_ => Failure(InvalidUnauthenticatedBlobAccessTokenException()), id => Success(AccountId(id)))
+      blobIdAsString = request.param(blobIdParam)
+      blobStoreBlobId <- Try(blobIdFactory.parse(blobIdAsString))
+      jmapBlobId <- JmapBlobId.of(blobIdAsString)
+        .fold(_ => Failure(InvalidUnauthenticatedBlobAccessTokenException()), blobId => Success(blobId))
+      token <- queryParam(request, tokenParam)
+        .map(value => Try(new UnauthenticatedBlobDownloadToken(UUID.fromString(value))))
+        .getOrElse(Failure(InvalidUnauthenticatedBlobAccessTokenException()))
+    } yield (JavaAccountId.fromString(accountId.id.value), blobStoreBlobId, jmapBlobId, token)
 
-    (JavaAccountId.fromString(accountId.id.value), blobStoreBlobId, jmapBlobId, token)
+    parsedRequest
+      .getOrElse(throw InvalidUnauthenticatedBlobAccessTokenException())
   }
 
   private def resolveSession(username: Username): SMono[MailboxSession] =
@@ -159,9 +161,9 @@ class UnauthenticatedBlobAccessDownloadRoutes @Inject()(val tokenRepository: Una
       .`then`
   }
 
-  private def sanitizeHeaderValue(s: String): String =
-    if (HttpHeaderValidationUtil.validateValidHeaderValue(s) == -1) {
-      s
+  private def sanitizeHeaderValue(value: String): String =
+    if (HttpHeaderValidationUtil.validateValidHeaderValue(value) == -1) {
+      value
     } else {
       "application/octet-stream"
     }
