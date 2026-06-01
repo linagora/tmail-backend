@@ -998,7 +998,7 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
 
         List<MessageId> results = decaySearcher.search(
                 ImmutableList.of(mailboxId),
-                SearchQuery.of(SearchQuery.bodyContains(uniqueBody)),
+                SearchQuery.builder().andCriteria(SearchQuery.bodyContains(uniqueBody)).build(),
                 Optional.empty(),
                 ImmutableList.of(JsonMessageConstants.MESSAGE_ID),
                 false)
