@@ -106,6 +106,7 @@ public class TmailOpenSearchMailboxConfiguration {
     private static final boolean DEFAULT_SUBJECT_NGRAM_HEURISTIC_DISABLED = false;
     private static final boolean DEFAULT_ATTACHMENT_FILENAME_NGRAM_DISABLED = false;
     private static final boolean DEFAULT_ATTACHMENT_FILENAME_NGRAM_HEURISTIC_DISABLED = false;
+    private static final String STANDARD_ANALYZER = "standard";
 
     public static final TmailOpenSearchMailboxConfiguration DEFAULT_CONFIGURATION = builder().build();
 
@@ -144,8 +145,6 @@ public class TmailOpenSearchMailboxConfiguration {
     public String bodyAnalyzer() {
         return bodyLanguage.orElse(STANDARD_ANALYZER);
     }
-
-    private static final String STANDARD_ANALYZER = "standard";
 
     @Override
     public final boolean equals(Object o) {
