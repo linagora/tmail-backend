@@ -32,7 +32,7 @@ import io.restassured.http.ContentType.JSON
 import io.restassured.specification.RequestSpecification
 import jakarta.inject.Inject
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
-import org.apache.http.HttpStatus.{SC_CREATED, SC_OK}
+import org.apache.http.HttpStatus.{SC_CREATED, SC_OK, SC_UNAUTHORIZED}
 import org.apache.james.GuiceJamesServer
 import org.apache.james.blob.api.BlobId
 import org.apache.james.core.Username
@@ -48,6 +48,7 @@ import org.apache.james.modules.MailboxProbeImpl
 import org.apache.james.util.ClassLoaderUtils
 import org.apache.james.utils.{DataProbeImpl, GuiceProbe}
 import org.assertj.core.api.Assertions.assertThat
+import org.hamcrest.Matchers.{containsString, equalTo}
 import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import play.api.libs.json.{JsObject, Json}
 
@@ -160,7 +161,8 @@ trait UnauthenticatedBlobAccessSetMethodContract {
 
   @Test
   def shouldGrantAccessForUploadBlob(server: GuiceJamesServer): Unit = {
-    val blobId: String = uploadBlob(server, bobUsername, BOB_PASSWORD, bobAccountId)
+    val content: String = UUID.randomUUID().toString
+    val blobId: String = uploadBlob(server, bobUsername, BOB_PASSWORD, bobAccountId, content = content)
     val response: String = createAccess(server, bobAccountId, blobId)
     val token: String = createdToken(response, blobId)
 
@@ -181,6 +183,17 @@ trait UnauthenticatedBlobAccessSetMethodContract {
            |]""".stripMargin)
     assertThat(tokenProbe(server).isValid(bobAccountId, blobId, token)).isTrue
     assertThat(tokenProbe(server).username(bobAccountId, blobId, token)).contains(bobUsername)
+
+    `given`()
+      .basePath("")
+      .auth().none()
+    .when()
+      .get(s"/unauthenticatedDownload/$bobAccountId/$blobId?token=$token")
+    .`then`()
+      .statusCode(SC_OK)
+      .header("content-type", containsString("text/plain"))
+      .header("cache-control", equalTo("private, immutable, max-age=31536000"))
+      .body(equalTo(content))
   }
 
   @Test
@@ -198,6 +211,17 @@ trait UnauthenticatedBlobAccessSetMethodContract {
            |    }
            |}""".stripMargin)
     assertThat(tokenProbe(server).isValid(bobAccountId, messageBlobId, token)).isTrue
+
+    `given`()
+      .basePath("")
+      .auth().none()
+    .when()
+      .get(s"/unauthenticatedDownload/$bobAccountId/$messageBlobId?token=$token")
+    .`then`()
+      .statusCode(SC_OK)
+      .header("content-type", containsString("message/rfc822"))
+      .header("cache-control", equalTo("private, immutable, max-age=31536000"))
+      .body(containsString("Subject: subject"))
   }
 
   @Test
@@ -235,6 +259,17 @@ trait UnauthenticatedBlobAccessSetMethodContract {
            |    }
            |}""".stripMargin)
     assertThat(tokenProbe(server).isValid(bobAccountId, attachmentBlobId, token)).isTrue
+
+    `given`()
+      .basePath("")
+      .auth().none()
+    .when()
+      .get(s"/unauthenticatedDownload/$bobAccountId/$attachmentBlobId?token=$token")
+    .`then`()
+      .statusCode(SC_OK)
+      .header("content-type", containsString("text/plain"))
+      .header("cache-control", equalTo("private, immutable, max-age=31536000"))
+      .body(equalTo("This is a beautiful banana.\n"))
   }
 
   @Test
@@ -427,6 +462,19 @@ trait UnauthenticatedBlobAccessSetMethodContract {
     assertThat(tokenProbe(server).isValid(andreAccountId, andreBlobId, token)).isTrue
     assertThat(tokenProbe(server).username(andreAccountId, andreBlobId, token)).contains(andreUsername)
     assertThat(tokenProbe(server).isValid(bobAccountId, andreBlobId, token)).isFalse
+
+    `given`()
+      .basePath("")
+      .auth().none()
+    .when()
+      .get(s"/unauthenticatedDownload/$andreAccountId/$andreBlobId?token=$token")
+    .`then`()
+      .statusCode(SC_OK)
+      .header("content-type", containsString("message/rfc822"))
+      .header("cache-control", equalTo("private, immutable, max-age=31536000"))
+      .body(containsString("Subject: subject"))
+
+    assertUnauthorizedDownload(accountId = bobAccountId, blobId = andreBlobId, token = Some(token))
   }
 
   @Test
@@ -508,6 +556,47 @@ trait UnauthenticatedBlobAccessSetMethodContract {
     assertThat(firstToken).isNotEqualTo(secondToken)
     assertThat(tokenProbe(server).isValid(bobAccountId, blobId, firstToken)).isFalse
     assertThat(tokenProbe(server).isValid(bobAccountId, blobId, secondToken)).isTrue
+    assertUnauthorizedDownload(accountId = bobAccountId, blobId = blobId, token = Some(firstToken))
+
+    `given`()
+      .basePath("")
+      .auth().none()
+    .when()
+      .get(s"/unauthenticatedDownload/$bobAccountId/$blobId?token=$secondToken")
+    .`then`()
+      .statusCode(SC_OK)
+      .header("content-type", containsString("text/plain"))
+      .header("cache-control", equalTo("private, immutable, max-age=31536000"))
+  }
+
+  @Test
+  def downloadWithoutTokenShouldReturnUnauthorized(server: GuiceJamesServer): Unit = {
+    val blobId: String = uploadBlob(server, bobUsername, BOB_PASSWORD, bobAccountId)
+
+    assertUnauthorizedDownload(accountId = bobAccountId, blobId = blobId, token = None)
+  }
+
+  @Test
+  def downloadWithInvalidTokenShouldReturnUnauthorized(server: GuiceJamesServer): Unit = {
+    val blobId: String = uploadBlob(server, bobUsername, BOB_PASSWORD, bobAccountId)
+
+    assertUnauthorizedDownload(accountId = bobAccountId, blobId = blobId, token = Some("not-a-uuid"))
+  }
+
+  @Test
+  def downloadExistingBlobWithUnknownTokenShouldReturnUnauthorized(server: GuiceJamesServer): Unit = {
+    val blobId: String = uploadBlob(server, bobUsername, BOB_PASSWORD, bobAccountId)
+
+    assertUnauthorizedDownload(accountId = bobAccountId, blobId = blobId, token = Some(UUID.randomUUID().toString))
+  }
+
+  @Test
+  def downloadWithTokenForAnotherBlobShouldReturnUnauthorized(server: GuiceJamesServer): Unit = {
+    val firstBlobId: String = uploadBlob(server, bobUsername, BOB_PASSWORD, bobAccountId)
+    val secondBlobId: String = uploadBlob(server, bobUsername, BOB_PASSWORD, bobAccountId)
+    val firstBlobToken: String = createdToken(createAccess(server, bobAccountId, firstBlobId), firstBlobId)
+
+    assertUnauthorizedDownload(accountId = bobAccountId, blobId = secondBlobId, token = Some(firstBlobToken))
   }
 
   @Test
@@ -679,11 +768,12 @@ trait UnauthenticatedBlobAccessSetMethodContract {
                          username: Username,
                          password: String,
                          accountId: String,
-                         contentType: String = "text/plain"): String =
+                         contentType: String = "text/plain",
+                         content: String = UUID.randomUUID().toString): String =
     `given`(authenticatedSpec(server, username, password))
       .basePath("")
       .contentType(contentType)
-      .body(UUID.randomUUID().toString)
+      .body(content)
     .when()
       .post(s"/upload/$accountId")
     .`then`()
@@ -805,6 +895,17 @@ trait UnauthenticatedBlobAccessSetMethodContract {
 
   private def createdToken(response: String, blobId: String): String =
     (firstArguments(response) \ "created" \ blobId \ "token").as[String]
+
+  private def assertUnauthorizedDownload(accountId: String, blobId: String, token: Option[String]): Unit =
+    `given`()
+      .basePath("")
+      .auth().none()
+    .when()
+      .get(token
+        .map(value => s"/unauthenticatedDownload/$accountId/$blobId?token=$value")
+        .getOrElse(s"/unauthenticatedDownload/$accountId/$blobId"))
+    .`then`()
+      .statusCode(SC_UNAUTHORIZED)
 
   private def tokenProbe(server: GuiceJamesServer): UnauthenticatedBlobAccessTokenRepositoryProbe =
     server.getProbe(classOf[UnauthenticatedBlobAccessTokenRepositoryProbe])
