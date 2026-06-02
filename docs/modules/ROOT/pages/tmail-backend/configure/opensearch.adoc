@@ -49,4 +49,24 @@ Accepted values: any built-in OpenSearch language analyzer name — `arabic`, `a
 Optional. Defaults to `standard` (no stemming, language-agnostic).
 *Changing this setting requires a full reindex of all mailboxes.*
 
+| opensearch.mailbox.score.date.based.decay.enabled
+| When enabled, relevance-based searches (no explicit sort) apply a Gaussian date decay on the message date field,
+favouring recent messages. Messages newer than 30 days are not penalised.
+Optional. Defaults to false.
+
+| opensearch.mailbox.score.date.based.decay.scale
+| Duration at which the decay factor is reached, measured from the 30-day offset. Accepts OpenSearch time units (e.g. `180d`, `365d`).
+The shorter the scale, the more aggressively older messages are penalised.
+Optional. Defaults to `365d`.
+
+| opensearch.mailbox.score.date.based.decay.factor
+| Score multiplier applied at `scale` distance from today. A value of `0.5` means a message one year old scores half as much as a recent one.
+Must be between 0 (exclusive) and 1 (exclusive).
+Optional. Defaults to `0.5`.
+
+| opensearch.mailbox.score.date.based.decay.boost.mode
+| How the decay score combines with the text relevance score. Accepted values: `multiply`, `sum`, `replace`, `avg`, `max`, `min`.
+Use `multiply` (default) to scale relevance proportionally by recency. Use `sum` to add a recency bonus without suppressing old-but-relevant results.
+Optional. Defaults to `multiply`.
+
 |===
