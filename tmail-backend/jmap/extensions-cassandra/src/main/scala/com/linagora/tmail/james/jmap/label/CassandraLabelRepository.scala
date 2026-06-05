@@ -19,17 +19,17 @@
 package com.linagora.tmail.james.jmap.label
 
 import java.io.FileNotFoundException
+import java.util
 
+import com.google.common.collect.ImmutableSet
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.name.Named
 import com.google.inject.{AbstractModule, Provides, Scopes}
-import com.linagora.tmail.james.jmap.model.{Color, DescriptionUpdate, DisplayName, Label, LabelCreationRequest, LabelId, LabelNotFoundException, LabelReadOnlyException}
+import com.linagora.tmail.james.jmap.model.{Color, DescriptionUpdate, DisplayName, Label, LabelCreationRequest, LabelId, LabelNotFoundException}
 import jakarta.inject.Inject
 import org.apache.james.backends.cassandra.components.CassandraDataDefinition
 import org.apache.james.core.Username
-import org.apache.james.events.{Event, EventBus}
-import org.apache.james.jmap.api.model.AccountId
-import org.apache.james.jmap.change.AccountIdRegistrationKey
+import org.apache.james.events.{Event, EventBus, RegistrationKey}
 import org.apache.james.jmap.mail.Keyword
 import org.apache.james.user.api.{DeleteUserDataTaskStep, UsernameChangeTaskStep}
 import org.apache.james.utils.PropertiesProvider
@@ -39,15 +39,17 @@ import reactor.core.scala.publisher.{SFlux, SMono}
 import scala.jdk.CollectionConverters.CollectionHasAsScala
 
 class CassandraLabelRepository @Inject()(dao: CassandraLabelDAO, @Named("TMAIL_EVENT_BUS") eventBus: EventBus) extends LabelRepository {
+  private val NO_REGISTRATION_KEYS: util.Set[RegistrationKey] = ImmutableSet.of
+
   override def addLabel(username: Username, labelCreationRequest: LabelCreationRequest): Publisher[Label] =
     SMono.fromPublisher(dao.insert(username, labelCreationRequest.toLabel))
       .flatMap(label =>
-        SMono.fromPublisher(eventBus.dispatch(LabelCreated(Event.EventId.random(), username, label), AccountIdRegistrationKey(AccountId.fromUsername(username))))
+        dispatch(LabelCreated(Event.EventId.random(), username, label))
           .`then`(SMono.just(label)))
 
   override def addLabel(username: Username, label: Label): Publisher[Void] =
     dao.insert(username, label)
-      .`then`(SMono.fromPublisher(eventBus.dispatch(LabelCreated(Event.EventId.random(), username, label), AccountIdRegistrationKey(AccountId.fromUsername(username)))))
+      .`then`(dispatch(LabelCreated(Event.EventId.random(), username, label)))
       .`then`()
 
   override def addLabels(username: Username, labelCreationRequests: java.util.Collection[LabelCreationRequest]): Publisher[Label] =
@@ -68,7 +70,7 @@ class CassandraLabelRepository @Inject()(dao: CassandraLabelDAO, @Named("TMAIL_E
           }
         )
         dao.updateLabel(username, labelId.toKeyword, newDisplayName, newColor, newDescription)
-          .`then`(SMono.fromPublisher(eventBus.dispatch(LabelUpdated(Event.EventId.random(), username, updatedLabel), AccountIdRegistrationKey(AccountId.fromUsername(username)))))
+          .`then`(dispatch(LabelUpdated(Event.EventId.random(), username, updatedLabel)))
       })
       .`then`()
 
@@ -84,7 +86,7 @@ class CassandraLabelRepository @Inject()(dao: CassandraLabelDAO, @Named("TMAIL_E
 
   override def deleteLabel(username: Username, labelId: LabelId): Publisher[Void] =
     dao.deleteOne(username, labelId.toKeyword)
-      .`then`(SMono.fromPublisher(eventBus.dispatch(LabelDestroyed(Event.EventId.random(), username, labelId), AccountIdRegistrationKey(AccountId.fromUsername(username)))))
+      .`then`(dispatch(LabelDestroyed(Event.EventId.random(), username, labelId)))
       .`then`()
 
   override def deleteAllLabels(username: Username): Publisher[Void] =
@@ -99,8 +101,11 @@ class CassandraLabelRepository @Inject()(dao: CassandraLabelDAO, @Named("TMAIL_E
       .flatMap(label => {
         val updatedLabel = label.copy(readOnly = readOnly)
         dao.setReadOnly(username, labelId.toKeyword, readOnly)
-          .`then`(SMono.fromPublisher(eventBus.dispatch(LabelUpdated(Event.EventId.random(), username, updatedLabel), AccountIdRegistrationKey(AccountId.fromUsername(username)))))
+          .`then`(dispatch(LabelUpdated(Event.EventId.random(), username, updatedLabel)))
       })
+
+  private def dispatch(event: TmailLabelEvent): SMono[Void] =
+    SMono.fromPublisher(eventBus.dispatch(event, NO_REGISTRATION_KEYS))
 }
 
 case class CassandraLabelRepositoryModule() extends AbstractModule {
