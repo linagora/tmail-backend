@@ -28,10 +28,10 @@ import org.apache.james.backends.postgres.utils.PostgresExecutor;
 import org.apache.james.core.Username;
 import org.apache.james.events.Event;
 import org.apache.james.events.EventBus;
-import org.apache.james.jmap.api.model.AccountId;
-import org.apache.james.jmap.change.AccountIdRegistrationKey;
+import org.apache.james.events.RegistrationKey;
 import org.reactivestreams.Publisher;
 
+import com.google.common.collect.ImmutableSet;
 import com.linagora.tmail.james.jmap.model.Color;
 import com.linagora.tmail.james.jmap.model.DescriptionUpdate;
 import com.linagora.tmail.james.jmap.model.DisplayName;
@@ -46,6 +46,8 @@ import scala.Option;
 import scala.jdk.javaapi.OptionConverters;
 
 public class PostgresLabelRepository implements LabelRepository {
+    private static final ImmutableSet<RegistrationKey> NO_REGISTRATION_KEYS = ImmutableSet.of();
+
     private final PostgresExecutor.Factory executorFactory;
     private final EventBus eventBus;
 
@@ -60,9 +62,7 @@ public class PostgresLabelRepository implements LabelRepository {
     public Publisher<Label> addLabel(Username username, LabelCreationRequest labelCreationRequest) {
         return labelDAO(username)
             .insert(username, labelCreationRequest.toLabel())
-            .flatMap(label -> Mono.from(eventBus.dispatch(
-                    new LabelCreated(Event.EventId.random(), username, label),
-                    new AccountIdRegistrationKey(AccountId.fromUsername(username))))
+            .flatMap(label -> dispatch(new LabelCreated(Event.EventId.random(), username, label))
                 .thenReturn(label));
     }
 
@@ -70,9 +70,7 @@ public class PostgresLabelRepository implements LabelRepository {
     public Publisher<Void> addLabel(Username username, Label label) {
         return labelDAO(username)
             .insert(username, label)
-            .then(Mono.from(eventBus.dispatch(
-                new LabelCreated(Event.EventId.random(), username, label),
-                new AccountIdRegistrationKey(AccountId.fromUsername(username)))))
+            .then(dispatch(new LabelCreated(Event.EventId.random(), username, label)))
             .then();
     }
 
@@ -90,10 +88,8 @@ public class PostgresLabelRepository implements LabelRepository {
         return Mono.from(dao.selectSome(username, List.of(labelId.toKeyword())))
             .switchIfEmpty(Mono.error(new LabelNotFoundException(labelId)))
             .flatMap(oldLabel -> dao.updateLabel(username, labelId, newDisplayName, newColor, newDescription)
-                .then(Mono.from(eventBus.dispatch(
-                    new LabelUpdated(Event.EventId.random(), username,
-                        computeUpdatedLabel(oldLabel, newDisplayName, newColor, newDescription)),
-                    new AccountIdRegistrationKey(AccountId.fromUsername(username))))))
+                .then(dispatch(new LabelUpdated(Event.EventId.random(), username,
+                    computeUpdatedLabel(oldLabel, newDisplayName, newColor, newDescription)))))
             .then();
     }
 
@@ -115,9 +111,7 @@ public class PostgresLabelRepository implements LabelRepository {
     public Publisher<Void> deleteLabel(Username username, LabelId labelId) {
         return labelDAO(username)
             .deleteOne(username, labelId.toKeyword())
-            .then(Mono.from(eventBus.dispatch(
-                new LabelDestroyed(Event.EventId.random(), username, labelId),
-                new AccountIdRegistrationKey(AccountId.fromUsername(username)))))
+            .then(dispatch(new LabelDestroyed(Event.EventId.random(), username, labelId)))
             .then();
     }
 
@@ -135,11 +129,13 @@ public class PostgresLabelRepository implements LabelRepository {
         return Mono.from(dao.selectSome(username, List.of(labelId.toKeyword())))
             .switchIfEmpty(Mono.error(new LabelNotFoundException(labelId)))
             .flatMap(label -> dao.setReadOnly(username, labelId, readOnly)
-                .then(Mono.from(eventBus.dispatch(
-                    new LabelUpdated(Event.EventId.random(), username,
-                        new Label(label.id(), label.displayName(), label.keyword(), label.color(), label.description(), readOnly)),
-                    new AccountIdRegistrationKey(AccountId.fromUsername(username))))))
+                .then(dispatch(new LabelUpdated(Event.EventId.random(), username,
+                    new Label(label.id(), label.displayName(), label.keyword(), label.color(), label.description(), readOnly)))))
             .then();
+    }
+
+    private Mono<Void> dispatch(TmailLabelEvent event) {
+        return Mono.from(eventBus.dispatch(event, NO_REGISTRATION_KEYS));
     }
 
     private PostgresLabelDAO labelDAO(Username username) {

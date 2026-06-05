@@ -20,14 +20,12 @@ package com.linagora.tmail.james.jmap.label
 
 import java.util
 
-import com.google.common.collect.{HashBasedTable, ImmutableList, Table, Tables}
+import com.google.common.collect.{HashBasedTable, ImmutableList, ImmutableSet, Table, Tables}
 import com.google.inject.name.Named
-import com.linagora.tmail.james.jmap.model.{Label, LabelCreationRequest, LabelId, DisplayName, Color, DescriptionUpdate, LabelNotFoundException}
+import com.linagora.tmail.james.jmap.model.{Color, DescriptionUpdate, DisplayName, Label, LabelCreationRequest, LabelId, LabelNotFoundException}
 import jakarta.inject.Inject
 import org.apache.james.core.Username
-import org.apache.james.events.{Event, EventBus}
-import org.apache.james.jmap.api.model.AccountId
-import org.apache.james.jmap.change.AccountIdRegistrationKey
+import org.apache.james.events.{Event, EventBus, RegistrationKey}
 import org.apache.james.jmap.mail.Keyword
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
@@ -36,6 +34,7 @@ import scala.jdk.CollectionConverters._
 
 class MemoryLabelRepository @Inject()(@Named("TMAIL_EVENT_BUS") eventBus: EventBus) extends LabelRepository {
   private val labelsTable: Table[Username, Keyword, Label] = Tables.synchronizedTable(HashBasedTable.create())
+  private val NO_REGISTRATION_KEYS: util.Set[RegistrationKey] = ImmutableSet.of
 
   override def addLabel(username: Username, labelCreationRequest: LabelCreationRequest): Publisher[Label] = {
     SMono.fromCallable(() => {
@@ -43,13 +42,13 @@ class MemoryLabelRepository @Inject()(@Named("TMAIL_EVENT_BUS") eventBus: EventB
       labelsTable.put(username, label.keyword, label)
       label
     }).flatMap(label =>
-      SMono.fromPublisher(eventBus.dispatch(LabelCreated(Event.EventId.random(), username, label), AccountIdRegistrationKey(AccountId.fromUsername(username))))
+      dispatch(LabelCreated(Event.EventId.random(), username, label))
         .`then`(SMono.just(label)))
   }
 
   override def addLabel(username: Username, label: Label): Publisher[Void] =
     SMono.fromCallable(() => labelsTable.put(username, label.keyword, label))
-      .`then`(SMono.fromPublisher(eventBus.dispatch(LabelCreated(Event.EventId.random(), username, label), AccountIdRegistrationKey(AccountId.fromUsername(username)))))
+      .`then`(dispatch(LabelCreated(Event.EventId.random(), username, label)))
       .`then`()
 
   override def addLabels(username: Username, labelCreationRequests: util.Collection[LabelCreationRequest]): Publisher[Label] =
@@ -70,7 +69,7 @@ class MemoryLabelRepository @Inject()(@Named("TMAIL_EVENT_BUS") eventBus: EventB
           }
         )
         labelsTable.put(username, labelId.toKeyword, updatedLabel)
-        SMono.fromPublisher(eventBus.dispatch(LabelUpdated(Event.EventId.random(), username, updatedLabel), AccountIdRegistrationKey(AccountId.fromUsername(username))))
+        dispatch(LabelUpdated(Event.EventId.random(), username, updatedLabel))
       })
       .`then`()
 
@@ -85,7 +84,7 @@ class MemoryLabelRepository @Inject()(@Named("TMAIL_EVENT_BUS") eventBus: EventB
 
   override def deleteLabel(username: Username, labelId: LabelId): Publisher[Void] =
     SMono.fromCallable(() => labelsTable.remove(username, labelId.toKeyword))
-      .flatMap(_ => SMono.fromPublisher(eventBus.dispatch(LabelDestroyed(Event.EventId.random(), username, labelId), AccountIdRegistrationKey(AccountId.fromUsername(username)))))
+      .flatMap(_ => dispatch(LabelDestroyed(Event.EventId.random(), username, labelId)))
       .`then`()
 
   override def deleteAllLabels(username: Username): Publisher[Void] =
@@ -100,7 +99,10 @@ class MemoryLabelRepository @Inject()(@Named("TMAIL_EVENT_BUS") eventBus: EventB
       .flatMap(label => {
         val updatedLabel = label.copy(readOnly = readOnly)
         labelsTable.put(username, labelId.toKeyword, updatedLabel)
-        SMono.fromPublisher(eventBus.dispatch(LabelUpdated(Event.EventId.random(), username, updatedLabel), AccountIdRegistrationKey(AccountId.fromUsername(username))))
+        dispatch(LabelUpdated(Event.EventId.random(), username, updatedLabel))
       })
       .`then`()
+
+  private def dispatch(event: TmailLabelEvent): SMono[Void] =
+    SMono.fromPublisher(eventBus.dispatch(event, NO_REGISTRATION_KEYS))
 }
