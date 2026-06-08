@@ -248,6 +248,17 @@ public class CalDavCollectIntegrationTest {
     }
 
     private void startServer(File dir, String alignmentMode) throws Exception {
+        startServer(dir, alignmentMode, false);
+    }
+
+    private void startServer(File dir, String alignmentMode, boolean withRecipientRewriting) throws Exception {
+        ProcessorConfiguration.Builder transportProcessor = ProcessorConfiguration.transport();
+        if (withRecipientRewriting) {
+            transportProcessor.addMailet(MailetConfiguration.builder()
+                .matcher(All.class)
+                .mailet(org.apache.james.transport.mailets.RecipientRewriteTable.class));
+        }
+
         jamesServer = TemporaryJamesServer.builder()
             .withBase(Modules.combine(MemoryJamesServerMain.SMTP_AND_IMAP_MODULE,
                 new OpenPaasModule()))
@@ -276,7 +287,7 @@ public class CalDavCollectIntegrationTest {
             .withOverrides(openPaasExtension.openpaasModule())
             .withMailetContainer(TemporaryJamesServer.defaultMailetContainerConfiguration()
                 .putProcessor(
-                    ProcessorConfiguration.transport()
+                    transportProcessor
                         .addMailet(MailetConfiguration.builder()
                             .matcher(All.class)
                             .mailet(StripAttachment.class)
@@ -343,6 +354,37 @@ public class CalDavCollectIntegrationTest {
 
         DavCalendarObject result = davClient.caldav(notInvited.email()).getCalendarObject(new DavUser(notInvited.id(), notInvited.email()), new DavUid(mimeMessageId)).block();
         assertThat(result).isNull();
+    }
+
+    @Test
+    void mailetShouldCreateCalendarObjectWhenRecipientIsAnAliasOfTheInvitedAttendee(@TempDir File altDir) throws Exception {
+        // Reproduces the case where the organizer invited an alias (the ICS ATTENDEE keeps the alias)
+        // while the RecipientRewriteTable mailet has already rewritten the envelope recipient to the primary address.
+        jamesServer.shutdown();
+        startServer(altDir, "strict", true);
+
+        String aliasLocalPart = "alias-" + UUID.randomUUID();
+        String aliasAddress = aliasLocalPart + "@" + OpenPaaSProvisioningService.DOMAIN;
+        jamesServer.getProbe(DataProbeImpl.class)
+            .addUserAliasMapping(aliasLocalPart, OpenPaaSProvisioningService.DOMAIN, receiver.email().asString());
+
+        String mimeMessageId = UUID.randomUUID().toString();
+        // TO header and ICS ATTENDEE both reference the alias
+        EmailTemplateUser aliasReceiver = new EmailTemplateUser("Alias Receiver", aliasAddress);
+        String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache",
+            EmailTemplateData.builder()
+                .sender(getSender())
+                .receiver(aliasReceiver)
+                .mimeMessageId(mimeMessageId)
+                .calendarUid(mimeMessageId)
+                .build());
+
+        // Envelope recipient is the alias, rewritten to receiver's primary address by RecipientRewriteTable
+        sendMessageToEnvelopeRecipient(sender, aliasAddress, receiver, mail, mimeMessageId);
+
+        DavCalendarObject result = davClient.caldav(receiver.email())
+            .getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(mimeMessageId)).block();
+        assertThat(result).isNotNull();
     }
 
     @Test
@@ -643,6 +685,14 @@ public class CalDavCollectIntegrationTest {
             .sendMessageWithHeaders(sender.email().asString(), receiverEmails, mail);
 
         receivers.forEach(receiver -> awaitMessage(receiver, mimeMessageId));
+    }
+
+    private void sendMessageToEnvelopeRecipient(OpenPaasUser sender, String envelopeRecipient, OpenPaasUser deliveredTo, String mail, String mimeMessageId) throws IOException, NoSuchAlgorithmException, InvalidKeyException, InvalidKeySpecException {
+        messageSender.connect(LOCALHOST_IP, jamesServer.getProbe(SmtpGuiceProbe.class).getSmtpPort())
+            .authenticate(sender.email().asString(), PASSWORD)
+            .sendMessageWithHeaders(sender.email().asString(), ImmutableList.of(envelopeRecipient), mail);
+
+        awaitMessage(deliveredTo, mimeMessageId);
     }
 
     private void awaitMessage(OpenPaasUser receiver, String mimeMessageId) {
