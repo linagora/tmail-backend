@@ -48,8 +48,10 @@ import reactor.core.scheduler.Schedulers;
 
 public class RedisKeyRegistrationHandler {
     private static final Logger LOGGER = LoggerFactory.getLogger(RedisKeyRegistrationHandler.class);
+    private static final String EVENT_BUS_NAME = "eventBusName";
 
     private final EventBusId eventBusId;
+    private final EventBusName eventBusName;
     private final LocalListenerRegistry localListenerRegistry;
     private final EventSerializer eventSerializer;
     private final RoutingKeyConverter routingKeyConverter;
@@ -70,6 +72,7 @@ public class RedisKeyRegistrationHandler {
                                 RedisEventBusClientFactory redisEventBusClientFactory,
                                 RedisSetReactiveCommands<String, String> redisSetReactiveCommands, RedisEventBusConfiguration redisEventBusConfiguration) {
         this.eventBusId = eventBusId;
+        this.eventBusName = namingStrategy.getEventBusName();
         this.eventSerializer = eventSerializer;
         this.routingKeyConverter = routingKeyConverter;
         this.localListenerRegistry = localListenerRegistry;
@@ -92,7 +95,7 @@ public class RedisKeyRegistrationHandler {
         Disposable newSubscription = Mono.from(redisSubscriber.subscribe(registrationChannel.asString()))
             .thenMany(redisSubscriber.observeChannels())
             .flatMap(this::handleChannelMessage, EventBus.DEFAULT_MAX_CONCURRENCY)
-            .doOnError(throwable -> LOGGER.error(throwable.getMessage()))
+            .doOnError(throwable -> LOGGER.error("Error while handling notification message for eventBus={}", eventBusName.value(), throwable))
             .subscribeOn(scheduler)
             .subscribe();
 
@@ -157,7 +160,8 @@ public class RedisKeyRegistrationHandler {
     }
 
     private Mono<Void> handleChannelMessage(ChannelMessage<String, String> channelMessage) {
-        LOGGER.debug("Processing message body {} from Redis channel {}", channelMessage.getMessage(), channelMessage.getChannel());
+        LOGGER.debug("Processing message body {} from Redis channel {} for eventBus={}",
+            channelMessage.getMessage(), channelMessage.getChannel(), eventBusName.value());
 
         if (channelMessage.getMessage() == null) {
             return Mono.empty();
@@ -184,6 +188,7 @@ public class RedisKeyRegistrationHandler {
 
     private Mono<Void> executeListener(EventListener.ReactiveEventListener listener, List<Event> events, RegistrationKey key) {
         MDCBuilder mdcBuilder = MDCBuilder.create()
+            .addToContext(EVENT_BUS_NAME, eventBusName.value())
             .addToContext(EventBus.StructuredLoggingFields.REGISTRATION_KEY, key.asString());
 
         return listenerExecutor.execute(listener, mdcBuilder, events)
@@ -215,6 +220,7 @@ public class RedisKeyRegistrationHandler {
 
     private StructuredLogger structuredLogger(List<Event> events, RegistrationKey key) {
         return MDCStructuredLogger.forLogger(LOGGER)
+            .field(EVENT_BUS_NAME, eventBusName.value())
             .field(EventBus.StructuredLoggingFields.EVENT_ID, events.stream()
                 .map(e -> e.getEventId().getId().toString())
                 .collect(Collectors.joining(",")))
