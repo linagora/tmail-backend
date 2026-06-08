@@ -114,11 +114,9 @@ public class CalDavCollect extends GenericMailet {
                     return;
                 }
 
-                if (shouldSendItip(mailAddress, calendar)) {
-                    davUserProvider.provide(Username.of(mailAddress.asString()))
-                        .flatMap(davUser -> synchronizeWithDavServer(json, davUser))
-                        .block();
-                }
+                davUserProvider.provide(Username.of(mailAddress.asString()))
+                    .flatMap(davUser -> synchronizeWithDavServer(json, davUser))
+                    .block();
             } catch (Exception e) {
                 LOGGER.error("Error while handling calendar in mail {} with recipient {}", mail.getName(), recipient, e);
             }
@@ -216,54 +214,10 @@ public class CalDavCollect extends GenericMailet {
         return new CalendarBuilder().build(reader);
     }
 
-    private boolean shouldSendItip(MailAddress mailAddress, Calendar calendar) {
-        if (isReply(calendar)) {
-            // For REPLY: the recipient is the organizer receiving the attendee's response.
-            // Skip if the recipient is explicitly listed as an attendee — it means they sent the reply themselves.
-            return !isExplicitAttendee(mailAddress, calendar);
-        }
-        return concernsRecipient(mailAddress, calendar);
-    }
-
     private boolean isReply(Calendar calendar) {
         return calendar.getProperty(Property.METHOD)
             .map(Property::getValue)
             .map("REPLY"::equalsIgnoreCase)
-            .orElse(false);
-    }
-
-    private boolean isExplicitAttendee(MailAddress mailAddress, Calendar calendar) {
-        return calendar.getComponents(Component.VEVENT)
-            .stream()
-            .filter(VEvent.class::isInstance)
-            .map(VEvent.class::cast)
-            .anyMatch(event -> isAttendee(mailAddress, event));
-    }
-
-    private boolean concernsRecipient(MailAddress mailAddress, Calendar calendar) {
-        return calendar.getComponents(Component.VEVENT)
-            .stream()
-            .filter(VEvent.class::isInstance)
-            .map(VEvent.class::cast)
-            .anyMatch(event -> isOrganizer(mailAddress, event) || isAttendee(mailAddress, event));
-    }
-
-    private static boolean isAttendee(MailAddress mailAddress, VEvent event) {
-        return event.getProperties(Property.ATTENDEE)
-            .stream()
-            .map(attendee -> (Attendee) attendee)
-            .map(Attendee::getCalAddress)
-            .map(URI::getSchemeSpecificPart)
-            .flatMap(address -> toMailAddressSilently(address).stream())
-            .anyMatch(mailAddress::equals);
-    }
-
-    private static Boolean isOrganizer(MailAddress mailAddress, VEvent event) {
-        return Optional.ofNullable(event.getOrganizer())
-            .map(Organizer::getCalAddress)
-            .map(URI::getSchemeSpecificPart)
-            .flatMap(CalDavCollect::toMailAddressSilently)
-            .map(mailAddress::equals)
             .orElse(false);
     }
 }
