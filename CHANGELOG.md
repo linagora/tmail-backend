@@ -5,6 +5,61 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+## [1.0.19] - 2026-06-08
+
+### James
+
+#### Added
+
+- JAMES-4209 CassandraMessagesDAOV3: optionally write recovery infos
+- JAMES-4204 WebAdmin route to restore a mailbox from a backup zip file (with a `force` parameter)
+- JAMES-4205 Create default mailboxes after OIDC login
+- Support StartTLS, SSL and Proxy protocol for LMTP
+- [ENHANCEMENT] Attribute for forwarded mail
+
+#### Fixes
+
+- JAMES-4207 MANAGESIEVE: do not announce capabilities after authentication
+- JAMES-4206 Don't log a stacktrace on every ManageSieve logout
+- [FIX] Quota recomputation should trigger a `QuotaUpdate` event
+- [FIX] MOVE/COPY should not exceed batch size in published events
+- Implement negative ACL for JMAP
+
+#### Enhancements
+
+- JAMES-4212 Use a string-based representation for groups
+- [ENHANCEMENT] Reduce WebAdmin validation boilerplate
+- [ENHANCEMENT] Log stacktraces in DEBUG mode for protocol level failures
+
+#### Upgrades
+
+- [UPGRADE] ical4j 4.1.1 → 4.2.5
+- [UPGRADE] commons-text 1.13.1 → 1.15.0
+- [UPGRADE] commons-configuration2 2.12.0 → 2.15.0
+
+### TMail
+
+#### Added
+
+- ISSUE-2346 Unauthenticated blob access
+- ISSUE-2411 WebAdmin routes to manage JMAP settings (CRUD) and a settings statistics report
+- ISSUE-2374 New `SuspiciousDisplayName` and `SuspiciousDomainInDisplayName` mailet matchers (anti-phishing)
+- ISSUE-2383 Support signature templates with the combined user repository
+
+#### Fixes
+
+- ISSUE-2407 Do not dispatch Label events on the notification bus
+- ISSUE-2391 `CalDavCollect` should not log an error upon malformed organizer
+- [FIX] Use the `{{input}}` placeholder for the remote LLM prompt
+- [FIX] `RedisOidcToken`: correctly `setReadFrom` for cluster topology
+
+#### Enhancements
+
+- [ENHANCEMENT] Add a Gaussian date decay to the default search sort in order to favour recent messages (distributed, opt-in)
+- [ENHANCEMENT] Configurable language for on-prem deployments
+- ISSUE-2407 Logs now include the event bus name
+- ISSUE-2347 Allow to configure the Redis commands timeout
+
 ## [1.0.18] - 2026-05-07
 
 ### James
