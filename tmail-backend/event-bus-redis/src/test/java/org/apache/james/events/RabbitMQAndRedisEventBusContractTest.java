@@ -61,6 +61,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -201,7 +202,15 @@ abstract class RabbitMQAndRedisEventBusContractTest implements GroupContract.Sin
         return newEventBus(List.of(namingStrategy), sender, receiverProvider);
     }
 
+    private RabbitMQAndRedisEventBus newEventBus(NamingStrategy namingStrategy, Sender sender, ReceiverProvider receiverProvider, EventSerializer eventSerializer) throws Exception {
+        return newEventBus(List.of(namingStrategy), sender, receiverProvider, eventSerializer);
+    }
+
     private RabbitMQAndRedisEventBus newEventBus(List<NamingStrategy> namingStrategies, Sender sender, ReceiverProvider receiverProvider) throws Exception {
+        return newEventBus(namingStrategies, sender, receiverProvider, eventSerializer);
+    }
+
+    private RabbitMQAndRedisEventBus newEventBus(List<NamingStrategy> namingStrategies, Sender sender, ReceiverProvider receiverProvider, EventSerializer eventSerializer) throws Exception {
         return new RabbitMQAndRedisEventBus(namingStrategies, sender, receiverProvider, eventSerializer, routingKeyConverter,
             memoryEventDeadLetters, new RecordingMetricFactory(),
             rabbitMQExtension.getRabbitChannelPool(), EventBusId.random(),
@@ -803,10 +812,15 @@ abstract class RabbitMQAndRedisEventBusContractTest implements GroupContract.Sin
     @Nested
     class IsolationTest {
         private RabbitMQAndRedisEventBus otherEventBus;
+        private FailingDeserializationEventSerializer otherEventSerializer;
 
         @BeforeEach
         void beforeEach() throws Exception {
-            otherEventBus = newEventBus(new DefaultNamingStrategy(new EventBusName("other")), rabbitMQExtension.getSender(), rabbitMQExtension.getReceiverProvider());
+            otherEventSerializer = new FailingDeserializationEventSerializer();
+            otherEventBus = newEventBus(new DefaultNamingStrategy(new EventBusName("other")),
+                rabbitMQExtension.getSender(),
+                rabbitMQExtension.getReceiverProvider(),
+                otherEventSerializer);
             otherEventBus.start();
         }
 
@@ -833,18 +847,72 @@ abstract class RabbitMQAndRedisEventBusContractTest implements GroupContract.Sin
 
         @Test
         void eventBusPubSubWithDistinctNamingStrategiesShouldBeIsolated() throws Exception {
-            EventCollector listener = new EventCollector();
-            EventCollector otherListener = new EventCollector();
-            eventBus.register(listener, KEY_1);
-            otherEventBus.register(otherListener, KEY_1);
+            // Register the listener on eventBus, using KEY_1 registration key
+            CountingAsyncEventListener listener = new CountingAsyncEventListener();
+            Mono.from(eventBus.register(listener, KEY_1)).block();
 
+            // Another event bus registers a listener for the same AccountId-like key.
+            EventCollector otherListener = new EventCollector();
+            Mono.from(otherEventBus.register(otherListener, KEY_1)).block();
+
+            // The source bus dispatches an event with that key, using its own serializer.
             eventBus.dispatch(EVENT, ImmutableSet.of(KEY_1)).block();
 
-            TimeUnit.SECONDS.sleep(1);
+            boolean eventReceived = listener.awaitEvent();
+            boolean otherDeserializationAttempt = otherEventSerializer.awaitDeserializationAttempt();
+
+            // The other event bus must not receive nor deserialize source bus events.
             SoftAssertions.assertSoftly(softly -> {
-                softly.assertThat(listener.getEvents()).hasSize(1);
+                softly.assertThat(eventReceived).isTrue();
+                softly.assertThat(otherDeserializationAttempt).isFalse();
                 softly.assertThat(otherListener.getEvents()).isEmpty();
+                softly.assertThat(otherEventSerializer.deserializationAttempts()).isZero();
             });
+        }
+    }
+
+    private static class CountingAsyncEventListener implements EventListener {
+        private final CountDownLatch eventLatch = new CountDownLatch(1);
+
+        @Override
+        public ExecutionMode getExecutionMode() {
+            return ExecutionMode.ASYNCHRONOUS;
+        }
+
+        @Override
+        public void event(Event event) {
+            eventLatch.countDown();
+        }
+
+        boolean awaitEvent() throws InterruptedException {
+            return eventLatch.await(1, TimeUnit.SECONDS);
+        }
+    }
+
+    private static class FailingDeserializationEventSerializer extends TestEventSerializer {
+        private final AtomicInteger deserializationAttempts = new AtomicInteger();
+        private final CountDownLatch deserializationAttemptLatch = new CountDownLatch(1);
+
+        @Override
+        public DeserializationResult asEvent(String serialized) {
+            deserializationAttempts.incrementAndGet();
+            deserializationAttemptLatch.countDown();
+            return new DeserializationResult.Failure("Cannot deserialize event from another event bus");
+        }
+
+        @Override
+        public DeserializationResult asEvents(String serialized) {
+            deserializationAttempts.incrementAndGet();
+            deserializationAttemptLatch.countDown();
+            return new DeserializationResult.Failure("Cannot deserialize events from another event bus");
+        }
+
+        int deserializationAttempts() {
+            return deserializationAttempts.get();
+        }
+
+        boolean awaitDeserializationAttempt() throws InterruptedException {
+            return deserializationAttemptLatch.await(1, TimeUnit.SECONDS);
         }
     }
 
