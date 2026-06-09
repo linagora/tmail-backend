@@ -208,9 +208,12 @@ public class RestrictiveCalDavCollect extends GenericMailet {
 
     private void synchronizeIfEligible(MailAddress mailAddress, Calendar calendar, byte[] json) {
         if (isReply(calendar)) {
-            davUserProvider.provide(Username.of(mailAddress.asString()))
-                .flatMap(davUser -> synchronizeWithDavServer(json, davUser))
-                .block();
+            // For REPLY: skip if the recipient is explicitly listed as an attendee — it means they sent the reply themselves.
+            if (!isExplicitAttendee(mailAddress, calendar)) {
+                davUserProvider.provide(Username.of(mailAddress.asString()))
+                    .flatMap(davUser -> synchronizeWithDavServer(json, davUser))
+                    .block();
+            }
         } else {
             davUserProvider.provide(Username.of(mailAddress.asString()))
                 .flatMap(davUser -> syncIfEventExists(json, calendar, davUser))
@@ -249,5 +252,23 @@ public class RestrictiveCalDavCollect extends GenericMailet {
             .map(Property::getValue)
             .map("REPLY"::equalsIgnoreCase)
             .orElse(false);
+    }
+
+    private boolean isExplicitAttendee(MailAddress mailAddress, Calendar calendar) {
+        return calendar.getComponents(Component.VEVENT)
+            .stream()
+            .filter(VEvent.class::isInstance)
+            .map(VEvent.class::cast)
+            .anyMatch(event -> isAttendee(mailAddress, event));
+    }
+
+    private static boolean isAttendee(MailAddress mailAddress, VEvent event) {
+        return event.getProperties(Property.ATTENDEE)
+            .stream()
+            .map(attendee -> (Attendee) attendee)
+            .map(Attendee::getCalAddress)
+            .map(URI::getSchemeSpecificPart)
+            .flatMap(address -> toMailAddressSilently(address).stream())
+            .anyMatch(mailAddress::equals);
     }
 }

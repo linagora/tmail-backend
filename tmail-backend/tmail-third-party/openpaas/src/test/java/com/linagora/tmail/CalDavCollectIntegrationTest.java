@@ -569,6 +569,26 @@ public class CalDavCollectIntegrationTest {
             .isEqualTo("ACCEPTED");
     }
 
+    @Test
+    void mailetShouldNotCallDavServerForAttendeeWhenTheyReceiveTheirOwnReply(@TempDir File temporaryFolder) throws Exception {
+        String calendarUid = UUID.randomUUID().toString();
+
+        // receiver sends a REPLY (without ORGANIZER) but also receives it (e.g. CC'd on their own reply)
+        String replyMimeMessageId = UUID.randomUUID().toString();
+        String replyMail = generateMail("template/emailReplyWithoutOrganizer.eml.mustache",
+            EmailTemplateData.builder()
+                .sender(getReceiver())
+                .receiver(getSender())
+                .mimeMessageId(replyMimeMessageId)
+                .calendarUid(calendarUid)
+                .build());
+        sendMessage(receiver, receiver, replyMail, replyMimeMessageId);
+
+        // receiver is explicitly the ATTENDEE in the REPLY iCal, so no ITIP should be sent for them
+        DavCalendarObject result = davClient.caldav(receiver.email()).getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(calendarUid)).block();
+        assertThat(result).isNull();
+    }
+
     private EmailTemplateUser getReceiver() {
         return new EmailTemplateUser(receiver.firstname() + " " + receiver.lastname(), receiver.email().asString());
     }
