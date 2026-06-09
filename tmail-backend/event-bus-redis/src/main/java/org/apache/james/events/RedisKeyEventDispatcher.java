@@ -37,19 +37,30 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class RedisKeyEventDispatcher {
+    private static final String EVENTBUS_CHANNEL_SEPARATOR = "-eventbus-";
 
     private static final Predicate<? super Throwable> REDIS_ERROR_PREDICATE =
         throwable -> throwable instanceof RedisException || throwable instanceof TimeoutException;
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RedisKeyEventDispatcher.class);
 
+    static EventBusName baseEventBusName(NamingStrategy namingStrategy, EventBusId eventBusId) {
+        String registrationChannel = namingStrategy.queueName(eventBusId).asString();
+        String eventBusIdAsString = eventBusId.asString();
+
+        return new EventBusName(registrationChannel.substring(0,
+            registrationChannel.length() - EVENTBUS_CHANNEL_SEPARATOR.length() - eventBusIdAsString.length()));
+    }
+
     private final EventSerializer eventSerializer;
     private final RedisPubSubReactiveCommands<String, String> redisPublisher;
     private final RedisSetReactiveCommands<String, String> redisSetReactiveCommands;
     private final EventBusId eventBusId;
     private final RedisEventBusConfiguration redisEventBusConfiguration;
+    private final String baseEventBusName;
 
     public RedisKeyEventDispatcher(EventBusId eventBusId,
+                                   NamingStrategy namingStrategy,
                                    EventSerializer eventSerializer,
                                    RedisPubSubReactiveCommands<String, String> redisPublisher,
                                    RedisSetReactiveCommands<String, String> redisSetReactiveCommands,
@@ -59,6 +70,7 @@ public class RedisKeyEventDispatcher {
         this.redisSetReactiveCommands = redisSetReactiveCommands;
         this.eventBusId = eventBusId;
         this.redisEventBusConfiguration = redisEventBusConfiguration;
+        this.baseEventBusName = baseEventBusName(namingStrategy, eventBusId).value();
     }
 
     public Mono<Void> dispatch(Event event, Set<RegistrationKey> keys) {
@@ -105,6 +117,7 @@ public class RedisKeyEventDispatcher {
         return Flux.fromIterable(routingKeys)
             .flatMap(routingKey ->
                 getTargetChannels(routingKey)
+                    .filter(this::targetSameEventBus) // e.g. tmail notification should not be published to jmap event bus
                     .flatMap(channel -> redisPublisher.publish(channel, KeyChannelMessage.from(eventBusId, routingKey, eventAsJson).serialize()))
                     .timeout(redisEventBusConfiguration.durationTimeout())
                     .onErrorResume(REDIS_ERROR_PREDICATE.and(e -> redisEventBusConfiguration.failureIgnore()),
@@ -118,5 +131,9 @@ public class RedisKeyEventDispatcher {
 
     private Flux<String> getTargetChannels(RoutingKey routingKey) {
         return redisSetReactiveCommands.smembers(routingKey.asString());
+    }
+
+    private boolean targetSameEventBus(String channel) {
+        return channel.contains(baseEventBusName);
     }
 }
