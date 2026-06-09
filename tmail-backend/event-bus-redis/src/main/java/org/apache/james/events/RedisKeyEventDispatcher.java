@@ -47,9 +47,14 @@ public class RedisKeyEventDispatcher {
     static EventBusName baseEventBusName(NamingStrategy namingStrategy, EventBusId eventBusId) {
         String registrationChannel = namingStrategy.queueName(eventBusId).asString();
         String eventBusIdAsString = eventBusId.asString();
+        String expectedSuffix = EVENTBUS_CHANNEL_SEPARATOR + eventBusIdAsString;
 
-        return new EventBusName(registrationChannel.substring(0,
-            registrationChannel.length() - EVENTBUS_CHANNEL_SEPARATOR.length() - eventBusIdAsString.length()));
+        if (registrationChannel.length() <= expectedSuffix.length() || !registrationChannel.endsWith(expectedSuffix)) {
+            throw new IllegalArgumentException("""
+                Registration channel %s should end with %s""".formatted(registrationChannel, expectedSuffix));
+        }
+
+        return new EventBusName(registrationChannel.substring(0, registrationChannel.length() - expectedSuffix.length()));
     }
 
     private final EventSerializer eventSerializer;
@@ -134,6 +139,6 @@ public class RedisKeyEventDispatcher {
     }
 
     private boolean targetSameEventBus(String channel) {
-        return channel.contains(baseEventBusName);
+        return channel.startsWith(baseEventBusName + EVENTBUS_CHANNEL_SEPARATOR);
     }
 }
