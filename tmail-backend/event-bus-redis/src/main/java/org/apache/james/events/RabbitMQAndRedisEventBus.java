@@ -254,8 +254,8 @@ public class RabbitMQAndRedisEventBus implements EventBus, Startable {
             redisSetReactiveCommands, redisEventBusConfiguration);
         groupRegistrationHandler = new AggregatedTmailGroupRegistrationHandler(namingStrategies, eventSerializer, channelPool,
             sender, receiverProvider, eventDeadLetters, listenerExecutor, configurations);
-        RedisKeyEventDispatcher redisKeyEventDispatcher = new RedisKeyEventDispatcher(eventBusId, eventSerializer, redisPublisher,
-            redisSetReactiveCommands, redisEventBusConfiguration);
+        RedisKeyEventDispatcher redisKeyEventDispatcher = new RedisKeyEventDispatcher(eventBusId, namingStrategy, eventSerializer,
+            redisPublisher, redisSetReactiveCommands, redisEventBusConfiguration);
         TmailGroupEventDispatcher groupEventDispatcher = new AggregatedTmailGroupEventDispatcher(namingStrategies, eventBusId,
             sender, eventDeadLetters, configurations.rabbitMQConfiguration());
         eventDispatcher = new TMailEventDispatcher(eventSerializer, groupRegistrationHandler, groupEventDispatcher,
