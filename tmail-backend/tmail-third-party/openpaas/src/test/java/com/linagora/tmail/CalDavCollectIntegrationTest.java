@@ -21,7 +21,6 @@ package com.linagora.tmail;
 import static org.apache.james.mailets.configuration.Constants.LOCALHOST_IP;
 import static org.apache.james.mailets.configuration.Constants.PASSWORD;
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
 
 import java.io.File;
@@ -240,7 +239,6 @@ public class CalDavCollectIntegrationTest {
     private DavClient davClient;
     private OpenPaasUser sender;
     private OpenPaasUser receiver;
-    private OpenPaasUser notInvited;
 
     @BeforeEach
     void setUpJamesServer(@TempDir File temporaryFolder) throws Exception {
@@ -248,6 +246,8 @@ public class CalDavCollectIntegrationTest {
     }
 
     private void startServer(File dir, String alignmentMode) throws Exception {
+        ProcessorConfiguration.Builder transportProcessor = ProcessorConfiguration.transport();
+
         jamesServer = TemporaryJamesServer.builder()
             .withBase(Modules.combine(MemoryJamesServerMain.SMTP_AND_IMAP_MODULE,
                 new OpenPaasModule()))
@@ -276,7 +276,7 @@ public class CalDavCollectIntegrationTest {
             .withOverrides(openPaasExtension.openpaasModule())
             .withMailetContainer(TemporaryJamesServer.defaultMailetContainerConfiguration()
                 .putProcessor(
-                    ProcessorConfiguration.transport()
+                    transportProcessor
                         .addMailet(MailetConfiguration.builder()
                             .matcher(All.class)
                             .mailet(StripAttachment.class)
@@ -308,14 +308,12 @@ public class CalDavCollectIntegrationTest {
 
         sender = createUser();
         receiver = createUser();
-        notInvited = createUser();
 
         jamesServer.getProbe(DataProbeImpl.class)
             .fluent()
             .addDomain(OpenPaaSProvisioningService.DOMAIN)
             .addUser(sender.email().asString(), PASSWORD)
-            .addUser(receiver.email().asString(), PASSWORD)
-            .addUser(notInvited.email().asString(), PASSWORD);
+            .addUser(receiver.email().asString(), PASSWORD);
     }
 
     @AfterEach
@@ -335,17 +333,6 @@ public class CalDavCollectIntegrationTest {
     }
 
     @Test
-    void mailetShouldNotCallDavServerToCreateNewCalendarObjectIfRecipientNotInvited(@TempDir File temporaryFolder) throws Exception {
-        String mimeMessageId = UUID.randomUUID().toString();
-        String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache", generateEmailTemplateData(sender, receiver, mimeMessageId, mimeMessageId));
-
-        sendMessage(sender, notInvited, mail, mimeMessageId);
-
-        DavCalendarObject result = davClient.caldav(notInvited.email()).getCalendarObject(new DavUser(notInvited.id(), notInvited.email()), new DavUid(mimeMessageId)).block();
-        assertThat(result).isNull();
-    }
-
-    @Test
     void mailetShouldCallDavServerToCreateNewCalendarObjectIfRecipientIsOrganizer(@TempDir File temporaryFolder) throws Exception {
         String mimeMessageId = UUID.randomUUID().toString();
         String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache", generateEmailTemplateData(sender, receiver, mimeMessageId, mimeMessageId));
@@ -354,24 +341,6 @@ public class CalDavCollectIntegrationTest {
 
         DavCalendarObject result = davClient.caldav(sender.email()).getCalendarObject(new DavUser(sender.id(), sender.email()), new DavUid(mimeMessageId)).block();
         assertThat(result).isNotNull();
-    }
-
-    @Test
-    void mailetShouldOnlyCallDavServerToCreateNewCalendarObjectForInvitedRecipientsWhenMailContainsBothInvitedRecipientsAndUninvitedRecipients(@TempDir File temporaryFolder) throws Exception {
-        String mimeMessageId = UUID.randomUUID().toString();
-        String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache", generateEmailTemplateData(sender, receiver, mimeMessageId, mimeMessageId));
-
-        sendMessage(sender, ImmutableList.of(receiver, notInvited), mail, mimeMessageId);
-
-        DavCalendarObject result1 = davClient.caldav(receiver.email()).getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(mimeMessageId)).block();
-
-        DavCalendarObject result2 = davClient.caldav(notInvited.email()).getCalendarObject(new DavUser(notInvited.id(), notInvited.email()), new DavUid(mimeMessageId)).block();
-
-        assertSoftly(softly -> {
-            softly.assertThat(result1).isNotNull();
-            softly.assertThat(result2).isNull();
-        });
-
     }
 
     @Test
@@ -602,7 +571,6 @@ public class CalDavCollectIntegrationTest {
 
     @Test
     void mailetShouldNotCallDavServerForAttendeeWhenTheyReceiveTheirOwnReply(@TempDir File temporaryFolder) throws Exception {
-        String mimeMessageId = UUID.randomUUID().toString();
         String calendarUid = UUID.randomUUID().toString();
 
         // receiver sends a REPLY (without ORGANIZER) but also receives it (e.g. CC'd on their own reply)

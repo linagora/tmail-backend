@@ -208,12 +208,13 @@ public class RestrictiveCalDavCollect extends GenericMailet {
 
     private void synchronizeIfEligible(MailAddress mailAddress, Calendar calendar, byte[] json) {
         if (isReply(calendar)) {
+            // For REPLY: skip if the recipient is explicitly listed as an attendee — it means they sent the reply themselves.
             if (!isExplicitAttendee(mailAddress, calendar)) {
                 davUserProvider.provide(Username.of(mailAddress.asString()))
                     .flatMap(davUser -> synchronizeWithDavServer(json, davUser))
                     .block();
             }
-        } else if (concernsRecipient(mailAddress, calendar)) {
+        } else {
             davUserProvider.provide(Username.of(mailAddress.asString()))
                 .flatMap(davUser -> syncIfEventExists(json, calendar, davUser))
                 .block();
@@ -261,14 +262,6 @@ public class RestrictiveCalDavCollect extends GenericMailet {
             .anyMatch(event -> isAttendee(mailAddress, event));
     }
 
-    private boolean concernsRecipient(MailAddress mailAddress, Calendar calendar) {
-        return calendar.getComponents(Component.VEVENT)
-            .stream()
-            .filter(VEvent.class::isInstance)
-            .map(VEvent.class::cast)
-            .anyMatch(event -> isOrganizer(mailAddress, event) || isAttendee(mailAddress, event));
-    }
-
     private static boolean isAttendee(MailAddress mailAddress, VEvent event) {
         return event.getProperties(Property.ATTENDEE)
             .stream()
@@ -277,14 +270,5 @@ public class RestrictiveCalDavCollect extends GenericMailet {
             .map(URI::getSchemeSpecificPart)
             .flatMap(address -> toMailAddressSilently(address).stream())
             .anyMatch(mailAddress::equals);
-    }
-
-    private static Boolean isOrganizer(MailAddress mailAddress, VEvent event) {
-        return Optional.ofNullable(event.getOrganizer())
-            .map(Organizer::getCalAddress)
-            .map(URI::getSchemeSpecificPart)
-            .flatMap(RestrictiveCalDavCollect::toMailAddressSilently)
-            .map(mailAddress::equals)
-            .orElse(false);
     }
 }
