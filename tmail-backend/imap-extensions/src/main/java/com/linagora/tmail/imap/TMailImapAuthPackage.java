@@ -22,6 +22,7 @@ import jakarta.inject.Inject;
 
 import org.apache.james.imap.decode.parser.AuthenticateCommandParser;
 import org.apache.james.imap.decode.parser.LoginCommandParser;
+import org.apache.james.imap.processor.AuthenticateProcessor;
 import org.apache.james.modules.protocols.ImapPackage;
 import org.apache.james.utils.ClassName;
 
@@ -32,7 +33,7 @@ public class TMailImapAuthPackage extends ImapPackage.Impl {
     @Inject
     public TMailImapAuthPackage() {
         super(ImmutableList.of(new ClassName(TMailLoginProcessor.class.getCanonicalName()),
-                new ClassName(TMailAuthenticateProcessor.class.getCanonicalName())),
+                new ClassName(AuthenticateProcessor.class.getCanonicalName())),
             ImmutableList.of(new ClassName(LoginCommandParser.class.getCanonicalName()),
                 new ClassName(AuthenticateCommandParser.class.getCanonicalName())),
             ImmutableList.of());
