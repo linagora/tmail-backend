@@ -20,6 +20,7 @@ package com.linagora.tmail.imap;
 
 import org.apache.james.imap.main.PathConverter;
 import org.apache.james.imap.processor.NamespaceSupplier;
+import org.apache.james.modules.protocols.DefaultImapSaslMechanismClassNamesProvider;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Scopes;
@@ -30,5 +31,6 @@ public class TMailIMAPModule extends AbstractModule {
     protected void configure() {
         bind(NamespaceSupplier.class).to(TMailNamespaceSupplier.class).in(Scopes.SINGLETON);
         bind(PathConverter.Factory.class).to(TMailPathConverterFactory.class).in(Scopes.SINGLETON);
+        bind(DefaultImapSaslMechanismClassNamesProvider.class).to(TMailDefaultImapSaslMechanismClassNamesProvider.class);
     }
 }

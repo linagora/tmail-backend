@@ -29,6 +29,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
 import com.google.inject.Injector;
+import com.google.inject.Key;
 import com.google.inject.Module;
 
 public class NoopGuiceLoader implements GuiceLoader {
@@ -100,6 +101,11 @@ public class NoopGuiceLoader implements GuiceLoader {
     public <T> T instantiate(ClassName className) throws ClassNotFoundException {
         return new InvocationPerformer<T>(injector, NamingScheme.IDENTITY)
             .instantiate(className);
+    }
+
+    @Override
+    public <T> T getInstance(Key<T> key) {
+        return injector.getInstance(key);
     }
 
     @Override
