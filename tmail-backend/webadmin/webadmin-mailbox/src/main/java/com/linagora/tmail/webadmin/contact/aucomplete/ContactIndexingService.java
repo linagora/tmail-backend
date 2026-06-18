@@ -27,6 +27,7 @@ import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import jakarta.inject.Inject;
 import jakarta.mail.internet.AddressException;
@@ -75,17 +76,6 @@ public class ContactIndexingService {
         static final Funnel<CharSequence> BLOOM_FILTER_FUNNEL = Funnels.stringFunnel(StandardCharsets.US_ASCII);
         static final int EXPECTED_CONTACT_COUNT_DEFAULT = 100_000;
         static final double ASSOCIATED_PROBABILITY_DEFAULT = 0.01;
-    }
-
-    public static class ExtractContactException extends RuntimeException {
-
-        public ExtractContactException(String message) {
-            super(message);
-        }
-
-        public ExtractContactException(String message, Throwable cause) {
-            super(message, cause);
-        }
     }
 
     private static final Set<String> CONTACT_HEADER_FIELDS = Set.of("to", "cc", "bcc");
@@ -186,11 +176,12 @@ public class ContactIndexingService {
         return LenientAddressParser.DEFAULT.parseAddressList(header.getValue()).stream()
             .filter(address -> address instanceof org.apache.james.mime4j.dom.address.Mailbox)
             .map(address -> (org.apache.james.mime4j.dom.address.Mailbox) address)
-            .map(mailbox -> {
+            .flatMap(mailbox -> {
                 try {
-                    return ContactFields.of(new MailAddress(mailbox.getAddress()), mailbox.getName());
+                    return Stream.of(ContactFields.of(new MailAddress(mailbox.getAddress()), mailbox.getName()));
                 } catch (AddressException e) {
-                    throw new ExtractContactException("Could not extract contact from header " + header, e);
+                    LOGGER.warn("Skipping invalid contact address '{}' in header '{}'", mailbox.getAddress(), header.getName(), e);
+                    return Stream.empty();
                 }
             })
             .toList();
