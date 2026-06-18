@@ -35,7 +35,7 @@ Successful requests return `200 OK` with a JSON object.
 The object keys are generated from `linagora-ecosystem.properties`.
 
 Known keys used by TMail clients are documented in
-xref:tmail-backend/configure/ecosystem-discovery.adoc#_known_keys_used_by_tmail_clients[the configuration reference].
+xref:tmail-backend/configure/ecosystem-discovery.adoc#_known_keys_parsed_by_tmail_clients[the configuration reference].
 
 Example:
 
