@@ -1,61 +1,165 @@
-= Ecosystem Discovery
-:navtitle: Ecosystem Discovery
+= Linagora Ecosystem Discovery
+:navtitle: Linagora Ecosystem Discovery
 
+The Linagora ecosystem discovery configuration allows TMail clients to discover related Linagora services and feature flags.
 
-Allows clients to discover Linagora ecosystem services.
-An example case for the Mobile APP grid in the application.
+The API contract is documented as a JMAP extension endpoint:
+xref:tmail-backend/jmap-extensions/ecosystemDiscovery.adoc[Linagora ecosystem discovery endpoint].
 
-== How to use it
+== Configuration file
 
-Clients can access the ecosystem discovery endpoint using the following URL:
+Provide the response properties in the optional `linagora-ecosystem.properties` file in the configuration path.
+Do not declare this file if the deployment does not expose other Linagora ecosystem services.
 
-```
-http://${jmapBaseServerUrl}/.well-known/linagora-ecosystem
-```
+== Property to JSON mapping
 
-The JSON object response sample:
-```json
+Each property from `linagora-ecosystem.properties` is exposed in the JSON response.
+
+Dots (`.`) create nested JSON objects.
+For example:
+
+[source,properties]
+----
+service.database.url=https://database.example.com
+----
+
+is exposed as:
+
+[source,json]
+----
 {
-    "linShareApiUrl": "https://linshare.linagora.com/linshare/webservice",
-    "linToApiUrl": "https://linto.ai/demo",
-    "linToApiKey": "apiKey",
-    "twakeApiUrl": "https://api.twake.app",
-    "mobileApps": {
-        "Twake Chat": {
-            "logoURL": "https://twake-chat.xyz/tild3837-6430-4761-b135-303536323633__twake-chat_1.svg",
-            "appId": "twake-chat"
-        },
-        "Twake Drive": {
-            "logoURL": "https://twake-drive.xyz/tild6334-3137-4635-b331-636632306164__drive_1.svg",
-            "webLink": "https://tdrive.linagora.com"
-        }
+  "service": {
+    "database": {
+      "url": "https://database.example.com"
     }
+  }
 }
-```
+----
 
-== How to configure the response JSON
+Underscores (`_`) in key segments are converted to spaces.
+For example:
 
-Provide the key-value in the `linagora-ecosystem.properties` file in the configure path.
-Use `.` for nested keys, representing hierarchical configuration.
-Example: `service.database.url` translates to a JSON structure:
-```json
+[source,properties]
+----
+app.key_with_space.apikey=1234
+----
+
+is exposed as:
+
+[source,json]
+----
 {
-    "service": {
-        "database": {
-            "url": "..."
-        }
+  "app": {
+    "key with space": {
+      "apikey": "1234"
     }
+  }
 }
-```
-Use `_` as a substitute for spaces in keys for better readability.
-Example: `key_with_space` can be interpreted as `key with space` in json key.
-When `app.key_with_space.apikey=1234` is set in the properties file, it will be translated to:
-```json
+----
+
+Backend serialization exposes configured values as strings.
+Boolean-like options should therefore be configured with string-compatible values such as `true` or `false`.
+
+== Mobile app grid example
+
+Use `_` in application names to encode spaces.
+For example, `Twake_Drive` is exposed as `Twake Drive` in the JSON response.
+
+[source,properties]
+----
+linShareApiUrl=https://linshare.linagora.com/linshare/webservice
+twakeApiUrl=https://api.twake.app
+
+mobileApps.Twake_Chat.logoURL=https://twake-chat.xyz/tild3837-6430-4761-b135-303536323633__twake-chat_1.svg
+mobileApps.Twake_Drive.logoURL=https://twake-drive.xyz/tild6334-3137-4635-b331-636632306164__drive_1.svg
+mobileApps.Twake_Drive.webLink=https://tdrive.linagora.com
+----
+
+This configuration produces a response similar to:
+
+[source,json]
+----
 {
-    "app": {
-        "key with space": {
-            "apikey": "1234"
-        }
+  "linShareApiUrl": "https://linshare.linagora.com/linshare/webservice",
+  "twakeApiUrl": "https://api.twake.app",
+  "mobileApps": {
+    "Twake Chat": {
+      "logoURL": "https://twake-chat.xyz/tild3837-6430-4761-b135-303536323633__twake-chat_1.svg"
+    },
+    "Twake Drive": {
+      "logoURL": "https://twake-drive.xyz/tild6334-3137-4635-b331-636632306164__drive_1.svg",
+      "webLink": "https://tdrive.linagora.com"
     }
+  }
 }
-```
+----
+
+== Known keys parsed by TMail clients
+
+[cols="1,1,2",options="header"]
+|===
+| Property key
+| JSON key
+| Description
+
+| `driveAttachment.enabled`
+| `driveAttachment.enabled`
+| Tells clients whether Drive integration is available in this environment. Use `true` or `false`.
+
+| `linShareApiUrl`
+| `linShareApiUrl`
+| LinShare API base URL.
+
+| `mobileApps.<app_name>.appName`
+| `mobileApps.<app name>.appName`
+| Display name for a mobile application entry.
+
+| `mobileApps.<app_name>.androidPackageId`
+| `mobileApps.<app name>.androidPackageId`
+| Android package ID for a mobile application entry.
+
+| `mobileApps.<app_name>.iosAppStoreLink`
+| `mobileApps.<app name>.iosAppStoreLink`
+| iOS App Store link for a mobile application entry.
+
+| `mobileApps.<app_name>.iosUrlScheme`
+| `mobileApps.<app name>.iosUrlScheme`
+| iOS URL scheme for a mobile application entry.
+
+| `mobileApps.<app_name>.logoURL`
+| `mobileApps.<app name>.logoURL`
+| App logo URL for a mobile application entry.
+
+| `mobileApps.<app_name>.webLink`
+| `mobileApps.<app name>.webLink`
+| Browser fallback URL for a mobile application entry.
+
+| `paywallUrlTemplate`
+| `paywallUrlTemplate`
+| Paywall URL pattern.
+
+| `scribePromptUrl`
+| `scribePromptUrl`
+| AI Scribe prompt URL.
+
+| `sentry.dsn`
+| `sentry.dsn`
+| Sentry DSN.
+
+| `sentry.enabled`
+| `sentry.enabled`
+| Enables frontend Sentry setup. Use `true` or `false`.
+
+| `sentry.environment`
+| `sentry.environment`
+| Sentry environment name.
+
+| `twakeApiUrl`
+| `twakeApiUrl`
+| Twake API base URL.
+|===
+
+`<app_name>` uses underscores in the properties file when the JSON key should contain spaces.
+For example, `mobileApps.Twake_Drive.webLink` is exposed as `mobileApps."Twake Drive".webLink`.
+
+Known application names used by TMail clients include `Twake Drive`, `Twake Chat`, `Twake Sync`, and `LinShare`.
