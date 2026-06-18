@@ -1,0 +1,76 @@
+= Linagora Ecosystem Discovery
+:navtitle: Linagora Ecosystem Discovery
+
+This JMAP extension endpoint allows authenticated clients to discover Linagora ecosystem service URLs, application metadata, and feature flags.
+
+The response content is deployment-specific and is configured with
+xref:tmail-backend/configure/ecosystem-discovery.adoc[linagora-ecosystem.properties].
+
+== Endpoint
+
+[source]
+----
+GET /.well-known/linagora-ecosystem
+----
+
+The endpoint is served by the JMAP HTTP server.
+
+== Authentication
+
+The request uses the same authentication mechanisms as other JMAP endpoints.
+Unauthenticated requests return `401 Unauthorized`.
+
+== CORS
+
+The endpoint supports CORS preflight requests:
+
+[source]
+----
+OPTIONS /.well-known/linagora-ecosystem
+----
+
+== Response
+
+Successful requests return `200 OK` with a JSON object.
+The object keys are generated from `linagora-ecosystem.properties`.
+
+Known keys used by TMail clients are documented in
+xref:tmail-backend/configure/ecosystem-discovery.adoc#_known_keys_used_by_tmail_clients[the configuration reference].
+
+Example:
+
+[source,json]
+----
+{
+  "linShareApiUrl": "https://linshare.linagora.com/linshare/webservice",
+  "twakeApiUrl": "https://api.twake.app",
+  "mobileApps": {
+    "Twake Drive": {
+      "logoURL": "https://twake-drive.xyz/tild6334-3137-4635-b331-636632306164__drive_1.svg",
+      "webLink": "https://tdrive.linagora.com"
+    }
+  }
+}
+----
+
+== Error responses
+
+[cols="1,2",options="header"]
+|===
+| Status
+| Description
+
+| `401 Unauthorized`
+| The request does not contain valid JMAP credentials.
+
+| `500 Internal Server Error`
+| An unexpected server error occurred while generating the discovery response.
+|===
+
+== Limitations
+
+The backend does not validate a fixed schema for this response.
+It serializes the configured properties into JSON and leaves key semantics to the consuming clients.
+
+Values configured through `linagora-ecosystem.properties` are exposed as strings.
+For feature flags, configure `true` or `false`.
