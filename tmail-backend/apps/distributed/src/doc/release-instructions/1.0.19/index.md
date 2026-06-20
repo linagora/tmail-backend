@@ -4,7 +4,7 @@
 
 This release requires no mandatory schema migration.
 
-## New features configiration
+## New features configuration
 
 ### Gaussian date decay in default search sort (Optional)
 
