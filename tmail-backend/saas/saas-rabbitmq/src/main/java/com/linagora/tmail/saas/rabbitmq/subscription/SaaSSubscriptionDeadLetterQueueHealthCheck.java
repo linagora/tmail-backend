@@ -19,8 +19,6 @@
 package com.linagora.tmail.saas.rabbitmq.subscription;
 
 import static com.linagora.tmail.saas.rabbitmq.TWPConstants.TWP_INJECTION_KEY;
-import static com.linagora.tmail.saas.rabbitmq.subscription.SaaSDomainSubscriptionConsumer.SAAS_DOMAIN_SUBSCRIPTION_DEAD_LETTER_QUEUE;
-import static com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionConsumer.SAAS_SUBSCRIPTION_DEAD_LETTER_QUEUE;
 
 import java.util.List;
 
@@ -34,8 +32,6 @@ import org.apache.james.core.healthcheck.ComponentName;
 import org.apache.james.core.healthcheck.HealthCheck;
 import org.apache.james.core.healthcheck.Result;
 
-import com.google.common.collect.ImmutableList;
-
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -43,17 +39,17 @@ import reactor.core.scheduler.Schedulers;
 public class SaaSSubscriptionDeadLetterQueueHealthCheck implements HealthCheck {
     public static final ComponentName COMPONENT_NAME = new ComponentName("SaaSSubscriptionDeadLetterQueueHealthCheck");
     private static final String DEFAULT_VHOST = "/";
-    private static final List<String> DEAD_LETTER_QUEUES = ImmutableList.of(
-        SAAS_SUBSCRIPTION_DEAD_LETTER_QUEUE,
-        SAAS_DOMAIN_SUBSCRIPTION_DEAD_LETTER_QUEUE);
 
     private final RabbitMQConfiguration twpRabbitMQConfiguration;
     private final RabbitMQManagementAPI api;
+    private final List<String> deadLetterQueues;
 
     @Inject
-    public SaaSSubscriptionDeadLetterQueueHealthCheck(@Named(TWP_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration) {
+    public SaaSSubscriptionDeadLetterQueueHealthCheck(@Named(TWP_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration,
+                                                      List<String> deadLetterQueues) {
         this.twpRabbitMQConfiguration = twpRabbitMQConfiguration;
         this.api = RabbitMQManagementAPI.from(twpRabbitMQConfiguration);
+        this.deadLetterQueues = deadLetterQueues;
     }
 
     @Override
@@ -63,7 +59,7 @@ public class SaaSSubscriptionDeadLetterQueueHealthCheck implements HealthCheck {
 
     @Override
     public Mono<Result> check() {
-        return Flux.fromIterable(DEAD_LETTER_QUEUES)
+        return Flux.fromIterable(deadLetterQueues)
             .map(this::checkQueueLength)
             .map(queueDetails -> {
                 if (queueDetails.getRight() != 0) {

@@ -19,8 +19,6 @@
 package com.linagora.tmail.saas.rabbitmq.subscription;
 
 import static com.linagora.tmail.saas.rabbitmq.TWPConstants.TWP_INJECTION_KEY;
-import static com.linagora.tmail.saas.rabbitmq.subscription.SaaSDomainSubscriptionConsumer.SAAS_DOMAIN_SUBSCRIPTION_QUEUE;
-import static com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionConsumer.SAAS_SUBSCRIPTION_QUEUE;
 
 import java.util.List;
 
@@ -35,7 +33,6 @@ import org.apache.james.core.healthcheck.Result;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.RabbitMQManagementAPI;
 
 import reactor.core.publisher.Flux;
@@ -46,23 +43,23 @@ public class SaaSSubscriptionQueueConsumerHealthCheck implements HealthCheck {
     private static final Logger LOGGER = LoggerFactory.getLogger(SaaSSubscriptionQueueConsumerHealthCheck.class);
     public static final ComponentName COMPONENT_NAME = new ComponentName("SaaSSubscriptionQueueConsumerHealthCheck");
     private static final String DEFAULT_VHOST = "/";
-    private static final List<String> SAAS_SUBSCRIPTION_QUEUES = ImmutableList.of(
-        SAAS_SUBSCRIPTION_QUEUE,
-        SAAS_DOMAIN_SUBSCRIPTION_QUEUE);
 
     private final RabbitMQConfiguration twpRabbitMQConfiguration;
     private final SaaSSubscriptionConsumer saaSSubscriptionConsumer;
     private final SaaSDomainSubscriptionConsumer saaSDomainSubscriptionConsumer;
     private final RabbitMQManagementAPI api;
+    private final List<String> saasSubscriptionQueues;
 
     @Inject
     public SaaSSubscriptionQueueConsumerHealthCheck(@Named(TWP_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration,
                                                     SaaSSubscriptionConsumer saaSSubscriptionConsumer,
-                                                    SaaSDomainSubscriptionConsumer saaSDomainSubscriptionConsumer) {
+                                                    SaaSDomainSubscriptionConsumer saaSDomainSubscriptionConsumer,
+                                                    List<String> saasSubscriptionQueues) {
         this.twpRabbitMQConfiguration = twpRabbitMQConfiguration;
         this.api = RabbitMQManagementAPI.from(twpRabbitMQConfiguration);
         this.saaSSubscriptionConsumer = saaSSubscriptionConsumer;
         this.saaSDomainSubscriptionConsumer = saaSDomainSubscriptionConsumer;
+        this.saasSubscriptionQueues = saasSubscriptionQueues;
     }
 
     @Override
@@ -72,7 +69,7 @@ public class SaaSSubscriptionQueueConsumerHealthCheck implements HealthCheck {
 
     @Override
     public Mono<Result> check() {
-        return Flux.fromIterable(SAAS_SUBSCRIPTION_QUEUES)
+        return Flux.fromIterable(saasSubscriptionQueues)
             .map(this::checkQueueConsumer)
             .flatMap(queueConsumerDetails -> {
                 if (queueConsumerDetails.getRight().isEmpty()) {
@@ -102,10 +99,10 @@ public class SaaSSubscriptionQueueConsumerHealthCheck implements HealthCheck {
     }
 
     private void restartQueueConsumer(String queue) {
-        if (queue.equalsIgnoreCase(SAAS_SUBSCRIPTION_QUEUE)) {
+        if (queue.equalsIgnoreCase(saaSSubscriptionConsumer.getConsumerConfig().queue())) {
             saaSSubscriptionConsumer.restartConsumer();
         }
-        if (queue.equalsIgnoreCase(SAAS_DOMAIN_SUBSCRIPTION_QUEUE)) {
+        if (queue.equalsIgnoreCase(saaSDomainSubscriptionConsumer.getConsumerConfig().queue())) {
             saaSDomainSubscriptionConsumer.restartConsumer();
         }
     }

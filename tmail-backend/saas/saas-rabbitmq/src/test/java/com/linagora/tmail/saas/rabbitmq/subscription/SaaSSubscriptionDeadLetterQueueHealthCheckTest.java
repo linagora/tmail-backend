@@ -18,8 +18,6 @@
 
 package com.linagora.tmail.saas.rabbitmq.subscription;
 
-import static com.linagora.tmail.saas.rabbitmq.subscription.SaaSDomainSubscriptionConsumer.SAAS_DOMAIN_SUBSCRIPTION_DEAD_LETTER_QUEUE;
-import static com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionConsumer.SAAS_SUBSCRIPTION_DEAD_LETTER_QUEUE;
 import static com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionRabbitMQConfiguration.TWP_SAAS_SUBSCRIPTION_EXCHANGE_DEFAULT;
 import static com.rabbitmq.client.BuiltinExchangeType.DIRECT;
 import static com.rabbitmq.client.MessageProperties.PERSISTENT_TEXT_PLAIN;
@@ -44,7 +42,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.linagora.tmail.saas.rabbitmq.subscription.SaaSDomainSubscriptionConsumer.DomainSubscriptionConsumerConfig;
+import com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionConsumer.SubscriptionConsumerConfig;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
@@ -60,6 +61,9 @@ class SaaSSubscriptionDeadLetterQueueHealthCheckTest {
 
     public static final String TWP_VHOST = "twp-test";
     public static final ImmutableMap<String, Object> NO_QUEUE_DECLARE_ARGUMENTS = ImmutableMap.of();
+    public static final ImmutableList<String> DEAD_LETTER_QUEUES = ImmutableList.of(
+        SubscriptionConsumerConfig.DEFAULT.deadLetterQueue(),
+        DomainSubscriptionConsumerConfig.DEFAULT.deadLetterQueue());
 
     private Connection connection;
     private Channel channel;
@@ -76,8 +80,9 @@ class SaaSSubscriptionDeadLetterQueueHealthCheckTest {
         connection = connectionFactory.newConnection();
         channel = connection.createChannel();
         testee = new SaaSSubscriptionDeadLetterQueueHealthCheck(rabbitMQ.getConfigurationBuilder()
-            .vhost(Optional.of(TWP_VHOST))
-            .build());
+                .vhost(Optional.of(TWP_VHOST))
+                .build(),
+            DEAD_LETTER_QUEUES);
     }
 
     @AfterEach
@@ -96,8 +101,8 @@ class SaaSSubscriptionDeadLetterQueueHealthCheckTest {
     @Test
     void healthCheckShouldReturnHealthyWhenSaaSSubscriptionDeadLetterQueuesAreEmpty() throws Exception {
         createDeadLetterQueues(ImmutableMap.of(
-            SAAS_SUBSCRIPTION_DEAD_LETTER_QUEUE, ROUTING_KEY_USER,
-            SAAS_DOMAIN_SUBSCRIPTION_DEAD_LETTER_QUEUE, ROUTING_KEY_DOMAIN));
+            SubscriptionConsumerConfig.DEFAULT.deadLetterQueue(), ROUTING_KEY_USER,
+            DomainSubscriptionConsumerConfig.DEFAULT.deadLetterQueue(), ROUTING_KEY_DOMAIN));
 
         assertThat(testee.check().block().isHealthy()).isTrue();
     }
@@ -110,22 +115,22 @@ class SaaSSubscriptionDeadLetterQueueHealthCheckTest {
     @Test
     void healthCheckShouldReturnUnhealthyWhenOnlySubscriptionDeadLetterQueueIsDeclared() throws Exception {
         createDeadLetterQueues(ImmutableMap.of(
-            SAAS_SUBSCRIPTION_DEAD_LETTER_QUEUE, ROUTING_KEY_USER));
+            SubscriptionConsumerConfig.DEFAULT.deadLetterQueue(), ROUTING_KEY_USER));
         assertThat(testee.check().block().isUnHealthy()).isTrue();
     }
 
     @Test
     void healthCheckShouldReturnUnhealthyWhenOnlyDomainSubscriptionDeadLetterQueueIsDeclared() throws Exception {
         createDeadLetterQueues(ImmutableMap.of(
-            SAAS_DOMAIN_SUBSCRIPTION_DEAD_LETTER_QUEUE, ROUTING_KEY_DOMAIN));
+            DomainSubscriptionConsumerConfig.DEFAULT.deadLetterQueue(), ROUTING_KEY_DOMAIN));
         assertThat(testee.check().block().isUnHealthy()).isTrue();
     }
 
     @Test
     void healthCheckShouldReturnDegradedWhenSaaSSubscriptionDeadLetterQueueIsNotEmpty() throws Exception {
         createDeadLetterQueues(ImmutableMap.of(
-            SAAS_SUBSCRIPTION_DEAD_LETTER_QUEUE, ROUTING_KEY_USER,
-            SAAS_DOMAIN_SUBSCRIPTION_DEAD_LETTER_QUEUE, ROUTING_KEY_DOMAIN));
+            SubscriptionConsumerConfig.DEFAULT.deadLetterQueue(), ROUTING_KEY_USER,
+            DomainSubscriptionConsumerConfig.DEFAULT.deadLetterQueue(), ROUTING_KEY_DOMAIN));
         publishAMessage(ROUTING_KEY_USER);
 
         awaitAtMostOneMinute.until(() -> testee.check().block().isDegraded());
@@ -134,8 +139,8 @@ class SaaSSubscriptionDeadLetterQueueHealthCheckTest {
     @Test
     void healthCheckShouldReturnDegradedWhenSaaSDomainSubscriptionDeadLetterQueueIsNotEmpty() throws Exception {
         createDeadLetterQueues(ImmutableMap.of(
-            SAAS_SUBSCRIPTION_DEAD_LETTER_QUEUE, ROUTING_KEY_USER,
-            SAAS_DOMAIN_SUBSCRIPTION_DEAD_LETTER_QUEUE, ROUTING_KEY_DOMAIN));
+            SubscriptionConsumerConfig.DEFAULT.deadLetterQueue(), ROUTING_KEY_USER,
+            DomainSubscriptionConsumerConfig.DEFAULT.deadLetterQueue(), ROUTING_KEY_DOMAIN));
         publishAMessage(ROUTING_KEY_DOMAIN);
 
         awaitAtMostOneMinute.until(() -> testee.check().block().isDegraded());
