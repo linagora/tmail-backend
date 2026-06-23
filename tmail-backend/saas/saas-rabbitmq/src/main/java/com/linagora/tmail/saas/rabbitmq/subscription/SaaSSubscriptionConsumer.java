@@ -54,10 +54,12 @@ import reactor.rabbitmq.Receiver;
 import reactor.rabbitmq.Sender;
 
 public class SaaSSubscriptionConsumer implements Closeable, Startable {
+    public record SubscriptionConsumerConfig(String queue, String deadLetterQueue) {
+        public static SubscriptionConsumerConfig DEFAULT = new SubscriptionConsumerConfig("tmail-saas-subscription", "tmail-saas-subscription-dead-letter");
+    }
+
     private static final Logger LOGGER = LoggerFactory.getLogger(SaaSSubscriptionConsumer.class);
     private static final boolean REQUEUE_ON_NACK = true;
-    public static final String SAAS_SUBSCRIPTION_QUEUE = "tmail-saas-subscription";
-    public static final String SAAS_SUBSCRIPTION_DEAD_LETTER_QUEUE = "tmail-saas-subscription-dead-letter";
 
     private final ReceiverProvider receiverProvider;
     private final Sender sender;
@@ -65,23 +67,30 @@ public class SaaSSubscriptionConsumer implements Closeable, Startable {
     private final TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration;
     private final SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration;
     private final SaaSMessageHandler saasSubscriptionHandler;
+    private final SubscriptionConsumerConfig consumerConfig;
     private Disposable consumeSubscriptionDisposable;
 
     public SaaSSubscriptionConsumer(@Named(TWP_INJECTION_KEY) ReactorRabbitMQChannelPool channelPool,
                                     @Named(TWP_INJECTION_KEY) RabbitMQConfiguration rabbitMQConfiguration,
                                     TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration,
-                                    SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration, SaaSMessageHandler saasSubscriptionHandler) {
+                                    SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration, SaaSMessageHandler saasSubscriptionHandler,
+                                    SubscriptionConsumerConfig consumerConfig) {
         this.receiverProvider = channelPool::createReceiver;
         this.sender = channelPool.getSender();
         this.rabbitMQConfiguration = rabbitMQConfiguration;
         this.twpCommonRabbitMQConfiguration = twpCommonRabbitMQConfiguration;
         this.saasSubscriptionRabbitMQConfiguration = saasSubscriptionRabbitMQConfiguration;
         this.saasSubscriptionHandler = saasSubscriptionHandler;
+        this.consumerConfig = consumerConfig;
     }
 
     public void init() {
-        declareExchangeAndQueue(saasSubscriptionRabbitMQConfiguration.exchange(), SAAS_SUBSCRIPTION_QUEUE, SAAS_SUBSCRIPTION_DEAD_LETTER_QUEUE);
+        declareExchangeAndQueue(saasSubscriptionRabbitMQConfiguration.exchange(), consumerConfig.queue(), consumerConfig.deadLetterQueue());
         startConsumer();
+    }
+
+    protected SubscriptionConsumerConfig getConsumerConfig() {
+        return consumerConfig;
     }
 
     public void declareExchangeAndQueue(String exchange, String queue, String deadLetter) {
@@ -143,7 +152,7 @@ public class SaaSSubscriptionConsumer implements Closeable, Startable {
     }
 
     private Disposable consumeSubscriptionQueue() {
-        return delivery(SAAS_SUBSCRIPTION_QUEUE)
+        return delivery(consumerConfig.queue())
             .concatMap(delivery -> consumeSubscriptionUpdate(delivery, delivery.getBody()))
             .subscribeOn(Schedulers.boundedElastic())
             .subscribe();

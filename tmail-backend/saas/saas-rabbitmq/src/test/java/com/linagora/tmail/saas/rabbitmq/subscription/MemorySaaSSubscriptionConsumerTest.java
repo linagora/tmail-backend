@@ -36,6 +36,7 @@ import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingRepository;
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
 import com.linagora.tmail.saas.api.memory.MemorySaaSAccountRepository;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
+import com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionConsumer.SubscriptionConsumerConfig;
 
 class MemorySaaSSubscriptionConsumerTest implements SaaSSubscriptionConsumerContract {
     private SaaSSubscriptionConsumer testee;
@@ -72,7 +73,8 @@ class MemorySaaSSubscriptionConsumerTest implements SaaSSubscriptionConsumerCont
             new SaaSSubscriptionHandlerImpl(saasAccountRepository,
                 maxQuotaManager,
                 userQuotaRootResolver,
-                rateLimitingRepository));
+                rateLimitingRepository),
+            SubscriptionConsumerConfig.DEFAULT);
         testee.init();
     }
 
