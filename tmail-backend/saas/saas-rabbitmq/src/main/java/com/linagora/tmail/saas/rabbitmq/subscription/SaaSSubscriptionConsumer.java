@@ -89,7 +89,7 @@ public class SaaSSubscriptionConsumer implements Closeable, Startable {
         startConsumer();
     }
 
-    public SubscriptionConsumerConfig getConsumerConfig() {
+    protected SubscriptionConsumerConfig getConsumerConfig() {
         return consumerConfig;
     }
 
