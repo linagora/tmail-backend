@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.imap;
+package com.linagora.tmail.sasl;
 
 import java.util.Arrays;
 
@@ -30,22 +30,33 @@ import com.google.common.collect.ImmutableSet;
 
 public class TMailPlainSaslMechanismFactory extends PlainSaslMechanismFactory {
     private static final ImmutableSet<String> TMAIL_IMAP_PACKAGES = ImmutableSet.of(
-        TMailImapPackage.class.getCanonicalName(),
-        TMailImapAuthPackage.class.getCanonicalName());
+        "com.linagora.tmail.imap.TMailImapPackage",
+        "com.linagora.tmail.imap.TMailImapAuthPackage");
+    private static final String TMAIL_SMTP_HANDLER_PACKAGE = "com.linagora.tmail.smtp.TMailCmdHandlerLoader";
+
+    public TMailPlainSaslMechanismFactory() {
+        super();
+    }
+
+    public TMailPlainSaslMechanismFactory(boolean requireSslDefault) {
+        super(requireSslDefault);
+    }
 
     @Override
     public SaslMechanism create(HierarchicalConfiguration<ImmutableNode> serverConfiguration) {
-        // if TMailImapPackage is not used, we create James's PlainSaslMechanism to avoid breaking change
-        if (!containsTMailImapPackage(serverConfiguration)) {
-            return new PlainSaslMechanism(plainAuthEnabled(serverConfiguration), requiresSsl(serverConfiguration));
+        if (usesTMailImapPackage(serverConfiguration) || usesTMailSmtpHandlerPackage(serverConfiguration)) {
+            return new TMailPlainSaslMechanism(plainAuthEnabled(serverConfiguration), requiresSsl(serverConfiguration));
         }
-
-        return new TMailPlainSaslMechanism(plainAuthEnabled(serverConfiguration), requiresSsl(serverConfiguration));
+        return new PlainSaslMechanism(plainAuthEnabled(serverConfiguration), requiresSsl(serverConfiguration));
     }
 
-    private boolean containsTMailImapPackage(HierarchicalConfiguration<ImmutableNode> serverConfiguration) {
+    private boolean usesTMailImapPackage(HierarchicalConfiguration<ImmutableNode> serverConfiguration) {
         return Arrays.stream(serverConfiguration.getStringArray("imapPackages"))
             .map(String::trim)
             .anyMatch(TMAIL_IMAP_PACKAGES::contains);
+    }
+
+    private boolean usesTMailSmtpHandlerPackage(HierarchicalConfiguration<ImmutableNode> serverConfiguration) {
+        return TMAIL_SMTP_HANDLER_PACKAGE.equals(serverConfiguration.getString("handlerchain[@coreHandlersPackage]", ""));
     }
 }

@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.imap;
+package com.linagora.tmail.sasl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -43,64 +43,75 @@ class TMailPlainSaslMechanismTest {
 
     @Test
     void shouldReturnDelegatedIdentityWhenUserTokenContainsPlus() {
-        // GIVEN a TMail PLAIN response using user+delegated syntax
         SaslInitialRequest request = new SaslInitialRequest(PlainSaslMechanism.NAME,
             Optional.of(bytes("\0user+delegated@example.com\0" + PASSWORD)));
 
-        // WHEN the mechanism parses and authenticates the response
         SaslStep step = testee.start(request, authenticating()).firstStep();
 
-        // THEN it preserves the authentication and authorization identities for IMAP delegation
         assertThat(step).isEqualTo(new SaslStep.Success(new SaslIdentity(AUTHENTICATION_ID, AUTHORIZATION_ID), Optional.empty()));
     }
 
     @Test
-    void shouldReturnDelegatedIdentityForLoginUserTokenContainingPlus() {
-        // GIVEN a TMail LOGIN username using user+delegated syntax
+    void shouldReturnDelegatedIdentityWhenTwoPartUserTokenContainsPlus() {
+        SaslInitialRequest request = new SaslInitialRequest(PlainSaslMechanism.NAME,
+            Optional.of(bytes("user+delegated@example.com\0" + PASSWORD)));
 
-        // WHEN the LOGIN path authenticates through the TMail PLAIN mechanism override
-        SaslStep step = testee.authenticate(Username.of("user+delegated@example.com"), PASSWORD, authenticating());
+        SaslStep step = testee.start(request, authenticating()).firstStep();
 
-        // THEN the same delegation identity is produced without duplicating auth logic in a TMail login processor
         assertThat(step).isEqualTo(new SaslStep.Success(new SaslIdentity(AUTHENTICATION_ID, AUTHORIZATION_ID), Optional.empty()));
     }
 
     @Test
-    void shouldFailMalformedLoginDelegationSyntax() {
-        // GIVEN a TMail LOGIN username with malformed delegation syntax
+    void shouldFailInvalidCredentialsWhenTwoPartDelegationSyntaxIsInvalid() {
+        Username username = Username.of("user+@example.com");
+        SaslInitialRequest request = new SaslInitialRequest(PlainSaslMechanism.NAME,
+            Optional.of(bytes(username.asString() + "\0" + PASSWORD)));
 
-        // WHEN the LOGIN path authenticates through the TMail PLAIN mechanism override
-        SaslStep step = testee.authenticate(Username.of("user+@example.com"), PASSWORD, authenticating());
+        SaslStep step = testee.start(request, authenticating()).firstStep();
 
-        // THEN the malformed syntax is reported as a SASL failure instead of throwing
+        assertThat(step).isEqualTo(new SaslStep.Failure(SaslFailure.invalidCredentials(username, Optional.empty(), "Invalid credentials")));
+    }
+
+    @Test
+    void shouldFailInvalidCredentialsWhenPlainDelegationSyntaxIsInvalid() {
+        Username username = Username.of("user+@example.com");
+        SaslInitialRequest request = new SaslInitialRequest(PlainSaslMechanism.NAME,
+            Optional.of(bytes("\0" + username.asString() + "\0" + PASSWORD)));
+
+        SaslStep step = testee.start(request, authenticating()).firstStep();
+
+        assertThat(step).isEqualTo(new SaslStep.Failure(SaslFailure.invalidCredentials(username, Optional.empty(), "Invalid credentials")));
+    }
+
+    @Test
+    void shouldFailMalformedWhenPlainTokenCountIsInvalid() {
+        SaslInitialRequest request = new SaslInitialRequest(PlainSaslMechanism.NAME,
+            Optional.of(bytes("only-one-token")));
+
+        SaslStep step = testee.start(request, authenticating()).firstStep();
+
         assertThat(step).isEqualTo(new SaslStep.Failure(SaslFailure.malformed("Malformed authentication command.")));
     }
 
     @Test
     void shouldReturnNonDelegatedIdentityWhenUserTokenDoesNotContainPlus() {
-        // GIVEN a regular TMail PLAIN response
         SaslInitialRequest request = new SaslInitialRequest(PlainSaslMechanism.NAME,
             Optional.of(bytes("\0" + AUTHENTICATION_ID.asString() + "\0" + PASSWORD)));
 
-        // WHEN the mechanism parses and authenticates the response
         SaslStep step = testee.start(request, authenticating()).firstStep();
 
-        // THEN it keeps the regular non-delegated identity shape
         assertThat(step).isEqualTo(new SaslStep.Success(new SaslIdentity(AUTHENTICATION_ID, AUTHENTICATION_ID), Optional.empty()));
     }
 
     @Test
     void shouldPreserveWhitespaceOnlyPassword() {
-        // GIVEN a PLAIN response whose password is made of whitespace only
         AtomicReference<String> capturedPassword = new AtomicReference<>();
         String whitespacePassword = "   ";
         SaslInitialRequest request = new SaslInitialRequest(PlainSaslMechanism.NAME,
             Optional.of(bytes("\0" + AUTHENTICATION_ID.asString() + "\0" + whitespacePassword)));
 
-        // WHEN the mechanism parses and authenticates the response
         testee.start(request, authenticating(capturedPassword)).firstStep();
 
-        // THEN it keeps the password unchanged instead of filtering it as blank
         assertThat(capturedPassword).hasValue(whitespacePassword);
     }
 
