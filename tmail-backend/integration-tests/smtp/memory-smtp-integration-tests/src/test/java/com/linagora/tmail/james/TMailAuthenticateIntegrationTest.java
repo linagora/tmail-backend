@@ -42,7 +42,7 @@ import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.GuiceProbe;
 import org.apache.james.utils.SMTPMessageSender;
 import org.apache.james.utils.TestIMAPClient;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -73,13 +73,14 @@ class TMailAuthenticateIntegrationTest {
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding().to(MailboxManagerClassProbe.class)))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @RegisterExtension
     TestIMAPClient testIMAPClient = new TestIMAPClient();
 
-    @BeforeEach
-    void setup(GuiceJamesServer server) throws Exception {
+    @BeforeAll
+    static void setup(GuiceJamesServer server) throws Exception {
         server.getProbe(DataProbeImpl.class).fluent()
             .addDomain(DOMAIN)
             .addUser(MINISTER.asString(), MINISTER_PASSWORD)
