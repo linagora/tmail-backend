@@ -221,6 +221,7 @@ import com.linagora.tmail.modules.data.TMailCassandraDeletedMessageVaultModule;
 import com.linagora.tmail.modules.data.TMailCassandraDomainListModule;
 import com.linagora.tmail.rate.limiter.api.cassandra.module.CassandraRateLimitingModule;
 import com.linagora.tmail.rspamd.RspamdModule;
+import com.linagora.tmail.smtp.TMailSMTPModule;
 import com.linagora.tmail.team.TMailQuotaUsernameSupplier;
 import com.linagora.tmail.team.TeamMailboxModule;
 import com.linagora.tmail.webadmin.EmailAddressContactRoutesModule;
@@ -413,6 +414,7 @@ public class DistributedServer {
             new TeamMailboxModule(),
             new TMailMailboxSortOrderProviderModule(),
             new TMailIMAPModule(),
+            new TMailSMTPModule(),
             new CollectTrustedContactsListenerModule(),
             new FilteringRuleReferenceUpdaterListenerModule(),
             new CassandraUserDataTieringModule());
