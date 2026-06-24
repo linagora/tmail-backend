@@ -106,7 +106,7 @@ class TMailCanSendFromTest extends CanSendFromContract {
   }
 
   @Test
-  def allValidFromAddressesForUserShouldListTeamMailboxAlias(): Unit = {
+  def allValidFromAddressesForUserShouldListTeamMailbox(): Unit = {
     val teamMailbox = TeamMailbox(Domain.of("domain.tld"), TeamMailboxName("marketing"))
     SMono(teamMailboxRepository.createTeamMailbox(teamMailbox)).block()
     SMono(teamMailboxRepository.addMember(teamMailbox,  TeamMailboxMember.asMember(Username.of("bob@domain.tld")))) .block()
@@ -114,6 +114,18 @@ class TMailCanSendFromTest extends CanSendFromContract {
     assertThat(Flux.from(testee.allValidFromAddressesForUser(Username.of("bob@domain.tld")))
       .collectList().block())
       .containsOnly(new MailAddress("marketing@domain.tld"), new MailAddress("bob@domain.tld"))
+  }
+
+  @Test
+  def allValidFromAddressesForUserShouldListTeamMailboxAlias(): Unit = {
+    val teamMailbox = TeamMailbox(Domain.of("domain.tld"), TeamMailboxName("marketing"))
+    SMono(teamMailboxRepository.createTeamMailbox(teamMailbox)).block()
+    SMono(teamMailboxRepository.addMember(teamMailbox,  TeamMailboxMember.asMember(Username.of("bob@domain.tld")))) .block()
+    addAliasMapping(Username.of("marketing-alias@domain.tld"), Username.of("marketing@domain.tld"))
+
+    assertThat(Flux.from(testee.allValidFromAddressesForUser(Username.of("bob@domain.tld")))
+      .collectList().block())
+      .containsOnly(new MailAddress("marketing@domain.tld"), new MailAddress("marketing-alias@domain.tld"), new MailAddress("bob@domain.tld"))
   }
 
   @Test
@@ -143,6 +155,22 @@ class TMailCanSendFromTest extends CanSendFromContract {
       session)
 
     assertThat(testee.userCanSendFrom(Username.of("bob@domain.tld"), Username.of("marketing@domain.tld")))
+      .isTrue
+  }
+
+  @Test
+  def extraSenderCanSendAsTeamMailboxAlias(): Unit = {
+    val teamMailbox = TeamMailbox(Domain.of("domain.tld"), TeamMailboxName("marketing"))
+    SMono(teamMailboxRepository.createTeamMailbox(teamMailbox)).block()
+    addAliasMapping(Username.of("marketing-alias@domain.tld"), Username.of("marketing@domain.tld"))
+
+    val session = mailboxManager.createSystemSession(teamMailbox.admin)
+    mailboxManager.applyRightsCommand(
+      teamMailbox.mailboxPath,
+      MailboxACL.command().forUser(Username.of("bob@domain.tld")).rights(MailboxACL.Right.Post).asAddition(),
+      session)
+
+    assertThat(testee.userCanSendFrom(Username.of("bob@domain.tld"), Username.of("marketing-alias@domain.tld")))
       .isTrue
   }
 
