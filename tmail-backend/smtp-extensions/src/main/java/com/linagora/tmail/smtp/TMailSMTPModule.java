@@ -16,13 +16,11 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.imap;
+package com.linagora.tmail.smtp;
 
 import jakarta.inject.Singleton;
 
-import org.apache.james.imap.main.PathConverter;
-import org.apache.james.imap.processor.NamespaceSupplier;
-import org.apache.james.modules.protocols.ImapDefaultSaslMechanismFactories;
+import org.apache.james.modules.protocols.SmtpDefaultSaslMechanismFactories;
 import org.apache.james.protocols.api.sasl.SaslMechanismFactory;
 import org.apache.james.protocols.sasl.OauthBearerSaslMechanismFactory;
 import org.apache.james.protocols.sasl.XOauth2SaslMechanismFactory;
@@ -30,25 +28,14 @@ import org.apache.james.protocols.sasl.XOauth2SaslMechanismFactory;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
-import com.google.inject.Scopes;
 import com.linagora.tmail.sasl.TMailPlainSaslMechanismFactory;
 
-public class TMailIMAPModule extends AbstractModule {
-    @Override
-    protected void configure() {
-        bind(NamespaceSupplier.class).to(TMailNamespaceSupplier.class).in(Scopes.SINGLETON);
-        bind(PathConverter.Factory.class).to(TMailPathConverterFactory.class).in(Scopes.SINGLETON);
-    }
-
-    /**
-     * TMailPlainSaslMechanismFactory falls back to James PLAIN unless the current server configuration uses a TMail package.
-     */
+public class TMailSMTPModule extends AbstractModule {
     @Provides
     @Singleton
-    @ImapDefaultSaslMechanismFactories
-    ImmutableList<SaslMechanismFactory> provideDefaultImapSaslMechanismFactories(TMailPlainSaslMechanismFactory plain,
-                                                                                 OauthBearerSaslMechanismFactory oauthBearer,
+    @SmtpDefaultSaslMechanismFactories
+    ImmutableList<SaslMechanismFactory> provideDefaultSmtpSaslMechanismFactories(OauthBearerSaslMechanismFactory oauthBearer,
                                                                                  XOauth2SaslMechanismFactory xoauth2) {
-        return ImmutableList.of(plain, oauthBearer, xoauth2);
+        return ImmutableList.of(new TMailPlainSaslMechanismFactory(false), oauthBearer, xoauth2);
     }
 }

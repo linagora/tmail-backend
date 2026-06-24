@@ -26,6 +26,9 @@ import org.apache.james.protocols.sasl.XOauth2SaslMechanismFactory;
 import org.apache.james.protocols.sasl.plain.PlainSaslMechanism;
 import org.junit.jupiter.api.Test;
 
+import com.linagora.tmail.sasl.TMailPlainSaslMechanism;
+import com.linagora.tmail.sasl.TMailPlainSaslMechanismFactory;
+
 class TMailIMAPModuleTest {
     private final TMailIMAPModule testee = new TMailIMAPModule();
 
