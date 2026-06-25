@@ -150,61 +150,20 @@ class DmarcReportAnalyzer {
     }
 
     private static Optional<Boolean> scanForIssues(XMLStreamReader reader) throws XMLStreamException {
-        boolean inRecord = false;
-        boolean inPolicyEvaluated = false;
-        String currentElement = null;
-        String dkimResult = null;
-        String spfResult = null;
-
+        RecordState state = new RecordState();
         while (reader.hasNext()) {
             int event = reader.next();
-            switch (event) {
-                case XMLStreamConstants.DTD:
-                    throw new XMLStreamException("DTD declarations are not allowed in DMARC reports");
-                case XMLStreamConstants.START_ELEMENT: {
-                    String name = reader.getLocalName();
-                    if ("record".equals(name)) {
-                        inRecord = true;
-                        dkimResult = null;
-                        spfResult = null;
-                    } else if ("policy_evaluated".equals(name) && inRecord) {
-                        inPolicyEvaluated = true;
-                    } else if (inPolicyEvaluated) {
-                        currentElement = name;
-                    }
-                    break;
+            if (event == XMLStreamConstants.DTD) {
+                throw new XMLStreamException("DTD declarations are not allowed in DMARC reports");
+            }
+            if (event == XMLStreamConstants.START_ELEMENT) {
+                state.onStartElement(reader.getLocalName());
+            } else if (event == XMLStreamConstants.CHARACTERS || event == XMLStreamConstants.CDATA) {
+                state.onText(reader.getText());
+            } else if (event == XMLStreamConstants.END_ELEMENT) {
+                if (state.onEndElement(reader.getLocalName())) {
+                    return Optional.of(true);
                 }
-                case XMLStreamConstants.CHARACTERS:
-                case XMLStreamConstants.CDATA: {
-                    if (inPolicyEvaluated && currentElement != null) {
-                        String text = reader.getText();
-                        if ("dkim".equals(currentElement)) {
-                            dkimResult = (dkimResult == null ? "" : dkimResult) + text;
-                        } else if ("spf".equals(currentElement)) {
-                            spfResult = (spfResult == null ? "" : spfResult) + text;
-                        }
-                    }
-                    break;
-                }
-                case XMLStreamConstants.END_ELEMENT: {
-                    String name = reader.getLocalName();
-                    if ("policy_evaluated".equals(name)) {
-                        inPolicyEvaluated = false;
-                        currentElement = null;
-                    } else if ("record".equals(name)) {
-                        inRecord = false;
-                        if (isFail(dkimResult) && isFail(spfResult)) {
-                            return Optional.of(true);
-                        }
-                        dkimResult = null;
-                        spfResult = null;
-                    } else if (inPolicyEvaluated && name.equals(currentElement)) {
-                        currentElement = null;
-                    }
-                    break;
-                }
-                default:
-                    break;
             }
         }
         return Optional.of(false);
@@ -212,6 +171,53 @@ class DmarcReportAnalyzer {
 
     private static boolean isFail(String value) {
         return value != null && "fail".equalsIgnoreCase(value.trim());
+    }
+
+    private static class RecordState {
+        private boolean inRecord = false;
+        private boolean inPolicyEvaluated = false;
+        private String currentElement = null;
+        private String dkimResult = null;
+        private String spfResult = null;
+
+        void onStartElement(String name) {
+            if ("record".equals(name)) {
+                inRecord = true;
+                dkimResult = null;
+                spfResult = null;
+            } else if ("policy_evaluated".equals(name) && inRecord) {
+                inPolicyEvaluated = true;
+            } else if (inPolicyEvaluated) {
+                currentElement = name;
+            }
+        }
+
+        void onText(String text) {
+            if (!inPolicyEvaluated || currentElement == null) {
+                return;
+            }
+            if ("dkim".equals(currentElement)) {
+                dkimResult = (dkimResult == null ? "" : dkimResult) + text;
+            } else if ("spf".equals(currentElement)) {
+                spfResult = (spfResult == null ? "" : spfResult) + text;
+            }
+        }
+
+        boolean onEndElement(String name) {
+            if ("policy_evaluated".equals(name)) {
+                inPolicyEvaluated = false;
+                currentElement = null;
+            } else if ("record".equals(name)) {
+                inRecord = false;
+                boolean hasFailure = isFail(dkimResult) && isFail(spfResult);
+                dkimResult = null;
+                spfResult = null;
+                return hasFailure;
+            } else if (inPolicyEvaluated && name.equals(currentElement)) {
+                currentElement = null;
+            }
+            return false;
+        }
     }
 
     private static InputStream limitedStream(InputStream in, long maxBytes) {

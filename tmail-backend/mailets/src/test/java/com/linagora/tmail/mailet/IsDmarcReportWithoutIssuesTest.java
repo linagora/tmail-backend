@@ -20,32 +20,14 @@ package com.linagora.tmail.mailet;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.ByteArrayInputStream;
-import java.io.ByteArrayOutputStream;
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
 import java.util.Collection;
-import java.util.Properties;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipOutputStream;
-
-import jakarta.activation.DataHandler;
-import jakarta.mail.Session;
-import jakarta.mail.internet.MimeBodyPart;
-import jakarta.mail.internet.MimeMessage;
-import jakarta.mail.internet.MimeMultipart;
-import jakarta.mail.util.ByteArrayDataSource;
 
 import org.apache.james.core.MailAddress;
-import org.apache.mailet.base.test.FakeMail;
 import org.apache.mailet.base.test.FakeMatcherConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-class IsDmarcReportWithoutIssuesTest {
-    private static final MailAddress RECIPIENT = newAddress("recipient@example.com");
-    private static final String DMARC_SUBJECT = "Report Domain: example.com Submitter: google.com Report-ID: 12345";
-
+class IsDmarcReportWithoutIssuesTest extends DmarcReportMatcherTestBase {
     private static final String REPORT_WITHOUT_ISSUES = """
         <?xml version="1.0" encoding="UTF-8"?>
         <feedback>
@@ -186,58 +168,5 @@ class IsDmarcReportWithoutIssuesTest {
         Collection<MailAddress> result = matcher.match(mailWithZipAttachment(DMARC_SUBJECT, "not xml"));
 
         assertThat(result).isEmpty();
-    }
-
-    private FakeMail mailWithZipAttachment(String subject, String xmlContent) throws Exception {
-        byte[] zipBytes = createZip("report.xml", xmlContent.getBytes(StandardCharsets.UTF_8));
-        MimeMessage message = buildMultipartMessage(subject, zipBytes, "application/zip",
-            "example.com!google.com!1749340800!1749427199.zip");
-        return FakeMail.builder().name("test").recipient(RECIPIENT).mimeMessage(message).build();
-    }
-
-    private static MimeMessage buildMultipartMessage(String subject, byte[] attachmentBytes,
-            String attachmentContentType, String filename) throws Exception {
-        Session session = Session.getInstance(new Properties());
-        MimeMessage message = new MimeMessage(session);
-        message.setSubject(subject);
-
-        MimeMultipart multipart = new MimeMultipart("mixed");
-
-        MimeBodyPart textPart = new MimeBodyPart();
-        textPart.setText("DMARC aggregate report");
-        multipart.addBodyPart(textPart);
-
-        MimeBodyPart attachPart = new MimeBodyPart();
-        attachPart.setDataHandler(new DataHandler(new ByteArrayDataSource(attachmentBytes, attachmentContentType)));
-        attachPart.setFileName(filename);
-        multipart.addBodyPart(attachPart);
-
-        message.setContent(multipart);
-        message.saveChanges();
-
-        // Write and re-read so parts are backed by DataSource (not DataHandler+Object),
-        // enabling getInputStream() without requiring a DCH for the attachment MIME type.
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        message.writeTo(baos);
-        return new MimeMessage(session, new ByteArrayInputStream(baos.toByteArray()));
-    }
-
-    private static byte[] createZip(String entryName, byte[] content) throws IOException {
-        ByteArrayOutputStream baos = new ByteArrayOutputStream();
-        try (ZipOutputStream zos = new ZipOutputStream(baos)) {
-            ZipEntry entry = new ZipEntry(entryName);
-            zos.putNextEntry(entry);
-            zos.write(content);
-            zos.closeEntry();
-        }
-        return baos.toByteArray();
-    }
-
-    private static MailAddress newAddress(String address) {
-        try {
-            return new MailAddress(address);
-        } catch (Exception e) {
-            throw new RuntimeException(e);
-        }
     }
 }
