@@ -78,18 +78,18 @@ class DmarcReportAnalyzer {
         }
     }
 
-    private static Optional<Boolean> findAndParseAttachment(MimeMessage msg)
+    private static Optional<Boolean> findAndParseAttachment(MimeMessage message)
             throws MessagingException, IOException, XMLStreamException {
-        if (!msg.isMimeType("multipart/*")) {
+        if (!message.isMimeType("multipart/*")) {
             return Optional.empty();
         }
-        return findAndParseInMultipart((Multipart) msg.getContent());
+        return findAndParseInMultipart((Multipart) message.getContent());
     }
 
-    private static Optional<Boolean> findAndParseInMultipart(Multipart mp)
+    private static Optional<Boolean> findAndParseInMultipart(Multipart multipart)
             throws MessagingException, IOException, XMLStreamException {
-        for (int i = 0; i < mp.getCount(); i++) {
-            BodyPart part = mp.getBodyPart(i);
+        for (int i = 0; i < multipart.getCount(); i++) {
+            BodyPart part = multipart.getBodyPart(i);
             Optional<Boolean> result = tryParsePart(part);
             if (result.isPresent()) {
                 return result;
@@ -101,47 +101,59 @@ class DmarcReportAnalyzer {
     private static Optional<Boolean> tryParsePart(BodyPart part)
             throws MessagingException, IOException, XMLStreamException {
         String filename = Optional.ofNullable(part.getFileName()).orElse("").toLowerCase();
-        String ct = part.getContentType().split(";")[0].trim().toLowerCase();
+        String contentType = part.getContentType().split(";")[0].trim().toLowerCase();
 
-        if (ct.equals("application/zip") || ct.equals("application/x-zip") || filename.endsWith(".zip")) {
+        if (isZip(contentType, filename)) {
             return parseZip(part.getInputStream());
         }
-        if (ct.equals("application/gzip") || ct.equals("application/x-gzip") || filename.endsWith(".gz")) {
+        if (isGzip(contentType, filename)) {
             return parseGzip(part.getInputStream());
         }
-        if (ct.equals("application/xml") || ct.equals("text/xml") || filename.endsWith(".xml")) {
+        if (isXml(contentType, filename)) {
             return parseXml(limitedStream(part.getInputStream(), MAX_UNCOMPRESSED_BYTES));
         }
 
         Object content = part.getContent();
-        if (content instanceof Multipart) {
-            return findAndParseInMultipart((Multipart) content);
+        if (content instanceof Multipart nestedMultipart) {
+            return findAndParseInMultipart(nestedMultipart);
         }
         return Optional.empty();
     }
 
-    private static Optional<Boolean> parseZip(InputStream raw) throws IOException, XMLStreamException {
-        ZipInputStream zis = new ZipInputStream(raw);
+    private static boolean isZip(String contentType, String filename) {
+        return contentType.equals("application/zip") || contentType.equals("application/x-zip") || filename.endsWith(".zip");
+    }
+
+    private static boolean isGzip(String contentType, String filename) {
+        return contentType.equals("application/gzip") || contentType.equals("application/x-gzip") || filename.endsWith(".gz");
+    }
+
+    private static boolean isXml(String contentType, String filename) {
+        return contentType.equals("application/xml") || contentType.equals("text/xml") || filename.endsWith(".xml");
+    }
+
+    private static Optional<Boolean> parseZip(InputStream rawInputStream) throws IOException, XMLStreamException {
+        ZipInputStream zipInputStream = new ZipInputStream(rawInputStream);
         ZipEntry entry;
-        while ((entry = zis.getNextEntry()) != null) {
+        while ((entry = zipInputStream.getNextEntry()) != null) {
             if (!entry.isDirectory()) {
-                Optional<Boolean> result = parseXml(limitedStream(zis, MAX_UNCOMPRESSED_BYTES));
+                Optional<Boolean> result = parseXml(limitedStream(zipInputStream, MAX_UNCOMPRESSED_BYTES));
                 if (result.isPresent()) {
                     return result;
                 }
             }
-            zis.closeEntry();
+            zipInputStream.closeEntry();
         }
         LOGGER.warn("No XML entry found in DMARC ZIP attachment");
         return Optional.empty();
     }
 
-    private static Optional<Boolean> parseGzip(InputStream raw) throws IOException, XMLStreamException {
-        return parseXml(limitedStream(new GZIPInputStream(raw), MAX_UNCOMPRESSED_BYTES));
+    private static Optional<Boolean> parseGzip(InputStream rawInputStream) throws IOException, XMLStreamException {
+        return parseXml(limitedStream(new GZIPInputStream(rawInputStream), MAX_UNCOMPRESSED_BYTES));
     }
 
-    private static Optional<Boolean> parseXml(InputStream xmlStream) throws XMLStreamException {
-        XMLStreamReader reader = XML_INPUT_FACTORY.createXMLStreamReader(xmlStream);
+    private static Optional<Boolean> parseXml(InputStream xmlInputStream) throws XMLStreamException {
+        XMLStreamReader reader = XML_INPUT_FACTORY.createXMLStreamReader(xmlInputStream);
         try {
             return scanForIssues(reader);
         } finally {
@@ -152,21 +164,26 @@ class DmarcReportAnalyzer {
     private static Optional<Boolean> scanForIssues(XMLStreamReader reader) throws XMLStreamException {
         RecordState state = new RecordState();
         while (reader.hasNext()) {
-            int event = reader.next();
-            if (event == XMLStreamConstants.DTD) {
+            int eventType = reader.next();
+            if (eventType == XMLStreamConstants.DTD) {
                 throw new XMLStreamException("DTD declarations are not allowed in DMARC reports");
             }
-            if (event == XMLStreamConstants.START_ELEMENT) {
-                state.onStartElement(reader.getLocalName());
-            } else if (event == XMLStreamConstants.CHARACTERS || event == XMLStreamConstants.CDATA) {
-                state.onText(reader.getText());
-            } else if (event == XMLStreamConstants.END_ELEMENT) {
-                if (state.onEndElement(reader.getLocalName())) {
-                    return Optional.of(true);
-                }
+            if (dispatchXmlEvent(reader, state, eventType)) {
+                return Optional.of(true);
             }
         }
         return Optional.of(false);
+    }
+
+    private static boolean dispatchXmlEvent(XMLStreamReader reader, RecordState state, int eventType) throws XMLStreamException {
+        if (eventType == XMLStreamConstants.START_ELEMENT) {
+            state.onStartElement(reader.getLocalName());
+        } else if (eventType == XMLStreamConstants.CHARACTERS || eventType == XMLStreamConstants.CDATA) {
+            state.onText(reader.getText());
+        } else if (eventType == XMLStreamConstants.END_ELEMENT) {
+            return state.onEndElement(reader.getLocalName());
+        }
+        return false;
     }
 
     private static boolean isFail(String value) {
