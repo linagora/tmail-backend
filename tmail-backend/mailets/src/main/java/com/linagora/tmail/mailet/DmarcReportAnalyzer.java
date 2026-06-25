@@ -264,6 +264,14 @@ class DmarcReportAnalyzer {
         return new FilterInputStream(in) {
             private long bytesRead = 0;
 
+            // Close-shield: the XML reader auto-closes its input on END_DOCUMENT, but the
+            // underlying stream (ZIP entry, GZIP or part stream) is owned and closed by the
+            // caller's try-with-resources. Closing it here would break ZipInputStream.closeEntry().
+            @Override
+            public void close() {
+                // no-op
+            }
+
             @Override
             public int read() throws IOException {
                 int b = super.read();
