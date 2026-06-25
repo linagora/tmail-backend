@@ -104,13 +104,19 @@ class DmarcReportAnalyzer {
         String contentType = part.getContentType().split(";")[0].trim().toLowerCase();
 
         if (isZip(contentType, filename)) {
-            return parseZip(part.getInputStream());
+            try (InputStream inputStream = part.getInputStream()) {
+                return parseZip(inputStream);
+            }
         }
         if (isGzip(contentType, filename)) {
-            return parseGzip(part.getInputStream());
+            try (InputStream inputStream = part.getInputStream()) {
+                return parseGzip(inputStream);
+            }
         }
         if (isXml(contentType, filename)) {
-            return parseXml(limitedStream(part.getInputStream(), MAX_UNCOMPRESSED_BYTES));
+            try (InputStream inputStream = part.getInputStream()) {
+                return parseXml(limitedStream(inputStream, MAX_UNCOMPRESSED_BYTES));
+            }
         }
 
         Object content = part.getContent();
@@ -133,23 +139,26 @@ class DmarcReportAnalyzer {
     }
 
     private static Optional<Boolean> parseZip(InputStream rawInputStream) throws IOException, XMLStreamException {
-        ZipInputStream zipInputStream = new ZipInputStream(rawInputStream);
-        ZipEntry entry;
-        while ((entry = zipInputStream.getNextEntry()) != null) {
-            if (!entry.isDirectory()) {
-                Optional<Boolean> result = parseXml(limitedStream(zipInputStream, MAX_UNCOMPRESSED_BYTES));
-                if (result.isPresent()) {
-                    return result;
+        try (ZipInputStream zipInputStream = new ZipInputStream(rawInputStream)) {
+            ZipEntry entry;
+            while ((entry = zipInputStream.getNextEntry()) != null) {
+                if (!entry.isDirectory()) {
+                    Optional<Boolean> result = parseXml(limitedStream(zipInputStream, MAX_UNCOMPRESSED_BYTES));
+                    if (result.isPresent()) {
+                        return result;
+                    }
                 }
+                zipInputStream.closeEntry();
             }
-            zipInputStream.closeEntry();
+            LOGGER.warn("No XML entry found in DMARC ZIP attachment");
+            return Optional.empty();
         }
-        LOGGER.warn("No XML entry found in DMARC ZIP attachment");
-        return Optional.empty();
     }
 
     private static Optional<Boolean> parseGzip(InputStream rawInputStream) throws IOException, XMLStreamException {
-        return parseXml(limitedStream(new GZIPInputStream(rawInputStream), MAX_UNCOMPRESSED_BYTES));
+        try (GZIPInputStream gzipInputStream = new GZIPInputStream(rawInputStream)) {
+            return parseXml(limitedStream(gzipInputStream, MAX_UNCOMPRESSED_BYTES));
+        }
     }
 
     private static Optional<Boolean> parseXml(InputStream xmlInputStream) throws XMLStreamException {
