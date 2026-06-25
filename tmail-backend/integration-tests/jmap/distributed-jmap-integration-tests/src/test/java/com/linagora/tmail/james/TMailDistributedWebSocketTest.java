@@ -60,5 +60,6 @@ public class TMailDistributedWebSocketTest implements WebSocketContract {
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new DelegationProbeModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }
