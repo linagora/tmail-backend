@@ -21,6 +21,7 @@ package com.linagora.tmail.mailet;
 import java.io.FilterInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.regex.Pattern;
 import java.util.zip.GZIPInputStream;
@@ -141,17 +142,22 @@ class DmarcReportAnalyzer {
     private static Optional<Boolean> parseZip(InputStream rawInputStream) throws IOException, XMLStreamException {
         try (ZipInputStream zipInputStream = new ZipInputStream(rawInputStream)) {
             ZipEntry entry;
+            boolean parsedXml = false;
             while ((entry = zipInputStream.getNextEntry()) != null) {
-                if (!entry.isDirectory()) {
-                    Optional<Boolean> result = parseXml(limitedStream(zipInputStream, MAX_UNCOMPRESSED_BYTES));
-                    if (result.isPresent()) {
-                        return result;
+                String entryName = entry.getName().toLowerCase(Locale.ROOT);
+                if (!entry.isDirectory() && entryName.endsWith(".xml")) {
+                    parsedXml = true;
+                    if (parseXml(limitedStream(zipInputStream, MAX_UNCOMPRESSED_BYTES)).orElse(false)) {
+                        return Optional.of(true);
                     }
                 }
                 zipInputStream.closeEntry();
             }
-            LOGGER.warn("No XML entry found in DMARC ZIP attachment");
-            return Optional.empty();
+            if (!parsedXml) {
+                LOGGER.warn("No XML entry found in DMARC ZIP attachment");
+                return Optional.empty();
+            }
+            return Optional.of(false);
         }
     }
 
@@ -181,7 +187,9 @@ class DmarcReportAnalyzer {
                 return Optional.of(true);
             }
         }
-        return Optional.of(false);
+        return state.seenRecord()
+            ? Optional.of(false)
+            : Optional.empty();
     }
 
     private static boolean dispatchXmlEvent(XMLStreamReader reader, RecordState state, int eventType) throws XMLStreamException {
@@ -200,14 +208,20 @@ class DmarcReportAnalyzer {
     }
 
     private static class RecordState {
+        private boolean seenRecord = false;
         private boolean inRecord = false;
         private boolean inPolicyEvaluated = false;
         private String currentElement = null;
         private String dkimResult = null;
         private String spfResult = null;
 
+        boolean seenRecord() {
+            return seenRecord;
+        }
+
         void onStartElement(String name) {
             if ("record".equals(name)) {
+                seenRecord = true;
                 inRecord = true;
                 dkimResult = null;
                 spfResult = null;
