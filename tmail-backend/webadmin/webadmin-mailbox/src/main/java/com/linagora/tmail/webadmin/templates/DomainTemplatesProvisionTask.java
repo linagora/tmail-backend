@@ -69,11 +69,11 @@ public class DomainTemplatesProvisionTask implements Task {
     private final int usersPerSecond;
     private final TemplatesProvisionContext context;
 
-    public DomainTemplatesProvisionTask(TemplatesProvisionService service, Domain domain, Username sourceUser,
-                                        String folderName, ProvisionOptions options, int usersPerSecond) {
+    public DomainTemplatesProvisionTask(TemplatesProvisionService service, Domain domain, TemplatingSource source,
+                                        ProvisionOptions options, int usersPerSecond) {
         this.service = service;
         this.domain = domain;
-        this.source = new TemplatingSource(sourceUser, folderName);
+        this.source = source;
         this.options = options;
         this.usersPerSecond = usersPerSecond;
         this.context = new TemplatesProvisionContext();
@@ -81,7 +81,7 @@ public class DomainTemplatesProvisionTask implements Task {
 
     @Override
     public Result run() {
-        return service.provisionDomain(domain, source, options, usersPerSecond, context).block();
+        return service.provisionDomain(domain, source, new TemplatesProvisionService.ProvisionRun(options, context), usersPerSecond).block();
     }
 
     @Override

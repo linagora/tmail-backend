@@ -76,7 +76,7 @@ public class UserTemplatesProvisionTask implements Task {
 
     @Override
     public Result run() {
-        return service.provisionUser(source, targetUser, options, context).block();
+        return service.provisionUser(source, targetUser, new TemplatesProvisionService.ProvisionRun(options, context)).block();
     }
 
     @Override

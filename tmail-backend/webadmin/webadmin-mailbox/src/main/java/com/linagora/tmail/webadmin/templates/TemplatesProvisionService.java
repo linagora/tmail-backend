@@ -69,6 +69,13 @@ public class TemplatesProvisionService {
     private record TargetTemplate(Optional<String> messageId, MessageUid uid) {
     }
 
+    public record ProvisionRun(ProvisionOptions options, TemplatesProvisionContext context) {
+    }
+
+    private record TargetMailbox(MessageManager messageManager, MailboxSession session,
+                                 ListMultimap<String, MessageUid> targetsByMessageId) {
+    }
+
     private final MailboxManager mailboxManager;
     private final UsersRepository usersRepository;
 
@@ -79,14 +86,14 @@ public class TemplatesProvisionService {
     }
 
     public Mono<Task.Result> provisionDomain(Domain domain, TemplatingSource source,
-                                             ProvisionOptions options, int usersPerSecond, TemplatesProvisionContext context) {
+                                             ProvisionRun run, int usersPerSecond) {
         return loadSourceTemplates(source)
             .flatMap(templates -> Flux.from(usersRepository.listUsersOfADomainReactive(domain))
                 .filter(user -> !user.equals(source.sourceUser()))
                 .transform(ReactorUtils.<Username, Task.Result>throttle()
                     .elements(usersPerSecond)
                     .per(Duration.ofSeconds(1))
-                    .forOperation(user -> provisionForSingleUser(templates, user, source.folderName(), options, context)))
+                    .forOperation(user -> provisionForSingleUser(templates, user, source.folderName(), run)))
                 .reduce(Task.Result.COMPLETED, Task::combine)
                 .onErrorResume(e -> {
                     LOGGER.error("Error while provisioning templates for users of domain {}", domain.asString(), e);
@@ -94,10 +101,9 @@ public class TemplatesProvisionService {
                 }));
     }
 
-    public Mono<Task.Result> provisionUser(TemplatingSource source, Username targetUser,
-                                           ProvisionOptions options, TemplatesProvisionContext context) {
+    public Mono<Task.Result> provisionUser(TemplatingSource source, Username targetUser, ProvisionRun run) {
         return loadSourceTemplates(source)
-            .flatMap(templates -> provisionForSingleUser(templates, targetUser, source.folderName(), options, context));
+            .flatMap(templates -> provisionForSingleUser(templates, targetUser, source.folderName(), run));
     }
 
     public Mono<Boolean> sourceFolderExists(TemplatingSource source) {
@@ -133,78 +139,76 @@ public class TemplatesProvisionService {
     }
 
     private Mono<Task.Result> provisionForSingleUser(List<SourceTemplate> templates, Username targetUser, String folderName,
-                                                     ProvisionOptions options, TemplatesProvisionContext context) {
+                                                     ProvisionRun run) {
         MailboxSession session = mailboxManager.createSystemSession(targetUser);
         MailboxPath targetPath = MailboxPath.forUser(targetUser, folderName);
         return ensureMailbox(session, targetPath)
             .then(Mono.from(mailboxManager.getMailboxReactive(targetPath, session)))
-            .flatMap(messageManager -> applyTemplates(templates, messageManager, session, options, context))
+            .flatMap(messageManager -> applyTemplates(templates, messageManager, session, run))
             .then(Mono.fromCallable(() -> {
-                context.incrementProcessedUsers();
+                run.context().incrementProcessedUsers();
                 LOGGER.info("Templates folder '{}' provisioned for user {}", folderName, targetUser.asString());
                 return Task.Result.COMPLETED;
             }))
             .onErrorResume(e -> {
                 LOGGER.error("Error while provisioning templates folder '{}' for user {}", folderName, targetUser.asString(), e);
-                context.addToFailedUsers(targetUser.asString());
+                run.context().addToFailedUsers(targetUser.asString());
                 return Mono.just(Task.Result.PARTIAL);
             });
     }
 
     private Mono<Void> applyTemplates(List<SourceTemplate> templates, MessageManager messageManager, MailboxSession session,
-                                      ProvisionOptions options, TemplatesProvisionContext context) {
+                                      ProvisionRun run) {
         return Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.HEADERS, session))
             .map(Throwing.function(this::toTargetTemplate))
             .collectList()
             .flatMap(targets -> {
                 ListMultimap<String, MessageUid> targetsByMessageId = ArrayListMultimap.create();
                 targets.forEach(target -> target.messageId().ifPresent(id -> targetsByMessageId.put(id, target.uid())));
+                TargetMailbox targetMailbox = new TargetMailbox(messageManager, session, targetsByMessageId);
 
                 return Flux.fromIterable(templates)
-                    .concatMap(template -> applyTemplate(template, messageManager, session, options, context, targetsByMessageId))
-                    .then(Mono.defer(() -> pruneTemplates(templates, messageManager, session, options, context, targetsByMessageId)));
+                    .concatMap(template -> applyTemplate(template, targetMailbox, run))
+                    .then(Mono.defer(() -> pruneTemplates(templates, targetMailbox, run)));
             });
     }
 
-    private Mono<Void> applyTemplate(SourceTemplate template, MessageManager messageManager, MailboxSession session,
-                                     ProvisionOptions options, TemplatesProvisionContext context,
-                                     ListMultimap<String, MessageUid> targetsByMessageId) {
+    private Mono<Void> applyTemplate(SourceTemplate template, TargetMailbox targetMailbox, ProvisionRun run) {
+        ListMultimap<String, MessageUid> targetsByMessageId = targetMailbox.targetsByMessageId();
         Optional<String> messageId = template.messageId();
         boolean alreadyPresent = messageId.isPresent() && targetsByMessageId.containsKey(messageId.get());
 
-        if (alreadyPresent && !options.overwriteExisting()) {
-            context.incrementSkippedTemplates();
+        if (alreadyPresent && !run.options().overwriteExisting()) {
+            run.context().incrementSkippedTemplates();
             return Mono.empty();
         }
         Mono<Void> deleteExisting = alreadyPresent
-            ? messageManager.deleteReactive(ImmutableList.copyOf(targetsByMessageId.removeAll(messageId.get())), session).then()
+            ? targetMailbox.messageManager().deleteReactive(ImmutableList.copyOf(targetsByMessageId.removeAll(messageId.get())), targetMailbox.session()).then()
             : Mono.empty();
         return deleteExisting
-            .then(appendTemplate(template, messageManager, session))
+            .then(appendTemplate(template, targetMailbox.messageManager(), targetMailbox.session()))
             .doOnNext(uid -> messageId.ifPresent(id -> targetsByMessageId.put(id, uid)))
-            .doOnSuccess(any -> context.incrementAppliedTemplates())
+            .doOnSuccess(any -> run.context().incrementAppliedTemplates())
             .then();
     }
 
-    private Mono<Void> pruneTemplates(List<SourceTemplate> templates, MessageManager messageManager, MailboxSession session,
-                                      ProvisionOptions options, TemplatesProvisionContext context,
-                                      ListMultimap<String, MessageUid> targetsByMessageId) {
-        if (!options.prune()) {
+    private Mono<Void> pruneTemplates(List<SourceTemplate> templates, TargetMailbox targetMailbox, ProvisionRun run) {
+        if (!run.options().prune()) {
             return Mono.empty();
         }
         Set<String> sourceMessageIds = templates.stream()
             .map(SourceTemplate::messageId)
             .flatMap(Optional::stream)
             .collect(ImmutableSet.toImmutableSet());
-        ImmutableList<MessageUid> orphans = targetsByMessageId.entries().stream()
+        ImmutableList<MessageUid> orphans = targetMailbox.targetsByMessageId().entries().stream()
             .filter(entry -> !sourceMessageIds.contains(entry.getKey()))
             .map(java.util.Map.Entry::getValue)
             .collect(ImmutableList.toImmutableList());
         if (orphans.isEmpty()) {
             return Mono.empty();
         }
-        return messageManager.deleteReactive(orphans, session)
-            .doOnSuccess(any -> context.incrementRemovedTemplates(orphans.size()))
+        return targetMailbox.messageManager().deleteReactive(orphans, targetMailbox.session())
+            .doOnSuccess(any -> run.context().incrementRemovedTemplates(orphans.size()))
             .then();
     }
 

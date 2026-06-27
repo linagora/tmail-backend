@@ -89,7 +89,7 @@ class TemplatesProvisionServiceTest {
         appendTemplate(ALICE, "<t2@example.org>", "Second template");
 
         TemplatesProvisionContext context = new TemplatesProvisionContext();
-        Task.Result result = service.provisionDomain(DOMAIN, new TemplatingSource(ALICE, TEMPLATES), ProvisionOptions.DEFAULT, 10, context).block();
+        Task.Result result = service.provisionDomain(DOMAIN, new TemplatingSource(ALICE, TEMPLATES), new TemplatesProvisionService.ProvisionRun(ProvisionOptions.DEFAULT, context), 10).block();
 
         assertThat(result).isEqualTo(Task.Result.COMPLETED);
         assertThat(messageIds(BOB)).containsExactlyInAnyOrder("<t1@example.org>", "<t2@example.org>");
@@ -102,7 +102,7 @@ class TemplatesProvisionServiceTest {
         appendTemplate(ALICE, "<t1@example.org>", "First template");
 
         TemplatesProvisionContext context = new TemplatesProvisionContext();
-        service.provisionDomain(DOMAIN, new TemplatingSource(ALICE, TEMPLATES), ProvisionOptions.DEFAULT, 10, context).block();
+        service.provisionDomain(DOMAIN, new TemplatingSource(ALICE, TEMPLATES), new TemplatesProvisionService.ProvisionRun(ProvisionOptions.DEFAULT, context), 10).block();
 
         assertThat(messageIds(ALICE)).containsExactly("<t1@example.org>");
         assertThat(context.snapshot().processedUsers()).isEqualTo(2);
@@ -117,7 +117,7 @@ class TemplatesProvisionServiceTest {
         appendTemplate(CEDRIC, "<t1@example.org>", "Cedric existing body");
 
         TemplatesProvisionContext context = new TemplatesProvisionContext();
-        service.provisionDomain(DOMAIN, new TemplatingSource(ALICE, TEMPLATES), ProvisionOptions.DEFAULT, 10, context).block();
+        service.provisionDomain(DOMAIN, new TemplatingSource(ALICE, TEMPLATES), new TemplatesProvisionService.ProvisionRun(ProvisionOptions.DEFAULT, context), 10).block();
 
         assertThat(messageIds(CEDRIC)).containsExactlyInAnyOrder("<t1@example.org>", "<t2@example.org>");
         assertThat(bodies(CEDRIC)).anyMatch(body -> body.contains("Cedric existing body"));
@@ -132,7 +132,7 @@ class TemplatesProvisionServiceTest {
         appendTemplate(CEDRIC, "<t1@example.org>", "Cedric existing body");
 
         TemplatesProvisionContext context = new TemplatesProvisionContext();
-        service.provisionDomain(DOMAIN, new TemplatingSource(ALICE, TEMPLATES), new ProvisionOptions(true, false), 10, context).block();
+        service.provisionDomain(DOMAIN, new TemplatingSource(ALICE, TEMPLATES), new TemplatesProvisionService.ProvisionRun(new ProvisionOptions(true, false), context), 10).block();
 
         assertThat(messageIds(CEDRIC)).containsExactly("<t1@example.org>");
         assertThat(bodies(CEDRIC)).allMatch(body -> body.contains("Source body"));
@@ -146,7 +146,7 @@ class TemplatesProvisionServiceTest {
         appendTemplate(CEDRIC, "<orphan@example.org>", "Old template removed from source");
 
         TemplatesProvisionContext context = new TemplatesProvisionContext();
-        service.provisionDomain(DOMAIN, new TemplatingSource(ALICE, TEMPLATES), new ProvisionOptions(false, true), 10, context).block();
+        service.provisionDomain(DOMAIN, new TemplatingSource(ALICE, TEMPLATES), new TemplatesProvisionService.ProvisionRun(new ProvisionOptions(false, true), context), 10).block();
 
         assertThat(messageIds(CEDRIC)).containsExactly("<t1@example.org>");
         assertThat(context.snapshot().removedTemplates()).isEqualTo(1);
@@ -160,7 +160,7 @@ class TemplatesProvisionServiceTest {
         appendTemplate(CEDRIC, "<orphan@example.org>", "Old template");
 
         TemplatesProvisionContext context = new TemplatesProvisionContext();
-        service.provisionDomain(DOMAIN, new TemplatingSource(ALICE, TEMPLATES), ProvisionOptions.DEFAULT, 10, context).block();
+        service.provisionDomain(DOMAIN, new TemplatingSource(ALICE, TEMPLATES), new TemplatesProvisionService.ProvisionRun(ProvisionOptions.DEFAULT, context), 10).block();
 
         assertThat(messageIds(CEDRIC)).containsExactlyInAnyOrder("<t1@example.org>", "<orphan@example.org>");
     }
@@ -172,7 +172,7 @@ class TemplatesProvisionServiceTest {
         appendTemplate(ALICE, "<t2@example.org>", "Second template");
 
         TemplatesProvisionContext context = new TemplatesProvisionContext();
-        Task.Result result = service.provisionUser(new TemplatingSource(ALICE, TEMPLATES), BOB, ProvisionOptions.DEFAULT, context).block();
+        Task.Result result = service.provisionUser(new TemplatingSource(ALICE, TEMPLATES), BOB, new TemplatesProvisionService.ProvisionRun(ProvisionOptions.DEFAULT, context)).block();
 
         assertThat(result).isEqualTo(Task.Result.COMPLETED);
         assertThat(messageIds(BOB)).containsExactlyInAnyOrder("<t1@example.org>", "<t2@example.org>");
@@ -182,7 +182,7 @@ class TemplatesProvisionServiceTest {
     @Test
     void provisionShouldFailWhenSourceFolderDoesNotExist() {
         TemplatesProvisionContext context = new TemplatesProvisionContext();
-        assertThatThrownBy(() -> service.provisionUser(new TemplatingSource(ALICE, TEMPLATES), BOB, ProvisionOptions.DEFAULT, context).block())
+        assertThatThrownBy(() -> service.provisionUser(new TemplatingSource(ALICE, TEMPLATES), BOB, new TemplatesProvisionService.ProvisionRun(ProvisionOptions.DEFAULT, context)).block())
             .isInstanceOf(SourceTemplatesFolderNotFoundException.class);
     }
 
@@ -193,7 +193,7 @@ class TemplatesProvisionServiceTest {
         appendTemplate(ALICE, folderName, "<t1@example.org>", "Marketing template");
 
         TemplatesProvisionContext context = new TemplatesProvisionContext();
-        service.provisionUser(new TemplatingSource(ALICE, folderName), BOB, ProvisionOptions.DEFAULT, context).block();
+        service.provisionUser(new TemplatingSource(ALICE, folderName), BOB, new TemplatesProvisionService.ProvisionRun(ProvisionOptions.DEFAULT, context)).block();
 
         assertThat(messageIds(BOB, folderName)).containsExactly("<t1@example.org>");
     }

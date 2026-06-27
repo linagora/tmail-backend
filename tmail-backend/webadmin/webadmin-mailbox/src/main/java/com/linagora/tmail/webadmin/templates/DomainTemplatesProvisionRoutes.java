@@ -74,8 +74,9 @@ public class DomainTemplatesProvisionRoutes implements Routes {
         String folderName = TemplatesProvisionRequest.parseFolderName(request);
         ProvisionOptions options = TemplatesProvisionRequest.parseOptions(request);
         int usersPerSecond = TemplatesProvisionRequest.parseUsersPerSecond(request);
-        assertSourceFolderExists(new TemplatingSource(sourceUser, folderName));
-        return new DomainTemplatesProvisionTask(provisionService, domain, sourceUser, folderName, options, usersPerSecond);
+        TemplatingSource source = new TemplatingSource(sourceUser, folderName);
+        assertSourceFolderExists(source);
+        return new DomainTemplatesProvisionTask(provisionService, domain, source, options, usersPerSecond);
     }
 
     private Domain extractDomain(Request request) {

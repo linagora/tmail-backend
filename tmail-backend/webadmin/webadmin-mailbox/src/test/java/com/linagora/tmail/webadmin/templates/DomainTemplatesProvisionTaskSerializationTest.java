@@ -37,8 +37,7 @@ class DomainTemplatesProvisionTaskSerializationTest {
         JsonSerializationVerifier.dtoModule(DomainTemplatesProvisionTaskDTO.module(service))
             .bean(new DomainTemplatesProvisionTask(service,
                 Domain.of("domain.tld"),
-                Username.of("templates@domain.tld"),
-                "Templates",
+                new TemplatingSource(Username.of("templates@domain.tld"), "Templates"),
                 new ProvisionOptions(true, false),
                 10))
             .json("""

@@ -38,8 +38,7 @@ public record DomainTemplatesProvisionTaskDTO(@JsonProperty("type") String type,
             .convertToDTO(DomainTemplatesProvisionTaskDTO.class)
             .toDomainObjectConverter(dto -> new DomainTemplatesProvisionTask(service,
                 Domain.of(dto.domain()),
-                Username.of(dto.sourceUser()),
-                dto.folderName(),
+                new TemplatingSource(Username.of(dto.sourceUser()), dto.folderName()),
                 new ProvisionOptions(dto.overwriteExisting(), dto.prune()),
                 dto.usersPerSecond()))
             .toDTOConverter((task, type) -> new DomainTemplatesProvisionTaskDTO(type,
