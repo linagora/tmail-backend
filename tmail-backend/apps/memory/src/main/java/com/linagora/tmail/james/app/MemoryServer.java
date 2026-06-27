@@ -139,6 +139,7 @@ import com.linagora.tmail.webadmin.jmap.JmapSettingsRoutesModule;
 import com.linagora.tmail.webadmin.label.LabelRoutesModule;
 import com.linagora.tmail.webadmin.mailbox.MailboxResourcesLocationRoutesModule;
 import com.linagora.tmail.webadmin.quota.UserQuotaReporterRoutesModule;
+import com.linagora.tmail.webadmin.templates.TemplatesProvisionModule;
 
 public class MemoryServer {
     public static final Module IN_MEMORY_SERVER_MODULE = Modules.combine(
@@ -182,6 +183,7 @@ public class MemoryServer {
         new PublicAssetsMemoryModule(),
         new MessageVaultCapabilitiesModule(),
         new MailboxesCleanupModule(),
+        new TemplatesProvisionModule(),
         new DomainTasksModule(),
         new MailboxResourcesLocationRoutesModule(),
         new InboxArchivalTaskModule(),

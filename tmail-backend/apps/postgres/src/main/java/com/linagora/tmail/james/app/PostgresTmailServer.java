@@ -217,6 +217,7 @@ import com.linagora.tmail.webadmin.jmap.PopulateKeywordEmailQueryViewTaskModule;
 import com.linagora.tmail.webadmin.label.LabelRoutesModule;
 import com.linagora.tmail.webadmin.mailbox.MailboxResourcesLocationRoutesModule;
 import com.linagora.tmail.webadmin.quota.UserQuotaReporterRoutesModule;
+import com.linagora.tmail.webadmin.templates.TemplatesProvisionModule;
 
 import reactor.core.publisher.Mono;
 
@@ -304,6 +305,7 @@ public class PostgresTmailServer {
         new JmapTasksModule(),
         new MailboxRoutesModule(),
         new MailboxesCleanupModule(),
+        new TemplatesProvisionModule(),
         new DomainTasksModule(),
         new MailboxResourcesLocationRoutesModule(),
         new MailboxesBackupRoutesModule(),

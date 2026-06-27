@@ -1785,3 +1785,70 @@ Return codes:
 
 Note: this endpoint is only available in LDAP-based deployments.
 
+== Templates provisioning
+
+Email templates are simply messages stored in a user's `Templates` mailbox. These endpoints allow
+administrators to provision the templates of a reference (admin-controlled) account into the
+`Templates` mailbox of other users, so that a curated set of templates can be shared.
+
+The reference templates live in the `Templates` mailbox (or any sub-folder, see `folderName`) of a
+designated source account given by the `from` query parameter. The admin edits these templates with
+the regular JMAP / Twake Mail UI: no dedicated template store is involved.
+
+The operations are asynchronous and return a task identifier that can be polled for completion
+via `GET /tasks/{taskId}/await`.
+
+Templates are deduplicated across runs using their RFC 5322 `Message-Id` header, so re-provisioning
+after editing the reference templates is safe.
+
+Common query parameters:
+
+- `from` (required): the source account whose templates folder is the reference.
+- `folderName` (optional, default: `Templates`): the mailbox name to copy from the source account
+  and into the target accounts. Lets an admin manage several categories of templates
+  (e.g. `Templates.Marketing`).
+- `overwriteExisting` (optional, default: `false`): when `true`, a target template sharing its
+  `Message-Id` with a reference template is replaced; otherwise it is left untouched (skipped).
+- `prune` (optional, default: `false`): when `true`, target templates whose `Message-Id` is no
+  longer present in the reference folder are deleted (full mirror); otherwise the operation is
+  copy-only.
+
+The target `Templates` folder is created when missing.
+
+=== Provisioning templates to all users of a domain
+
+....
+curl -XPOST 'http://ip:port/domains/domain.tld/templates?action=provision&from=templates@domain.tld'
+....
+
+Provisions the reference templates into the `Templates` mailbox of every user of the domain. The
+source account itself is skipped.
+
+In addition to the common query parameters above:
+
+- `usersPerSecond` (optional, default: 1): maximum number of users processed per second (throttling).
+
+Return codes:
+
+- `201` Task created — response body contains `{"taskId": "<id>"}`.
+  The task's `additionalInformation` exposes `processedUsers`, `appliedTemplates`, `skippedTemplates`,
+  `removedTemplates` and `failedUsers`.
+- `400` Unknown `action`, missing `from`, invalid domain or invalid `usersPerSecond`
+- `404` Domain does not exist, or the source folder does not exist
+
+=== Provisioning templates to a single user
+
+....
+curl -XPOST 'http://ip:port/users/bob@domain.tld/templates?action=provision&from=templates@domain.tld'
+....
+
+Provisions the reference templates into the `Templates` mailbox of a single target user.
+
+Return codes:
+
+- `201` Task created — response body contains `{"taskId": "<id>"}`.
+  The task's `additionalInformation` exposes `processedUsers`, `appliedTemplates`, `skippedTemplates`,
+  `removedTemplates` and `failedUsers`.
+- `400` Unknown `action`, missing `from`, or invalid username
+- `404` The source folder does not exist
+
