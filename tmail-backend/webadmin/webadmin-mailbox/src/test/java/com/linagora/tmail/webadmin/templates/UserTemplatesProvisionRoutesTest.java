@@ -164,6 +164,29 @@ class UserTemplatesProvisionRoutesTest {
     }
 
     @Test
+    void postShouldReturn400WhenOverwriteExistingIsInvalid() {
+        given()
+            .queryParam("action", "provision")
+            .queryParam("from", "templates@example.com")
+            .queryParam("overwriteExisting", "invalid")
+        .when()
+            .post("/users/bob@example.com/templates")
+        .then()
+            .statusCode(HttpStatus.BAD_REQUEST_400);
+    }
+
+    @Test
+    void postShouldReturn404WhenTargetUserDoesNotExist() {
+        given()
+            .queryParam("action", "provision")
+            .queryParam("from", "templates@example.com")
+        .when()
+            .post("/users/unknown@example.com/templates")
+        .then()
+            .statusCode(HttpStatus.NOT_FOUND_404);
+    }
+
+    @Test
     void postShouldReturn404WhenSourceFolderDoesNotExist() {
         given()
             .queryParam("action", "provision")

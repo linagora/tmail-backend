@@ -64,19 +64,30 @@ public class UserTemplatesProvisionRoutes implements Routes {
     private UserTemplatesProvisionTask createTask(Request request) {
         TemplatesProvisionRequest.assertProvisionAction(request);
         Username targetUser = TemplatesProvisionRequest.parseUsername(request.params(USERNAME_PARAM));
+        assertTargetUserExists(targetUser);
         Username sourceUser = TemplatesProvisionRequest.parseSourceUser(request);
         String folderName = TemplatesProvisionRequest.parseFolderName(request);
         ProvisionOptions options = TemplatesProvisionRequest.parseOptions(request);
-        assertSourceFolderExists(sourceUser, folderName);
+        assertSourceFolderExists(new TemplatingSource(sourceUser, folderName));
         return new UserTemplatesProvisionTask(provisionService, sourceUser, targetUser, folderName, options);
     }
 
-    private void assertSourceFolderExists(Username sourceUser, String folderName) {
-        if (Boolean.FALSE.equals(provisionService.sourceFolderExists(sourceUser, folderName).block())) {
+    private void assertTargetUserExists(Username targetUser) {
+        if (Boolean.FALSE.equals(provisionService.userExists(targetUser).block())) {
             throw ErrorResponder.builder()
                 .statusCode(HttpStatus.NOT_FOUND_404)
                 .type(ErrorResponder.ErrorType.NOT_FOUND)
-                .message("Folder '%s' of source user '%s' does not exist", folderName, sourceUser.asString())
+                .message("User '%s' does not exist", targetUser.asString())
+                .haltError();
+        }
+    }
+
+    private void assertSourceFolderExists(TemplatingSource source) {
+        if (Boolean.FALSE.equals(provisionService.sourceFolderExists(source).block())) {
+            throw ErrorResponder.builder()
+                .statusCode(HttpStatus.NOT_FOUND_404)
+                .type(ErrorResponder.ErrorType.NOT_FOUND)
+                .message("Folder '%s' of source user '%s' does not exist", source.folderName(), source.sourceUser().asString())
                 .haltError();
         }
     }

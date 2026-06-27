@@ -46,9 +46,9 @@ public class UserTemplatesProvisionTask implements Task {
         static AdditionalInformation from(UserTemplatesProvisionTask task) {
             TemplatesProvisionContext.Snapshot snapshot = task.context.snapshot();
             return new AdditionalInformation(Clock.systemUTC().instant(),
-                task.sourceUser.asString(),
+                task.source.sourceUser().asString(),
                 task.targetUser.asString(),
-                task.folderName,
+                task.source.folderName(),
                 task.options.overwriteExisting(),
                 task.options.prune(),
                 snapshot.processedUsers(),
@@ -60,25 +60,23 @@ public class UserTemplatesProvisionTask implements Task {
     }
 
     private final TemplatesProvisionService service;
-    private final Username sourceUser;
+    private final TemplatingSource source;
     private final Username targetUser;
-    private final String folderName;
     private final ProvisionOptions options;
     private final TemplatesProvisionContext context;
 
     public UserTemplatesProvisionTask(TemplatesProvisionService service, Username sourceUser, Username targetUser,
                                       String folderName, ProvisionOptions options) {
         this.service = service;
-        this.sourceUser = sourceUser;
+        this.source = new TemplatingSource(sourceUser, folderName);
         this.targetUser = targetUser;
-        this.folderName = folderName;
         this.options = options;
         this.context = new TemplatesProvisionContext();
     }
 
     @Override
     public Result run() {
-        return service.provisionUser(sourceUser, targetUser, folderName, options, context).block();
+        return service.provisionUser(source, targetUser, options, context).block();
     }
 
     @Override
@@ -92,7 +90,7 @@ public class UserTemplatesProvisionTask implements Task {
     }
 
     public Username getSourceUser() {
-        return sourceUser;
+        return source.sourceUser();
     }
 
     public Username getTargetUser() {
@@ -100,7 +98,7 @@ public class UserTemplatesProvisionTask implements Task {
     }
 
     public String getFolderName() {
-        return folderName;
+        return source.folderName();
     }
 
     public ProvisionOptions getOptions() {

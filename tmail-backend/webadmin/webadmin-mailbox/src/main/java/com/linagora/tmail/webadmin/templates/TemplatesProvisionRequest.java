@@ -109,7 +109,21 @@ public class TemplatesProvisionRequest {
 
     private static boolean parseBoolean(Request request, String parameterName) {
         return Optional.ofNullable(request.queryParams(parameterName))
-            .map(Boolean::parseBoolean)
+            .map(value -> parseBooleanValue(parameterName, value))
             .orElse(false);
+    }
+
+    private static boolean parseBooleanValue(String parameterName, String value) {
+        if ("true".equalsIgnoreCase(value)) {
+            return true;
+        }
+        if ("false".equalsIgnoreCase(value)) {
+            return false;
+        }
+        throw ErrorResponder.builder()
+            .statusCode(HttpStatus.BAD_REQUEST_400)
+            .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+            .message("Invalid '%s' value '%s'. Expected 'true' or 'false'.", parameterName, value)
+            .haltError();
     }
 }

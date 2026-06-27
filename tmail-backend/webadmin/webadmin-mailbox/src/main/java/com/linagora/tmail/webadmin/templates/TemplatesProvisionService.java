@@ -78,15 +78,15 @@ public class TemplatesProvisionService {
         this.usersRepository = usersRepository;
     }
 
-    public Mono<Task.Result> provisionDomain(Domain domain, Username sourceUser, String folderName,
+    public Mono<Task.Result> provisionDomain(Domain domain, TemplatingSource source,
                                              ProvisionOptions options, int usersPerSecond, TemplatesProvisionContext context) {
-        return loadSourceTemplates(sourceUser, folderName)
+        return loadSourceTemplates(source)
             .flatMap(templates -> Flux.from(usersRepository.listUsersOfADomainReactive(domain))
-                .filter(user -> !user.equals(sourceUser))
+                .filter(user -> !user.equals(source.sourceUser()))
                 .transform(ReactorUtils.<Username, Task.Result>throttle()
                     .elements(usersPerSecond)
                     .per(Duration.ofSeconds(1))
-                    .forOperation(user -> provisionForSingleUser(templates, user, folderName, options, context)))
+                    .forOperation(user -> provisionForSingleUser(templates, user, source.folderName(), options, context)))
                 .reduce(Task.Result.COMPLETED, Task::combine)
                 .onErrorResume(e -> {
                     LOGGER.error("Error while provisioning templates for users of domain {}", domain.asString(), e);
@@ -94,35 +94,42 @@ public class TemplatesProvisionService {
                 }));
     }
 
-    public Mono<Task.Result> provisionUser(Username sourceUser, Username targetUser, String folderName,
+    public Mono<Task.Result> provisionUser(TemplatingSource source, Username targetUser,
                                            ProvisionOptions options, TemplatesProvisionContext context) {
-        return loadSourceTemplates(sourceUser, folderName)
-            .flatMap(templates -> provisionForSingleUser(templates, targetUser, folderName, options, context));
+        return loadSourceTemplates(source)
+            .flatMap(templates -> provisionForSingleUser(templates, targetUser, source.folderName(), options, context));
     }
 
-    public Mono<Boolean> sourceFolderExists(Username sourceUser, String folderName) {
-        MailboxSession session = mailboxManager.createSystemSession(sourceUser);
-        return Mono.from(mailboxManager.getMailboxReactive(MailboxPath.forUser(sourceUser, folderName), session))
+    public Mono<Boolean> sourceFolderExists(TemplatingSource source) {
+        MailboxSession session = mailboxManager.createSystemSession(source.sourceUser());
+        return Mono.from(mailboxManager.getMailboxReactive(MailboxPath.forUser(source.sourceUser(), source.folderName()), session))
             .map(any -> true)
             .onErrorResume(MailboxNotFoundException.class, e -> Mono.just(false));
     }
 
-    private Mono<ImmutableList<SourceTemplate>> loadSourceTemplates(Username sourceUser, String folderName) {
-        MailboxSession session = mailboxManager.createSystemSession(sourceUser);
-        return Mono.from(mailboxManager.getMailboxReactive(MailboxPath.forUser(sourceUser, folderName), session))
+    public Mono<Boolean> userExists(Username user) {
+        return Mono.from(usersRepository.containsReactive(user));
+    }
+
+    private Mono<ImmutableList<SourceTemplate>> loadSourceTemplates(TemplatingSource source) {
+        MailboxSession session = mailboxManager.createSystemSession(source.sourceUser());
+        return Mono.from(mailboxManager.getMailboxReactive(MailboxPath.forUser(source.sourceUser(), source.folderName()), session))
             .onErrorResume(MailboxNotFoundException.class,
-                e -> Mono.error(new SourceTemplatesFolderNotFoundException(sourceUser, folderName)))
+                e -> Mono.error(new SourceTemplatesFolderNotFoundException(source.sourceUser(), source.folderName())))
             .flatMapMany(messageManager -> Flux.from(messageManager.getMessagesReactive(MessageRange.all(), FetchGroup.FULL_CONTENT, session)))
             .map(Throwing.function(this::toSourceTemplate))
             .collect(ImmutableList.toImmutableList());
     }
 
     private SourceTemplate toSourceTemplate(MessageResult messageResult) throws Exception {
-        byte[] content;
-        try (InputStream inputStream = messageResult.getFullContent().getInputStream()) {
-            content = ByteStreams.toByteArray(inputStream);
-        }
+        byte[] content = readFully(messageResult);
         return new SourceTemplate(parseMessageId(new ByteArrayInputStream(content)), content);
+    }
+
+    private byte[] readFully(MessageResult messageResult) throws Exception {
+        try (InputStream inputStream = messageResult.getFullContent().getInputStream()) {
+            return ByteStreams.toByteArray(inputStream);
+        }
     }
 
     private Mono<Task.Result> provisionForSingleUser(List<SourceTemplate> templates, Username targetUser, String folderName,
@@ -170,11 +177,13 @@ public class TemplatesProvisionService {
             return Mono.empty();
         }
         Mono<Void> deleteExisting = alreadyPresent
-            ? messageManager.deleteReactive(ImmutableList.copyOf(targetsByMessageId.get(messageId.get())), session).then()
+            ? messageManager.deleteReactive(ImmutableList.copyOf(targetsByMessageId.removeAll(messageId.get())), session).then()
             : Mono.empty();
         return deleteExisting
             .then(appendTemplate(template, messageManager, session))
-            .doOnSuccess(any -> context.incrementAppliedTemplates());
+            .doOnNext(uid -> messageId.ifPresent(id -> targetsByMessageId.put(id, uid)))
+            .doOnSuccess(any -> context.incrementAppliedTemplates())
+            .then();
     }
 
     private Mono<Void> pruneTemplates(List<SourceTemplate> templates, MessageManager messageManager, MailboxSession session,
@@ -199,10 +208,10 @@ public class TemplatesProvisionService {
             .then();
     }
 
-    private Mono<Void> appendTemplate(SourceTemplate template, MessageManager messageManager, MailboxSession session) {
+    private Mono<MessageUid> appendTemplate(SourceTemplate template, MessageManager messageManager, MailboxSession session) {
         return Mono.fromCallable(() -> AppendCommand.builder().build(parseMessage(template.content())))
             .flatMap(appendCommand -> Mono.from(messageManager.appendMessageReactive(appendCommand, session)))
-            .then();
+            .map(appendResult -> appendResult.getId().getUid());
     }
 
     private TargetTemplate toTargetTemplate(MessageResult messageResult) throws Exception {

@@ -49,8 +49,8 @@ public class DomainTemplatesProvisionTask implements Task {
             TemplatesProvisionContext.Snapshot snapshot = task.context.snapshot();
             return new AdditionalInformation(Clock.systemUTC().instant(),
                 task.domain.asString(),
-                task.sourceUser.asString(),
-                task.folderName,
+                task.source.sourceUser().asString(),
+                task.source.folderName(),
                 task.options.overwriteExisting(),
                 task.options.prune(),
                 task.usersPerSecond,
@@ -64,8 +64,7 @@ public class DomainTemplatesProvisionTask implements Task {
 
     private final TemplatesProvisionService service;
     private final Domain domain;
-    private final Username sourceUser;
-    private final String folderName;
+    private final TemplatingSource source;
     private final ProvisionOptions options;
     private final int usersPerSecond;
     private final TemplatesProvisionContext context;
@@ -74,8 +73,7 @@ public class DomainTemplatesProvisionTask implements Task {
                                         String folderName, ProvisionOptions options, int usersPerSecond) {
         this.service = service;
         this.domain = domain;
-        this.sourceUser = sourceUser;
-        this.folderName = folderName;
+        this.source = new TemplatingSource(sourceUser, folderName);
         this.options = options;
         this.usersPerSecond = usersPerSecond;
         this.context = new TemplatesProvisionContext();
@@ -83,7 +81,7 @@ public class DomainTemplatesProvisionTask implements Task {
 
     @Override
     public Result run() {
-        return service.provisionDomain(domain, sourceUser, folderName, options, usersPerSecond, context).block();
+        return service.provisionDomain(domain, source, options, usersPerSecond, context).block();
     }
 
     @Override
@@ -101,11 +99,11 @@ public class DomainTemplatesProvisionTask implements Task {
     }
 
     public Username getSourceUser() {
-        return sourceUser;
+        return source.sourceUser();
     }
 
     public String getFolderName() {
-        return folderName;
+        return source.folderName();
     }
 
     public ProvisionOptions getOptions() {

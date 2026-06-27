@@ -74,7 +74,7 @@ public class DomainTemplatesProvisionRoutes implements Routes {
         String folderName = TemplatesProvisionRequest.parseFolderName(request);
         ProvisionOptions options = TemplatesProvisionRequest.parseOptions(request);
         int usersPerSecond = TemplatesProvisionRequest.parseUsersPerSecond(request);
-        assertSourceFolderExists(sourceUser, folderName);
+        assertSourceFolderExists(new TemplatingSource(sourceUser, folderName));
         return new DomainTemplatesProvisionTask(provisionService, domain, sourceUser, folderName, options, usersPerSecond);
     }
 
@@ -109,12 +109,12 @@ public class DomainTemplatesProvisionRoutes implements Routes {
         }
     }
 
-    private void assertSourceFolderExists(Username sourceUser, String folderName) {
-        if (Boolean.FALSE.equals(provisionService.sourceFolderExists(sourceUser, folderName).block())) {
+    private void assertSourceFolderExists(TemplatingSource source) {
+        if (Boolean.FALSE.equals(provisionService.sourceFolderExists(source).block())) {
             throw ErrorResponder.builder()
                 .statusCode(HttpStatus.NOT_FOUND_404)
                 .type(ErrorResponder.ErrorType.NOT_FOUND)
-                .message("Folder '%s' of source user '%s' does not exist", folderName, sourceUser.asString())
+                .message("Folder '%s' of source user '%s' does not exist", source.folderName(), source.sourceUser().asString())
                 .haltError();
         }
     }
