@@ -49,6 +49,7 @@ import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import play.api.libs.json.{JsString, Json}
 import reactor.core.scala.publisher.SMono
 
+import scala.annotation.tailrec
 import scala.jdk.CollectionConverters._
 
 object PublicAssetSetMethodContract {
@@ -77,20 +78,33 @@ trait PublicAssetSetMethodContract {
 
   private def uploadAsset(content: Array[Byte] = "Your asset content here".getBytes,
                           contentType: String = "image/png"): UploadResponse = {
-    val uploadResponse: String = `given`()
-      .basePath("")
-      .contentType(contentType)
-      .body(content)
-    .when
-      .post(s"/upload/$ACCOUNT_ID")
-    .`then`
-      .extract
-      .body
-      .asString
+    // The upload occasionally fails server side with a transient InterruptedException while the
+    // blob store reads the request body, returning a problem object instead of the blobId.
+    // Retry a few times to keep this contract test stable.
+    @tailrec
+    def attempt(remaining: Int): UploadResponse = {
+      val uploadResponse: String = `given`()
+        .basePath("")
+        .contentType(contentType)
+        .body(content)
+      .when
+        .post(s"/upload/$ACCOUNT_ID")
+      .`then`
+        .extract
+        .body
+        .asString
 
-    UploadResponse(blobId = (Json.parse(uploadResponse) \ "blobId").as[String],
-      contentType = org.apache.james.mailbox.model.ContentType.of((Json.parse(uploadResponse) \ "type").as[String]).mimeType(),
-      size = (Json.parse(uploadResponse) \ "size").as[Long])
+      (Json.parse(uploadResponse) \ "blobId").asOpt[String] match {
+        case Some(blobId) =>
+          UploadResponse(blobId = blobId,
+            contentType = org.apache.james.mailbox.model.ContentType.of((Json.parse(uploadResponse) \ "type").as[String]).mimeType(),
+            size = (Json.parse(uploadResponse) \ "size").as[Long])
+        case None if remaining > 0 => attempt(remaining - 1)
+        case None => throw new IllegalStateException(s"Upload did not return a blobId: $uploadResponse")
+      }
+    }
+
+    attempt(remaining = 3)
   }
 
   @Test
