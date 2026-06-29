@@ -25,6 +25,8 @@ import java.io.Closeable;
 import java.time.Duration;
 import java.util.Optional;
 
+import jakarta.annotation.PreDestroy;
+
 import org.apache.james.backends.rabbitmq.QueueArguments;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
@@ -177,6 +179,7 @@ public class TWPSettingsConsumer implements Closeable, Startable {
         return settingsUpdater.updateSettings(message);
     }
 
+    @PreDestroy
     @Override
     public void close() {
         Optional.ofNullable(consumeSettingsDisposable).ifPresent(Disposable::dispose);

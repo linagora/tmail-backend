@@ -28,6 +28,7 @@ import java.io.Closeable;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
+import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 
@@ -140,6 +141,7 @@ public class RabbitMQEmailAddressContactSubscriber implements Startable, Closeab
             });
     }
 
+    @PreDestroy
     @Override
     public void close() {
         Optional.ofNullable(messageConsume).ifPresent(Disposable::dispose);

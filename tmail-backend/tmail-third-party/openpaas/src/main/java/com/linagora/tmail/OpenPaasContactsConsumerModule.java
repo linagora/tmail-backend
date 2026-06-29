@@ -44,6 +44,7 @@ import com.google.inject.Provides;
 import com.google.inject.Scopes;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
+import com.linagora.tmail.contact.SabreContactsConsumer;
 import com.linagora.tmail.contact.SabreContactsOperator;
 
 public class OpenPaasContactsConsumerModule extends AbstractModule {
@@ -51,6 +52,7 @@ public class OpenPaasContactsConsumerModule extends AbstractModule {
 
     @Override
     protected void configure() {
+        bind(SabreContactsConsumer.class).in(Scopes.SINGLETON);
         bind(SabreContactsOperator.class).in(Scopes.SINGLETON);
     }
 

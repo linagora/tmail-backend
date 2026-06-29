@@ -28,6 +28,7 @@ import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
 import jakarta.inject.Named;
 
@@ -260,6 +261,7 @@ public class SabreContactsConsumer implements Closeable {
             .then();
     }
 
+    @PreDestroy
     @Override
     public void close() {
         Optional.ofNullable(consumeAddedContactsDisposable).ifPresent(Disposable::dispose);
