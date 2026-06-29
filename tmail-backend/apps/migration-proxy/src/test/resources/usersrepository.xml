@@ -1,0 +1,22 @@
+<?xml version="1.0"?>
+
+<!-- Default: PostgreSQL-backed users repository.                                                     -->
+<!-- To use LDAP instead, replace this element with one carrying an "ldapHost" attribute, e.g.:        -->
+<!--                                                                                                   -->
+<!-- <usersrepository name="LocalUsers"                                                                -->
+<!--                  class="org.apache.james.user.ldap.ReadOnlyUsersLDAPRepository"                   -->
+<!--                  ldapHost="ldap://ldap:389"                                                       -->
+<!--                  principal="uid=admin,ou=system"                                                  -->
+<!--                  credentials="secret"                                                             -->
+<!--                  userBase="ou=people,dc=james,dc=org"                                             -->
+<!--                  userIdAttribute="uid"                                                            -->
+<!--                  userObjectClass="inetOrgPerson"                                                  -->
+<!--                  connectionTimeout="2000"                                                         -->
+<!--                  readTimeout="2000">                                                              -->
+<!--     <enableVirtualHosting>true</enableVirtualHosting>                                              -->
+<!-- </usersrepository>                                                                                -->
+
+<usersrepository name="LocalUsers">
+    <algorithm>SHA-512</algorithm>
+    <enableVirtualHosting>true</enableVirtualHosting>
+</usersrepository>

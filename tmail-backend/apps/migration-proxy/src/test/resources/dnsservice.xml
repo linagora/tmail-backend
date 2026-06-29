@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+
+<dnsservice>
+    <autodiscover>true</autodiscover>
+    <authoritative>false</authoritative>
+    <maxcachesize>50000</maxcachesize>
+</dnsservice>

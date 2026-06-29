@@ -35,5 +35,6 @@
         <module>memory</module>
         <module>distributed</module>
         <module>postgres</module>
+        <module>migration-proxy</module>
     </modules>
 </project>

@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+
+<!-- Shared user definition for the migration-proxy end-to-end stack.                                 -->
+<!--                                                                                                   -->
+<!-- old-backend, new-backend and the migration proxy all resolve users against the same OpenLDAP     -->
+<!-- (see the `ldap` service in docker-compose.yaml + sample-configuration/ldap/populate.ldif), so    -->
+<!-- the three test users exist everywhere without per-backend provisioning.                          -->
+<!--                                                                                                   -->
+<!-- Presence of the ldapHost attribute makes UsersRepositoryModuleChooser pick the LDAP module.      -->
+<!-- Login is the full address (userIdAttribute=mail + virtual hosting), e.g. bob@managed.tld/secret. -->
+
+<usersrepository name="LocalUsers"
+                 class="org.apache.james.user.ldap.ReadOnlyUsersLDAPRepository"
+                 ldapHost="ldap://ldap:389"
+                 principal="cn=admin,dc=james,dc=org"
+                 credentials="secret"
+                 userBase="ou=people,dc=james,dc=org"
+                 userIdAttribute="mail"
+                 userObjectClass="inetOrgPerson"
+                 connectionTimeout="2000"
+                 readTimeout="2000">
+    <supportsVirtualHosting>true</supportsVirtualHosting>
+</usersrepository>
