@@ -37,10 +37,6 @@ public class TemplatesProvisionRequest {
     private static final String USERS_PER_SECOND_PARAM = "usersPerSecond";
     private static final int DEFAULT_USERS_PER_SECOND = 1;
 
-    private TemplatesProvisionRequest() {
-
-    }
-
     public static void assertProvisionAction(Request request) {
         String action = request.queryParams(ACTION_PARAM);
         if (!PROVISION_ACTION.equals(action)) {
