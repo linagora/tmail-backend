@@ -42,6 +42,10 @@ public class TMailPlainSaslMechanismFactory extends PlainSaslMechanismFactory {
         super(requireSslDefault);
     }
 
+    public TMailPlainSaslMechanismFactory(boolean requireSslDefault, boolean honorRequireSslConfiguration) {
+        super(requireSslDefault, honorRequireSslConfiguration);
+    }
+
     @Override
     public SaslMechanism create(HierarchicalConfiguration<ImmutableNode> serverConfiguration) {
         if (usesTMailImapPackage(serverConfiguration) || usesTMailSmtpHandlerPackage(serverConfiguration)) {
