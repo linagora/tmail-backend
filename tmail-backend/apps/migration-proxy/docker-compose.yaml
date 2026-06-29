@@ -1,0 +1,106 @@
+# Manual end-to-end test stack for the migration proxy.
+#
+# Brings up the migration proxy together with two real Twake Mail (memory) backends — the "old" and
+# the "new" system — plus the PostgreSQL database backing the /migratedUsers list.
+#
+# The proxy is a mailbox-less MTA: SMTP routes mail per recipient (migrated -> new, other managed
+# domain -> old, else external) while IMAP byte-proxies each authenticated connection to old/new.
+#
+# Build the proxy image first (jib produces a tar):
+#   mvn -pl tmail-backend/apps/migration-proxy package -DskipTests
+#   docker load < tmail-backend/apps/migration-proxy/target/jib-image.tar
+# Then `docker compose up` and:
+#   - PUT http://localhost:8000/domains/managed.tld          -> declare a managed (local) domain
+#   - PUT http://localhost:8000/migratedUsers/bob@managed.tld -> route bob to the new backend
+#   - inbound SMTP on :25 (public) and old/new submissions on :26 (relay); IMAP on localhost:1430.
+
+services:
+  migration-proxy:
+    image: linagora/tmail-migration-proxy:latest
+    container_name: migration-proxy
+    depends_on:
+      - old-backend
+      - new-backend
+      - postgres
+      - ldap
+    ports:
+      - "2525:25"    # SMTP public (inbound, no relay)
+      - "2526:26"    # SMTP relay (reachable by old/new only)
+      - "1430:143"   # IMAP byte-proxy
+      - "8000:8000"  # webadmin (/migratedUsers, /domains)
+
+
+  # Both backends mirror their users' authenticated submissions to the proxy and only deliver
+  # locally the (unauthenticated) mail coming from the proxy — see backend/mailetcontainer.xml.
+  old-backend:
+    image: linagora/tmail-backend-memory:latest
+    container_name: migration-proxy-old-backend
+    depends_on:
+      - ldap
+    environment:
+      MIGRATION_PROXY_HOST: migration-proxy
+      MIGRATION_PROXY_PORT: "26"
+    volumes:
+      - ./sample-configuration/backend/mailetcontainer.xml:/root/conf/mailetcontainer.xml:ro
+      - ./sample-configuration/backend/smtpserver.xml:/root/conf/smtpserver.xml:ro
+      - ./sample-configuration/backend/imapserver.xml:/root/conf/imapserver.xml:ro
+      - ./sample-configuration/backend/jwt_publickey:/root/conf/jwt_publickey:ro
+      - ./sample-configuration/backend/jwt_privatekey:/root/conf/jwt_privatekey:ro
+      # Shared user definition: all three services authenticate against the same LDAP.
+      - ./sample-configuration/usersrepository.xml:/root/conf/usersrepository.xml:ro
+      - ./sample-configuration/backend/domainlist.xml:/root/conf/domainlist.xml:ro
+    ports:
+      - "1143:143"   # IMAP
+      - "1993:993"   # IMAPS
+      - "1025:25"    # SMTP
+      - "1587:587"   # SMTP submission
+      - "8001:8000"  # webadmin
+
+  new-backend:
+    image: linagora/tmail-backend-memory:latest
+    container_name: migration-proxy-new-backend
+    depends_on:
+      - ldap
+    environment:
+      MIGRATION_PROXY_HOST: migration-proxy
+      MIGRATION_PROXY_PORT: "26"
+    volumes:
+      - ./sample-configuration/backend/mailetcontainer.xml:/root/conf/mailetcontainer.xml:ro
+      - ./sample-configuration/backend/smtpserver.xml:/root/conf/smtpserver.xml:ro
+      - ./sample-configuration/backend/imapserver.xml:/root/conf/imapserver.xml:ro
+      - ./sample-configuration/backend/jwt_publickey:/root/conf/jwt_publickey:ro
+      - ./sample-configuration/backend/jwt_privatekey:/root/conf/jwt_privatekey:ro
+      # Shared user definition: all three services authenticate against the same LDAP.
+      - ./sample-configuration/usersrepository.xml:/root/conf/usersrepository.xml:ro
+      - ./sample-configuration/backend/domainlist.xml:/root/conf/domainlist.xml:ro
+    ports:
+      - "2143:143"   # IMAP
+      - "2993:993"   # IMAPS
+      - "2025:25"    # SMTP
+      - "2587:587"   # SMTP submission
+      - "8002:8000"  # webadmin
+
+  postgres:
+    image: postgres:16.3
+    container_name: migration-proxy-postgres
+    environment:
+      POSTGRES_DB: migrationproxy
+      POSTGRES_USER: migrationproxy
+      POSTGRES_PASSWORD: secret1
+    ports:
+      - "5432:5432"
+
+  # Shared directory used by old-backend, new-backend and the proxy (see usersrepository.xml).
+  # LDAP_DOMAIN=james.org creates the base dc=james,dc=org and the cn=admin,dc=james,dc=org bind
+  # account (password LDAP_ADMIN_PASSWORD); the mounted populate.ldif adds ou=people + test users.
+  ldap:
+    image: osixia/openldap:1.5.0
+    container_name: migration-proxy-ldap
+    command: "--copy-service --loglevel info"
+    environment:
+      LDAP_DOMAIN: james.org
+      LDAP_ADMIN_PASSWORD: secret
+    volumes:
+      - ./sample-configuration/ldap/populate.ldif:/container/service/slapd/assets/config/bootstrap/ldif/custom/populate.ldif:ro
+    ports:
+      - "389:389"

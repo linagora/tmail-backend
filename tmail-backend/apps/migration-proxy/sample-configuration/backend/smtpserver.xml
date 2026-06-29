@@ -1,0 +1,34 @@
+<?xml version="1.0"?>
+
+<!-- Adapted backend SMTP config for the migration: ValidRcptHandler is removed so the backend accepts
+     recipients of the managed domain that are not local users here (they live on the other backend)
+     and lets the mailet container relay them to the migration proxy. -->
+
+<smtpservers>
+    <smtpserver enabled="true">
+        <jmxName>smtpserver-global</jmxName>
+        <bind>0.0.0.0:25</bind>
+        <connectionBacklog>200</connectionBacklog>
+        <tls socketTLS="false" startTLS="false"/>
+        <authRequired>false</authRequired>
+        <verifyIdentity>false</verifyIdentity>
+        <maxmessagesize>0</maxmessagesize>
+        <addressBracketsEnforcement>true</addressBracketsEnforcement>
+        <handlerchain>
+            <handler class="org.apache.james.smtpserver.CoreCmdHandlerLoader"/>
+        </handlerchain>
+    </smtpserver>
+    <smtpserver enabled="true">
+        <jmxName>smtpserver-submission</jmxName>
+        <bind>0.0.0.0:587</bind>
+        <connectionBacklog>200</connectionBacklog>
+        <tls socketTLS="false" startTLS="false"/>
+        <authRequired>true</authRequired>
+        <verifyIdentity>false</verifyIdentity>
+        <maxmessagesize>0</maxmessagesize>
+        <addressBracketsEnforcement>true</addressBracketsEnforcement>
+        <handlerchain>
+            <handler class="org.apache.james.smtpserver.CoreCmdHandlerLoader"/>
+        </handlerchain>
+    </smtpserver>
+</smtpservers>

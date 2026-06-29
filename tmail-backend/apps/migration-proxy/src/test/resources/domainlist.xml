@@ -1,0 +1,7 @@
+<?xml version="1.0"?>
+
+<domainlist>
+    <autodetect>false</autodetect>
+    <autodetectIP>false</autodetectIP>
+    <defaultDomain>localhost</defaultDomain>
+</domainlist>

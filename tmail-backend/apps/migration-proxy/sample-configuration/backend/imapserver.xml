@@ -1,0 +1,17 @@
+<?xml version="1.0"?>
+
+<!-- Adapted backend IMAP config for the test: allow plain LOGIN on 143 (no TLS) so the test can read
+     mailboxes directly. -->
+
+<imapservers>
+    <imapserver enabled="true">
+        <jmxName>imapserver</jmxName>
+        <bind>0.0.0.0:143</bind>
+        <connectionBacklog>200</connectionBacklog>
+        <tls socketTLS="false" startTLS="false"/>
+        <plainAuthDisallowed>false</plainAuthDisallowed>
+        <enableIdle>true</enableIdle>
+        <idleTimeInterval>120</idleTimeInterval>
+        <idleTimeIntervalUnit>SECONDS</idleTimeIntervalUnit>
+    </imapserver>
+</imapservers>

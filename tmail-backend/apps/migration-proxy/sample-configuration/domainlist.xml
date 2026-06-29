@@ -1,0 +1,11 @@
+<?xml version="1.0"?>
+
+<domainlist>
+    <autodetect>false</autodetect>
+    <autodetectIP>false</autodetectIP>
+    <defaultDomain>localhost</defaultDomain>
+    <!-- Managed (local) domain: recipients here that are not migrated are routed to the old backend -->
+    <domainnames>
+        <domainname>managed.tld</domainname>
+    </domainnames>
+</domainlist>

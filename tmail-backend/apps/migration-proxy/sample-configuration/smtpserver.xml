@@ -1,0 +1,45 @@
+<?xml version="1.0"?>
+
+<!-- Two SMTP servers enforce the relay policy by port:                                              -->
+<!--   :25 public  - no authorized addresses => relay to non-local recipients is rejected at RCPT.   -->
+<!--   :26 relay   - reachable only by the old/new backends (network isolation) => relay allowed.    -->
+<!-- Routing per recipient is done in mailetcontainer.xml.                                           -->
+
+<smtpservers>
+    <smtpserver enabled="true">
+        <jmxName>smtpserver-public</jmxName>
+        <bind>0.0.0.0:25</bind>
+        <connectionBacklog>200</connectionBacklog>
+        <tls socketTLS="false" startTLS="false"/>
+        <connectiontimeout>360</connectiontimeout>
+        <connectionLimit>0</connectionLimit>
+        <connectionLimitPerIP>0</connectionLimitPerIP>
+        <authRequired>false</authRequired>
+        <verifyIdentity>false</verifyIdentity>
+        <maxmessagesize>0</maxmessagesize>
+        <addressBracketsEnforcement>true</addressBracketsEnforcement>
+        <smtpGreeting>Twake Mail migration proxy</smtpGreeting>
+        <handlerchain>
+            <handler class="org.apache.james.smtpserver.CoreCmdHandlerLoader"/>
+        </handlerchain>
+    </smtpserver>
+    <smtpserver enabled="true">
+        <jmxName>smtpserver-relay</jmxName>
+        <bind>0.0.0.0:26</bind>
+        <connectionBacklog>200</connectionBacklog>
+        <tls socketTLS="false" startTLS="false"/>
+        <connectiontimeout>360</connectiontimeout>
+        <connectionLimit>0</connectionLimit>
+        <connectionLimitPerIP>0</connectionLimitPerIP>
+        <authRequired>false</authRequired>
+        <!-- Trust connections on this locally-exposed port (only old/new can reach it) -->
+        <authorizedAddresses>0.0.0.0/0</authorizedAddresses>
+        <verifyIdentity>false</verifyIdentity>
+        <maxmessagesize>0</maxmessagesize>
+        <addressBracketsEnforcement>true</addressBracketsEnforcement>
+        <smtpGreeting>Twake Mail migration proxy relay</smtpGreeting>
+        <handlerchain>
+            <handler class="org.apache.james.smtpserver.CoreCmdHandlerLoader"/>
+        </handlerchain>
+    </smtpserver>
+</smtpservers>
