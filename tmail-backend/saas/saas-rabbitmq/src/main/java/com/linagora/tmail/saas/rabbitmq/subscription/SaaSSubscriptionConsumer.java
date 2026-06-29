@@ -26,6 +26,7 @@ import java.io.Closeable;
 import java.time.Duration;
 import java.util.Optional;
 
+import jakarta.annotation.PreDestroy;
 import jakarta.inject.Named;
 
 import org.apache.james.backends.rabbitmq.QueueArguments;
@@ -175,6 +176,7 @@ public class SaaSSubscriptionConsumer implements Closeable, Startable {
             });
     }
 
+    @PreDestroy
     @Override
     public void close() {
         Optional.ofNullable(consumeSubscriptionDisposable).ifPresent(Disposable::dispose);
