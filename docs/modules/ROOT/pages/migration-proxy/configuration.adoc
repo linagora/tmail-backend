@@ -1,0 +1,120 @@
+= Migration Proxy :: Configuration
+:navtitle: Configuration
+
+The proxy reads its configuration from the `conf/` directory (see `sample-configuration/`). The
+entry point is `com.linagora.tmail.migration.MigrationProxyServer`.
+
+== IMAP backends -- `migrationproxy.properties`
+
+Old and new IMAP backends the proxy relays authenticated connections to. The SMTP old/new/external
+targets live in `mailetcontainer.xml` instead.
+
+[options="header"]
+|===
+| Key | Description
+| `imap.<target>.host` | backend host (`<target>` is `old` or `new`)
+| `imap.<target>.port` | backend port (default `143`)
+| `imap.<target>.ssl` | open an implicit TLS connection to the backend (default `false`)
+| `imap.<target>.ssl.ignoreCertificates` | do not validate the backend certificate (default `false`)
+| `imap.<target>.forwardProxyInfo` | forward the inbound PROXY protocol information to the backend; requires the inbound proxy protocol to be active, otherwise the connection is refused (default `false`)
+|===
+
+== IMAP server -- `imapserver.xml`
+
+Standard James IMAP server configuration (bind address, `tls` plaintext / STARTTLS / implicit SSL,
+`proxyRequired` to accept an upstream HAProxy PROXY protocol header). It drives the proxy's listening
+side; the custom `ProxyImapProcessor` is wired in by the application.
+
+== SMTP servers -- `smtpserver.xml`
+
+Two servers enforce the relay policy by port:
+
+* `:25` public -- no `authorizedAddresses`: relay to non-local recipients is rejected at RCPT
+(inbound only);
+* `:26` relay -- `authorizedAddresses` set to the old/new network (reachable only by them): relay
+allowed.
+
+Both use the standard `org.apache.james.smtpserver.CoreCmdHandlerLoader` handler chain.
+
+== Recipient routing -- `mailetcontainer.xml`
+
+The `transport` processor routes per recipient through three `RemoteDelivery` mailets. The new/old
+gateways are interpolated so they can be overridden at runtime:
+
+[source,xml]
+----
+<mailet match="com.linagora.tmail.migration.smtp.RecipientIsMigrated" class="RemoteDelivery">
+    <outgoing>outgoing-new</outgoing>
+    <gateway>${sys:migration.smtp.new.host:-new-backend}</gateway>
+    <gatewayPort>${sys:migration.smtp.new.port:-25}</gatewayPort>
+    ...
+</mailet>
+<mailet match="HostIsLocal" class="RemoteDelivery">         <!-- -> old gateway -->
+<mailet match="SMTPIsAuthNetwork" class="RemoteDelivery">  <!-- -> external (real MX) -->
+----
+
+== Data and webadmin
+
+* `postgres.properties` -- PostgreSQL connection (`database.host`, `database.port`, `database.name`,
+`database.username`, `database.password`, ...). Backs both the migrated-users list and the MTA data
+(domains, RRT, mail repositories).
+* `domainlist.xml`, `recipientrewritetable.xml`, `mailrepositorystore.xml`, `dnsservice.xml` --
+standard James data/MTA configuration.
+* `webadmin.properties` -- `enabled`, `host`, `port` of the webadmin endpoint.
+
+=== Users repository -- `usersrepository.xml`
+
+Defaults to the PostgreSQL users repository. To use *LDAP* instead, declare a repository carrying an
+`ldapHost` attribute (the `UsersRepositoryModuleChooser` then switches to
+`ReadOnlyUsersLDAPRepository`):
+
+[source,xml]
+----
+<usersrepository name="LocalUsers"
+                 class="org.apache.james.user.ldap.ReadOnlyUsersLDAPRepository"
+                 ldapHost="ldap://ldap:389"
+                 principal="uid=admin,ou=system"
+                 credentials="secret"
+                 userBase="ou=people,dc=james,dc=org"
+                 userIdAttribute="uid"
+                 userObjectClass="inetOrgPerson">
+    <enableVirtualHosting>true</enableVirtualHosting>
+</usersrepository>
+----
+
+== WebAdmin endpoints
+
+[options="header"]
+|===
+| Method & path | Effect
+| `PUT /migratedUsers/{user}` | mark a user as migrated (routed to the new backend)
+| `DELETE /migratedUsers/{user}` | remove a user from the migrated list
+| `GET /migratedUsers` | list the migrated users
+| `HEAD /migratedUsers/{user}` | `204` if the user is migrated, `404` otherwise
+| `PUT /domains/{domain}` | declare a managed (local) domain
+|===
+
+== TLS provider
+
+Set `-Djames.tcnative.enabled=true` to use BoringSSL via netty-tcnative on both the listening side and
+the backend client side; the JDK provider (nio) is used by default.
+
+== Adapting the old and new backends (mirroring)
+
+The backends must relay their users' authenticated submissions to the proxy and deliver locally only
+the mail coming from it. Mount the adapted files (see `sample-configuration/backend/`) into each
+backend:
+
+* `mailetcontainer.xml` -- authenticated submissions go to a `relay-to-proxy` processor
+(`RemoteDelivery` with `gateway` = `${env:MIGRATION_PROXY_HOST}` / `${env:MIGRATION_PROXY_PORT:-26}`),
+unauthenticated mail with a local recipient is delivered locally;
+* `smtpserver.xml` -- `ValidRcptHandler` is removed so the backend accepts managed-domain recipients
+that are not local users here (they live on the other backend) and lets the mailet container relay
+them.
+
+== Running
+
+A `docker-compose.yaml` brings up the proxy together with two `linagora/tmail-backend-memory` backends
+(old/new, with the adapted backend configuration) and PostgreSQL, for manual end-to-end verification.
+The integration test `MigrationMirroringTest` reproduces the same setup in-process by deriving the
+backend image (no volume mount) to bake the adapted configuration.
