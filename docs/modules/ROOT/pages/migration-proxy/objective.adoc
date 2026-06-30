@@ -1,0 +1,43 @@
+= Migration Proxy :: Objective
+:navtitle: Objective
+
+The *migration proxy* (`tmail-backend/apps/migration-proxy`) is a tool to ease the migration of
+mailboxes from an *old* MDA/MTA stack to a *new* one, transparently for end-user clients.
+
+During a migration users are progressively moved from the old system to the new one. The proxy sits
+in front of both backends, identifies which backend currently hosts a given user, and makes sure both
+the interactive traffic (IMAP) and the mail flow (SMTP) reach the right place — without the clients
+having to be reconfigured and without losing mail addressed to a user that has already moved.
+
+Operators drive the migration with a single list: the *migrated users*, exposed over webadmin
+(`/migratedUsers`). A user present in that list lives on the *new* backend; any other user lives on
+the *old* one.
+
+== What it does
+
+IMAP and SMTP are handled differently, because the routing key is not the same:
+
+* *IMAP is routed on the authenticated user.* The proxy speaks just enough IMAP to identify the user
+at `LOGIN`, then relays the whole connection byte-for-byte to the backend that hosts that user. This
+is a transparent TCP proxy with a protocol-aware handshake.
+
+* *SMTP is routed on the recipient.* The proxy is a real (mailbox-less) Twake Mail MTA whose mailet
+container routes each recipient to the backend that hosts it:
++
+** a *migrated* recipient -> the *new* backend,
+** a recipient of a managed domain that is *not* migrated -> the *old* backend,
+** anything else -> *external* (regular Internet delivery).
+
+== Mail mirroring between the backends
+
+So that a user keeps receiving mail on the backend that currently hosts them whatever the source, the
+old and new backends are adapted to *relay their users' authenticated submissions to the proxy* and to
+*deliver locally only the mail coming back from the proxy*. As a result, when a user on the old system
+writes to a user on the new system, the mail is delivered on the new system, and vice-versa.
+
+== Observability
+
+The proxy publishes metrics on the proxied connections (counts, volumes relayed in both directions,
+backend response times) per protocol and per backend, to follow the health of the migration window.
+
+See xref:migration-proxy/architecture.adoc[] and xref:migration-proxy/configuration.adoc[].

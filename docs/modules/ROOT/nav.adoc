@@ -46,6 +46,10 @@
 ** xref:tmail-backend/smtp-extensions/index.adoc[]
 *** xref:tmail-backend/smtp-extensions/smtpAuthDelegationExtension.adoc[]
 ** xref:tmail-backend/webadmin.adoc[]
+* Migration Proxy
+** xref:migration-proxy/objective.adoc[]
+** xref:migration-proxy/architecture.adoc[]
+** xref:migration-proxy/configuration.adoc[]
 * xref:tmail-mobile/index.adoc[]
 * xref:ethic.adoc[]
 * xref:roadmap.adoc[]

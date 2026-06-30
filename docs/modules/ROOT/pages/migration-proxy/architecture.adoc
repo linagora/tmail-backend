@@ -1,0 +1,76 @@
+= Migration Proxy :: Architecture
+:navtitle: Architecture
+
+The proxy is assembled as its own Guice module set on top of `GuiceJamesServer` (a mailbox-less Twake
+Mail MTA, modelled on the James SMTP-only app), to which two custom concerns are added: the IMAP
+byte-proxy and the migrated-users routing.
+
+----
+            IMAP clients                       SMTP clients / old & new backends
+                 |                                          |
+        :143 / :993 (proxy)                         :25 public   :26 relay
+                 |                                          |
+        +--------v---------+                      +---------v----------+
+        | ProxyImapProcessor|                     |  SMTP server stack |
+        |  (LOGIN -> relay) |                      |  (CoreCmdHandler)  |
+        +--------+---------+                       +---------+----------+
+                 |                                            | spool
+          BackendRelay                               mailetcontainer.xml
+        (raw byte piping)                          (recipient routing)
+            |        |                            /        |          \
+         old IMAP  new IMAP                 RemoteDelivery  RemoteDelivery  RemoteDelivery
+                                              -> new          -> old         -> external
+----
+
+== IMAP byte-proxy
+
+* `ProxyImapProcessor` is a minimal `ImapProcessor` that only answers `CAPABILITY`, negotiates
+`STARTTLS` (delegated to James' `ImapSession#startTLS`) and, on `LOGIN`, captures the user and
+password. TLS (plaintext / STARTTLS / implicit SSL) is provided by reusing James' `IMAPServer`.
+
+* `BackendResolver` picks the backend: migrated user -> new, otherwise -> old (from the
+`MigratedUsersRepository`).
+
+* `BackendRelay` opens a client connection to the resolved backend, authenticates there on the user's
+behalf (`ImapBackendDialog`: tagged `LOGIN`), then pipes raw bytes both ways between the client and
+the backend channels. The handover is done in two steps so the IMAP tagged `OK` is emitted at the
+right time. Per-backend options: implicit TLS, ignoring backend certificates, and `forwardProxyInfo`
+(forward the inbound HAProxy PROXY protocol information to the backend, error if required but absent).
+
+== SMTP routing MTA
+
+* Two SMTP servers enforce the relay policy *by port*: `:25` is public (no relay — non-local
+recipients are rejected at RCPT) and `:26` is exposed only to the old/new backends (relay allowed).
+
+* Accepted mail is spooled and processed by `mailetcontainer.xml`, whose `transport` processor routes
+*per recipient* through three dedicated `RemoteDelivery` mailets, selected by matchers:
++
+** `RecipientIsMigrated` (custom matcher querying the migrated-users repository) -> *new* gateway,
+** `HostIsLocal` -> *old* gateway,
+** `SMTPIsAuthNetwork` -> *external* (real MX delivery).
++
+`RemoteDelivery` is terminal for the recipients it matches; the others fall through to the next mailet.
+
+== Migrated users
+
+* `MigratedUsersRepository` is backed by PostgreSQL (`PostgresMigratedUsersDAO`, table
+`migrated_users`). It drives both the IMAP user routing and the SMTP `RecipientIsMigrated` matcher.
+
+* The `/migratedUsers` webadmin route exposes `PUT` / `DELETE` / `GET` / `HEAD` to manage the list.
+
+== Backend adaptation and mirroring
+
+The old and new backends are configured so that:
+
+* *authenticated local submissions are relayed entirely to the proxy* (`:26`) — a backend never
+delivers its own users' outgoing mail itself;
+* *unauthenticated mail (coming from the proxy) is delivered locally*.
+
+This guarantees mail is delivered on the backend that hosts the recipient: a user on old writing to a
+user on new is delivered on new, and conversely. See the backend configuration in
+xref:migration-proxy/configuration.adoc[].
+
+== TLS provider
+
+Both the listening side and the backend client side follow the `james.tcnative.enabled` system
+property: BoringSSL via netty-tcnative when set, the JDK provider (nio) by default.
