@@ -26,7 +26,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatCode;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
+import org.apache.commons.net.smtp.SMTPClient;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
@@ -126,6 +128,24 @@ class TMailAuthenticateIntegrationTest {
     }
 
     @Test
+    void secretaryCanAuthenticateAsMinisterUsingLoginWhenDelegated() throws Exception {
+        Username secretaryDelegateUser = Username.fromLocalPartWithDomain("secretary+minister", DOMAIN);
+        SMTPClient client = new SMTPClient();
+        client.connect("127.0.0.1", smtpAuthRequiredPort.getValue());
+
+        client.sendCommand("EHLO domain.tld");
+        client.sendCommand("AUTH LOGIN");
+        assertThat(client.getReplyString()).contains("334 VXNlcm5hbWU6");
+        client.sendCommand(base64(secretaryDelegateUser.asString()));
+        assertThat(client.getReplyString()).contains("334 UGFzc3dvcmQ6");
+        client.sendCommand(base64(SECRETARY_PASSWORD));
+
+        assertThat(client.getReplyString()).contains("235 Authentication Successful");
+        client.quit();
+        client.disconnect();
+    }
+
+    @Test
     void secretaryShouldAuthenticateFailedWhenTryToAuthenticateAsMinisterWithWrongPassword() {
         Username secretaryDelegateUser = Username.fromLocalPartWithDomain("secretary+minister", DOMAIN);
         String invalidPassword = "invalid";
@@ -210,5 +230,9 @@ class TMailAuthenticateIntegrationTest {
             .connect("127.0.0.1", smtpAuthRequiredPort).authenticate(secretaryDelegateUser.asString(), SECRETARY_PASSWORD)
             .sendMessage(OTHER3.asString(), OTHER3.asString()))
             .hasMessageContaining("Incorrect Authentication for Specified Email Address");
+    }
+
+    private String base64(String value) {
+        return Base64.getEncoder().encodeToString(value.getBytes(StandardCharsets.UTF_8));
     }
 }
