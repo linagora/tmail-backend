@@ -199,6 +199,7 @@ import com.linagora.tmail.modules.data.TMailPostgresDeletedMessageVaultModule;
 import com.linagora.tmail.modules.data.TMailPostgresUsersRepositoryModule;
 import com.linagora.tmail.rate.limiter.api.postgres.module.PostgresRateLimitingModule;
 import com.linagora.tmail.rspamd.RspamdModule;
+import com.linagora.tmail.smtp.TMailSMTPModule;
 import com.linagora.tmail.team.TMailQuotaUsernameSupplier;
 import com.linagora.tmail.team.TeamMailboxModule;
 import com.linagora.tmail.webadmin.EmailAddressContactRoutesModule;
@@ -412,6 +413,7 @@ public class PostgresTmailServer {
             new TasksHeathCheckModule(),
             chooseQueueModules(configuration),
             new TMailIMAPModule(),
+            new TMailSMTPModule(),
             QUOTA_USERNAME_SUPPLIER_MODULE,
             new EventBusDisconnectorModule(),
             new CollectTrustedContactsListenerModule(),

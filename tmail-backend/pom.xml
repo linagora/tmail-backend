@@ -72,6 +72,7 @@
         <module>mailets</module>
 
         <module>imap-extensions</module>
+        <module>sasl-extensions</module>
 
         <module>jmap/extensions</module>
         <module>jmap/extensions-api</module>
@@ -187,6 +188,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>imap-extensions</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>sasl-extensions</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

@@ -121,6 +121,7 @@ import com.linagora.tmail.listener.CollectTrustedContactsListenerModule;
 import com.linagora.tmail.listener.FilteringRuleReferenceUpdaterListenerModule;
 import com.linagora.tmail.mailbox.quota.memory.MemoryUserQuotaReporterModule;
 import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingModule;
+import com.linagora.tmail.smtp.TMailSMTPModule;
 import com.linagora.tmail.team.TMailScanningQuotaSearcherModule;
 import com.linagora.tmail.team.TeamMailboxModule;
 import com.linagora.tmail.vault.TMailDeletedMessageVaultModule;
@@ -224,6 +225,7 @@ public class MemoryServer {
             new PublicAssetsMemoryModule(),
             new TMailMailboxSortOrderProviderModule(),
             new TMailIMAPModule(),
+            new TMailSMTPModule(),
             new MemoryDownloadAllModule(),
             new EventBusDisconnectorModule(),
             new CollectTrustedContactsListenerModule(),
