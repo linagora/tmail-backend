@@ -18,28 +18,28 @@
 
 package com.linagora.tmail.smtp;
 
-import jakarta.inject.Singleton;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import org.apache.james.modules.protocols.SmtpDefaultSaslMechanismFactories;
-import org.apache.james.protocols.api.sasl.SaslMechanismFactory;
 import org.apache.james.protocols.sasl.OauthBearerSaslMechanismFactory;
-import org.apache.james.protocols.sasl.PlainSaslMechanismFactory;
 import org.apache.james.protocols.sasl.XOauth2SaslMechanismFactory;
 import org.apache.james.protocols.smtp.core.esmtp.LoginSaslMechanismFactory;
+import org.junit.jupiter.api.Test;
 
-import com.google.common.collect.ImmutableList;
-import com.google.inject.AbstractModule;
-import com.google.inject.Provides;
 import com.linagora.tmail.sasl.TMailPlainSaslMechanismFactory;
 
-public class TMailSMTPModule extends AbstractModule {
-    @Provides
-    @Singleton
-    @SmtpDefaultSaslMechanismFactories
-    ImmutableList<SaslMechanismFactory> provideDefaultSmtpSaslMechanismFactories(OauthBearerSaslMechanismFactory oauthBearer,
-                                                                                 XOauth2SaslMechanismFactory xoauth2) {
-        TMailPlainSaslMechanismFactory plain = new TMailPlainSaslMechanismFactory(false,
-            PlainSaslMechanismFactory.IGNORE_REQUIRE_SSL_CONFIGURATION);
-        return ImmutableList.of(new LoginSaslMechanismFactory(plain), plain, oauthBearer, xoauth2);
+class TMailSMTPModuleTest {
+    private final TMailSMTPModule testee = new TMailSMTPModule();
+
+    @Test
+    void provideDefaultSmtpSaslMechanismFactoriesShouldUseTMailPlainWithLoginFirst() {
+        assertThat(testee.provideDefaultSmtpSaslMechanismFactories(
+                new OauthBearerSaslMechanismFactory(),
+                new XOauth2SaslMechanismFactory()))
+            .extracting(factory -> factory.getClass().getName())
+            .containsExactly(
+                LoginSaslMechanismFactory.class.getName(),
+                TMailPlainSaslMechanismFactory.class.getName(),
+                OauthBearerSaslMechanismFactory.class.getName(),
+                XOauth2SaslMechanismFactory.class.getName());
     }
 }
