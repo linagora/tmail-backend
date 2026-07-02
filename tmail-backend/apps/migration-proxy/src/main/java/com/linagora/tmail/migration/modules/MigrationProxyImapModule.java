@@ -58,12 +58,6 @@ public class MigrationProxyImapModule extends AbstractModule {
 
     @Provides
     @Singleton
-    ConnectionCheckFactory provideConnectionCheckFactory() {
-        return config -> ImmutableSet.of();
-    }
-
-    @Provides
-    @Singleton
     ProxyImapProcessor provideProxyImapProcessor(BackendResolver backendResolver, BackendRelay backendRelay,
                                                  BackendSslContextFactory sslContextFactory) {
         return new ProxyImapProcessor(backendResolver, backendRelay, sslContextFactory);
@@ -72,21 +66,21 @@ public class MigrationProxyImapModule extends AbstractModule {
     @Provides
     @Singleton
     IMAPServerFactory provideImapServerFactory(FileSystem fileSystem, MetricFactory metricFactory,
-                                               GaugeRegistry gaugeRegistry, ConnectionCheckFactory connectionCheckFactory,
-                                               Encryption.Factory encryptionFactory, ProxyImapProcessor processor) {
-        IMAPServerFactory factory = new IMAPServerFactory(fileSystem,
+                                               GaugeRegistry gaugeRegistry, ProxyImapProcessor processor) {
+        ConnectionCheckFactory connectionCheckFactory = config -> ImmutableSet.of();
+        return new IMAPServerFactory(fileSystem,
             new DefaultImapDecoderFactory().buildImapDecoder(),
             new DefaultImapEncoderFactory().buildImapEncoder(),
             processor, metricFactory, gaugeRegistry, connectionCheckFactory);
-        factory.setEncryptionFactory(encryptionFactory);
-        return factory;
     }
 
     @ProvidesIntoSet
-    InitializationOperation configureImap(ConfigurationProvider configurationProvider, IMAPServerFactory imapServerFactory) {
+    InitializationOperation configureImap(ConfigurationProvider configurationProvider, IMAPServerFactory imapServerFactory,
+                                          Encryption.Factory encryptionFactory) {
         return InitilizationOperationBuilder
             .forClass(IMAPServerFactory.class)
             .init(() -> {
+                imapServerFactory.setEncryptionFactory(encryptionFactory);
                 imapServerFactory.configure(configurationProvider.getConfiguration("imapserver"));
                 imapServerFactory.init();
             });
