@@ -107,6 +107,14 @@ class MigratedUsersRoutesTest {
     }
 
     @Test
+    void headShouldReturnBadRequestWhenUsernameIsInvalid() {
+        given()
+            .head("/migratedUsers/invalid@user@domain.tld")
+        .then()
+            .statusCode(HttpStatus.BAD_REQUEST_400);
+    }
+
+    @Test
     void deleteShouldUnmarkUser() {
         given().put("/migratedUsers/" + BOB).then().statusCode(HttpStatus.NO_CONTENT_204);
 

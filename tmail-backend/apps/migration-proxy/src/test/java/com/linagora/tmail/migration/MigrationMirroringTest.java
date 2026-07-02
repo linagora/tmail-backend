@@ -138,6 +138,11 @@ class MigrationMirroringTest {
         }
         oldBackend.stop();
         newBackend.stop();
+        System.clearProperty("migration.smtp.old.host");
+        System.clearProperty("migration.smtp.old.port");
+        System.clearProperty("migration.smtp.new.host");
+        System.clearProperty("migration.smtp.new.port");
+        RestAssured.reset();
     }
 
     @Test

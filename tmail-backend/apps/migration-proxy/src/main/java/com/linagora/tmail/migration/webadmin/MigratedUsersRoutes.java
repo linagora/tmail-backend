@@ -29,7 +29,6 @@ import org.eclipse.jetty.http.HttpStatus;
 
 import com.linagora.tmail.migration.core.MigratedUsersRepository;
 
-import reactor.core.publisher.Mono;
 import spark.Request;
 import spark.Response;
 import spark.Route;
@@ -95,7 +94,7 @@ public class MigratedUsersRoutes implements Routes {
 
     private Route isMigrated() {
         return (request, response) -> {
-            boolean migrated = Mono.from(migratedUsersRepository.isMigrated(extractUsername(request)))
+            boolean migrated = migratedUsersRepository.isMigrated(extractUsername(request))
                 .blockOptional()
                 .orElse(false);
             if (!migrated) {
