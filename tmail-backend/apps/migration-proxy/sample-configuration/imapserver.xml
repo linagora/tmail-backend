@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+
+<!-- Minimal IMAP proxy stack. The custom processor only answers CAPABILITY/STARTTLS and, on LOGIN,   -->
+<!-- relays the connection raw to the resolved backend. See                                           -->
+<!-- https://james.apache.org/server/config-imap4.html for the full element reference. To enable       -->
+<!-- implicit TLS (port 993) or STARTTLS, set <tls socketTLS="true"|startTLS="true"> with a keystore. -->
+
+<imapservers>
+    <imapserver enabled="true">
+        <jmxName>migration-proxy-imap</jmxName>
+        <bind>0.0.0.0:143</bind>
+        <connectionBacklog>200</connectionBacklog>
+        <!-- Set to true to accept the HAProxy PROXY protocol from an upstream load balancer -->
+        <proxyRequired>false</proxyRequired>
+        <tls socketTLS="false" startTLS="false">
+            <keystore>file://conf/keystore</keystore>
+            <secret>migrationproxy</secret>
+            <provider>org.bouncycastle.jce.provider.BouncyCastleProvider</provider>
+        </tls>
+        <connectionLimit>0</connectionLimit>
+        <connectionLimitPerIP>0</connectionLimitPerIP>
+        <plainAuthDisallowed>false</plainAuthDisallowed>
+        <enableIdle>false</enableIdle>
+    </imapserver>
+</imapservers>

@@ -1,0 +1,12 @@
+<?xml version="1.0"?>
+
+<mailrepositorystore>
+    <defaultProtocol>postgres</defaultProtocol>
+    <mailrepositories>
+        <mailrepository class="org.apache.james.mailrepository.postgres.PostgresMailRepository">
+            <protocols>
+                <protocol>postgres</protocol>
+            </protocols>
+        </mailrepository>
+    </mailrepositories>
+</mailrepositorystore>

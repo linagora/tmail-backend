@@ -1,0 +1,90 @@
+<?xml version="1.0"?>
+
+<!-- Recipient-based routing for the migration MTA, via three dedicated RemoteDelivery mailets:       -->
+<!--   migrated recipient            -> new backend (gateway)                                         -->
+<!--   recipient on a managed domain -> old backend (gateway)                                         -->
+<!--   anything else (relay)         -> external internet (real MX), only for mail allowed to relay   -->
+<!-- RemoteDelivery is terminal for the recipients it matches; the rest fall through to the next one. -->
+
+<mailetcontainer enableJmx="true">
+    <context>
+        <postmaster>postmaster@localhost</postmaster>
+    </context>
+
+    <spooler>
+        <threads>10</threads>
+        <errorRepository>postgres://var/mail/error/</errorRepository>
+    </spooler>
+
+    <processors>
+        <processor state="root" enableJmx="true">
+            <mailet match="All" class="PostmasterAlias"/>
+            <mailet match="RelayLimit=30" class="ToRepository">
+                <repositoryPath>postgres://var/mail/relay-limit-exceeded/</repositoryPath>
+            </mailet>
+            <mailet match="All" class="ToProcessor">
+                <processor>transport</processor>
+            </mailet>
+        </processor>
+
+        <processor state="error" enableJmx="true">
+            <mailet match="All" class="ToRepository">
+                <repositoryPath>postgres://var/mail/error/</repositoryPath>
+                <onMailetException>propagate</onMailetException>
+            </mailet>
+        </processor>
+
+        <processor state="transport" enableJmx="true">
+            <mailet match="All" class="RemoveMimeHeader">
+                <name>bcc</name>
+                <onMailetException>ignore</onMailetException>
+            </mailet>
+            <mailet match="All" class="RecipientRewriteTable">
+                <onMailetException>ignore</onMailetException>
+            </mailet>
+
+            <!-- migrated recipients -> new backend -->
+            <mailet match="com.linagora.tmail.migration.smtp.RecipientIsMigrated" class="RemoteDelivery">
+                <outgoing>outgoing-new</outgoing>
+                <gateway>${sys:migration.smtp.new.host:-new-backend}</gateway>
+                <gatewayPort>${sys:migration.smtp.new.port:-25}</gatewayPort>
+                <delayTime>5000, 100000, 500000</delayTime>
+                <maxRetries>3</maxRetries>
+                <maxDnsProblemRetries>0</maxDnsProblemRetries>
+                <deliveryThreads>5</deliveryThreads>
+                <sendpartial>true</sendpartial>
+                <bounceProcessor>error</bounceProcessor>
+            </mailet>
+
+            <!-- remaining recipients on a managed (local) domain -> old backend -->
+            <mailet match="HostIsLocal" class="RemoteDelivery">
+                <outgoing>outgoing-old</outgoing>
+                <gateway>${sys:migration.smtp.old.host:-old-backend}</gateway>
+                <gatewayPort>${sys:migration.smtp.old.port:-25}</gatewayPort>
+                <delayTime>5000, 100000, 500000</delayTime>
+                <maxRetries>3</maxRetries>
+                <maxDnsProblemRetries>0</maxDnsProblemRetries>
+                <deliveryThreads>5</deliveryThreads>
+                <sendpartial>true</sendpartial>
+                <bounceProcessor>error</bounceProcessor>
+            </mailet>
+
+            <!-- everything else is external; only relay-allowed mail (port 26) reaches here -->
+            <mailet match="SMTPIsAuthNetwork" class="RemoteDelivery">
+                <outgoing>outgoing-external</outgoing>
+                <delayTime>5000, 100000, 500000</delayTime>
+                <maxRetries>3</maxRetries>
+                <maxDnsProblemRetries>0</maxDnsProblemRetries>
+                <deliveryThreads>5</deliveryThreads>
+                <sendpartial>true</sendpartial>
+                <bounceProcessor>error</bounceProcessor>
+            </mailet>
+
+            <!-- non relay-allowed leftovers: refuse -->
+            <mailet match="All" class="ToProcessor">
+                <processor>error</processor>
+                <notice>550 relaying denied</notice>
+            </mailet>
+        </processor>
+    </processors>
+</mailetcontainer>

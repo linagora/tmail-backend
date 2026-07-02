@@ -1,0 +1,348 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ~  As a subpart of Twake Mail, this file is edited by Linagora.   ~
+  ~                                                                 ~
+  ~  https://twake-mail.com/                                        ~
+  ~  https://linagora.com                                           ~
+  ~                                                                 ~
+  ~  This file is subject to The Affero Gnu Public License          ~
+  ~  version 3.                                                     ~
+  ~                                                                 ~
+  ~  https://www.gnu.org/licenses/agpl-3.0.en.html                  ~
+  ~                                                                 ~
+  ~  This program is distributed in the hope that it will be        ~
+  ~  useful, but WITHOUT ANY WARRANTY; without even the implied     ~
+  ~  warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR        ~
+  ~  PURPOSE. See the GNU Affero General Public License for         ~
+  ~  more details.                                                  ~
+  ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
+
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>apps</artifactId>
+        <groupId>com.linagora.tmail</groupId>
+        <version>1.0.0-SNAPSHOT</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>migration-proxy</artifactId>
+    <name>Twake Mail :: Apps :: Migration Proxy</name>
+    <description>Minimalist IMAP/SMTP proxy easing migration between an old and a new MDA/MTA</description>
+
+    <dependencies>
+        <dependency>
+            <!-- SLF4J provider: without it James logs to a NOP logger and startup errors are swallowed -->
+            <groupId>ch.qos.logback</groupId>
+            <artifactId>logback-classic</artifactId>
+        </dependency>
+        <dependency>
+            <!-- JSON logging encoders (matches the other apps' logback.xml) -->
+            <groupId>com.linagora.tmail</groupId>
+            <artifactId>logback-jackson</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.linagora.tmail</groupId>
+            <artifactId>logback-json-classic</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>apache-james-backends-postgres</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>apache-james-backends-postgres</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-guice-common</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-core</artifactId>
+        </dependency>
+        <!-- James MTA assembly: our own Guice module set on top of GuiceJamesServer (no mailbox) -->
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-guice-common</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-guice-smtp</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-guice-webadmin</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-guice-webadmin-data</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-postgres-common-guice</artifactId>
+        </dependency>
+        <!-- Lets usersrepository.xml select an LDAP users repository (UsersRepositoryModuleChooser) -->
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-guice-data-ldap</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>blob-memory-guice</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-data-postgres</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>queue-memory-guice</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-mailets</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>apache-mailet-standard</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-dnsservice-dnsjava</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-protocols-imap4</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-protocols-library</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-protocols-smtp</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-webadmin-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-webadmin-core</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>metrics-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>metrics-dropwizard</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>metrics-tests</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-testing</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>mock-smtp-server</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <!-- Builds the linagora/tmail-backend-memory image used as the old/new backends in
+             MigrationMirroringTest (the test derives from it to bake the adapted mailetcontainer). -->
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>memory</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>testing-base</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>com.google.inject</groupId>
+            <artifactId>guice</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-handler</artifactId>
+        </dependency>
+        <!-- BoringSSL via Netty tcnative — enabled with -Djames.tcnative.enabled=true -->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-tcnative-boringssl-static</artifactId>
+            <version>${netty.tcnative.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>jakarta.inject</groupId>
+            <artifactId>jakarta.inject-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.projectreactor</groupId>
+            <artifactId>reactor-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>io.rest-assured</groupId>
+            <artifactId>rest-assured</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.assertj</groupId>
+            <artifactId>assertj-core</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <!-- Runtime dependency: MemoryTaskManager (webadmin TasksRoutes) uses awaitility -->
+            <groupId>org.awaitility</groupId>
+            <artifactId>awaitility</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.testcontainers</groupId>
+            <artifactId>postgresql</artifactId>
+            <scope>test</scope>
+        </dependency>
+    </dependencies>
+
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <!-- Each test class (notably the ones booting a full server / Docker backends) runs
+                         in a fresh JVM to avoid resource accumulation across heavy integration tests. -->
+                    <reuseForks>false</reuseForks>
+                    <argLine>-Xms512m -Xmx1024m</argLine>
+                    <forkedProcessTimeoutInSeconds>1200</forkedProcessTimeoutInSeconds>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>com.google.cloud.tools</groupId>
+                <artifactId>jib-maven-plugin</artifactId>
+                <executions>
+                    <execution>
+                        <phase>package</phase>
+                        <goals>
+                            <goal>buildTar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+                <configuration>
+                    <from>
+                        <image>${jib.base.image}</image>
+                    </from>
+                    <to>
+                        <image>linagora/tmail-migration-proxy</image>
+                        <tags>
+                            <tag>latest</tag>
+                        </tags>
+                    </to>
+                    <container>
+                        <mainClass>com.linagora.tmail.migration.MigrationProxyServer</mainClass>
+                        <ports>
+                            <port>25</port>   <!-- SMTP -->
+                            <port>143</port>  <!-- IMAP -->
+                            <port>8000</port> <!-- WebAdmin -->
+                        </ports>
+                        <appRoot>/root</appRoot>
+                        <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
+                        <extraClasspath>
+                            <!-- Files dropped in /root/conf override the configuration baked in the jar -->
+                            <item>/root/conf</item>
+                        </extraClasspath>
+                    </container>
+                    <extraDirectories>
+                        <paths>
+                            <path>
+                                <from>sample-configuration</from>
+                                <into>/root/conf</into>
+                            </path>
+                        </paths>
+                    </extraDirectories>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <profile>
+            <id>ci</id>
+            <activation>
+                <activeByDefault>false</activeByDefault>
+            </activation>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>com.google.cloud.tools</groupId>
+                        <artifactId>jib-maven-plugin</artifactId>
+                        <executions>
+                            <execution>
+                                <phase>package</phase>
+                                <goals>
+                                    <goal>build</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                        <configuration>
+                            <from>
+                                <image>${jib.base.image}</image>
+                                <platforms>
+                                    <platform>
+                                        <architecture>amd64</architecture>
+                                        <os>linux</os>
+                                    </platform>
+                                    <platform>
+                                        <architecture>arm64</architecture>
+                                        <os>linux</os>
+                                    </platform>
+                                </platforms>
+                            </from>
+                            <to>
+                                <image>linagora/tmail-migration-proxy</image>
+                                <tags>
+                                    <tag>branch-master</tag>
+                                </tags>
+                            </to>
+                            <container>
+                                <mainClass>com.linagora.tmail.migration.MigrationProxyServer</mainClass>
+                                <ports>
+                                    <port>25</port>   <!-- SMTP -->
+                                    <port>143</port>  <!-- IMAP -->
+                                    <port>8000</port> <!-- WebAdmin -->
+                                </ports>
+                                <appRoot>/root</appRoot>
+                                <creationTime>USE_CURRENT_TIMESTAMP</creationTime>
+                                <extraClasspath>
+                                    <!-- Files dropped in /root/conf override the configuration baked in the jar -->
+                                    <item>/root/conf</item>
+                                </extraClasspath>
+                            </container>
+                            <extraDirectories>
+                                <paths>
+                                    <path>
+                                        <from>sample-configuration</from>
+                                        <into>/root/conf</into>
+                                    </path>
+                                </paths>
+                            </extraDirectories>
+                        </configuration>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
+</project>
