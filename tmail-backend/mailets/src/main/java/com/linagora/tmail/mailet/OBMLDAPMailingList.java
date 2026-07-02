@@ -24,6 +24,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Function;
+import java.util.stream.Stream;
 
 import jakarta.inject.Inject;
 import jakarta.mail.MessagingException;
@@ -88,7 +89,12 @@ import com.unboundid.ldap.sdk.SearchScope;
  * member: uid=ixxx,ou=users,dc=linagora.com,dc=lng
  * mailBox: pxxx@linagora.com
  * mailBox: ixxx@linagora.com
+ * externalContactEmail: contact@example.com
  * </code></pre>
+ *
+ *  <p>Group members are resolved from both the <code>mailBox</code> attribute (internal members) and the
+ *  <code>externalContactEmail</code> attribute (external contacts). Both are treated as members: they receive the mail
+ *  and are allowed to post on member restricted lists.</p>
  */
 public class OBMLDAPMailingList extends GenericMailet {
     record GroupResolutionResult(MailAddress listAddress, boolean isPublic, List<MailAddress> members) {
@@ -181,29 +187,35 @@ public class OBMLDAPMailingList extends GenericMailet {
         this.listAttributes = ImmutableSet.builder()
             .add(mailAttributeForGroups)
             .add("mailBox")
+            .add("externalContactEmail")
             .add("mailAccess")
             .build().toArray(String[]::new);
     }
 
-    private Optional<GroupResolutionResult> asGroupResolutionResult(SearchResultEntry entry) throws AddressException {
+    @VisibleForTesting
+    Optional<GroupResolutionResult> asGroupResolutionResult(SearchResultEntry entry) throws AddressException {
         if (entry == null) {
             return Optional.empty();
         }
         boolean isPublic = isPublic(entry);
-        if (entry.hasAttribute("mailBox")) {
-            return Optional.of(
-                new GroupResolutionResult(
-                    new MailAddress(entry.getAttributeValue(mailAttributeForGroups)),
-                    isPublic,
-                    Arrays.stream(entry.getAttribute("mailBox").getValues())
-                        .map(Throwing.function(MailAddress::new))
-                        .collect(ImmutableList.toImmutableList())));
-        }
+        List<MailAddress> members = Stream.concat(
+                memberAddresses(entry, "mailBox"),
+                memberAddresses(entry, "externalContactEmail"))
+            .distinct()
+            .collect(ImmutableList.toImmutableList());
         return Optional.of(
             new GroupResolutionResult(
                 new MailAddress(entry.getAttributeValue(mailAttributeForGroups)),
                 isPublic,
-                ImmutableList.of()));
+                members));
+    }
+
+    private static Stream<MailAddress> memberAddresses(SearchResultEntry entry, String attribute) {
+        if (!entry.hasAttribute(attribute)) {
+            return Stream.empty();
+        }
+        return Arrays.stream(entry.getAttribute(attribute).getValues())
+            .map(Throwing.function(MailAddress::new));
     }
 
     private static boolean isPublic(SearchResultEntry entry) {
