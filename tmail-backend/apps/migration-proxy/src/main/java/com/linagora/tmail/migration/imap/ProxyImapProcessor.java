@@ -117,9 +117,10 @@ public class ProxyImapProcessor implements ImapProcessor {
 
         Optional<Channel> backendChannel;
         try {
-            backendChannel = backendRelay.connectAndAuthenticate(clientChannel, backend, Protocol.IMAP,
-                () -> new ImapBackendDialog(login.getUserid().asString(), login.getPassword()),
-                sslContextFactory.forBackend(backend), HANDSHAKE_TIMEOUT, inboundProxyInfo);
+            backendChannel = backendRelay.connectAndAuthenticate(clientChannel,
+                new BackendRelay.RelayRequest(backend, Protocol.IMAP,
+                    () -> new ImapBackendDialog(login.getUserid().asString(), login.getPassword()),
+                    sslContextFactory.forBackend(backend), HANDSHAKE_TIMEOUT, inboundProxyInfo));
         } catch (MissingProxyInformationException e) {
             writeLine(clientChannel, tag + " NO Proxy protocol information required but missing.");
             return;
