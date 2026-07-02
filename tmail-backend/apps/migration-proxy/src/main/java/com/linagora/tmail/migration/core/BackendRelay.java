@@ -81,7 +81,7 @@ public class BackendRelay {
      * Everything the relay needs to open and authenticate a single backend connection on the user's
      * behalf, bundled so {@link #connectAndAuthenticate} stays a two-argument handover.
      */
-    public record RelayRequest(Backend backend, Protocol protocol, Supplier<BackendDialog> dialogFactory,
+    public record RelayRequest(Backend backend, Supplier<BackendDialog> dialogFactory,
                                Optional<SslContext> sslContext, Duration timeout,
                                Optional<ProxyInformation> inboundProxyInfo) {
     }
@@ -93,7 +93,6 @@ public class BackendRelay {
      */
     public Optional<Channel> connectAndAuthenticate(Channel clientChannel, RelayRequest request) {
         Backend backend = request.backend();
-        Protocol protocol = request.protocol();
         Supplier<BackendDialog> dialogFactory = request.dialogFactory();
         Optional<SslContext> sslContext = request.sslContext();
         Duration timeout = request.timeout();
@@ -122,7 +121,7 @@ public class BackendRelay {
                             .addLast("ssl", newSslHandler(ssl, backendChannel, backend))));
                     backendChannel.pipeline().addLast("framer", new LineBasedFrameDecoder(MAX_LINE_LENGTH, false, false));
                     backendChannel.pipeline().addLast("handshake",
-                        new HandshakeHandler(clientChannel, protocol, backend, dialogFactory.get(), handshakeResult));
+                        new HandshakeHandler(clientChannel, backend, dialogFactory.get(), handshakeResult));
                 }
             });
 
@@ -135,14 +134,14 @@ public class BackendRelay {
 
         try {
             Channel backendChannel = handshakeResult.get(timeout.toMillis(), TimeUnit.MILLISECONDS);
-            metrics.recordConnection(protocol, backend);
+            metrics.recordConnection(backend);
             return Optional.of(backendChannel);
         } catch (InterruptedException e) {
             Thread.currentThread().interrupt();
             clientChannel.config().setAutoRead(true);
             return Optional.empty();
         } catch (ExecutionException | TimeoutException e) {
-            LOGGER.warn("Failed establishing relay to backend {} for {}", backend, protocol, e);
+            LOGGER.warn("Failed establishing relay to backend {}", backend, e);
             clientChannel.config().setAutoRead(true);
             return Optional.empty();
         }
@@ -152,14 +151,14 @@ public class BackendRelay {
      * Strips the proxy protocol stack and starts forwarding client bytes to the backend. To be called
      * once the protocol-specific authentication success response has been emitted to the client.
      */
-    public void takeOverClient(Channel clientChannel, Channel backendChannel, Protocol protocol, Backend backend) {
+    public void takeOverClient(Channel clientChannel, Channel backendChannel, Backend backend) {
         runOnEventLoop(clientChannel, () -> {
             stripProtocolStack(clientChannel.pipeline());
             // Once the server protocol handlers are gone, a plain line handler (delimiter preserved) is
             // all the proxying needs: it hands each client line to the RelayHandler which forwards it raw.
             clientChannel.pipeline().addLast("lineHandler", new LineBasedFrameDecoder(MAX_LINE_LENGTH, false, false));
             clientChannel.pipeline().addLast(new RelayHandler(backendChannel,
-                bytes -> metrics.recordBytesToBackend(protocol, backend, bytes)));
+                bytes -> metrics.recordBytesToBackend(backend, bytes)));
             clientChannel.config().setAutoRead(true);
         });
     }
@@ -178,15 +177,13 @@ public class BackendRelay {
      */
     private final class HandshakeHandler extends ChannelInboundHandlerAdapter {
         private final Channel clientChannel;
-        private final Protocol protocol;
         private final Backend backend;
         private final BackendDialog dialog;
         private final CompletableFuture<Channel> result;
 
-        private HandshakeHandler(Channel clientChannel, Protocol protocol, Backend backend,
+        private HandshakeHandler(Channel clientChannel, Backend backend,
                                  BackendDialog dialog, CompletableFuture<Channel> result) {
             this.clientChannel = clientChannel;
-            this.protocol = protocol;
             this.backend = backend;
             this.dialog = dialog;
             this.result = result;
@@ -227,7 +224,7 @@ public class BackendRelay {
             backendChannel.pipeline().remove("framer");
             backendChannel.pipeline().remove("handshake");
             backendChannel.pipeline().addLast(new RelayHandler(clientChannel,
-                bytes -> metrics.recordBytesToClient(protocol, backend, bytes)));
+                bytes -> metrics.recordBytesToClient(backend, bytes)));
             result.complete(backendChannel);
         }
 

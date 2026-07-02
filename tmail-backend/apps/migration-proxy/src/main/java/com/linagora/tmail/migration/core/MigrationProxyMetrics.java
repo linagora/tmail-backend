@@ -26,10 +26,10 @@ import org.apache.james.metrics.api.TimeMetric;
 
 /**
  * Exposes proxy statistics: connection volumes, bytes relayed in both directions and backend
- * response times, broken down per protocol and per backend (old/new).
+ * response times, broken down per backend (old/new).
  */
 public class MigrationProxyMetrics {
-    private static final String PREFIX = "migrationProxy";
+    private static final String PREFIX = "migrationProxy.imap";
 
     private final MetricFactory metricFactory;
 
@@ -38,27 +38,27 @@ public class MigrationProxyMetrics {
         this.metricFactory = metricFactory;
     }
 
-    public void recordConnection(Protocol protocol, Backend backend) {
-        counter(protocol, backend, "connections").increment();
+    public void recordConnection(Backend backend) {
+        counter(backend, "connections").increment();
     }
 
-    public void recordBytesToBackend(Protocol protocol, Backend backend, int bytes) {
-        counter(protocol, backend, "bytesToBackend").add(bytes);
+    public void recordBytesToBackend(Backend backend, int bytes) {
+        counter(backend, "bytesToBackend").add(bytes);
     }
 
-    public void recordBytesToClient(Protocol protocol, Backend backend, int bytes) {
-        counter(protocol, backend, "bytesToClient").add(bytes);
+    public void recordBytesToClient(Backend backend, int bytes) {
+        counter(backend, "bytesToClient").add(bytes);
     }
 
-    public TimeMetric backendResponseTimer(Protocol protocol, Backend backend) {
-        return metricFactory.timer(name(protocol, backend, "backendResponseTime"));
+    public TimeMetric backendResponseTimer(Backend backend) {
+        return metricFactory.timer(name(backend, "backendResponseTime"));
     }
 
-    private Metric counter(Protocol protocol, Backend backend, String suffix) {
-        return metricFactory.generate(name(protocol, backend, suffix));
+    private Metric counter(Backend backend, String suffix) {
+        return metricFactory.generate(name(backend, suffix));
     }
 
-    private String name(Protocol protocol, Backend backend, String suffix) {
-        return PREFIX + "." + protocol.asString() + "." + backend.name() + "." + suffix;
+    private String name(Backend backend, String suffix) {
+        return PREFIX + "." + backend.name() + "." + suffix;
     }
 }

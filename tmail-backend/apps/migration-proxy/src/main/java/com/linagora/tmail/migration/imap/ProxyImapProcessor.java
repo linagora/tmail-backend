@@ -43,7 +43,6 @@ import com.linagora.tmail.migration.core.BackendRelay;
 import com.linagora.tmail.migration.core.BackendResolver;
 import com.linagora.tmail.migration.core.BackendSslContextFactory;
 import com.linagora.tmail.migration.core.MissingProxyInformationException;
-import com.linagora.tmail.migration.core.Protocol;
 import com.linagora.tmail.migration.core.ReflectiveChannelAccessor;
 
 import io.netty.buffer.Unpooled;
@@ -119,7 +118,7 @@ public class ProxyImapProcessor implements ImapProcessor {
         Optional<Channel> backendChannel;
         try {
             backendChannel = backendRelay.connectAndAuthenticate(clientChannel,
-                new BackendRelay.RelayRequest(backend, Protocol.IMAP,
+                new BackendRelay.RelayRequest(backend,
                     () -> new ImapBackendDialog(login.getUserid().asString(), login.getPassword()),
                     sslContextFactory.forBackend(backend), handshakeTimeout, inboundProxyInfo));
         } catch (MissingProxyInformationException e) {
@@ -129,7 +128,7 @@ public class ProxyImapProcessor implements ImapProcessor {
 
         if (backendChannel.isPresent()) {
             writeLine(clientChannel, tag + " OK LOGIN completed, proxying to " + backend.name() + " backend.");
-            backendRelay.takeOverClient(clientChannel, backendChannel.get(), Protocol.IMAP, backend);
+            backendRelay.takeOverClient(clientChannel, backendChannel.get(), backend);
         } else {
             writeLine(clientChannel, tag + " NO LOGIN failed against backend.");
         }
