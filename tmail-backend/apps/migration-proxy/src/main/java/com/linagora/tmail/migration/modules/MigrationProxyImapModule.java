@@ -59,8 +59,10 @@ public class MigrationProxyImapModule extends AbstractModule {
     @Provides
     @Singleton
     ProxyImapProcessor provideProxyImapProcessor(BackendResolver backendResolver, BackendRelay backendRelay,
-                                                 BackendSslContextFactory sslContextFactory) {
-        return new ProxyImapProcessor(backendResolver, backendRelay, sslContextFactory);
+                                                 BackendSslContextFactory sslContextFactory,
+                                                 MigrationProxyConfiguration configuration) {
+        return new ProxyImapProcessor(backendResolver, backendRelay, sslContextFactory,
+            configuration.handshakeTimeout());
     }
 
     @Provides

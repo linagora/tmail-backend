@@ -18,7 +18,12 @@
 
 package com.linagora.tmail.migration.core;
 
+import java.time.Duration;
+import java.time.temporal.ChronoUnit;
+import java.util.Optional;
+
 import org.apache.commons.configuration2.Configuration;
+import org.apache.james.util.DurationParser;
 import org.apache.james.util.Host;
 
 import com.google.common.base.Preconditions;
@@ -35,17 +40,30 @@ import com.google.common.base.Preconditions;
  *   imap.&lt;target&gt;.ssl.ignoreCertificates  (default false: trust self-signed backend certs)
  *   imap.&lt;target&gt;.forwardProxyInfo        (default false: forward the inbound PROXY protocol info)
  * </pre>
+ *
+ * <p>An optional {@code imap.handshakeTimeout} (default {@code 30s}) bounds how long the proxy waits
+ * while connecting to and replaying the authentication against a backend before giving up on a LOGIN.
  */
-public record MigrationProxyConfiguration(Backend imapOld, Backend imapNew) {
+public record MigrationProxyConfiguration(Backend imapOld, Backend imapNew, Duration handshakeTimeout) {
+    public static final Duration DEFAULT_HANDSHAKE_TIMEOUT = Duration.ofSeconds(30);
+
     public MigrationProxyConfiguration {
         Preconditions.checkNotNull(imapOld);
         Preconditions.checkNotNull(imapNew);
+        Preconditions.checkNotNull(handshakeTimeout);
     }
 
     public static MigrationProxyConfiguration from(Configuration configuration) {
         return new MigrationProxyConfiguration(
             readBackend(configuration, Target.OLD),
-            readBackend(configuration, Target.NEW));
+            readBackend(configuration, Target.NEW),
+            readHandshakeTimeout(configuration));
+    }
+
+    private static Duration readHandshakeTimeout(Configuration configuration) {
+        return Optional.ofNullable(configuration.getString(Protocol.IMAP.asString() + ".handshakeTimeout", null))
+            .map(value -> DurationParser.parse(value, ChronoUnit.SECONDS))
+            .orElse(DEFAULT_HANDSHAKE_TIMEOUT);
     }
 
     private static Backend readBackend(Configuration configuration, Target target) {
