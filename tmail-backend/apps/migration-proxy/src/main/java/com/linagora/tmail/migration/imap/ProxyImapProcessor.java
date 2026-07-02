@@ -59,17 +59,18 @@ import reactor.core.scheduler.Schedulers;
  */
 public class ProxyImapProcessor implements ImapProcessor {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProxyImapProcessor.class);
-    private static final Duration HANDSHAKE_TIMEOUT = Duration.ofSeconds(30);
 
     private final BackendResolver backendResolver;
     private final BackendRelay backendRelay;
     private final BackendSslContextFactory sslContextFactory;
+    private final Duration handshakeTimeout;
 
     public ProxyImapProcessor(BackendResolver backendResolver, BackendRelay backendRelay,
-                              BackendSslContextFactory sslContextFactory) {
+                              BackendSslContextFactory sslContextFactory, Duration handshakeTimeout) {
         this.backendResolver = backendResolver;
         this.backendRelay = backendRelay;
         this.sslContextFactory = sslContextFactory;
+        this.handshakeTimeout = handshakeTimeout;
     }
 
     @Override
@@ -120,7 +121,7 @@ public class ProxyImapProcessor implements ImapProcessor {
             backendChannel = backendRelay.connectAndAuthenticate(clientChannel,
                 new BackendRelay.RelayRequest(backend, Protocol.IMAP,
                     () -> new ImapBackendDialog(login.getUserid().asString(), login.getPassword()),
-                    sslContextFactory.forBackend(backend), HANDSHAKE_TIMEOUT, inboundProxyInfo));
+                    sslContextFactory.forBackend(backend), handshakeTimeout, inboundProxyInfo));
         } catch (MissingProxyInformationException e) {
             writeLine(clientChannel, tag + " NO Proxy protocol information required but missing.");
             return;

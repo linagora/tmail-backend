@@ -17,6 +17,7 @@ targets live in `mailetcontainer.xml` instead.
 | `imap.<target>.ssl` | open an implicit TLS connection to the backend (default `false`)
 | `imap.<target>.ssl.ignoreCertificates` | do not validate the backend certificate (default `false`)
 | `imap.<target>.forwardProxyInfo` | forward the inbound PROXY protocol information to the backend; requires the inbound proxy protocol to be active, otherwise the connection is refused (default `false`)
+| `imap.handshakeTimeout` | how long the proxy waits while connecting to and replaying the authentication against a backend before failing a LOGIN (default `30s`)
 |===
 
 == IMAP server -- `imapserver.xml`
