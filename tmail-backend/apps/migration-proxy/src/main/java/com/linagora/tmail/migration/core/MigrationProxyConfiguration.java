@@ -61,13 +61,13 @@ public record MigrationProxyConfiguration(Backend imapOld, Backend imapNew, Dura
     }
 
     private static Duration readHandshakeTimeout(Configuration configuration) {
-        return Optional.ofNullable(configuration.getString(Protocol.IMAP.asString() + ".handshakeTimeout", null))
+        return Optional.ofNullable(configuration.getString("imap.handshakeTimeout", null))
             .map(value -> DurationParser.parse(value, ChronoUnit.SECONDS))
             .orElse(DEFAULT_HANDSHAKE_TIMEOUT);
     }
 
     private static Backend readBackend(Configuration configuration, Target target) {
-        String prefix = Protocol.IMAP.asString() + "." + target.asString();
+        String prefix = "imap." + target.asString();
         String host = configuration.getString(prefix + ".host", null);
         Preconditions.checkArgument(host != null, "Missing required '%s.host' property", prefix);
         int port = configuration.getInt(prefix + ".port", 143);
