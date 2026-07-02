@@ -89,9 +89,9 @@ class BackendRelayTest {
             Channel clientChannel = acceptedClientChannel.get();
 
             Optional<Channel> backendChannel = relay.connectAndAuthenticate(clientChannel,
-                new Backend("new", Host.from("127.0.0.1", backendPort), false, false, false), Protocol.IMAP,
-                () -> new ImapBackendDialog("bob@domain.tld", "secret"),
-                Optional.empty(), Duration.ofSeconds(10), Optional.empty());
+                new BackendRelay.RelayRequest(new Backend("new", Host.from("127.0.0.1", backendPort), false, false, false),
+                    Protocol.IMAP, () -> new ImapBackendDialog("bob@domain.tld", "secret"),
+                    Optional.empty(), Duration.ofSeconds(10), Optional.empty()));
 
             assertThat(backendChannel).isPresent();
             await().atMost(Duration.ofSeconds(5))
@@ -129,9 +129,9 @@ class BackendRelayTest {
             Channel clientChannel = acceptedClientChannel.get();
 
             Optional<Channel> backendChannel = relay.connectAndAuthenticate(clientChannel,
-                new Backend("new", Host.from("127.0.0.1", backendPort), false, false, true), Protocol.IMAP,
-                () -> new ImapBackendDialog("bob@domain.tld", "secret"),
-                Optional.empty(), Duration.ofSeconds(10), Optional.of(inboundProxyInfo));
+                new BackendRelay.RelayRequest(new Backend("new", Host.from("127.0.0.1", backendPort), false, false, true),
+                    Protocol.IMAP, () -> new ImapBackendDialog("bob@domain.tld", "secret"),
+                    Optional.empty(), Duration.ofSeconds(10), Optional.of(inboundProxyInfo)));
 
             assertThat(backendChannel).isPresent();
             await().atMost(Duration.ofSeconds(5))
@@ -150,9 +150,10 @@ class BackendRelayTest {
             Channel clientChannel = acceptedClientChannel.get();
             Backend forwardingBackend = new Backend("new", Host.from("127.0.0.1", backendPort), false, false, true);
 
-            assertThatThrownBy(() -> relay.connectAndAuthenticate(clientChannel, forwardingBackend, Protocol.IMAP,
-                    () -> new ImapBackendDialog("bob@domain.tld", "secret"),
-                    Optional.empty(), Duration.ofSeconds(10), Optional.empty()))
+            assertThatThrownBy(() -> relay.connectAndAuthenticate(clientChannel,
+                    new BackendRelay.RelayRequest(forwardingBackend, Protocol.IMAP,
+                        () -> new ImapBackendDialog("bob@domain.tld", "secret"),
+                        Optional.empty(), Duration.ofSeconds(10), Optional.empty())))
                 .isInstanceOf(MissingProxyInformationException.class);
         }
     }

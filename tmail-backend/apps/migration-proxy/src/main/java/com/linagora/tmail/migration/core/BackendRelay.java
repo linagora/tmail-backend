@@ -78,14 +78,27 @@ public class BackendRelay {
     }
 
     /**
+     * Everything the relay needs to open and authenticate a single backend connection on the user's
+     * behalf, bundled so {@link #connectAndAuthenticate} stays a two-argument handover.
+     */
+    public record RelayRequest(Backend backend, Protocol protocol, Supplier<BackendDialog> dialogFactory,
+                               Optional<SslContext> sslContext, Duration timeout,
+                               Optional<ProxyInformation> inboundProxyInfo) {
+    }
+
+    /**
      * Connects to the backend and replays the authentication. On success the backend &rarr; client
      * piping is installed and the returned channel must later be passed to {@link #takeOverClient}.
      * Client reads remain paused until then.
      */
-    public Optional<Channel> connectAndAuthenticate(Channel clientChannel, Backend backend, Protocol protocol,
-                                                    Supplier<BackendDialog> dialogFactory,
-                                                    Optional<SslContext> sslContext, Duration timeout,
-                                                    Optional<ProxyInformation> inboundProxyInfo) {
+    public Optional<Channel> connectAndAuthenticate(Channel clientChannel, RelayRequest request) {
+        Backend backend = request.backend();
+        Protocol protocol = request.protocol();
+        Supplier<BackendDialog> dialogFactory = request.dialogFactory();
+        Optional<SslContext> sslContext = request.sslContext();
+        Duration timeout = request.timeout();
+        Optional<ProxyInformation> inboundProxyInfo = request.inboundProxyInfo();
+
         if (backend.forwardProxyInfo() && inboundProxyInfo.isEmpty()) {
             throw new MissingProxyInformationException(backend);
         }
@@ -244,7 +257,7 @@ public class BackendRelay {
      * connection, before any TLS handshake.
      */
     private static String proxyProtocolV1Header(InetSocketAddress source, InetSocketAddress destination) {
-        if (source == null || destination == null || source.getAddress() == null || destination.getAddress() == null) {
+        if (isIncomplete(source) || isIncomplete(destination)) {
             return "PROXY UNKNOWN\r\n";
         }
         String family = source.getAddress() instanceof Inet6Address ? "TCP6" : "TCP4";
@@ -253,6 +266,10 @@ public class BackendRelay {
             + destination.getAddress().getHostAddress() + " "
             + source.getPort() + " "
             + destination.getPort() + "\r\n";
+    }
+
+    private static boolean isIncomplete(InetSocketAddress address) {
+        return address == null || address.getAddress() == null;
     }
 
     /**
