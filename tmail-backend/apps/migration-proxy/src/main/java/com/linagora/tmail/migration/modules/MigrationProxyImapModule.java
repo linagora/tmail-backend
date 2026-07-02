@@ -64,12 +64,16 @@ public class MigrationProxyImapModule extends AbstractModule {
 
     @Provides
     @Singleton
+    ProxyImapProcessor provideProxyImapProcessor(BackendResolver backendResolver, BackendRelay backendRelay,
+                                                 BackendSslContextFactory sslContextFactory) {
+        return new ProxyImapProcessor(backendResolver, backendRelay, sslContextFactory);
+    }
+
+    @Provides
+    @Singleton
     IMAPServerFactory provideImapServerFactory(FileSystem fileSystem, MetricFactory metricFactory,
                                                GaugeRegistry gaugeRegistry, ConnectionCheckFactory connectionCheckFactory,
-                                               Encryption.Factory encryptionFactory,
-                                               BackendResolver backendResolver, BackendRelay backendRelay,
-                                               BackendSslContextFactory sslContextFactory) {
-        ProxyImapProcessor processor = new ProxyImapProcessor(backendResolver, backendRelay, sslContextFactory);
+                                               Encryption.Factory encryptionFactory, ProxyImapProcessor processor) {
         IMAPServerFactory factory = new IMAPServerFactory(fileSystem,
             new DefaultImapDecoderFactory().buildImapDecoder(),
             new DefaultImapEncoderFactory().buildImapEncoder(),
