@@ -92,13 +92,18 @@ class SmtpRoutingTest {
         if (server != null) {
             server.stop();
         }
+        System.clearProperty("migration.smtp.old.host");
+        System.clearProperty("migration.smtp.old.port");
+        System.clearProperty("migration.smtp.new.host");
+        System.clearProperty("migration.smtp.new.port");
     }
 
     @Test
     void migratedRecipientShouldReachNewBackendAndLegacyShouldReachOld() throws Exception {
-        SMTPMessageSender sender = SMTPMessageSender.noAuthentication("127.0.0.1", RELAY_SMTP_PORT, DOMAIN);
-        sender.sendMessage(SENDER, MIGRATED_RECIPIENT);
-        sender.sendMessage(SENDER, LEGACY_RECIPIENT);
+        try (SMTPMessageSender sender = SMTPMessageSender.noAuthentication("127.0.0.1", RELAY_SMTP_PORT, DOMAIN)) {
+            sender.sendMessage(SENDER, MIGRATED_RECIPIENT);
+            sender.sendMessage(SENDER, LEGACY_RECIPIENT);
+        }
 
         await().atMost(Duration.ofSeconds(30))
             .untilAsserted(() -> {

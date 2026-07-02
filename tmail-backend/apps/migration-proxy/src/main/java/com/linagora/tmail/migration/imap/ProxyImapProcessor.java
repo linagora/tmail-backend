@@ -135,7 +135,9 @@ public class ProxyImapProcessor implements ImapProcessor {
     }
 
     private void writeCapabilities(Channel clientChannel, ImapSession session, String tag) {
-        StringBuilder capabilities = new StringBuilder("* CAPABILITY IMAP4rev1 AUTH=PLAIN");
+        // We only implement the LOGIN command (not the AUTHENTICATE SASL flow), so we must not advertise
+        // AUTH=PLAIN: a client picking AUTHENTICATE PLAIN over LOGIN would otherwise be rejected.
+        StringBuilder capabilities = new StringBuilder("* CAPABILITY IMAP4rev1");
         if (session.supportStartTLS()) {
             capabilities.append(" STARTTLS");
         }

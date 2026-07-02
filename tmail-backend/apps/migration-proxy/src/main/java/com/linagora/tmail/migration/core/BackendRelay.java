@@ -154,9 +154,10 @@ public class BackendRelay {
     public void takeOverClient(Channel clientChannel, Channel backendChannel, Backend backend) {
         runOnEventLoop(clientChannel, () -> {
             stripProtocolStack(clientChannel.pipeline());
-            // Once the server protocol handlers are gone, a plain line handler (delimiter preserved) is
-            // all the proxying needs: it hands each client line to the RelayHandler which forwards it raw.
-            clientChannel.pipeline().addLast("lineHandler", new LineBasedFrameDecoder(MAX_LINE_LENGTH, false, false));
+            // Once the server protocol handlers are gone the proxying is a bare byte pipe: the RelayHandler
+            // forwards each inbound buffer to the backend raw. We deliberately do not re-frame the client
+            // stream by lines - a LineBasedFrameDecoder capped at MAX_LINE_LENGTH would reject large IMAP
+            // literals (e.g. a multi-megabyte APPEND) that legitimately carry no CRLF for many bytes.
             clientChannel.pipeline().addLast(new RelayHandler(backendChannel,
                 bytes -> metrics.recordBytesToBackend(backend, bytes)));
             clientChannel.config().setAutoRead(true);
