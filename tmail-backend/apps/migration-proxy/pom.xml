@@ -262,7 +262,11 @@
                     <!-- Each test class (notably the ones booting a full server / Docker backends) runs
                          in a fresh JVM to avoid resource accumulation across heavy integration tests. -->
                     <reuseForks>false</reuseForks>
-                    <argLine>-Xms512m -Xmx1024m</argLine>
+                    <!-- No forced -Xms: each heavy integration test runs in a fresh JVM (reuseForks=false),
+                         and pre-committing 512m at every fork start needlessly pressured the CI agent's
+                         memory, occasionally killing the forked VM before the test even ran ("Error
+                         occurred in starting fork"). -Xmx1024m still caps the heap. -->
+                    <argLine>-Xmx1024m</argLine>
                     <forkedProcessTimeoutInSeconds>1200</forkedProcessTimeoutInSeconds>
                 </configuration>
             </plugin>
