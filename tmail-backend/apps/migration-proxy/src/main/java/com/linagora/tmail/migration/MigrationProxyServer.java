@@ -95,8 +95,8 @@ public class MigrationProxyServer {
                 LOGGER.info("No rabbitmq.properties: backing the disconnection event bus with the in-VM event bus (single migration proxy)");
                 return IN_MEMORY;
             } catch (ConfigurationException e) {
-                LOGGER.warn("Error reading rabbitmq.properties, defaulting to the in-VM event bus (single migration proxy)", e);
-                return IN_MEMORY;
+                throw new RuntimeException("rabbitmq.properties is present but could not be read: fix the configuration "
+                    + "rather than silently degrading to the single-node in-VM event bus in a clustered deployment", e);
             }
         }
 
