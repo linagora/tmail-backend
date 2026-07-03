@@ -21,9 +21,11 @@ package com.linagora.tmail.migration.core;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.function.Predicate;
 
 import jakarta.inject.Singleton;
 
+import org.apache.james.core.Disconnector;
 import org.apache.james.core.Username;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -33,13 +35,18 @@ import com.google.common.annotations.VisibleForTesting;
 import io.netty.channel.Channel;
 
 /**
- * Tracks the live proxied client connections per user. When a user is flipped to "migrated" their
- * in-flight IMAP sessions are still pinned to the old backend (the backend was resolved at LOGIN time);
- * closing them here forces the clients to reconnect and be routed to the new backend straight away
- * instead of lingering on the old one until they happen to disconnect on their own.
+ * Tracks the live proxied client connections per user and closes them on demand as the protocol-layer
+ * {@link Disconnector} of the IMAP proxy. When a user is flipped to "migrated" their in-flight IMAP
+ * sessions are still pinned to the old backend (the backend was resolved at LOGIN time); closing them
+ * forces the clients to reconnect and be routed to the new backend straight away instead of lingering
+ * on the old one until they happen to disconnect on their own.
+ *
+ * <p>The migration flow does not call this registry directly: it dispatches a disconnection request on
+ * the event bus (see {@code EventBusDisconnectorNotifier}) so that, in a cluster of migration proxies,
+ * the node actually holding the user's connection is the one that closes it.
  */
 @Singleton
-public class ProxyConnectionRegistry {
+public class ProxyConnectionRegistry implements Disconnector {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProxyConnectionRegistry.class);
 
     private final ConcurrentMap<Username, Set<Channel>> channelsByUser = new ConcurrentHashMap<>();
@@ -50,7 +57,14 @@ public class ProxyConnectionRegistry {
         clientChannel.closeFuture().addListener(future -> deregister(username, clientChannel));
     }
 
-    public void closeConnections(Username username) {
+    @Override
+    public void disconnect(Predicate<Username> matcher) {
+        channelsByUser.keySet().stream()
+            .filter(matcher)
+            .forEach(this::closeConnections);
+    }
+
+    private void closeConnections(Username username) {
         Set<Channel> channels = channelsByUser.remove(username);
         if (channels != null && !channels.isEmpty()) {
             LOGGER.info("Closing {} proxied connection(s) of {} to force reconnection after migration",

@@ -38,43 +38,56 @@ class ProxyConnectionRegistryTest {
     }
 
     @Test
-    void closeConnectionsShouldCloseRegisteredChannels() {
+    void disconnectShouldCloseRegisteredChannels() {
         EmbeddedChannel channel = new EmbeddedChannel();
         testee.register(BOB, channel);
 
-        testee.closeConnections(BOB);
+        testee.disconnect(BOB::equals);
 
         assertThat(channel.isOpen()).isFalse();
     }
 
     @Test
-    void closeConnectionsShouldCloseEveryChannelOfTheUser() {
+    void disconnectShouldCloseEveryChannelOfTheUser() {
         EmbeddedChannel first = new EmbeddedChannel();
         EmbeddedChannel second = new EmbeddedChannel();
         testee.register(BOB, first);
         testee.register(BOB, second);
 
-        testee.closeConnections(BOB);
+        testee.disconnect(BOB::equals);
 
         assertThat(first.isOpen()).isFalse();
         assertThat(second.isOpen()).isFalse();
     }
 
     @Test
-    void closeConnectionsShouldNotCloseChannelsOfOtherUsers() {
+    void disconnectShouldCloseEveryMatchingUser() {
         EmbeddedChannel bobChannel = new EmbeddedChannel();
         EmbeddedChannel aliceChannel = new EmbeddedChannel();
         testee.register(BOB, bobChannel);
         testee.register(ALICE, aliceChannel);
 
-        testee.closeConnections(BOB);
+        testee.disconnect(username -> true);
+
+        assertThat(bobChannel.isOpen()).isFalse();
+        assertThat(aliceChannel.isOpen()).isFalse();
+    }
+
+    @Test
+    void disconnectShouldNotCloseChannelsOfNonMatchingUsers() {
+        EmbeddedChannel bobChannel = new EmbeddedChannel();
+        EmbeddedChannel aliceChannel = new EmbeddedChannel();
+        testee.register(BOB, bobChannel);
+        testee.register(ALICE, aliceChannel);
+
+        testee.disconnect(BOB::equals);
 
         assertThat(aliceChannel.isOpen()).isTrue();
     }
 
     @Test
-    void closeConnectionsShouldNotThrowWhenUserHasNoConnection() {
-        testee.closeConnections(BOB);
+    void disconnectShouldNotThrowWhenUserHasNoConnection() {
+        testee.disconnect(BOB::equals);
     }
 
     @Test

@@ -18,8 +18,12 @@
 
 package com.linagora.tmail.migration.webadmin;
 
+import java.util.Set;
+
 import jakarta.inject.Inject;
 
+import org.apache.james.DisconnectorNotifier;
+import org.apache.james.DisconnectorNotifier.MultipleUserRequest;
 import org.apache.james.core.Username;
 import org.apache.james.webadmin.Constants;
 import org.apache.james.webadmin.Routes;
@@ -28,7 +32,6 @@ import org.apache.james.webadmin.utils.JsonTransformer;
 import org.eclipse.jetty.http.HttpStatus;
 
 import com.linagora.tmail.migration.core.MigratedUsersRepository;
-import com.linagora.tmail.migration.core.ProxyConnectionRegistry;
 
 import spark.Request;
 import spark.Response;
@@ -51,14 +54,14 @@ public class MigratedUsersRoutes implements Routes {
     private static final String USER_PATH = BASE_PATH + Constants.SEPARATOR + USERNAME_PARAM;
 
     private final MigratedUsersRepository migratedUsersRepository;
-    private final ProxyConnectionRegistry connectionRegistry;
+    private final DisconnectorNotifier disconnectorNotifier;
     private final JsonTransformer jsonTransformer;
 
     @Inject
     public MigratedUsersRoutes(MigratedUsersRepository migratedUsersRepository,
-                               ProxyConnectionRegistry connectionRegistry, JsonTransformer jsonTransformer) {
+                               DisconnectorNotifier disconnectorNotifier, JsonTransformer jsonTransformer) {
         this.migratedUsersRepository = migratedUsersRepository;
-        this.connectionRegistry = connectionRegistry;
+        this.disconnectorNotifier = disconnectorNotifier;
         this.jsonTransformer = jsonTransformer;
     }
 
@@ -87,8 +90,10 @@ public class MigratedUsersRoutes implements Routes {
             Username username = extractUsername(request);
             migratedUsersRepository.addMigratedUser(username).block();
             // Force the user's live proxied sessions to reconnect so they land on the new backend
-            // straight away rather than staying pinned to the old one until they disconnect.
-            connectionRegistry.closeConnections(username);
+            // straight away rather than staying pinned to the old one until they disconnect. The
+            // request goes through the event bus so that, in a cluster of migration proxies, the node
+            // actually holding the connection closes it, wherever the migration was triggered.
+            disconnectorNotifier.disconnect(MultipleUserRequest.of(Set.of(username)));
             return noContent(response);
         };
     }

@@ -51,7 +51,9 @@ import org.slf4j.LoggerFactory;
 import com.google.inject.Module;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.migration.modules.MigratedUsersModule;
+import com.linagora.tmail.migration.modules.MigrationProxyDisconnectorModule;
 import com.linagora.tmail.migration.modules.MigrationProxyImapModule;
+import com.linagora.tmail.migration.modules.MigrationProxyMemoryEventBusModule;
 
 /**
  * Migration proxy server: a mailbox-less Twake Mail MTA assembled from our own Guice module set.
@@ -86,7 +88,8 @@ public class MigrationProxyServer {
 
     private static final Module MIGRATION_PROXY = Modules.combine(
         new MigrationProxyImapModule(),
-        new MigratedUsersModule());
+        new MigratedUsersModule(),
+        new MigrationProxyDisconnectorModule());
 
     public static void main(String[] args) throws Exception {
         ExtraProperties.initialize();
@@ -108,7 +111,7 @@ public class MigrationProxyServer {
             UsersRepositoryModuleChooser.Implementation.parse(new FileConfigurationProvider(fileSystem, configuration));
 
         return GuiceJamesServer.forConfiguration(configuration)
-            .combineWith(PROTOCOLS, DATA, MIGRATION_PROXY, chooseSslModule())
+            .combineWith(PROTOCOLS, DATA, MIGRATION_PROXY, chooseSslModule(), chooseEventBusModule())
             .combineWith(new UsersRepositoryModuleChooser(new PostgresUsersRepositoryModule())
                 .chooseModules(usersRepositoryImplementation));
     }
@@ -118,5 +121,15 @@ public class MigrationProxyServer {
             return new TCNativeEncryptionModule();
         }
         return new LegacyEncryptionModule();
+    }
+
+    /**
+     * Selects the event bus backing the disconnection plumbing, mirroring the module chooser the other
+     * Twake Mail apps expose. The in-VM event bus is enough for a single migration proxy; a clustered
+     * deployment plugs in a distributed (RabbitMQ) event bus so a disconnection request reaches the node
+     * actually holding the user connection.
+     */
+    private static Module chooseEventBusModule() {
+        return new MigrationProxyMemoryEventBusModule();
     }
 }

@@ -22,7 +22,13 @@ import static io.restassured.RestAssured.given;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.contains;
 import static org.hamcrest.Matchers.hasSize;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 
+import java.util.Set;
+
+import org.apache.james.DisconnectorNotifier;
+import org.apache.james.DisconnectorNotifier.MultipleUserRequest;
 import org.apache.james.core.Username;
 import org.apache.james.webadmin.WebAdminServer;
 import org.apache.james.webadmin.WebAdminUtils;
@@ -34,9 +40,7 @@ import org.junit.jupiter.api.Test;
 
 import com.linagora.tmail.migration.core.MemoryMigratedUsersRepository;
 import com.linagora.tmail.migration.core.MigratedUsersRepository;
-import com.linagora.tmail.migration.core.ProxyConnectionRegistry;
 
-import io.netty.channel.embedded.EmbeddedChannel;
 import io.restassured.RestAssured;
 
 class MigratedUsersRoutesTest {
@@ -45,14 +49,14 @@ class MigratedUsersRoutesTest {
 
     private WebAdminServer webAdminServer;
     private MigratedUsersRepository repository;
-    private ProxyConnectionRegistry connectionRegistry;
+    private DisconnectorNotifier disconnectorNotifier;
 
     @BeforeEach
     void setUp() {
         repository = new MemoryMigratedUsersRepository();
-        connectionRegistry = new ProxyConnectionRegistry();
+        disconnectorNotifier = mock(DisconnectorNotifier.class);
         webAdminServer = WebAdminUtils.createWebAdminServer(
-                new MigratedUsersRoutes(repository, connectionRegistry, new JsonTransformer()))
+                new MigratedUsersRoutes(repository, disconnectorNotifier, new JsonTransformer()))
             .start();
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer).build();
     }
@@ -82,16 +86,13 @@ class MigratedUsersRoutesTest {
     }
 
     @Test
-    void putShouldCloseProxiedConnectionsOfMigratedUser() {
-        EmbeddedChannel channel = new EmbeddedChannel();
-        connectionRegistry.register(Username.of(BOB), channel);
-
+    void putShouldDisconnectMigratedUser() {
         given()
             .put("/migratedUsers/" + BOB)
         .then()
             .statusCode(HttpStatus.NO_CONTENT_204);
 
-        assertThat(channel.isOpen()).isFalse();
+        verify(disconnectorNotifier).disconnect(MultipleUserRequest.of(Set.of(Username.of(BOB))));
     }
 
     @Test
