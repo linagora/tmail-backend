@@ -28,6 +28,7 @@ import org.apache.james.webadmin.utils.JsonTransformer;
 import org.eclipse.jetty.http.HttpStatus;
 
 import com.linagora.tmail.migration.core.MigratedUsersRepository;
+import com.linagora.tmail.migration.core.ProxyConnectionRegistry;
 
 import spark.Request;
 import spark.Response;
@@ -50,11 +51,14 @@ public class MigratedUsersRoutes implements Routes {
     private static final String USER_PATH = BASE_PATH + Constants.SEPARATOR + USERNAME_PARAM;
 
     private final MigratedUsersRepository migratedUsersRepository;
+    private final ProxyConnectionRegistry connectionRegistry;
     private final JsonTransformer jsonTransformer;
 
     @Inject
-    public MigratedUsersRoutes(MigratedUsersRepository migratedUsersRepository, JsonTransformer jsonTransformer) {
+    public MigratedUsersRoutes(MigratedUsersRepository migratedUsersRepository,
+                               ProxyConnectionRegistry connectionRegistry, JsonTransformer jsonTransformer) {
         this.migratedUsersRepository = migratedUsersRepository;
+        this.connectionRegistry = connectionRegistry;
         this.jsonTransformer = jsonTransformer;
     }
 
@@ -80,7 +84,11 @@ public class MigratedUsersRoutes implements Routes {
 
     private Route addMigratedUser() {
         return (request, response) -> {
-            migratedUsersRepository.addMigratedUser(extractUsername(request)).block();
+            Username username = extractUsername(request);
+            migratedUsersRepository.addMigratedUser(username).block();
+            // Force the user's live proxied sessions to reconnect so they land on the new backend
+            // straight away rather than staying pinned to the old one until they disconnect.
+            connectionRegistry.closeConnections(username);
             return noContent(response);
         };
     }
