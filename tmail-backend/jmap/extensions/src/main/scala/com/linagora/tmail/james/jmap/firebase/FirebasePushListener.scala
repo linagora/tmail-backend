@@ -111,7 +111,7 @@ class FirebasePushListener @Inject()(subscriptionRepository: FirebaseSubscriptio
             case _ =>
               pushFailure.increment()
               SMono.error(new RuntimeException(
-                s"Unexpected error during push message to Firebase Cloud Messaging for user ${stateChangeEvent.username.asString()} and subscription ${subscription.id.serialize} and code ${e.getMessagingErrorCode.name()}", e))
+                s"Unexpected error during push message to Firebase Cloud Messaging for user ${stateChangeEvent.username.asString()} and subscription ${subscription.id.serialize} and code ${Option(e.getMessagingErrorCode).map(_.name()).getOrElse("UNKNOWN")}", e))
           }
           case e =>
             pushFailure.increment()
