@@ -163,7 +163,7 @@ class DownloadAllRoutes @Inject()(@Named(InjectionKeys.RFC_8621) val authenticat
     SMono.fromCallable(() => messageIdFactory.fromString(id: String))
       .onErrorResume(e => SMono.error(MessageNotFoundException(id, e)))
       .flatMap(messageId => SFlux(messageIdManager.getMessagesReactive(ImmutableList.of(messageId), FetchGroup.FULL_CONTENT, mailboxSession))
-        .singleOrEmpty()
+        .next()
         .switchIfEmpty(SMono.error(MessageNotFoundException(id)))
         .flatMap(messageResult => handleMessageResult(request, response, messageResult, mailboxSession)))
   }
