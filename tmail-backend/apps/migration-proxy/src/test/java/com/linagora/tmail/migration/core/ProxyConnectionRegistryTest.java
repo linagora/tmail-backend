@@ -84,8 +84,7 @@ class ProxyConnectionRegistryTest {
 
         channel.close().syncUninterruptibly();
 
-        // A second close attempt through the registry must be a no-op: the channel is already gone.
-        testee.closeConnections(BOB);
-        assertThat(channel.isOpen()).isFalse();
+        // Once the channel closes it must be dropped from the registry rather than lingering as a dead entry.
+        assertThat(testee.connectionCount(BOB)).isEqualTo(0);
     }
 }

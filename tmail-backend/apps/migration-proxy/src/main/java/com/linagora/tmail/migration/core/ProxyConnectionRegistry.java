@@ -28,6 +28,8 @@ import org.apache.james.core.Username;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.annotations.VisibleForTesting;
+
 import io.netty.channel.Channel;
 
 /**
@@ -62,5 +64,10 @@ public class ProxyConnectionRegistry {
             channels.remove(clientChannel);
             return channels.isEmpty() ? null : channels;
         });
+    }
+
+    @VisibleForTesting
+    int connectionCount(Username username) {
+        return channelsByUser.getOrDefault(username, Set.of()).size();
     }
 }

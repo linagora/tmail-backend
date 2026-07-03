@@ -36,6 +36,7 @@ import com.linagora.tmail.migration.core.MemoryMigratedUsersRepository;
 import com.linagora.tmail.migration.core.MigratedUsersRepository;
 import com.linagora.tmail.migration.core.ProxyConnectionRegistry;
 
+import io.netty.channel.embedded.EmbeddedChannel;
 import io.restassured.RestAssured;
 
 class MigratedUsersRoutesTest {
@@ -44,12 +45,14 @@ class MigratedUsersRoutesTest {
 
     private WebAdminServer webAdminServer;
     private MigratedUsersRepository repository;
+    private ProxyConnectionRegistry connectionRegistry;
 
     @BeforeEach
     void setUp() {
         repository = new MemoryMigratedUsersRepository();
+        connectionRegistry = new ProxyConnectionRegistry();
         webAdminServer = WebAdminUtils.createWebAdminServer(
-                new MigratedUsersRoutes(repository, new ProxyConnectionRegistry(), new JsonTransformer()))
+                new MigratedUsersRoutes(repository, connectionRegistry, new JsonTransformer()))
             .start();
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer).build();
     }
@@ -76,6 +79,19 @@ class MigratedUsersRoutesTest {
             .statusCode(HttpStatus.NO_CONTENT_204);
 
         assertThat(repository.isMigrated(Username.of(BOB)).block()).isTrue();
+    }
+
+    @Test
+    void putShouldCloseProxiedConnectionsOfMigratedUser() {
+        EmbeddedChannel channel = new EmbeddedChannel();
+        connectionRegistry.register(Username.of(BOB), channel);
+
+        given()
+            .put("/migratedUsers/" + BOB)
+        .then()
+            .statusCode(HttpStatus.NO_CONTENT_204);
+
+        assertThat(channel.isOpen()).isFalse();
     }
 
     @Test
