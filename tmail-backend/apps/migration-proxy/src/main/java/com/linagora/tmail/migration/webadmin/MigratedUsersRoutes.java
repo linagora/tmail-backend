@@ -30,6 +30,8 @@ import org.apache.james.webadmin.Routes;
 import org.apache.james.webadmin.utils.ErrorResponder;
 import org.apache.james.webadmin.utils.JsonTransformer;
 import org.eclipse.jetty.http.HttpStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.linagora.tmail.migration.core.MigratedUsersRepository;
 
@@ -49,6 +51,7 @@ import spark.Service;
  * </ul>
  */
 public class MigratedUsersRoutes implements Routes {
+    private static final Logger LOGGER = LoggerFactory.getLogger(MigratedUsersRoutes.class);
     private static final String USERNAME_PARAM = ":username";
     private static final String BASE_PATH = Constants.SEPARATOR + "migratedUsers";
     private static final String USER_PATH = BASE_PATH + Constants.SEPARATOR + USERNAME_PARAM;
@@ -93,7 +96,14 @@ public class MigratedUsersRoutes implements Routes {
             // straight away rather than staying pinned to the old one until they disconnect. The
             // request goes through the event bus so that, in a cluster of migration proxies, the node
             // actually holding the connection closes it, wherever the migration was triggered.
-            disconnectorNotifier.disconnect(MultipleUserRequest.of(Set.of(username)));
+            // Best-effort: the user is already flagged migrated, so a disconnection publishing failure
+            // (e.g. a transient event-bus issue) must not fail the request - the stale sessions will
+            // simply reconnect on the new backend the next time they cycle.
+            try {
+                disconnectorNotifier.disconnect(MultipleUserRequest.of(Set.of(username)));
+            } catch (Exception e) {
+                LOGGER.warn("Failed to publish the disconnection request for migrated user {}", username.asString(), e);
+            }
             return noContent(response);
         };
     }

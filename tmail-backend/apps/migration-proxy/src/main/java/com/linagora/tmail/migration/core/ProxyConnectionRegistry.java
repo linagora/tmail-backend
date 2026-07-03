@@ -52,7 +52,13 @@ public class ProxyConnectionRegistry implements Disconnector {
     private final ConcurrentMap<Username, Set<Channel>> channelsByUser = new ConcurrentHashMap<>();
 
     public void register(Username username, Channel clientChannel) {
-        channelsByUser.computeIfAbsent(username, any -> ConcurrentHashMap.newKeySet()).add(clientChannel);
+        // compute() keeps the get-or-create and the add atomic per user so a concurrent closeConnections()
+        // cannot remove the entry in between and leave clientChannel tracked in an orphaned Set.
+        channelsByUser.compute(username, (key, channels) -> {
+            Set<Channel> tracked = channels != null ? channels : ConcurrentHashMap.newKeySet();
+            tracked.add(clientChannel);
+            return tracked;
+        });
         // Drop the channel from the registry once it closes so we do not accumulate dead connections.
         clientChannel.closeFuture().addListener(future -> deregister(username, clientChannel));
     }
@@ -65,12 +71,16 @@ public class ProxyConnectionRegistry implements Disconnector {
     }
 
     private void closeConnections(Username username) {
-        Set<Channel> channels = channelsByUser.remove(username);
-        if (channels != null && !channels.isEmpty()) {
-            LOGGER.info("Closing {} proxied connection(s) of {} to force reconnection after migration",
-                channels.size(), username.asString());
-            channels.forEach(Channel::close);
-        }
+        // Remove and close under the same atomic compute() as register() so we never miss a channel that
+        // is being registered concurrently (it would otherwise stay open and pinned to the old backend).
+        channelsByUser.compute(username, (key, channels) -> {
+            if (channels != null && !channels.isEmpty()) {
+                LOGGER.info("Closing {} proxied connection(s) of {} to force reconnection after migration",
+                    channels.size(), username.asString());
+                channels.forEach(Channel::close);
+            }
+            return null;
+        });
     }
 
     private void deregister(Username username, Channel clientChannel) {
