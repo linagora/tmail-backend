@@ -18,8 +18,6 @@
 
 package com.linagora.tmail.james.jmap.calendar
 
-import java.io.ByteArrayInputStream
-import java.nio.charset.StandardCharsets
 import java.time.temporal.Temporal
 import java.time.{Instant, ZoneId, ZonedDateTime}
 import java.util
@@ -28,12 +26,12 @@ import java.util.function.Consumer
 import com.google.common.base.Preconditions.{checkArgument => require}
 import com.google.common.collect.ImmutableList
 import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier._
-import com.linagora.tmail.james.jmap.model.{CalendarAttendeeMailTo, CalendarEndField, CalendarEventParsed, CalendarLocationField, CalendarOrganizerField, CalendarStartField, CalendarTimeZoneField, VEventTemporalUtil}
-import net.fortuna.ical4j.model.component.VEvent
+import com.linagora.tmail.james.jmap.model.{CalendarAttendeeMailTo, CalendarEndField, CalendarLocationField, CalendarOrganizerField, CalendarStartField, CalendarTimeZoneField, VEventTemporalUtil}
+import net.fortuna.ical4j.model.component.{CalendarComponent, VAlarm, VEvent}
 import net.fortuna.ical4j.model.parameter.PartStat
 import net.fortuna.ical4j.model.property.immutable.ImmutableMethod
 import net.fortuna.ical4j.model.property.{Attendee, DtEnd, DtStart, Location, RecurrenceId, Sequence, XProperty}
-import net.fortuna.ical4j.model.{Calendar, Component, Parameter, Period, Property, PropertyList, RelationshipPropertyModifiers}
+import net.fortuna.ical4j.model.{Calendar, Component, ComponentList, Parameter, Period, Property, PropertyList, RelationshipPropertyModifiers}
 import net.fortuna.ical4j.validate.ValidationResult
 import org.apache.james.core.Username
 
@@ -203,15 +201,31 @@ object CalendarEventModifier {
   val RECURRENCE_IGNORE_COPIED_PROPERTIES: Set[String] = Set(Property.RRULE, Property.RDATE, Property.CREATED)
 
   /**
-   * Deep copy a calendar by re-parsing its textual representation.
+   * Deep copy a calendar by structurally rebuilding it from copied components and properties.
    *
    * `Calendar.copy()` relies on `Property.copy()`, which fails with
    * `UnsupportedOperationException: Factory not supported for custom properties`
    * whenever the event carries custom `X-` properties (see ical4j `XProperty.newFactory`).
-   * Re-parsing avoids that limitation while producing an independent copy.
+   *
+   * We reproduce `Calendar.copy()` semantics but route every property through `copyProperty`,
+   * which reconstructs `X-` properties instead of calling their unsupported `copy()`. Copying
+   * property-by-property (rather than re-parsing the textual representation) is important:
+   * re-parsing would rebind date/time properties to the calendar's embedded `VTIMEZONE`
+   * definitions, whereas `copy()` keeps resolving their `TZID` against the IANA registry.
    */
-  def deepCopy(calendar: Calendar): Calendar =
-    CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(calendar.toString.getBytes(StandardCharsets.UTF_8)))
+  def deepCopy(calendar: Calendar): Calendar = {
+    val properties = new PropertyList(calendar.getPropertyList.getAll.asScala.map(copyProperty).asJava)
+    val components = new ComponentList(calendar.getComponents[CalendarComponent].asScala.map(copyComponent).asJava)
+    new Calendar(properties, components)
+  }
+
+  def copyComponent(component: CalendarComponent): CalendarComponent = component match {
+    case vEvent: VEvent =>
+      val properties = new PropertyList(vEvent.getPropertyList.getAll.asScala.map(copyProperty).asJava)
+      val alarms = new ComponentList(vEvent.getComponentList.getAll.asScala.map(_.copy().asInstanceOf[VAlarm]).asJava)
+      new VEvent(properties, alarms)
+    case other => other.copy().asInstanceOf[CalendarComponent]
+  }
 
   /**
    * Copy a property, handling custom `X-` properties whose `copy()` is unsupported by ical4j.
