@@ -102,6 +102,60 @@ trait DownloadAllContract {
   }
 
   @Test
+  def downloadAllShouldSucceedWhenMessageBelongsToSeveralMailboxes(server: GuiceJamesServer): Unit = {
+    val inboxPath = MailboxPath.inbox(BOB)
+    val otherPath = MailboxPath.forUser(BOB, "other")
+    val inboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(inboxPath)
+    val otherId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(otherPath)
+    val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessage(BOB.asString, inboxPath, AppendCommand.from(
+        ClassLoaderUtils.getSystemResourceAsSharedStream(EMAIL_FILE_NAME)))
+      .getMessageId
+
+    val request = s"""{
+                     |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail"],
+                     |  "methodCalls": [[
+                     |    "Email/set",
+                     |    {
+                     |      "accountId": "$accountId",
+                     |      "update": {
+                     |        "${messageId.serialize()}": {
+                     |          "mailboxIds": {
+                     |            "${inboxId.serialize()}": true,
+                     |            "${otherId.serialize()}": true
+                     |          }
+                     |        }
+                     |      }
+                     |    },
+                     |    "c1"]]
+                     |}""".stripMargin
+
+    `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .body("methodResponses[0][1].updated", hasKey(messageId.serialize()))
+
+    val response = `given`
+      .basePath("")
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+    .when
+      .get(s"/downloadAll/$accountId/${messageId.serialize()}")
+    .`then`
+      .statusCode(SC_OK)
+      .contentType("application/zip")
+      .extract
+      .body
+      .asInputStream()
+
+    assertThat(ZipUtil.readZipData(response))
+      .containsExactlyInAnyOrderElementsOf(ZIP_ENTRIES)
+  }
+
+  @Test
   def downloadAllShouldNotIncludeInlineAttachments(server: GuiceJamesServer): Unit = {
     val path = MailboxPath.inbox(BOB)
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(path)
