@@ -32,7 +32,7 @@ import org.apache.james.jmap.core.UuidState
 import org.apache.james.metrics.tests.RecordingMetricFactory
 import org.apache.james.user.api.DelegationStore
 import org.apache.james.user.memory.MemoryDelegationStore
-import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}
 import org.assertj.core.api.SoftAssertions
 import org.junit.jupiter.api.{BeforeEach, Test}
 import org.mockito.ArgumentCaptor
@@ -195,6 +195,30 @@ class FirebasePushListenerTest {
     SMono(testee.reactiveEvent(StateChangeEvent(EventId.random(), bob,
       Map(EmailTypeName -> UuidState(UUID.randomUUID())))))
       .onErrorResume(_ => SMono.empty).block()
+
+    assertThat(SMono.fromPublisher(subscriptionRepository.get(bob, java.util.Set.of(subscriptionId))).block())
+      .isNotNull
+  }
+
+  @Test
+  def shouldNotRemoveSubscriptionAndShouldNotThrowNpeWhenMessagingErrorCodeIsNull(): Unit = {
+    val firebaseException = mock(classOf[FirebaseMessagingException])
+    when(firebaseException.getMessagingErrorCode).thenReturn(null)
+    when(pushClient.push(any())).thenReturn(Mono.error(firebaseException))
+
+    val subscriptionId = SMono(subscriptionRepository.save(bob, FirebaseSubscriptionCreationRequest(
+      deviceClientId = DeviceClientId("junit"),
+      token = FirebaseToken("token"),
+      types = Seq(EmailTypeName)))).block().id
+
+    assertThat(SMono.fromPublisher(subscriptionRepository.get(bob, java.util.Set.of(subscriptionId))).block())
+      .isNotNull
+
+    assertThatThrownBy(() => SMono(testee.reactiveEvent(StateChangeEvent(EventId.random(), bob,
+      Map(EmailTypeName -> UuidState(UUID.randomUUID()))))).block())
+      .isInstanceOf(classOf[RuntimeException])
+      .hasMessageContaining("Unexpected error during push message to Firebase Cloud Messaging")
+      .hasCause(firebaseException)
 
     assertThat(SMono.fromPublisher(subscriptionRepository.get(bob, java.util.Set.of(subscriptionId))).block())
       .isNotNull
