@@ -18,6 +18,8 @@
 
 package com.linagora.tmail.james.jmap.calendar
 
+import java.io.ByteArrayInputStream
+import java.nio.charset.StandardCharsets
 import java.time.temporal.Temporal
 import java.time.{Instant, ZoneId, ZonedDateTime}
 import java.util
@@ -26,11 +28,11 @@ import java.util.function.Consumer
 import com.google.common.base.Preconditions.{checkArgument => require}
 import com.google.common.collect.ImmutableList
 import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier._
-import com.linagora.tmail.james.jmap.model.{CalendarAttendeeMailTo, CalendarEndField, CalendarLocationField, CalendarOrganizerField, CalendarStartField, CalendarTimeZoneField, VEventTemporalUtil}
+import com.linagora.tmail.james.jmap.model.{CalendarAttendeeMailTo, CalendarEndField, CalendarEventParsed, CalendarLocationField, CalendarOrganizerField, CalendarStartField, CalendarTimeZoneField, VEventTemporalUtil}
 import net.fortuna.ical4j.model.component.VEvent
 import net.fortuna.ical4j.model.parameter.PartStat
 import net.fortuna.ical4j.model.property.immutable.ImmutableMethod
-import net.fortuna.ical4j.model.property.{Attendee, DtEnd, DtStart, Location, RecurrenceId, Sequence}
+import net.fortuna.ical4j.model.property.{Attendee, DtEnd, DtStart, Location, RecurrenceId, Sequence, XProperty}
 import net.fortuna.ical4j.model.{Calendar, Component, Parameter, Period, Property, PropertyList, RelationshipPropertyModifiers}
 import net.fortuna.ical4j.validate.ValidationResult
 import org.apache.james.core.Username
@@ -134,7 +136,7 @@ case class CalendarEventModifier(patches: Seq[CalendarEventUpdatePatch],
                                  validator: Consumer[Calendar] = (_: Calendar) => {}) {
 
   def apply(calendar: Calendar): Calendar = {
-    val newCalendar = calendar.copy()
+    val newCalendar = deepCopy(calendar)
     validator.accept(newCalendar)
 
     val vEVentNeedToUpdate: VEvent = recurrenceId.map(findVEventByRecurrenceId(newCalendar, _))
@@ -154,11 +156,11 @@ case class CalendarEventModifier(patches: Seq[CalendarEventUpdatePatch],
     calendar.getComponents[VEvent](Component.VEVENT).asScala
       .find(_.getRecurrenceId[Temporal] == recurrenceId)
       .getOrElse {
-        val baseVEvent = calendar.getFirstVEvent.copy()
+        val baseVEvent = calendar.getFirstVEvent
 
         val filteredProperties: util.List[Property] = baseVEvent.getPropertyList.getAll.asScala
           .filterNot(p => RECURRENCE_IGNORE_COPIED_PROPERTIES.contains(p.getName))
-          .map(_.copy())
+          .map(copyProperty)
           .asJava
 
         val preVEvent = new VEvent(new PropertyList(ImmutableList.builder()
@@ -199,6 +201,25 @@ case class CalendarEventModifier(patches: Seq[CalendarEventUpdatePatch],
 object CalendarEventModifier {
   val MODIFIED_SEQUENCE_DEFAULT: Sequence = new Sequence("1")
   val RECURRENCE_IGNORE_COPIED_PROPERTIES: Set[String] = Set(Property.RRULE, Property.RDATE, Property.CREATED)
+
+  /**
+   * Deep copy a calendar by re-parsing its textual representation.
+   *
+   * `Calendar.copy()` relies on `Property.copy()`, which fails with
+   * `UnsupportedOperationException: Factory not supported for custom properties`
+   * whenever the event carries custom `X-` properties (see ical4j `XProperty.newFactory`).
+   * Re-parsing avoids that limitation while producing an independent copy.
+   */
+  def deepCopy(calendar: Calendar): Calendar =
+    CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(calendar.toString.getBytes(StandardCharsets.UTF_8)))
+
+  /**
+   * Copy a property, handling custom `X-` properties whose `copy()` is unsupported by ical4j.
+   */
+  def copyProperty(property: Property): Property = property match {
+    case xProperty: XProperty => new XProperty(xProperty.getName, xProperty.getParameterList, xProperty.getValue)
+    case other => other.copy()
+  }
 
   def of(patch: CalendarEventUpdatePatch): CalendarEventModifier =
     CalendarEventModifier(Seq(patch), None)

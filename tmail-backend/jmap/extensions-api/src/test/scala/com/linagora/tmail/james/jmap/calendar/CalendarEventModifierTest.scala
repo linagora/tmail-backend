@@ -181,6 +181,44 @@ class CalendarEventModifierTest {
   }
 
   @Test
+  def shouldSucceedWhenEventContainsCustomXProperties(): Unit = {
+    // ical4j `Calendar.copy()` throws `UnsupportedOperationException` on custom `X-` properties, cf https://github.com/linagora/tmail-backend/issues/2471
+    val calendarWithXProperties: Calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+      s"""
+         |BEGIN:VCALENDAR
+         |VERSION:2.0
+         |PRODID:-//Example Corp//NONSGML Event//EN
+         |METHOD:REQUEST
+         |BEGIN:VEVENT
+         |UID:123456789@example.com
+         |DTSTAMP:20250318T120000Z
+         |DTSTART:$START_DATE_SAMPLE_VALUE
+         |DTEND:$END_DATE_SAMPLE_VALUE
+         |SUMMARY:Project Kickoff Meeting
+         |ORGANIZER:mailto:organizer@example.com
+         |ATTENDEE;CN=John Doe;RSVP=TRUE:mailto:johndoe@example.com
+         |X-OPENPAAS-VIDEOCONFERENCE:https://jitsi.example.com/room
+         |X-MOZ-GENERATION:1
+         |SEQUENCE:2
+         |END:VEVENT
+         |END:VCALENDAR
+         |
+         |""".stripMargin.getBytes("UTF-8")))
+
+    val newCalendar = testee.of(CalendarEventTimingUpdatePatch(START_DATE_SAMPLE.minusHours(1), END_DATE_SAMPLE))
+      .apply(calendarWithXProperties)
+
+    val softly = new SoftAssertions()
+    softly.assertThat(CalendarEventParsed.from(newCalendar).head.start.get.value)
+      .isEqualTo(START_DATE_SAMPLE.minusHours(1))
+    softly.assertThat(newCalendar.toString)
+      .contains("X-OPENPAAS-VIDEOCONFERENCE:https://jitsi.example.com/room")
+    softly.assertThat(newCalendar.toString)
+      .contains("X-MOZ-GENERATION:1")
+    softly.assertAll()
+  }
+
+  @Test
   def shouldAddDTENDWhenAbsent(): Unit = {
     val absentDTSTARTCalendar: Calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
       s"""
