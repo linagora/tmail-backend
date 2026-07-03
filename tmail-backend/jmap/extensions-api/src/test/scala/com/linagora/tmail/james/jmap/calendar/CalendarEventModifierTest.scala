@@ -181,6 +181,44 @@ class CalendarEventModifierTest {
   }
 
   @Test
+  def deepCopyShouldNotRebindTimingToAnInconsistentEmbeddedVTimeZone(): Unit = {
+    // The embedded VTIMEZONE labels Europe/Paris with a WIB (+07:00) offset. Copying the calendar
+    // must keep resolving TZID=Europe/Paris against the IANA zone (as ical4j Calendar.copy() does),
+    // not rebind DTSTART to the inconsistent embedded definition, cf https://github.com/linagora/tmail-backend/pull/2472
+    val target: Calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+      s"""BEGIN:VCALENDAR
+         |VERSION:2.0
+         |PRODID:-//Sabre//Sabre VObject 4.5.7//EN
+         |CALSCALE:GREGORIAN
+         |BEGIN:VTIMEZONE
+         |TZID:Europe/Paris
+         |BEGIN:STANDARD
+         |TZOFFSETFROM:+0700
+         |TZOFFSETTO:+0700
+         |TZNAME:WIB
+         |DTSTART:19700101T000000
+         |END:STANDARD
+         |END:VTIMEZONE
+         |BEGIN:VEVENT
+         |UID:123456789@example.com
+         |DTSTART;TZID=Europe/Paris:20250401T150000
+         |DTEND;TZID=Europe/Paris:20250401T153000
+         |SUMMARY:Loop3
+         |ORGANIZER;CN=John1 Doe1:mailto:organizer@example.com
+         |ATTENDEE;PARTSTAT=NEEDS-ACTION;CN=John2:mailto:att@example.com
+         |DTSTAMP:20250331T075231Z
+         |SEQUENCE:0
+         |END:VEVENT
+         |END:VCALENDAR
+         |""".stripMargin.getBytes("UTF-8")))
+
+    val newStart = ZonedDateTime.parse("20250320T160000", LOCAL_DATE_TIME_FORMATTER.withZone(ZoneId.of("Europe/Paris")))
+    val newCalendar = testee.of(CalendarEventTimingUpdatePatch(newStart, newStart.plusHours(2))).apply(target)
+
+    assertThat(newCalendar.toString).contains("DTSTART;TZID=Europe/Paris:20250320T160000")
+  }
+
+  @Test
   def shouldSucceedWhenEventContainsCustomXProperties(): Unit = {
     // ical4j `Calendar.copy()` throws `UnsupportedOperationException` on custom `X-` properties, cf https://github.com/linagora/tmail-backend/issues/2471
     val calendarWithXProperties: Calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
