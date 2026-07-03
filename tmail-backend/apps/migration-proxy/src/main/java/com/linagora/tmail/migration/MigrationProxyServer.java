@@ -20,6 +20,7 @@ package com.linagora.tmail.migration;
 
 import java.io.FileNotFoundException;
 
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.ExtraProperties;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
@@ -47,6 +48,7 @@ import org.apache.james.modules.server.WebAdminServerModule;
 import org.apache.james.server.core.configuration.Configuration;
 import org.apache.james.server.core.configuration.FileConfigurationProvider;
 import org.apache.james.server.core.filesystem.FileSystemImpl;
+import org.apache.james.utils.PropertiesProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -68,6 +70,43 @@ import com.linagora.tmail.migration.modules.MigrationProxyRabbitMQEventBusModule
  */
 public class MigrationProxyServer {
     private static final Logger LOGGER = LoggerFactory.getLogger(MigrationProxyServer.class);
+
+    /**
+     * Backing implementation of the {@code TMAIL_EVENT_BUS} that carries the disconnection plumbing,
+     * mirroring the module chooser the other Twake Mail apps expose. The in-VM event bus is enough for a
+     * single migration proxy; a clustered deployment (several proxies behind a load balancer for HA) plugs
+     * in the distributed (RabbitMQ) event bus so a disconnection request reaches the node actually holding
+     * the user connection.
+     *
+     * <p>The choice is resolved from the configuration (which by default looks the {@code rabbitmq.properties}
+     * up on the file system) rather than from the file system directly, so tests can inject RabbitMQ mode
+     * without dropping a file in the conf directory (see {@link #createServer(Configuration, EventBusModuleChoice)}).
+     */
+    public enum EventBusModuleChoice {
+        IN_MEMORY,
+        RABBITMQ;
+
+        public static EventBusModuleChoice parse(PropertiesProvider propertiesProvider) {
+            try {
+                propertiesProvider.getConfiguration("rabbitmq");
+                LOGGER.info("Found rabbitmq.properties: backing the disconnection event bus with RabbitMQ (clustered migration proxy)");
+                return RABBITMQ;
+            } catch (FileNotFoundException e) {
+                LOGGER.info("No rabbitmq.properties: backing the disconnection event bus with the in-VM event bus (single migration proxy)");
+                return IN_MEMORY;
+            } catch (ConfigurationException e) {
+                LOGGER.warn("Error reading rabbitmq.properties, defaulting to the in-VM event bus (single migration proxy)", e);
+                return IN_MEMORY;
+            }
+        }
+
+        Module module() {
+            return switch (this) {
+                case IN_MEMORY -> new MigrationProxyMemoryEventBusModule();
+                case RABBITMQ -> new MigrationProxyRabbitMQEventBusModule();
+            };
+        }
+    }
 
     private static final Module PROTOCOLS = Modules.combine(
         new ProtocolHandlerModule(),
@@ -110,11 +149,17 @@ public class MigrationProxyServer {
 
     public static GuiceJamesServer createServer(Configuration configuration) {
         FileSystem fileSystem = new FileSystemImpl(configuration.directories());
+        return createServer(configuration,
+            EventBusModuleChoice.parse(new PropertiesProvider(fileSystem, configuration.configurationPath())));
+    }
+
+    public static GuiceJamesServer createServer(Configuration configuration, EventBusModuleChoice eventBusModuleChoice) {
+        FileSystem fileSystem = new FileSystemImpl(configuration.directories());
         UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation =
             UsersRepositoryModuleChooser.Implementation.parse(new FileConfigurationProvider(fileSystem, configuration));
 
         return GuiceJamesServer.forConfiguration(configuration)
-            .combineWith(PROTOCOLS, DATA, MIGRATION_PROXY, chooseSslModule(), chooseEventBusModule(fileSystem))
+            .combineWith(PROTOCOLS, DATA, MIGRATION_PROXY, chooseSslModule(), eventBusModuleChoice.module())
             .combineWith(new UsersRepositoryModuleChooser(new PostgresUsersRepositoryModule())
                 .chooseModules(usersRepositoryImplementation));
     }
@@ -124,29 +169,5 @@ public class MigrationProxyServer {
             return new TCNativeEncryptionModule();
         }
         return new LegacyEncryptionModule();
-    }
-
-    /**
-     * Selects the event bus backing the disconnection plumbing, mirroring the module chooser the other
-     * Twake Mail apps expose. The in-VM event bus is enough for a single migration proxy; a clustered
-     * deployment (several proxies behind a load balancer for HA) drops a {@code rabbitmq.properties} in
-     * the conf directory to plug in the distributed (RabbitMQ) event bus so a disconnection request
-     * reaches the node actually holding the user connection.
-     */
-    private static Module chooseEventBusModule(FileSystem fileSystem) {
-        if (hasRabbitMQConfiguration(fileSystem)) {
-            LOGGER.info("Found rabbitmq.properties: backing the disconnection event bus with RabbitMQ (clustered migration proxy)");
-            return new MigrationProxyRabbitMQEventBusModule();
-        }
-        LOGGER.info("No rabbitmq.properties: backing the disconnection event bus with the in-VM event bus (single migration proxy)");
-        return new MigrationProxyMemoryEventBusModule();
-    }
-
-    private static boolean hasRabbitMQConfiguration(FileSystem fileSystem) {
-        try {
-            return fileSystem.getFile(FileSystem.FILE_PROTOCOL_AND_CONF + "rabbitmq.properties").exists();
-        } catch (FileNotFoundException e) {
-            return false;
-        }
     }
 }

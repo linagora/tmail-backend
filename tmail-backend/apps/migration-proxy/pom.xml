@@ -80,6 +80,14 @@
             <scope>test</scope>
         </dependency>
         <dependency>
+            <!-- DockerRabbitMQ / RabbitMQFixture used to boot the proxy against a real RabbitMQ and
+                 assert the distributed (HA) disconnection wiring actually starts -->
+            <groupId>${james.groupId}</groupId>
+            <artifactId>apache-james-backends-rabbitmq</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>${james.groupId}</groupId>
             <artifactId>james-server-guice-common</artifactId>
             <type>test-jar</type>
