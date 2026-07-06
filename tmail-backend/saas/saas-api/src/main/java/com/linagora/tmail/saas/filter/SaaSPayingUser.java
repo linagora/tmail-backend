@@ -23,20 +23,22 @@ import jakarta.inject.Inject;
 import org.apache.james.core.Username;
 
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
+import com.linagora.tmail.saas.model.SaaSAccount;
 
 import reactor.core.publisher.Mono;
 
-public class SaaSNonPayingUser implements SaaSUserFilter {
+
+public class SaaSPayingUser implements SaaSUserFilter {
     private final SaaSAccountRepository saaSAccountRepository;
 
     @Inject
-    public SaaSNonPayingUser(SaaSAccountRepository saaSAccountRepository) {
+    public SaaSPayingUser(SaaSAccountRepository saaSAccountRepository) {
         this.saaSAccountRepository = saaSAccountRepository;
     }
 
     @Override
     public Mono<Boolean> isEligible(Username username) {
         return Mono.from(saaSAccountRepository.getSaaSAccount(username))
-            .map(saasAccount -> !saasAccount.isPaying());
+            .map(SaaSAccount::isPaying);
     }
 }
