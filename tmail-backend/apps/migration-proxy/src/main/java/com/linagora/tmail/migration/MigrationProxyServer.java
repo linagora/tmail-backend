@@ -18,6 +18,9 @@
 
 package com.linagora.tmail.migration;
 
+import java.io.FileNotFoundException;
+
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.ExtraProperties;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerMain;
@@ -45,13 +48,17 @@ import org.apache.james.modules.server.WebAdminServerModule;
 import org.apache.james.server.core.configuration.Configuration;
 import org.apache.james.server.core.configuration.FileConfigurationProvider;
 import org.apache.james.server.core.filesystem.FileSystemImpl;
+import org.apache.james.utils.PropertiesProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.google.inject.Module;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.migration.modules.MigratedUsersModule;
+import com.linagora.tmail.migration.modules.MigrationProxyDisconnectorModule;
 import com.linagora.tmail.migration.modules.MigrationProxyImapModule;
+import com.linagora.tmail.migration.modules.MigrationProxyMemoryEventBusModule;
+import com.linagora.tmail.migration.modules.MigrationProxyRabbitMQEventBusModule;
 
 /**
  * Migration proxy server: a mailbox-less Twake Mail MTA assembled from our own Guice module set.
@@ -63,6 +70,43 @@ import com.linagora.tmail.migration.modules.MigrationProxyImapModule;
  */
 public class MigrationProxyServer {
     private static final Logger LOGGER = LoggerFactory.getLogger(MigrationProxyServer.class);
+
+    /**
+     * Backing implementation of the {@code TMAIL_EVENT_BUS} that carries the disconnection plumbing,
+     * mirroring the module chooser the other Twake Mail apps expose. The in-VM event bus is enough for a
+     * single migration proxy; a clustered deployment (several proxies behind a load balancer for HA) plugs
+     * in the distributed (RabbitMQ) event bus so a disconnection request reaches the node actually holding
+     * the user connection.
+     *
+     * <p>The choice is resolved from the configuration (which by default looks the {@code rabbitmq.properties}
+     * up on the file system) rather than from the file system directly, so tests can inject RabbitMQ mode
+     * without dropping a file in the conf directory (see {@link #createServer(Configuration, EventBusModuleChoice)}).
+     */
+    public enum EventBusModuleChoice {
+        IN_MEMORY,
+        RABBITMQ;
+
+        public static EventBusModuleChoice parse(PropertiesProvider propertiesProvider) {
+            try {
+                propertiesProvider.getConfiguration("rabbitmq");
+                LOGGER.info("Found rabbitmq.properties: backing the disconnection event bus with RabbitMQ (clustered migration proxy)");
+                return RABBITMQ;
+            } catch (FileNotFoundException e) {
+                LOGGER.info("No rabbitmq.properties: backing the disconnection event bus with the in-VM event bus (single migration proxy)");
+                return IN_MEMORY;
+            } catch (ConfigurationException e) {
+                throw new RuntimeException("rabbitmq.properties is present but could not be read: fix the configuration "
+                    + "rather than silently degrading to the single-node in-VM event bus in a clustered deployment", e);
+            }
+        }
+
+        Module module() {
+            return switch (this) {
+                case IN_MEMORY -> new MigrationProxyMemoryEventBusModule();
+                case RABBITMQ -> new MigrationProxyRabbitMQEventBusModule();
+            };
+        }
+    }
 
     private static final Module PROTOCOLS = Modules.combine(
         new ProtocolHandlerModule(),
@@ -86,7 +130,8 @@ public class MigrationProxyServer {
 
     private static final Module MIGRATION_PROXY = Modules.combine(
         new MigrationProxyImapModule(),
-        new MigratedUsersModule());
+        new MigratedUsersModule(),
+        new MigrationProxyDisconnectorModule());
 
     public static void main(String[] args) throws Exception {
         ExtraProperties.initialize();
@@ -104,11 +149,18 @@ public class MigrationProxyServer {
 
     public static GuiceJamesServer createServer(Configuration configuration) {
         FileSystem fileSystem = new FileSystemImpl(configuration.directories());
+        return createServer(configuration,
+            EventBusModuleChoice.parse(new PropertiesProvider(fileSystem, configuration.configurationPath())));
+    }
+
+    public static GuiceJamesServer createServer(Configuration configuration, EventBusModuleChoice eventBusModuleChoice) {
+        FileSystem fileSystem = new FileSystemImpl(configuration.directories());
         UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation =
             UsersRepositoryModuleChooser.Implementation.parse(new FileConfigurationProvider(fileSystem, configuration));
 
         return GuiceJamesServer.forConfiguration(configuration)
-            .combineWith(PROTOCOLS, DATA, MIGRATION_PROXY, chooseSslModule())
+            .combineWith(Modules.override(PROTOCOLS, DATA, chooseSslModule(), eventBusModuleChoice.module())
+                .with(MIGRATION_PROXY))
             .combineWith(new UsersRepositoryModuleChooser(new PostgresUsersRepositoryModule())
                 .chooseModules(usersRepositoryImplementation));
     }

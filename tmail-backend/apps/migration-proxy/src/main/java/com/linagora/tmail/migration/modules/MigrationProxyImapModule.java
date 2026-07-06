@@ -40,6 +40,7 @@ import com.linagora.tmail.migration.core.BackendRelay;
 import com.linagora.tmail.migration.core.BackendResolver;
 import com.linagora.tmail.migration.core.BackendSslContextFactory;
 import com.linagora.tmail.migration.core.MigrationProxyConfiguration;
+import com.linagora.tmail.migration.core.ProxyConnectionRegistry;
 import com.linagora.tmail.migration.imap.ProxyImapProcessor;
 
 /**
@@ -60,9 +61,10 @@ public class MigrationProxyImapModule extends AbstractModule {
     @Singleton
     ProxyImapProcessor provideProxyImapProcessor(BackendResolver backendResolver, BackendRelay backendRelay,
                                                  BackendSslContextFactory sslContextFactory,
+                                                 ProxyConnectionRegistry connectionRegistry,
                                                  MigrationProxyConfiguration configuration) {
         return new ProxyImapProcessor(backendResolver, backendRelay, sslContextFactory,
-            configuration.handshakeTimeout());
+            connectionRegistry, configuration.handshakeTimeout());
     }
 
     @Provides

@@ -43,6 +43,7 @@ import com.linagora.tmail.migration.core.BackendRelay;
 import com.linagora.tmail.migration.core.BackendResolver;
 import com.linagora.tmail.migration.core.BackendSslContextFactory;
 import com.linagora.tmail.migration.core.MissingProxyInformationException;
+import com.linagora.tmail.migration.core.ProxyConnectionRegistry;
 import com.linagora.tmail.migration.core.ReflectiveChannelAccessor;
 
 import io.netty.buffer.Unpooled;
@@ -62,13 +63,16 @@ public class ProxyImapProcessor implements ImapProcessor {
     private final BackendResolver backendResolver;
     private final BackendRelay backendRelay;
     private final BackendSslContextFactory sslContextFactory;
+    private final ProxyConnectionRegistry connectionRegistry;
     private final Duration handshakeTimeout;
 
     public ProxyImapProcessor(BackendResolver backendResolver, BackendRelay backendRelay,
-                              BackendSslContextFactory sslContextFactory, Duration handshakeTimeout) {
+                              BackendSslContextFactory sslContextFactory,
+                              ProxyConnectionRegistry connectionRegistry, Duration handshakeTimeout) {
         this.backendResolver = backendResolver;
         this.backendRelay = backendRelay;
         this.sslContextFactory = sslContextFactory;
+        this.connectionRegistry = connectionRegistry;
         this.handshakeTimeout = handshakeTimeout;
     }
 
@@ -129,6 +133,9 @@ public class ProxyImapProcessor implements ImapProcessor {
         if (backendChannel.isPresent()) {
             writeLine(clientChannel, tag + " OK LOGIN completed, proxying to " + backend.name() + " backend.");
             backendRelay.takeOverClient(clientChannel, backendChannel.get(), backend);
+            // Track the live session so it can be force-closed if this user gets migrated, forcing a
+            // reconnection onto the (now) resolved backend rather than staying pinned to the old one.
+            connectionRegistry.register(login.getUserid(), clientChannel);
         } else {
             writeLine(clientChannel, tag + " NO LOGIN failed against backend.");
         }
