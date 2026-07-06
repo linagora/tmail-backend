@@ -19,7 +19,9 @@
 package com.linagora.tmail.webadmin.mailbox;
 
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 import jakarta.inject.Inject;
 
@@ -35,6 +37,8 @@ import org.apache.james.webadmin.utils.ErrorResponder;
 import org.apache.james.webadmin.utils.ErrorResponder.ErrorType;
 import org.apache.james.webadmin.utils.JsonTransformer;
 import org.eclipse.jetty.http.HttpStatus;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import reactor.core.publisher.Flux;
 import reactor.core.scheduler.Schedulers;
@@ -43,6 +47,18 @@ import spark.Response;
 import spark.Service;
 
 public class AllUsersReindexingRoutes implements Routes {
+    private static final Logger LOGGER = LoggerFactory.getLogger(AllUsersReindexingRoutes.class);
+
+    private record ReindexingResult(String username, String taskId, boolean succeeded) {
+        static ReindexingResult success(String username, String taskId) {
+            return new ReindexingResult(username, taskId, true);
+        }
+
+        static ReindexingResult errored(String username) {
+            return new ReindexingResult(username, null, false);
+        }
+    }
+
     private static final String BASE_PATH = "/users";
     private static final String ACTION_PARAM = "action";
     private static final String REINDEX_ACTION = "reindex";
@@ -71,31 +87,36 @@ public class AllUsersReindexingRoutes implements Routes {
         service.post(BASE_PATH, this::reIndexAllUsers, jsonTransformer);
     }
 
-    private Map<String, String> reIndexAllUsers(Request request, Response response) {
+    private Map<String, Object> reIndexAllUsers(Request request, Response response) {
         assertReindexAction(request);
         RunningOptions runningOptions = parseRunningOptions(request);
 
-        Map<String, String> taskIds = Flux.from(usersRepository.listReactive())
+        List<ReindexingResult> results = Flux.from(usersRepository.listReactive())
             .publishOn(Schedulers.boundedElastic())
-            .collectMap(Username::asString,
-                username -> scheduleReindexingTask(username, runningOptions),
-                LinkedHashMap::new)
+            .map(username -> scheduleReindexingTask(username, runningOptions))
+            .collectList()
             .block();
 
+        Map<String, String> taskIds = results.stream()
+            .filter(ReindexingResult::succeeded)
+            .collect(Collectors.toMap(ReindexingResult::username, ReindexingResult::taskId,
+                (first, second) -> first, LinkedHashMap::new));
+        List<String> erroredUsers = results.stream()
+            .filter(result -> !result.succeeded())
+            .map(ReindexingResult::username)
+            .collect(Collectors.toList());
+
         response.status(HttpStatus.CREATED_201);
-        return taskIds;
+        return Map.of("taskIds", taskIds, "erroredUsers", erroredUsers);
     }
 
-    private String scheduleReindexingTask(Username username, RunningOptions runningOptions) {
+    private ReindexingResult scheduleReindexingTask(Username username, RunningOptions runningOptions) {
         try {
-            return taskManager.submit(reIndexer.reIndex(username, runningOptions)).asString();
+            String taskId = taskManager.submit(reIndexer.reIndex(username, runningOptions)).asString();
+            return ReindexingResult.success(username.asString(), taskId);
         } catch (MailboxException e) {
-            throw ErrorResponder.builder()
-                .statusCode(HttpStatus.INTERNAL_SERVER_ERROR_500)
-                .type(ErrorType.SERVER_ERROR)
-                .message("Error while scheduling reindexing task for user " + username.asString())
-                .cause(e)
-                .haltError();
+            LOGGER.error("Error while scheduling reindexing task for user {}", username.asString(), e);
+            return ReindexingResult.errored(username.asString());
         }
     }
 

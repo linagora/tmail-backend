@@ -35,6 +35,7 @@ import org.apache.james.core.Username;
 import org.apache.james.dnsservice.api.DNSService;
 import org.apache.james.domainlist.lib.DomainListConfiguration;
 import org.apache.james.domainlist.memory.MemoryDomainList;
+import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.indexer.ReIndexer;
 import org.apache.james.mailbox.indexer.ReIndexer.RunningOptions;
 import org.apache.james.task.Hostname;
@@ -51,6 +52,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.restassured.RestAssured;
+import io.restassured.path.json.JsonPath;
 
 class AllUsersReindexingRoutesTest {
     private static final Domain DOMAIN = Domain.of("example.com");
@@ -104,18 +106,37 @@ class AllUsersReindexingRoutesTest {
 
     @Test
     void postShouldReturn201WithTaskIdPerUser() {
-        Map<String, String> taskIds = given()
+        JsonPath response = given()
             .queryParam("action", "reindex")
         .when()
             .post("/users")
         .then()
             .statusCode(HttpStatus.CREATED_201)
             .extract()
-            .jsonPath()
-            .getMap(".");
+            .jsonPath();
 
+        Map<String, String> taskIds = response.getMap("taskIds");
         assertThat(taskIds).containsOnlyKeys(BOB.asString(), ALICE.asString());
         assertThat(taskIds.values()).doesNotContainNull();
+        assertThat(response.getList("erroredUsers")).isEmpty();
+    }
+
+    @Test
+    void postShouldReportUsersForWhichSchedulingFailed() throws Exception {
+        when(reIndexer.reIndex(eq(BOB), any(RunningOptions.class)))
+            .thenThrow(new MailboxException("boom"));
+
+        JsonPath response = given()
+            .queryParam("action", "reindex")
+        .when()
+            .post("/users")
+        .then()
+            .statusCode(HttpStatus.CREATED_201)
+            .extract()
+            .jsonPath();
+
+        assertThat(response.<String, String>getMap("taskIds")).containsOnlyKeys(ALICE.asString());
+        assertThat(response.<String>getList("erroredUsers")).containsExactly(BOB.asString());
     }
 
     @Test
@@ -136,17 +157,17 @@ class AllUsersReindexingRoutesTest {
         usersRepository.removeUser(BOB);
         usersRepository.removeUser(ALICE);
 
-        Map<String, String> taskIds = given()
+        JsonPath response = given()
             .queryParam("action", "reindex")
         .when()
             .post("/users")
         .then()
             .statusCode(HttpStatus.CREATED_201)
             .extract()
-            .jsonPath()
-            .getMap(".");
+            .jsonPath();
 
-        assertThat(taskIds).isEmpty();
+        assertThat(response.<String, String>getMap("taskIds")).isEmpty();
+        assertThat(response.getList("erroredUsers")).isEmpty();
     }
 
     @Test
