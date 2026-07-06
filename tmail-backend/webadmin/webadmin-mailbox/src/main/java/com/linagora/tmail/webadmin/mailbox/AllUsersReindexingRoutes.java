@@ -37,6 +37,7 @@ import org.apache.james.webadmin.utils.JsonTransformer;
 import org.eclipse.jetty.http.HttpStatus;
 
 import reactor.core.publisher.Flux;
+import reactor.core.scheduler.Schedulers;
 import spark.Request;
 import spark.Response;
 import spark.Service;
@@ -75,6 +76,7 @@ public class AllUsersReindexingRoutes implements Routes {
         RunningOptions runningOptions = parseRunningOptions(request);
 
         Map<String, String> taskIds = Flux.from(usersRepository.listReactive())
+            .publishOn(Schedulers.boundedElastic())
             .collectMap(Username::asString,
                 username -> scheduleReindexingTask(username, runningOptions),
                 LinkedHashMap::new)
