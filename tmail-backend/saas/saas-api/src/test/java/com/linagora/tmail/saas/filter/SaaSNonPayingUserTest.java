@@ -34,7 +34,7 @@ class SaaSNonPayingUserTest {
         MemorySaaSAccountRepository saaSAccountRepository = new MemorySaaSAccountRepository();
         Mono.from(saaSAccountRepository.upsertSaasAccount(BOB, new SaaSAccount(true, false))).block();
 
-        SaaSNonPayingUser testee = new SaaSNonPayingUser(saaSAccountRepository);
+        SaaSUserFilter testee = new SaaSNonPayingUser(saaSAccountRepository);
 
         assertThat(testee.isEligible(BOB).block()).isTrue();
     }
@@ -44,7 +44,7 @@ class SaaSNonPayingUserTest {
         MemorySaaSAccountRepository saaSAccountRepository = new MemorySaaSAccountRepository();
         Mono.from(saaSAccountRepository.upsertSaasAccount(BOB, new SaaSAccount(true, true))).block();
 
-        SaaSNonPayingUser testee = new SaaSNonPayingUser(saaSAccountRepository);
+        SaaSUserFilter testee = new SaaSNonPayingUser(saaSAccountRepository);
 
         assertThat(testee.isEligible(BOB).block()).isFalse();
     }
@@ -53,7 +53,7 @@ class SaaSNonPayingUserTest {
     void shouldReturnTrueWhenNoSaaSAccountStored() {
         MemorySaaSAccountRepository saaSAccountRepository = new MemorySaaSAccountRepository();
 
-        SaaSNonPayingUser testee = new SaaSNonPayingUser(saaSAccountRepository);
+        SaaSUserFilter testee = new SaaSNonPayingUser(saaSAccountRepository);
 
         assertThat(testee.isEligible(BOB).block()).isTrue();
     }

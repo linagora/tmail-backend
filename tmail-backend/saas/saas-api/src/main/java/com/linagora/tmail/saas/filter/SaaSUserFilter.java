@@ -15,28 +15,9 @@
  *  PURPOSE. See the GNU Affero General Public License for          *
  *  more details.                                                   *
  *******************************************************************/
-
 package com.linagora.tmail.saas.filter;
 
-import jakarta.inject.Inject;
+import com.linagora.tmail.james.jmap.event.ApplyWhenFilter;
 
-import org.apache.james.core.Username;
-
-import com.linagora.tmail.saas.api.SaaSAccountRepository;
-
-import reactor.core.publisher.Mono;
-
-public class SaaSNonPayingUser implements SaaSUserFilter {
-    private final SaaSAccountRepository saaSAccountRepository;
-
-    @Inject
-    public SaaSNonPayingUser(SaaSAccountRepository saaSAccountRepository) {
-        this.saaSAccountRepository = saaSAccountRepository;
-    }
-
-    @Override
-    public Mono<Boolean> isEligible(Username username) {
-        return Mono.from(saaSAccountRepository.getSaaSAccount(username))
-            .map(saasAccount -> !saasAccount.isPaying());
-    }
+public interface SaaSUserFilter extends ApplyWhenFilter {
 }
