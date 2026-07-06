@@ -22,13 +22,14 @@ import jakarta.inject.Inject;
 
 import org.apache.james.core.Username;
 
+import com.linagora.tmail.james.jmap.event.ApplyWhenFilter;
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
 import com.linagora.tmail.saas.model.SaaSAccount;
 
 import reactor.core.publisher.Mono;
 
 
-public class SaaSPayingUser implements SaaSUserFilter {
+public class SaaSPayingUser implements ApplyWhenFilter {
     private final SaaSAccountRepository saaSAccountRepository;
 
     @Inject

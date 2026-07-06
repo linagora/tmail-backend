@@ -1,12 +1,14 @@
 package com.linagora.tmail.saas.filter;
 
-import com.linagora.tmail.saas.api.memory.MemorySaaSAccountRepository;
-import com.linagora.tmail.saas.model.SaaSAccount;
-import org.junit.jupiter.api.Test;
-import reactor.core.publisher.Mono;
-
 import static com.linagora.tmail.saas.api.SaaSAccountRepositoryContract.BOB;
 import static org.assertj.core.api.Assertions.assertThat;
+
+import org.junit.jupiter.api.Test;
+
+import com.linagora.tmail.saas.api.memory.MemorySaaSAccountRepository;
+import com.linagora.tmail.saas.model.SaaSAccount;
+
+import reactor.core.publisher.Mono;
 
 public class SaaSPayingUserTest {
     @Test
@@ -14,7 +16,7 @@ public class SaaSPayingUserTest {
         MemorySaaSAccountRepository saaSAccountRepository = new MemorySaaSAccountRepository();
         Mono.from(saaSAccountRepository.upsertSaasAccount(BOB, new SaaSAccount(true, true))).block();
 
-        SaaSUserFilter testee = new SaaSPayingUser(saaSAccountRepository);
+        SaaSPayingUser testee = new SaaSPayingUser(saaSAccountRepository);
 
         assertThat(testee.isEligible(BOB).block()).isTrue();
     }
@@ -24,7 +26,7 @@ public class SaaSPayingUserTest {
         MemorySaaSAccountRepository saaSAccountRepository = new MemorySaaSAccountRepository();
         Mono.from(saaSAccountRepository.upsertSaasAccount(BOB, new SaaSAccount(true, false))).block();
 
-        SaaSUserFilter testee = new SaaSPayingUser(saaSAccountRepository);
+        SaaSPayingUser testee = new SaaSPayingUser(saaSAccountRepository);
 
         assertThat(testee.isEligible(BOB).block()).isFalse();
     }
@@ -33,7 +35,7 @@ public class SaaSPayingUserTest {
     void shouldReturnFalseWhenNoSaaSAccountStored() {
         MemorySaaSAccountRepository saaSAccountRepository = new MemorySaaSAccountRepository();
 
-        SaaSUserFilter testee = new SaaSPayingUser(saaSAccountRepository);
+        SaaSPayingUser testee = new SaaSPayingUser(saaSAccountRepository);
 
         assertThat(testee.isEligible(BOB).block()).isFalse();
     }
