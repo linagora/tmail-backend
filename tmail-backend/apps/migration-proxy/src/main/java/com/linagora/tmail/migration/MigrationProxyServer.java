@@ -159,7 +159,8 @@ public class MigrationProxyServer {
             UsersRepositoryModuleChooser.Implementation.parse(new FileConfigurationProvider(fileSystem, configuration));
 
         return GuiceJamesServer.forConfiguration(configuration)
-            .combineWith(PROTOCOLS, DATA, MIGRATION_PROXY, chooseSslModule(), eventBusModuleChoice.module())
+            .combineWith(Modules.override(PROTOCOLS, DATA, chooseSslModule(), eventBusModuleChoice.module())
+                .with(MIGRATION_PROXY))
             .combineWith(new UsersRepositoryModuleChooser(new PostgresUsersRepositoryModule())
                 .chooseModules(usersRepositoryImplementation));
     }
