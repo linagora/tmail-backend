@@ -237,6 +237,7 @@ import com.linagora.tmail.webadmin.jmap.JmapSettingsReportRoutesModule;
 import com.linagora.tmail.webadmin.jmap.JmapSettingsRoutesModule;
 import com.linagora.tmail.webadmin.jmap.PopulateKeywordEmailQueryViewTaskModule;
 import com.linagora.tmail.webadmin.label.LabelRoutesModule;
+import com.linagora.tmail.webadmin.mailbox.AllUsersReindexingRoutesModule;
 import com.linagora.tmail.webadmin.mailbox.MailboxResourcesLocationRoutesModule;
 import com.linagora.tmail.webadmin.quota.UserQuotaReporterRoutesModule;
 import com.linagora.tmail.webadmin.templates.TemplatesProvisionModule;
@@ -304,7 +305,8 @@ public class DistributedServer {
         new ContactIndexingModule(),
         new PopulateKeywordEmailQueryViewTaskModule(),
         new UserDataTieringRoutesModule(),
-        new UserDataTieringTaskModule());
+        new UserDataTieringTaskModule(),
+        new AllUsersReindexingRoutesModule());
 
     public static final Module JMAP = Modules.override(
         new TMailJMAPModule(),

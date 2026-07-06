@@ -215,6 +215,7 @@ import com.linagora.tmail.webadmin.jmap.JmapSettingsReportRoutesModule;
 import com.linagora.tmail.webadmin.jmap.JmapSettingsRoutesModule;
 import com.linagora.tmail.webadmin.jmap.PopulateKeywordEmailQueryViewTaskModule;
 import com.linagora.tmail.webadmin.label.LabelRoutesModule;
+import com.linagora.tmail.webadmin.mailbox.AllUsersReindexingRoutesModule;
 import com.linagora.tmail.webadmin.mailbox.MailboxResourcesLocationRoutesModule;
 import com.linagora.tmail.webadmin.quota.UserQuotaReporterRoutesModule;
 import com.linagora.tmail.webadmin.templates.TemplatesProvisionModule;
@@ -325,6 +326,7 @@ public class PostgresTmailServer {
         new JmapSettingsRoutesModule(),
         new UserIdentityModule(),
         new ContactIndexingModule(),
+        new AllUsersReindexingRoutesModule(),
         new WebAdminMailOverWebModule(),
         new WebAdminReIndexingTaskSerializationModule(),
         new WebAdminServerModule());
