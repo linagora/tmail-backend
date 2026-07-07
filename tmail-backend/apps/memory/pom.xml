@@ -107,6 +107,10 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>webadmin-mailing-list</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>webadmin-jmap</artifactId>
         </dependency>
         <dependency>

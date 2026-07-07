@@ -239,6 +239,8 @@ import com.linagora.tmail.webadmin.jmap.PopulateKeywordEmailQueryViewTaskModule;
 import com.linagora.tmail.webadmin.label.LabelRoutesModule;
 import com.linagora.tmail.webadmin.mailbox.AllUsersReindexingRoutesModule;
 import com.linagora.tmail.webadmin.mailbox.MailboxResourcesLocationRoutesModule;
+import com.linagora.tmail.webadmin.mailinglist.MailingListConfigurationModule;
+import com.linagora.tmail.webadmin.mailinglist.MailingListRoutesModule;
 import com.linagora.tmail.webadmin.quota.UserQuotaReporterRoutesModule;
 import com.linagora.tmail.webadmin.templates.TemplatesProvisionModule;
 
@@ -289,6 +291,7 @@ public class DistributedServer {
         new LabelRoutesModule(),
         new JmapSettingsReportRoutesModule(),
         new JmapSettingsRoutesModule(),
+        new MailingListConfigurationModule(),
         new SieveRoutesModule(),
         new WebAdminServerModule(),
         new WebAdminReIndexingTaskSerializationModule(),
@@ -450,7 +453,7 @@ public class DistributedServer {
             .combineWith(new UsersRepositoryModuleChooser(
                 DatabaseCombinedUserRequireModule.of(CassandraUsersDAO.class),
                 new CassandraUsersRepositoryModule(),
-                List.of(new DomainSignatureTemplateRoutesModule())).chooseModule(configuration.usersRepositoryImplementation()))
+                List.of(new DomainSignatureTemplateRoutesModule(), new MailingListRoutesModule())).chooseModule(configuration.usersRepositoryImplementation()))
             .combineWith(chooseFirebase(configuration.firebaseModuleChooserConfiguration()))
             .combineWith(chooseLinagoraServicesDiscovery(configuration.linagoraServicesDiscoveryModuleChooserConfiguration()))
             .combineWith(chooseRedisRateLimiterModule(configuration))

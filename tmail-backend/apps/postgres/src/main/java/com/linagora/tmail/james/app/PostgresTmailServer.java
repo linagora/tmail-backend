@@ -217,6 +217,8 @@ import com.linagora.tmail.webadmin.jmap.PopulateKeywordEmailQueryViewTaskModule;
 import com.linagora.tmail.webadmin.label.LabelRoutesModule;
 import com.linagora.tmail.webadmin.mailbox.AllUsersReindexingRoutesModule;
 import com.linagora.tmail.webadmin.mailbox.MailboxResourcesLocationRoutesModule;
+import com.linagora.tmail.webadmin.mailinglist.MailingListConfigurationModule;
+import com.linagora.tmail.webadmin.mailinglist.MailingListRoutesModule;
 import com.linagora.tmail.webadmin.quota.UserQuotaReporterRoutesModule;
 import com.linagora.tmail.webadmin.templates.TemplatesProvisionModule;
 
@@ -324,6 +326,7 @@ public class PostgresTmailServer {
         new LabelRoutesModule(),
         new JmapSettingsReportRoutesModule(),
         new JmapSettingsRoutesModule(),
+        new MailingListConfigurationModule(),
         new UserIdentityModule(),
         new ContactIndexingModule(),
         new AllUsersReindexingRoutesModule(),
@@ -498,7 +501,7 @@ public class PostgresTmailServer {
             new UsersRepositoryModuleChooser(
                 DatabaseCombinedUserRequireModule.of(PostgresUsersDAO.class),
                 new TMailPostgresUsersRepositoryModule(),
-                List.of(new DomainSignatureTemplateRoutesModule()))
+                List.of(new DomainSignatureTemplateRoutesModule(), new MailingListRoutesModule()))
                 .chooseModule(configuration.usersRepositoryImplementation()));
     }
 
