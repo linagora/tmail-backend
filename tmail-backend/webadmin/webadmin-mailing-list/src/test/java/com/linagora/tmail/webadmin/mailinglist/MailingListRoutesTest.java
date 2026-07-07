@@ -168,6 +168,50 @@ class MailingListRoutesTest {
     }
 
     @Test
+    void getShouldExpandNestedGroupMembers() {
+        String response = given()
+            .get("/mailingLists/nested@lists.james.org")
+        .then()
+            .statusCode(OK_200)
+            .contentType(JSON)
+            .extract().body().asString();
+
+        assertThatJson(response)
+            .inPath("members").isArray()
+            .containsExactlyInAnyOrder("james-user@james.org", "james-user2@james.org", "james-user5@james.org");
+    }
+
+    @Test
+    void getShouldExpandNestedGroupOwners() {
+        String response = given()
+            .get("/mailingLists/nestedOwner@lists.james.org")
+        .then()
+            .statusCode(OK_200)
+            .contentType(JSON)
+            .extract().body().asString();
+
+        assertThatJson(response)
+            .inPath("owners").isArray()
+            .containsExactlyInAnyOrder("james-user@james.org", "james-user2@james.org");
+        assertThatJson(response)
+            .inPath("members").isArray()
+            .containsExactlyInAnyOrder("james-user3@james.org", "james-user5@james.org");
+    }
+
+    @Test
+    void getShouldNotLoopWhenNestedGroupsReferenceEachOther() {
+        String response = given()
+            .get("/mailingLists/loop1@lists.james.org")
+        .then()
+            .statusCode(OK_200)
+            .contentType(JSON)
+            .extract().body().asString();
+
+        assertThatJson(response)
+            .inPath("members").isArray().isEmpty();
+    }
+
+    @Test
     void getShouldReturnNotFoundWhenUnknownList() {
         given()
             .get("/mailingLists/unknown@lists.james.org")

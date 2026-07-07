@@ -19,14 +19,18 @@
 package com.linagora.tmail.webadmin.mailinglist;
 
 import java.util.Arrays;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import org.apache.james.core.Domain;
 import org.apache.james.core.MailAddress;
 import org.apache.james.user.ldap.LdapRepositoryConfiguration;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.github.fge.lambdas.Throwing;
 import com.google.common.collect.ImmutableList;
@@ -47,6 +51,7 @@ import com.unboundid.ldap.sdk.SearchScope;
  * supported, depending on the {@code obm.compatibility} flag of the {@link MailingListConfiguration}.</p>
  */
 public class LdapMailingListRepository implements MailingListRepository {
+    private static final Logger LOGGER = LoggerFactory.getLogger(LdapMailingListRepository.class);
     private static final String OBM_GROUP_OBJECT_CLASS = "obmGroup";
     private static final String GROUP_OF_NAMES_OBJECT_CLASS = "groupofnames";
     private static final String BUSINESS_CATEGORY_ATTRIBUTE = "businessCategory";
@@ -134,17 +139,36 @@ public class LdapMailingListRepository implements MailingListRepository {
         if (!entry.hasAttribute(attribute)) {
             return ImmutableList.of();
         }
+        Set<String> visitedDns = new HashSet<>();
+        visitedDns.add(entry.getDN());
         return Arrays.stream(entry.getAttribute(attribute).getValues())
-            .flatMap(dn -> resolveMail(dn).stream())
+            .flatMap(dn -> resolveMail(dn, visitedDns))
+            .distinct()
             .collect(ImmutableList.toImmutableList());
     }
 
-    private Optional<MailAddress> resolveMail(String dn) {
+    /**
+     * Resolves a member/owner DN into mail addresses. When the DN points to another group (i.e. it holds a
+     * {@code member} attribute) it is expanded recursively, mirroring the production {@code LDAPMailingList} mailet.
+     * The {@code visitedDns} set guards against loops introduced by recursive group definitions.
+     */
+    private Stream<MailAddress> resolveMail(String dn, Set<String> visitedDns) {
+        if (!visitedDns.add(dn)) {
+            LOGGER.warn("Recursive LDAP group definition creates a loop for dn {}. Please review LDAP data", dn);
+            return Stream.empty();
+        }
         try {
-            SearchResultEntry entry = ldapConnectionPool.getEntry(dn, ldapConfiguration.getUserIdAttribute());
-            return Optional.ofNullable(entry)
-                .map(e -> e.getAttributeValue(ldapConfiguration.getUserIdAttribute()))
-                .map(Throwing.function(MailAddress::new));
+            SearchResultEntry entry = ldapConnectionPool.getEntry(dn, ldapConfiguration.getUserIdAttribute(), MEMBER_ATTRIBUTE);
+            if (entry == null) {
+                return Stream.empty();
+            }
+            if (entry.hasAttribute(MEMBER_ATTRIBUTE)) {
+                return Arrays.stream(entry.getAttribute(MEMBER_ATTRIBUTE).getValues())
+                    .flatMap(nestedDn -> resolveMail(nestedDn, visitedDns));
+            }
+            return Optional.ofNullable(entry.getAttributeValue(ldapConfiguration.getUserIdAttribute()))
+                .map(Throwing.function(MailAddress::new))
+                .stream();
         } catch (LDAPException e) {
             throw new RuntimeException(e);
         }
