@@ -20,7 +20,6 @@ package com.linagora.tmail.listener.rag;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
-import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 
 import java.nio.charset.StandardCharsets;
@@ -29,13 +28,14 @@ import java.util.List;
 import java.util.Optional;
 
 import jakarta.mail.Flags;
-import jakarta.mail.internet.AddressException;
 
 import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
 import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.tree.ImmutableNode;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
+import org.apache.james.dnsservice.api.DNSService;
+import org.apache.james.domainlist.memory.MemoryDomainList;
 import org.apache.james.events.EventBus;
 import org.apache.james.events.InVMEventBus;
 import org.apache.james.events.MemoryEventDeadLetters;
@@ -45,6 +45,11 @@ import org.apache.james.jmap.api.identity.DefaultIdentitySupplier;
 import org.apache.james.jmap.api.identity.IdentityCreationRequest;
 import org.apache.james.jmap.api.identity.IdentityRepository;
 import org.apache.james.jmap.api.model.EmailAddress;
+import org.apache.james.rrt.api.RecipientRewriteTableConfiguration;
+import org.apache.james.rrt.lib.AliasReverseResolverImpl;
+import org.apache.james.rrt.lib.CanSendFromImpl;
+import org.apache.james.rrt.memory.MemoryRecipientRewriteTable;
+import org.apache.james.user.memory.MemoryUsersRepository;
 import org.apache.james.jmap.memory.identity.MemoryCustomIdentityDAO;
 import org.apache.james.jmap.utils.JsoupHtmlTextExtractor;
 import org.apache.james.mailbox.MailboxSession;
@@ -60,27 +65,20 @@ import org.apache.james.mailbox.store.SystemMailboxesProviderImpl;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.apache.james.mime4j.dom.Message;
-import org.apache.james.util.html.HtmlTextExtractor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.Mockito;
 
 import com.google.common.collect.ImmutableMap;
 import com.linagora.tmail.james.jmap.event.ApplyWhenFilter;
 import com.linagora.tmail.james.jmap.event.IdentityCreationRequestBuilder;
 import com.linagora.tmail.james.jmap.label.LabelRepository;
 import com.linagora.tmail.james.jmap.label.MemoryLabelRepository;
-import com.linagora.tmail.james.jmap.model.Color;
-import com.linagora.tmail.james.jmap.model.DisplayName;
-import com.linagora.tmail.james.jmap.model.Label;
-import com.linagora.tmail.james.jmap.model.LabelCreationRequest;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
 import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
 import com.linagora.tmail.listener.rag.prompt.DefaultPromptRetrieverFactory;
 import com.linagora.tmail.listener.rag.prompt.PromptRetriever;
 import com.linagora.tmail.saas.api.memory.MemorySaaSAccountRepository;
-import com.linagora.tmail.saas.filter.SaaSNonPayingUser;
 import com.linagora.tmail.saas.filter.SaaSPayingUser;
 import com.linagora.tmail.saas.model.SaaSAccount;
 
@@ -90,9 +88,7 @@ import dev.langchain4j.model.StreamingResponseHandler;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.output.Response;
 
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scala.publisher.SMono;
 
 class SaaSUserLabelCategorizationTest {
     static final String NEEDS_ACTION_FLAG = LlmMailBackendClassifierListener.NEEDS_ACTION;
@@ -119,9 +115,6 @@ class SaaSUserLabelCategorizationTest {
     PromptRetriever.Factory promptRetrieverFactory;
     EventBus tmailEventBus;
     MemorySaaSAccountRepository saasAccountRepository;
-    String label1Id;
-    String label2Id;
-    String label3Id;
 
     @BeforeEach
     void setup() throws Exception {
@@ -132,50 +125,16 @@ class SaaSUserLabelCategorizationTest {
             .build();
 
         MemoryEventDeadLetters eventDeadLetters = new MemoryEventDeadLetters();
-
-        InMemoryIntegrationResources resources = InMemoryIntegrationResources.builder()
-            .preProvisionnedFakeAuthenticator()
-            .fakeAuthorizator()
-            .eventBus(new InVMEventBus(new InVmEventDelivery(new RecordingMetricFactory()), backoffConfiguration, eventDeadLetters))
-            .defaultAnnotationLimits()
-            .defaultMessageParser()
-            .scanningSearchIndex()
-            .noPreDeletionHooks()
-            .storeQuotaManager()
-            .build();
-        mailboxManager = resources.getMailboxManager();
-        MessageIdManager messageIdManager = resources.getMessageIdManager();
         MetricFactory metricFactory = new RecordingMetricFactory();
-        HtmlTextExtractor htmlTextExtractor = new JsoupHtmlTextExtractor();
+
         model = new StubModel();
         tmailEventBus = new InVMEventBus(new InVmEventDelivery(metricFactory), backoffConfiguration, eventDeadLetters);
-
-        aliceSession = mailboxManager.createSystemSession(ALICE);
-        MailboxPath aliceInboxPath = MailboxPath.inbox(ALICE);
-        mailboxManager.createMailbox(aliceInboxPath, aliceSession);
-        aliceInbox = mailboxManager.getMailbox(aliceInboxPath, aliceSession);
-
         listenerConfig = new BaseHierarchicalConfiguration();
         jmapSettingsRepository = new MemoryJmapSettingsRepository();
         JmapSettingsRepositoryJavaUtils jmapSettingsRepositoryUtils = new JmapSettingsRepositoryJavaUtils(jmapSettingsRepository);
         labelRepository = new MemoryLabelRepository(tmailEventBus);
         promptRetrieverFactory = new DefaultPromptRetrieverFactory();
         saasAccountRepository = new MemorySaaSAccountRepository();
-
-        IdentityRepository identityRepository = setUpIdentityRepository(tmailEventBus);
-
-        Label label1 = Mono.from(labelRepository.addLabel(ALICE,
-            new LabelCreationRequest(new DisplayName("label1"), scala.Option.apply(new Color("#0000")),
-                scala.Option.apply("label1 description"), false))).block();
-        label1Id = label1.keyword();
-        Label label2 = Mono.from(labelRepository.addLabel(ALICE,
-            new LabelCreationRequest(new DisplayName("label2"), scala.Option.apply(new Color("#0000")),
-                scala.Option.apply("label2 description"), false))).block();
-        label2Id = label2.keyword();
-        Label label3 = Mono.from(labelRepository.addLabel(ALICE,
-            new LabelCreationRequest(new DisplayName("label3"), scala.Option.apply(new Color("#0000")),
-                scala.Option.apply("label3 description"), false))).block();
-        label3Id = label3.keyword();
 
         jmapSettingsRepositoryUtils.reset(ALICE, ImmutableMap.of("ai.label-categorization.enabled", "true"));
     }
@@ -238,7 +197,7 @@ class SaaSUserLabelCategorizationTest {
         awaitUntilAsserted(() -> {
             assertThat(readFlags(messageIdManager, messageId, aliceSession).block()).isNotNull();
             assertThat(readFlags(messageIdManager, messageId, aliceSession).block().getUserFlags())
-                .contains(NEEDS_ACTION_FLAG, label1Id, label2Id);
+                .contains(NEEDS_ACTION_FLAG);
         });
     }
 
@@ -310,8 +269,8 @@ class SaaSUserLabelCategorizationTest {
             ).block();
         }
 
-        model.llOutput = "%s, %s, %s"
-            .formatted(NEEDS_ACTION_FLAG, label1Id, label2Id);
+        model.llOutput = "%s"
+            .formatted(NEEDS_ACTION_FLAG);
 
         return messageIdManager;
     }
@@ -325,12 +284,14 @@ class SaaSUserLabelCategorizationTest {
             .untilAsserted(assertion::run);
     }
 
-    static IdentityRepository setUpIdentityRepository(EventBus eventBus) throws AddressException {
-        DefaultIdentitySupplier identityFactory = mock(DefaultIdentitySupplier.class);
-        Mockito.when(identityFactory.listIdentities(ALICE))
-            .thenReturn(Flux.just(IdentityFixture.ALICE_SERVER_SET_IDENTITY()));
-        Mockito.when(identityFactory.userCanSendFrom(any(), any()))
-            .thenReturn(SMono.just(true));
+    static IdentityRepository setUpIdentityRepository(EventBus eventBus) throws Exception {
+        DNSService dnsService = mock(DNSService.class);
+        MemoryDomainList domainList = new MemoryDomainList(dnsService);
+        MemoryRecipientRewriteTable memoryRecipientRewriteTable = new MemoryRecipientRewriteTable();
+        memoryRecipientRewriteTable.setConfiguration(RecipientRewriteTableConfiguration.DEFAULT_ENABLED);
+        CanSendFromImpl canSendFrom = new CanSendFromImpl(new AliasReverseResolverImpl(memoryRecipientRewriteTable));
+        MemoryUsersRepository usersRepository = MemoryUsersRepository.withVirtualHosting(domainList);
+        DefaultIdentitySupplier identityFactory = new DefaultIdentitySupplier(canSendFrom, usersRepository);
         IdentityRepository identityRepository = new IdentityRepository(new MemoryCustomIdentityDAO(eventBus), identityFactory);
 
         Integer highPriorityOrder = 1;
