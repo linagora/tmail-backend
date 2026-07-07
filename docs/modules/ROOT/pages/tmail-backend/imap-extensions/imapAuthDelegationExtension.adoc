@@ -53,4 +53,24 @@ This extension is deployed as an `imap-extension`.
 1. Mount the extension jar file created in `tmail-backend/imap-extensions/target` (using the `mvn package` command) to the path `/root/extensions-jars/` of tmail container.
 2. Configure `<imapPackages>com.linagora.tmail.imap.TMailImapPackage</imapPackages>` in the `imapserver.xml` file.
 
+Note: for backward compatibility, when `TMailImapPackage` or `TMailImapAuthPackage` is configured, TMail automatically enables its delegation-aware PLAIN SASL mechanism for this IMAP server.
+Prefer <<sasl-mechanism-configuration>> for explicit SASL configuration instead.
 
+[[sasl-mechanism-configuration]]
+== SASL mechanism configuration
+
+By default, when `TMailImapPackage` or `TMailImapAuthPackage` is configured, no explicit `auth.saslMechanisms` setting is required.
+TMail replaces the default James PLAIN SASL mechanism with the TMail PLAIN SASL mechanism behind the scene, while preserving the other default SASL mechanisms.
+
+If `auth.saslMechanisms` is explicitly configured, it should list SASL mechanism factories.
+To keep TMail IMAP delegation support, include the TMail PLAIN SASL factory:
+
+[source,xml]
+----
+<auth>
+    <saslMechanisms>com.linagora.tmail.sasl.TMailPlainSaslMechanismFactory,OauthBearerSaslMechanismFactory,XOauth2SaslMechanismFactory</saslMechanisms>
+</auth>
+----
+
+The TMail factory only enables TMail PLAIN behavior when the current server configuration uses a TMail IMAP package.
+Otherwise, it falls back to the standard James PLAIN mechanism.
