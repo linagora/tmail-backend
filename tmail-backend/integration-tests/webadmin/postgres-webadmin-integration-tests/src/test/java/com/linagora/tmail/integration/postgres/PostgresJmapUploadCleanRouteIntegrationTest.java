@@ -25,5 +25,7 @@ import com.linagora.tmail.integration.JmapUploadCleanRouteIntegrationContract;
 
 public class PostgresJmapUploadCleanRouteIntegrationTest extends JmapUploadCleanRouteIntegrationContract {
     @RegisterExtension
-    static JamesServerExtension testExtension = PostgresWebAdminBase.JAMES_SERVER_EXTENSION_SUPPLIER.get().build();
+    static JamesServerExtension testExtension = PostgresWebAdminBase.JAMES_SERVER_EXTENSION_SUPPLIER.get()
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
+        .build();
 }

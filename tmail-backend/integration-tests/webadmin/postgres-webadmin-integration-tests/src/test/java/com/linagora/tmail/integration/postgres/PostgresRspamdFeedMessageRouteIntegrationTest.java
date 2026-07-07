@@ -28,5 +28,6 @@ public class PostgresRspamdFeedMessageRouteIntegrationTest extends RspamdFeedMes
     @RegisterExtension
     static JamesServerExtension testExtension = PostgresWebAdminBase.JAMES_SERVER_EXTENSION_SUPPLIER.get()
         .extension(new RspamdExtensionModule())
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }

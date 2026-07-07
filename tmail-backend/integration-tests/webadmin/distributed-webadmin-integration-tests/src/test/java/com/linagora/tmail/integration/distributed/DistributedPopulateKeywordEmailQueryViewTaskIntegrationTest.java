@@ -136,6 +136,7 @@ public class DistributedPopulateKeywordEmailQueryViewTaskIntegrationTest {
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxManagerProbe.class))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(KeywordEmailQueryViewProbe.class)))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     private MailboxProbeImpl mailboxProbe;

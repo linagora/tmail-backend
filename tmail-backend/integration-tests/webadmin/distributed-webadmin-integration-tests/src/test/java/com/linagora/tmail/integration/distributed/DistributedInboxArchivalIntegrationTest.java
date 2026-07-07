@@ -66,5 +66,6 @@ public class DistributedInboxArchivalIntegrationTest extends InboxArchivalIntegr
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding()
                 .to(JmapSettingsProbe.class)))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }

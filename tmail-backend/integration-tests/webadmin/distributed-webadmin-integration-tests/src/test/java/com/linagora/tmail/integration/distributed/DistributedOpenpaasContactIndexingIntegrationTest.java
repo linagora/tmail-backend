@@ -92,6 +92,7 @@ public class DistributedOpenpaasContactIndexingIntegrationTest extends ContactIn
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(Modules.override(new OpenPaasModule(), new OpenPaasModule.DavModule())
                 .with(new OpenPaasTestModule(openPaasServerExtension, Optional.of(davServerExtension.getDavConfiguration()), Optional.empty()))))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @Override

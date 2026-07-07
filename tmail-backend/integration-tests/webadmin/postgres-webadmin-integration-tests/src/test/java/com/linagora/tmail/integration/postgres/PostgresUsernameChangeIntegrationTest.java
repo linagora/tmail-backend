@@ -92,6 +92,7 @@ public class PostgresUsernameChangeIntegrationTest extends UsernameChangeIntegra
         .extension(PostgresExtension.empty())
         .extension(new ClockExtension())
         .extensions(opensearchExtension)
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     private final ReactorOpenSearchClient client = opensearchExtension.getDockerOS().clientProvider().get();

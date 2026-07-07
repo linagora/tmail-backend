@@ -28,5 +28,7 @@ import com.linagora.tmail.integration.InboxArchivalIntegrationContract;
 public class PostgresInboxArchivalIntegrationTest extends InboxArchivalIntegrationContract {
 
     @RegisterExtension
-    static JamesServerExtension testExtension = JAMES_SERVER_EXTENSION_SUPPLIER.get().build();
+    static JamesServerExtension testExtension = JAMES_SERVER_EXTENSION_SUPPLIER.get()
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
+        .build();
 }

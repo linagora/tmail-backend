@@ -32,5 +32,6 @@ public class PostgresUserQuotaReporterRoutesIntegrationTest extends UserQuotaRep
     @RegisterExtension
     static JamesServerExtension testExtension = JAMES_SERVER_EXTENSION_FUNCTION
         .apply(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MaxQuotaManagerProbe.class))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }

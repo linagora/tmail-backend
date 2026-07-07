@@ -97,6 +97,7 @@ public class DistributedUserDeletionIntegrationTest extends UserDeletionIntegrat
                 .to(JmapSettingsProbe.class))
             .overrideWith(new JmapGuiceLabelModule())
             .overrideWith(new PublicAssetProbeModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     private final ReactorOpenSearchClient client = opensearchExtension.getDockerOS().clientProvider().get();

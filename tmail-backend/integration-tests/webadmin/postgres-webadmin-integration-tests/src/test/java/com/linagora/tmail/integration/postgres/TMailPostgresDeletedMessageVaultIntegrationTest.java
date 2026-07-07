@@ -59,6 +59,7 @@ public class TMailPostgresDeletedMessageVaultIntegrationTest extends DeletedMess
             .overrideWith(new DeletedMessageVaultProbeModule()))
         .extension(PostgresExtension.empty())
         .extension(new ClockExtension())
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @Override

@@ -26,6 +26,8 @@ import com.linagora.tmail.integration.RecomputeQuotaTeamMailboxesRouteIntegratio
 public class PostgresRecomputeQuotaTeamMailboxesRouteIntegrationTest extends RecomputeQuotaTeamMailboxesRouteIntegrationContract {
 
     @RegisterExtension
-    static JamesServerExtension testExtension = PostgresWebAdminBase.JAMES_SERVER_EXTENSION_SUPPLIER.get().build();
+    static JamesServerExtension testExtension = PostgresWebAdminBase.JAMES_SERVER_EXTENSION_SUPPLIER.get()
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
+        .build();
 
 }
