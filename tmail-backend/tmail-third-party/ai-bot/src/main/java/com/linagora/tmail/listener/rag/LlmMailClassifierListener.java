@@ -86,7 +86,7 @@ public class LlmMailClassifierListener implements EventListener.ReactiveGroupEve
     }
 
     public static final Group GROUP = new LlmMailPrioritizationClassifierGroup();
-    private static final String APPLY_WHEN_PATH = "configuration.applyWhen";
+    private static final String APPLY_WHEN_PATH = "applyWhen";
     private static final Set<RegistrationKey> NO_REGISTRATION_KEYS = ImmutableSet.of();
 
     private final MailboxManager mailboxManager;

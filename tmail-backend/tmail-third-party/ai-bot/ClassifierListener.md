@@ -135,6 +135,30 @@ When disabled, the listener will not process any emails for that user, regardles
    </filter>
 ```
 
+## Apply When Filter: 
+
+### SaaS Paying User Filter
+
+`com.linagora.tmail.saas.filter.SaaSPayingUser`
+
+The `SaaSPayingUser` filter ensures that the AI processing feature is available **only to users with an active paying SaaS subscription**.
+
+A user is eligible for AI processing only if:
+
+- A SaaS account exists
+- The account is enabled
+- The user has an active paying status
+
+Users without a SaaS account or users with a non-paying account will not have their emails processed by the AI classifier.
+
+```xml
+<listener>
+    <class>com.linagora.tmail.listener.rag.LlmMailClassifierListener</class>
+    <configuration>
+        <applyWhen>com.linagora.tmail.saas.filter.SaaSPayingUser</applyWhen>
+    </configuration>
+</listener>
+
 ### Security Considerations
 
 1. **Content Privacy**: Email content is sent to the configured LLM provider
