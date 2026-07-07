@@ -40,7 +40,7 @@ class OBMLDAPMailingListTest {
 
     @BeforeEach
     void setUp() throws Exception {
-        testee = new OBMLDAPMailingList((LDAPConnectionPool) null);
+        testee = new OBMLDAPMailingList((LDAPConnectionPool) null, MailingListConfiguration.EMPTY);
         testee.init(FakeMailetConfig.builder()
             .mailetName("OBMLDAPMailingList")
             .setProperty("baseDN", "ou=groups,dc=linagora.com,dc=lng")

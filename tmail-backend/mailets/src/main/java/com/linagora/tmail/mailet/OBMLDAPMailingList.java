@@ -144,6 +144,7 @@ public class OBMLDAPMailingList extends GenericMailet {
     }
 
     private final LDAPConnectionPool ldapConnectionPool;
+    private final MailingListConfiguration mailingListConfiguration;
     private Filter objectClassFilter;
     private String[] listAttributes;
     private String baseDN;
@@ -152,13 +153,19 @@ public class OBMLDAPMailingList extends GenericMailet {
     private Optional<Filter> extraFilter = Optional.empty();
 
     @Inject
-    public OBMLDAPMailingList(LDAPConnectionPool ldapConnectionPool) {
+    public OBMLDAPMailingList(LDAPConnectionPool ldapConnectionPool, MailingListConfiguration mailingListConfiguration) {
         this.ldapConnectionPool = ldapConnectionPool;
+        this.mailingListConfiguration = mailingListConfiguration;
     }
 
     @VisibleForTesting
     public OBMLDAPMailingList(LdapRepositoryConfiguration configuration) throws LDAPException {
-        this(new LDAPConnectionFactory(configuration).getLdapConnectionPool());
+        this(new LDAPConnectionFactory(configuration).getLdapConnectionPool(), MailingListConfiguration.EMPTY);
+    }
+
+    @VisibleForTesting
+    public OBMLDAPMailingList(LdapRepositoryConfiguration configuration, MailingListConfiguration mailingListConfiguration) throws LDAPException {
+        this(new LDAPConnectionFactory(configuration).getLdapConnectionPool(), mailingListConfiguration);
     }
 
     @Override
@@ -176,10 +183,12 @@ public class OBMLDAPMailingList extends GenericMailet {
 
     @Override
     public void init() throws MessagingException {
-        baseDN = getInitParameter("baseDN");
+        baseDN = mailingListConfiguration.resolveBaseDN(Optional.ofNullable(getInitParameter("baseDN")))
+            .orElse(null);
         extraFilter = Optional.ofNullable(getInitParameter("extraFilter"))
             .map(Throwing.function(Filter::create));
-        mailAttributeForGroups = getInitParameter("mailAttributeForGroups", "mail");
+        mailAttributeForGroups = Optional.ofNullable(getInitParameter("mailAttributeForGroups"))
+            .orElseGet(mailingListConfiguration::mailAttributeForGroups);
         String groupObjectClass = getInitParameter("groupObjectClass", "obmGroup");
         objectClassFilter = Filter.createEqualityFilter("objectClass", groupObjectClass);
         rejectedSenderProcessor = getInitParameter("rejectedSenderProcessor");

@@ -201,6 +201,7 @@ public class LDAPMailingList extends GenericMailet {
 
     private final LDAPConnectionPool ldapConnectionPool;
     private final LdapRepositoryConfiguration configuration;
+    private final MailingListConfiguration mailingListConfiguration;
     private Filter objectClassFilter;
     private String[] listAttributes;
     private LoadingCache<String, List<MailAddress>> userMailCache;
@@ -211,14 +212,21 @@ public class LDAPMailingList extends GenericMailet {
     private Optional<Filter> extraFilter = Optional.empty();
 
     @Inject
-    public LDAPMailingList(LDAPConnectionPool ldapConnectionPool, LdapRepositoryConfiguration configuration) {
+    public LDAPMailingList(LDAPConnectionPool ldapConnectionPool, LdapRepositoryConfiguration configuration,
+                           MailingListConfiguration mailingListConfiguration) {
         this.configuration = configuration;
         this.ldapConnectionPool = ldapConnectionPool;
+        this.mailingListConfiguration = mailingListConfiguration;
     }
 
     @VisibleForTesting
     public LDAPMailingList(LdapRepositoryConfiguration configuration) throws LDAPException {
-        this(new LDAPConnectionFactory(configuration).getLdapConnectionPool(), configuration);
+        this(configuration, MailingListConfiguration.EMPTY);
+    }
+
+    @VisibleForTesting
+    public LDAPMailingList(LdapRepositoryConfiguration configuration, MailingListConfiguration mailingListConfiguration) throws LDAPException {
+        this(new LDAPConnectionFactory(configuration).getLdapConnectionPool(), configuration, mailingListConfiguration);
     }
 
     @Override
@@ -234,10 +242,12 @@ public class LDAPMailingList extends GenericMailet {
 
     @Override
     public void init() throws MessagingException {
-        baseDN = getInitParameter("baseDN");
+        baseDN = mailingListConfiguration.resolveBaseDN(Optional.ofNullable(getInitParameter("baseDN")))
+            .orElse(null);
         extraFilter = Optional.ofNullable(getInitParameter("extraFilter"))
             .map(Throwing.function(Filter::create));
-        mailAttributeForGroups = getInitParameter("mailAttributeForGroups", "mail");
+        mailAttributeForGroups = Optional.ofNullable(getInitParameter("mailAttributeForGroups"))
+            .orElseGet(mailingListConfiguration::mailAttributeForGroups);
         String groupObjectClass = getInitParameter("groupObjectClass", "groupofnames");
         objectClassFilter = Filter.createEqualityFilter("objectClass", groupObjectClass);
         rejectedSenderProcessor = getInitParameter("rejectedSenderProcessor");
