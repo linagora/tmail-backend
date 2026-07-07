@@ -207,7 +207,6 @@ public class MemoryServer {
           new LabelRoutesModule(),
           new JmapSettingsReportRoutesModule(),
           new JmapSettingsRoutesModule(),
-          new MailingListConfigurationModule(),
           new DKIMMailetModule())
         .with(new TeamMailboxModule(),
             new TMailScanningQuotaSearcherModule(),
@@ -285,7 +284,7 @@ public class MemoryServer {
 
     private static List<Module> chooseDomainSignatureModule(UsersRepositoryModuleChooser.Implementation implementation) {
         if (implementation == UsersRepositoryModuleChooser.Implementation.LDAP) {
-            return List.of(new DomainSignatureTemplateRoutesModule(), new MailingListRoutesModule());
+            return List.of(new DomainSignatureTemplateRoutesModule(), new MailingListConfigurationModule(), new MailingListRoutesModule());
         }
         return List.of();
     }

@@ -34,8 +34,9 @@ import com.linagora.tmail.mailet.MailingListConfiguration;
  * Provides the centralized {@link MailingListConfiguration} read from {@code mailingLists.properties}. When the file
  * is absent, an empty configuration is provided so mailing list components fall back to their per-component settings.
  *
- * <p>This module carries no LDAP dependency and is meant to be loaded unconditionally, so that the mailing list
- * mailets and SMTP handler can always resolve their {@link MailingListConfiguration} injection.</p>
+ * <p>This module carries no LDAP dependency of its own, but mailing lists are an LDAP based feature: it is therefore
+ * loaded alongside {@link MailingListRoutesModule} only when LDAP is supported, so that the mailing list mailets and
+ * SMTP handler can resolve their {@link MailingListConfiguration} injection in LDAP deployments.</p>
  */
 public class MailingListConfigurationModule extends AbstractModule {
     private static final Logger LOGGER = LoggerFactory.getLogger(MailingListConfigurationModule.class);

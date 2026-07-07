@@ -326,7 +326,6 @@ public class PostgresTmailServer {
         new LabelRoutesModule(),
         new JmapSettingsReportRoutesModule(),
         new JmapSettingsRoutesModule(),
-        new MailingListConfigurationModule(),
         new UserIdentityModule(),
         new ContactIndexingModule(),
         new AllUsersReindexingRoutesModule(),
@@ -501,7 +500,7 @@ public class PostgresTmailServer {
             new UsersRepositoryModuleChooser(
                 DatabaseCombinedUserRequireModule.of(PostgresUsersDAO.class),
                 new TMailPostgresUsersRepositoryModule(),
-                List.of(new DomainSignatureTemplateRoutesModule(), new MailingListRoutesModule()))
+                List.of(new DomainSignatureTemplateRoutesModule(), new MailingListConfigurationModule(), new MailingListRoutesModule()))
                 .chooseModule(configuration.usersRepositoryImplementation()));
     }
 
