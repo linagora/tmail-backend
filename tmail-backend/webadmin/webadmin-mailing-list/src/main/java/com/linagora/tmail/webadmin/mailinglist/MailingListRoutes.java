@@ -22,9 +22,9 @@ import static org.apache.james.webadmin.Constants.SEPARATOR;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.Callable;
 
 import jakarta.inject.Inject;
-import jakarta.mail.internet.AddressException;
 
 import org.apache.james.core.Domain;
 import org.apache.james.core.MailAddress;
@@ -104,26 +104,21 @@ public class MailingListRoutes implements Routes {
     }
 
     private Domain parseDomain(String domain) {
-        try {
-            return Domain.of(domain);
-        } catch (IllegalArgumentException e) {
-            throw ErrorResponder.builder()
-                .statusCode(HttpStatus.BAD_REQUEST_400)
-                .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
-                .message("Invalid domain '%s'", domain)
-                .cause(e)
-                .haltError();
-        }
+        return parseOrBadRequest(() -> Domain.of(domain), "Invalid domain '%s'", domain);
     }
 
     private MailAddress parseAddress(String address) {
+        return parseOrBadRequest(() -> new MailAddress(address), "Invalid mail address '%s'", address);
+    }
+
+    private <T> T parseOrBadRequest(Callable<T> parser, String errorMessage, String value) {
         try {
-            return new MailAddress(address);
-        } catch (AddressException e) {
+            return parser.call();
+        } catch (Exception e) {
             throw ErrorResponder.builder()
                 .statusCode(HttpStatus.BAD_REQUEST_400)
                 .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
-                .message("Invalid mail address '%s'", address)
+                .message(errorMessage, value)
                 .cause(e)
                 .haltError();
         }
