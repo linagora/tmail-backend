@@ -31,6 +31,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Scopes;
+import com.linagora.tmail.sasl.TMailPlainSaslMechanismFactory;
 
 public class TMailIMAPModule extends AbstractModule {
     @Override

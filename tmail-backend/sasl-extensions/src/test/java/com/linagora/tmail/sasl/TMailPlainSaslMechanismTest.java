@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.imap;
+package com.linagora.tmail.sasl;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

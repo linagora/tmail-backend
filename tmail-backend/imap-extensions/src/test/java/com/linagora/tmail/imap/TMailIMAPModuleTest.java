@@ -20,11 +20,11 @@ package com.linagora.tmail.imap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
 import org.apache.james.protocols.sasl.OauthBearerSaslMechanismFactory;
 import org.apache.james.protocols.sasl.XOauth2SaslMechanismFactory;
-import org.apache.james.protocols.sasl.plain.PlainSaslMechanism;
 import org.junit.jupiter.api.Test;
+
+import com.linagora.tmail.sasl.TMailPlainSaslMechanismFactory;
 
 class TMailIMAPModuleTest {
     private final TMailIMAPModule testee = new TMailIMAPModule();
@@ -46,41 +46,5 @@ class TMailIMAPModuleTest {
                 TMailPlainSaslMechanismFactory.class.getName(),
                 OauthBearerSaslMechanismFactory.class.getName(),
                 XOauth2SaslMechanismFactory.class.getName());
-    }
-
-    @Test
-    void tmailPlainFactoryShouldCreateTMailPlainWhenTMailImapPackageConfigured() {
-        // GIVEN an IMAP server configured with the TMail IMAP package
-        BaseHierarchicalConfiguration configuration = new BaseHierarchicalConfiguration();
-        configuration.addProperty("imapPackages", TMailImapPackage.class.getCanonicalName());
-
-        // WHEN the PLAIN factory creates the per-server mechanism
-        assertThat(new TMailPlainSaslMechanismFactory().create(configuration))
-            // THEN TMail keeps user+delegate behavior for that server
-            .isInstanceOf(TMailPlainSaslMechanism.class);
-    }
-
-    @Test
-    void tmailPlainFactoryShouldCreateTMailPlainWhenTMailImapAuthPackageConfigured() {
-        // GIVEN an IMAP server configured with the TMail IMAP auth package
-        BaseHierarchicalConfiguration configuration = new BaseHierarchicalConfiguration();
-        configuration.addProperty("imapPackages", TMailImapAuthPackage.class.getCanonicalName());
-
-        // WHEN the PLAIN factory creates the per-server mechanism
-        assertThat(new TMailPlainSaslMechanismFactory().create(configuration))
-            // THEN TMail keeps user+delegate behavior for that server
-            .isInstanceOf(TMailPlainSaslMechanism.class);
-    }
-
-    @Test
-    void tmailPlainFactoryShouldCreateJamesPlainWhenNoTMailImapPackageConfigured() {
-        // GIVEN another IMAP server without TMail IMAP package
-        BaseHierarchicalConfiguration configuration = new BaseHierarchicalConfiguration();
-
-        // WHEN the PLAIN factory creates the per-server mechanism
-        assertThat(new TMailPlainSaslMechanismFactory().create(configuration))
-            // THEN TMail delegation syntax does not leak into that server
-            .isInstanceOf(PlainSaslMechanism.class)
-            .isNotInstanceOf(TMailPlainSaslMechanism.class);
     }
 }
