@@ -90,6 +90,11 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>tmail-saas-api</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>jmap-extensions</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
