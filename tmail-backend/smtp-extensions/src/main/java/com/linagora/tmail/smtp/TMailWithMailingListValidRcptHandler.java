@@ -144,8 +144,8 @@ public class TMailWithMailingListValidRcptHandler extends ValidRcptHandler {
         super.init(config);
         baseDN = mailingListConfiguration.resolveBaseDN(Optional.ofNullable(config.getString("baseDN", null)))
             .orElse(null);
-        mailAttributeForGroups = Optional.ofNullable(config.getString("mailAttributeForGroups", null))
-            .orElseGet(mailingListConfiguration::mailAttributeForGroups);
+        mailAttributeForGroups = mailingListConfiguration.resolveMailAttributeForGroups(
+            Optional.ofNullable(config.getString("mailAttributeForGroups", null)));
         String groupObjectClass = config.getString("groupObjectClass", "groupofnames");
         objectClassFilter = Filter.createEqualityFilter("objectClass", groupObjectClass);
     }

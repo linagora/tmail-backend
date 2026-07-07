@@ -55,6 +55,7 @@ class MailingListRoutesTest {
     static LdapGenericContainer ldapContainer = DockerLdapSingleton.ldapContainer;
 
     private WebAdminServer webAdminServer;
+    private LDAPConnectionPool ldapConnectionPool;
 
     @BeforeAll
     static void setUpAll() {
@@ -70,7 +71,7 @@ class MailingListRoutesTest {
     void setUp() throws Exception {
         LdapRepositoryConfiguration ldapConfiguration = LdapRepositoryConfiguration.from(
             ldapRepositoryConfiguration(ldapContainer));
-        LDAPConnectionPool ldapConnectionPool = new LDAPConnectionFactory(ldapConfiguration).getLdapConnectionPool();
+        ldapConnectionPool = new LDAPConnectionFactory(ldapConfiguration).getLdapConnectionPool();
         MailingListConfiguration mailingListConfiguration = new MailingListConfiguration(
             Optional.of(BASE_DN), "description", false);
         MailingListRepository repository = new LdapMailingListRepository(ldapConnectionPool, ldapConfiguration, mailingListConfiguration);
@@ -87,6 +88,7 @@ class MailingListRoutesTest {
     @AfterEach
     void tearDown() {
         webAdminServer.destroy();
+        ldapConnectionPool.close();
     }
 
     @Test

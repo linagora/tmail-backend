@@ -70,4 +70,12 @@ public record MailingListConfiguration(Optional<String> baseDN,
     public Optional<String> resolveBaseDN(Optional<String> componentBaseDN) {
         return componentBaseDN.or(this::baseDN);
     }
+
+    /**
+     * Resolves the effective mail attribute for groups: the per-component value when provided, otherwise the
+     * centralized value from {@code mailingLists.properties}.
+     */
+    public String resolveMailAttributeForGroups(Optional<String> componentValue) {
+        return componentValue.orElseGet(this::mailAttributeForGroups);
+    }
 }

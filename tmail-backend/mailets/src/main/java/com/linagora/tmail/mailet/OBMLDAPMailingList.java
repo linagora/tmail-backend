@@ -187,8 +187,8 @@ public class OBMLDAPMailingList extends GenericMailet {
             .orElse(null);
         extraFilter = Optional.ofNullable(getInitParameter("extraFilter"))
             .map(Throwing.function(Filter::create));
-        mailAttributeForGroups = Optional.ofNullable(getInitParameter("mailAttributeForGroups"))
-            .orElseGet(mailingListConfiguration::mailAttributeForGroups);
+        mailAttributeForGroups = mailingListConfiguration.resolveMailAttributeForGroups(
+            Optional.ofNullable(getInitParameter("mailAttributeForGroups")));
         String groupObjectClass = getInitParameter("groupObjectClass", "obmGroup");
         objectClassFilter = Filter.createEqualityFilter("objectClass", groupObjectClass);
         rejectedSenderProcessor = getInitParameter("rejectedSenderProcessor");
