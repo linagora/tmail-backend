@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.imap;
+package com.linagora.tmail.sasl;
 
 import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
