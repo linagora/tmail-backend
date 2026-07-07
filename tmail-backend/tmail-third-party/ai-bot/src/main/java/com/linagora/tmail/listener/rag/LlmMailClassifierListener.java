@@ -63,7 +63,6 @@ import com.linagora.tmail.listener.rag.event.AIAnalysisNeeded;
 import com.linagora.tmail.listener.rag.filter.MessageFilter;
 import com.linagora.tmail.listener.rag.filter.MessageFilterParser;
 
-
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
@@ -190,15 +189,13 @@ public class LlmMailClassifierListener implements EventListener.ReactiveGroupEve
                                      SystemMailboxesProvider systemMailboxesProvider,
                                      JmapSettingsRepository jmapSettingsRepository,
                                      @Named(TMAIL_EVENT_BUS_INJECT_NAME) EventBus tmailEventBus,
-                                     HierarchicalConfiguration<ImmutableNode> configuration) {
+                                     HierarchicalConfiguration<ImmutableNode> configuration,
+                                     ApplyWhenFilter applyWhenFilter) {
         this.mailboxManager = mailboxManager;
         this.messageIdManager = messageIdManager;
         this.jmapSettingsRepository = jmapSettingsRepository;
         this.tmailEventBus = tmailEventBus;
-        this.applyWhenFilter = new ApplyWhenFilter.Always();;
+        this.applyWhenFilter = applyWhenFilter;
         this.messageFilter = new MessageFilterParser(systemMailboxesProvider).parse(configuration);
     }
-
-
-
 }
