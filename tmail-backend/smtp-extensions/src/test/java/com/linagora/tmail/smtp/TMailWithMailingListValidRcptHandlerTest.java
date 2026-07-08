@@ -129,7 +129,8 @@ class TMailWithMailingListValidRcptHandlerTest {
         "address-alias@linagora.com",
         "sales@linagora.com",
         "sales+detail@linagora.com",
-        "mygroup@lists.james.org"
+        "mygroup@lists.james.org",
+        "mygroup+detail@lists.james.org"
     })
     void shouldHandeLocalResources(String address) throws Exception {
         assertThat(testee.isValidRecipient(mock(SMTPSession.class), new MailAddress(address)))

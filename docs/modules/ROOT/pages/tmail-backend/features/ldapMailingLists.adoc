@@ -18,6 +18,11 @@ Twake mail define some sender controls, defined by the business category of the 
 
 Note that member and owner resolution is recursive: LDAP groups will be expended to their members.
 
+Sub-addressing is supported on list addresses: a mail sent to `mylist+detail@lists.james.org` resolves the
+`mylist@lists.james.org` group (the `+detail` part is ignored for the lookup) and the detail is re-appended onto each
+resolved member. For instance if `mylist` has members `alice@james.org` and `bob@james.org`, then a mail to
+`mylist+detail@lists.james.org` is delivered to `alice+detail@james.org` and `bob+detail@james.org`.
+
 
 See xref:tmail-backend/configure/ldap-mailing-list.adoc[this page] in order to configure this feature.
 
