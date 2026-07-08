@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.mailet;
 
+import java.util.List;
 import java.util.Optional;
 
 import org.apache.commons.configuration2.Configuration;
@@ -56,11 +57,21 @@ public record MailingListConfiguration(Optional<String> baseDN,
 
     public static MailingListConfiguration from(Configuration configuration) {
         return new MailingListConfiguration(
-            Optional.ofNullable(configuration.getString("baseDN", null))
-                .map(String::trim)
-                .filter(value -> !value.isEmpty()),
+            readBaseDN(configuration),
             configuration.getString("mailAttributeForGroups", DEFAULT_MAIL_ATTRIBUTE_FOR_GROUPS),
             configuration.getBoolean("obm.compatibility", false));
+    }
+
+    /**
+     * Reads the {@code baseDN} in a way that is robust to comma splitting. James loads {@code .properties} files with
+     * a comma list-delimiter, so a DN like {@code ou=lists,dc=linagora,dc=com} would otherwise be parsed as a
+     * multi-valued property and {@code getString} would only return its first component ({@code ou=lists}). Reading it
+     * as a list and rejoining on commas restores the full DN, whether or not the operator escaped the commas.
+     */
+    private static Optional<String> readBaseDN(Configuration configuration) {
+        return Optional.of(String.join(",", configuration.getList(String.class, "baseDN", List.of())))
+            .map(String::trim)
+            .filter(value -> !value.isEmpty());
     }
 
     /**
