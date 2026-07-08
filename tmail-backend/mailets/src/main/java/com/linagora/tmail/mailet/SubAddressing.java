@@ -18,26 +18,16 @@
 
 package com.linagora.tmail.mailet;
 
-import java.util.Optional;
-
 import jakarta.mail.internet.AddressException;
 
 import org.apache.james.core.MailAddress;
 import org.apache.james.user.api.UsersRepository;
 
 public class SubAddressing {
-    public static Optional<String> extractDetail(MailAddress recipient) {
-        String localPart = recipient.getLocalPart();
-        int detailStart = localPart.indexOf(UsersRepository.LOCALPART_DETAIL_DELIMITER);
-        if (detailStart < 0) {
-            return Optional.empty();
-        }
-        return Optional.of(localPart.substring(detailStart));
-    }
-
     public static MailAddress appendDetail(MailAddress member, String detail) {
         try {
-            return new MailAddress(member.getLocalPart() + detail + "@" + member.getDomain().asString());
+            return new MailAddress(member.getLocalPart() + UsersRepository.LOCALPART_DETAIL_DELIMITER + detail
+                + "@" + member.getDomain().asString());
         } catch (AddressException e) {
             throw new RuntimeException(e);
         }

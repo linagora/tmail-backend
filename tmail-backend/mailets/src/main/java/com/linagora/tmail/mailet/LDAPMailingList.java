@@ -340,7 +340,7 @@ public class LDAPMailingList extends GenericMailet {
     private MailTransformation listToMailTransformation(MaybeSender maybeSender, MailAddress recipient, SearchResultEntry list) {
         try {
             MailAddress listAddress = new MailAddress(list.getAttributeValue(mailAttributeForGroups));
-            Optional<String> detail = SubAddressing.extractDetail(recipient);
+            Optional<String> detail = recipient.getLocalPartDetails(UsersRepository.LOCALPART_DETAIL_DELIMITER);
             boolean authorized = chooseSenderValidationPolicy(list)
                 .validate(maybeSender, list);
 

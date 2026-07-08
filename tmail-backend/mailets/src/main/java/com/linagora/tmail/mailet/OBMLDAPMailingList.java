@@ -266,7 +266,7 @@ public class OBMLDAPMailingList extends GenericMailet {
 
     private MailTransformation listToMailTransformation(MaybeSender maybeSender, MailAddress recipient, GroupResolutionResult list) {
         MailAddress listAddress = list.listAddress();
-        Optional<String> detail = SubAddressing.extractDetail(recipient);
+        Optional<String> detail = recipient.getLocalPartDetails(UsersRepository.LOCALPART_DETAIL_DELIMITER);
 
         boolean authorized = list.isPublic()
             || maybeSender.isNullSender()
