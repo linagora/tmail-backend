@@ -58,6 +58,25 @@ import scala.util.{Failure, Success, Try}
 
 object UnauthenticatedBlobAccessDownloadRoutes {
   val LOGGER: Logger = LoggerFactory.getLogger(classOf[UnauthenticatedBlobAccessDownloadRoutes])
+
+  def respondDetails(httpServerResponse: HttpServerResponse, details: ProblemDetails): SMono[Unit] =
+    if (httpServerResponse.hasSentHeaders) {
+      // Response already committed (e.g. an error occurred while streaming the blob body):
+      // status and headers are already on the wire, so we cannot rewrite them into an error response.
+      // Attempting to do so would throw `IllegalStateException: Status and headers already sent`, masking
+      // the original error. The real cause is already logged by the caller; let the connection be closed.
+      SMono.empty
+    } else {
+      SMono.fromCallable(() => ResponseSerializer.serialize(details))
+        .map(Json.stringify)
+        .map(_.getBytes(StandardCharsets.UTF_8))
+        .flatMap(bytes =>
+          SMono.fromPublisher(httpServerResponse.status(details.status)
+            .header(CONTENT_TYPE, JSON_CONTENT_TYPE)
+            .header(CONTENT_LENGTH, Integer.toString(bytes.length))
+            .sendByteArray(SMono.just(bytes))
+            .`then`).`then`)
+    }
 }
 
 case class InvalidUnauthenticatedBlobAccessTokenException() extends RuntimeException
@@ -70,7 +89,7 @@ class UnauthenticatedBlobAccessDownloadRoutes @Inject()(val tokenRepository: Una
                                                         val blobIdFactory: BlobStoreBlobId.Factory,
                                                         val sessionProvider: SessionProvider,
                                                         val metricFactory: MetricFactory) extends JMAPRoutes {
-  import UnauthenticatedBlobAccessDownloadRoutes.LOGGER
+  import UnauthenticatedBlobAccessDownloadRoutes.{LOGGER, respondDetails}
 
   private val accountIdParam: String = "accountId"
   private val blobIdParam: String = "blobId"
@@ -181,15 +200,4 @@ class UnauthenticatedBlobAccessDownloadRoutes @Inject()(val tokenRepository: Una
       .toList
       .flatMap(_.asScala)
       .headOption
-
-  private def respondDetails(httpServerResponse: HttpServerResponse, details: ProblemDetails): SMono[Unit] =
-    SMono.fromCallable(() => ResponseSerializer.serialize(details))
-      .map(Json.stringify)
-      .map(_.getBytes(StandardCharsets.UTF_8))
-      .flatMap(bytes =>
-        SMono.fromPublisher(httpServerResponse.status(details.status)
-          .header(CONTENT_TYPE, JSON_CONTENT_TYPE)
-          .header(CONTENT_LENGTH, Integer.toString(bytes.length))
-          .sendByteArray(SMono.just(bytes))
-          .`then`).`then`)
 }
