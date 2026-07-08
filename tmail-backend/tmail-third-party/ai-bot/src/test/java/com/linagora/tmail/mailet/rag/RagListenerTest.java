@@ -31,6 +31,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 
+import com.linagora.tmail.james.jmap.event.ApplyWhenFilter;
 import jakarta.mail.util.SharedByteArrayInputStream;
 
 import org.apache.commons.configuration2.PropertiesConfiguration;
@@ -181,8 +182,9 @@ class RagListenerTest {
         partitionFactory = Partition.Factory.fromPattern(ragConfig.getPartitionPattern());
         jmapSettingsRepository = new MemoryJmapSettingsRepository();
         jmapSettingsRepositoryUtils = new JmapSettingsRepositoryJavaUtils(jmapSettingsRepository);
+        ApplyWhenFilter applyWhenFilter = new ApplyWhenFilter.Always();
         ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, threadIdGuessingAlgorithm,
-            jmapSettingsRepository, partitionFactory, openRagHttpClient);
+            jmapSettingsRepository, partitionFactory, openRagHttpClient, applyWhenFilter);
 
         jmapSettingsRepositoryUtils.reset(BOB, ImmutableMap.of("ai.rag.enabled", "true"));
     }

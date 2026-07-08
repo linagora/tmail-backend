@@ -29,6 +29,8 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
+import org.apache.commons.configuration2.HierarchicalConfiguration;
+import org.apache.commons.configuration2.tree.ImmutableNode;
 import org.apache.james.core.Username;
 import org.apache.james.events.Event;
 import org.apache.james.events.EventListener;
@@ -56,11 +58,16 @@ import org.apache.james.mime4j.message.DefaultMessageBuilder;
 import org.apache.james.mime4j.stream.Field;
 import org.apache.james.mime4j.stream.MimeConfig;
 import org.apache.james.util.mime.MessageContentExtractor;
+import org.apache.james.utils.ClassName;
+import org.apache.james.utils.GuiceLoader;
+import org.apache.james.utils.NamingScheme;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.Inject;
+import com.linagora.tmail.james.jmap.event.ApplyWhenFilter;
 import com.linagora.tmail.james.jmap.settings.JmapSettings;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.mailet.rag.httpclient.DocumentId;
@@ -77,6 +84,7 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
     }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RagListener.class);
+    private static final String APPLY_WHEN_PATH = "applyWhen";
     public static final Group GROUP = new RagListenerGroup();
 
     private final MailboxManager mailboxManager;
@@ -86,11 +94,13 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
     private final JmapSettingsRepository jmapSettingsRepository;
     private final Partition.Factory partitionFactory;
     private final OpenRagHttpClient openRagHttpClient;
+    private final ApplyWhenFilter applyWhenFilter;
 
     @Inject
     public RagListener(MailboxManager mailboxManager, MessageIdManager messageIdManager, SystemMailboxesProvider systemMailboxesProvider,
                        ThreadIdGuessingAlgorithm threadIdGuessingAlgorithm, JmapSettingsRepository jmapSettingsRepository,
-                       Partition.Factory partitionFactory, OpenRagHttpClient openRagHttpClient) {
+                       Partition.Factory partitionFactory, OpenRagHttpClient openRagHttpClient, GuiceLoader guiceLoader,
+                       HierarchicalConfiguration<ImmutableNode> configuration) {
         this.mailboxManager = mailboxManager;
         this.messageIdManager = messageIdManager;
         this.systemMailboxesProvider = systemMailboxesProvider;
@@ -98,6 +108,7 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
         this.jmapSettingsRepository = jmapSettingsRepository;
         this.partitionFactory = partitionFactory;
         this.openRagHttpClient = openRagHttpClient;
+        this.applyWhenFilter = resolveApplyWhenFilter(configuration, guiceLoader);
     }
 
     @Override
@@ -119,7 +130,11 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
     }
 
     private Mono<Void> handleAddedEvent(MailboxEvents.Added addedEvent) {
-        return Mono.just(addedEvent)
+        return applyWhenFilter.isEligible(addedEvent.getUsername())
+            .filter(Boolean::booleanValue)
+            .flatMap(isEligible -> isEligible
+                ? Mono.just(addedEvent)
+                : Mono.empty())
             .filter(MailboxEvents.Added::isAppended)
             .filterWhen(e -> aiRagSettingEnabled(e.getUsername()))
             .filterWhen(this::isNotInRestrictedMailbox)
@@ -139,6 +154,22 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
             .map(MessageManager::getId)
             .collectList()
             .map(mailboxIds -> !mailboxIds.contains(addedEvent.getMailboxId()));
+    }
+
+    private ApplyWhenFilter resolveApplyWhenFilter(HierarchicalConfiguration<ImmutableNode> listenerConfig, GuiceLoader guiceLoader) {
+        return Optional.ofNullable(listenerConfig.getString(APPLY_WHEN_PATH))
+            .filter(applyWhenClassName -> !applyWhenClassName.isBlank())
+            .map(applyWhenClassName -> loadApplyWhenFilter(guiceLoader, applyWhenClassName))
+            .orElse(new ApplyWhenFilter.Always());
+    }
+
+    private ApplyWhenFilter loadApplyWhenFilter(GuiceLoader guiceLoader, String applyWhenClassName) {
+        try {
+            return guiceLoader.<ApplyWhenFilter>withNamingSheme(NamingScheme.IDENTITY)
+                .instantiate(new ClassName(applyWhenClassName));
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to load applyWhen filter `%s`".formatted(applyWhenClassName), e);
+        }
     }
 
     private Mono<String> addDocumentToRagContext(MailboxEvents.Added addedEvent, MessageResult messageResult, MailboxSession session) {
@@ -299,4 +330,17 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
         return GROUP;
     }
 
+    @VisibleForTesting
+    public RagListener(MailboxManager mailboxManager, MessageIdManager messageIdManager, SystemMailboxesProvider systemMailboxesProvider,
+                       ThreadIdGuessingAlgorithm threadIdGuessingAlgorithm, JmapSettingsRepository jmapSettingsRepository,
+                       Partition.Factory partitionFactory, OpenRagHttpClient openRagHttpClient, ApplyWhenFilter applyWhenFilter) {
+        this.mailboxManager = mailboxManager;
+        this.messageIdManager = messageIdManager;
+        this.systemMailboxesProvider = systemMailboxesProvider;
+        this.threadIdGuessingAlgorithm = threadIdGuessingAlgorithm;
+        this.jmapSettingsRepository = jmapSettingsRepository;
+        this.partitionFactory = partitionFactory;
+        this.openRagHttpClient = openRagHttpClient;
+        this.applyWhenFilter = applyWhenFilter;
+    }
 }
