@@ -28,16 +28,21 @@ import com.google.inject.Module;
 
 public class RabbitMQExtension implements GuiceModuleTestExtension {
 
-    private final DockerRabbitMQ dockerRabbitMQ = DockerRabbitMQ.withoutCookie();
+    private static final DockerRabbitMQ dockerRabbitMQ = DockerRabbitMQ.withoutCookie();
+    private static boolean started = false;
 
     @Override
     public void afterAll(ExtensionContext extensionContext) {
-        dockerRabbitMQ.stop();
+        // ponytail: container persists across test classes in the same fork.
+        // Testcontainers Ryuk cleans up on JVM exit.
     }
 
     @Override
     public void beforeAll(ExtensionContext extensionContext) {
-        dockerRabbitMQ.start();
+        if (!started) {
+            dockerRabbitMQ.start();
+            started = true;
+        }
     }
 
     @Override
