@@ -20,16 +20,12 @@ package com.linagora.tmail.james;
 
 import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
 
-import java.net.URL;
-import java.util.Optional;
-
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.jmap.core.JmapRfc8621Configuration;
-import org.apache.james.jwt.introspection.IntrospectionEndpoint;
+import org.apache.james.jmap.oidc.JMAPOidcConfiguration;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.google.inject.name.Names;
 import com.linagora.tmail.common.OidcAuthenticationContract;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
@@ -51,9 +47,8 @@ public class MemoryOidcAuthenticationTest extends OidcAuthenticationContract {
             .overrideWith(binder -> binder.bind(JmapRfc8621Configuration.class)
                 .toInstance(JmapRfc8621Configuration.LOCALHOST_CONFIGURATION()
                     .withAuthenticationStrategies(OIDC_AUTHENTICATION_STRATEGY)))
-            .overrideWith(binder -> binder.bind(URL.class).annotatedWith(Names.named("userInfo"))
-                .toProvider(OidcAuthenticationContract::getUserInfoTokenEndpoint))
-            .overrideWith(binder -> binder.bind(IntrospectionEndpoint.class)
-                .toProvider(() -> new IntrospectionEndpoint(getIntrospectTokenEndpoint(), Optional.empty()))))
+            .overrideWith(binder -> binder.bind(JMAPOidcConfiguration.class)
+                .toProvider(OidcAuthenticationContract::oidcConfiguration)))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }
