@@ -18,11 +18,14 @@
 
 package com.linagora.tmail.imap;
 
+import java.util.Optional;
+
 import org.apache.james.imap.api.process.ImapSession;
 import org.apache.james.imap.main.PathConverter;
 import org.apache.james.mailbox.MailboxSession;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.linagora.tmail.team.TeamMailbox;
 
 public class TMailPathConverterFactory implements PathConverter.Factory {
     @VisibleForTesting
@@ -33,11 +36,19 @@ public class TMailPathConverterFactory implements PathConverter.Factory {
     }
 
     public PathConverter forSession(MailboxSession session) {
+        Optional<TeamMailbox> teamMailboxScope = TeamMailboxScope.forSession(session);
+        if (teamMailboxScope.isPresent()) {
+            return teamMailboxScopedPathConverterForSession(session, teamMailboxScope.get());
+        }
         if (IS_FULL_DOMAIN_ENABLED) {
             return fullDomainPathConverterForSession(session);
         } else {
             return normalPathConverterForSession(session);
         }
+    }
+
+    public TeamMailboxScopedPathConverter teamMailboxScopedPathConverterForSession(MailboxSession session, TeamMailbox teamMailbox) {
+        return new TeamMailboxScopedPathConverter(session, teamMailbox);
     }
 
     public TMailPathConverter normalPathConverterForSession(MailboxSession session) {
