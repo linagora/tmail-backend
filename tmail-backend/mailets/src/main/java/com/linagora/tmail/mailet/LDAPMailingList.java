@@ -330,23 +330,6 @@ public class LDAPMailingList extends GenericMailet {
         }
     }
 
-    private static Optional<String> extractDetail(MailAddress recipient) {
-        String localPart = recipient.getLocalPart();
-        int detailStart = localPart.indexOf(UsersRepository.LOCALPART_DETAIL_DELIMITER);
-        if (detailStart < 0) {
-            return Optional.empty();
-        }
-        return Optional.of(localPart.substring(detailStart));
-    }
-
-    private static MailAddress appendDetail(MailAddress member, String detail) {
-        try {
-            return new MailAddress(member.getLocalPart() + detail + "@" + member.getDomain().asString());
-        } catch (AddressException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     private Filter createFilter(String retrievalName, String ldapUserRetrievalAttribute) {
         Filter specificUserFilter = Filter.createEqualityFilter(ldapUserRetrievalAttribute, retrievalName);
         return extraFilter
@@ -357,7 +340,7 @@ public class LDAPMailingList extends GenericMailet {
     private MailTransformation listToMailTransformation(MaybeSender maybeSender, MailAddress recipient, SearchResultEntry list) {
         try {
             MailAddress listAddress = new MailAddress(list.getAttributeValue(mailAttributeForGroups));
-            Optional<String> detail = extractDetail(recipient);
+            Optional<String> detail = SubAddressing.extractDetail(recipient);
             boolean authorized = chooseSenderValidationPolicy(list)
                 .validate(maybeSender, list);
 
@@ -384,7 +367,7 @@ public class LDAPMailingList extends GenericMailet {
                 .flatMap(attribute -> Stream.of(attribute.getValues()))
                 .map(Throwing.function(this::resolveUserMail))
                 .flatMap(Collection::stream)
-                .map(member -> detail.map(value -> appendDetail(member, value)).orElse(member))
+                .map(member -> detail.map(value -> SubAddressing.appendDetail(member, value)).orElse(member))
                 .collect(ImmutableList.toImmutableList());
 
             return MailTransformation.removeRecipient.apply(recipient)

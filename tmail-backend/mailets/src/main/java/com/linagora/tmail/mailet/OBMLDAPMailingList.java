@@ -257,23 +257,6 @@ public class OBMLDAPMailingList extends GenericMailet {
         }
     }
 
-    private static Optional<String> extractDetail(MailAddress recipient) {
-        String localPart = recipient.getLocalPart();
-        int detailStart = localPart.indexOf(UsersRepository.LOCALPART_DETAIL_DELIMITER);
-        if (detailStart < 0) {
-            return Optional.empty();
-        }
-        return Optional.of(localPart.substring(detailStart));
-    }
-
-    private static MailAddress appendDetail(MailAddress member, String detail) {
-        try {
-            return new MailAddress(member.getLocalPart() + detail + "@" + member.getDomain().asString());
-        } catch (AddressException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     private Filter createFilter(String retrievalName, String ldapUserRetrievalAttribute) {
         Filter specificUserFilter = Filter.createEqualityFilter(ldapUserRetrievalAttribute, retrievalName);
         return extraFilter
@@ -283,7 +266,7 @@ public class OBMLDAPMailingList extends GenericMailet {
 
     private MailTransformation listToMailTransformation(MaybeSender maybeSender, MailAddress recipient, GroupResolutionResult list) {
         MailAddress listAddress = list.listAddress();
-        Optional<String> detail = extractDetail(recipient);
+        Optional<String> detail = SubAddressing.extractDetail(recipient);
 
         boolean authorized = list.isPublic()
             || maybeSender.isNullSender()
@@ -309,7 +292,7 @@ public class OBMLDAPMailingList extends GenericMailet {
 
         List<MailAddress> memberAddresses = detail
             .<List<MailAddress>>map(value -> list.members().stream()
-                .map(member -> appendDetail(member, value))
+                .map(member -> SubAddressing.appendDetail(member, value))
                 .collect(ImmutableList.toImmutableList()))
             .orElseGet(list::members);
 
