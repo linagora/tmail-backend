@@ -18,5 +18,16 @@
 
 package com.linagora.tmail.james.jmap.oidc;
 
-public record Token(String value) {
+import org.apache.james.webadmin.Routes;
+import org.apache.james.webadmin.oidc.OidcBackchannelLogoutRoutes;
+
+import com.google.inject.AbstractModule;
+import com.google.inject.multibindings.Multibinder;
+
+public class OidcBackchannelLogoutRoutesModule extends AbstractModule {
+    @Override
+    protected void configure() {
+        Multibinder<Routes> routesMultibinder = Multibinder.newSetBinder(binder(), Routes.class);
+        routesMultibinder.addBinding().to(OidcBackchannelLogoutRoutes.class);
+    }
 }

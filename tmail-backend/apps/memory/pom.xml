@@ -123,10 +123,6 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>webadmin-oidc-backchannel</artifactId>
-        </dependency>
-        <dependency>
-            <groupId>${project.groupId}</groupId>
             <artifactId>webadmin-rate-limit</artifactId>
         </dependency>
         <dependency>
@@ -174,8 +170,16 @@
         <dependency>
             <groupId>${james.groupId}</groupId>
             <artifactId>james-server-guice-jmap</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-guice-jmap</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-guice-webadmin-jmap</artifactId>
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
