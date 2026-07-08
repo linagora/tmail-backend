@@ -19,7 +19,6 @@
 package com.linagora.tmail.james.jmap.routes
 
 import java.io.InputStream
-import java.nio.charset.StandardCharsets
 import java.util.concurrent.Callable
 import java.util.function.Consumer
 import java.util.stream.Stream
@@ -27,17 +26,15 @@ import java.util.{UUID, stream}
 
 import com.linagora.tmail.james.jmap.blob.{UnauthenticatedBlobDownloadToken, UnauthenticatedBlobDownloadTokenRepository}
 import io.netty.buffer.Unpooled
-import io.netty.handler.codec.http.HttpHeaderNames.{CONTENT_LENGTH, CONTENT_TYPE}
+import io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE
 import io.netty.handler.codec.http.HttpResponseStatus.{INTERNAL_SERVER_ERROR, NOT_FOUND, OK, UNAUTHORIZED}
 import io.netty.handler.codec.http.{HttpHeaderNames, HttpHeaderValidationUtil, HttpMethod, QueryStringDecoder}
 import jakarta.inject.Inject
 import org.apache.james.blob.api.{BlobId => BlobStoreBlobId}
 import org.apache.james.core.Username
-import org.apache.james.jmap.HttpConstants.JSON_CONTENT_TYPE
 import org.apache.james.jmap.api.model.Size.Size
 import org.apache.james.jmap.api.model.{AccountId => JavaAccountId}
 import org.apache.james.jmap.core.{AccountId, Id, ProblemDetails}
-import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.mail.{BlobId => JmapBlobId}
 import org.apache.james.jmap.routes.DownloadRoutes.BUFFER_SIZE
 import org.apache.james.jmap.routes.{Blob, BlobNotFoundException, BlobResolvers}
@@ -46,7 +43,6 @@ import org.apache.james.mailbox.{MailboxSession, SessionProvider}
 import org.apache.james.metrics.api.{Metric, MetricFactory}
 import org.apache.james.util.ReactorUtils
 import org.slf4j.{Logger, LoggerFactory}
-import play.api.libs.json.Json
 import reactor.core.publisher.Mono
 import reactor.core.scala.publisher.SMono
 import reactor.core.scheduler.Schedulers
@@ -60,23 +56,7 @@ object UnauthenticatedBlobAccessDownloadRoutes {
   val LOGGER: Logger = LoggerFactory.getLogger(classOf[UnauthenticatedBlobAccessDownloadRoutes])
 
   def respondDetails(httpServerResponse: HttpServerResponse, details: ProblemDetails): SMono[Unit] =
-    if (httpServerResponse.hasSentHeaders) {
-      // Response already committed (e.g. an error occurred while streaming the blob body):
-      // status and headers are already on the wire, so we cannot rewrite them into an error response.
-      // Attempting to do so would throw `IllegalStateException: Status and headers already sent`, masking
-      // the original error. The real cause is already logged by the caller; let the connection be closed.
-      SMono.empty
-    } else {
-      SMono.fromCallable(() => ResponseSerializer.serialize(details))
-        .map(Json.stringify)
-        .map(_.getBytes(StandardCharsets.UTF_8))
-        .flatMap(bytes =>
-          SMono.fromPublisher(httpServerResponse.status(details.status)
-            .header(CONTENT_TYPE, JSON_CONTENT_TYPE)
-            .header(CONTENT_LENGTH, Integer.toString(bytes.length))
-            .sendByteArray(SMono.just(bytes))
-            .`then`).`then`)
-    }
+    DownloadResponseUtils.respondDetails(httpServerResponse, details)
 }
 
 case class InvalidUnauthenticatedBlobAccessTokenException() extends RuntimeException
