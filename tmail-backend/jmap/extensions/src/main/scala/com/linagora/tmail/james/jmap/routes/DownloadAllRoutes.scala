@@ -29,7 +29,7 @@ import com.google.inject.multibindings.Multibinder
 import com.linagora.tmail.james.jmap.ZipUtil
 import com.linagora.tmail.james.jmap.ZipUtil.ZipEntryStreamSource
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_DOWNLOAD_ALL
-import com.linagora.tmail.james.jmap.routes.DownloadAllRoutes.{DEFAULT_FILE_NAME, ZIP_CONTENT_TYPE}
+import com.linagora.tmail.james.jmap.routes.DownloadAllRoutes.{DEFAULT_FILE_NAME, ZIP_CONTENT_TYPE, respondDetails}
 import io.netty.buffer.Unpooled
 import io.netty.handler.codec.http.HttpHeaderNames.{CONTENT_LENGTH, CONTENT_TYPE}
 import io.netty.handler.codec.http.HttpResponseStatus.{FORBIDDEN, INTERNAL_SERVER_ERROR, NOT_FOUND, OK, UNAUTHORIZED}
@@ -69,6 +69,25 @@ import scala.util.Try
 object DownloadAllRoutes {
   val DEFAULT_FILE_NAME = "noname"
   val ZIP_CONTENT_TYPE = "application/zip"
+
+  def respondDetails(httpServerResponse: HttpServerResponse, details: ProblemDetails): SMono[Unit] =
+    if (httpServerResponse.hasSentHeaders) {
+      // Response already committed (e.g. an error occurred while streaming the ZIP body):
+      // status and headers are already on the wire, so we cannot rewrite them into an error response.
+      // Attempting to do so would throw `IllegalStateException: Status and headers already sent`, masking
+      // the original error. The real cause is already logged by the caller; let the connection be closed.
+      SMono.empty
+    } else {
+      SMono.fromCallable(() => ResponseSerializer.serialize(details))
+        .map(Json.stringify)
+        .map(_.getBytes(StandardCharsets.UTF_8))
+        .flatMap(bytes =>
+          SMono.fromPublisher(httpServerResponse.status(details.status)
+            .header(CONTENT_TYPE, JSON_CONTENT_TYPE)
+            .header(CONTENT_LENGTH, Integer.toString(bytes.length))
+            .sendByteArray(SMono.just(bytes))
+            .`then`).`then`)
+    }
 }
 
 case class BlobWithName(blob: Blob, name: String)
@@ -253,15 +272,4 @@ class DownloadAllRoutes @Inject()(@Named(InjectionKeys.RFC_8621) val authenticat
       .toList
       .flatMap(_.asScala)
       .headOption
-
-  private def respondDetails(httpServerResponse: HttpServerResponse, details: ProblemDetails): SMono[Unit] =
-    SMono.fromCallable(() => ResponseSerializer.serialize(details))
-      .map(Json.stringify)
-      .map(_.getBytes(StandardCharsets.UTF_8))
-      .flatMap(bytes =>
-        SMono.fromPublisher(httpServerResponse.status(details.status)
-          .header(CONTENT_TYPE, JSON_CONTENT_TYPE)
-          .header(CONTENT_LENGTH, Integer.toString(bytes.length))
-          .sendByteArray(SMono.just(bytes))
-          .`then`).`then`)
 }
