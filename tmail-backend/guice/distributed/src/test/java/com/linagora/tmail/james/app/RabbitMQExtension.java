@@ -33,8 +33,6 @@ public class RabbitMQExtension implements GuiceModuleTestExtension {
 
     @Override
     public void afterAll(ExtensionContext extensionContext) {
-        // ponytail: container persists across test classes in the same fork.
-        // Testcontainers Ryuk cleans up on JVM exit.
     }
 
     @Override
