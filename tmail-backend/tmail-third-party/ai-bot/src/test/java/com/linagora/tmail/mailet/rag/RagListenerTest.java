@@ -31,7 +31,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
 
-import com.linagora.tmail.james.jmap.event.ApplyWhenFilter;
 import jakarta.mail.util.SharedByteArrayInputStream;
 
 import org.apache.commons.configuration2.PropertiesConfiguration;
@@ -63,6 +62,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.common.collect.ImmutableMap;
 import com.linagora.tmail.extension.WireMockRagServerExtension;
+import com.linagora.tmail.james.jmap.event.ApplyWhenFilter;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
 import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
