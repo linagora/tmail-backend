@@ -26,14 +26,11 @@ import org.apache.james.mailbox.MailboxSessionUtil;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
-import java.util.Optional;
-
 import static org.assertj.core.api.Assertions.assertThat;
 
 public class TMailPathConverterFactoryTest {
     public static final ImapSession imapSession = new NettyImapSession(
-            null, null, false, false,
-            false, null, Optional.empty()
+            null, null, false, null
     );
     public static final MailboxSession mailboxSession = MailboxSessionUtil.create(Username.of("username"));
 

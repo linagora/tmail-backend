@@ -1890,3 +1890,61 @@ Return codes:
 - `400` Unknown `action`, missing `from`, or invalid username
 - `404` The source folder does not exist
 
+== Mailing lists
+
+These routes expose a read only view of the LDAP mailing lists. They are only available for LDAP based deployments and
+require a centralized xref:tmail-backend/configure/ldap-mailing-list.adoc#_centralized_configuration_mailinglistsproperties[`mailingLists.properties`]
+file with a `baseDN` entry. When no such configuration is available, the routes answer `409 Conflict`.
+
+=== Listing mailing lists
+
+....
+curl -XGET 'http://ip:port/mailingLists'
+....
+
+Returns the mail addresses of all the mailing lists:
+
+....
+["sales@lists.linagora.com", "marketing@lists.linagora.com", ...]
+....
+
+A domain filtered version is available through the `domain` query parameter:
+
+....
+curl -XGET 'http://ip:port/mailingLists?domain=lists.linagora.com'
+....
+
+....
+["sales@lists.linagora.com", ...]
+....
+
+Return codes:
+
+- `200` The list of mailing lists is returned
+- `400` Invalid domain
+- `409` Mailing lists are not configured (no `mailingLists.properties` file or no `baseDN`)
+
+=== Getting a single mailing list
+
+....
+curl -XGET 'http://ip:port/mailingLists/sales@lists.linagora.com'
+....
+
+Returns the details of a mailing list, its members and its owners:
+
+....
+{
+  "mail": "sales@lists.linagora.com",
+  "businessCategory": "ownerRestrictedList",
+  "members": ["bob@linagora.com", ...],
+  "owners": ["alice@linagora.com", ...]
+}
+....
+
+Return codes:
+
+- `200` The mailing list details are returned
+- `400` Invalid mail address
+- `404` The mailing list does not exist
+- `409` Mailing lists are not configured (no `mailingLists.properties` file or no `baseDN`)
+

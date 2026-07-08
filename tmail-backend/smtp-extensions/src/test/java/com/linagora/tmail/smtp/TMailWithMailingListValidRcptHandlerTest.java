@@ -50,9 +50,11 @@ import org.apache.james.user.memory.MemoryUsersRepository;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
+import com.linagora.tmail.mailet.MailingListConfiguration;
 import com.linagora.tmail.team.TeamMailbox;
 import com.linagora.tmail.team.TeamMailboxCallbackNoop;
 import com.linagora.tmail.team.TeamMailboxMember;
@@ -144,6 +146,37 @@ class TMailWithMailingListValidRcptHandlerTest {
     void shouldNotHandeRemoteResources(String address) throws Exception {
         assertThat(testee.isValidRecipient(mock(SMTPSession.class), new MailAddress(address)))
             .isFalse();
+    }
+
+    @Test
+    void shouldFallbackToMailingListConfigurationWhenBaseDNAndAttributeNotSetAsInitParameters() throws Exception {
+        InMemoryIntegrationResources integrationResources = InMemoryIntegrationResources.defaultResources();
+        SubscriptionManager subscriptionManager = new StoreSubscriptionManager(integrationResources.getMailboxManager().getMapperFactory(),
+                integrationResources.getMailboxManager().getMapperFactory(), integrationResources.getMailboxManager().getEventBus());
+
+        TeamMailboxRepositoryImpl teamMailboxRepository = new TeamMailboxRepositoryImpl(integrationResources.getMailboxManager(), subscriptionManager, integrationResources.getMailboxManager().getMapperFactory(),java.util.Set.of(new TeamMailboxCallbackNoop()));
+
+        MemoryDomainList domainList = new MemoryDomainList(mock(DNSService.class));
+        domainList.configure(DomainListConfiguration.DEFAULT);
+        domainList.addDomain(DOMAIN);
+
+        MemoryUsersRepository usersRepository = MemoryUsersRepository.withVirtualHosting(domainList);
+
+        MemoryRecipientRewriteTable rrt = new MemoryRecipientRewriteTable();
+        rrt.setUsersRepository(usersRepository);
+        rrt.setDomainList(domainList);
+        rrt.setConfiguration(RecipientRewriteTableConfiguration.DEFAULT_ENABLED);
+
+        TMailWithMailingListValidRcptHandler fallbackTestee = new TMailWithMailingListValidRcptHandler(usersRepository, rrt, domainList, teamMailboxRepository,
+            LdapRepositoryConfiguration.from(ldapRepositoryConfigurationWithVirtualHosting(ldapContainer)),
+            new MailingListConfiguration(Optional.of("ou=lists,dc=james,dc=org"), "description", false));
+
+        Configuration configuration = new PropertiesConfiguration();
+        configuration.addProperty("groupObjectClass", "groupofnames");
+        fallbackTestee.init(configuration);
+
+        assertThat(fallbackTestee.isValidRecipient(mock(SMTPSession.class), new MailAddress("mygroup@lists.james.org")))
+            .isTrue();
     }
 
     static HierarchicalConfiguration<ImmutableNode> ldapRepositoryConfigurationWithVirtualHosting(LdapGenericContainer ldapContainer) {

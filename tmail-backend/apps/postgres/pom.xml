@@ -261,6 +261,10 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>webadmin-mailing-list</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>tmail-webadmin-team-mailboxes</artifactId>
         </dependency>
         <dependency>
