@@ -103,12 +103,15 @@ pipeline {
               dir("tmail-backend") {
                 sh 'mvn -Pci jib:build -Djib.to.image=linagora/tmail-backend-pr -Djib.to.tags=$CHANGE_ID -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -pl apps/distributed'
                 sh 'mvn -Pci jib:build -Djib.to.image=linagora/tmail-migration-proxy-pr -Djib.to.tags=$CHANGE_ID -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -pl apps/migration-proxy'
+                // Build tmail distributed AI PR image
+                sh 'cp tmail-third-party/ai-bot/target/tmail-ai-bot-jar-with-dependencies.jar apps/distributed/src/main/extensions-jars'
+                sh 'mvn -Pci jib:build -Djib.to.image=linagora/tmail-backend-distributed-ai-pr -Djib.to.tags=$CHANGE_ID -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -pl apps/distributed'
               }
               sh """
                 HTTP_STATUS=\$(curl -s -o /tmp/gh_comment_response.json -w "%{http_code}" -X POST \\
                   -H "Authorization: token \${GITHUB_CREDENTIAL_PSW}" \\
                   -H "Content-Type: application/json" \\
-                  -d "{\\"body\\": \\"Docker images published for this PR: linagora/tmail-backend-pr:\${CHANGE_ID} linagora/tmail-migration-proxy-pr:\${CHANGE_ID}\\"}" \\
+                  -d "{\\"body\\": \\"Docker images published for this PR: linagora/tmail-backend-pr:\${CHANGE_ID} linagora/tmail-backend-distributed-ai-pr:\${CHANGE_ID} linagora/tmail-migration-proxy-pr:\${CHANGE_ID}\\"}" \\
                   "https://api.github.com/repos/linagora/tmail-backend/issues/\${CHANGE_ID}/comments")
                 if [ "\$HTTP_STATUS" -lt 200 ] || [ "\$HTTP_STATUS" -ge 300 ]; then
                   echo "WARNING: GitHub API comment failed with HTTP \$HTTP_STATUS"
