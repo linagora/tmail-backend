@@ -92,8 +92,18 @@ public class RedisKeyRegistrationHandler {
 
         declarePubSubChannel();
 
-        Disposable newSubscription = Mono.from(redisSubscriber.subscribe(registrationChannel.asString()))
-            .thenMany(redisSubscriber.observeChannels())
+        // Await the SUBSCRIBE acknowledgement so that start() has a real "channel is active" postcondition.
+        // Otherwise the registration binding (awaited SADD) can be visible while the Redis channel is not yet
+        // listed by PUBSUB CHANNELS, which would make CleanRedisEventBusService misclassify it as dangling.
+        Mono.from(redisSubscriber.subscribe(registrationChannel.asString()))
+            .timeout(redisEventBusConfiguration.durationTimeout())
+            .onErrorResume(REDIS_ERROR_PREDICATE.and(e -> redisEventBusConfiguration.failureIgnore()), e -> {
+                LOGGER.warn("Error while subscribing to channel", e);
+                return Mono.empty();
+            })
+            .block();
+
+        Disposable newSubscription = redisSubscriber.observeChannels()
             .flatMap(this::handleChannelMessage, EventBus.DEFAULT_MAX_CONCURRENCY)
             .doOnError(throwable -> LOGGER.error("Error while handling notification message for eventBus={}", eventBusName.value(), throwable))
             .subscribeOn(scheduler)
