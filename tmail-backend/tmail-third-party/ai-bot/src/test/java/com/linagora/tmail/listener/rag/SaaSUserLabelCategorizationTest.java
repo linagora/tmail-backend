@@ -26,6 +26,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Consumer;
 
 import jakarta.mail.Flags;
 
@@ -187,58 +188,38 @@ class SaaSUserLabelCategorizationTest {
             .map(MessageResult::getFlags);
     }
 
-
     @Test
     void payingUserShouldTriggerAIEventWithSaaSPayingUserFilter() throws Exception {
-        MessageIdManager messageIdManager = setUpPayingUserTest(new SaaSAccount(true, true));
-
-        MessageId messageId = appendUrgentEmail(aliceInbox, aliceSession);
-
-        awaitUntilAsserted(() -> {
-            assertThat(readFlags(messageIdManager, messageId, aliceSession).block()).isNotNull();
-            assertThat(readFlags(messageIdManager, messageId, aliceSession).block().getUserFlags())
-                .contains(NEEDS_ACTION_FLAG);
-        });
+        assertSaaSCategorization(Optional.of(new SaaSAccount(true, true)),
+            flags -> assertThat(flags).contains(NEEDS_ACTION_FLAG));
     }
 
     @Test
     void nonPayingUserShouldNotTriggerAIEventWithSaaSPayingUserFilter() throws Exception {
-        MessageIdManager messageIdManager = setUpPayingUserTest(new SaaSAccount(true, false));
-
-        MessageId messageId = appendUrgentEmail(aliceInbox, aliceSession);
-
-        awaitUntilAsserted(() -> {
-            assertThat(readFlags(messageIdManager, messageId, aliceSession).block()).isNotNull();
-            assertThat(readFlags(messageIdManager, messageId, aliceSession).block().getUserFlags())
-                .doesNotContain(NEEDS_ACTION_FLAG);
-        });
+        assertSaaSCategorization(Optional.of(new SaaSAccount(true, false)),
+            flags -> assertThat(flags).doesNotContain(NEEDS_ACTION_FLAG));
     }
 
     @Test
     void noSaaSAccountStoredShouldNotTriggerAIEventWithSaaSPayingUserFilter() throws Exception {
-        MessageIdManager messageIdManager = setUpPayingUserTest(null);
+        assertSaaSCategorization(Optional.empty(),
+            flags -> assertThat(flags).doesNotContain(NEEDS_ACTION_FLAG));
+    }
 
+    private void assertSaaSCategorization(Optional<SaaSAccount> account, Consumer<String[]> flagsAssertion) throws Exception {
+        MessageIdManager messageIdManager = setUpPayingUserTest(account);
         MessageId messageId = appendUrgentEmail(aliceInbox, aliceSession);
-
         awaitUntilAsserted(() -> {
             assertThat(readFlags(messageIdManager, messageId, aliceSession).block()).isNotNull();
-            assertThat(readFlags(messageIdManager, messageId, aliceSession).block().getUserFlags())
-                .doesNotContain(NEEDS_ACTION_FLAG);
+            flagsAssertion.accept(readFlags(messageIdManager, messageId, aliceSession).block().getUserFlags());
         });
     }
 
-    private MessageIdManager setUpPayingUserTest(SaaSAccount account) throws Exception {
+    private MessageIdManager setUpPayingUserTest(Optional<SaaSAccount> account) throws Exception {
         InMemoryIntegrationResources resources = InMemoryIntegrationResources.builder()
             .preProvisionnedFakeAuthenticator()
             .fakeAuthorizator()
-            .eventBus(new InVMEventBus(
-                new InVmEventDelivery(new RecordingMetricFactory()),
-                RetryBackoffConfiguration.builder()
-                    .maxRetries(2)
-                    .firstBackoff(Duration.ofMillis(1))
-                    .jitterFactor(0.5)
-                    .build(),
-                new MemoryEventDeadLetters()))
+            .inVmEventBus()
             .defaultAnnotationLimits()
             .defaultMessageParser()
             .scanningSearchIndex()
@@ -260,14 +241,11 @@ class SaaSUserLabelCategorizationTest {
         setUpListeners(
             new SaaSPayingUser(saasAccountRepository),
             messageIdManager,
-            identityRepository
-        );
+            identityRepository);
 
-        if (account != null) {
-            Mono.from(
-                saasAccountRepository.upsertSaasAccount(ALICE, account)
-            ).block();
-        }
+        account.ifPresent(saasAccount ->
+            Mono.from(saasAccountRepository.upsertSaasAccount(ALICE, saasAccount))
+                .block());
 
         model.llOutput = "%s"
             .formatted(NEEDS_ACTION_FLAG);
