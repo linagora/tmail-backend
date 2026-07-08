@@ -36,6 +36,7 @@ import org.apache.james.user.ldap.LDAPConnectionFactory;
 import org.apache.james.user.ldap.LdapRepositoryConfiguration;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.linagora.tmail.mailet.MailingListConfiguration;
 import com.linagora.tmail.team.TeamMailbox;
 import com.linagora.tmail.team.TeamMailboxRepository;
 import com.unboundid.ldap.sdk.Filter;
@@ -52,6 +53,7 @@ import reactor.core.publisher.Mono;
 public class TMailWithMailingListValidRcptHandler extends ValidRcptHandler {
     private final TeamMailboxRepository teamMailboxRepository;
     private final LDAPConnectionPool ldapConnectionPool;
+    private final MailingListConfiguration mailingListConfiguration;
     private Filter objectClassFilter;
     private String baseDN;
     private String mailAttributeForGroups;
@@ -61,10 +63,12 @@ public class TMailWithMailingListValidRcptHandler extends ValidRcptHandler {
                                                 RecipientRewriteTable recipientRewriteTable,
                                                 DomainList domains,
                                                 TeamMailboxRepository teamMailboxRepository,
-                                                LDAPConnectionPool ldapConnectionPool) {
+                                                LDAPConnectionPool ldapConnectionPool,
+                                                MailingListConfiguration mailingListConfiguration) {
         super(users, recipientRewriteTable, domains);
         this.teamMailboxRepository = teamMailboxRepository;
         this.ldapConnectionPool = ldapConnectionPool;
+        this.mailingListConfiguration = mailingListConfiguration;
     }
 
     @VisibleForTesting
@@ -73,8 +77,19 @@ public class TMailWithMailingListValidRcptHandler extends ValidRcptHandler {
                                                 DomainList domains,
                                                 TeamMailboxRepository teamMailboxRepository,
                                                 LdapRepositoryConfiguration configuration) {
+        this(users, recipientRewriteTable, domains, teamMailboxRepository, configuration, MailingListConfiguration.EMPTY);
+    }
+
+    @VisibleForTesting
+    public TMailWithMailingListValidRcptHandler(UsersRepository users,
+                                                RecipientRewriteTable recipientRewriteTable,
+                                                DomainList domains,
+                                                TeamMailboxRepository teamMailboxRepository,
+                                                LdapRepositoryConfiguration configuration,
+                                                MailingListConfiguration mailingListConfiguration) {
         super(users, recipientRewriteTable, domains);
         this.teamMailboxRepository = teamMailboxRepository;
+        this.mailingListConfiguration = mailingListConfiguration;
         try {
             this.ldapConnectionPool = new LDAPConnectionFactory(configuration).getLdapConnectionPool();
         } catch (LDAPException e) {
@@ -127,8 +142,10 @@ public class TMailWithMailingListValidRcptHandler extends ValidRcptHandler {
     @Override
     public void init(Configuration config) throws ConfigurationException {
         super.init(config);
-        baseDN = config.getString("baseDN");
-        mailAttributeForGroups = config.getString("mailAttributeForGroups", "mail");
+        baseDN = mailingListConfiguration.resolveBaseDN(Optional.ofNullable(config.getString("baseDN", null)))
+            .orElse(null);
+        mailAttributeForGroups = mailingListConfiguration.resolveMailAttributeForGroups(
+            Optional.ofNullable(config.getString("mailAttributeForGroups", null)));
         String groupObjectClass = config.getString("groupObjectClass", "groupofnames");
         objectClassFilter = Filter.createEqualityFilter("objectClass", groupObjectClass);
     }

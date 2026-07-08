@@ -138,6 +138,8 @@ import com.linagora.tmail.webadmin.jmap.JmapSettingsReportRoutesModule;
 import com.linagora.tmail.webadmin.jmap.JmapSettingsRoutesModule;
 import com.linagora.tmail.webadmin.label.LabelRoutesModule;
 import com.linagora.tmail.webadmin.mailbox.MailboxResourcesLocationRoutesModule;
+import com.linagora.tmail.webadmin.mailinglist.MailingListConfigurationModule;
+import com.linagora.tmail.webadmin.mailinglist.MailingListRoutesModule;
 import com.linagora.tmail.webadmin.quota.UserQuotaReporterRoutesModule;
 import com.linagora.tmail.webadmin.templates.TemplatesProvisionModule;
 
@@ -282,7 +284,7 @@ public class MemoryServer {
 
     private static List<Module> chooseDomainSignatureModule(UsersRepositoryModuleChooser.Implementation implementation) {
         if (implementation == UsersRepositoryModuleChooser.Implementation.LDAP) {
-            return List.of(new DomainSignatureTemplateRoutesModule());
+            return List.of(new DomainSignatureTemplateRoutesModule(), new MailingListConfigurationModule(), new MailingListRoutesModule());
         }
         return List.of();
     }

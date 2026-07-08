@@ -7,6 +7,41 @@ See xref:tmail-backend/features/ldapMailingLists.adoc[explanations] on LDAP mail
 
 We integrated a working example onto the link:https://github.com/linagora/tmail-backend/tree/master/demo[Twake mail demo].
 
+=== Centralized configuration: mailingLists.properties
+
+Mailing list related components (the `LDAPMailingList` and `OBMLDAPMailingList` mailets, the
+`TMailWithMailingListValidRcptHandler` SMTP handler and the xref:tmail-backend/webadmin.adoc#_mailing_lists[`/mailingLists` webadmin routes])
+can share a centralized configuration defined in an optional `mailingLists.properties` file.
+
+.mailingLists.properties content
+|===
+| Property name | Explanation
+
+| baseDN
+| Optional. The base DN of the subtree holding the mailing list groups. EG: `ou=lists,dc=linagora,dc=com`.
+When set, mailing list components no longer require their own `baseDN` and fall back to this value. A `baseDN`
+explicitly configured on a component (mailet init parameter or SMTP handler configuration) takes precedence.
+
+| mailAttributeForGroups
+| Optional, defaults to `mail`. The LDAP attribute holding the mail address of a group. For easy testing this can be
+set to `description` but for production use a special LDAP schema needs to be crafted for using the `mail` attribute.
+
+| obm.compatibility
+| Optional, defaults to `false`. When `true`, mailing lists follow the OBM schema (`obmGroup` object class,
+members resolved from the `mailBox` and `externalContactEmail` attributes) rather than the default `groupOfNames` schema.
+|===
+
+Example:
+
+....
+baseDN=ou=lists,dc=linagora,dc=com
+mailAttributeForGroups=mail
+obm.compatibility=false
+....
+
+When no `mailingLists.properties` file is provided, components keep their previous behaviour (each requires its own
+`baseDN`) and the `/mailingLists` webadmin routes answer `409 Conflict`.
+
 === LDAPMailingList
 
 Mailing list resolution for Twake mail based on LDAP groups.</p>
