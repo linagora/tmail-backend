@@ -31,11 +31,6 @@ public class RabbitMQExtension implements GuiceModuleTestExtension {
     private final DockerRabbitMQ dockerRabbitMQ = DockerRabbitMQ.withoutCookie();
 
     @Override
-    public void afterAll(ExtensionContext extensionContext) {
-        dockerRabbitMQ.stop();
-    }
-
-    @Override
     public void beforeAll(ExtensionContext extensionContext) {
         dockerRabbitMQ.start();
     }

@@ -37,11 +37,6 @@ public class CassandraExtension implements GuiceModuleTestExtension {
     }
 
     @Override
-    public void afterAll(ExtensionContext extensionContext) {
-        cassandra.stop();
-    }
-
-    @Override
     public Module getModule() {
         return cassandra.getModule();
     }
