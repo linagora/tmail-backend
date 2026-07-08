@@ -18,8 +18,10 @@
 
 package com.linagora.tmail.imap;
 
+import java.util.List;
 import java.util.Optional;
 
+import org.apache.james.imap.api.ImapConfiguration;
 import org.apache.james.imap.api.message.request.ImapRequest;
 import org.apache.james.imap.api.message.response.StatusResponseFactory;
 import org.apache.james.imap.api.process.ImapSession;
@@ -31,6 +33,7 @@ import org.apache.james.protocols.api.sasl.SaslIdentity;
 import org.apache.james.protocols.api.sasl.SaslStep;
 import org.apache.james.protocols.sasl.JamesSaslAuthenticator;
 
+import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
 
 /**
@@ -45,6 +48,7 @@ import com.google.inject.Inject;
  */
 public class TMailLoginProcessor extends LoginProcessor {
     private final TeamMailboxImpersonationResolver teamMailboxImpersonationResolver;
+    private List<String> imapAdminUsers;
 
     @Inject
     public TMailLoginProcessor(MailboxManager mailboxManager, StatusResponseFactory factory,
@@ -54,12 +58,19 @@ public class TMailLoginProcessor extends LoginProcessor {
         super(mailboxManager, factory, metricFactory, pathConverterFactory,
             jamesSaslAuthenticator.withExtraAuthorizator(teamMailboxImpersonationResolver.asAuthorizator()));
         this.teamMailboxImpersonationResolver = teamMailboxImpersonationResolver;
+        this.imapAdminUsers = ImmutableList.of();
+    }
+
+    @Override
+    public void configure(ImapConfiguration imapConfiguration) {
+        super.configure(imapConfiguration);
+        this.imapAdminUsers = imapConfiguration.getAdminUsers();
     }
 
     @Override
     protected void handleSaslSuccess(SaslStep.Success success, ImapSession session, ImapRequest request, Responder responder, String successLog) {
         SaslIdentity identity = success.identity();
-        Optional<TeamMailboxImpersonation> teamMailboxScope = teamMailboxImpersonationResolver.resolveScope(identity);
+        Optional<TeamMailboxImpersonation> teamMailboxScope = teamMailboxImpersonationResolver.resolveScope(identity, imapAdminUsers);
         if (teamMailboxScope.isPresent()) {
             TeamMailboxImpersonation impersonation = teamMailboxScope.get();
             doAuth(() -> TeamMailboxScope.scopedSession(getMailboxManager(), impersonation.sessionUser(), impersonation.teamMailbox()),

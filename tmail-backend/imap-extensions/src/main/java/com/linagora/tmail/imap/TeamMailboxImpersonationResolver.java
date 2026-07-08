@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.imap;
 
+import java.util.Collection;
 import java.util.Optional;
 
 import org.apache.james.core.Username;
@@ -26,6 +27,7 @@ import org.apache.james.protocols.api.sasl.SaslIdentity;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.james.user.api.UsersRepositoryException;
 
+import com.google.common.collect.ImmutableList;
 import com.google.inject.Inject;
 import com.linagora.tmail.team.TeamMailbox;
 import com.linagora.tmail.team.TeamMailboxRepository;
@@ -42,7 +44,9 @@ import scala.jdk.javaapi.OptionConverters;
  * of its members (or managers). This gives members and managers the right to impersonate a team
  * mailbox, as discussed in <a href="https://github.com/linagora/tmail-backend/issues/2405">#2405</a>.
  *
- * A configured server administrator may impersonate any team mailbox, regardless of membership. As
+ * A configured server administrator may impersonate any team mailbox, regardless of membership. Both
+ * a users repository administrator ({@code administratorId} in {@code usersrepository.xml}) and an
+ * IMAP administrator ({@code auth.adminUsers.adminUser} in {@code imapserver.xml}) are honored. As
  * an administrator holds no ACL on the team mailbox, the resulting session runs as the team mailbox
  * {@link TeamMailbox#owner()} (the owner of the {@code #TeamMailbox} mailboxes) so that ownership,
  * rather than membership, grants full access.
@@ -63,15 +67,17 @@ public class TeamMailboxImpersonationResolver {
     /**
      * Resolves the team mailbox impersonation carried by a SASL identity: present only for a {@code +}
      * delegation whose authorization id designates a team mailbox the authenticated user may impersonate
-     * (a member/manager, or a server administrator).
+     * (a member/manager, or a server administrator). {@code imapAdminUsers} carries the administrators
+     * configured at the IMAP level ({@code auth.adminUsers.adminUser}), which the users repository does
+     * not know about.
      */
-    public Optional<TeamMailboxImpersonation> resolveScope(SaslIdentity identity) {
+    public Optional<TeamMailboxImpersonation> resolveScope(SaslIdentity identity, Collection<String> imapAdminUsers) {
         Username authenticationId = identity.authenticationId();
         if (authenticationId.equals(identity.authorizationId())) {
             return Optional.empty();
         }
         return teamMailbox(identity.authorizationId())
-            .flatMap(teamMailbox -> sessionUser(authenticationId, teamMailbox)
+            .flatMap(teamMailbox -> sessionUser(authenticationId, teamMailbox, imapAdminUsers)
                 .map(sessionUser -> new TeamMailboxImpersonation(teamMailbox, sessionUser)));
     }
 
@@ -80,10 +86,14 @@ public class TeamMailboxImpersonationResolver {
      * a member/manager or an administrator to act as a team mailbox. Returns {@code FORBIDDEN} (a neutral
      * verdict here) when the authorization id is not a team mailbox the user may impersonate, letting the
      * regular user-to-user delegation authorizator decide.
+     *
+     * IMAP-level administrators ({@code auth.adminUsers.adminUser}) are intentionally not considered here:
+     * James already grants them the delegation through its own {@code withAdminUsers} authorizator, so
+     * this only needs to cover members/managers and users repository administrators.
      */
     public Authorizator asAuthorizator() {
         return (userId, otherUserId) -> teamMailbox(otherUserId)
-            .flatMap(teamMailbox -> sessionUser(userId, teamMailbox))
+            .flatMap(teamMailbox -> sessionUser(userId, teamMailbox, ImmutableList.of()))
             .map(sessionUser -> Authorizator.AuthorizationState.ALLOWED)
             .orElse(Authorizator.AuthorizationState.FORBIDDEN);
     }
@@ -97,11 +107,11 @@ public class TeamMailboxImpersonationResolver {
      * The user the impersonating session should run as: the member himself when he belongs to the team
      * mailbox, the team mailbox owner when an administrator impersonates it, empty otherwise.
      */
-    private Optional<Username> sessionUser(Username authenticationId, TeamMailbox teamMailbox) {
+    private Optional<Username> sessionUser(Username authenticationId, TeamMailbox teamMailbox, Collection<String> imapAdminUsers) {
         if (isMember(authenticationId, teamMailbox)) {
             return Optional.of(authenticationId);
         }
-        if (isAdministrator(authenticationId)) {
+        if (isAdministrator(authenticationId, imapAdminUsers)) {
             return Optional.of(teamMailbox.owner());
         }
         return Optional.empty();
@@ -113,7 +123,10 @@ public class TeamMailboxImpersonationResolver {
             .block());
     }
 
-    private boolean isAdministrator(Username user) {
+    private boolean isAdministrator(Username user, Collection<String> imapAdminUsers) {
+        if (imapAdminUsers.contains(user.asString())) {
+            return true;
+        }
         try {
             return usersRepository.isAdministrator(user);
         } catch (UsersRepositoryException e) {

@@ -54,9 +54,11 @@ class IMAPTeamMailboxMigrationIntegrationTest {
     static final Username MINISTER = Username.of("minister@" + DOMAIN);
     static final Username OTHER = Username.of("other@" + DOMAIN);
     static final Username ADMIN = Username.of("admin@" + DOMAIN);
+    static final Username IMAP_ADMIN = Username.of("imapadmin@" + DOMAIN);
     static final String MINISTER_PASSWORD = "secret";
     static final String OTHER_PASSWORD = "secret";
     static final String ADMIN_PASSWORD = "secret";
+    static final String IMAP_ADMIN_PASSWORD = "secret";
     static final String IMAP_HOST = "127.0.0.1";
     static int imapPort;
     static final TeamMailbox MARKETING_TEAM_MAILBOX = TeamMailbox.apply(Domain.of(DOMAIN),
@@ -85,7 +87,8 @@ class IMAPTeamMailboxMigrationIntegrationTest {
             .addDomain(DOMAIN)
             .addUser(MINISTER.asString(), MINISTER_PASSWORD)
             .addUser(OTHER.asString(), OTHER_PASSWORD)
-            .addUser(ADMIN.asString(), ADMIN_PASSWORD);
+            .addUser(ADMIN.asString(), ADMIN_PASSWORD)
+            .addUser(IMAP_ADMIN.asString(), IMAP_ADMIN_PASSWORD);
 
         MailboxProbeImpl mailboxProbe = server.getProbe(MailboxProbeImpl.class);
         mailboxProbe.createMailbox(MailboxPath.inbox(MINISTER));
@@ -223,6 +226,28 @@ class IMAPTeamMailboxMigrationIntegrationTest {
     void adminShouldAccessTeamMailboxMessageWhenScoped() throws Exception {
         TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
             .login(scopedLogin(ADMIN), ADMIN_PASSWORD);
+
+        assertThat(imapClient.sendCommand("LIST \"\" \"*\""))
+            .contains("* LIST (\\HasNoChildren) \".\" \"INBOX\"")
+            .doesNotContain("#TeamMailbox");
+        assertThat(imapClient.sendCommand("SELECT INBOX"))
+            .contains("SELECT completed");
+        assertThat(imapClient.sendCommand("FETCH 1 BODY[TEXT]"))
+            .contains("This is content of the team mailbox");
+    }
+
+    @Test
+    void imapConfiguredAdminShouldLoginWhenScopedToTeamMailboxHeIsNotMemberOf() throws Exception {
+        assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(scopedLogin(IMAP_ADMIN), IMAP_ADMIN_PASSWORD)
+            .sendCommand("NOOP"))
+            .contains("OK NOOP completed");
+    }
+
+    @Test
+    void imapConfiguredAdminShouldAccessTeamMailboxMessageWhenScoped() throws Exception {
+        TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(scopedLogin(IMAP_ADMIN), IMAP_ADMIN_PASSWORD);
 
         assertThat(imapClient.sendCommand("LIST \"\" \"*\""))
             .contains("* LIST (\\HasNoChildren) \".\" \"INBOX\"")
