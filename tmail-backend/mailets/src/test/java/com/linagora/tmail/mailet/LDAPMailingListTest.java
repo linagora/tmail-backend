@@ -96,6 +96,41 @@ class LDAPMailingListTest {
     }
 
     @Test
+    void shouldResolveGroupWhenSubAddressingAndReAppendDetailToMembers() throws Exception {
+        LDAPMailingList testee = new LDAPMailingList(LdapRepositoryConfiguration.from(ldapRepositoryConfigurationWithVirtualHosting(ldapContainer)));
+        FakeMailContext mailetContext = FakeMailContext.defaultContext();
+        FakeMailetConfig config = FakeMailetConfig.builder()
+            .mailetName("LDAPMailingList")
+            .setProperty("baseDN", "ou=lists,dc=james,dc=org")
+            .setProperty("rejectedSenderProcessor", "rejectedSender")
+            .setProperty("mailingListPredicate", "lists-prefix")
+            .setProperty("mailAttributeForGroups", "description")
+            .mailetContext(mailetContext)
+            .build();
+        testee.init(config);
+
+        FakeMail mail = FakeMail.builder()
+            .name("test-mail")
+            .state(FakeMail.DEFAULT)
+            .sender("bob@james.org")
+            .recipient("mygroup+zabbix@lists.james.org")
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText(MESSAGE_CONTENT)
+                .build())
+            .build();
+        testee.service(mail);
+
+        SoftAssertions.assertSoftly(Throwing.consumer(softly -> {
+            softly.assertThat(mailetContext.getSentMails()).hasSize(1);
+            softly.assertThat(mailetContext.getSentMails().get(0).getRecipients())
+                .containsOnly(new MailAddress("james-user+zabbix@james.org"),
+                    new MailAddress("james-user2+zabbix@james.org"));
+            softly.assertThat(mail.getRecipients()).isEmpty();
+        }));
+    }
+
+    @Test
     void shouldFallbackToMailingListConfigurationWhenBaseDNAndAttributeNotSetAsInitParameters() throws Exception {
         LDAPMailingList testee = new LDAPMailingList(
             LdapRepositoryConfiguration.from(ldapRepositoryConfigurationWithVirtualHosting(ldapContainer)),

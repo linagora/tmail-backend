@@ -34,6 +34,7 @@ import jakarta.mail.internet.MimeMessage;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.MaybeSender;
 import org.apache.james.lifecycle.api.LifecycleUtil;
+import org.apache.james.user.api.UsersRepository;
 import org.apache.james.user.ldap.LDAPConnectionFactory;
 import org.apache.james.user.ldap.LdapRepositoryConfiguration;
 import org.apache.james.util.AuditTrail;
@@ -173,10 +174,10 @@ public class OBMLDAPMailingList extends GenericMailet {
         mail.getRecipients()
             .stream()
             .filter(recipient -> getMailetContext().isLocalServer(recipient.getDomain()))
-            .flatMap(Throwing.function(list -> resolveListDN(list).stream()))
-            .map(Throwing.function(this::asGroupResolutionResult))
-            .flatMap(Optional::stream)
-            .map(entry -> listToMailTransformation(mail.getMaybeSender(), entry))
+            .flatMap(Throwing.function(recipient -> resolveListDN(recipient).stream()
+                .map(Throwing.function(this::asGroupResolutionResult))
+                .flatMap(Optional::stream)
+                .map(result -> listToMailTransformation(mail.getMaybeSender(), recipient, result))))
             .reduce(MailTransformation.NOOP, MailTransformation::doCompose)
             .transform(mail);
     }
@@ -240,10 +241,11 @@ public class OBMLDAPMailingList extends GenericMailet {
     }
 
     private Optional<SearchResultEntry> resolveListDN(MailAddress rcpt) throws LDAPSearchException {
+        MailAddress strippedRcpt = rcpt.stripDetails(UsersRepository.LOCALPART_DETAIL_DELIMITER);
         try {
             SearchResult searchResult = ldapConnectionPool.search(baseDN,
                 SearchScope.SUB,
-                createFilter(rcpt.asString(), mailAttributeForGroups),
+                createFilter(strippedRcpt.asString(), mailAttributeForGroups),
                 listAttributes);
 
             return searchResult.getSearchEntries().stream().findFirst();
@@ -255,6 +257,23 @@ public class OBMLDAPMailingList extends GenericMailet {
         }
     }
 
+    private static Optional<String> extractDetail(MailAddress recipient) {
+        String localPart = recipient.getLocalPart();
+        int detailStart = localPart.indexOf(UsersRepository.LOCALPART_DETAIL_DELIMITER);
+        if (detailStart < 0) {
+            return Optional.empty();
+        }
+        return Optional.of(localPart.substring(detailStart));
+    }
+
+    private static MailAddress appendDetail(MailAddress member, String detail) {
+        try {
+            return new MailAddress(member.getLocalPart() + detail + "@" + member.getDomain().asString());
+        } catch (AddressException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private Filter createFilter(String retrievalName, String ldapUserRetrievalAttribute) {
         Filter specificUserFilter = Filter.createEqualityFilter(ldapUserRetrievalAttribute, retrievalName);
         return extraFilter
@@ -262,8 +281,9 @@ public class OBMLDAPMailingList extends GenericMailet {
             .orElseGet(() -> Filter.createANDFilter(objectClassFilter, specificUserFilter));
     }
 
-    private MailTransformation listToMailTransformation(MaybeSender maybeSender, GroupResolutionResult list) {
+    private MailTransformation listToMailTransformation(MaybeSender maybeSender, MailAddress recipient, GroupResolutionResult list) {
         MailAddress listAddress = list.listAddress();
+        Optional<String> detail = extractDetail(recipient);
 
         boolean authorized = list.isPublic()
             || maybeSender.isNullSender()
@@ -271,7 +291,7 @@ public class OBMLDAPMailingList extends GenericMailet {
 
         if (!authorized) {
             return toRejectedProcessor(listAddress)
-                .doCompose(MailTransformation.removeRecipient.apply(listAddress))
+                .doCompose(MailTransformation.removeRecipient.apply(recipient))
                 .doCompose(mail -> {
                     AuditTrail.entry()
                         .protocol("mailetcontainer")
@@ -287,7 +307,11 @@ public class OBMLDAPMailingList extends GenericMailet {
                 });
         }
 
-        List<MailAddress> memberAddresses = list.members();
+        List<MailAddress> memberAddresses = detail
+            .<List<MailAddress>>map(value -> list.members().stream()
+                .map(member -> appendDetail(member, value))
+                .collect(ImmutableList.toImmutableList()))
+            .orElseGet(list::members);
 
         MailTransformation sendEmailToGroup = mail -> {
             if (!memberAddresses.isEmpty()) {
@@ -314,7 +338,7 @@ public class OBMLDAPMailingList extends GenericMailet {
 
             return mail;
         };
-        return MailTransformation.removeRecipient.apply(listAddress)
+        return MailTransformation.removeRecipient.apply(recipient)
             .doComposeIf(
                 sendEmailToGroup.doCompose(MailTransformation.removeRecipients.apply(memberAddresses)),
                 mail -> !LoopPrevention.RecordedRecipients.fromMail(mail).getRecipients().contains(listAddress));

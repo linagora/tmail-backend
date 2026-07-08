@@ -37,6 +37,7 @@ import org.apache.james.core.Domain;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.MaybeSender;
 import org.apache.james.lifecycle.api.LifecycleUtil;
+import org.apache.james.user.api.UsersRepository;
 import org.apache.james.user.ldap.LDAPConnectionFactory;
 import org.apache.james.user.ldap.LdapRepositoryConfiguration;
 import org.apache.james.util.AuditTrail;
@@ -234,8 +235,8 @@ public class LDAPMailingList extends GenericMailet {
         mail.getRecipients()
             .stream()
             .filter(mailingListPredicate)
-            .flatMap(Throwing.function(list -> resolveListDN(list).stream()))
-            .map(entry -> listToMailTransformation(mail.getMaybeSender(), entry))
+            .flatMap(Throwing.function(recipient -> resolveListDN(recipient).stream()
+                .map(entry -> listToMailTransformation(mail.getMaybeSender(), recipient, entry))))
             .reduce(MailTransformation.NOOP, MailTransformation::doCompose)
             .transform(mail);
     }
@@ -313,10 +314,11 @@ public class LDAPMailingList extends GenericMailet {
     }
 
     private Optional<SearchResultEntry> resolveListDN(MailAddress rcpt) throws LDAPSearchException {
+        MailAddress strippedRcpt = rcpt.stripDetails(UsersRepository.LOCALPART_DETAIL_DELIMITER);
         try {
             SearchResult searchResult = ldapConnectionPool.search(baseDN,
                 SearchScope.SUB,
-                createFilter(rcpt.asString(), mailAttributeForGroups),
+                createFilter(strippedRcpt.asString(), mailAttributeForGroups),
                 listAttributes);
 
             return searchResult.getSearchEntries().stream().findFirst();
@@ -328,6 +330,23 @@ public class LDAPMailingList extends GenericMailet {
         }
     }
 
+    private static Optional<String> extractDetail(MailAddress recipient) {
+        String localPart = recipient.getLocalPart();
+        int detailStart = localPart.indexOf(UsersRepository.LOCALPART_DETAIL_DELIMITER);
+        if (detailStart < 0) {
+            return Optional.empty();
+        }
+        return Optional.of(localPart.substring(detailStart));
+    }
+
+    private static MailAddress appendDetail(MailAddress member, String detail) {
+        try {
+            return new MailAddress(member.getLocalPart() + detail + "@" + member.getDomain().asString());
+        } catch (AddressException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     private Filter createFilter(String retrievalName, String ldapUserRetrievalAttribute) {
         Filter specificUserFilter = Filter.createEqualityFilter(ldapUserRetrievalAttribute, retrievalName);
         return extraFilter
@@ -335,15 +354,16 @@ public class LDAPMailingList extends GenericMailet {
             .orElseGet(() -> Filter.createANDFilter(objectClassFilter, specificUserFilter));
     }
 
-    private MailTransformation listToMailTransformation(MaybeSender maybeSender, SearchResultEntry list) {
+    private MailTransformation listToMailTransformation(MaybeSender maybeSender, MailAddress recipient, SearchResultEntry list) {
         try {
             MailAddress listAddress = new MailAddress(list.getAttributeValue(mailAttributeForGroups));
+            Optional<String> detail = extractDetail(recipient);
             boolean authorized = chooseSenderValidationPolicy(list)
                 .validate(maybeSender, list);
 
             if (!authorized) {
                 return toRejectedProcessor(listAddress)
-                    .doCompose(MailTransformation.removeRecipient.apply(listAddress))
+                    .doCompose(MailTransformation.removeRecipient.apply(recipient))
                     .doCompose(mail -> {
                         AuditTrail.entry()
                             .protocol("mailetcontainer")
@@ -364,9 +384,10 @@ public class LDAPMailingList extends GenericMailet {
                 .flatMap(attribute -> Stream.of(attribute.getValues()))
                 .map(Throwing.function(this::resolveUserMail))
                 .flatMap(Collection::stream)
+                .map(member -> detail.map(value -> appendDetail(member, value)).orElse(member))
                 .collect(ImmutableList.toImmutableList());
 
-            return MailTransformation.removeRecipient.apply(listAddress)
+            return MailTransformation.removeRecipient.apply(recipient)
                 .doComposeIf(
                     mail -> {
 
