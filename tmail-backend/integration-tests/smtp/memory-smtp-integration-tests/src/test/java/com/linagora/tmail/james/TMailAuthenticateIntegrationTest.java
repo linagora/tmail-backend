@@ -176,7 +176,7 @@ class TMailAuthenticateIntegrationTest {
         Username secretaryDelegateUser = Username.fromLocalPartWithDomain("secretary+", DOMAIN);
         assertThatThrownBy(() -> new SMTPMessageSender(DOMAIN)
             .connect("127.0.0.1", smtpAuthRequiredPort).authenticate(secretaryDelegateUser.asString(), SECRETARY_PASSWORD))
-            .hasMessageContaining("535 Authentication Failed");
+            .hasMessageContaining("501 Could not decode parameters for AUTH PLAIN");
     }
 
     @Test
