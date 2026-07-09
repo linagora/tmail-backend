@@ -27,6 +27,7 @@ import org.apache.james.data.UsersRepositoryModuleChooser;
 import org.apache.james.filesystem.api.FileSystem;
 import org.apache.james.filesystem.api.JamesDirectoriesProvider;
 import org.apache.james.jmap.JMAPModule;
+import org.apache.james.jmap.oidc.JMAPOidcConfiguration;
 import org.apache.james.server.core.JamesServerResourceLoader;
 import org.apache.james.server.core.MissingArgumentException;
 import org.apache.james.server.core.configuration.Configuration;
@@ -38,7 +39,6 @@ import org.apache.james.utils.PropertiesProvider;
 import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
-import com.linagora.tmail.james.jmap.oidc.JMAPOidcConfiguration;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
 
 public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories,

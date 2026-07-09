@@ -18,7 +18,6 @@
 
 package com.linagora.tmail.james.jmap.routes
 
-import java.nio.charset.StandardCharsets
 import java.util.stream
 import java.util.stream.Stream
 
@@ -29,21 +28,19 @@ import com.google.inject.multibindings.Multibinder
 import com.linagora.tmail.james.jmap.ZipUtil
 import com.linagora.tmail.james.jmap.ZipUtil.ZipEntryStreamSource
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_DOWNLOAD_ALL
-import com.linagora.tmail.james.jmap.routes.DownloadAllRoutes.{DEFAULT_FILE_NAME, ZIP_CONTENT_TYPE}
+import com.linagora.tmail.james.jmap.routes.DownloadAllRoutes.{DEFAULT_FILE_NAME, ZIP_CONTENT_TYPE, respondDetails}
 import io.netty.buffer.Unpooled
-import io.netty.handler.codec.http.HttpHeaderNames.{CONTENT_LENGTH, CONTENT_TYPE}
+import io.netty.handler.codec.http.HttpHeaderNames.CONTENT_TYPE
 import io.netty.handler.codec.http.HttpResponseStatus.{FORBIDDEN, INTERNAL_SERVER_ERROR, NOT_FOUND, OK, UNAUTHORIZED}
 import io.netty.handler.codec.http.{HttpHeaderNames, HttpMethod, QueryStringDecoder}
 import jakarta.inject.{Inject, Named}
 import org.apache.james.core.Username
-import org.apache.james.jmap.HttpConstants.JSON_CONTENT_TYPE
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.core.Id.Id
 import org.apache.james.jmap.core.{AccountId, Capability, CapabilityFactory, CapabilityProperties, Id, ProblemDetails, SessionTranslator, URL, UrlPrefixes}
 import org.apache.james.jmap.exceptions.UnauthorizedException
 import org.apache.james.jmap.http.Authenticator
 import org.apache.james.jmap.http.rfc8621.InjectionKeys
-import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.method.AccountNotFoundException
 import org.apache.james.jmap.routes.DownloadRoutes.LOGGER
 import org.apache.james.jmap.routes.{AttachmentBlob, Blob, ForbiddenException}
@@ -69,6 +66,9 @@ import scala.util.Try
 object DownloadAllRoutes {
   val DEFAULT_FILE_NAME = "noname"
   val ZIP_CONTENT_TYPE = "application/zip"
+
+  def respondDetails(httpServerResponse: HttpServerResponse, details: ProblemDetails): SMono[Unit] =
+    DownloadResponseUtils.respondDetails(httpServerResponse, details)
 }
 
 case class BlobWithName(blob: Blob, name: String)
@@ -253,15 +253,4 @@ class DownloadAllRoutes @Inject()(@Named(InjectionKeys.RFC_8621) val authenticat
       .toList
       .flatMap(_.asScala)
       .headOption
-
-  private def respondDetails(httpServerResponse: HttpServerResponse, details: ProblemDetails): SMono[Unit] =
-    SMono.fromCallable(() => ResponseSerializer.serialize(details))
-      .map(Json.stringify)
-      .map(_.getBytes(StandardCharsets.UTF_8))
-      .flatMap(bytes =>
-        SMono.fromPublisher(httpServerResponse.status(details.status)
-          .header(CONTENT_TYPE, JSON_CONTENT_TYPE)
-          .header(CONTENT_LENGTH, Integer.toString(bytes.length))
-          .sendByteArray(SMono.just(bytes))
-          .`then`).`then`)
 }

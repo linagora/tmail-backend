@@ -21,22 +21,19 @@ package com.linagora.tmail.james;
 import static com.linagora.tmail.james.TmailJmapBase.postgresExtension;
 import static com.linagora.tmail.james.app.PostgresTmailConfiguration.EventBusImpl.IN_MEMORY;
 
-import java.net.URL;
-import java.util.Optional;
-
 import org.apache.james.ClockExtension;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.jmap.core.JmapRfc8621Configuration;
+import org.apache.james.jmap.oidc.JMAPOidcConfiguration;
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
-import org.apache.james.jwt.introspection.IntrospectionEndpoint;
+import org.apache.james.oidc.redis.OidcTokenCacheModuleChooser;
 import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.multibindings.Multibinder;
-import com.google.inject.name.Names;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.combined.identity.UsersRepositoryClassProbe;
 import com.linagora.tmail.common.OidcAuthenticationContract;
@@ -48,7 +45,6 @@ import com.linagora.tmail.james.common.probe.JmapGuiceContactAutocompleteProbe;
 import com.linagora.tmail.james.common.probe.JmapSettingsProbe;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebasePushClient;
-import com.linagora.tmail.james.jmap.oidc.OidcTokenCacheModuleChooser;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 import com.linagora.tmail.team.TeamMailboxProbe;
 
@@ -68,7 +64,7 @@ public class PostgresOidcAuthenticationTest extends OidcAuthenticationContract {
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.ENABLED)
             .eventBusImpl(IN_MEMORY)
             .oidcEnabled(true)
-            .oidcTokenStorageChoice(OidcTokenCacheModuleChooser.OidcTokenCacheChoice.REDIS)
+            .oidcTokenStorageChoice(OidcTokenCacheModuleChooser.Implementation.REDIS)
             .build())
         .server(configuration -> PostgresTmailServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
@@ -80,13 +76,12 @@ public class PostgresOidcAuthenticationTest extends OidcAuthenticationContract {
             .overrideWith(binder -> binder.bind(FirebasePushClient.class).toInstance(LabelChangesMethodContract.firebasePushClient()))
             .overrideWith(binder -> binder.bind(JmapRfc8621Configuration.class).toInstance(JmapRfc8621Configuration.LOCALHOST_CONFIGURATION()
                     .withAuthenticationStrategies(OIDC_AUTHENTICATION_STRATEGY)))
-            .overrideWith(binder -> binder.bind(URL.class).annotatedWith(Names.named("userInfo"))
-                .toProvider(OidcAuthenticationContract::getUserInfoTokenEndpoint))
-            .overrideWith(binder -> binder.bind(IntrospectionEndpoint.class)
-                .toProvider(() -> new IntrospectionEndpoint(getIntrospectTokenEndpoint(), Optional.empty())))
+            .overrideWith(binder -> binder.bind(JMAPOidcConfiguration.class)
+                .toProvider(OidcAuthenticationContract::oidcConfiguration))
             .overrideWith(new DelegationProbeModule()))
         .extension(postgresExtension)
         .extension(new RedisExtension())
         .extension(new ClockExtension())
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }
