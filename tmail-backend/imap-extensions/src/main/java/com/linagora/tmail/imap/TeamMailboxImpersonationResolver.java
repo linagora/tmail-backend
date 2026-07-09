@@ -48,8 +48,8 @@ import scala.jdk.javaapi.OptionConverters;
  * a users repository administrator ({@code administratorId} in {@code usersrepository.xml}) and an
  * IMAP administrator ({@code auth.adminUsers.adminUser} in {@code imapserver.xml}) are honored. As
  * an administrator holds no ACL on the team mailbox, the resulting session runs as the team mailbox
- * {@link TeamMailbox#owner()} (the owner of the {@code #TeamMailbox} mailboxes) so that ownership,
- * rather than membership, grants full access.
+ * itself ({@link TeamMailbox#self()}, the {@code marketing@domain.tld} address), which
+ * {@code TeamMailboxRepository} grants full rights on upon creation.
  *
  * When the authorization identifier does not resolve to a team mailbox the user may impersonate,
  * this returns empty so that the caller falls back to the regular user-to-user delegation.
@@ -105,14 +105,18 @@ public class TeamMailboxImpersonationResolver {
 
     /**
      * The user the impersonating session should run as: the member himself when he belongs to the team
-     * mailbox, the team mailbox owner when an administrator impersonates it, empty otherwise.
+     * mailbox, the team mailbox itself when an administrator impersonates it, empty otherwise.
+     *
+     * Not {@link TeamMailbox#owner()}: James only ever surfaces {@code #TeamMailbox} mailboxes through
+     * the ACL-delegated branch of its mailbox search, which discards the mailboxes the session user owns.
+     * A session running as the owner would thus see an empty LIST.
      */
     private Optional<Username> sessionUser(Username authenticationId, TeamMailbox teamMailbox, Collection<String> imapAdminUsers) {
         if (isMember(authenticationId, teamMailbox)) {
             return Optional.of(authenticationId);
         }
         if (isAdministrator(authenticationId, imapAdminUsers)) {
-            return Optional.of(teamMailbox.owner());
+            return Optional.of(teamMailbox.self());
         }
         return Optional.empty();
     }
