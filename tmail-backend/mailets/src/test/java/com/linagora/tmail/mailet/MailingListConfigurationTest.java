@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Optional;
 
 import org.apache.commons.configuration2.PropertiesConfiguration;
+import org.apache.commons.configuration2.convert.DefaultListDelimiterHandler;
 import org.junit.jupiter.api.Test;
 
 class MailingListConfigurationTest {
@@ -37,6 +38,29 @@ class MailingListConfigurationTest {
 
         assertThat(result).isEqualTo(new MailingListConfiguration(
             Optional.of("ou=lists,dc=linagora,dc=com"), "description", true));
+    }
+
+    @Test
+    void shouldReadFullBaseDnWhenCommaSplittingIsEnabled() {
+        // James loads .properties files with a comma list-delimiter: a DN must not be truncated to its first component.
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.setListDelimiterHandler(new DefaultListDelimiterHandler(','));
+        configuration.addProperty("baseDN", "ou=lists,dc=linagora,dc=com");
+
+        MailingListConfiguration result = MailingListConfiguration.from(configuration);
+
+        assertThat(result.baseDN()).contains("ou=lists,dc=linagora,dc=com");
+    }
+
+    @Test
+    void shouldReadFullBaseDnWhenCommasAreEscaped() {
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.setListDelimiterHandler(new DefaultListDelimiterHandler(','));
+        configuration.addProperty("baseDN", "ou=lists\\,dc=linagora\\,dc=com");
+
+        MailingListConfiguration result = MailingListConfiguration.from(configuration);
+
+        assertThat(result.baseDN()).contains("ou=lists,dc=linagora,dc=com");
     }
 
     @Test

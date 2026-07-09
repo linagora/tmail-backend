@@ -14,31 +14,20 @@
  *  warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR         *
  *  PURPOSE. See the GNU Affero General Public License for          *
  *  more details.                                                   *
- *******************************************************************/
+ ********************************************************************/
 
 package com.linagora.tmail.james.jmap.oidc;
 
-import org.apache.james.backends.redis.RedisConfiguration;
-import org.apache.james.backends.redis.RedisTLSExtension;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.extension.RegisterExtension;
+import org.apache.james.webadmin.Routes;
+import org.apache.james.webadmin.oidc.OidcBackchannelLogoutRoutes;
 
-public class RedisStandaloneTlsOidcTokenCacheTest extends RedisOidcTokenCacheContract {
-    @RegisterExtension
-    static RedisTLSExtension redisExtension = new RedisTLSExtension();
+import com.google.inject.AbstractModule;
+import com.google.inject.multibindings.Multibinder;
 
-    @AfterEach
-    void tearDown() {
-        redisExtension.getRedisContainer().unPause();
-    }
-
+public class OidcBackchannelLogoutRoutesModule extends AbstractModule {
     @Override
-    public RedisConfiguration redisConfiguration() {
-        return redisExtension.getRedisContainer().getConfiguration();
-    }
-
-    @Override
-    public void pauseRedis() {
-        redisExtension.getRedisContainer().pause();
+    protected void configure() {
+        Multibinder<Routes> routesMultibinder = Multibinder.newSetBinder(binder(), Routes.class);
+        routesMultibinder.addBinding().to(OidcBackchannelLogoutRoutes.class);
     }
 }

@@ -31,7 +31,9 @@ import org.apache.james.backends.postgres.PostgresConfiguration;
 import org.apache.james.filesystem.api.FileSystem;
 import org.apache.james.filesystem.api.JamesDirectoriesProvider;
 import org.apache.james.jmap.JMAPModule;
+import org.apache.james.jmap.oidc.JMAPOidcConfiguration;
 import org.apache.james.modules.queue.rabbitmq.MailQueueViewChoice;
+import org.apache.james.oidc.redis.OidcTokenCacheModuleChooser;
 import org.apache.james.server.core.JamesServerResourceLoader;
 import org.apache.james.server.core.MissingArgumentException;
 import org.apache.james.server.core.configuration.Configuration;
@@ -47,8 +49,6 @@ import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.module.PostgresUnauthenticatedBlobAccessModuleChooser;
 import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
-import com.linagora.tmail.james.jmap.oidc.JMAPOidcConfiguration;
-import com.linagora.tmail.james.jmap.oidc.OidcTokenCacheModuleChooser;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.settings.TWPSettingsModuleChooserConfiguration;
 
@@ -67,7 +67,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
                                          ExtensionConfiguration extentionConfiguration,
                                          EventBusImpl eventBusImpl,
                                          boolean oidcEnabled,
-                                         OidcTokenCacheModuleChooser.OidcTokenCacheChoice oidcTokenCacheChoice,
+                                         OidcTokenCacheModuleChooser.Implementation oidcTokenCacheImplementation,
                                          PostgresUnauthenticatedBlobAccessModuleChooser.UnauthenticatedBlobAccessChoice unauthenticatedBlobAccessChoice,
                                          boolean keywordEmailQueryViewEnabled) implements Configuration {
 
@@ -130,7 +130,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
         private Optional<ExtensionConfiguration> extentionConfiguration;
         private Optional<EventBusImpl> eventBusImpl;
         private Optional<Boolean> oidcEnabled;
-        private Optional<OidcTokenCacheModuleChooser.OidcTokenCacheChoice> oidcTokenStorageChoice;
+        private Optional<OidcTokenCacheModuleChooser.Implementation> oidcTokenStorageChoice;
         private Optional<PostgresUnauthenticatedBlobAccessModuleChooser.UnauthenticatedBlobAccessChoice> unauthenticatedBlobAccessChoice;
         private Optional<Boolean> keywordEmailQueryViewEnabled;
 
@@ -248,7 +248,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
             return this;
         }
 
-        public Builder oidcTokenStorageChoice(OidcTokenCacheModuleChooser.OidcTokenCacheChoice oidcTokenCacheChoice) {
+        public Builder oidcTokenStorageChoice(OidcTokenCacheModuleChooser.Implementation oidcTokenCacheChoice) {
             this.oidcTokenStorageChoice = Optional.of(oidcTokenCacheChoice);
             return this;
         }
@@ -332,8 +332,8 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
                 }
             });
 
-            OidcTokenCacheModuleChooser.OidcTokenCacheChoice oidcTokenCacheChoice = this.oidcTokenStorageChoice.orElseGet(Throwing.supplier(
-                () -> OidcTokenCacheModuleChooser.OidcTokenCacheChoice.from(propertiesProvider)));
+            OidcTokenCacheModuleChooser.Implementation oidcTokenCacheImplementation = this.oidcTokenStorageChoice.orElseGet(Throwing.supplier(
+                () -> OidcTokenCacheModuleChooser.Implementation.from(propertiesProvider)));
 
             PostgresUnauthenticatedBlobAccessModuleChooser.UnauthenticatedBlobAccessChoice unauthenticatedBlobAccessChoice = this.unauthenticatedBlobAccessChoice.orElseGet(Throwing.supplier(
                 () -> PostgresUnauthenticatedBlobAccessModuleChooser.UnauthenticatedBlobAccessChoice.from(propertiesProvider)));
@@ -365,7 +365,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
                 extentionConfiguration,
                 eventBusImpl,
                 oidcEnabled,
-                oidcTokenCacheChoice,
+                oidcTokenCacheImplementation,
                 unauthenticatedBlobAccessChoice,
                 keywordEmailQueryViewEnabled);
         }

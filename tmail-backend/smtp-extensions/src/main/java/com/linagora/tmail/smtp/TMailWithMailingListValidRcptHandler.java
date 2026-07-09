@@ -113,7 +113,8 @@ public class TMailWithMailingListValidRcptHandler extends ValidRcptHandler {
 
     private boolean isAGroup(MailAddress recipient) {
         try {
-            return resolveListDN(recipient).isPresent();
+            MailAddress strippedRecipient = recipient.stripDetails(UsersRepository.LOCALPART_DETAIL_DELIMITER);
+            return resolveListDN(strippedRecipient).isPresent();
         } catch (LDAPSearchException e) {
             throw new RuntimeException(e);
         }

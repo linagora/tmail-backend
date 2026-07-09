@@ -26,7 +26,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatCode;
 
 import java.nio.charset.StandardCharsets;
+import java.util.Base64;
 
+import org.apache.commons.net.smtp.SMTPClient;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
@@ -42,7 +44,7 @@ import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.GuiceProbe;
 import org.apache.james.utils.SMTPMessageSender;
 import org.apache.james.utils.TestIMAPClient;
-import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -73,13 +75,14 @@ class TMailAuthenticateIntegrationTest {
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding().to(MailboxManagerClassProbe.class)))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @RegisterExtension
     TestIMAPClient testIMAPClient = new TestIMAPClient();
 
-    @BeforeEach
-    void setup(GuiceJamesServer server) throws Exception {
+    @BeforeAll
+    static void setup(GuiceJamesServer server) throws Exception {
         server.getProbe(DataProbeImpl.class).fluent()
             .addDomain(DOMAIN)
             .addUser(MINISTER.asString(), MINISTER_PASSWORD)
@@ -125,6 +128,24 @@ class TMailAuthenticateIntegrationTest {
     }
 
     @Test
+    void secretaryCanAuthenticateAsMinisterUsingLoginWhenDelegated() throws Exception {
+        Username secretaryDelegateUser = Username.fromLocalPartWithDomain("secretary+minister", DOMAIN);
+        SMTPClient client = new SMTPClient();
+        client.connect("127.0.0.1", smtpAuthRequiredPort.getValue());
+
+        client.sendCommand("EHLO domain.tld");
+        client.sendCommand("AUTH LOGIN");
+        assertThat(client.getReplyString()).contains("334 VXNlcm5hbWU6");
+        client.sendCommand(base64(secretaryDelegateUser.asString()));
+        assertThat(client.getReplyString()).contains("334 UGFzc3dvcmQ6");
+        client.sendCommand(base64(SECRETARY_PASSWORD));
+
+        assertThat(client.getReplyString()).contains("235 Authentication Successful");
+        client.quit();
+        client.disconnect();
+    }
+
+    @Test
     void secretaryShouldAuthenticateFailedWhenTryToAuthenticateAsMinisterWithWrongPassword() {
         Username secretaryDelegateUser = Username.fromLocalPartWithDomain("secretary+minister", DOMAIN);
         String invalidPassword = "invalid";
@@ -155,7 +176,7 @@ class TMailAuthenticateIntegrationTest {
         Username secretaryDelegateUser = Username.fromLocalPartWithDomain("secretary+", DOMAIN);
         assertThatThrownBy(() -> new SMTPMessageSender(DOMAIN)
             .connect("127.0.0.1", smtpAuthRequiredPort).authenticate(secretaryDelegateUser.asString(), SECRETARY_PASSWORD))
-            .hasMessageContaining("535 Authentication Failed");
+            .hasMessageContaining("501 Could not decode parameters for AUTH PLAIN");
     }
 
     @Test
@@ -209,5 +230,9 @@ class TMailAuthenticateIntegrationTest {
             .connect("127.0.0.1", smtpAuthRequiredPort).authenticate(secretaryDelegateUser.asString(), SECRETARY_PASSWORD)
             .sendMessage(OTHER3.asString(), OTHER3.asString()))
             .hasMessageContaining("Incorrect Authentication for Specified Email Address");
+    }
+
+    private String base64(String value) {
+        return Base64.getEncoder().encodeToString(value.getBytes(StandardCharsets.UTF_8));
     }
 }

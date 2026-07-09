@@ -37,6 +37,7 @@ import org.apache.james.JamesServerMain;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.data.UsersRepositoryModuleChooser;
 import org.apache.james.jmap.JMAPListenerModule;
+import org.apache.james.jmap.oidc.JMAPOidcModule;
 import org.apache.james.modules.BlobExportMechanismModule;
 import org.apache.james.modules.BlobMemoryModule;
 import org.apache.james.modules.LegacyEncryptionModule;
@@ -59,6 +60,7 @@ import org.apache.james.modules.server.DKIMMailetModule;
 import org.apache.james.modules.server.DropListsRoutesModule;
 import org.apache.james.modules.server.JMXServerModule;
 import org.apache.james.modules.server.TaskManagerModule;
+import org.apache.james.oidc.memory.CaffeineOidcTokenCacheModule;
 import org.apache.james.rate.limiter.memory.MemoryRateLimiterModule;
 import org.apache.james.util.Host;
 import org.apache.james.utils.GuiceLoader;
@@ -108,8 +110,7 @@ import com.linagora.tmail.james.jmap.method.JmapSettingsMethodModule;
 import com.linagora.tmail.james.jmap.method.LabelMethodModule;
 import com.linagora.tmail.james.jmap.method.MailboxClearMethodModule;
 import com.linagora.tmail.james.jmap.method.MessageVaultCapabilitiesModule;
-import com.linagora.tmail.james.jmap.oidc.CaffeineOidcTokenCacheModule;
-import com.linagora.tmail.james.jmap.oidc.JMAPOidcModule;
+import com.linagora.tmail.james.jmap.oidc.OidcBackchannelLogoutRoutesModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
 import com.linagora.tmail.james.jmap.publicAsset.PublicAssetsModule;
 import com.linagora.tmail.james.jmap.routes.DownloadAllRoutesModule;
@@ -121,11 +122,11 @@ import com.linagora.tmail.listener.CollectTrustedContactsListenerModule;
 import com.linagora.tmail.listener.FilteringRuleReferenceUpdaterListenerModule;
 import com.linagora.tmail.mailbox.quota.memory.MemoryUserQuotaReporterModule;
 import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingModule;
+import com.linagora.tmail.smtp.TMailSMTPModule;
 import com.linagora.tmail.team.TMailScanningQuotaSearcherModule;
 import com.linagora.tmail.team.TeamMailboxModule;
 import com.linagora.tmail.vault.TMailDeletedMessageVaultModule;
 import com.linagora.tmail.webadmin.EmailAddressContactRoutesModule;
-import com.linagora.tmail.webadmin.OidcBackchannelLogoutRoutesModule;
 import com.linagora.tmail.webadmin.RateLimitsRoutesModule;
 import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 import com.linagora.tmail.webadmin.TeamMailboxVaultRoutesModule;
@@ -226,6 +227,7 @@ public class MemoryServer {
             new PublicAssetsMemoryModule(),
             new TMailMailboxSortOrderProviderModule(),
             new TMailIMAPModule(),
+            new TMailSMTPModule(),
             new MemoryDownloadAllModule(),
             new EventBusDisconnectorModule(),
             new CollectTrustedContactsListenerModule(),

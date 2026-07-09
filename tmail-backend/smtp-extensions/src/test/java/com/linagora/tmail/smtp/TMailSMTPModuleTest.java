@@ -16,30 +16,30 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.james.jmap.oidc;
+package com.linagora.tmail.smtp;
 
-import java.util.Optional;
+import static org.assertj.core.api.Assertions.assertThat;
 
-import org.apache.james.core.Username;
-import org.junit.jupiter.api.BeforeEach;
+import org.apache.james.protocols.sasl.OauthBearerSaslMechanismFactory;
+import org.apache.james.protocols.sasl.XOauth2SaslMechanismFactory;
+import org.apache.james.protocols.smtp.core.esmtp.LoginSaslMechanismFactory;
+import org.junit.jupiter.api.Test;
 
-public class CaffeineOidcTokenCacheTest extends OidcTokenCacheContract {
+import com.linagora.tmail.sasl.TMailPlainSaslMechanismFactory;
 
-    private CaffeineOidcTokenCache testee;
+class TMailSMTPModuleTest {
+    private final TMailSMTPModule testee = new TMailSMTPModule();
 
-    @BeforeEach
-    void setUp() {
-        testee = new CaffeineOidcTokenCache(tokenInfoResolver, OidcTokenCacheConfiguration.DEFAULT);
+    @Test
+    void provideDefaultSmtpSaslMechanismFactoriesShouldUseTMailPlainWithLoginFirst() {
+        assertThat(testee.provideDefaultSmtpSaslMechanismFactories(
+                new OauthBearerSaslMechanismFactory(),
+                new XOauth2SaslMechanismFactory()))
+            .extracting(factory -> factory.getClass().getName())
+            .containsExactly(
+                LoginSaslMechanismFactory.class.getName(),
+                TMailPlainSaslMechanismFactory.class.getName(),
+                OauthBearerSaslMechanismFactory.class.getName(),
+                XOauth2SaslMechanismFactory.class.getName());
     }
-
-    @Override
-    public CaffeineOidcTokenCache testee() {
-        return testee;
-    }
-
-    @Override
-    public Optional<Username> getUsernameFromCache(Token token) {
-        return testee.getUsernameFromCache(token);
-    }
-
 }

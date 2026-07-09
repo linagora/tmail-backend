@@ -18,88 +18,24 @@
 
 package com.linagora.tmail.james.jmap.oidc;
 
-import static org.apache.james.jmap.http.JWTAuthenticationStrategy.AUTHORIZATION_HEADER_PREFIX;
-
 import java.time.Clock;
 import java.util.List;
-import java.util.Optional;
 
 import jakarta.inject.Inject;
 
-import org.apache.james.core.Username;
-import org.apache.james.jmap.exceptions.UnauthorizedException;
-import org.apache.james.jmap.http.AuthenticationChallenge;
-import org.apache.james.jmap.http.AuthenticationScheme;
-import org.apache.james.jmap.http.AuthenticationStrategy;
-import org.apache.james.jwt.introspection.TokenIntrospectionException;
-import org.apache.james.jwt.userinfo.UserInfoCheckException;
-import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.SessionProvider;
+import org.apache.james.oidc.Aud;
+import org.apache.james.oidc.OidcTokenCache;
 
-import com.google.common.collect.ImmutableMap;
-
-import reactor.core.publisher.Mono;
-import reactor.netty.http.server.HttpServerRequest;
-
-public class OidcAuthenticationStrategy implements AuthenticationStrategy {
-    private final SessionProvider sessionProvider;
-    private final OidcTokenCache oidcTokenCache;
-    private final Clock clock;
-    private final List<Aud> auds;
+/**
+ * TMail wrapper around James OIDC authentication strategy.
+ * Kept under the historical TMail FQCN to avoid breaking existing deployments.
+ */
+public class OidcAuthenticationStrategy extends org.apache.james.jmap.http.OidcAuthenticationStrategy {
+    public static final String TMAIL_AUTHENTICATION_CHALLENGE_REALM = "twake_mail";
 
     @Inject
     public OidcAuthenticationStrategy(SessionProvider sessionProvider, OidcTokenCache oidcTokenCache, Clock clock, List<Aud> auds) {
-        this.sessionProvider = sessionProvider;
-        this.oidcTokenCache = oidcTokenCache;
-        this.clock = clock;
-        this.auds = auds;
-    }
-
-
-    @Override
-    public Mono<MailboxSession> createMailboxSession(HttpServerRequest httpRequest) {
-        return Mono.fromCallable(() -> authHeaders(httpRequest))
-            .filter(header -> header.startsWith(AUTHORIZATION_HEADER_PREFIX))
-            .map(header -> header.substring(AUTHORIZATION_HEADER_PREFIX.length()))
-            .map(Token::new)
-            .flatMap(oidcTokenCache::associatedInformation)
-            .<TokenInfo>handle((tokenInfo, sink) -> {
-                if (!auds.isEmpty() && !isAudienceAccepted(tokenInfo.aud())) {
-                    sink.error(new UnauthorizedException("Wrong audience. Expected " + auds + " got " + tokenInfo.aud()));
-                    return;
-                }
-                if (clock.instant().isAfter(tokenInfo.exp())) {
-                    sink.error(new UnauthorizedException("Expired token"));
-                    return;
-                }
-
-                sink.next(tokenInfo);
-            })
-            .map(tokenInfo -> Username.of(tokenInfo.email()))
-            .flatMap(username -> Mono.fromCallable(() -> sessionProvider.authenticate(username)
-                .withoutDelegation()))
-            .onErrorMap(TokenIntrospectionException.class, e -> new UnauthorizedException("Invalid OIDC token when introspection check", e))
-            .onErrorMap(UserInfoCheckException.class, e -> new UnauthorizedException("Invalid OIDC token when user info check", e));
-    }
-
-    private boolean isAudienceAccepted(Optional<List<Aud>> maybeTokenAudiences) {
-        return maybeTokenAudiences.map(tokenAudiences -> {
-                for (Aud aud: auds) {
-                    if (tokenAudiences.contains(aud)) {
-                        return true;
-                    }
-                }
-                return false;
-            })
-            .orElse(true); // if no audience is present in the introspection response, we ignore audience validation
-    }
-
-    @Override
-    public AuthenticationChallenge correspondingChallenge() {
-        return AuthenticationChallenge.of(
-            AuthenticationScheme.of("Bearer"),
-            ImmutableMap.of("realm", "twake_mail",
-                "error", "invalid_token",
-                "scope", "openid profile email"));
+        super(sessionProvider, oidcTokenCache, clock, auds, TMAIL_AUTHENTICATION_CHALLENGE_REALM);
     }
 }

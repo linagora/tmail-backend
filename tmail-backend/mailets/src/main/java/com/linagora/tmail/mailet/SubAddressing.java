@@ -14,31 +14,22 @@
  *  warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR         *
  *  PURPOSE. See the GNU Affero General Public License for          *
  *  more details.                                                   *
- *******************************************************************/
+ ********************************************************************/
 
-package com.linagora.tmail.james.jmap.oidc;
+package com.linagora.tmail.mailet;
 
-import org.apache.james.backends.redis.RedisConfiguration;
-import org.apache.james.backends.redis.RedisSentinelExtension;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.extension.RegisterExtension;
+import jakarta.mail.internet.AddressException;
 
-public class RedisSentinelOidcTokenCacheTest extends RedisOidcTokenCacheContract {
-    @RegisterExtension
-    static RedisSentinelExtension redisSentinelExtension = new RedisSentinelExtension();
+import org.apache.james.core.MailAddress;
+import org.apache.james.user.api.UsersRepository;
 
-    @AfterEach
-    void tearDown() {
-        redisSentinelExtension.getRedisSentinelCluster().redisMasterReplicaContainerList().unPauseMasterNode();
-    }
-
-    @Override
-    public RedisConfiguration redisConfiguration() {
-        return redisSentinelExtension.getRedisSentinelCluster().redisSentinelContainerList().getRedisConfiguration();
-    }
-
-    @Override
-    public void pauseRedis() {
-        redisSentinelExtension.getRedisSentinelCluster().redisMasterReplicaContainerList().pauseMasterNode();
+public class SubAddressing {
+    public static MailAddress appendDetail(MailAddress member, String detail) {
+        try {
+            return new MailAddress(member.getLocalPart() + UsersRepository.LOCALPART_DETAIL_DELIMITER + detail
+                + "@" + member.getDomain().asString());
+        } catch (AddressException e) {
+            throw new RuntimeException(e);
+        }
     }
 }
