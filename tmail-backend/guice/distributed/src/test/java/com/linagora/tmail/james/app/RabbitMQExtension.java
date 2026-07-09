@@ -20,6 +20,7 @@ package com.linagora.tmail.james.app;
 
 import org.apache.james.GuiceModuleTestExtension;
 import org.apache.james.backends.rabbitmq.DockerRabbitMQ;
+import org.apache.james.backends.rabbitmq.DockerRabbitMQSingleton;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
@@ -28,19 +29,25 @@ import com.google.inject.Module;
 
 public class RabbitMQExtension implements GuiceModuleTestExtension {
 
-    private static final DockerRabbitMQ dockerRabbitMQ = DockerRabbitMQ.withoutCookie();
-    private static boolean started = false;
+    private final DockerRabbitMQ dockerRabbitMQ;
+
+    public RabbitMQExtension() {
+        this(DockerRabbitMQSingleton.SINGLETON);
+    }
+
+    public RabbitMQExtension(DockerRabbitMQ dockerRabbitMQ) {
+        this.dockerRabbitMQ = dockerRabbitMQ;
+    }
 
     @Override
     public void afterAll(ExtensionContext extensionContext) {
+        // Container is a JVM-wide singleton started in DockerRabbitMQSingleton's
+        // static initializer; testcontainers Ryuk reaps it on JVM exit.
     }
 
     @Override
     public void beforeAll(ExtensionContext extensionContext) {
-        if (!started) {
-            dockerRabbitMQ.start();
-            started = true;
-        }
+        dockerRabbitMQ.start();
     }
 
     @Override
