@@ -33,6 +33,7 @@ import com.linagora.tmail.team.TeamMailbox;
 import com.linagora.tmail.team.TeamMailboxRepository;
 
 import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
 import scala.jdk.javaapi.OptionConverters;
 
 /**
@@ -44,7 +45,7 @@ import scala.jdk.javaapi.OptionConverters;
  * of its members (or managers). This gives members and managers the right to impersonate a team
  * mailbox, as discussed in <a href="https://github.com/linagora/tmail-backend/issues/2405">#2405</a>.
  *
- * A configured server administrator may impersonate any team mailbox, regardless of membership. Both
+ * A configured server administrator may impersonate any existing team mailbox, regardless of membership. Both
  * a users repository administrator ({@code administratorId} in {@code usersrepository.xml}) and an
  * IMAP administrator ({@code auth.adminUsers.adminUser} in {@code imapserver.xml}) are honored. As
  * an administrator holds no ACL on the team mailbox, the resulting session runs as the team mailbox
@@ -107,11 +108,18 @@ public class TeamMailboxImpersonationResolver {
      * The user the impersonating session should run as: the member himself when he belongs to the team
      * mailbox, the team mailbox itself when an administrator impersonates it, empty otherwise.
      *
+     * An authorization id whose local part merely parses as a team mailbox name designates nothing until
+     * that team mailbox actually exists: {@code admin+alice@domain.tld} must keep delegating onto the
+     * {@code alice} user rather than be read as a team mailbox impersonation.
+     *
      * Not {@link TeamMailbox#owner()}: James only ever surfaces {@code #TeamMailbox} mailboxes through
      * the ACL-delegated branch of its mailbox search, which discards the mailboxes the session user owns.
      * A session running as the owner would thus see an empty LIST.
      */
     private Optional<Username> sessionUser(Username authenticationId, TeamMailbox teamMailbox, Collection<String> imapAdminUsers) {
+        if (!exists(teamMailbox)) {
+            return Optional.empty();
+        }
         if (isMember(authenticationId, teamMailbox)) {
             return Optional.of(authenticationId);
         }
@@ -121,9 +129,13 @@ public class TeamMailboxImpersonationResolver {
         return Optional.empty();
     }
 
+    private boolean exists(TeamMailbox teamMailbox) {
+        return Boolean.TRUE.equals(Mono.from(teamMailboxRepository.exists(teamMailbox)).block());
+    }
+
     private boolean isMember(Username user, TeamMailbox teamMailbox) {
-        return Boolean.TRUE.equals(Flux.from(teamMailboxRepository.listTeamMailboxes(user))
-            .any(teamMailbox::equals)
+        return Boolean.TRUE.equals(Flux.from(teamMailboxRepository.listMembers(teamMailbox))
+            .any(member -> member.username().equals(user))
             .block());
     }
 

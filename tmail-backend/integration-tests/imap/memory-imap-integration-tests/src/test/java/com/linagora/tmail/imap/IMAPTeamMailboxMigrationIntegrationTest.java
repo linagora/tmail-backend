@@ -110,6 +110,10 @@ class IMAPTeamMailboxMigrationIntegrationTest {
         return Username.fromLocalPartWithDomain(member.getLocalPart() + "+marketing", DOMAIN);
     }
 
+    private Username delegatedLogin(Username delegate, String authorizationLocalPart) {
+        return Username.fromLocalPartWithDomain(delegate.getLocalPart() + "+" + authorizationLocalPart, DOMAIN);
+    }
+
     @Test
     void memberShouldLoginWhenScopedToTeamMailbox() throws Exception {
         assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
@@ -138,6 +142,22 @@ class IMAPTeamMailboxMigrationIntegrationTest {
 
         assertThat(imapClient.sendCommand("FETCH 1 BODY[TEXT]"))
             .contains("This is content of the team mailbox");
+    }
+
+    @Test
+    void listShouldMatchTheReferenceNameItself() throws Exception {
+        assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(scopedLogin(MINISTER), MINISTER_PASSWORD)
+            .sendCommand("LIST \"Sent\" \"*\""))
+            .contains("* LIST (\\HasNoChildren) \".\" \"Sent\"");
+    }
+
+    @Test
+    void selectShouldBeCaseInsensitiveOnInbox() throws Exception {
+        assertThat(testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(scopedLogin(MINISTER), MINISTER_PASSWORD)
+            .sendCommand("SELECT inbox"))
+            .contains("SELECT completed");
     }
 
     @Test
@@ -234,6 +254,15 @@ class IMAPTeamMailboxMigrationIntegrationTest {
             .contains("SELECT completed");
         assertThat(imapClient.sendCommand("FETCH 1 BODY[TEXT]"))
             .contains("This is content of the team mailbox");
+    }
+
+    @Test
+    void adminShouldKeepDelegatingOntoRegularUserWhoseNameParsesAsATeamMailboxName() throws Exception {
+        TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(delegatedLogin(ADMIN, OTHER.getLocalPart()), ADMIN_PASSWORD);
+
+        assertThat(imapClient.sendCommand("STATUS \"INBOX\" (MESSAGES)"))
+            .contains("* STATUS \"INBOX\" (MESSAGES 0)");
     }
 
     @Test
