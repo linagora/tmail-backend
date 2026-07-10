@@ -34,6 +34,18 @@ public class TMailPlainSaslMechanismFactory extends PlainSaslMechanismFactory {
         "com.linagora.tmail.imap.TMailImapAuthPackage");
     private static final String TMAIL_SMTP_HANDLER_PACKAGE = "com.linagora.tmail.smtp.TMailCmdHandlerLoader";
 
+    public TMailPlainSaslMechanismFactory() {
+        super();
+    }
+
+    public TMailPlainSaslMechanismFactory(boolean requireSslDefault) {
+        super(requireSslDefault);
+    }
+
+    public TMailPlainSaslMechanismFactory(boolean requireSslDefault, boolean honorRequireSslConfiguration) {
+        super(requireSslDefault, honorRequireSslConfiguration);
+    }
+
     @Override
     public SaslMechanism create(HierarchicalConfiguration<ImmutableNode> serverConfiguration) {
         if (usesTMailImapPackage(serverConfiguration) || usesTMailSmtpHandlerPackage(serverConfiguration)) {

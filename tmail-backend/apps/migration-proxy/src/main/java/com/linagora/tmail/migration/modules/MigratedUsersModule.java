@@ -19,7 +19,9 @@
 package com.linagora.tmail.migration.modules;
 
 import org.apache.james.adapter.mailbox.DelegationStoreAuthorizator;
+import org.apache.james.adapter.mailbox.UserRepositoryAuthenticator;
 import org.apache.james.backends.postgres.PostgresDataDefinition;
+import org.apache.james.mailbox.Authenticator;
 import org.apache.james.mailbox.Authorizator;
 import org.apache.james.webadmin.Routes;
 
@@ -42,7 +44,8 @@ public class MigratedUsersModule extends AbstractModule {
         bind(PostgresMigratedUsersRepository.class).in(Scopes.SINGLETON);
         bind(MigratedUsersRepository.class).to(PostgresMigratedUsersRepository.class);
 
-        // Required by the SMTP CoreCmdHandlerLoader (UsersRepositoryAuthHook); backed by the DelegationStore.
+        // Required by SMTP SASL authentication; backed by the users repository and delegation store.
+        bind(Authenticator.class).to(UserRepositoryAuthenticator.class);
         bind(Authorizator.class).to(DelegationStoreAuthorizator.class);
 
         Multibinder.newSetBinder(binder(), PostgresDataDefinition.class)

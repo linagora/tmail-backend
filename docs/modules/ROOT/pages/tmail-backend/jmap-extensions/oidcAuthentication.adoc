@@ -22,7 +22,7 @@ in `jmap.properties` in the `authentication.strategy.rfc8621` list:
 authentication.strategy.rfc8621=com.linagora.tmail.james.jmap.oidc.OidcAuthenticationStrategy
 ----
 
-Then you need to define the OIDC configuration in link:../configure/jmap.adoc[`jmap.properties`].
+Then you need to define the OIDC configuration in `jmap.properties`, as documented by Apache James JMAP configuration.
 
 Example:
 ----

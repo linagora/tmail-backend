@@ -24,7 +24,6 @@ import com.github.fge.lambdas.Throwing
 import com.google.common.collect.ImmutableSet
 import com.google.inject.name.Named
 import com.google.inject.{AbstractModule, Provides, Singleton}
-import com.linagora.tmail.james.jmap.oidc.JMAPOidcConfiguration
 import com.linagora.tmail.james.jmap.settings.ReadOnlyPropertyProvider
 import org.apache.commons.configuration2.{Configuration, PropertiesConfiguration}
 import org.apache.james.mailbox.model.MessageId
@@ -66,11 +65,6 @@ class TMailJMAPModule extends AbstractModule {
   @Singleton
   def provideCalendarEventRepository(messageIdManager: MessageIdManager, sessionProvider: SessionProvider, messageIdFactory: MessageId.Factory): CalendarEventRepository =
     new StandaloneEventRepository(messageIdManager, sessionProvider, messageIdFactory)
-
-  @Provides
-  @Singleton
-  def provideJMAPOidcConfiguration(@Named("jmap") configuration: Configuration) =
-    JMAPOidcConfiguration.parseConfiguration(configuration)
 
   @Provides
   @Singleton

@@ -18,27 +18,16 @@
 
 package com.linagora.tmail.james.jmap.oidc;
 
-import org.apache.james.backends.redis.RedisConfiguration;
-import org.apache.james.backends.redis.RedisSentinelExtension;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.extension.RegisterExtension;
+import org.apache.james.oidc.redis.RedisOidcTokenCacheKeyPrefix;
 
-public class RedisSentinelOidcTokenCacheTest extends RedisOidcTokenCacheContract {
-    @RegisterExtension
-    static RedisSentinelExtension redisSentinelExtension = new RedisSentinelExtension();
+import com.google.inject.AbstractModule;
 
-    @AfterEach
-    void tearDown() {
-        redisSentinelExtension.getRedisSentinelCluster().redisMasterReplicaContainerList().unPauseMasterNode();
-    }
+public class TMailOidcRedisKeyPrefixModule extends AbstractModule {
+    public static final RedisOidcTokenCacheKeyPrefix TMAIL_REDIS_KEY_PREFIX =
+        new RedisOidcTokenCacheKeyPrefix("tmail_oidc_hash_", "tmail_oidc_sid_");
 
     @Override
-    public RedisConfiguration redisConfiguration() {
-        return redisSentinelExtension.getRedisSentinelCluster().redisSentinelContainerList().getRedisConfiguration();
-    }
-
-    @Override
-    public void pauseRedis() {
-        redisSentinelExtension.getRedisSentinelCluster().redisMasterReplicaContainerList().pauseMasterNode();
+    protected void configure() {
+        bind(RedisOidcTokenCacheKeyPrefix.class).toInstance(TMAIL_REDIS_KEY_PREFIX);
     }
 }

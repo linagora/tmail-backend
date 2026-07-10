@@ -27,7 +27,9 @@ import org.apache.james.SearchConfiguration;
 import org.apache.james.filesystem.api.FileSystem;
 import org.apache.james.filesystem.api.JamesDirectoriesProvider;
 import org.apache.james.jmap.JMAPModule;
+import org.apache.james.jmap.oidc.JMAPOidcConfiguration;
 import org.apache.james.modules.queue.rabbitmq.MailQueueViewChoice;
+import org.apache.james.oidc.redis.OidcTokenCacheModuleChooser;
 import org.apache.james.server.core.JamesServerResourceLoader;
 import org.apache.james.server.core.MissingArgumentException;
 import org.apache.james.server.core.configuration.Configuration;
@@ -44,8 +46,6 @@ import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.james.app.module.UnauthenticatedBlobAccessModuleChooser;
 import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
-import com.linagora.tmail.james.jmap.oidc.JMAPOidcConfiguration;
-import com.linagora.tmail.james.jmap.oidc.OidcTokenCacheModuleChooser;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.settings.TWPSettingsModuleChooserConfiguration;
 
@@ -67,7 +67,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                                             VaultConfiguration vaultConfiguration,
                                             ExtensionConfiguration extentionConfiguration,
                                             boolean oidcEnabled,
-                                            OidcTokenCacheModuleChooser.OidcTokenCacheChoice oidcTokenCacheChoice,
+                                            OidcTokenCacheModuleChooser.Implementation oidcTokenCacheImplementation,
                                             UnauthenticatedBlobAccessModuleChooser.UnauthenticatedBlobAccessChoice unauthenticatedBlobAccessChoice,
                                             boolean keywordEmailQueryViewEnabled) implements Configuration {
     public static class Builder {
@@ -88,7 +88,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
         private Optional<VaultConfiguration> vaultConfiguration;
         private Optional<ExtensionConfiguration> extentionConfiguration;
         private Optional<Boolean> oidcEnabled;
-        private Optional<OidcTokenCacheModuleChooser.OidcTokenCacheChoice> oidcTokenStorageChoice;
+        private Optional<OidcTokenCacheModuleChooser.Implementation> oidcTokenStorageChoice;
         private Optional<UnauthenticatedBlobAccessModuleChooser.UnauthenticatedBlobAccessChoice> unauthenticatedBlobAccessChoice;
         private Optional<Boolean> keywordEmailQueryViewEnabled;
 
@@ -218,7 +218,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             return this;
         }
 
-        public Builder oidcTokenStorageChoice(OidcTokenCacheModuleChooser.OidcTokenCacheChoice oidcTokenCacheChoice) {
+        public Builder oidcTokenStorageChoice(OidcTokenCacheModuleChooser.Implementation oidcTokenCacheChoice) {
             this.oidcTokenStorageChoice = Optional.of(oidcTokenCacheChoice);
             return this;
         }
@@ -330,8 +330,8 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 }
             });
 
-            OidcTokenCacheModuleChooser.OidcTokenCacheChoice oidcTokenCacheChoice = this.oidcTokenStorageChoice.orElseGet(Throwing.supplier(
-                () -> OidcTokenCacheModuleChooser.OidcTokenCacheChoice.from(propertiesProvider)));
+            OidcTokenCacheModuleChooser.Implementation oidcTokenCacheImplementation = this.oidcTokenStorageChoice.orElseGet(Throwing.supplier(
+                () -> OidcTokenCacheModuleChooser.Implementation.from(propertiesProvider)));
 
             UnauthenticatedBlobAccessModuleChooser.UnauthenticatedBlobAccessChoice unauthenticatedBlobAccessChoice = this.unauthenticatedBlobAccessChoice.orElseGet(Throwing.supplier(
                 () -> UnauthenticatedBlobAccessModuleChooser.UnauthenticatedBlobAccessChoice.from(propertiesProvider)));
@@ -366,7 +366,7 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 vaultConfiguration,
                 extentionConfiguration,
                 oidcEnabled,
-                oidcTokenCacheChoice,
+                oidcTokenCacheImplementation,
                 unauthenticatedBlobAccessChoice,
                 keywordEmailQueryViewEnabled);
         }

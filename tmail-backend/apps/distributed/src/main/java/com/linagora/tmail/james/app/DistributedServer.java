@@ -43,6 +43,7 @@ import org.apache.james.eventsourcing.eventstore.EventNestedTypes;
 import org.apache.james.jmap.InjectionKeys;
 import org.apache.james.jmap.JMAPListenerModule;
 import org.apache.james.jmap.JMAPModule;
+import org.apache.james.jmap.oidc.JMAPOidcModule;
 import org.apache.james.jmap.rfc8621.RFC8621MethodsModule;
 import org.apache.james.json.DTO;
 import org.apache.james.json.DTOModule;
@@ -125,6 +126,7 @@ import org.apache.james.modules.server.WebAdminServerModule;
 import org.apache.james.modules.vault.DeletedMessageVaultRoutesModule;
 import org.apache.james.modules.webadmin.CassandraRoutesModule;
 import org.apache.james.modules.webadmin.InconsistencySolvingRoutesModule;
+import org.apache.james.oidc.redis.OidcTokenCacheModuleChooser;
 import org.apache.james.quota.search.QuotaSearcher;
 import org.apache.james.quota.search.scanning.ScanningQuotaSearcher;
 import org.apache.james.rate.limiter.redis.RedisRateLimiterModule;
@@ -191,8 +193,8 @@ import com.linagora.tmail.james.jmap.method.LabelMethodModule;
 import com.linagora.tmail.james.jmap.method.MailboxClearMethodModule;
 import com.linagora.tmail.james.jmap.method.MessageVaultCapabilitiesModule;
 import com.linagora.tmail.james.jmap.module.OSContactAutoCompleteModule;
-import com.linagora.tmail.james.jmap.oidc.JMAPOidcModule;
-import com.linagora.tmail.james.jmap.oidc.OidcTokenCacheModuleChooser;
+import com.linagora.tmail.james.jmap.oidc.OidcBackchannelLogoutRoutesModule;
+import com.linagora.tmail.james.jmap.oidc.TMailOidcRedisKeyPrefixModule;
 import com.linagora.tmail.james.jmap.oidc.WebFingerModule;
 import com.linagora.tmail.james.jmap.perfs.TMailCleverAttachmentIdAssignationStrategy;
 import com.linagora.tmail.james.jmap.perfs.TMailCleverBlobResolverModule;
@@ -219,10 +221,10 @@ import com.linagora.tmail.modules.data.TMailCassandraDeletedMessageVaultModule;
 import com.linagora.tmail.modules.data.TMailCassandraDomainListModule;
 import com.linagora.tmail.rate.limiter.api.cassandra.module.CassandraRateLimitingModule;
 import com.linagora.tmail.rspamd.RspamdModule;
+import com.linagora.tmail.smtp.TMailSMTPModule;
 import com.linagora.tmail.team.TMailQuotaUsernameSupplier;
 import com.linagora.tmail.team.TeamMailboxModule;
 import com.linagora.tmail.webadmin.EmailAddressContactRoutesModule;
-import com.linagora.tmail.webadmin.OidcBackchannelLogoutRoutesModule;
 import com.linagora.tmail.webadmin.RateLimitsRoutesModule;
 import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
 import com.linagora.tmail.webadmin.TeamMailboxVaultRoutesModule;
@@ -412,6 +414,7 @@ public class DistributedServer {
             new TeamMailboxModule(),
             new TMailMailboxSortOrderProviderModule(),
             new TMailIMAPModule(),
+            new TMailSMTPModule(),
             new CollectTrustedContactsListenerModule(),
             new FilteringRuleReferenceUpdaterListenerModule(),
             new CassandraUserDataTieringModule());
@@ -669,7 +672,8 @@ public class DistributedServer {
     private static Module chooseJmapOidc(DistributedJamesConfiguration configuration) {
         if (configuration.oidcEnabled()) {
             return Modules.combine(new JMAPOidcModule(), new OidcBackchannelLogoutRoutesModule(),
-                OidcTokenCacheModuleChooser.chooseModule(configuration.oidcTokenCacheChoice()));
+                OidcTokenCacheModuleChooser.chooseModules(configuration.oidcTokenCacheImplementation(),
+                    new TMailOidcRedisKeyPrefixModule()));
         }
         return binder -> {
 

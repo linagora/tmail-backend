@@ -22,6 +22,7 @@ import static com.linagora.tmail.event.TmailEventModule.TMAIL_EVENT_BUS_INJECT_N
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Optional;
 import java.util.Set;
 
 import jakarta.inject.Inject;
@@ -47,10 +48,15 @@ import org.apache.james.mime4j.dom.Message;
 import org.apache.james.mime4j.message.DefaultMessageBuilder;
 import org.apache.james.mime4j.stream.MimeConfig;
 import org.apache.james.util.ReactorUtils;
+import org.apache.james.utils.ClassName;
+import org.apache.james.utils.GuiceLoader;
+import org.apache.james.utils.NamingScheme;
 import org.reactivestreams.Publisher;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableSet;
 import com.google.inject.name.Named;
+import com.linagora.tmail.james.jmap.event.ApplyWhenFilter;
 import com.linagora.tmail.james.jmap.settings.JmapSettings;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.listener.rag.event.AIAnalysisNeeded;
@@ -80,6 +86,7 @@ public class LlmMailClassifierListener implements EventListener.ReactiveGroupEve
     }
 
     public static final Group GROUP = new LlmMailPrioritizationClassifierGroup();
+    private static final String APPLY_WHEN_PATH = "applyWhen";
     private static final Set<RegistrationKey> NO_REGISTRATION_KEYS = ImmutableSet.of();
 
     private final MailboxManager mailboxManager;
@@ -87,17 +94,21 @@ public class LlmMailClassifierListener implements EventListener.ReactiveGroupEve
     private final JmapSettingsRepository jmapSettingsRepository;
     private final EventBus tmailEventBus;
     private final MessageFilter messageFilter;
+    private final ApplyWhenFilter applyWhenFilter;
 
     @Inject
     public LlmMailClassifierListener(MailboxManager mailboxManager,
                                      MessageIdManager messageIdManager,
                                      SystemMailboxesProvider systemMailboxesProvider,
                                      JmapSettingsRepository jmapSettingsRepository,
+                                     GuiceLoader guiceLoader,
                                      @Named(TMAIL_EVENT_BUS_INJECT_NAME) EventBus tmailEventBus,
                                      HierarchicalConfiguration<ImmutableNode> configuration) {
         this.mailboxManager = mailboxManager;
         this.messageIdManager = messageIdManager;
         this.jmapSettingsRepository = jmapSettingsRepository;
+        this.applyWhenFilter = resolveApplyWhenFilter(configuration, guiceLoader);
+
         this.tmailEventBus = tmailEventBus;
         this.messageFilter = new MessageFilterParser(systemMailboxesProvider).parse(configuration);
     }
@@ -125,7 +136,9 @@ public class LlmMailClassifierListener implements EventListener.ReactiveGroupEve
         Username username = addedEvent.getUsername();
         MailboxSession session = mailboxManager.createSystemSession(username);
 
-        return aiLabelCategorizationSettingEnabled(username)
+        return Mono.just(username)
+            .filterWhen(applyWhenFilter::isEligible)
+            .filterWhen(this::aiLabelCategorizationSettingEnabled)
             .flatMap(any -> dispatchAiAnalysisIfNeeded(addedEvent, session));
     }
 
@@ -152,5 +165,37 @@ public class LlmMailClassifierListener implements EventListener.ReactiveGroupEve
             .map(JmapSettings::aiLabelCategorizationEnable)
             .defaultIfEmpty(JmapSettings.AI_LABEL_CATEGORIZATION_DISABLE_DEFAULT_VALUE())
             .filter(Boolean::booleanValue);
+    }
+
+    private ApplyWhenFilter resolveApplyWhenFilter(HierarchicalConfiguration<ImmutableNode> listenerConfig, GuiceLoader guiceLoader) {
+        return Optional.ofNullable(listenerConfig.getString(APPLY_WHEN_PATH))
+            .filter(applyWhenClassName -> !applyWhenClassName.isBlank())
+            .map(applyWhenClassName -> loadApplyWhenFilter(guiceLoader, applyWhenClassName))
+            .orElse(new ApplyWhenFilter.Always());
+    }
+
+    private ApplyWhenFilter loadApplyWhenFilter(GuiceLoader guiceLoader, String applyWhenClassName) {
+        try {
+            return guiceLoader.<ApplyWhenFilter>withNamingSheme(NamingScheme.IDENTITY)
+                .instantiate(new ClassName(applyWhenClassName));
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to load applyWhen filter `%s`".formatted(applyWhenClassName), e);
+        }
+    }
+
+    @VisibleForTesting
+    public LlmMailClassifierListener(MailboxManager mailboxManager,
+                                     MessageIdManager messageIdManager,
+                                     SystemMailboxesProvider systemMailboxesProvider,
+                                     JmapSettingsRepository jmapSettingsRepository,
+                                     @Named(TMAIL_EVENT_BUS_INJECT_NAME) EventBus tmailEventBus,
+                                     HierarchicalConfiguration<ImmutableNode> configuration,
+                                     ApplyWhenFilter applyWhenFilter) {
+        this.mailboxManager = mailboxManager;
+        this.messageIdManager = messageIdManager;
+        this.jmapSettingsRepository = jmapSettingsRepository;
+        this.tmailEventBus = tmailEventBus;
+        this.applyWhenFilter = applyWhenFilter;
+        this.messageFilter = new MessageFilterParser(systemMailboxesProvider).parse(configuration);
     }
 }

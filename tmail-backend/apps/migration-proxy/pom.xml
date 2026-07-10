@@ -116,6 +116,10 @@
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-mailbox-adapter</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
             <artifactId>james-server-postgres-common-guice</artifactId>
         </dependency>
         <!-- Lets usersrepository.xml select an LDAP users repository (UsersRepositoryModuleChooser) -->

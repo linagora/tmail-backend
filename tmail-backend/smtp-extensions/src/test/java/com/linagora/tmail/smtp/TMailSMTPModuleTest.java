@@ -16,7 +16,30 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.james.jmap.oidc;
+package com.linagora.tmail.smtp;
 
-public record Token(String value) {
+import static org.assertj.core.api.Assertions.assertThat;
+
+import org.apache.james.protocols.sasl.OauthBearerSaslMechanismFactory;
+import org.apache.james.protocols.sasl.XOauth2SaslMechanismFactory;
+import org.apache.james.protocols.smtp.core.esmtp.LoginSaslMechanismFactory;
+import org.junit.jupiter.api.Test;
+
+import com.linagora.tmail.sasl.TMailPlainSaslMechanismFactory;
+
+class TMailSMTPModuleTest {
+    private final TMailSMTPModule testee = new TMailSMTPModule();
+
+    @Test
+    void provideDefaultSmtpSaslMechanismFactoriesShouldUseTMailPlainWithLoginFirst() {
+        assertThat(testee.provideDefaultSmtpSaslMechanismFactories(
+                new OauthBearerSaslMechanismFactory(),
+                new XOauth2SaslMechanismFactory()))
+            .extracting(factory -> factory.getClass().getName())
+            .containsExactly(
+                LoginSaslMechanismFactory.class.getName(),
+                TMailPlainSaslMechanismFactory.class.getName(),
+                OauthBearerSaslMechanismFactory.class.getName(),
+                XOauth2SaslMechanismFactory.class.getName());
+    }
 }

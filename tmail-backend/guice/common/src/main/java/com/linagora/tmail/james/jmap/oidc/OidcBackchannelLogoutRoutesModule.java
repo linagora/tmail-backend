@@ -18,28 +18,16 @@
 
 package com.linagora.tmail.james.jmap.oidc;
 
-import java.util.Optional;
+import org.apache.james.webadmin.Routes;
+import org.apache.james.webadmin.oidc.OidcBackchannelLogoutRoutes;
 
-import org.apache.james.core.Username;
-import org.junit.jupiter.api.BeforeEach;
+import com.google.inject.AbstractModule;
+import com.google.inject.multibindings.Multibinder;
 
-public class CaffeineOidcTokenCacheTest extends OidcTokenCacheContract {
-
-    private CaffeineOidcTokenCache testee;
-
-    @BeforeEach
-    void setUp() {
-        testee = new CaffeineOidcTokenCache(tokenInfoResolver, OidcTokenCacheConfiguration.DEFAULT);
-    }
-
+public class OidcBackchannelLogoutRoutesModule extends AbstractModule {
     @Override
-    public CaffeineOidcTokenCache testee() {
-        return testee;
+    protected void configure() {
+        Multibinder<Routes> routesMultibinder = Multibinder.newSetBinder(binder(), Routes.class);
+        routesMultibinder.addBinding().to(OidcBackchannelLogoutRoutes.class);
     }
-
-    @Override
-    public Optional<Username> getUsernameFromCache(Token token) {
-        return testee.getUsernameFromCache(token);
-    }
-
 }
