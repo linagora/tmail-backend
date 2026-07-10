@@ -46,6 +46,7 @@ import com.linagora.tmail.dav.DavUser;
 import com.linagora.tmail.dav.DavUserProvider;
 
 import net.fortuna.ical4j.data.CalendarBuilder;
+import net.fortuna.ical4j.data.ParserException;
 import net.fortuna.ical4j.model.Calendar;
 import net.fortuna.ical4j.model.Component;
 import net.fortuna.ical4j.model.Property;
@@ -119,6 +120,8 @@ public class CalDavCollect extends GenericMailet {
                         .flatMap(davUser -> synchronizeWithDavServer(json, davUser))
                         .block();
                 }
+            } catch (ParserException e) {
+                LOGGER.warn("Failed to parse calendar in mail {} with recipient {}: malformed iCalendar payload", mail.getName(), recipient, e);
             } catch (Exception e) {
                 LOGGER.error("Error while handling calendar in mail {} with recipient {}", mail.getName(), recipient, e);
             }
