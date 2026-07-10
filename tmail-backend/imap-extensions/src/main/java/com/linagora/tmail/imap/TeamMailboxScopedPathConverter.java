@@ -24,6 +24,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.james.core.Username;
 import org.apache.james.imap.api.display.ModifiedUtf7;
 import org.apache.james.imap.api.process.ImapSession;
+import org.apache.james.imap.main.PathConverter;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailbox.model.MailboxPath;
@@ -42,30 +43,34 @@ import com.linagora.tmail.team.TeamMailboxNameSpace;
  * lets off-the-shelf migration tools copy the team mailbox folder-by-folder as if it were a personal
  * account. See <a href="https://github.com/linagora/tmail-backend/issues/2405">#2405</a>.
  *
- * Absolute {@code #TeamMailbox.} and {@code #user.} paths keep going through the regular
- * {@link TMailPathConverter} behaviour.
+ * Absolute {@code #TeamMailbox.} and {@code #user.} paths are handed over to the {@code delegate}, the
+ * converter the session would have used had it not been scoped. Scoping thus never alters the way
+ * absolute paths are read or rendered, be it the regular or the full domain flavour.
  */
-public class TeamMailboxScopedPathConverter extends TMailPathConverter {
+public class TeamMailboxScopedPathConverter implements PathConverter {
     private static final String TEAM_MAILBOX_NAMESPACE = TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE();
     private static final String USER_NAMESPACE = "#user";
 
+    private final MailboxSession mailboxSession;
     private final TeamMailbox teamMailbox;
+    private final PathConverter delegate;
 
-    protected TeamMailboxScopedPathConverter(MailboxSession mailboxSession, TeamMailbox teamMailbox) {
-        super(mailboxSession);
+    protected TeamMailboxScopedPathConverter(MailboxSession mailboxSession, TeamMailbox teamMailbox, PathConverter delegate) {
+        this.mailboxSession = mailboxSession;
         this.teamMailbox = teamMailbox;
+        this.delegate = delegate;
     }
 
     @Override
     public MailboxPath buildFullPath(String mailboxName) {
         if (referencesOtherNamespace(mailboxName)) {
-            return super.buildFullPath(mailboxName);
+            return delegate.buildFullPath(mailboxName);
         }
         String relative = stripPrivateNamespace(mailboxName);
         if (relative.isEmpty()) {
             return teamRootPath();
         }
-        return scopedPath(relative);
+        return scopedPath(sanitizeMailboxName(relative));
     }
 
     @Override
@@ -77,22 +82,24 @@ public class TeamMailboxScopedPathConverter extends TMailPathConverter {
                 return Optional.of(name.substring(prefix.length()));
             }
         }
-        return super.mailboxName(relative, path, session);
+        return delegate.mailboxName(relative, path, session);
     }
 
     @Override
     public MailboxQuery mailboxQuery(String finalReferencename, String mailboxName, ImapSession session) {
         if (referencesOtherNamespace(finalReferencename) || referencesOtherNamespace(mailboxName)) {
-            return super.mailboxQuery(finalReferencename, mailboxName, session);
+            return delegate.mailboxQuery(finalReferencename, mailboxName, session);
         }
 
         MailboxSession mailboxSession = session.getMailboxSession();
         char delimiter = mailboxSession.getPathDelimiter();
         String decodedMailboxName = ModifiedUtf7.decodeModifiedUTF7(mailboxName);
 
+        // No delimiter is appended after the reference name: IMAP concatenates the reference and the
+        // pattern verbatim, and PrefixedRegex already skips the delimiter that follows its prefix.
         String prefix = teamName() + delimiter;
         if (StringUtils.isNotEmpty(finalReferencename)) {
-            prefix = prefix + stripPrivateNamespace(finalReferencename) + delimiter;
+            prefix = prefix + stripPrivateNamespace(ModifiedUtf7.decodeModifiedUTF7(finalReferencename));
         }
 
         return MailboxQuery.builder()
@@ -113,6 +120,17 @@ public class TeamMailboxScopedPathConverter extends TMailPathConverter {
         }
         if (mailboxName.equalsIgnoreCase(MailboxConstants.USER_NAMESPACE)) {
             return "";
+        }
+        return mailboxName;
+    }
+
+    /**
+     * INBOX is the one case insensitive mailbox name of IMAP (see IMAP-349), which James' default
+     * converter canonicalizes. The scoped root layout is a mailbox layout: it must do so too.
+     */
+    private String sanitizeMailboxName(String mailboxName) {
+        if (mailboxName.equalsIgnoreCase(MailboxConstants.INBOX)) {
+            return MailboxConstants.INBOX;
         }
         return mailboxName;
     }

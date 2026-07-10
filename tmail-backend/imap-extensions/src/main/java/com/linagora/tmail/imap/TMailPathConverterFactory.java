@@ -18,8 +18,6 @@
 
 package com.linagora.tmail.imap;
 
-import java.util.Optional;
-
 import org.apache.james.imap.api.process.ImapSession;
 import org.apache.james.imap.main.PathConverter;
 import org.apache.james.mailbox.MailboxSession;
@@ -36,19 +34,17 @@ public class TMailPathConverterFactory implements PathConverter.Factory {
     }
 
     public PathConverter forSession(MailboxSession session) {
-        Optional<TeamMailbox> teamMailboxScope = TeamMailboxScope.forSession(session);
-        if (teamMailboxScope.isPresent()) {
-            return teamMailboxScopedPathConverterForSession(session, teamMailboxScope.get());
-        }
-        if (IS_FULL_DOMAIN_ENABLED) {
-            return fullDomainPathConverterForSession(session);
-        } else {
-            return normalPathConverterForSession(session);
-        }
+        PathConverter pathConverter = IS_FULL_DOMAIN_ENABLED
+            ? fullDomainPathConverterForSession(session)
+            : normalPathConverterForSession(session);
+
+        return TeamMailboxScope.forSession(session)
+            .<PathConverter>map(teamMailbox -> teamMailboxScopedPathConverterForSession(session, teamMailbox, pathConverter))
+            .orElse(pathConverter);
     }
 
-    public TeamMailboxScopedPathConverter teamMailboxScopedPathConverterForSession(MailboxSession session, TeamMailbox teamMailbox) {
-        return new TeamMailboxScopedPathConverter(session, teamMailbox);
+    public TeamMailboxScopedPathConverter teamMailboxScopedPathConverterForSession(MailboxSession session, TeamMailbox teamMailbox, PathConverter delegate) {
+        return new TeamMailboxScopedPathConverter(session, teamMailbox, delegate);
     }
 
     public TMailPathConverter normalPathConverterForSession(MailboxSession session) {
