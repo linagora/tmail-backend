@@ -73,7 +73,7 @@ public class TMailLoginProcessor extends LoginProcessor {
         Optional<TeamMailboxImpersonation> teamMailboxScope = teamMailboxImpersonationResolver.resolveScope(identity, imapAdminUsers);
         if (teamMailboxScope.isPresent()) {
             TeamMailboxImpersonation impersonation = teamMailboxScope.get();
-            doAuth(() -> TeamMailboxScope.scopedSession(getMailboxManager(), impersonation.sessionUser(), impersonation.teamMailbox()),
+            doAuth(() -> TeamMailboxScope.scopedSession(getMailboxManager(), identity.authenticationId(), impersonation),
                 session, request, responder, identity.authenticationId(), identity.authorizationId(), successLog);
         } else {
             super.handleSaslSuccess(success, session, request, responder, successLog);
