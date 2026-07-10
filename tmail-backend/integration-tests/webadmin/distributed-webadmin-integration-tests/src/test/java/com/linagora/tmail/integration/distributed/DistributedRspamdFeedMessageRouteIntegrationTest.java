@@ -61,6 +61,5 @@ public class DistributedRspamdFeedMessageRouteIntegrationTest extends RspamdFeed
         .extension(new RspamdExtensionModule())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule()))
-        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }

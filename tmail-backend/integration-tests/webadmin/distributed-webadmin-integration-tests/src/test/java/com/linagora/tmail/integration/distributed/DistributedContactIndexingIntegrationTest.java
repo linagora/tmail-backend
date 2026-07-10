@@ -60,6 +60,5 @@ public class DistributedContactIndexingIntegrationTest extends ContactIndexingIn
         .extension(new ClockExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule()))
-        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }

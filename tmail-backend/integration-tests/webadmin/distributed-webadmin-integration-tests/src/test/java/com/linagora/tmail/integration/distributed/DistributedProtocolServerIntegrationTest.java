@@ -101,7 +101,6 @@ public class DistributedProtocolServerIntegrationTest {
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule(), new FirebaseSubscriptionProbeModule())
             .overrideWith(binder -> binder.bind(FirebasePushClient.class).toInstance(FirebasePushContract.firebasePushClient())))
-        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
 

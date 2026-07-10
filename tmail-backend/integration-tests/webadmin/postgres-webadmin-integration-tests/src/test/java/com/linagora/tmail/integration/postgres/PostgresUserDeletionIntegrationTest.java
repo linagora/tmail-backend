@@ -59,7 +59,6 @@ public class PostgresUserDeletionIntegrationTest extends UserDeletionIntegration
         .apply(Modules.combine(new JmapGuiceKeystoreManagerModule(), new PostgresEncryptedMailboxModule(),
             binder -> Multibinder.newSetBinder(binder, GuiceProbe .class).addBinding().to(JmapGuiceKeystoreManagerProbe .class)))
         .extensions(opensearchExtension)
-        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     private final ReactorOpenSearchClient client = opensearchExtension.getDockerOS().clientProvider().get();

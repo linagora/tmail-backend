@@ -147,7 +147,6 @@ class DistributedTeamMailboxDeletedMessageVaultIntegrationTest {
                 Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxMessageCountProbe.class);
                 Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(DistributedPopulateKeywordEmailQueryViewTaskIntegrationTest.MailboxManagerProbe.class);
             }))
-        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @BeforeEach

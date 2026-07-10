@@ -58,6 +58,5 @@ public class DistributedJmapUploadCleanRouteIntegrationTest extends JmapUploadCl
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule()))
-        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }

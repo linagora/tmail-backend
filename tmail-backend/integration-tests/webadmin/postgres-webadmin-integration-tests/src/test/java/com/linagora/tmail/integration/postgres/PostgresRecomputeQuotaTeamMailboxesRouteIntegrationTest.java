@@ -27,7 +27,6 @@ public class PostgresRecomputeQuotaTeamMailboxesRouteIntegrationTest extends Rec
 
     @RegisterExtension
     static JamesServerExtension testExtension = PostgresWebAdminBase.JAMES_SERVER_EXTENSION_SUPPLIER.get()
-        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
 }

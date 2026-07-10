@@ -62,6 +62,5 @@ public class DistributedUserQuotaReportRoutesIntegrationTest extends UserQuotaRe
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MaxQuotaManagerProbe.class)))
-        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }

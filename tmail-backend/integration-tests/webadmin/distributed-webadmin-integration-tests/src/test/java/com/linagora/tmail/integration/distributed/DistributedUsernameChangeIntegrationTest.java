@@ -99,7 +99,6 @@ public class DistributedUsernameChangeIntegrationTest extends UsernameChangeInte
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding()
                 .to(JmapSettingsProbe.class)))
-        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     private final ReactorOpenSearchClient client = opensearchExtension.getDockerOS().clientProvider().get();

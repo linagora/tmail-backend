@@ -109,7 +109,6 @@ public class TMailDistributedDeletedMessageVaultIntegrationTest extends DeletedM
                 .addBinding()
                 .to(TmailBlobStoreDeletedMessageVaultProbe.class))
             .overrideWith(new DeletedMessageVaultProbeModule()))
-        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @Override

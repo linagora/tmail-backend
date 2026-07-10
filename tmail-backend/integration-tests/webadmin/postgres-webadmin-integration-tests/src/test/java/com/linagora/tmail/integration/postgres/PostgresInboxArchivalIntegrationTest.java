@@ -29,6 +29,5 @@ public class PostgresInboxArchivalIntegrationTest extends InboxArchivalIntegrati
 
     @RegisterExtension
     static JamesServerExtension testExtension = JAMES_SERVER_EXTENSION_SUPPLIER.get()
-        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }
