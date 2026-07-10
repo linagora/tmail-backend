@@ -37,11 +37,21 @@ public class TMailNamespaceSupplier implements NamespaceSupplier {
 
     @Override
     public Collection<Namespace> otherUsersNamespaces(MailboxSession session) {
+        if (isScopedToTeamMailbox(session)) {
+            return ImmutableList.of();
+        }
         return ImmutableList.of(new NamespaceResponse.Namespace("#user", session.getPathDelimiter()));
     }
 
     @Override
     public Collection<Namespace> sharedNamespaces(MailboxSession session) {
+        if (isScopedToTeamMailbox(session)) {
+            return ImmutableList.of();
+        }
         return ImmutableList.of(new NamespaceResponse.Namespace(TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE(), session.getPathDelimiter()));
+    }
+
+    private boolean isScopedToTeamMailbox(MailboxSession session) {
+        return TeamMailboxScope.forSession(session).isPresent();
     }
 }

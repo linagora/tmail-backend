@@ -23,6 +23,7 @@ import org.apache.james.imap.main.PathConverter;
 import org.apache.james.mailbox.MailboxSession;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.linagora.tmail.team.TeamMailbox;
 
 public class TMailPathConverterFactory implements PathConverter.Factory {
     @VisibleForTesting
@@ -33,11 +34,17 @@ public class TMailPathConverterFactory implements PathConverter.Factory {
     }
 
     public PathConverter forSession(MailboxSession session) {
-        if (IS_FULL_DOMAIN_ENABLED) {
-            return fullDomainPathConverterForSession(session);
-        } else {
-            return normalPathConverterForSession(session);
-        }
+        PathConverter pathConverter = IS_FULL_DOMAIN_ENABLED
+            ? fullDomainPathConverterForSession(session)
+            : normalPathConverterForSession(session);
+
+        return TeamMailboxScope.forSession(session)
+            .<PathConverter>map(teamMailbox -> teamMailboxScopedPathConverterForSession(session, teamMailbox, pathConverter))
+            .orElse(pathConverter);
+    }
+
+    public TeamMailboxScopedPathConverter teamMailboxScopedPathConverterForSession(MailboxSession session, TeamMailbox teamMailbox, PathConverter delegate) {
+        return new TeamMailboxScopedPathConverter(session, teamMailbox, delegate);
     }
 
     public TMailPathConverter normalPathConverterForSession(MailboxSession session) {
