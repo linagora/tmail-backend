@@ -62,5 +62,6 @@ public class DistributedLinagoraEchoMethodTest implements LinagoraEchoMethodCont
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(binder -> binder.bind(FirebasePushClient.class).toInstance(LinagoraEchoMethodContract.firebasePushClient())))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }
