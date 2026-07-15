@@ -33,7 +33,7 @@ import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.james.backends.rabbitmq.SimpleConnectionPool;
-import org.apache.james.backends.redis.RedisExtension;
+import com.linagora.tmail.james.app.TmailRedisExtension;
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.apache.james.jmap.api.model.TypeName;
@@ -96,7 +96,7 @@ public class DistributedProtocolServerIntegrationTest {
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
         .extension(rabbitMQExtension)
-        .extension(new RedisExtension())
+        .extension(new TmailRedisExtension())
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule(), new FirebaseSubscriptionProbeModule())

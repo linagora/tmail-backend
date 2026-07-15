@@ -20,7 +20,7 @@ package com.linagora.tmail.integration.distributed;
 
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
-import org.apache.james.backends.redis.RedisExtension;
+import com.linagora.tmail.james.app.TmailRedisExtension;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -57,7 +57,7 @@ public class DistributedUserQuotaReportRoutesIntegrationTest extends UserQuotaRe
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
         .extension(new RabbitMQExtension())
-        .extension(new RedisExtension())
+        .extension(new TmailRedisExtension())
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())

@@ -36,7 +36,7 @@ import jakarta.mail.Flags;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
-import org.apache.james.backends.redis.RedisExtension;
+import com.linagora.tmail.james.app.TmailRedisExtension;
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.apache.james.mailbox.MailboxManager;
@@ -137,7 +137,7 @@ class DistributedTeamMailboxDeletedMessageVaultIntegrationTest {
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
         .extension(new RabbitMQExtension())
-        .extension(new RedisExtension())
+        .extension(new TmailRedisExtension())
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())

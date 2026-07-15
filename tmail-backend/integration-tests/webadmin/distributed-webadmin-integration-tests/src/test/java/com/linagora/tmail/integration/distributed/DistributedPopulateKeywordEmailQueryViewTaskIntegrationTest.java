@@ -37,7 +37,7 @@ import org.apache.james.ClockExtension;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
-import org.apache.james.backends.redis.RedisExtension;
+import com.linagora.tmail.james.app.TmailRedisExtension;
 import org.apache.james.core.Username;
 import org.apache.james.jmap.mail.Keyword;
 import org.apache.james.mailbox.MailboxManager;
@@ -129,7 +129,7 @@ public class DistributedPopulateKeywordEmailQueryViewTaskIntegrationTest {
         .extension(new DockerOpenSearchExtension())
         .extension(new CassandraExtension())
         .extension(new RabbitMQExtension())
-        .extension(new RedisExtension())
+        .extension(new TmailRedisExtension())
         .extension(new AwsS3BlobStoreExtension())
         .extension(new ClockExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
