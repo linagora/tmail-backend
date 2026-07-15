@@ -35,6 +35,9 @@ import org.apache.james.events.EventSerializer;
 import org.apache.james.events.Group;
 import org.apache.james.modules.mailbox.ListenerConfiguration;
 import org.apache.james.modules.mailbox.ListenersConfiguration;
+import org.apache.james.utils.ClassName;
+import org.apache.james.utils.GuiceLoader;
+import org.apache.james.utils.NamingScheme;
 import org.apache.james.utils.PropertiesProvider;
 
 import com.google.inject.AbstractModule;
@@ -44,6 +47,7 @@ import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Named;
 import com.google.inject.name.Names;
+import com.linagora.tmail.james.jmap.event.ApplyWhenFilter;
 import com.linagora.tmail.listener.rag.LlmMailBackendClassifierListener;
 import com.linagora.tmail.listener.rag.LlmMailClassifierListener;
 import com.linagora.tmail.listener.rag.event.AIAnalysisNeededEventSerializer;
@@ -61,6 +65,8 @@ import com.linagora.tmail.mailet.rag.httpclient.Partition;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 
 public class AIBaseModule extends AbstractModule {
+    private static final String AI_JMAP_CAPABILITY_APPLY_WHEN = "ai.jmap.capability.applyWhen";
+
     @Override
     protected void configure() {
         bind(AIRedactionalHelper.class).to(LangchainAIRedactionalHelper.class);
@@ -104,6 +110,24 @@ public class AIBaseModule extends AbstractModule {
     @Provides
     public static AIBotConfig provideAiBotExtensionConfiguration(@Named("ai") Configuration configuration) {
         return AIBotConfig.from(configuration);
+    }
+
+    @Provides
+    @Singleton
+    public ApplyWhenFilter provideApplyWhenFilter(@Named("ai") Configuration configuration, GuiceLoader guiceLoader) {
+        return Optional.ofNullable(configuration.getString(AI_JMAP_CAPABILITY_APPLY_WHEN))
+            .filter(name -> !name.isBlank())
+            .map(name -> loadApplyWhenFilter(name, guiceLoader))
+            .orElse(new ApplyWhenFilter.Always());
+    }
+
+    private ApplyWhenFilter loadApplyWhenFilter(String className, GuiceLoader guiceLoader) {
+        try {
+            return guiceLoader.<ApplyWhenFilter>withNamingSheme(NamingScheme.IDENTITY)
+                .instantiate(new ClassName(className));
+        } catch (Exception e) {
+            throw new IllegalArgumentException("Failed to load ApplyWhenFilter `" + className + "`", e);
+        }
     }
 
     @Provides
