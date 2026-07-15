@@ -144,17 +144,19 @@ public class MailingListManagementRoutes implements Routes {
         try {
             action.run();
             return Responses.returnNoContent(response);
-        } catch (MailingListsNotConfiguredException e) {
-            throw halt(HttpStatus.CONFLICT_409, ErrorType.WRONG_STATE, e);
-        } catch (MailingListManagementException.AlreadyExists e) {
-            throw halt(HttpStatus.CONFLICT_409, ErrorType.WRONG_STATE, e);
-        } catch (MailingListManagementException.NotFound e) {
-            throw halt(HttpStatus.NOT_FOUND_404, ErrorType.NOT_FOUND, e);
-        } catch (MailingListManagementException.UnknownMember e) {
-            throw halt(HttpStatus.BAD_REQUEST_400, ErrorType.INVALID_ARGUMENT, e);
-        } catch (MailingListManagementException e) {
-            throw halt(HttpStatus.CONFLICT_409, ErrorType.WRONG_STATE, e);
+        } catch (MailingListsNotConfiguredException | MailingListManagementException e) {
+            throw haltFor(e);
         }
+    }
+
+    private RuntimeException haltFor(RuntimeException e) {
+        if (e instanceof MailingListManagementException.NotFound) {
+            return halt(HttpStatus.NOT_FOUND_404, ErrorType.NOT_FOUND, e);
+        }
+        if (e instanceof MailingListManagementException.UnknownMember) {
+            return halt(HttpStatus.BAD_REQUEST_400, ErrorType.INVALID_ARGUMENT, e);
+        }
+        return halt(HttpStatus.CONFLICT_409, ErrorType.WRONG_STATE, e);
     }
 
     private MailingListCreationRequest parseBody(Request request) {
