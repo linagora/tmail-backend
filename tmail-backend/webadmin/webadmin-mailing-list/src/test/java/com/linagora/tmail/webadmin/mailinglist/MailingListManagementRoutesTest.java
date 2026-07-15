@@ -57,7 +57,7 @@ import io.restassured.RestAssured;
 class MailingListManagementRoutesTest {
     private static final String BASE_DN = "ou=lists,dc=james,dc=org";
     private static final List<String> CREATED_LIST_LOCAL_PARTS = List.of("newlist", "twomembers", "onemember",
-        "ownerlist", "obmless");
+        "ownerlist");
 
     static LdapGenericContainer ldapContainer = DockerLdapSingleton.ldapContainer;
 
@@ -332,15 +332,17 @@ class MailingListManagementRoutesTest {
     }
 
     @Test
-    void writesShouldReturnConflictForObmLists() {
+    void ownerWritesShouldReturnConflictForObmLists() {
         webAdminServer.destroy();
         startServer(repository(true));
 
         given()
-            .contentType(JSON)
-            .body("""
-                {"members": ["james-user@james.org"]}""")
-            .put("/mailingLists/obmless@lists.james.org")
+            .put("/mailingLists/whatever@lists.james.org/owners/james-user@james.org")
+        .then()
+            .statusCode(CONFLICT_409);
+
+        given()
+            .delete("/mailingLists/whatever@lists.james.org/owners/james-user@james.org")
         .then()
             .statusCode(CONFLICT_409);
     }

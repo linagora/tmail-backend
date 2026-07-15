@@ -1953,11 +1953,17 @@ Return codes:
 The write routes below let an operator create/delete mailing lists and manage their members and owners. Unlike the
 read routes, they are *not* exposed by default: an operator must opt-in by listing
 `com.linagora.tmail.webadmin.mailinglist.MailingListManagementRoutes` under `additional.routes` in
-`webadmin.properties`. They apply to the default `groupOfNames` schema only (OBM `obmGroup` lists are rejected with
-`409 Conflict`) and require the configured LDAP bind user to hold write ACLs on the lists subtree.
+`webadmin.properties`. They require the configured LDAP bind user to hold write ACLs on the lists subtree, and support
+both the default `groupOfNames` schema and the OBM `obmGroup` schema:
 
-Members and owners are supplied as mail addresses and resolved to the matching user entries (a `userBase` search on the
-LDAP `userIdAttribute`); an address that does not resolve to any user is rejected with `400 Bad Request`.
+- For the default `groupOfNames` schema, members and owners are supplied as mail addresses and resolved to the matching
+user entries (a `userBase` search on the LDAP `userIdAttribute`); an address that does not resolve to any user is
+rejected with `400 Bad Request`.
+- For the OBM `obmGroup` schema, members are stored as mail values: an address that resolves to a user is stored as a
+`mailBox`, an unresolved address is stored as an `externalContactEmail` (so external contacts are accepted). The
+`obmGroup` schema has no owner concept, so owner management is rejected with `409 Conflict`. OBM lists are created with a
+minimal set of attributes (a default `gidNumber`, `mailAccess=PERMIT` and the `obmDomain` derived from the list
+address).
 
 ==== Creating a mailing list
 
@@ -1971,16 +1977,16 @@ curl -XPUT 'http://ip:port/mailingLists/sales@lists.linagora.com' \
   }'
 ....
 
-The `members` array is mandatory and must hold at least one address (a `groupOfNames` list cannot be empty).
-`businessCategory` and `owners` are optional. `businessCategory`, when set, must be one of `openList`, `internalList`,
-`memberRestrictedList`, `ownerRestrictedList` or `domainRestrictedList`. The list `cn` is derived from the address
-local-part.
+The `members` array is mandatory and must hold at least one address. `businessCategory` and `owners` are optional.
+`businessCategory`, when set, must be one of `openList`, `internalList`, `memberRestrictedList`, `ownerRestrictedList`
+or `domainRestrictedList`. The list `cn` is derived from the address local-part. For OBM lists, the `owners` field is
+ignored (the `obmGroup` schema has no owner concept).
 
 Return codes:
 
 - `204` The mailing list was created
-- `400` Invalid mail address, invalid `businessCategory`, empty `members`, or a member/owner that is not a user
-- `409` The mailing list already exists, the schema is OBM, or mailing lists are not configured
+- `400` Invalid mail address, invalid `businessCategory`, empty `members`, or (for `groupOfNames`) a member/owner that is not a user
+- `409` The mailing list already exists, or mailing lists are not configured
 
 ==== Deleting a mailing list
 
@@ -1993,7 +1999,7 @@ Return codes:
 - `204` The mailing list was deleted
 - `400` Invalid mail address
 - `404` The mailing list does not exist
-- `409` The schema is OBM, or mailing lists are not configured
+- `409` Mailing lists are not configured
 
 ==== Adding or removing a member
 
@@ -2004,12 +2010,15 @@ curl -XDELETE 'http://ip:port/mailingLists/sales@lists.linagora.com/members/bob@
 
 Both operations are idempotent: adding an already present member or removing an absent one answers `204`.
 
+For OBM lists, an added member that does not resolve to a user is accepted and stored as an `externalContactEmail`; a
+removed member is stripped from both the `mailBox` and `externalContactEmail` attributes.
+
 Return codes:
 
 - `204` The member was added/removed
-- `400` Invalid mail address, or the member is not a user
+- `400` Invalid mail address, or (for `groupOfNames`) the member is not a user
 - `404` The mailing list does not exist
-- `409` Removing the last member (a list cannot be left empty), the schema is OBM, or mailing lists are not configured
+- `409` Removing the last member of a `groupOfNames` list (it cannot be left empty), or mailing lists are not configured
 
 ==== Adding or removing an owner
 
@@ -2018,7 +2027,8 @@ curl -XPUT 'http://ip:port/mailingLists/sales@lists.linagora.com/owners/alice@li
 curl -XDELETE 'http://ip:port/mailingLists/sales@lists.linagora.com/owners/alice@linagora.com'
 ....
 
-Both operations are idempotent.
+Both operations are idempotent. Owner management is only available for the default `groupOfNames` schema; the OBM
+`obmGroup` schema has no owner concept and rejects these routes with `409 Conflict`.
 
 Return codes:
 

@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.webadmin.mailinglist;
 
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
 import java.util.List;
@@ -57,14 +58,24 @@ import com.unboundid.ldap.sdk.SearchScope;
  * the OBM schema (members resolved from the {@code mailBox} / {@code externalContactEmail} mail attributes) are
  * supported for reads, depending on the {@code obm.compatibility} flag of the {@link MailingListConfiguration}.</p>
  *
- * <p>Write operations (create/delete a list, add/remove members and owners) are only implemented for the default
- * groupOfNames schema; they reject OBM lists with a {@link MailingListManagementException.WriteNotSupported}. They rely
- * on single valued LDAP {@code MODIFY} to remain idempotent and require the configured bind user to hold write ACLs on
- * the lists subtree.</p>
+ * <p>Write operations (create/delete a list, add/remove members and owners) are supported for both schemas:</p>
+ * <ul>
+ *     <li>For the default groupOfNames schema, members and owners are stored as {@code member} / {@code owner} DN
+ *     attributes; an address that does not resolve to a user is rejected.</li>
+ *     <li>For the OBM schema, members are stored as mail values: an address resolving to a user goes to
+ *     {@code mailBox}, an unresolved address goes to {@code externalContactEmail}. The {@code obmGroup} schema has no
+ *     owner concept, so owner management is rejected with a {@link MailingListManagementException.WriteNotSupported}.
+ *     OBM lists are created with a minimal set of attributes ({@code mailAccess=PERMIT}, a default {@code gidNumber}
+ *     and the {@code obmDomain} derived from the list address).</li>
+ * </ul>
+ *
+ * <p>They rely on single valued LDAP {@code MODIFY} to remain idempotent and require the configured bind user to hold
+ * write ACLs on the lists subtree.</p>
  */
 public class LdapMailingListRepository implements MailingListRepository {
     private static final Logger LOGGER = LoggerFactory.getLogger(LdapMailingListRepository.class);
     private static final String OBM_GROUP_OBJECT_CLASS = "obmGroup";
+    private static final String POSIX_GROUP_OBJECT_CLASS = "posixGroup";
     private static final String GROUP_OF_NAMES_OBJECT_CLASS = "groupofnames";
     private static final String OBJECT_CLASS_ATTRIBUTE = "objectClass";
     private static final String CN_ATTRIBUTE = "cn";
@@ -73,6 +84,11 @@ public class LdapMailingListRepository implements MailingListRepository {
     private static final String OWNER_ATTRIBUTE = "owner";
     private static final String MAIL_BOX_ATTRIBUTE = "mailBox";
     private static final String EXTERNAL_CONTACT_EMAIL_ATTRIBUTE = "externalContactEmail";
+    private static final String GID_NUMBER_ATTRIBUTE = "gidNumber";
+    private static final String OBM_DOMAIN_ATTRIBUTE = "obmDomain";
+    private static final String MAIL_ACCESS_ATTRIBUTE = "mailAccess";
+    private static final String DEFAULT_GID_NUMBER = "1000";
+    private static final String MAIL_ACCESS_PERMIT = "PERMIT";
 
     private final LDAPConnectionPool ldapConnectionPool;
     private final LdapRepositoryConfiguration ldapConfiguration;
@@ -190,7 +206,14 @@ public class LdapMailingListRepository implements MailingListRepository {
 
     @Override
     public void create(MailingList mailingList) {
-        assertNotObm("Creating a mailing list");
+        if (obmCompatibility) {
+            createObmList(mailingList);
+        } else {
+            createGroupOfNamesList(mailingList);
+        }
+    }
+
+    private void createGroupOfNamesList(MailingList mailingList) {
         MailAddress address = mailingList.address();
         if (resolveListDN(address).isPresent()) {
             throw new MailingListManagementException.AlreadyExists(address);
@@ -210,6 +233,51 @@ public class LdapMailingListRepository implements MailingListRepository {
             entry.addAttribute(OWNER_ATTRIBUTE, resolveUserDNs(mailingList.owners()));
         }
 
+        addEntry(entry, address);
+    }
+
+    /**
+     * Creates an OBM {@code obmGroup} list with a minimal set of attributes: a default {@code gidNumber}, a
+     * {@code mailAccess} of {@code PERMIT} and the {@code obmDomain} derived from the list address. Members are stored
+     * as mail values rather than DNs: an address resolving to a user goes to {@code mailBox}, an unresolved address to
+     * {@code externalContactEmail}. Owners are ignored: the {@code obmGroup} schema has no owner concept.
+     */
+    private void createObmList(MailingList mailingList) {
+        MailAddress address = mailingList.address();
+        if (resolveListDN(address).isPresent()) {
+            throw new MailingListManagementException.AlreadyExists(address);
+        }
+
+        Entry entry = new Entry(newListDN(address));
+        entry.addAttribute(OBJECT_CLASS_ATTRIBUTE, OBM_GROUP_OBJECT_CLASS, POSIX_GROUP_OBJECT_CLASS);
+        entry.addAttribute(CN_ATTRIBUTE, address.getLocalPart());
+        entry.addAttribute(GID_NUMBER_ATTRIBUTE, DEFAULT_GID_NUMBER);
+        entry.addAttribute(MAIL_ACCESS_ATTRIBUTE, MAIL_ACCESS_PERMIT);
+        entry.addAttribute(OBM_DOMAIN_ATTRIBUTE, address.getDomain().asString());
+        entry.addAttribute(mailAttributeForGroups, address.asString());
+        mailingList.businessCategory()
+            .ifPresent(category -> entry.addAttribute(BUSINESS_CATEGORY_ATTRIBUTE, category));
+
+        List<String> internalMembers = new ArrayList<>();
+        List<String> externalMembers = new ArrayList<>();
+        mailingList.members().forEach(member -> {
+            if (isInternalUser(member)) {
+                internalMembers.add(member.asString());
+            } else {
+                externalMembers.add(member.asString());
+            }
+        });
+        if (!internalMembers.isEmpty()) {
+            entry.addAttribute(MAIL_BOX_ATTRIBUTE, internalMembers.toArray(String[]::new));
+        }
+        if (!externalMembers.isEmpty()) {
+            entry.addAttribute(EXTERNAL_CONTACT_EMAIL_ATTRIBUTE, externalMembers.toArray(String[]::new));
+        }
+
+        addEntry(entry, address);
+    }
+
+    private void addEntry(Entry entry, MailAddress address) {
         try {
             ldapConnectionPool.add(entry);
         } catch (LDAPException e) {
@@ -223,7 +291,6 @@ public class LdapMailingListRepository implements MailingListRepository {
 
     @Override
     public void delete(MailAddress address) {
-        assertNotObm("Deleting a mailing list");
         String listDN = resolveListDN(address)
             .orElseThrow(() -> new MailingListManagementException.NotFound(address));
         try {
@@ -239,22 +306,78 @@ public class LdapMailingListRepository implements MailingListRepository {
 
     @Override
     public void addMember(MailAddress listAddress, MailAddress member) {
-        modifyMembership(listAddress, member, MEMBER_ATTRIBUTE, ModificationType.ADD, "addMember");
+        if (obmCompatibility) {
+            addObmMember(listAddress, member);
+        } else {
+            modifyMembership(listAddress, member, MEMBER_ATTRIBUTE, ModificationType.ADD, "addMember");
+        }
     }
 
     @Override
     public void removeMember(MailAddress listAddress, MailAddress member) {
-        modifyMembership(listAddress, member, MEMBER_ATTRIBUTE, ModificationType.DELETE, "removeMember");
+        if (obmCompatibility) {
+            removeObmMember(listAddress, member);
+        } else {
+            modifyMembership(listAddress, member, MEMBER_ATTRIBUTE, ModificationType.DELETE, "removeMember");
+        }
     }
 
     @Override
     public void addOwner(MailAddress listAddress, MailAddress owner) {
+        assertOwnerSupported();
         modifyMembership(listAddress, owner, OWNER_ATTRIBUTE, ModificationType.ADD, "addOwner");
     }
 
     @Override
     public void removeOwner(MailAddress listAddress, MailAddress owner) {
+        assertOwnerSupported();
         modifyMembership(listAddress, owner, OWNER_ATTRIBUTE, ModificationType.DELETE, "removeOwner");
+    }
+
+    /**
+     * Adds a member to an OBM list, storing it as a {@code mailBox} value when it resolves to a user and as an
+     * {@code externalContactEmail} value otherwise. The single valued LDAP {@code MODIFY} stays idempotent.
+     */
+    private void addObmMember(MailAddress listAddress, MailAddress member) {
+        String listDN = resolveListDN(listAddress)
+            .orElseThrow(() -> new MailingListManagementException.NotFound(listAddress));
+        String attribute = isInternalUser(member) ? MAIL_BOX_ATTRIBUTE : EXTERNAL_CONTACT_EMAIL_ATTRIBUTE;
+        modifyMailValue(listDN, attribute, member.asString(), ModificationType.ADD);
+        auditTrail("addMember", listAddress, ImmutableMap.of(MEMBER_ATTRIBUTE, member.asString()));
+    }
+
+    /**
+     * Removes a member from an OBM list. As the address may have been stored either as an internal {@code mailBox} or
+     * an external contact, it is stripped from both attributes; each removal is idempotent.
+     */
+    private void removeObmMember(MailAddress listAddress, MailAddress member) {
+        String listDN = resolveListDN(listAddress)
+            .orElseThrow(() -> new MailingListManagementException.NotFound(listAddress));
+        modifyMailValue(listDN, MAIL_BOX_ATTRIBUTE, member.asString(), ModificationType.DELETE);
+        modifyMailValue(listDN, EXTERNAL_CONTACT_EMAIL_ATTRIBUTE, member.asString(), ModificationType.DELETE);
+        auditTrail("removeMember", listAddress, ImmutableMap.of(MEMBER_ATTRIBUTE, member.asString()));
+    }
+
+    private void modifyMailValue(String listDN, String attribute, String value, ModificationType type) {
+        try {
+            ldapConnectionPool.modify(listDN, new Modification(type, attribute, value));
+        } catch (LDAPException e) {
+            ResultCode resultCode = e.getResultCode();
+            if (type == ModificationType.ADD && resultCode.equals(ResultCode.ATTRIBUTE_OR_VALUE_EXISTS)) {
+                return;
+            }
+            if (type == ModificationType.DELETE && resultCode.equals(ResultCode.NO_SUCH_ATTRIBUTE)) {
+                return;
+            }
+            throw new RuntimeException(e);
+        }
+    }
+
+    private void assertOwnerSupported() {
+        if (obmCompatibility) {
+            throw new MailingListManagementException.WriteNotSupported(
+                "Owner management is not supported for OBM (obmGroup) mailing lists");
+        }
     }
 
     /**
@@ -264,7 +387,6 @@ public class LdapMailingListRepository implements MailingListRepository {
      */
     private void modifyMembership(MailAddress listAddress, MailAddress user, String attribute,
                                   ModificationType type, String action) {
-        assertNotObm("Managing " + attribute + "s");
         String listDN = resolveListDN(listAddress)
             .orElseThrow(() -> new MailingListManagementException.NotFound(listAddress));
         String userDN = resolveUserDN(user);
@@ -286,13 +408,6 @@ public class LdapMailingListRepository implements MailingListRepository {
         auditTrail(action, listAddress, ImmutableMap.of(attribute, user.asString()));
     }
 
-    private void assertNotObm(String operation) {
-        if (obmCompatibility) {
-            throw new MailingListManagementException.WriteNotSupported(
-                operation + " is not supported for OBM (obmGroup) mailing lists");
-        }
-    }
-
     private String newListDN(MailAddress address) {
         return new RDN(CN_ATTRIBUTE, address.getLocalPart()) + "," + baseDN;
     }
@@ -309,6 +424,23 @@ public class LdapMailingListRepository implements MailingListRepository {
         return addresses.stream()
             .map(this::resolveUserDN)
             .toArray(String[]::new);
+    }
+
+    /**
+     * Tells whether an address resolves to a user entry in the configured {@code userBase}. Used by the OBM writes to
+     * decide between storing an address as an internal {@code mailBox} or an external {@code externalContactEmail}.
+     */
+    private boolean isInternalUser(MailAddress user) {
+        Filter filter = Filter.createEqualityFilter(ldapConfiguration.getUserIdAttribute(), user.asString());
+        try {
+            return !ldapConnectionPool.search(ldapConfiguration.getUserBase(), SearchScope.SUB, filter)
+                .getSearchEntries().isEmpty();
+        } catch (LDAPException e) {
+            if (e.getResultCode().equals(ResultCode.NO_SUCH_OBJECT)) {
+                return false;
+            }
+            throw new RuntimeException(e);
+        }
     }
 
     private String resolveUserDN(MailAddress user) {

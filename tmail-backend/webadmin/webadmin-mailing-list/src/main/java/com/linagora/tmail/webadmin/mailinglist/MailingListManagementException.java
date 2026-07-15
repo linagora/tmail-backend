@@ -53,8 +53,8 @@ public abstract class MailingListManagementException extends RuntimeException {
     }
 
     /**
-     * The requested write is not supported for this LDAP schema (typically owner management, or any write against an
-     * OBM {@code obmGroup} list). Translated to a {@code 409 Conflict}.
+     * The requested write is not supported for this LDAP schema (owner management against an OBM {@code obmGroup}
+     * list, which has no owner concept). Translated to a {@code 409 Conflict}.
      */
     public static class WriteNotSupported extends MailingListManagementException {
         public WriteNotSupported(String message) {
