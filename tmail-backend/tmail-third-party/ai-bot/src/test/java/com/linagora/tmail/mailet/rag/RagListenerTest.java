@@ -62,6 +62,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.common.collect.ImmutableMap;
 import com.linagora.tmail.extension.WireMockRagServerExtension;
+import com.linagora.tmail.james.jmap.event.ApplyWhenFilter;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
 import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
@@ -181,8 +182,9 @@ class RagListenerTest {
         partitionFactory = Partition.Factory.fromPattern(ragConfig.getPartitionPattern());
         jmapSettingsRepository = new MemoryJmapSettingsRepository();
         jmapSettingsRepositoryUtils = new JmapSettingsRepositoryJavaUtils(jmapSettingsRepository);
+        ApplyWhenFilter applyWhenFilter = new ApplyWhenFilter.Always();
         ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, threadIdGuessingAlgorithm,
-            jmapSettingsRepository, partitionFactory, openRagHttpClient);
+            jmapSettingsRepository, partitionFactory, openRagHttpClient, applyWhenFilter);
 
         jmapSettingsRepositoryUtils.reset(BOB, ImmutableMap.of("ai.rag.enabled", "true"));
     }

@@ -25,6 +25,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
+import com.linagora.tmail.james.jmap.event.ApplyWhenFilter;
 import jakarta.mail.Flags;
 import jakarta.mail.internet.AddressException;
 
@@ -138,6 +139,7 @@ public class MockLlmMailClassifierListenerTest implements LlmMailClassifierListe
         messageIdManager = resources.getMessageIdManager();
         MetricFactory metricFactory = new RecordingMetricFactory();
         HtmlTextExtractor htmlTextExtractor = new JsoupHtmlTextExtractor();
+        ApplyWhenFilter applyWhenFilter = new ApplyWhenFilter.Always();
         model = new StubModel();
         tmailEventBus = new InVMEventBus(new InVmEventDelivery(metricFactory), backoffConfiguration, eventDeadLetters);
 
@@ -169,7 +171,8 @@ public class MockLlmMailClassifierListenerTest implements LlmMailClassifierListe
             new SystemMailboxesProviderImpl(mailboxManager),
             jmapSettingsRepository,
             tmailEventBus,
-            listenerConfig);
+            listenerConfig,
+            applyWhenFilter);
         backendListener = new LlmMailBackendClassifierListener(
             mailboxManager,
             messageIdManager,
@@ -254,7 +257,8 @@ public class MockLlmMailClassifierListenerTest implements LlmMailClassifierListe
             new SystemMailboxesProviderImpl(mailboxManager),
             jmapSettingsRepository,
             tmailEventBus,
-            overrideConfig);
+            overrideConfig,
+            new ApplyWhenFilter.Always());
         backendListener = new LlmMailBackendClassifierListener(
             mailboxManager,
             messageIdManager,

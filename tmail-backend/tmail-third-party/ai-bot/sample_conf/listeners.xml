@@ -23,6 +23,8 @@
     <listener>
         <class>com.linagora.tmail.mailet.rag.RagListener</class>
         <configuration>
+            <applyWhen>com.linagora.tmail.saas.filter.SaaSPayingUser</applyWhen>
+
             <users>btellier@linagora.com,ptranvan@linagora.com</users>
         </configuration>
     </listener>
@@ -30,6 +32,8 @@
     <listener>
         <class>com.linagora.tmail.listener.rag.LlmMailClassifierListener</class>
         <configuration>
+            <applyWhen>com.linagora.tmail.saas.filter.SaaSPayingUser</applyWhen>
+
             <!-- Optional: override the default system prompt -->
             <!-- Choose ONE of the two options below. They are mutually exclusive. -->
 

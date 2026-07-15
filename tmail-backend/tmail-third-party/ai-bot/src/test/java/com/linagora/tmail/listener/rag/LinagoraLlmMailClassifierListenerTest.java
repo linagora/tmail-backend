@@ -26,6 +26,7 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 
+import com.linagora.tmail.james.jmap.event.ApplyWhenFilter;
 import jakarta.mail.Flags;
 
 import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
@@ -94,6 +95,7 @@ public class LinagoraLlmMailClassifierListenerTest implements LlmMailClassifierL
     private PromptRetriever.Factory promptRetrieverFactory;
     private LabelRepository labelRepository;
     private EventBus tmailEventBus;
+    private ApplyWhenFilter applyWhenFilter;
     private String label1Id;
     private String label2Id;
     private String label3Id;
@@ -123,6 +125,7 @@ public class LinagoraLlmMailClassifierListenerTest implements LlmMailClassifierL
         MetricFactory metricFactory = new RecordingMetricFactory();
         HtmlTextExtractor htmlTextExtractor = new JsoupHtmlTextExtractor();
         tmailEventBus = new InVMEventBus(new InVmEventDelivery(metricFactory), backoffConfiguration, eventDeadLetters);
+        applyWhenFilter = new ApplyWhenFilter.Always();
 
         aliceSession = mailboxManager.createSystemSession(ALICE);
         MailboxPath aliceInboxPath = MailboxPath.inbox(ALICE);
@@ -162,7 +165,8 @@ public class LinagoraLlmMailClassifierListenerTest implements LlmMailClassifierL
             new SystemMailboxesProviderImpl(mailboxManager),
             jmapSettingsRepository,
             tmailEventBus,
-            listenerConfig);
+            listenerConfig,
+            applyWhenFilter);
         backendListener = new LlmMailBackendClassifierListener(
             mailboxManager,
             messageIdManager,
@@ -216,7 +220,8 @@ public class LinagoraLlmMailClassifierListenerTest implements LlmMailClassifierL
             new SystemMailboxesProviderImpl(mailboxManager),
             jmapSettingsRepository,
             tmailEventBus,
-            overrideConfig);
+            overrideConfig,
+            new ApplyWhenFilter.Always());
         backendListener = new LlmMailBackendClassifierListener(
             mailboxManager,
             messageIdManager,

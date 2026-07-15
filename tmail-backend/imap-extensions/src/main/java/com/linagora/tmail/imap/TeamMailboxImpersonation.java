@@ -16,27 +16,16 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.james;
+package com.linagora.tmail.imap;
 
-import org.apache.james.JamesServerExtension;
-import org.junit.jupiter.api.extension.RegisterExtension;
+import org.apache.james.core.Username;
 
-import com.google.inject.AbstractModule;
-import com.linagora.tmail.james.common.FirebaseSubscriptionProbeModule;
-import com.linagora.tmail.james.common.LinagoraEchoMethodContract;
-import com.linagora.tmail.james.jmap.firebase.FirebasePushClient;
+import com.linagora.tmail.team.TeamMailbox;
 
-public class PostgresLinagoraEchoMethodTest implements LinagoraEchoMethodContract {
-
-    @RegisterExtension
-    static JamesServerExtension testExtension = TmailJmapBase.JAMES_SERVER_EXTENSION_FUNCTION
-        .apply(new AbstractModule() {
-            @Override
-            protected void configure() {
-                install(new FirebaseSubscriptionProbeModule());
-                bind(FirebasePushClient.class).toInstance(LinagoraEchoMethodContract.firebasePushClient());
-            }
-        })
-        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
-        .build();
+/**
+ * An authorized team mailbox impersonation: the {@code teamMailbox} to scope the session to, and the
+ * {@code sessionUser} the session should be authenticated as (the member himself, or the team mailbox
+ * owner when an administrator impersonates it).
+ */
+public record TeamMailboxImpersonation(TeamMailbox teamMailbox, Username sessionUser) {
 }

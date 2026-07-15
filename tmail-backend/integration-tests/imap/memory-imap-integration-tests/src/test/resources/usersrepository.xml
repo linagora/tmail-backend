@@ -22,7 +22,8 @@
 
 <usersrepository name="LocalUsers">
     <algorithm>PBKDF2</algorithm>
-    <enableVirtualHosting>true</enableVirtualHosting>    
+    <enableVirtualHosting>true</enableVirtualHosting>
     <enableForwarding>true</enableForwarding>
+    <administratorId>admin@domain.tld</administratorId>
 </usersrepository>
 
