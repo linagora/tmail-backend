@@ -33,7 +33,7 @@ import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class MemoryLinagoraEchoMethodTest implements LinagoraEchoMethodContract {
     @RegisterExtension
-    JamesServerExtension jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->
+    static JamesServerExtension jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->
         MemoryConfiguration.builder()
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
@@ -43,5 +43,6 @@ public class MemoryLinagoraEchoMethodTest implements LinagoraEchoMethodContract 
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(binder -> binder.bind(FirebasePushClient.class).toInstance(LinagoraEchoMethodContract.firebasePushClient())))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }

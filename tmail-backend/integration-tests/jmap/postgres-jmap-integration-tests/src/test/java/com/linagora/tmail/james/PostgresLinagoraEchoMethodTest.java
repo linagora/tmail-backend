@@ -37,5 +37,6 @@ public class PostgresLinagoraEchoMethodTest implements LinagoraEchoMethodContrac
                 bind(FirebasePushClient.class).toInstance(LinagoraEchoMethodContract.firebasePushClient());
             }
         })
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }
