@@ -1948,3 +1948,82 @@ Return codes:
 - `404` The mailing list does not exist
 - `409` Mailing lists are not configured (no `mailingLists.properties` file or no `baseDN`)
 
+=== Managing mailing lists (create, delete, members, owners)
+
+The write routes below let an operator create/delete mailing lists and manage their members and owners. Unlike the
+read routes, they are *not* exposed by default: an operator must opt-in by listing
+`com.linagora.tmail.webadmin.mailinglist.MailingListManagementRoutes` under `additional.routes` in
+`webadmin.properties`. They apply to the default `groupOfNames` schema only (OBM `obmGroup` lists are rejected with
+`409 Conflict`) and require the configured LDAP bind user to hold write ACLs on the lists subtree.
+
+Members and owners are supplied as mail addresses and resolved to the matching user entries (a `userBase` search on the
+LDAP `userIdAttribute`); an address that does not resolve to any user is rejected with `400 Bad Request`.
+
+==== Creating a mailing list
+
+....
+curl -XPUT 'http://ip:port/mailingLists/sales@lists.linagora.com' \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "businessCategory": "openList",
+    "members": ["bob@linagora.com", "alice@linagora.com"],
+    "owners": ["alice@linagora.com"]
+  }'
+....
+
+The `members` array is mandatory and must hold at least one address (a `groupOfNames` list cannot be empty).
+`businessCategory` and `owners` are optional. `businessCategory`, when set, must be one of `openList`, `internalList`,
+`memberRestrictedList`, `ownerRestrictedList` or `domainRestrictedList`. The list `cn` is derived from the address
+local-part.
+
+Return codes:
+
+- `204` The mailing list was created
+- `400` Invalid mail address, invalid `businessCategory`, empty `members`, or a member/owner that is not a user
+- `409` The mailing list already exists, the schema is OBM, or mailing lists are not configured
+
+==== Deleting a mailing list
+
+....
+curl -XDELETE 'http://ip:port/mailingLists/sales@lists.linagora.com'
+....
+
+Return codes:
+
+- `204` The mailing list was deleted
+- `400` Invalid mail address
+- `404` The mailing list does not exist
+- `409` The schema is OBM, or mailing lists are not configured
+
+==== Adding or removing a member
+
+....
+curl -XPUT 'http://ip:port/mailingLists/sales@lists.linagora.com/members/bob@linagora.com'
+curl -XDELETE 'http://ip:port/mailingLists/sales@lists.linagora.com/members/bob@linagora.com'
+....
+
+Both operations are idempotent: adding an already present member or removing an absent one answers `204`.
+
+Return codes:
+
+- `204` The member was added/removed
+- `400` Invalid mail address, or the member is not a user
+- `404` The mailing list does not exist
+- `409` Removing the last member (a list cannot be left empty), the schema is OBM, or mailing lists are not configured
+
+==== Adding or removing an owner
+
+....
+curl -XPUT 'http://ip:port/mailingLists/sales@lists.linagora.com/owners/alice@linagora.com'
+curl -XDELETE 'http://ip:port/mailingLists/sales@lists.linagora.com/owners/alice@linagora.com'
+....
+
+Both operations are idempotent.
+
+Return codes:
+
+- `204` The owner was added/removed
+- `400` Invalid mail address, or the owner is not a user
+- `404` The mailing list does not exist
+- `409` The schema is OBM, or mailing lists are not configured
+
