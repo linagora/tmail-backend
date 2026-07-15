@@ -22,7 +22,9 @@ import jakarta.inject.Inject;
 
 import org.apache.james.core.MailAddress;
 import org.apache.james.domainlist.api.DomainList;
+import org.apache.james.protocols.smtp.SMTPSession;
 import org.apache.james.rrt.api.RecipientRewriteTable;
+import org.apache.james.rrt.api.RecipientRewriteTableException;
 import org.apache.james.smtpserver.fastfail.ValidRcptHandler;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.james.user.api.UsersRepositoryException;
@@ -47,6 +49,12 @@ public class TMailValidRcptHandler extends ValidRcptHandler {
     @Override
     protected boolean mailboxExists(MailAddress recipient) throws UsersRepositoryException {
         return super.mailboxExists(recipient) || isATeamMailbox(recipient);
+    }
+
+    // This is only needed to make James' behavior visible for tests here.
+    @Override
+    protected boolean isValidRecipient(SMTPSession session, MailAddress recipient) throws UsersRepositoryException, RecipientRewriteTableException {
+        return super.isValidRecipient(session, recipient);
     }
 
     private boolean isATeamMailbox(MailAddress recipient) {
