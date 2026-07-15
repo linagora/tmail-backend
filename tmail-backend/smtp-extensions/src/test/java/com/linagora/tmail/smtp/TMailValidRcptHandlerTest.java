@@ -37,6 +37,8 @@ import org.apache.james.rrt.memory.MemoryRecipientRewriteTable;
 import org.apache.james.user.memory.MemoryUsersRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import com.linagora.tmail.team.TeamMailbox;
 import com.linagora.tmail.team.TeamMailboxCallbackNoop;
@@ -50,6 +52,9 @@ class TMailValidRcptHandlerTest {
     public static final Username BOB = Username.fromLocalPartWithDomain("bob", DOMAIN);
     public static final Username SALES = Username.fromLocalPartWithDomain("sales", DOMAIN);
     public static final Username NON_EXISTENT = Username.fromLocalPartWithDomain("non-existent", DOMAIN);
+    public static final Username BOB_ALIAS = Username.fromLocalPartWithDomain("bob-alias", DOMAIN);
+    public static final Username ADDRESS_ALIAS = Username.fromLocalPartWithDomain("address-alias", DOMAIN);
+    public static final Username GROUP = Username.fromLocalPartWithDomain("group", DOMAIN);
 
     private TMailValidRcptHandler testee;
 
@@ -60,8 +65,6 @@ class TMailValidRcptHandlerTest {
                 integrationResources.getMailboxManager().getMapperFactory(), integrationResources.getMailboxManager().getEventBus());
 
         TeamMailboxRepositoryImpl teamMailboxRepository = new TeamMailboxRepositoryImpl(integrationResources.getMailboxManager(), subscriptionManager, integrationResources.getMailboxManager().getMapperFactory(), java.util.Set.of(new TeamMailboxCallbackNoop()));
-        TeamMailbox teamMailbox = TeamMailbox.asTeamMailbox(new MailAddress(SALES.asString())).get();
-        Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox)).block();
 
         MemoryDomainList domainList = new MemoryDomainList(mock(DNSService.class));
         domainList.configure(DomainListConfiguration.DEFAULT);
@@ -74,10 +77,16 @@ class TMailValidRcptHandlerTest {
         rrt.setUsersRepository(usersRepository);
         rrt.setDomainList(domainList);
         rrt.setConfiguration(RecipientRewriteTableConfiguration.DEFAULT_ENABLED);
+        rrt.addAliasMapping(MappingSource.fromUser(BOB_ALIAS), BOB.asString());
+        rrt.addGroupMapping(MappingSource.fromUser(GROUP), BOB.asString());
+        rrt.addAddressMapping(MappingSource.fromUser(ADDRESS_ALIAS), BOB.asString());
+
+        TeamMailbox teamMailbox = TeamMailbox.asTeamMailbox(new MailAddress(SALES.asString())).get();
+        Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox)).block();
+        Mono.from(teamMailboxRepository.addMember(teamMailbox, TeamMailboxMember.asMember(BOB))).block();
 
         testee = new TMailValidRcptHandler(usersRepository, rrt, domainList, teamMailboxRepository);
     }
-
 
     @Test
     void shouldHandleUsers() throws Exception {
@@ -92,5 +101,31 @@ class TMailValidRcptHandlerTest {
     @Test
     void shouldNotHandleNonExistentRecipients() throws Exception {
         assertThat(testee.mailboxExists(new MailAddress(NON_EXISTENT.asString()))).isFalse();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "bob@linagora.com",
+        "bob+detail@linagora.com",
+        "bob-alias@linagora.com",
+        "group@linagora.com",
+        "address-alias@linagora.com",
+        "sales@linagora.com",
+        "sales+detail@linagora.com"
+    })
+    void shouldHandleLocalResources(String address) throws Exception {
+        assertThat(testee.isValidRecipient(mock(SMTPSession.class), new MailAddress(address)))
+            .isTrue();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "notFound@linagora.com",
+        "bob@notFound.com",
+        "not.found@linagora.com"
+    })
+    void shouldNotHandeRemoteResources(String address) throws Exception {
+        assertThat(testee.isValidRecipient(mock(SMTPSession.class), new MailAddress(address)))
+            .isFalse();
     }
 }
