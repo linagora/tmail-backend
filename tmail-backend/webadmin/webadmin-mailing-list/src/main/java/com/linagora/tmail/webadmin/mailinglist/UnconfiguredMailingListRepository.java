@@ -43,4 +43,34 @@ public class UnconfiguredMailingListRepository implements MailingListRepository 
     public Optional<MailingList> get(MailAddress address) {
         throw new MailingListsNotConfiguredException();
     }
+
+    @Override
+    public void create(MailingList mailingList) {
+        throw new MailingListsNotConfiguredException();
+    }
+
+    @Override
+    public void delete(MailAddress address) {
+        throw new MailingListsNotConfiguredException();
+    }
+
+    @Override
+    public void addMember(MailAddress listAddress, MailAddress member) {
+        throw new MailingListsNotConfiguredException();
+    }
+
+    @Override
+    public void removeMember(MailAddress listAddress, MailAddress member) {
+        throw new MailingListsNotConfiguredException();
+    }
+
+    @Override
+    public void addOwner(MailAddress listAddress, MailAddress owner) {
+        throw new MailingListsNotConfiguredException();
+    }
+
+    @Override
+    public void removeOwner(MailAddress listAddress, MailAddress owner) {
+        throw new MailingListsNotConfiguredException();
+    }
 }

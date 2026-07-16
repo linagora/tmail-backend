@@ -30,4 +30,16 @@ public interface MailingListRepository {
     List<MailAddress> list(Domain domain);
 
     Optional<MailingList> get(MailAddress address);
+
+    void create(MailingList mailingList);
+
+    void delete(MailAddress address);
+
+    void addMember(MailAddress listAddress, MailAddress member);
+
+    void removeMember(MailAddress listAddress, MailAddress member);
+
+    void addOwner(MailAddress listAddress, MailAddress owner);
+
+    void removeOwner(MailAddress listAddress, MailAddress owner);
 }
