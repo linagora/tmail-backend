@@ -48,16 +48,20 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import com.linagora.tmail.mailet.MailingListConfiguration;
+import com.unboundid.ldap.sdk.Filter;
 import com.unboundid.ldap.sdk.LDAPConnectionPool;
 import com.unboundid.ldap.sdk.LDAPException;
 import com.unboundid.ldap.sdk.ResultCode;
+import com.unboundid.ldap.sdk.SearchResult;
+import com.unboundid.ldap.sdk.SearchResultEntry;
+import com.unboundid.ldap.sdk.SearchScope;
 
 import io.restassured.RestAssured;
 
 class MailingListManagementRoutesTest {
     private static final String BASE_DN = "ou=lists,dc=james,dc=org";
     private static final List<String> CREATED_LIST_LOCAL_PARTS = List.of("newlist", "twomembers", "onemember",
-        "ownerlist");
+        "ownerlist", "sharedlocal");
 
     static LdapGenericContainer ldapContainer = DockerLdapSingleton.ldapContainer;
 
@@ -106,7 +110,11 @@ class MailingListManagementRoutesTest {
 
     private void deleteListEntryQuietly(String localPart) {
         try {
-            ldapConnectionPool.delete("cn=" + localPart + "," + BASE_DN);
+            SearchResult searchResult = ldapConnectionPool.search(BASE_DN, SearchScope.SUB,
+                Filter.createEqualityFilter("cn", localPart));
+            for (SearchResultEntry entry : searchResult.getSearchEntries()) {
+                ldapConnectionPool.delete(entry.getDN());
+            }
         } catch (LDAPException e) {
             if (!e.getResultCode().equals(ResultCode.NO_SUCH_OBJECT)) {
                 throw new RuntimeException(e);
@@ -145,6 +153,33 @@ class MailingListManagementRoutesTest {
             .body("""
                 {"members": ["james-user@james.org"]}""")
             .put("/mailingLists/mygroup@lists.james.org")
+        .then()
+            .statusCode(CONFLICT_409);
+    }
+
+    @Test
+    void createShouldAllowSameLocalPartInDifferentDomains() {
+        createList("sharedlocal@lists.james.org", "james-user@james.org");
+
+        given()
+            .contentType(JSON)
+            .body("""
+                {"members": ["james-user@james.org"]}""")
+            .put("/mailingLists/sharedlocal@other.james.org")
+        .then()
+            .statusCode(NO_CONTENT_204);
+    }
+
+    @Test
+    void createObmListShouldReturnConflictForUnsupportedBusinessCategory() {
+        webAdminServer.destroy();
+        startServer(repository(true));
+
+        given()
+            .contentType(JSON)
+            .body("""
+                {"businessCategory": "internalList", "members": ["james-user@james.org"]}""")
+            .put("/mailingLists/whatever@lists.james.org")
         .then()
             .statusCode(CONFLICT_409);
     }

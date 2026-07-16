@@ -65,8 +65,9 @@ import com.unboundid.ldap.sdk.SearchScope;
  *     <li>For the OBM schema, members are stored as mail values: an address resolving to a user goes to
  *     {@code mailBox}, an unresolved address goes to {@code externalContactEmail}. The {@code obmGroup} schema has no
  *     owner concept, so owner management is rejected with a {@link MailingListManagementException.WriteNotSupported}.
- *     OBM lists are created with a minimal set of attributes ({@code mailAccess=PERMIT}, a default {@code gidNumber}
- *     and the {@code obmDomain} derived from the list address).</li>
+ *     OBM lists are created with a minimal set of attributes (a {@code mailAccess} derived from the requested
+ *     {@code businessCategory}, a default {@code gidNumber} and the {@code obmDomain} derived from the list
+ *     address).</li>
  * </ul>
  *
  * <p>They rely on single valued LDAP {@code MODIFY} to remain idempotent and require the configured bind user to hold
@@ -89,6 +90,9 @@ public class LdapMailingListRepository implements MailingListRepository {
     private static final String MAIL_ACCESS_ATTRIBUTE = "mailAccess";
     private static final String DEFAULT_GID_NUMBER = "1000";
     private static final String MAIL_ACCESS_PERMIT = "PERMIT";
+    private static final String MAIL_ACCESS_REJECT = "REJECT";
+    private static final String OPEN_LIST_CATEGORY = "openlist";
+    private static final String MEMBER_RESTRICTED_LIST_CATEGORY = "memberrestrictedlist";
 
     private final LDAPConnectionPool ldapConnectionPool;
     private final LdapRepositoryConfiguration ldapConfiguration;
@@ -238,21 +242,31 @@ public class LdapMailingListRepository implements MailingListRepository {
 
     /**
      * Creates an OBM {@code obmGroup} list with a minimal set of attributes: a default {@code gidNumber}, a
-     * {@code mailAccess} of {@code PERMIT} and the {@code obmDomain} derived from the list address. Members are stored
-     * as mail values rather than DNs: an address resolving to a user goes to {@code mailBox}, an unresolved address to
-     * {@code externalContactEmail}. Owners are ignored: the {@code obmGroup} schema has no owner concept.
+     * {@code mailAccess} derived from the requested {@code businessCategory} and the {@code obmDomain} derived from the
+     * list address. Members are stored as mail values rather than DNs: an address resolving to a user goes to
+     * {@code mailBox}, an unresolved address to {@code externalContactEmail}. Owners are ignored: the {@code obmGroup}
+     * schema has no owner concept.
+     *
+     * <p>The OBM mailet authorizes senders solely from {@code mailAccess} (see {@code OBMLDAPMailingList}), so the
+     * {@code businessCategory} is mapped to it: {@code openList} (or no category) yields {@code PERMIT} (public), while
+     * {@code memberRestrictedList} yields {@code REJECT} (only members may post). The remaining categories
+     * ({@code internalList}, {@code ownerRestrictedList}, {@code domainRestrictedList}) have no OBM equivalent and are
+     * rejected rather than silently created as public.</p>
      */
     private void createObmList(MailingList mailingList) {
         MailAddress address = mailingList.address();
         if (resolveListDN(address).isPresent()) {
             throw new MailingListManagementException.AlreadyExists(address);
         }
+        String mailAccess = mailingList.businessCategory()
+            .map(this::toObmMailAccess)
+            .orElse(MAIL_ACCESS_PERMIT);
 
         Entry entry = new Entry(newListDN(address));
         entry.addAttribute(OBJECT_CLASS_ATTRIBUTE, OBM_GROUP_OBJECT_CLASS, POSIX_GROUP_OBJECT_CLASS);
         entry.addAttribute(CN_ATTRIBUTE, address.getLocalPart());
         entry.addAttribute(GID_NUMBER_ATTRIBUTE, DEFAULT_GID_NUMBER);
-        entry.addAttribute(MAIL_ACCESS_ATTRIBUTE, MAIL_ACCESS_PERMIT);
+        entry.addAttribute(MAIL_ACCESS_ATTRIBUTE, mailAccess);
         entry.addAttribute(OBM_DOMAIN_ATTRIBUTE, address.getDomain().asString());
         entry.addAttribute(mailAttributeForGroups, address.asString());
         mailingList.businessCategory()
@@ -408,8 +422,30 @@ public class LdapMailingListRepository implements MailingListRepository {
         auditTrail(action, listAddress, ImmutableMap.of(attribute, user.asString()));
     }
 
+    /**
+     * Maps a webadmin {@code businessCategory} to an OBM {@code mailAccess} value. Only the two categories that OBM can
+     * represent are supported; the others are rejected so that a restricted list is never silently created as public.
+     */
+    private String toObmMailAccess(String businessCategory) {
+        return switch (businessCategory.toLowerCase().trim()) {
+            case OPEN_LIST_CATEGORY -> MAIL_ACCESS_PERMIT;
+            case MEMBER_RESTRICTED_LIST_CATEGORY -> MAIL_ACCESS_REJECT;
+            default -> throw new MailingListManagementException.WriteNotSupported(
+                "businessCategory '" + businessCategory + "' is not supported for OBM (obmGroup) mailing lists; "
+                    + "only openList and memberRestrictedList are supported");
+        };
+    }
+
+    /**
+     * Builds the DN of a new list. The RDN combines {@code cn} (the local part, keeping the group naming) with the mail
+     * attribute (the full address) so that two lists sharing a local part in different domains map to distinct DNs
+     * under the same {@code baseDN}. Lookups still rely on the mail attribute, so this only affects entry creation.
+     */
     private String newListDN(MailAddress address) {
-        return new RDN(CN_ATTRIBUTE, address.getLocalPart()) + "," + baseDN;
+        RDN rdn = new RDN(
+            new String[]{CN_ATTRIBUTE, mailAttributeForGroups},
+            new String[]{address.getLocalPart(), address.asString()});
+        return rdn + "," + baseDN;
     }
 
     private Optional<String> resolveListDN(MailAddress address) {
