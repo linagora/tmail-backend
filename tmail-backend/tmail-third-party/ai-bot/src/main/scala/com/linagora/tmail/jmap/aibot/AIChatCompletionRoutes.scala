@@ -21,6 +21,7 @@ package com.linagora.tmail.jmap.aibot
 import java.nio.charset.StandardCharsets
 import java.util.stream
 import java.util.stream.Stream
+import com.linagora.tmail.james.jmap.event.ApplyWhenFilter
 import com.linagora.tmail.jmap.aibot.AIChatCompletionRoutes.LOGGER
 import com.linagora.tmail.mailet.rag.RagConfig
 import com.linagora.tmail.mailet.rag.httpclient.{ChatCompletionResult, OpenRagHttpClient}
@@ -48,7 +49,8 @@ object AIChatCompletionRoutes {
 
 class AIChatCompletionRoutes @Inject()(@Named(InjectionKeys.RFC_8621) val authenticator: Authenticator,
                                        val ragConfig: RagConfig,
-                                       val metricFactory: MetricFactory) extends JMAPRoutes {
+                                       val metricFactory: MetricFactory,
+                                       val applyWhenFilter: ApplyWhenFilter) extends JMAPRoutes {
   private val openRagHttpClient = new OpenRagHttpClient(ragConfig)
   private val jmapAiUri = "/ai/v1/chat/completions"
 
@@ -64,7 +66,14 @@ class AIChatCompletionRoutes @Inject()(@Named(InjectionKeys.RFC_8621) val authen
 
   private def post(request: HttpServerRequest, response: HttpServerResponse): Mono[Void] =
     SMono(authenticator.authenticate(request))
-      .flatMap(_ => postRequest(request, response))
+      .flatMap(mailbox =>
+        SMono(applyWhenFilter.isEligible(mailbox.getUser))
+          .map(_.booleanValue())
+          .flatMap {
+            case true => postRequest(request, response)
+            case false =>
+              respondDetails(response, ProblemDetails(status = UNAUTHORIZED, detail = "User is not eligible for AI chat completion"))
+          })
       .onErrorResume {
         case e: UnauthorizedException =>
           LOGGER.warn("Unauthorized", e)
