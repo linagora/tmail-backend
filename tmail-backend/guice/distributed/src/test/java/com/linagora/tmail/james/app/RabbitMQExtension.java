@@ -24,10 +24,14 @@ import org.apache.james.backends.rabbitmq.DockerRabbitMQSingleton;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.ParameterContext;
 import org.junit.jupiter.api.extension.ParameterResolutionException;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.inject.Module;
 
 public class RabbitMQExtension implements GuiceModuleTestExtension {
+
+    private static final Logger LOGGER = LoggerFactory.getLogger(RabbitMQExtension.class);
 
     private final DockerRabbitMQ dockerRabbitMQ;
 
@@ -43,6 +47,13 @@ public class RabbitMQExtension implements GuiceModuleTestExtension {
     public void afterAll(ExtensionContext extensionContext) {
         // Container is a JVM-wide singleton started in DockerRabbitMQSingleton's
         // static initializer; testcontainers Ryuk reaps it on JVM exit.
+        // Reset the RabbitMQ node between test classes to clear stale queues
+        // (e.g. PushListenerGroup) left by the previous GuiceJamesServer.
+        try {
+            dockerRabbitMQ.reset();
+        } catch (Exception e) {
+            LOGGER.warn("Failed to reset RabbitMQ between test classes", e);
+        }
     }
 
     @Override
