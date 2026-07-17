@@ -62,6 +62,7 @@ class AIChatCompletionRoutesTest {
     static final String PASSWORD = "secret";
     private static final Username PAYING_USER = Username.fromLocalPartWithDomain("paying", DOMAIN);
     private static final Username NON_PAYING_USER = Username.fromLocalPartWithDomain("nonpaying", DOMAIN);
+    private static final Username USER_WITH_NO_SAAS = Username.fromLocalPartWithDomain("no-saas", DOMAIN);
 
     private static final MemorySaaSAccountRepository SAAS_REPOSITORY = new MemorySaaSAccountRepository();
     @RegisterExtension
@@ -89,7 +90,8 @@ class AIChatCompletionRoutesTest {
         jamesServer.getProbe(DataProbeImpl.class).fluent()
             .addDomain(DOMAIN)
             .addUser(PAYING_USER.asString(), PASSWORD)
-            .addUser(NON_PAYING_USER.asString(), PASSWORD);
+            .addUser(NON_PAYING_USER.asString(), PASSWORD)
+            .addUser(USER_WITH_NO_SAAS.asString(), PASSWORD);
 
         Mono.from(SAAS_REPOSITORY.upsertSaasAccount(PAYING_USER, new SaaSAccount(true, true))).block();
         Mono.from(SAAS_REPOSITORY.upsertSaasAccount(NON_PAYING_USER, new SaaSAccount(true, false))).block();
@@ -189,6 +191,24 @@ class AIChatCompletionRoutesTest {
         .when()
             .post()
         .then()
+            .statusCode(SC_UNAUTHORIZED)
+            .contentType("application/json");
+    }
+
+    @Test
+    void jmapAiChatCompletionsRouteShouldRejectUserWhithNoSaasAccount(GuiceJamesServer jamesServer) {
+        String incomingPayload = "{test_wrong_auth}";
+
+        RequestSpecification requestSpecification = baseRequestSpecBuilder(jamesServer)
+            .setBasePath(JMAP_CHAT_COMPLETIONS_ENDPOINT)
+            .setAuth(authScheme(new UserCredential(USER_WITH_NO_SAAS, PASSWORD)))
+            .build();
+
+        given(requestSpecification)
+            .body(incomingPayload)
+            .when()
+            .post()
+            .then()
             .statusCode(SC_UNAUTHORIZED)
             .contentType("application/json");
     }
