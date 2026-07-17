@@ -88,109 +88,109 @@ class TMailCanSendFromTest extends CanSendFromContract {
 
   @Test
   def teamMailboxMemberCanSend(): Unit = {
-    val teamMailbox = TeamMailbox(Domain.of("domain.tld"), TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(CanSendFromContract.DOMAIN, TeamMailboxName("marketing"))
     SMono(teamMailboxRepository.createTeamMailbox(teamMailbox)).block()
-    SMono(teamMailboxRepository.addMember(teamMailbox,  TeamMailboxMember.asMember(Username.of("bob@domain.tld")))).block()
+    SMono(teamMailboxRepository.addMember(teamMailbox, TeamMailboxMember.asMember(CanSendFromContract.USER))).block()
 
-    assertThat(testee.userCanSendFrom(Username.of("bob@domain.tld"), Username.of("marketing@domain.tld")))
+    assertThat(testee.userCanSendFrom(CanSendFromContract.USER, Username.fromLocalPartWithDomain("marketing", CanSendFromContract.DOMAIN)))
       .isTrue
   }
 
   @Test
   def nonMembersCannotSend(): Unit = {
-    val teamMailbox = TeamMailbox(Domain.of("domain.tld"), TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(CanSendFromContract.DOMAIN, TeamMailboxName("marketing"))
     SMono(teamMailboxRepository.createTeamMailbox(teamMailbox)).block()
 
-    assertThat(testee.userCanSendFrom(Username.of("bob@domain.tld"), Username.of("marketing@domain.tld")))
+    assertThat(testee.userCanSendFrom(CanSendFromContract.USER, Username.fromLocalPartWithDomain("marketing", CanSendFromContract.DOMAIN)))
       .isFalse
   }
 
   @Test
   def allValidFromAddressesForUserShouldListTeamMailbox(): Unit = {
-    val teamMailbox = TeamMailbox(Domain.of("domain.tld"), TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(CanSendFromContract.DOMAIN, TeamMailboxName("marketing"))
     SMono(teamMailboxRepository.createTeamMailbox(teamMailbox)).block()
-    SMono(teamMailboxRepository.addMember(teamMailbox,  TeamMailboxMember.asMember(Username.of("bob@domain.tld")))) .block()
+    SMono(teamMailboxRepository.addMember(teamMailbox, TeamMailboxMember.asMember(CanSendFromContract.USER))) .block()
 
-    assertThat(Flux.from(testee.allValidFromAddressesForUser(Username.of("bob@domain.tld")))
+    assertThat(Flux.from(testee.allValidFromAddressesForUser(CanSendFromContract.USER))
       .collectList().block())
-      .containsOnly(new MailAddress("marketing@domain.tld"), new MailAddress("bob@domain.tld"))
+      .containsOnly(MailAddress.of("marketing", CanSendFromContract.DOMAIN), new MailAddress(CanSendFromContract.USER.asString()))
   }
 
   @Test
   def allValidFromAddressesForUserShouldListTeamMailboxAlias(): Unit = {
-    val teamMailbox = TeamMailbox(Domain.of("domain.tld"), TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(CanSendFromContract.DOMAIN, TeamMailboxName("marketing"))
     SMono(teamMailboxRepository.createTeamMailbox(teamMailbox)).block()
-    SMono(teamMailboxRepository.addMember(teamMailbox,  TeamMailboxMember.asMember(Username.of("bob@domain.tld")))) .block()
-    addAliasMapping(Username.of("marketing-alias@domain.tld"), Username.of("marketing@domain.tld"))
+    SMono(teamMailboxRepository.addMember(teamMailbox, TeamMailboxMember.asMember(CanSendFromContract.USER))) .block()
+    addAliasMapping(Username.fromLocalPartWithDomain("marketing-alias", CanSendFromContract.DOMAIN), Username.fromLocalPartWithDomain("marketing", CanSendFromContract.DOMAIN))
 
-    assertThat(Flux.from(testee.allValidFromAddressesForUser(Username.of("bob@domain.tld")))
+    assertThat(Flux.from(testee.allValidFromAddressesForUser(CanSendFromContract.USER))
       .collectList().block())
-      .containsOnly(new MailAddress("marketing@domain.tld"), new MailAddress("marketing-alias@domain.tld"), new MailAddress("bob@domain.tld"))
+      .containsOnly(MailAddress.of("marketing", CanSendFromContract.DOMAIN), MailAddress.of("marketing-alias", CanSendFromContract.DOMAIN), new MailAddress(CanSendFromContract.USER.asString()))
   }
 
   @Test
   def userWithExtraAclOnSubfolderOnlyCannotSend(): Unit = {
-    val teamMailbox = TeamMailbox(Domain.of("domain.tld"), TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(CanSendFromContract.DOMAIN, TeamMailboxName("marketing"))
     SMono(teamMailboxRepository.createTeamMailbox(teamMailbox)).block()
 
     val session = mailboxManager.createSystemSession(teamMailbox.owner)
     mailboxManager.applyRightsCommand(
       teamMailbox.inboxPath,
-      MailboxACL.command().forUser(Username.of("bob@domain.tld")).rights(MailboxACL.Right.Lookup, MailboxACL.Right.Read).asAddition(),
+      MailboxACL.command().forUser(CanSendFromContract.USER).rights(MailboxACL.Right.Lookup, MailboxACL.Right.Read).asAddition(),
       session)
 
-    assertThat(testee.userCanSendFrom(Username.of("bob@domain.tld"), Username.of("marketing@domain.tld")))
+    assertThat(testee.userCanSendFrom(CanSendFromContract.USER, Username.fromLocalPartWithDomain("marketing", CanSendFromContract.DOMAIN)))
       .isFalse
   }
 
   @Test
   def extraSenderCanSendAsTeamMailbox(): Unit = {
-    val teamMailbox = TeamMailbox(Domain.of("domain.tld"), TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(CanSendFromContract.DOMAIN, TeamMailboxName("marketing"))
     SMono(teamMailboxRepository.createTeamMailbox(teamMailbox)).block()
 
     val session = mailboxManager.createSystemSession(teamMailbox.admin)
     mailboxManager.applyRightsCommand(
       teamMailbox.mailboxPath,
-      MailboxACL.command().forUser(Username.of("bob@domain.tld")).rights(MailboxACL.Right.Post).asAddition(),
+      MailboxACL.command().forUser(CanSendFromContract.USER).rights(MailboxACL.Right.Post).asAddition(),
       session)
 
-    assertThat(testee.userCanSendFrom(Username.of("bob@domain.tld"), Username.of("marketing@domain.tld")))
+    assertThat(testee.userCanSendFrom(CanSendFromContract.USER, Username.fromLocalPartWithDomain("marketing", CanSendFromContract.DOMAIN)))
       .isTrue
   }
 
   @Test
   def extraSenderCanSendAsTeamMailboxAlias(): Unit = {
-    val teamMailbox = TeamMailbox(Domain.of("domain.tld"), TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(CanSendFromContract.DOMAIN, TeamMailboxName("marketing"))
     SMono(teamMailboxRepository.createTeamMailbox(teamMailbox)).block()
-    addAliasMapping(Username.of("marketing-alias@domain.tld"), Username.of("marketing@domain.tld"))
+    addAliasMapping(Username.fromLocalPartWithDomain("marketing-alias", CanSendFromContract.DOMAIN), Username.fromLocalPartWithDomain("marketing", CanSendFromContract.DOMAIN))
 
     val session = mailboxManager.createSystemSession(teamMailbox.admin)
     mailboxManager.applyRightsCommand(
       teamMailbox.mailboxPath,
-      MailboxACL.command().forUser(Username.of("bob@domain.tld")).rights(MailboxACL.Right.Post).asAddition(),
+      MailboxACL.command().forUser(CanSendFromContract.USER).rights(MailboxACL.Right.Post).asAddition(),
       session)
 
-    assertThat(testee.userCanSendFrom(Username.of("bob@domain.tld"), Username.of("marketing-alias@domain.tld")))
+    assertThat(testee.userCanSendFrom(CanSendFromContract.USER, Username.fromLocalPartWithDomain("marketing-alias", CanSendFromContract.DOMAIN)))
       .isTrue
   }
 
   @Test
   def extraSenderLosesRightAfterRemoval(): Unit = {
-    val teamMailbox = TeamMailbox(Domain.of("domain.tld"), TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(CanSendFromContract.DOMAIN, TeamMailboxName("marketing"))
     SMono(teamMailboxRepository.createTeamMailbox(teamMailbox)).block()
 
     val session = mailboxManager.createSystemSession(teamMailbox.admin)
     mailboxManager.applyRightsCommand(
       teamMailbox.mailboxPath,
-      MailboxACL.command().forUser(Username.of("bob@domain.tld")).rights(MailboxACL.Right.Post).asAddition(),
+      MailboxACL.command().forUser(CanSendFromContract.USER).rights(MailboxACL.Right.Post).asAddition(),
       session)
 
     mailboxManager.applyRightsCommand(
       teamMailbox.mailboxPath,
-      MailboxACL.command().forUser(Username.of("bob@domain.tld")).rights(MailboxACL.Right.Post).asRemoval(),
+      MailboxACL.command().forUser(CanSendFromContract.USER).rights(MailboxACL.Right.Post).asRemoval(),
       session)
 
-    assertThat(testee.userCanSendFrom(Username.of("bob@domain.tld"), Username.of("marketing@domain.tld")))
+    assertThat(testee.userCanSendFrom(CanSendFromContract.USER, Username.fromLocalPartWithDomain("marketing", CanSendFromContract.DOMAIN)))
       .isFalse
   }
 }
