@@ -21,6 +21,7 @@ Sample `ai.properties` configuration:
 apiKey=demo
 model=lucie
 baseURL=https://chat.lucie.example.com
+ai.jmap.capability.applyWhen=com.linagora.tmail.saas.filter.SaaSPayingUser
 ```
 
 **Parameter explanation:**
@@ -29,6 +30,7 @@ baseURL=https://chat.lucie.example.com
 * `baseURL`: The URL of an LLM API compatible with OpenAI, e.g. https://ai.linagora.com/api. If left blank, defaults to the official OpenAI API base URL.
 * `model`: The identifier of the LLM that generates the replies. Defaults to `gpt-4o-mini`.
 * `timeout`: Optional, duration, defaults to 10 seconds. Timeout for LLM requests.
+* `ai.jmap.capability.applyWhen`: Optional, fully qualified class name of an `ApplyWhenFilter` implementation that determines which users are eligible for the AI bot JMAP capability and ChatCompletion route. If not set, defaults to `com.linagora.tmail.james.jmap.event.ApplyWhenFilter$Always` (all authenticated users are eligible). For SaaS deployments, use `com.linagora.tmail.saas.filter.SaaSPayingUser` to restrict access to paying users only. Custom implementations must implement the `com.linagora.tmail.james.jmap.event.ApplyWhenFilter` interface.
 
 You can use the langchain4j demo API at http://langchain4j.dev/demo/openai/v1 with the `gpt-4o-mini` model and `demo` API key for testing purposes.
 

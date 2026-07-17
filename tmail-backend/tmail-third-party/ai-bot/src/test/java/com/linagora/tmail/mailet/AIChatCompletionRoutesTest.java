@@ -27,31 +27,44 @@ import static org.apache.http.HttpStatus.SC_OK;
 import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
 import static org.apache.james.jmap.JMAPTestingConstants.ALICE;
 import static org.apache.james.jmap.JMAPTestingConstants.ALICE_PASSWORD;
-import static org.apache.james.jmap.JMAPTestingConstants.BOB;
-import static org.apache.james.jmap.JMAPTestingConstants.BOB_PASSWORD;
-import static org.apache.james.jmap.JMAPTestingConstants.DOMAIN;
 import static org.apache.james.jmap.rfc8621.contract.Fixture.authScheme;
 import static org.apache.james.jmap.rfc8621.contract.Fixture.baseRequestSpecBuilder;
+import static org.hamcrest.Matchers.equalTo;
 
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
+import org.apache.james.core.Username;
 import org.apache.james.jmap.http.UserCredential;
 import org.apache.james.utils.DataProbeImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.google.inject.util.Modules;
 import com.linagora.tmail.extension.WireMockRagServerExtension;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
+import com.linagora.tmail.james.jmap.event.ApplyWhenFilter;
+import com.linagora.tmail.mailet.conf.AIBaseModule;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
+import com.linagora.tmail.saas.api.SaaSAccountRepository;
+import com.linagora.tmail.saas.api.memory.MemorySaaSAccountRepository;
+import com.linagora.tmail.saas.filter.SaaSPayingUser;
+import com.linagora.tmail.saas.model.SaaSAccount;
 
 import io.restassured.specification.RequestSpecification;
+import reactor.core.publisher.Mono;
 
 class AIChatCompletionRoutesTest {
     private static final String JMAP_CHAT_COMPLETIONS_ENDPOINT = "/ai/v1/chat/completions";
+    static final String DOMAIN = "domain.tld";
+    static final String PASSWORD = "secret";
+    private static final Username PAYING_USER = Username.fromLocalPartWithDomain("paying", DOMAIN);
+    private static final Username NON_PAYING_USER = Username.fromLocalPartWithDomain("nonpaying", DOMAIN);
+    private static final Username USER_WITH_NO_SAAS = Username.fromLocalPartWithDomain("no-saas", DOMAIN);
 
+    private static final MemorySaaSAccountRepository SAAS_REPOSITORY = new MemorySaaSAccountRepository();
     @RegisterExtension
     static WireMockRagServerExtension wireMockRagServerExtension = new WireMockRagServerExtension();
 
@@ -63,7 +76,12 @@ class AIChatCompletionRoutesTest {
                 .usersRepository(DEFAULT)
                 .build())
             .server(configuration -> MemoryServer.createServer(configuration)
-                .overrideWith(new LinagoraTestJMAPServerModule()))
+                .overrideWith(new LinagoraTestJMAPServerModule())
+                .overrideWith(Modules.override(new AIBaseModule())
+                    .with(binder -> {
+                        binder.bind(ApplyWhenFilter.class).toInstance(new SaaSPayingUser(SAAS_REPOSITORY));
+                        binder.bind(SaaSAccountRepository.class).toInstance(SAAS_REPOSITORY);
+                    })))
             .extension(wireMockRagServerExtension)
             .build();
 
@@ -71,11 +89,16 @@ class AIChatCompletionRoutesTest {
     void setUp(GuiceJamesServer jamesServer) throws Exception {
         jamesServer.getProbe(DataProbeImpl.class).fluent()
             .addDomain(DOMAIN)
-            .addUser(BOB.asString(), BOB_PASSWORD);
+            .addUser(PAYING_USER.asString(), PASSWORD)
+            .addUser(NON_PAYING_USER.asString(), PASSWORD)
+            .addUser(USER_WITH_NO_SAAS.asString(), PASSWORD);
+
+        Mono.from(SAAS_REPOSITORY.upsertSaasAccount(PAYING_USER, new SaaSAccount(true, true))).block();
+        Mono.from(SAAS_REPOSITORY.upsertSaasAccount(NON_PAYING_USER, new SaaSAccount(true, false))).block();
 
         requestSpecification = baseRequestSpecBuilder(jamesServer)
             .setBasePath(JMAP_CHAT_COMPLETIONS_ENDPOINT)
-            .setAuth(authScheme(new UserCredential(BOB, BOB_PASSWORD)))
+            .setAuth(authScheme(new UserCredential(PAYING_USER, PASSWORD)))
             .build();
     }
 
@@ -170,5 +193,42 @@ class AIChatCompletionRoutesTest {
         .then()
             .statusCode(SC_UNAUTHORIZED)
             .contentType("application/json");
+    }
+
+    @Test
+    void jmapAiChatCompletionsRouteShouldRejectUserWhithNoSaasAccount(GuiceJamesServer jamesServer) {
+        String incomingPayload = "{test_wrong_auth}";
+
+        RequestSpecification requestSpecification = baseRequestSpecBuilder(jamesServer)
+            .setBasePath(JMAP_CHAT_COMPLETIONS_ENDPOINT)
+            .setAuth(authScheme(new UserCredential(USER_WITH_NO_SAAS, PASSWORD)))
+            .build();
+
+        given(requestSpecification)
+            .body(incomingPayload)
+            .when()
+            .post()
+            .then()
+            .statusCode(SC_UNAUTHORIZED)
+            .contentType("application/json");
+    }
+
+    @Test
+    void jmapAiChatCompletionsRouteShouldRejectNonPayingUser(GuiceJamesServer jamesServer) {
+        String incomingPayload = "{test_wrong_auth}";
+
+        RequestSpecification requestSpecification = baseRequestSpecBuilder(jamesServer)
+            .setBasePath(JMAP_CHAT_COMPLETIONS_ENDPOINT)
+            .setAuth(authScheme(new UserCredential(NON_PAYING_USER, PASSWORD)))
+            .build();
+
+        given(requestSpecification)
+            .body(incomingPayload)
+            .when()
+            .post()
+            .then()
+            .statusCode(SC_UNAUTHORIZED)
+            .contentType("application/json")
+            .body("detail", equalTo("User is not eligible for AI chat completion"));
     }
 }

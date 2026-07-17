@@ -18,15 +18,18 @@
 package com.linagora.tmail.jmap.aibot
 
 import com.google.inject.AbstractModule
-import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
+import com.google.inject.multibindings.Multibinder
+import com.linagora.tmail.james.jmap.event.ApplyWhenFilter
 import com.linagora.tmail.jmap.aibot.CapabilityIdentifier.LINAGORA_AIBOT
 import eu.timepit.refined.auto._
+import jakarta.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.jmap.JMAPRoutes
 import org.apache.james.jmap.core.CapabilityIdentifier.CapabilityIdentifier
 import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProperties, URL, UrlPrefixes}
 import org.apache.james.jmap.method.Method
 import play.api.libs.json.{JsObject, Json}
+import reactor.core.scala.publisher.SMono
 
 object CapabilityIdentifier {
   val LINAGORA_AIBOT: CapabilityIdentifier = "com:linagora:params:jmap:aibot"
@@ -40,13 +43,22 @@ case class AiBotCapability(properties: AiBotCapabilityProperties,
                            identifier: CapabilityIdentifier = LINAGORA_AIBOT) extends Capability
 
 class AiBotCapabilitiesModule extends AbstractModule {
-  @ProvidesIntoSet
-  private def capability(): CapabilityFactory = AiBotCapabilityFactory
+  override def configure(): Unit = {
+    Multibinder.newSetBinder(binder(), classOf[CapabilityFactory])
+      .addBinding()
+      .to(classOf[AiBotCapabilityFactory])
+  }
 }
 
-case object AiBotCapabilityFactory extends CapabilityFactory {
+class AiBotCapabilityFactory @Inject()(val applyWhenFilter: ApplyWhenFilter) extends CapabilityFactory {
   override def create(urlPrefixes: UrlPrefixes, username: Username): Capability =
-    AiBotCapability(AiBotCapabilityProperties(URL(urlPrefixes.httpUrlPrefix.toString + "/ai/v1/chat/completions")))
+    this.createReactive(urlPrefixes, username).block()
+
+  override def createReactive(urlPrefixes: UrlPrefixes, username: Username): SMono[Capability] = {
+    SMono(applyWhenFilter.isEligible(username))
+      .filter(_.booleanValue())
+      .map(_ => AiBotCapability(AiBotCapabilityProperties(URL(urlPrefixes.httpUrlPrefix.toString + "/ai/v1/chat/completions"))))
+  }
 
   override def id(): CapabilityIdentifier = LINAGORA_AIBOT
 }
