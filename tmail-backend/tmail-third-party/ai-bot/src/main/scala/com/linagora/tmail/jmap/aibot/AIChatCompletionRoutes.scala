@@ -23,8 +23,7 @@ import java.util.stream
 import java.util.stream.Stream
 import com.linagora.tmail.james.jmap.event.ApplyWhenFilter
 import com.linagora.tmail.jmap.aibot.AIChatCompletionRoutes.LOGGER
-import com.linagora.tmail.mailet.rag.RagConfig
-import com.linagora.tmail.mailet.rag.httpclient.{ChatCompletionResult, OpenRagHttpClient}
+import com.linagora.tmail.scribe.{ChatCompletionResult, ScribeClient}
 import io.netty.handler.codec.http.HttpHeaderNames.{CONTENT_LENGTH, CONTENT_TYPE}
 import io.netty.handler.codec.http.HttpMethod
 import io.netty.handler.codec.http.HttpResponseStatus.{INTERNAL_SERVER_ERROR, UNAUTHORIZED}
@@ -48,10 +47,9 @@ object AIChatCompletionRoutes {
 }
 
 class AIChatCompletionRoutes @Inject()(@Named(InjectionKeys.RFC_8621) val authenticator: Authenticator,
-                                       val ragConfig: RagConfig,
+                                       val scribeClient: ScribeClient,
                                        val metricFactory: MetricFactory,
                                        val applyWhenFilter: ApplyWhenFilter) extends JMAPRoutes {
-  private val openRagHttpClient = new OpenRagHttpClient(ragConfig)
   private val jmapAiUri = "/ai/v1/chat/completions"
 
   override def routes(): stream.Stream[JMAPRoute] = Stream.of(
@@ -91,7 +89,7 @@ class AIChatCompletionRoutes @Inject()(@Named(InjectionKeys.RFC_8621) val authen
         .aggregate()
         .asByteArray())
       .flatMap(input => SMono.fromPublisher(metricFactory.decoratePublisherWithTimerMetric("JMAP-ai-chat-completion",
-          openRagHttpClient.proxyChatCompletions(input))))
+          scribeClient.proxyChatCompletions(input))))
       .flatMap(result => sendResponse(response, result)
         .`then`())
 

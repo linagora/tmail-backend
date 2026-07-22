@@ -61,8 +61,8 @@ import com.linagora.tmail.mailet.rag.RagConfig;
 import com.linagora.tmail.mailet.rag.RagListener;
 import com.linagora.tmail.mailet.rag.httpclient.OpenRagHttpClient;
 import com.linagora.tmail.mailet.rag.httpclient.Partition;
+import com.linagora.tmail.scribe.ScribeClient;
 import com.linagora.tmail.scribe.ScribeConfiguration;
-import com.linagora.tmail.scribe.ScribeHttpClient;
 
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 
@@ -156,8 +156,8 @@ public class AIBaseModule extends AbstractModule {
 
     @Provides
     @Singleton
-    public ScribeHttpClient provideScribeHttpClient(ScribeConfiguration scribeConfig) {
-        return new ScribeHttpClient(scribeConfig);
+    public ScribeClient provideScribeClient(ScribeConfiguration scribeConfig) {
+        return new ScribeClient(scribeConfig);
     }
 
     @Provides
