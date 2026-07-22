@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.mailet.rag.httpclient;
+package com.linagora.tmail.scribe;
 
 import io.netty.handler.codec.http.HttpHeaders;
 

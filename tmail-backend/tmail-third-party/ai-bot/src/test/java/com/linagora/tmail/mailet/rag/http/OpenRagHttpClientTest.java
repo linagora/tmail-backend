@@ -29,7 +29,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.linagora.tmail.extension.WireMockRagServerExtension;
+import com.linagora.tmail.extension.WireMockAiServerExtension;
 import com.linagora.tmail.mailet.rag.RagConfig;
 import com.linagora.tmail.mailet.rag.httpclient.DocumentId;
 import com.linagora.tmail.mailet.rag.httpclient.OpenRagHttpClient;
@@ -40,7 +40,7 @@ public class OpenRagHttpClientTest {
     private static final String CHAT_COMPLETIONS_ENDPOINT = "/v1/chat/completions";
 
     @RegisterExtension
-    static WireMockRagServerExtension wireMockRagServerExtension = new WireMockRagServerExtension();
+    static WireMockAiServerExtension wireMockRagServerExtension = new WireMockAiServerExtension();
 
     private OpenRagHttpClient client;
 

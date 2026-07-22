@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.mailet;
+package com.linagora.tmail.scribe;
 
 import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.requestSpecification;
@@ -42,7 +42,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.util.Modules;
-import com.linagora.tmail.extension.WireMockRagServerExtension;
+import com.linagora.tmail.extension.WireMockAiServerExtension;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.jmap.event.ApplyWhenFilter;
@@ -66,7 +66,7 @@ class AIChatCompletionRoutesTest {
 
     private static final MemorySaaSAccountRepository SAAS_REPOSITORY = new MemorySaaSAccountRepository();
     @RegisterExtension
-    static WireMockRagServerExtension wireMockRagServerExtension = new WireMockRagServerExtension();
+    static WireMockAiServerExtension wireMockRagServerExtension = new WireMockAiServerExtension();
 
     @RegisterExtension
     static JamesServerExtension jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->

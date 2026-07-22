@@ -57,7 +57,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.common.collect.ImmutableMap;
-import com.linagora.tmail.extension.WireMockRagServerExtension;
+import com.linagora.tmail.extension.WireMockAiServerExtension;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
 import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
@@ -70,7 +70,7 @@ import reactor.core.publisher.Mono;
 public class RagDeletionListenerTest {
 
     @RegisterExtension
-    static WireMockRagServerExtension wireMockRagServerExtension = new WireMockRagServerExtension();
+    static WireMockAiServerExtension wireMockRagServerExtension = new WireMockAiServerExtension();
 
     private EventBus eventBus;
     private JmapSettingsRepository jmapSettingsRepository;
