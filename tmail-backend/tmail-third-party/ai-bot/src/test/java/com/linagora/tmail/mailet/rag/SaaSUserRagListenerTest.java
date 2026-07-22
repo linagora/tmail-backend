@@ -57,7 +57,7 @@ import com.linagora.tmail.james.jmap.event.ApplyWhenFilter;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
 import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
-import com.linagora.tmail.mailet.rag.httpclient.OpenRagHttpClient;
+import com.linagora.tmail.mailet.rag.httpclient.OpenRagClient;
 import com.linagora.tmail.mailet.rag.httpclient.Partition;
 import com.linagora.tmail.saas.api.memory.MemorySaaSAccountRepository;
 import com.linagora.tmail.saas.filter.SaaSPayingUser;
@@ -92,7 +92,7 @@ class SaaSUserRagListenerTest {
     JmapSettingsRepository jmapSettingsRepository;
     JmapSettingsRepositoryJavaUtils jmapSettingsRepositoryUtils;
     MemorySaaSAccountRepository saasAccountRepository;
-    OpenRagHttpClient openRagHttpClient;
+    OpenRagClient openRagClient;
     Partition.Factory partitionFactory;
 
     @BeforeEach
@@ -126,7 +126,7 @@ class SaaSUserRagListenerTest {
         config.addProperty("openrag.ssl.trust.all.certs", "true");
         config.addProperty("openrag.partition.pattern", "{localPart}.twake.{domainName}");
         RagConfig ragConfig = RagConfig.from(config);
-        openRagHttpClient = new OpenRagHttpClient(ragConfig);
+        openRagClient = new OpenRagClient(ragConfig);
         partitionFactory = Partition.Factory.fromPattern(ragConfig.getPartitionPattern());
 
         jmapSettingsRepository = new MemoryJmapSettingsRepository();
@@ -137,7 +137,7 @@ class SaaSUserRagListenerTest {
         ApplyWhenFilter applyWhenFilter = new SaaSPayingUser(saasAccountRepository);
 
         ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider,
-            threadIdGuessingAlgorithm, jmapSettingsRepository, partitionFactory, openRagHttpClient, applyWhenFilter);
+            threadIdGuessingAlgorithm, jmapSettingsRepository, partitionFactory, openRagClient, applyWhenFilter);
 
         jmapSettingsRepositoryUtils.reset(BOB, ImmutableMap.of("ai.rag.enabled", "true"));
     }

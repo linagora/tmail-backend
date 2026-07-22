@@ -66,7 +66,7 @@ import com.linagora.tmail.james.jmap.event.ApplyWhenFilter;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
 import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
-import com.linagora.tmail.mailet.rag.httpclient.OpenRagHttpClient;
+import com.linagora.tmail.mailet.rag.httpclient.OpenRagClient;
 import com.linagora.tmail.mailet.rag.httpclient.Partition;
 
 class RagListenerTest {
@@ -117,7 +117,7 @@ class RagListenerTest {
     MailboxId bobMailBoxId;
     MailboxId aliceInboxId;
     MemoryEventDeadLetters eventDeadLetters;
-    OpenRagHttpClient openRagHttpClient;
+    OpenRagClient openRagClient;
     Partition.Factory partitionFactory;
     RagConfig ragConfig;
     JmapSettingsRepository jmapSettingsRepository;
@@ -178,13 +178,13 @@ class RagListenerTest {
         configuration.addProperty("openrag.ssl.trust.all.certs", "true");
         configuration.addProperty("openrag.partition.pattern", "{localPart}.twake.{domainName}");
         ragConfig = RagConfig.from(configuration);
-        openRagHttpClient = new OpenRagHttpClient(ragConfig);
+        openRagClient = new OpenRagClient(ragConfig);
         partitionFactory = Partition.Factory.fromPattern(ragConfig.getPartitionPattern());
         jmapSettingsRepository = new MemoryJmapSettingsRepository();
         jmapSettingsRepositoryUtils = new JmapSettingsRepositoryJavaUtils(jmapSettingsRepository);
         ApplyWhenFilter applyWhenFilter = new ApplyWhenFilter.Always();
         ragListener = new RagListener(mailboxManager, messageIdManager, systemMailboxesProvider, threadIdGuessingAlgorithm,
-            jmapSettingsRepository, partitionFactory, openRagHttpClient, applyWhenFilter);
+            jmapSettingsRepository, partitionFactory, openRagClient, applyWhenFilter);
 
         jmapSettingsRepositoryUtils.reset(BOB, ImmutableMap.of("ai.rag.enabled", "true"));
     }

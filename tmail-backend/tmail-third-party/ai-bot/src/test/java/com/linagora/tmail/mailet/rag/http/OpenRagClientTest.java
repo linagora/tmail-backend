@@ -32,17 +32,17 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.linagora.tmail.extension.WireMockAiServerExtension;
 import com.linagora.tmail.mailet.rag.RagConfig;
 import com.linagora.tmail.mailet.rag.httpclient.DocumentId;
-import com.linagora.tmail.mailet.rag.httpclient.OpenRagHttpClient;
+import com.linagora.tmail.mailet.rag.httpclient.OpenRagClient;
 import com.linagora.tmail.mailet.rag.httpclient.OpenRagUnexpectedException;
 import com.linagora.tmail.mailet.rag.httpclient.Partition;
 
-public class OpenRagHttpClientTest {
+public class OpenRagClientTest {
     private static final String CHAT_COMPLETIONS_ENDPOINT = "/v1/chat/completions";
 
     @RegisterExtension
     static WireMockAiServerExtension wireMockRagServerExtension = new WireMockAiServerExtension();
 
-    private OpenRagHttpClient client;
+    private OpenRagClient client;
 
     @BeforeEach
     void setUp() {
@@ -52,7 +52,7 @@ public class OpenRagHttpClientTest {
         configuration.addProperty("openrag.ssl.trust.all.certs", "true");
         configuration.addProperty("openrag.partition.pattern", "{localPart}.twake.{domainName}");
         RagConfig ragConfig = RagConfig.from(configuration);
-        client = new OpenRagHttpClient(ragConfig);
+        client = new OpenRagClient(ragConfig);
     }
 
     @Test

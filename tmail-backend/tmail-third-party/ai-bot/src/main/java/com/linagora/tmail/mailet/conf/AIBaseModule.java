@@ -59,7 +59,7 @@ import com.linagora.tmail.mailet.LangchainAIRedactionalHelper;
 import com.linagora.tmail.mailet.StreamChatLanguageModelFactory;
 import com.linagora.tmail.mailet.rag.RagConfig;
 import com.linagora.tmail.mailet.rag.RagListener;
-import com.linagora.tmail.mailet.rag.httpclient.OpenRagHttpClient;
+import com.linagora.tmail.mailet.rag.httpclient.OpenRagClient;
 import com.linagora.tmail.mailet.rag.httpclient.Partition;
 import com.linagora.tmail.scribe.ScribeClient;
 import com.linagora.tmail.scribe.ScribeConfiguration;
@@ -145,8 +145,8 @@ public class AIBaseModule extends AbstractModule {
 
     @Provides
     @Singleton
-    public OpenRagHttpClient provideOpenRagHttpClient(RagConfig ragConfig) {
-        return new OpenRagHttpClient(ragConfig);
+    public OpenRagClient provideOpenRagClient(RagConfig ragConfig) {
+        return new OpenRagClient(ragConfig);
     }
 
     @Provides

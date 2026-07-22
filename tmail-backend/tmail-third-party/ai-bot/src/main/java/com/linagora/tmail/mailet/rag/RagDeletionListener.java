@@ -38,7 +38,7 @@ import org.slf4j.LoggerFactory;
 import com.linagora.tmail.james.jmap.settings.JmapSettings;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.mailet.rag.httpclient.DocumentId;
-import com.linagora.tmail.mailet.rag.httpclient.OpenRagHttpClient;
+import com.linagora.tmail.mailet.rag.httpclient.OpenRagClient;
 import com.linagora.tmail.mailet.rag.httpclient.Partition;
 
 import reactor.core.publisher.Mono;
@@ -56,19 +56,19 @@ public class RagDeletionListener implements EventListener.ReactiveGroupEventList
     private final JmapSettingsRepository jmapSettingsRepository;
     private final MailboxSessionMapperFactory mapperFactory;
     private final Partition.Factory partitionFactory;
-    private final OpenRagHttpClient openRagHttpClient;
+    private final OpenRagClient openRagClient;
 
     @Inject
     public RagDeletionListener(JmapSettingsRepository jmapSettingsRepository,
                                SessionProvider sessionProvider,
                                MailboxSessionMapperFactory mapperFactory,
                                Partition.Factory partitionFactory,
-                               OpenRagHttpClient openRagHttpClient) {
+                               OpenRagClient openRagClient) {
         this.session = sessionProvider.createSystemSession(ADMIN);
         this.jmapSettingsRepository = jmapSettingsRepository;
         this.mapperFactory = mapperFactory;
         this.partitionFactory = partitionFactory;
-        this.openRagHttpClient = openRagHttpClient;
+        this.openRagClient = openRagClient;
     }
 
     @Override
@@ -119,7 +119,7 @@ public class RagDeletionListener implements EventListener.ReactiveGroupEventList
         Partition partition = partitionFactory.forUsername(contentDeletionEvent.getUsername());
         DocumentId documentId = new DocumentId(contentDeletionEvent.messageId());
 
-        return openRagHttpClient.deleteDocument(partition, documentId)
+        return openRagClient.deleteDocument(partition, documentId)
             .doOnSuccess(any -> LOGGER.debug("Deleted RAG document {} with partition {} for user {}",
                 documentId.asString(), partition.partitionName(), contentDeletionEvent.getUsername().asString()))
             .doOnError(error -> LOGGER.error("Failed to delete RAG document {} with partition {} for user {}",
