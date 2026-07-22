@@ -18,9 +18,12 @@
 
 package com.linagora.tmail.james.common
 
+import java.nio.charset.StandardCharsets
+import java.util.UUID
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
-import com.linagora.tmail.james.common.EmailRecoveryActionIntegrationTest.{andreBaseRequest, andreInboxId, bobBaseRequest, bobInboxId}
+import com.google.common.hash.Hashing
 import com.linagora.tmail.james.common.LinagoraEmailSendMethodContract.HTML_BODY
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.`given`
@@ -29,8 +32,9 @@ import io.restassured.specification.RequestSpecification
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import org.apache.http.HttpStatus
 import org.apache.james.GuiceJamesServer
+import org.apache.james.core.Username
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCOUNT_ID => BOB_ACCOUNT_ID, _}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE_PASSWORD, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.mailbox.model.MailboxPath
 import org.apache.james.modules.MailboxProbeImpl
 import org.apache.james.utils.DataProbeImpl
@@ -42,40 +46,71 @@ import org.hamcrest.Matchers.hasSize
 import org.junit.jupiter.api.{BeforeEach, Test}
 
 object EmailRecoveryActionIntegrationTest {
-  var bobBaseRequest: RequestSpecification = _
-  var andreBaseRequest: RequestSpecification = _
-  var andreInboxId: String = _
-  var bobInboxId: String = _
+  case class TestContext(bobUsername: Username,
+                         bobAccountId: String,
+                         bobBaseRequest: RequestSpecification,
+                         bobInboxId: String,
+                         andreUsername: Username,
+                         andreAccountId: String,
+                         andreBaseRequest: RequestSpecification,
+                         andreInboxId: String)
+
+  private val currentContext: AtomicReference[TestContext] = new AtomicReference[TestContext]()
 }
 
 trait EmailRecoveryActionIntegrationTest {
+  import EmailRecoveryActionIntegrationTest.TestContext
+
   private lazy val await: ConditionFactory = awaitility.atMost(30, TimeUnit.SECONDS)
+
+  def bobUsername: Username = EmailRecoveryActionIntegrationTest.currentContext.get().bobUsername
+  def bobAccountId: String = EmailRecoveryActionIntegrationTest.currentContext.get().bobAccountId
+  def bobBaseRequest: RequestSpecification = EmailRecoveryActionIntegrationTest.currentContext.get().bobBaseRequest
+  def bobInboxId: String = EmailRecoveryActionIntegrationTest.currentContext.get().bobInboxId
+  def andreUsername: Username = EmailRecoveryActionIntegrationTest.currentContext.get().andreUsername
+  def andreAccountId: String = EmailRecoveryActionIntegrationTest.currentContext.get().andreAccountId
+  def andreBaseRequest: RequestSpecification = EmailRecoveryActionIntegrationTest.currentContext.get().andreBaseRequest
+  def andreInboxId: String = EmailRecoveryActionIntegrationTest.currentContext.get().andreInboxId
 
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    val bob = Username.fromLocalPartWithDomain(s"bob$uniqueSuffix", DOMAIN)
+    val andre = Username.fromLocalPartWithDomain(s"andre$uniqueSuffix", DOMAIN)
+
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
       .addDomain(DOMAIN.asString())
-      .addUser(BOB.asString(), BOB_PASSWORD)
-      .addUser(ANDRE.asString(), ANDRE_PASSWORD)
+      .addUser(bob.asString(), BOB_PASSWORD)
+      .addUser(andre.asString(), ANDRE_PASSWORD)
 
-    andreInboxId = server.getProbe(classOf[MailboxProbeImpl])
-      .createMailbox(MailboxPath.inbox(ANDRE))
+    val andreInboxId = server.getProbe(classOf[MailboxProbeImpl])
+      .createMailbox(MailboxPath.inbox(andre))
       .serialize()
 
-    bobInboxId = server.getProbe(classOf[MailboxProbeImpl])
-      .createMailbox(MailboxPath.inbox(BOB))
+    val bobInboxId = server.getProbe(classOf[MailboxProbeImpl])
+      .createMailbox(MailboxPath.inbox(bob))
       .serialize()
 
-    bobBaseRequest = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+    val bobBaseRequest = baseRequestSpecBuilder(server)
+      .setAuth(authScheme(UserCredential(bob, BOB_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build()
 
-    andreBaseRequest = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+    val andreBaseRequest = baseRequestSpecBuilder(server)
+      .setAuth(authScheme(UserCredential(andre, ANDRE_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build()
+
+    EmailRecoveryActionIntegrationTest.currentContext.set(TestContext(
+      bobUsername = bob,
+      bobAccountId = Hashing.sha256().hashString(bob.asString(), StandardCharsets.UTF_8).toString,
+      bobBaseRequest = bobBaseRequest,
+      bobInboxId = bobInboxId,
+      andreUsername = andre,
+      andreAccountId = Hashing.sha256().hashString(andre.asString(), StandardCharsets.UTF_8).toString,
+      andreBaseRequest = andreBaseRequest,
+      andreInboxId = andreInboxId))
   }
 
   @Test
@@ -91,11 +126,11 @@ trait EmailRecoveryActionIntegrationTest {
         s"""{ "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail"],
            |  "methodCalls": [
            |      ["Email/set",{
-           |        "accountId": "$ANDRE_ACCOUNT_ID",
+           |        "accountId": "$andreAccountId",
            |        "destroy": ["$andreMessageId"]
            |      }, "c1"],
            |      [ "Email/get", {
-           |        "accountId": "$ANDRE_ACCOUNT_ID",
+           |        "accountId": "$andreAccountId",
            |        "ids": ["$andreMessageId"]
            |      }, "c2" ]] }""".stripMargin)
     .when()
@@ -124,8 +159,8 @@ trait EmailRecoveryActionIntegrationTest {
   def recoveryShouldNotImpactOtherUsers(): Unit = {
     bobSendAnEmailToAndre()
     awaitAndreAlreadyHasExpectedEmail(expectEmailNumber = 1)
-    deleteAllEmail(andreBaseRequest, ANDRE_ACCOUNT_ID)
-    deleteAllEmail(bobBaseRequest, BOB_ACCOUNT_ID)
+    deleteAllEmail(andreBaseRequest, andreAccountId)
+    deleteAllEmail(bobBaseRequest, bobAccountId)
     andrePostEmailRecoveryCreateAction()
     awaitAndreAlreadyHasExpectedEmail(expectEmailNumber = 1)
 
@@ -137,7 +172,7 @@ trait EmailRecoveryActionIntegrationTest {
              |  "methodCalls": [[
              |      "Email/query",
              |      {
-             |        "accountId": "$BOB_ACCOUNT_ID",
+             |        "accountId": "$bobAccountId",
              |        "filter": {}
              |      }, "c1"]] }""".stripMargin)
       .when()
@@ -151,7 +186,7 @@ trait EmailRecoveryActionIntegrationTest {
   def recoveryShouldNotBeRemovedFromTheVault(): Unit = {
     bobSendAnEmailToAndre()
     awaitAndreAlreadyHasExpectedEmail(expectEmailNumber = 1)
-    deleteAllEmail(andreBaseRequest, ANDRE_ACCOUNT_ID)
+    deleteAllEmail(andreBaseRequest, andreAccountId)
     andrePostEmailRecoveryCreateAction()
     awaitAndreAlreadyHasExpectedEmail(expectEmailNumber = 1)
 
@@ -167,7 +202,7 @@ trait EmailRecoveryActionIntegrationTest {
     bobSendAnEmailToAndre(emailSubjectSuffix = Some(" Newyork"))
     bobSendAnEmailToAndre(emailSubjectSuffix = Some(" Tokyo"))
     awaitAndreAlreadyHasExpectedEmail(expectEmailNumber = 2)
-    deleteAllEmail(andreBaseRequest, ANDRE_ACCOUNT_ID)
+    deleteAllEmail(andreBaseRequest, andreAccountId)
 
     andrePostEmailRecoveryCreateAction(subjectQuery = "Tokyo");
 
@@ -190,7 +225,7 @@ trait EmailRecoveryActionIntegrationTest {
            |  "methodCalls": [[
            |      "Email/send",
            |      {
-           |        "accountId": "$BOB_ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "create": {
            |          "K87": {
            |            "email/create": {
@@ -207,8 +242,8 @@ trait EmailRecoveryActionIntegrationTest {
            |            },
            |            "emailSubmission/set": {
            |              "envelope": {
-           |                "mailFrom": {"email": "${BOB.asString}"},
-           |                "rcptTo": [{"email": "${ANDRE.asString}"}]
+           |                "mailFrom": {"email": "${bobUsername.asString}"},
+           |                "rcptTo": [{"email": "${andreUsername.asString}"}]
            |              }
            |            }
            |          }
@@ -243,7 +278,7 @@ trait EmailRecoveryActionIntegrationTest {
   }
 
   private def deleteAllEmail(requestSpecification: RequestSpecification = andreBaseRequest,
-                             accountId: String = ANDRE_ACCOUNT_ID): Unit = {
+                             accountId: String = andreAccountId): Unit = {
     `given`(requestSpecification)
       .body(
         s"""{
@@ -287,7 +322,7 @@ trait EmailRecoveryActionIntegrationTest {
         s"""{ "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:messages:vault"],
            |  "methodCalls": [
            |      ["EmailRecoveryAction/set",{
-           |        "accountId": "$ANDRE_ACCOUNT_ID",
+           |        "accountId": "$andreAccountId",
            |        "create": {
            |          "K87": {
            |            "subject": "$subjectQuery"
@@ -329,11 +364,11 @@ trait EmailRecoveryActionIntegrationTest {
       |  ],
       |  "methodCalls": [
       |    [ "Email/query", {
-      |        "accountId": "$ANDRE_ACCOUNT_ID",
+      |        "accountId": "$andreAccountId",
       |        "filter": {}
       |      }, "c1" ],
       |    [ "Email/get", {
-      |        "accountId": "$ANDRE_ACCOUNT_ID",
+      |        "accountId": "$andreAccountId",
       |        "properties": [ "id", "subject" ],
       |        "#ids": {
       |          "resultOf": "c1",

@@ -66,5 +66,6 @@ public class DistributedLinagoraEmailRecoveryActionIntegrationTest implements Em
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new DistributedEncryptedMailboxModule())
             .overrideWith(new TestDeleteMessageVaultPreDeletionHookModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }
