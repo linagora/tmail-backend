@@ -66,6 +66,7 @@ public class DistributedLinagoraEmailRecoveryActionGetMethodTest implements Emai
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new DeletedMessageVaultProbeModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @Override
