@@ -50,6 +50,7 @@ public class MemoryDownloadAllRouteTest implements DownloadAllContract {
                     .overrideWith(new LinagoraTestJMAPServerModule())
                     .overrideWith(new DelegationProbeModule())
                     .overrideWith(new JmapGuiceLabelModule()))
+            .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
             .build();
 
     @Override

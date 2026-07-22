@@ -18,8 +18,12 @@
 
 package com.linagora.tmail.james.common
 
+import java.nio.charset.StandardCharsets
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
+
 import com.google.common.collect.ImmutableList
-import com.linagora.tmail.james.common.DownloadAllContract.{EMAIL_FILE_NAME, ZIP_ENTRIES, accountId}
+import com.google.common.hash.Hashing
 import com.linagora.tmail.james.jmap.ZipUtil
 import com.linagora.tmail.james.jmap.ZipUtil.ZipEntryData
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
@@ -27,9 +31,9 @@ import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
 import org.apache.http.HttpStatus.{SC_FORBIDDEN, SC_NOT_FOUND, SC_OK, SC_UNAUTHORIZED}
 import org.apache.james.GuiceJamesServer
+import org.apache.james.core.Username
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ALICE_ACCOUNT_ID, ANDRE, BOB, BOB_PASSWORD, CEDRIC, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ALICE_ACCOUNT_ID, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.MailboxACL.Right
 import org.apache.james.mailbox.model.{MailboxACL, MailboxPath, MessageId}
@@ -41,7 +45,14 @@ import org.hamcrest.Matchers.{containsString, equalTo, hasKey}
 import org.junit.jupiter.api.{BeforeEach, Test}
 
 object DownloadAllContract {
-  val accountId = "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6"
+  case class TestContext(bobUsername: Username,
+                         bobAccountId: String,
+                         andreUsername: Username,
+                         andreAccountId: String,
+                         cedricUsername: Username)
+
+  val currentContext: AtomicReference[TestContext] = new AtomicReference[TestContext]()
+
   val EMAIL_FILE_NAME = "eml/multipart_simple.eml"
   val ZIP_ENTRIES = ImmutableList.of(
     new ZipEntryData("text1",
@@ -58,17 +69,36 @@ object DownloadAllContract {
 }
 
 trait DownloadAllContract {
+  import DownloadAllContract.{EMAIL_FILE_NAME, TestContext, ZIP_ENTRIES}
+
+  def bobUsername: Username = DownloadAllContract.currentContext.get().bobUsername
+  def bobAccountId: String = DownloadAllContract.currentContext.get().bobAccountId
+  def andreUsername: Username = DownloadAllContract.currentContext.get().andreUsername
+  def andreAccountId: String = DownloadAllContract.currentContext.get().andreAccountId
+  def cedricUsername: Username = DownloadAllContract.currentContext.get().cedricUsername
+
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    val bob = Username.fromLocalPartWithDomain(s"bob$uniqueSuffix", DOMAIN)
+    val andre = Username.fromLocalPartWithDomain(s"andre$uniqueSuffix", DOMAIN)
+    val cedric = Username.fromLocalPartWithDomain(s"cedric$uniqueSuffix", DOMAIN)
+    DownloadAllContract.currentContext.set(TestContext(
+      bobUsername = bob,
+      bobAccountId = Hashing.sha256().hashString(bob.asString(), StandardCharsets.UTF_8).toString,
+      andreUsername = andre,
+      andreAccountId = Hashing.sha256().hashString(andre.asString(), StandardCharsets.UTF_8).toString,
+      cedricUsername = cedric))
+
     server.getProbe(classOf[DataProbeImpl])
       .fluent
       .addDomain(DOMAIN.asString)
-      .addUser(BOB.asString, BOB_PASSWORD)
-      .addUser(ANDRE.asString, BOB_PASSWORD)
-      .addUser(CEDRIC.asString, BOB_PASSWORD)
+      .addUser(bob.asString, BOB_PASSWORD)
+      .addUser(andre.asString, BOB_PASSWORD)
+      .addUser(cedric.asString, BOB_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .setAuth(authScheme(UserCredential(bob, BOB_PASSWORD)))
       .build
   }
 
@@ -76,10 +106,10 @@ trait DownloadAllContract {
 
   @Test
   def downloadAll(server: GuiceJamesServer): Unit = {
-    val path = MailboxPath.inbox(BOB)
+    val path = MailboxPath.inbox(bobUsername)
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(path)
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, path, AppendCommand.from(
+      .appendMessage(bobUsername.asString, path, AppendCommand.from(
         ClassLoaderUtils.getSystemResourceAsSharedStream(EMAIL_FILE_NAME)))
       .getMessageId
 
@@ -88,7 +118,7 @@ trait DownloadAllContract {
       .basePath("")
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
     .when
-      .get(s"/downloadAll/$accountId/${messageId.serialize()}")
+      .get(s"/downloadAll/$bobAccountId/${messageId.serialize()}")
     .`then`
       .statusCode(SC_OK)
       .contentType("application/zip")
@@ -103,12 +133,12 @@ trait DownloadAllContract {
 
   @Test
   def downloadAllShouldSucceedWhenMessageBelongsToSeveralMailboxes(server: GuiceJamesServer): Unit = {
-    val inboxPath = MailboxPath.inbox(BOB)
-    val otherPath = MailboxPath.forUser(BOB, "other")
+    val inboxPath = MailboxPath.inbox(bobUsername)
+    val otherPath = MailboxPath.forUser(bobUsername, "other")
     val inboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(inboxPath)
     val otherId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(otherPath)
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, inboxPath, AppendCommand.from(
+      .appendMessage(bobUsername.asString, inboxPath, AppendCommand.from(
         ClassLoaderUtils.getSystemResourceAsSharedStream(EMAIL_FILE_NAME)))
       .getMessageId
 
@@ -117,7 +147,7 @@ trait DownloadAllContract {
                      |  "methodCalls": [[
                      |    "Email/set",
                      |    {
-                     |      "accountId": "$accountId",
+                     |      "accountId": "$bobAccountId",
                      |      "update": {
                      |        "${messageId.serialize()}": {
                      |          "mailboxIds": {
@@ -143,7 +173,7 @@ trait DownloadAllContract {
       .basePath("")
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
     .when
-      .get(s"/downloadAll/$accountId/${messageId.serialize()}")
+      .get(s"/downloadAll/$bobAccountId/${messageId.serialize()}")
     .`then`
       .statusCode(SC_OK)
       .contentType("application/zip")
@@ -157,10 +187,10 @@ trait DownloadAllContract {
 
   @Test
   def downloadAllShouldNotIncludeInlineAttachments(server: GuiceJamesServer): Unit = {
-    val path = MailboxPath.inbox(BOB)
+    val path = MailboxPath.inbox(bobUsername)
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(path)
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, path, AppendCommand.from(
+      .appendMessage(bobUsername.asString, path, AppendCommand.from(
         ClassLoaderUtils.getSystemResourceAsSharedStream("eml/mixed-inline-and-normal-attachments.eml")))
       .getMessageId
 
@@ -168,7 +198,7 @@ trait DownloadAllContract {
       .basePath("")
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
     .when
-      .get(s"/downloadAll/$accountId/${messageId.serialize()}")
+      .get(s"/downloadAll/$bobAccountId/${messageId.serialize()}")
     .`then`
       .statusCode(SC_OK)
       .contentType("application/zip")
@@ -189,10 +219,10 @@ trait DownloadAllContract {
 
   @Test
   def downloadShouldAddExtraNumberToFileNameWhenAttachmentNamesAreDuplicated(server: GuiceJamesServer): Unit = {
-    val path = MailboxPath.inbox(BOB)
+    val path = MailboxPath.inbox(bobUsername)
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(path)
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, path, AppendCommand.from(
+      .appendMessage(bobUsername.asString, path, AppendCommand.from(
         ClassLoaderUtils.getSystemResourceAsSharedStream("eml/multipart_simple_with_duplicated_attachment_name.eml")))
       .getMessageId
 
@@ -201,7 +231,7 @@ trait DownloadAllContract {
       .basePath("")
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
     .when
-      .get(s"/downloadAll/$accountId/${messageId.serialize()}")
+      .get(s"/downloadAll/$bobAccountId/${messageId.serialize()}")
     .`then`
       .statusCode(SC_OK)
       .contentType("application/zip")
@@ -249,10 +279,10 @@ trait DownloadAllContract {
 
   @Test
   def downloadShouldFailWhenUnauthenticated(server: GuiceJamesServer): Unit = {
-    val path = MailboxPath.inbox(BOB)
+    val path = MailboxPath.inbox(bobUsername)
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(path)
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, path, AppendCommand.from(
+      .appendMessage(bobUsername.asString, path, AppendCommand.from(
         ClassLoaderUtils.getSystemResourceAsSharedStream(EMAIL_FILE_NAME)))
       .getMessageId
 
@@ -261,7 +291,7 @@ trait DownloadAllContract {
       .basePath("")
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
     .when
-      .get(s"/downloadAll/$accountId/${messageId.serialize()}")
+      .get(s"/downloadAll/$bobAccountId/${messageId.serialize()}")
     .`then`
       .statusCode(SC_UNAUTHORIZED)
       .header("WWW-Authenticate", "Basic realm=\"simple\", Bearer realm=\"JWT\"")
@@ -272,20 +302,20 @@ trait DownloadAllContract {
 
   @Test
   def downloadShouldSucceedWhenAddedRightACL(server: GuiceJamesServer): Unit = {
-    val path = MailboxPath.inbox(ANDRE)
+    val path = MailboxPath.inbox(andreUsername)
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(path)
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(ANDRE.asString, path, AppendCommand.from(
+      .appendMessage(andreUsername.asString, path, AppendCommand.from(
         ClassLoaderUtils.getSystemResourceAsSharedStream(EMAIL_FILE_NAME)))
       .getMessageId
     server.getProbe(classOf[ACLProbeImpl])
-      .replaceRights(path, BOB.asString(), new MailboxACL.Rfc4314Rights(Right.Read, Right.Lookup))
+      .replaceRights(path, bobUsername.asString(), new MailboxACL.Rfc4314Rights(Right.Read, Right.Lookup))
 
     val response = `given`
       .basePath("")
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
     .when
-      .get(s"/downloadAll/$accountId/${messageId.serialize()}")
+      .get(s"/downloadAll/$bobAccountId/${messageId.serialize()}")
     .`then`
       .statusCode(SC_OK)
       .contentType("application/zip")
@@ -299,10 +329,10 @@ trait DownloadAllContract {
 
   @Test
   def downloadingOtherPeopleMessageAttachmentsShouldFail(server: GuiceJamesServer): Unit = {
-    val path = MailboxPath.inbox(ANDRE)
+    val path = MailboxPath.inbox(andreUsername)
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(path)
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(ANDRE.asString, path, AppendCommand.from(
+      .appendMessage(andreUsername.asString, path, AppendCommand.from(
         ClassLoaderUtils.getSystemResourceAsSharedStream(EMAIL_FILE_NAME)))
       .getMessageId
 
@@ -310,7 +340,7 @@ trait DownloadAllContract {
       .basePath("")
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
     .when
-      .get(s"/downloadAll/$accountId/${messageId.serialize()}")
+      .get(s"/downloadAll/$bobAccountId/${messageId.serialize()}")
     .`then`
       .statusCode(SC_NOT_FOUND)
       .body("status", equalTo(404))
@@ -320,10 +350,10 @@ trait DownloadAllContract {
 
   @Test
   def downloadingInOtherAccountsShouldFail(server: GuiceJamesServer): Unit = {
-    val path = MailboxPath.inbox(BOB)
+    val path = MailboxPath.inbox(bobUsername)
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(path)
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, path, AppendCommand.from(
+      .appendMessage(bobUsername.asString, path, AppendCommand.from(
         ClassLoaderUtils.getSystemResourceAsSharedStream(EMAIL_FILE_NAME)))
       .getMessageId
 
@@ -341,20 +371,20 @@ trait DownloadAllContract {
 
   @Test
   def downloadShouldSucceedWhenDelegatedAccount(server: GuiceJamesServer): Unit = {
-    val path = MailboxPath.inbox(ANDRE)
+    val path = MailboxPath.inbox(andreUsername)
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(path)
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(ANDRE.asString, path, AppendCommand.from(
+      .appendMessage(andreUsername.asString, path, AppendCommand.from(
         ClassLoaderUtils.getSystemResourceAsSharedStream(EMAIL_FILE_NAME)))
       .getMessageId
 
-    server.getProbe(classOf[DataProbeImpl]).addAuthorizedUser(ANDRE, BOB)
+    server.getProbe(classOf[DataProbeImpl]).addAuthorizedUser(andreUsername, bobUsername)
 
     val response = `given`
       .basePath("")
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
     .when
-      .get(s"/downloadAll/${Fixture.ANDRE_ACCOUNT_ID}/${messageId.serialize()}")
+      .get(s"/downloadAll/$andreAccountId/${messageId.serialize()}")
     .`then`
       .statusCode(SC_OK)
       .contentType("application/zip")
@@ -368,20 +398,20 @@ trait DownloadAllContract {
 
   @Test
   def downloadShouldFailWhenNotDelegatedAccount(server: GuiceJamesServer): Unit = {
-    val path = MailboxPath.inbox(ANDRE)
+    val path = MailboxPath.inbox(andreUsername)
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(path)
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(ANDRE.asString, path, AppendCommand.from(
+      .appendMessage(andreUsername.asString, path, AppendCommand.from(
         ClassLoaderUtils.getSystemResourceAsSharedStream(EMAIL_FILE_NAME)))
       .getMessageId
 
-    server.getProbe(classOf[DataProbeImpl]).addAuthorizedUser(ANDRE, CEDRIC)
+    server.getProbe(classOf[DataProbeImpl]).addAuthorizedUser(andreUsername, cedricUsername)
 
     `given`
       .basePath("")
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
     .when
-      .get(s"/downloadAll/${Fixture.ANDRE_ACCOUNT_ID}/${messageId.serialize()}")
+      .get(s"/downloadAll/$andreAccountId/${messageId.serialize()}")
     .`then`
       .statusCode(SC_FORBIDDEN)
       .body("status", equalTo(403))
@@ -391,10 +421,10 @@ trait DownloadAllContract {
 
   @Test
   def userCanSpecifyNameWhenDownloading(server: GuiceJamesServer): Unit = {
-    val path = MailboxPath.inbox(BOB)
+    val path = MailboxPath.inbox(bobUsername)
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(path)
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, path, AppendCommand.from(
+      .appendMessage(bobUsername.asString, path, AppendCommand.from(
         ClassLoaderUtils.getSystemResourceAsSharedStream(EMAIL_FILE_NAME)))
       .getMessageId
 
@@ -403,7 +433,7 @@ trait DownloadAllContract {
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .queryParam("name", "gabouzomeuh")
     .when
-      .get(s"/downloadAll/$accountId/${messageId.serialize()}")
+      .get(s"/downloadAll/$bobAccountId/${messageId.serialize()}")
     .`then`
       .statusCode(SC_OK)
       .header("Content-Disposition", containsString("filename=\"gabouzomeuh\""))
@@ -411,10 +441,10 @@ trait DownloadAllContract {
 
   @Test
   def downloadMessageShouldDiscardNameWhenNotSuppliedByTheClient(server: GuiceJamesServer): Unit = {
-    val path = MailboxPath.inbox(BOB)
+    val path = MailboxPath.inbox(bobUsername)
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(path)
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, path, AppendCommand.from(
+      .appendMessage(bobUsername.asString, path, AppendCommand.from(
         ClassLoaderUtils.getSystemResourceAsSharedStream(EMAIL_FILE_NAME)))
       .getMessageId
 
@@ -422,7 +452,7 @@ trait DownloadAllContract {
       .basePath("")
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
     .when
-      .get(s"/downloadAll/$accountId/${messageId.serialize()}")
+      .get(s"/downloadAll/$bobAccountId/${messageId.serialize()}")
     .`then`
       .statusCode(SC_OK)
       .extract().header("Content-Disposition")
@@ -432,14 +462,14 @@ trait DownloadAllContract {
 
   @Test
   def downloadNotExistingMessage(server: GuiceJamesServer): Unit = {
-    val path = MailboxPath.inbox(BOB)
+    val path = MailboxPath.inbox(bobUsername)
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(path)
 
     `given`
       .basePath("")
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
     .when
-      .get(s"/downloadAll/$accountId/${randomMessageId.serialize()}")
+      .get(s"/downloadAll/$bobAccountId/${randomMessageId.serialize()}")
     .`then`
       .statusCode(SC_NOT_FOUND)
       .body("status", equalTo(404))
@@ -449,14 +479,14 @@ trait DownloadAllContract {
 
   @Test
   def downloadInvalidPart(server: GuiceJamesServer): Unit = {
-    val path = MailboxPath.inbox(BOB)
+    val path = MailboxPath.inbox(bobUsername)
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(path)
 
     `given`
       .basePath("")
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .when
-      .get(s"/downloadAll/$accountId/invalid")
+      .get(s"/downloadAll/$bobAccountId/invalid")
       .`then`
       .statusCode(SC_NOT_FOUND)
       .body("status", equalTo(404))
