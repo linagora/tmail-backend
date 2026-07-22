@@ -33,6 +33,7 @@ public class PostgresLinagoraEmailRecoveryActionIntegrationTest implements Email
     static JamesServerExtension testExtension = TmailJmapBase.JAMES_SERVER_EXTENSION_FUNCTION
         .apply(Modules.combine(new DeletedMessageVaultProbeModule(), new TestDeleteMessageVaultPreDeletionHookModule(),
             new PostgresEncryptedMailboxModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
 }

@@ -50,5 +50,6 @@ public class MemoryEmailRecoveryActionIntegrationTest implements EmailRecoveryAc
             .overrideWith(new MemoryEncryptedMailboxModule())
             .overrideWith(new TestDeleteMessageVaultPreDeletionHookModule()))
         .extension(new ClockExtension())
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }
