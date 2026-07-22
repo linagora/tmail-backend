@@ -71,7 +71,7 @@ import com.linagora.tmail.james.jmap.event.ApplyWhenFilter;
 import com.linagora.tmail.james.jmap.settings.JmapSettings;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.mailet.rag.httpclient.DocumentId;
-import com.linagora.tmail.mailet.rag.httpclient.OpenRagHttpClient;
+import com.linagora.tmail.mailet.rag.httpclient.OpenRagClient;
 import com.linagora.tmail.mailet.rag.httpclient.Partition;
 
 import reactor.core.publisher.Flux;
@@ -93,13 +93,13 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
     private final ThreadIdGuessingAlgorithm threadIdGuessingAlgorithm;
     private final JmapSettingsRepository jmapSettingsRepository;
     private final Partition.Factory partitionFactory;
-    private final OpenRagHttpClient openRagHttpClient;
+    private final OpenRagClient openRagClient;
     private final ApplyWhenFilter applyWhenFilter;
 
     @Inject
     public RagListener(MailboxManager mailboxManager, MessageIdManager messageIdManager, SystemMailboxesProvider systemMailboxesProvider,
                        ThreadIdGuessingAlgorithm threadIdGuessingAlgorithm, JmapSettingsRepository jmapSettingsRepository,
-                       Partition.Factory partitionFactory, OpenRagHttpClient openRagHttpClient, GuiceLoader guiceLoader,
+                       Partition.Factory partitionFactory, OpenRagClient openRagClient, GuiceLoader guiceLoader,
                        HierarchicalConfiguration<ImmutableNode> configuration) {
         this.mailboxManager = mailboxManager;
         this.messageIdManager = messageIdManager;
@@ -107,7 +107,7 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
         this.threadIdGuessingAlgorithm = threadIdGuessingAlgorithm;
         this.jmapSettingsRepository = jmapSettingsRepository;
         this.partitionFactory = partitionFactory;
-        this.openRagHttpClient = openRagHttpClient;
+        this.openRagClient = openRagClient;
         this.applyWhenFilter = resolveApplyWhenFilter(configuration, guiceLoader);
     }
 
@@ -177,7 +177,7 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
             .doOnSuccess(text -> LOGGER.debug("RAG Listener successfully processed mailContent ***** \n{}\n *****", new DocumentId(messageResult.getMessageId())))
             .flatMap(content -> computeMetaData(messageResult, session)
                 .flatMap(metaData ->
-                    openRagHttpClient.addDocument(
+                    openRagClient.addDocument(
                     partitionFactory.forUsername(addedEvent.getUsername()),
                     new DocumentId(messageResult.getMessageId()),
                     content,
@@ -333,14 +333,14 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
     @VisibleForTesting
     public RagListener(MailboxManager mailboxManager, MessageIdManager messageIdManager, SystemMailboxesProvider systemMailboxesProvider,
                        ThreadIdGuessingAlgorithm threadIdGuessingAlgorithm, JmapSettingsRepository jmapSettingsRepository,
-                       Partition.Factory partitionFactory, OpenRagHttpClient openRagHttpClient, ApplyWhenFilter applyWhenFilter) {
+                       Partition.Factory partitionFactory, OpenRagClient openRagClient, ApplyWhenFilter applyWhenFilter) {
         this.mailboxManager = mailboxManager;
         this.messageIdManager = messageIdManager;
         this.systemMailboxesProvider = systemMailboxesProvider;
         this.threadIdGuessingAlgorithm = threadIdGuessingAlgorithm;
         this.jmapSettingsRepository = jmapSettingsRepository;
         this.partitionFactory = partitionFactory;
-        this.openRagHttpClient = openRagHttpClient;
+        this.openRagClient = openRagClient;
         this.applyWhenFilter = applyWhenFilter;
     }
 }

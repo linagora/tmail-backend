@@ -39,8 +39,8 @@ import reactor.netty.ByteBufMono;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.http.client.HttpClientResponse;
 
-public class OpenRagHttpClient {
-    private static final Logger LOGGER = LoggerFactory.getLogger(OpenRagHttpClient.class);
+public class OpenRagClient {
+    private static final Logger LOGGER = LoggerFactory.getLogger(OpenRagClient.class);
     private static final String CONTENT_TYPE_HEADER = "Content-Type";
     private static final String RAG_DOCUMENT_ENDPOINT = "/indexer/partition/%s/file/%s";
 
@@ -48,7 +48,7 @@ public class OpenRagHttpClient {
     private final ObjectMapper objectMapper;
 
     @Inject
-    public OpenRagHttpClient(RagConfig configuration) {
+    public OpenRagClient(RagConfig configuration) {
         this.objectMapper = new ObjectMapper().registerModule(new Jdk8Module());
         this.httpClient = AiHttpClientFactory.create(AiHttpClientConfiguration.from(configuration));
     }

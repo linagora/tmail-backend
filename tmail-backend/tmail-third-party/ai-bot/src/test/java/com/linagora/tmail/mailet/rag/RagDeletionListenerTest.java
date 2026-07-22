@@ -61,7 +61,7 @@ import com.linagora.tmail.extension.WireMockAiServerExtension;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
 import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
-import com.linagora.tmail.mailet.rag.httpclient.OpenRagHttpClient;
+import com.linagora.tmail.mailet.rag.httpclient.OpenRagClient;
 import com.linagora.tmail.mailet.rag.httpclient.Partition;
 
 import reactor.core.publisher.Flux;
@@ -95,7 +95,7 @@ public class RagDeletionListenerTest {
         configuration.addProperty("openrag.ssl.trust.all.certs", "true");
         configuration.addProperty("openrag.partition.pattern", "{localPart}.twake.{domainName}");
         RagConfig ragConfig = RagConfig.from(configuration);
-        OpenRagHttpClient openRagHttpClient = new OpenRagHttpClient(ragConfig);
+        OpenRagClient openRagClient = new OpenRagClient(ragConfig);
         Partition.Factory partitionFactory = Partition.Factory.fromPattern(ragConfig.getPartitionPattern());
 
         jmapSettingsRepository = new MemoryJmapSettingsRepository();
@@ -112,7 +112,7 @@ public class RagDeletionListenerTest {
         when(mapperFactory.getMailboxMapper(session)).thenReturn(mailboxMapper);
         when(messageIdMapper.findMailboxesReactive(TestMessageId.of(1))).thenReturn(reactor.core.publisher.Flux.empty());
 
-        RagDeletionListener ragDeletionListener = new RagDeletionListener(jmapSettingsRepository, sessionProvider, mapperFactory, partitionFactory, openRagHttpClient);
+        RagDeletionListener ragDeletionListener = new RagDeletionListener(jmapSettingsRepository, sessionProvider, mapperFactory, partitionFactory, openRagClient);
         eventBus.register(ragDeletionListener);
     }
 
