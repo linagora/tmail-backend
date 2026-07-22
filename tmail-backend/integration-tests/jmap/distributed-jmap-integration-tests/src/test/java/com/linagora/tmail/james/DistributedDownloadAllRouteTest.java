@@ -22,7 +22,6 @@ import static com.linagora.tmail.james.DistributedLinagoraSecondaryBlobStoreTest
 import static io.netty.handler.codec.http.HttpHeaderNames.ACCEPT;
 import static io.restassured.RestAssured.given;
 import static org.apache.http.HttpStatus.SC_OK;
-import static org.apache.james.jmap.JMAPTestingConstants.BOB;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.InputStream;
@@ -88,6 +87,7 @@ public class DistributedDownloadAllRouteTest implements DownloadAllContract {
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new DelegationProbeModule())
             .overrideWith(new CassandraAttachmentProbeModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @Override
@@ -97,24 +97,24 @@ public class DistributedDownloadAllRouteTest implements DownloadAllContract {
 
     @Test
     void downloadAllShouldWorkAfterAttachmentMetadataGotDeleted(GuiceJamesServer server) throws MailboxException {
-        MailboxPath path = MailboxPath.inbox(BOB);
+        MailboxPath path = MailboxPath.inbox(bobUsername());
         server.getProbe(MailboxProbeImpl.class).createMailbox(path);
 
         MessageId messageId = server.getProbe(MailboxProbeImpl.class)
-            .appendMessage(BOB.asString(), path, AppendCommand.from(
+            .appendMessage(bobUsername().asString(), path, AppendCommand.from(
                 ClassLoaderUtils.getSystemResourceAsSharedStream(DownloadAllContract.EMAIL_FILE_NAME())))
             .getMessageId();
 
         CassandraAttachmentProbe attachmentProbe = server.getProbe(CassandraAttachmentProbe.class);
         server.getProbe(MessageIdProbe.class)
-            .retrieveAttachmentIds(messageId, BOB)
+            .retrieveAttachmentIds(messageId, bobUsername())
             .forEach(attachmentProbe::delete);
 
         InputStream response = given()
             .basePath("")
             .header(ACCEPT.toString(), ACCEPT_RFC8621_VERSION_HEADER)
         .when()
-            .get("/downloadAll/" + DownloadAllContract.accountId() + "/" + messageId.serialize())
+            .get("/downloadAll/" + bobAccountId() + "/" + messageId.serialize())
         .then()
             .statusCode(SC_OK)
             .contentType("application/zip")
@@ -129,24 +129,24 @@ public class DistributedDownloadAllRouteTest implements DownloadAllContract {
 
     @Test
     void downloadAllShouldStillNotIncludeInlinedAfterAttachmentMetadataGotDeleted(GuiceJamesServer server) throws MailboxException {
-        MailboxPath path = MailboxPath.inbox(BOB);
+        MailboxPath path = MailboxPath.inbox(bobUsername());
         server.getProbe(MailboxProbeImpl.class).createMailbox(path);
 
         MessageId messageId = server.getProbe(MailboxProbeImpl.class)
-            .appendMessage(BOB.asString(), path, AppendCommand.from(
+            .appendMessage(bobUsername().asString(), path, AppendCommand.from(
                 ClassLoaderUtils.getSystemResourceAsSharedStream("eml/mixed-inline-and-normal-attachments.eml")))
             .getMessageId();
 
         CassandraAttachmentProbe attachmentProbe = server.getProbe(CassandraAttachmentProbe.class);
         server.getProbe(MessageIdProbe.class)
-            .retrieveAttachmentIds(messageId, BOB)
+            .retrieveAttachmentIds(messageId, bobUsername())
             .forEach(attachmentProbe::delete);
 
         InputStream response = given()
             .basePath("")
             .header(ACCEPT.toString(), ACCEPT_RFC8621_VERSION_HEADER)
         .when()
-            .get("/downloadAll/" + DownloadAllContract.accountId() + "/" + messageId.serialize())
+            .get("/downloadAll/" + bobAccountId() + "/" + messageId.serialize())
         .then()
             .statusCode(SC_OK)
             .contentType("application/zip")
