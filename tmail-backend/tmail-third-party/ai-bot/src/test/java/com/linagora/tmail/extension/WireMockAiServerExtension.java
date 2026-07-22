@@ -31,6 +31,7 @@ import java.net.URI;
 import java.net.URL;
 import java.util.Optional;
 
+import com.linagora.tmail.scribe.ScribeConfiguration;
 import org.apache.james.GuiceModuleTestExtension;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
@@ -41,15 +42,15 @@ import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.linagora.tmail.mailet.rag.RagConfig;
 
-public class WireMockRagServerExtension extends WireMockExtension implements GuiceModuleTestExtension {
+public class WireMockAiServerExtension extends WireMockExtension implements GuiceModuleTestExtension {
     private static final String CHAT_COMPLETIONS_ENDPOINT = "/v1/chat/completions";
     private static final String RAG_INDEXER_ENDPOINT = "/indexer/partition/.*/file/.*";
 
-    public WireMockRagServerExtension(Builder builder) {
+    public WireMockAiServerExtension(Builder builder) {
         super(builder);
     }
 
-    public WireMockRagServerExtension() {
+    public WireMockAiServerExtension() {
         this(WireMockExtension.extensionOptions()
             .options(wireMockConfig().dynamicPort()));
     }
@@ -69,6 +70,12 @@ public class WireMockRagServerExtension extends WireMockExtension implements Gui
             @Singleton
             public RagConfig ragConfig() {
                 return new RagConfig("fake-token", true, Optional.of(getBaseUrl()), "{localPart}.twake.{domainName}");
+            }
+
+            @Provides
+            @Singleton
+            public ScribeConfiguration scribeConfiguration() {
+                return new ScribeConfiguration("fake-token", Optional.of(getBaseUrl()), true);
             }
         };
     }

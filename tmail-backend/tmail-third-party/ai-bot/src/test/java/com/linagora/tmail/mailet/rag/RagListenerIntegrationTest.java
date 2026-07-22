@@ -49,7 +49,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.linagora.tmail.extension.WireMockRagServerExtension;
+import com.linagora.tmail.extension.WireMockAiServerExtension;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.probe.JmapSettingsProbe;
@@ -60,7 +60,7 @@ public class RagListenerIntegrationTest {
     private static final String RAG_INDEXER_ENDPOINT = "/indexer/partition/.*/file/.*";
 
     @RegisterExtension
-    static WireMockRagServerExtension wireMockRagServerExtension = new WireMockRagServerExtension();
+    static WireMockAiServerExtension wireMockRagServerExtension = new WireMockAiServerExtension();
 
     private static final byte[] CONTENT = (
         "Subject: Test Subject\r\n" +

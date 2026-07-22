@@ -61,7 +61,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.common.collect.ImmutableMap;
-import com.linagora.tmail.extension.WireMockRagServerExtension;
+import com.linagora.tmail.extension.WireMockAiServerExtension;
 import com.linagora.tmail.james.jmap.event.ApplyWhenFilter;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
@@ -92,7 +92,7 @@ class RagListenerTest {
             "Body of the email").getBytes(StandardCharsets.UTF_8);
 
     @RegisterExtension
-    static WireMockRagServerExtension wireMockRagServerExtension = new WireMockRagServerExtension();
+    static WireMockAiServerExtension wireMockRagServerExtension = new WireMockAiServerExtension();
 
     StoreMailboxManager mailboxManager;
     RagListener ragListener;
