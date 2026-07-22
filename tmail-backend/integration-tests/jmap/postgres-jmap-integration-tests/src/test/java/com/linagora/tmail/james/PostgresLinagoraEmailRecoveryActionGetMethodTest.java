@@ -30,6 +30,7 @@ public class PostgresLinagoraEmailRecoveryActionGetMethodTest implements EmailRe
     @RegisterExtension
     static JamesServerExtension testExtension = TmailJmapBase.JAMES_SERVER_EXTENSION_FUNCTION
         .apply(new DeletedMessageVaultProbeModule())
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @Override

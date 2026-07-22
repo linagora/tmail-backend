@@ -20,7 +20,9 @@ package com.linagora.tmail.james.common
 
 import java.io.ByteArrayInputStream
 import java.time.ZonedDateTime
+import java.util.UUID
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
 import com.linagora.tmail.james.common.EmailRecoveryActionGetMethodContract.webAdminApi
 import com.linagora.tmail.james.common.EmailRecoveryActionSetMethodContract.DELETED_MESSAGE_CONTENT
@@ -35,7 +37,7 @@ import org.apache.james.GuiceJamesServer
 import org.apache.james.core.{MailAddress, MaybeSender, Username}
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE_PASSWORD, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.mailbox.model.{MailboxId, MailboxPath, MessageId, MultimailboxesSearchQuery, SearchQuery}
 import org.apache.james.modules.MailboxProbeImpl
@@ -51,22 +53,36 @@ import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import scala.jdk.CollectionConverters._
 
 object EmailRecoveryActionGetMethodContract {
+  case class TestContext(bobUsername: Username, andreUsername: Username)
+
+  private val currentContext: AtomicReference[TestContext] = new AtomicReference[TestContext]()
   private var webAdminApi: RequestSpecification = _
 }
 
 trait EmailRecoveryActionGetMethodContract {
+  import EmailRecoveryActionGetMethodContract.TestContext
   import EmailRecoveryActionSetMethodContract.RESTORATION_HORIZON_SPAN_IN_DAYS
+
+  def bobUsername: Username = EmailRecoveryActionGetMethodContract.currentContext.get().bobUsername
+  def andreUsername: Username = EmailRecoveryActionGetMethodContract.currentContext.get().andreUsername
+  def bobCredential: UserCredential = UserCredential(bobUsername, BOB_PASSWORD)
+  def andreCredential: UserCredential = UserCredential(andreUsername, ANDRE_PASSWORD)
 
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    val bob = Username.fromLocalPartWithDomain(s"bob$uniqueSuffix", DOMAIN)
+    val andre = Username.fromLocalPartWithDomain(s"andre$uniqueSuffix", DOMAIN)
+    EmailRecoveryActionGetMethodContract.currentContext.set(TestContext(bob, andre))
+
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
       .addDomain(DOMAIN.asString())
-      .addUser(BOB.asString(), BOB_PASSWORD)
-      .addUser(ANDRE.asString(), ANDRE_PASSWORD)
+      .addUser(bob.asString(), BOB_PASSWORD)
+      .addUser(andre.asString(), ANDRE_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .setAuth(authScheme(bobCredential))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build()
 
@@ -229,14 +245,14 @@ trait EmailRecoveryActionGetMethodContract {
   @Tag(CategoryTags.BASIC_FEATURE)
   def shouldReturnAllPropertiesByDefault(server: GuiceJamesServer): Unit = {
     val bobMailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
-      .createMailbox(MailboxPath.inbox(BOB))
+      .createMailbox(MailboxPath.inbox(bobUsername))
 
     val deletedMessage: DeletedMessage = templateDeletedMessage(
       mailboxId = bobMailboxId,
       subject = "subject contains should match")
     server.getProbe(classOf[DeletedMessageVaultProbe])
       .append(deletedMessage, new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
-    awaitAllMessagesCount(server, BOB, 0)
+    awaitAllMessagesCount(server, bobUsername, 0)
 
     val taskId: String = createMessagesRestoreTask(subjectQuery = "subject contains")
     awaitTaskCompletion(taskId)
@@ -280,7 +296,7 @@ trait EmailRecoveryActionGetMethodContract {
            |	"#0"
            |]""".stripMargin)
 
-    awaitAllMessagesCount(server, BOB, 1)
+    awaitAllMessagesCount(server, bobUsername, 1)
   }
 
   @Test
@@ -322,14 +338,14 @@ trait EmailRecoveryActionGetMethodContract {
   @Test
   def mixedFoundAndNotFoundCase(server: GuiceJamesServer): Unit = {
     val bobMailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
-      .createMailbox(MailboxPath.inbox(BOB))
+      .createMailbox(MailboxPath.inbox(bobUsername))
 
     val deletedMessage: DeletedMessage = templateDeletedMessage(
       mailboxId = bobMailboxId,
       subject = "subject contains should match")
     server.getProbe(classOf[DeletedMessageVaultProbe])
       .append(deletedMessage, new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
-    awaitAllMessagesCount(server, BOB, 0)
+    awaitAllMessagesCount(server, bobUsername, 0)
 
     val taskId: String = createMessagesRestoreTask(subjectQuery = "subject contains")
     awaitTaskCompletion(taskId)
@@ -373,20 +389,20 @@ trait EmailRecoveryActionGetMethodContract {
            |	"#0"
            |]""".stripMargin)
 
-    awaitAllMessagesCount(server, BOB, 1)
+    awaitAllMessagesCount(server, bobUsername, 1)
   }
 
   @Test
   def shouldFilterProperties(server: GuiceJamesServer): Unit = {
     val bobMailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
-      .createMailbox(MailboxPath.inbox(BOB))
+      .createMailbox(MailboxPath.inbox(bobUsername))
 
     val deletedMessage: DeletedMessage = templateDeletedMessage(
       mailboxId = bobMailboxId,
       subject = "subject contains should match")
     server.getProbe(classOf[DeletedMessageVaultProbe])
       .append(deletedMessage, new ByteArrayInputStream(DELETED_MESSAGE_CONTENT))
-    awaitAllMessagesCount(server, BOB, 0)
+    awaitAllMessagesCount(server, bobUsername, 0)
 
     val taskId: String = createMessagesRestoreTask(subjectQuery = "subject contains")
     awaitTaskCompletion(taskId)
@@ -429,7 +445,7 @@ trait EmailRecoveryActionGetMethodContract {
            |	"#0"
            |]""".stripMargin)
 
-    awaitAllMessagesCount(server, BOB, 1)
+    awaitAllMessagesCount(server, bobUsername, 1)
   }
 
   @Test
@@ -518,11 +534,11 @@ trait EmailRecoveryActionGetMethodContract {
 
   @Test
   def shouldNotReturnDeletedMessagesVaultRestoreTaskOfOtherUsers(): Unit = {
-    val andreTaskId: String = createMessagesRestoreTask(userCredential = UserCredential(ANDRE, ANDRE_PASSWORD),
+    val andreTaskId: String = createMessagesRestoreTask(userCredential = andreCredential,
       subjectQuery = "subject contains")
 
     val response = `given`
-      .auth.basic(BOB.asString(), BOB_PASSWORD)
+      .auth.basic(bobCredential.username.asString(), bobCredential.password)
       .body(
         s"""{
            |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:messages:vault"],
@@ -558,7 +574,7 @@ trait EmailRecoveryActionGetMethodContract {
            |]""".stripMargin)
   }
 
-  private def createMessagesRestoreTask(userCredential: UserCredential = UserCredential(BOB, BOB_PASSWORD), subjectQuery: String) = {
+  private def createMessagesRestoreTask(userCredential: UserCredential = bobCredential, subjectQuery: String) = {
     val taskId: String = `given`
       .auth.basic(userCredential.username.asString(), userCredential.password)
       .body(
@@ -592,7 +608,7 @@ trait EmailRecoveryActionGetMethodContract {
 
   def templateDeletedMessage(messageId: MessageId = randomMessageId,
                              mailboxId: MailboxId,
-                             user: Username = BOB,
+                             user: Username = bobUsername,
                              deliveryDate: ZonedDateTime = ZonedDateTime.parse("2014-10-30T14:12:00Z"),
                              deletionDate: ZonedDateTime = ZonedDateTime.now().minusDays(RESTORATION_HORIZON_SPAN_IN_DAYS - 1),
                              sender: MaybeSender = MaybeSender.of(SENDER),
