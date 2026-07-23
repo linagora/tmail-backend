@@ -56,7 +56,7 @@ public class RagConfig {
     public static RagConfig from(Configuration configuration) throws IllegalArgumentException {
         String tokenParam = Optional.ofNullable(configuration.getString(AUTHORIZATION_TOKEN_PARAMETER_NAME, null))
             .orElseThrow(() ->  new IllegalArgumentException("No value for " + AUTHORIZATION_TOKEN_PARAMETER_NAME + " parameter was provided."));
-        boolean trustAllCertificatesParam = configuration.getBoolean(TRUST_ALL_CERTIFICATES_PARAMETER_NAME, true);
+        boolean trustAllCertificatesParam = configuration.getBoolean(TRUST_ALL_CERTIFICATES_PARAMETER_NAME, false);
 
         String baseUrlParam = Optional.ofNullable(configuration.getString(BASE_URL_PARAMETER_NAME,null))
             .orElseThrow(() ->  new IllegalArgumentException("No value for " + BASE_URL_PARAMETER_NAME + " parameter was provided."));

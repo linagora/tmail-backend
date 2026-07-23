@@ -60,7 +60,7 @@ public record ScribeConfiguration(String authorizationToken,
             .filter(baseUrlString -> !Strings.isNullOrEmpty(baseUrlString))
             .flatMap(ScribeConfiguration::baseURLStringToURL);
 
-        boolean trustAllCertificatesParam = configuration.getBoolean(TRUST_ALL_CERTIFICATES_PARAMETER_NAME, true);
+        boolean trustAllCertificatesParam = configuration.getBoolean(TRUST_ALL_CERTIFICATES_PARAMETER_NAME, false);
 
         try {
             return new ScribeConfiguration(apiKeyParam, baseURLOpt, trustAllCertificatesParam);
