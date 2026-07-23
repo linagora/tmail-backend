@@ -298,6 +298,25 @@ To enable this functionality, add the following mount to your Docker command:
       linagora/tmail-backend-memory
 ```
 
+### Scribe Configuration
+
+The Scribe feature provides a JMAP endpoint for AI chat completions (`/ai/v1/chat/completions`). It is decoupled from the RAG configuration to allow using a different AI endpoint.
+
+To enable Scribe, add the following keys in your `ai.properties` file:
+
+```properties
+scribe.url=https://chat.lucie.example.com
+scribe.token=fake-token
+scribe.ssl.trust.all.certs=false
+```
+
+**Parameters explanation:**
+
+* `scribe.url`: The URL of the AI endpoint for chat completions (e.g., Mistral API). Mandatory.
+* `scribe.token`: The authorization token for the Scribe AI endpoint. Mandatory.
+* `scribe.ssl.trust.all.certs`: Whether to trust all SSL certificates. Optional, defaults to `true`.
+
+
 ### With the demo server
 
 You can test the AIBot extension with the demo server.
