@@ -20,7 +20,6 @@ package com.linagora.tmail.scribe;
 import java.net.MalformedURLException;
 import java.net.URI;
 import java.net.URL;
-import java.util.Objects;
 import java.util.Optional;
 
 import org.apache.commons.configuration2.Configuration;
@@ -28,17 +27,20 @@ import org.apache.commons.configuration2.Configuration;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 
-public class ScribeConfiguration {
-    public static String API_KEY_PARAMETER_NAME = "scribe.token";
-    public static String BASE_URL_PARAMETER_NAME = "scribe.url";
+public record ScribeConfiguration(String authorizationToken,
+                                  Optional<URL> baseURLOpt,
+                                  boolean trustAllCertificates) {
+
+    public static final String API_KEY_PARAMETER_NAME = "scribe.token";
+    public static final String BASE_URL_PARAMETER_NAME = "scribe.url";
     public static final String TRUST_ALL_CERTIFICATES_PARAMETER_NAME = "scribe.ssl.trust.all.certs";
 
     private final String authorizationToken;
     private final Optional<URL> baseURLOpt;
     private final boolean trustAllCertificates;
 
-    public ScribeConfiguration(String token, Optional<URL> baseURLOpt, boolean trustAllCertificates) {
-        Preconditions.checkNotNull(token);
+    public ScribeConfiguration {
+        Preconditions.checkNotNull(authorizationToken);
         Preconditions.checkNotNull(baseURLOpt);
         Preconditions.checkNotNull(trustAllCertificates);
 
@@ -69,42 +71,8 @@ public class ScribeConfiguration {
     private static Optional<URL> baseURLStringToURL(String baseUrlString) {
         try {
             return Optional.of(URI.create(baseUrlString).toURL());
-        } catch (MalformedURLException e) {
-            throw new RuntimeException("Invalid Scribe API base URL", e);
+        } catch (IllegalArgumentException | MalformedURLException e) {
+            throw new RuntimeException("Invalid Scribe API base URL: " + baseUrlString, e);
         }
-    }
-
-    @Override
-    public boolean equals(Object o) {
-        if (this == o) {
-            return true;
-        }
-        if (o == null || getClass() != o.getClass()) {
-            return false;
-        }
-        ScribeConfiguration that = (ScribeConfiguration) o;
-        return Objects.equals(authorizationToken, that.authorizationToken) &&
-            Objects.equals(Optional.ofNullable(baseURLOpt).map(opt -> opt.map(URL::toString)),
-                Optional.ofNullable(that.baseURLOpt).map(opt -> opt.map(URL::toString))) &&
-            Objects.equals(trustAllCertificates, that.trustAllCertificates);
-    }
-
-    @Override
-    public int hashCode() {
-        return Objects.hash(authorizationToken,
-            Optional.ofNullable(baseURLOpt).map(opt -> opt.map(URL::toString)),
-            trustAllCertificates);
-    }
-
-    public String getAuthorizationToken() {
-        return authorizationToken;
-    }
-
-    public boolean getTrustAllCertificates() {
-        return trustAllCertificates;
-    }
-
-    public Optional<URL> getBaseURLOpt() {
-        return baseURLOpt;
     }
 }

@@ -26,17 +26,16 @@ import io.netty.handler.ssl.SslContextBuilder;
 import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
 import reactor.netty.http.client.HttpClient;
 
-
 public final class AiHttpClientFactory {
 
     public static HttpClient create(AiHttpClientConfiguration configuration) {
         HttpClient client = HttpClient.create()
-            .baseUrl(configuration.getBaseURLOpt().orElseThrow().toString())
+            .baseUrl(configuration.baseURLOpt().orElseThrow().toString())
             .headers(headers -> headers
-                .add("Authorization", "Bearer " + configuration.getAuthorizationToken())
+                .add("Authorization", "Bearer " + configuration.authorizationToken())
                 .add("Accept", "application/json"));
 
-        return configuration.getTrustAllCertificates()
+        return configuration.trustAllCertificates()
             ? client.secure(spec -> spec.sslContext(buildInsecureSslContext()))
             : client.secure();
     }
