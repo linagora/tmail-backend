@@ -35,25 +35,26 @@ public record ScribeConfiguration(String authorizationToken,
     public static final String BASE_URL_PARAMETER_NAME = "scribe.url";
     public static final String TRUST_ALL_CERTIFICATES_PARAMETER_NAME = "scribe.ssl.trust.all.certs";
 
-    private final String authorizationToken;
-    private final Optional<URL> baseURLOpt;
-    private final boolean trustAllCertificates;
+    public static final String LEGACY_API_KEY_PARAMETER_NAME = "apiKey";
+    public static final String LEGACY_BASE_URL_PARAMETER_NAME = "baseURL";
 
     public ScribeConfiguration {
         Preconditions.checkNotNull(authorizationToken);
         Preconditions.checkNotNull(baseURLOpt);
-        Preconditions.checkNotNull(trustAllCertificates);
-
-        this.authorizationToken = token;
-        this.baseURLOpt = baseURLOpt;
-        this.trustAllCertificates = trustAllCertificates;
     }
 
     public static ScribeConfiguration from(Configuration configuration) throws IllegalArgumentException {
         String apiKeyParam = Optional.ofNullable(configuration.getString(API_KEY_PARAMETER_NAME, null))
-            .orElseThrow(() ->  new IllegalArgumentException("No value for " + API_KEY_PARAMETER_NAME + " parameter was provided."));
-        String baseUrlParam = Optional.ofNullable(configuration.getString(BASE_URL_PARAMETER_NAME,null))
-            .orElseThrow(() ->  new IllegalArgumentException("No value for " + BASE_URL_PARAMETER_NAME + " parameter was provided."));
+            .or(() -> Optional.ofNullable(configuration.getString(LEGACY_API_KEY_PARAMETER_NAME, null)))
+            .orElseThrow(() -> new IllegalArgumentException(
+                "No value for " + API_KEY_PARAMETER_NAME + " parameter was provided. " +
+                "(Fallback to legacy property " + LEGACY_API_KEY_PARAMETER_NAME + " also failed)."));
+
+        String baseUrlParam = Optional.ofNullable(configuration.getString(BASE_URL_PARAMETER_NAME, null))
+            .or(() -> Optional.ofNullable(configuration.getString(LEGACY_BASE_URL_PARAMETER_NAME, null)))
+            .orElseThrow(() -> new IllegalArgumentException(
+                "No value for " + BASE_URL_PARAMETER_NAME + " parameter was provided. " +
+                "(Fallback to legacy property " + LEGACY_BASE_URL_PARAMETER_NAME + " also failed)."));
 
         Optional<URL> baseURLOpt = Optional.ofNullable(baseUrlParam)
             .filter(baseUrlString -> !Strings.isNullOrEmpty(baseUrlString))
