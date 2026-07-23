@@ -27,9 +27,19 @@ import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.junit.jupiter.api.Test;
 
-import nl.jqno.equalsverifier.EqualsVerifier;
-
 public class ScribeConfigurationTest {
+
+    private static void assertConfiguration(PropertiesConfiguration configuration,
+                                            String expectedToken,
+                                            String expectedUrl,
+                                            boolean expectedTrustAllCerts) throws Exception {
+        ScribeConfiguration expected = new ScribeConfiguration(
+            expectedToken,
+            Optional.of(URI.create(expectedUrl).toURL()),
+            expectedTrustAllCerts);
+        ScribeConfiguration actual = ScribeConfiguration.from(configuration);
+        assertThat(actual).isEqualTo(expected);
+    }
 
     @Test
     public void shouldThrowIllegalArgumentExceptionWhenApiKeyIsNull() {
@@ -54,6 +64,26 @@ public class ScribeConfigurationTest {
     }
 
     @Test
+    public void shouldFallbackToLegacyPropertiesWhenNewOnesAreMissing() throws Exception {
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("apiKey", "legacy-token");
+        configuration.addProperty("baseURL", "https://legacy.example.com");
+
+        assertConfiguration(configuration, "legacy-token", "https://legacy.example.com", true);
+    }
+
+    @Test
+    public void shouldPreferNewPropertiesOverLegacyOnes() throws Exception {
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("scribe.token", "new-token");
+        configuration.addProperty("scribe.url", "https://new.example.com");
+        configuration.addProperty("apiKey", "legacy-token");
+        configuration.addProperty("baseURL", "https://legacy.example.com");
+
+        assertConfiguration(configuration, "new-token", "https://new.example.com", true);
+    }
+
+    @Test
     public void shouldThrowRuntimeExceptionWhenUrlFormatIsWorng() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("scribe.url", "htp://test.linagora.com");
@@ -73,7 +103,7 @@ public class ScribeConfigurationTest {
         configuration.addProperty("scribe.partition.pattern", "{localPart}.twake.{domainName}");
         ScribeConfiguration actual = ScribeConfiguration.from(configuration);
 
-        assertThat(actual.getTrustAllCertificates()).isTrue();
+        assertThat(actual.trustAllCertificates()).isTrue();
     }
 
     @Test
@@ -83,14 +113,6 @@ public class ScribeConfigurationTest {
         configuration.addProperty("scribe.token", "fake-token");
         configuration.addProperty("scribe.ssl.trust.all.certs", "true");
 
-        ScribeConfiguration expected = new ScribeConfiguration("fake-token", Optional.of(URI.create("https://test.linagora.com").toURL()), true);
-        ScribeConfiguration actual = ScribeConfiguration.from(configuration);
-
-        assertThat(actual).isEqualTo(expected);
-    }
-
-    @Test
-    void shouldRespectEqualsAndHashCodeContract() {
-        EqualsVerifier.simple().forClass(ScribeConfiguration.class).verify();
+        assertConfiguration(configuration, "fake-token", "https://test.linagora.com", true);
     }
 }

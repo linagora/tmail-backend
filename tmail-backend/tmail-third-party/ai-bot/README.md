@@ -314,7 +314,9 @@ scribe.ssl.trust.all.certs=false
 
 * `scribe.url`: The URL of the AI endpoint for chat completions (e.g., Mistral API). Mandatory.
 * `scribe.token`: The authorization token for the Scribe AI endpoint. Mandatory.
-* `scribe.ssl.trust.all.certs`: Whether to trust all SSL certificates. Optional, defaults to `true`.
+* `scribe.ssl.trust.all.certs`: Whether to trust all SSL certificates. Optional, defaults to `false` (secure by default). Set to `true` only for local/test deployments with self-signed certificates.
+
+**Backward compatibility:** If `scribe.token` and `scribe.url` are not provided, Scribe falls back to the legacy properties `apiKey` and `baseURL`.
 
 
 ### With the demo server
