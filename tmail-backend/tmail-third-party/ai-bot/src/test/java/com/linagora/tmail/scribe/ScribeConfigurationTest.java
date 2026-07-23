@@ -69,7 +69,7 @@ public class ScribeConfigurationTest {
         configuration.addProperty("apiKey", "legacy-token");
         configuration.addProperty("baseURL", "https://legacy.example.com");
 
-        assertConfiguration(configuration, "legacy-token", "https://legacy.example.com", true);
+        assertConfiguration(configuration, "legacy-token", "https://legacy.example.com", false);
     }
 
     @Test
@@ -80,7 +80,7 @@ public class ScribeConfigurationTest {
         configuration.addProperty("apiKey", "legacy-token");
         configuration.addProperty("baseURL", "https://legacy.example.com");
 
-        assertConfiguration(configuration, "new-token", "https://new.example.com", true);
+        assertConfiguration(configuration, "new-token", "https://new.example.com", false);
     }
 
     @Test
@@ -96,14 +96,13 @@ public class ScribeConfigurationTest {
     }
 
     @Test
-    public void shouldConfigureTrustAllCertsTrueWhenMissingTrustAllCerts() {
+    public void shouldDefaultToCertificateValidationWhenTrustAllCertsIsMissing() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("scribe.url", "https://test.com");
         configuration.addProperty("scribe.token", "fake-token");
-        configuration.addProperty("scribe.partition.pattern", "{localPart}.twake.{domainName}");
         ScribeConfiguration actual = ScribeConfiguration.from(configuration);
 
-        assertThat(actual.trustAllCertificates()).isTrue();
+        assertThat(actual.trustAllCertificates()).isFalse();
     }
 
     @Test

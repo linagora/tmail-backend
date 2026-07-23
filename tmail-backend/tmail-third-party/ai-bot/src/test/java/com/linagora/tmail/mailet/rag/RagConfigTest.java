@@ -70,14 +70,14 @@ public class RagConfigTest {
     }
 
     @Test
-    public void shouldConfigureTrustAllCertsTrueWhenMissingTrustAllCerts() {
+    public void shouldDefaultToCertificateValidationWhenMissingTrustAllCerts() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("openrag.url", "https://ragondin.linagora.com");
         configuration.addProperty("openrag.token", "fake-token");
         configuration.addProperty("openrag.partition.pattern", "{localPart}.twake.{domainName}");
         RagConfig actual = RagConfig.from(configuration);
 
-        assertThat(actual.getTrustAllCertificates()).isTrue();
+        assertThat(actual.getTrustAllCertificates()).isFalse();
     }
 
     @Test

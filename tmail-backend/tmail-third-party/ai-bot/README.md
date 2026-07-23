@@ -262,7 +262,7 @@ openrag.partition.pattern={localPart}.twake.{domainName}
 
 * `openrag.url`: The URL to access the OpenRAG server. Mandatory.
 * `openrag.token`: The token for authorization access to the OpenRAG server. Mandatory.
-* `openrag.ssl.trust.all.certs`: Bypass OpenRAG ssl certificate validation or not. Optional, defaults to true.
+* `openrag.ssl.trust.all.certs`: Bypass OpenRAG ssl certificate validation or not. Optional, defaults to `false` (secure by default). Set to `false` only for local/test deployments with self-signed certificates.
 * `openrag.partition.pattern`: Partition pattern for OpenRAG listener. It must contain `{localPart}` and `{domainName}`. Optional, defaults to `{localPart}.twake.{domainName}`.
 
 The RagListener is responsible for processing mailbox events. It is designed to listen for messages being added to a mailbox, at which point it extracts the message content and sends it to the RAG database for indexing and future retrieval. It also listens for message deletion events to remove the corresponding content from the RAG database.
