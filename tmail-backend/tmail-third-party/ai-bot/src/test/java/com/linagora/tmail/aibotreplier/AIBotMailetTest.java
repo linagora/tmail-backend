@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.mailet;
+package com.linagora.tmail.aibotreplier;
 
 import static com.linagora.tmail.mailet.AIBotConfig.DEFAULT_TIMEOUT;
 
@@ -42,7 +42,7 @@ import org.mockito.Mockito;
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 
 @Disabled("Requires a valid API key in order to be run")
-class AIBotMailetTest {
+public class AIBotMailetTest {
     public static MailAddress createMailAddress(String mailAddress) {
         try {
             return new MailAddress(mailAddress);

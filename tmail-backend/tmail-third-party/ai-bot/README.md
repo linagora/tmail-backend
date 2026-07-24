@@ -66,7 +66,7 @@ Modify the `mailetcontainer.xml` file by adding the following lines:
     <matcher name="aibot-allowed" match="org.apache.james.mailetcontainer.impl.matchers.And">
         <!-- Only answer to local users -->
         <matcher match="SenderIsLocal"/>
-        <matcher match="com.linagora.tmail.mailet.RecipientsContain={your bot address here}"/>
+        <matcher match="com.linagora.tmail.aibotreplier.RecipientsContain={your bot address here}"/>
     </matcher>
 
     ...
@@ -75,7 +75,7 @@ Modify the `mailetcontainer.xml` file by adding the following lines:
     </mailet>
 
     <!-- Put the AIBotMailet after LocalDelivery so the GPT reply would come after the asking question -->
-    <mailet match="aibot-allowed" class="com.linagora.tmail.mailet.AIBotMailet">
+    <mailet match="aibot-allowed" class="com.linagora.tmail.aibotreplier.AIBotMailet">
         <botAddress>{your bot address here}</botAddress>
     </mailet>
     <mailet match="All" class="Null"/>
@@ -359,7 +359,7 @@ We suggest to add at least two rate-limiting rules in `mailetcontainer.xml` such
 ```xml
 <processor state="local-delivery" enableJmx="true">
     <matcher name="aibot-allowed" match="org.apache.james.mailetcontainer.impl.matchers.And">
-        <matcher match="com.linagora.tmail.mailet.RecipientsContain={your bot address here}"/>
+        <matcher match="com.linagora.tmail.aibotreplier.RecipientsContain={your bot address here}"/>
         <matcher match="SenderIsLocal"/>
     </matcher>
     ...
@@ -384,7 +384,7 @@ We suggest to add at least two rate-limiting rules in `mailetcontainer.xml` such
         <size>100K</size>
         <exceededProcessor>tooMuchMails</exceededProcessor>
     </mailet>
-    <mailet match="aibot-allowed" class="com.linagora.tmail.mailet.AIBotMailet">
+    <mailet match="aibot-allowed" class="com.linagora.tmail.aibotreplier.AIBotMailet">
         <botAddress>{your bot address here}</botAddress>
     </mailet>
     <mailet match="All" class="Null"/>
