@@ -16,13 +16,13 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.jmap.aibot
+package com.linagora.tmail.jmap.aibot.scribe
 
 import java.nio.charset.StandardCharsets
 import java.util.stream
 import java.util.stream.Stream
 import com.linagora.tmail.james.jmap.event.ApplyWhenFilter
-import com.linagora.tmail.jmap.aibot.AIChatCompletionRoutes.LOGGER
+import com.linagora.tmail.jmap.aibot.scribe.AIChatCompletionRoutes.LOGGER
 import com.linagora.tmail.scribe.{ChatCompletionResult, ScribeClient}
 import io.netty.handler.codec.http.HttpHeaderNames.{CONTENT_LENGTH, CONTENT_TYPE}
 import io.netty.handler.codec.http.HttpMethod
