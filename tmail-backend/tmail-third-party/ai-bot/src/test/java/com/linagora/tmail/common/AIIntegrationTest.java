@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.mailet;
+package com.linagora.tmail.common;
 
 import static com.linagora.tmail.aibotreplier.AIBotMailetTest.DEMO_MODEL;
 import static org.apache.james.mailets.configuration.CommonProcessors.ERROR_REPOSITORY;

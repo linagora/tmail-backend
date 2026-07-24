@@ -15,27 +15,34 @@
  *  PURPOSE. See the GNU Affero General Public License for          *
  *  more details.                                                   *
  ********************************************************************/
-package com.linagora.tmail.mailet.conf;
+
+package com.linagora.tmail.common.chatlanguagemodel;
 
 import java.net.URL;
+import java.time.Duration;
 import java.util.Optional;
 
-import com.linagora.tmail.mailet.rag.RagConfig;
-import com.linagora.tmail.scribe.ScribeConfiguration;
+import dev.langchain4j.model.chat.StreamingChatLanguageModel;
+import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 
-public record AiHttpClientConfiguration(String authorizationToken,
-                                        Optional<URL> baseURLOpt,
-                                        boolean trustAllCertificates) {
+public class StreamChatLanguageModelFactory {
+    private static final String USE_DEFAULT_BASE_URL = "http://langchain4j.dev/demo/openai/v1";
 
-    public static AiHttpClientConfiguration from(RagConfig ragConfig) {
-        return new AiHttpClientConfiguration(ragConfig.getAuthorizationToken(),
-            ragConfig.getBaseURLOpt(),
-            ragConfig.getTrustAllCertificates());
+    public StreamingChatLanguageModel createChatLanguageModel(AIBotConfig config) {
+        String apiKey = config.getApiKey();
+        LlmModel llmModel = config.getLlmModel();
+        Optional<URL> baseURLOpt = config.getBaseURL();
+
+        return createOpenAILanguageModel(apiKey, llmModel.modelName(), baseURLOpt.map(URL::toString).orElse(USE_DEFAULT_BASE_URL),
+            config.getTimeout());
     }
 
-    public static AiHttpClientConfiguration from(ScribeConfiguration scribeConfig) {
-        return new AiHttpClientConfiguration(scribeConfig.authorizationToken(),
-            scribeConfig.baseURLOpt(),
-            scribeConfig.trustAllCertificates());
+    private StreamingChatLanguageModel createOpenAILanguageModel(String apiKey, String modelName, String baseUrl, Duration timeout) {
+        return OpenAiStreamingChatModel.builder()
+            .apiKey(apiKey)
+            .modelName(modelName)
+            .baseUrl(baseUrl)
+            .timeout(timeout)
+            .build();
     }
 }

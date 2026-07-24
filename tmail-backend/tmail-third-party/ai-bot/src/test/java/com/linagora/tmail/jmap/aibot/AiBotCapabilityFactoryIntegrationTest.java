@@ -43,11 +43,9 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
-import com.linagora.tmail.mailet.AIRedactionalHelper;
-import com.linagora.tmail.mailet.AIRedactionalHelperForTest;
-import com.linagora.tmail.mailet.conf.AIBaseModule;
 import com.linagora.tmail.redactionalhelper.AIRedactionalHelper;
 import com.linagora.tmail.redactionalhelper.AIRedactionalHelperForTest;
+import com.linagora.tmail.common.AIBaseModule;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 import io.restassured.specification.RequestSpecification;

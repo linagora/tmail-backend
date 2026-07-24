@@ -18,11 +18,14 @@
 
 package com.linagora.tmail.aibotreplier;
 
-import static com.linagora.tmail.mailet.AIBotConfig.DEFAULT_TIMEOUT;
+import static com.linagora.tmail.common.chatlanguagemodel.LlmConfig.DEFAULT_TIMEOUT;
 
 import java.net.URI;
 import java.util.Optional;
 
+import com.linagora.tmail.common.chatlanguagemodel.LlmConfig;
+import com.linagora.tmail.common.chatlanguagemodel.LlmModel;
+import com.linagora.tmail.common.chatlanguagemodel.StreamChatLanguageModelFactory;
 import jakarta.mail.internet.AddressException;
 
 import org.apache.james.core.MailAddress;

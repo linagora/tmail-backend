@@ -15,7 +15,7 @@
  *  PURPOSE. See the GNU Affero General Public License for          *
  *  more details.                                                   *
  ********************************************************************/
-package com.linagora.tmail.mailet;
+package com.linagora.tmail.common;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
@@ -24,6 +24,8 @@ import java.net.URI;
 import java.time.Duration;
 import java.util.Optional;
 
+import com.linagora.tmail.common.chatlanguagemodel.LlmConfig;
+import com.linagora.tmail.common.chatlanguagemodel.LlmModel;
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.junit.jupiter.api.Test;

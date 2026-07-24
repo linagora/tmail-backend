@@ -15,8 +15,27 @@
  *  PURPOSE. See the GNU Affero General Public License for          *
  *  more details.                                                   *
  ********************************************************************/
+package com.linagora.tmail.common.httpclient;
 
-package com.linagora.tmail.mailet;
+import java.net.URL;
+import java.util.Optional;
 
-public record LlmModel(String modelName) {
+import com.linagora.tmail.mailet.rag.RagConfig;
+import com.linagora.tmail.scribe.ScribeConfiguration;
+
+public record AiHttpClientConfiguration(String authorizationToken,
+                                        Optional<URL> baseURLOpt,
+                                        boolean trustAllCertificates) {
+
+    public static AiHttpClientConfiguration from(RagConfig ragConfig) {
+        return new AiHttpClientConfiguration(ragConfig.getAuthorizationToken(),
+            ragConfig.getBaseURLOpt(),
+            ragConfig.getTrustAllCertificates());
+    }
+
+    public static AiHttpClientConfiguration from(ScribeConfiguration scribeConfig) {
+        return new AiHttpClientConfiguration(scribeConfig.authorizationToken(),
+            scribeConfig.baseURLOpt(),
+            scribeConfig.trustAllCertificates());
+    }
 }

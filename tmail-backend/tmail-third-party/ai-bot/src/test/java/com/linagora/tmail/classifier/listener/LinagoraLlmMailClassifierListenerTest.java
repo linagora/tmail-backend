@@ -18,9 +18,8 @@
 
 package com.linagora.tmail.classifier.listener;
 
-import static com.linagora.tmail.listener.rag.MockLlmMailClassifierListenerTest.setUpIdentityRepository;
-import static com.linagora.tmail.mailet.AIBotConfig.DEFAULT_TIMEOUT;
 import static com.linagora.tmail.classifier.listener.MockLlmMailClassifierListenerTest.setUpIdentityRepository;
+import static com.linagora.tmail.common.chatlanguagemodel.LlmConfig.DEFAULT_TIMEOUT;
 
 import java.net.URI;
 import java.time.Duration;

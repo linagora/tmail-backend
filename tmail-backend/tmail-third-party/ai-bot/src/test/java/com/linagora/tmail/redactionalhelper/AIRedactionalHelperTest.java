@@ -18,13 +18,16 @@
 
 package com.linagora.tmail.redactionalhelper;
 
-import static com.linagora.tmail.mailet.AIBotConfig.DEFAULT_TIMEOUT;
+import static com.linagora.tmail.common.chatlanguagemodel.LlmConfig.DEFAULT_TIMEOUT;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.net.URI;
 import java.util.Optional;
 
+import com.linagora.tmail.common.chatlanguagemodel.LlmConfig;
+import com.linagora.tmail.common.chatlanguagemodel.LlmModel;
+import com.linagora.tmail.common.chatlanguagemodel.StreamChatLanguageModelFactory;
 import org.apache.commons.configuration2.Configuration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Disabled;

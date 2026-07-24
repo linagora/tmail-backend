@@ -16,12 +16,11 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.mailet;
+package com.linagora.tmail.common;
 
 import com.google.inject.util.Modules;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
-import com.linagora.tmail.mailet.conf.AIBaseModule;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 import com.linagora.tmail.redactionalhelper.AIRedactionalHelper;
 import com.linagora.tmail.redactionalhelper.AIRedactionalHelperForTest;
