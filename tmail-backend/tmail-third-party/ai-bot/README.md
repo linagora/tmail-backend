@@ -237,16 +237,16 @@ To enhance context understanding, AIBot can be extended with a RAG (Retrieval-Au
 To enable RAG, you need to mount a configuration file called listeners.xml, which contains the RAG listener:
 ```xml
 <listeners>
-    <listener>
-        <class>com.linagora.tmail.mailet.rag.RagListener</class>
-    </listener>
+   <listener>
+      <class>com.linagora.tmail.rag.listener.RagListenercom.linagora.tmail.rag.listener.RagListener</class>
+   </listener>
 </listeners>
 ```
 
 To enable Rag deletions add the following guice module in `extensions.properties`:
 
 ```properties
-guice.extension.module=...,com.linagora.tmail.mailet.conf.RagDeletionModule
+guice.extension.module=...,com.linagora.tmail.rag.RagDeletionModule
 ```
 
 You need to also add the following keys in `ai.properties` file:

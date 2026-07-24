@@ -15,12 +15,10 @@
  *  PURPOSE. See the GNU Affero General Public License for          *
  *  more details.                                                   *
  ********************************************************************/
-package com.linagora.tmail.mailet.rag.httpclient;
+package com.linagora.tmail.rag.utils;
 
-import org.apache.james.mailbox.model.MessageId;
-
-public record DocumentId(MessageId id) {
-    public String asString() {
-        return id.serialize();
+public class DocumentConflictException extends RuntimeException {
+    public DocumentConflictException() {
+        super("Document already exists");
     }
 }

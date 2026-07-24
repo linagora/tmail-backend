@@ -15,11 +15,12 @@
  *  PURPOSE. See the GNU Affero General Public License for          *
  *  more details.                                                   *
  ********************************************************************/
+package com.linagora.tmail.rag.utils;
 
-package com.linagora.tmail.mailet.rag.httpclient;
+import org.apache.james.mailbox.model.MessageId;
 
-public class OpenRagUnexpectedException extends RuntimeException {
-    public OpenRagUnexpectedException(String message) {
-        super(message);
+public record DocumentId(MessageId id) {
+    public String asString() {
+        return id.serialize();
     }
 }

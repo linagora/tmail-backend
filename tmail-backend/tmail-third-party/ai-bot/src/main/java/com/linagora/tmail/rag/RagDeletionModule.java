@@ -15,10 +15,31 @@
  *  PURPOSE. See the GNU Affero General Public License for          *
  *  more details.                                                   *
  ********************************************************************/
-package com.linagora.tmail.mailet.rag.httpclient;
 
-public class DocumentConflictException extends RuntimeException {
-    public DocumentConflictException() {
-        super("Document already exists");
+package com.linagora.tmail.rag;
+
+import static com.linagora.tmail.rag.listener.RagDeletionListener.RAG_DELETION_LISTENER_GROUP;
+import static org.apache.james.events.EventDeadLettersHealthCheck.DEAD_LETTERS_IGNORED_GROUPS;
+
+import org.apache.james.events.EventListener;
+import org.apache.james.events.Group;
+
+import com.google.inject.AbstractModule;
+import com.google.inject.multibindings.Multibinder;
+import com.google.inject.name.Names;
+import com.linagora.tmail.rag.listener.RagDeletionListener;
+
+public class RagDeletionModule extends AbstractModule {
+    private static final String CONTENT_DELETION = "contentDeletion";
+
+    @Override
+    protected void configure() {
+        Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class, Names.named(CONTENT_DELETION))
+            .addBinding()
+            .to(RagDeletionListener.class);
+
+        Multibinder.newSetBinder(binder(), Group.class, Names.named(DEAD_LETTERS_IGNORED_GROUPS))
+            .addBinding()
+            .toInstance(RAG_DELETION_LISTENER_GROUP);
     }
 }

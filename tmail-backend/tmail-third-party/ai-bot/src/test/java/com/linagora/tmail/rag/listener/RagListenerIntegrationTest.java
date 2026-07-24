@@ -15,7 +15,7 @@
  * PURPOSE. See the GNU Affero General Public License for          *
  * more details.                                                   *
  ********************************************************************/
-package com.linagora.tmail.mailet.rag;
+package com.linagora.tmail.rag.listener;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aMultipart;
 import static com.github.tomakehurst.wiremock.client.WireMock.containing;

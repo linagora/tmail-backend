@@ -16,7 +16,7 @@
  *  more details.                                                   *
  *******************************************************************/
 
-package com.linagora.tmail.mailet.rag;
+package com.linagora.tmail.rag.listener;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.deleteRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
@@ -30,6 +30,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.TimeUnit;
 
+import com.linagora.tmail.rag.configuration.RagConfig;
 import jakarta.mail.Flags;
 
 import org.apache.commons.configuration2.PropertiesConfiguration;
@@ -61,8 +62,8 @@ import com.linagora.tmail.extension.WireMockAiServerExtension;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
 import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
-import com.linagora.tmail.mailet.rag.httpclient.OpenRagClient;
-import com.linagora.tmail.mailet.rag.httpclient.Partition;
+import com.linagora.tmail.rag.httpclient.OpenRagClient;
+import com.linagora.tmail.rag.utils.Partition;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;

@@ -16,30 +16,10 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.mailet.conf;
+package com.linagora.tmail.rag.httpclient;
 
-import static com.linagora.tmail.mailet.rag.RagDeletionListener.RAG_DELETION_LISTENER_GROUP;
-import static org.apache.james.events.EventDeadLettersHealthCheck.DEAD_LETTERS_IGNORED_GROUPS;
-
-import org.apache.james.events.EventListener;
-import org.apache.james.events.Group;
-
-import com.google.inject.AbstractModule;
-import com.google.inject.multibindings.Multibinder;
-import com.google.inject.name.Names;
-import com.linagora.tmail.mailet.rag.RagDeletionListener;
-
-public class RagDeletionModule extends AbstractModule {
-    private static final String CONTENT_DELETION = "contentDeletion";
-
-    @Override
-    protected void configure() {
-        Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class, Names.named(CONTENT_DELETION))
-            .addBinding()
-            .to(RagDeletionListener.class);
-
-        Multibinder.newSetBinder(binder(), Group.class, Names.named(DEAD_LETTERS_IGNORED_GROUPS))
-            .addBinding()
-            .toInstance(RAG_DELETION_LISTENER_GROUP);
+public class OpenRagUnexpectedException extends RuntimeException {
+    public OpenRagUnexpectedException(String message) {
+        super(message);
     }
 }

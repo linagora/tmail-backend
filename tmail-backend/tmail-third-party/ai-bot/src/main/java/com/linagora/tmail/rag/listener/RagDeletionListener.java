@@ -16,7 +16,7 @@
  *  more details.                                                   *
  *******************************************************************/
 
-package com.linagora.tmail.mailet.rag;
+package com.linagora.tmail.rag.listener;
 
 import jakarta.inject.Inject;
 
@@ -37,9 +37,9 @@ import org.slf4j.LoggerFactory;
 
 import com.linagora.tmail.james.jmap.settings.JmapSettings;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
-import com.linagora.tmail.mailet.rag.httpclient.DocumentId;
-import com.linagora.tmail.mailet.rag.httpclient.OpenRagClient;
-import com.linagora.tmail.mailet.rag.httpclient.Partition;
+import com.linagora.tmail.rag.httpclient.OpenRagClient;
+import com.linagora.tmail.rag.utils.DocumentId;
+import com.linagora.tmail.rag.utils.Partition;
 
 import reactor.core.publisher.Mono;
 
