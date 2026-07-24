@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.mailet;
+package com.linagora.tmail.aibotreplier;
 
 import java.util.Collection;
 import java.util.Optional;

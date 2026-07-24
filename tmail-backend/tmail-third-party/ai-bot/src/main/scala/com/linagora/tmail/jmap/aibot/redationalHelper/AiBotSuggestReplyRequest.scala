@@ -15,7 +15,7 @@
  * PURPOSE. See the GNU Affero General Public License for          *
  * more details.                                                   *
  * ****************************************************************** */
-package com.linagora.tmail.jmap.aibot
+package com.linagora.tmail.jmap.aibot.redationalHelper
 
 import org.apache.james.jmap.core.AccountId
 import org.apache.james.jmap.core.Id.Id

@@ -18,7 +18,7 @@
 
 package com.linagora.tmail.mailet;
 
-import static com.linagora.tmail.mailet.AIBotMailetTest.DEMO_MODEL;
+import static com.linagora.tmail.aibotreplier.AIBotMailetTest.DEMO_MODEL;
 import static org.apache.james.mailets.configuration.CommonProcessors.ERROR_REPOSITORY;
 import static org.apache.james.mailets.configuration.Constants.DEFAULT_DOMAIN;
 import static org.apache.james.mailets.configuration.Constants.LOCALHOST_IP;
@@ -33,6 +33,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 
+import com.linagora.tmail.aibotreplier.AIBotMailet;
+import com.linagora.tmail.aibotreplier.RecipientsContain;
 import jakarta.inject.Inject;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;

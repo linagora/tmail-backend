@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.mailet;
+package com.linagora.tmail.aibotreplier;
 
 import java.io.IOException;
 import java.util.Arrays;
@@ -73,14 +73,14 @@ import dev.langchain4j.model.output.Response;
  * {@code
  * <matcher name="aibot-allowed" match="org.apache.james.mailetcontainer.impl.matchers.And">
  *     <matcher match="SenderIsLocal"/>
- *     <matcher match="com.linagora.tmail.mailet.RecipientsContain=gpt@example.com"/>
+ *     <matcher match="com.linagora.tmail.aibotreplier.RecipientsContain=gpt@example.com"/>
  * </matcher>
  * ...
  * 
  * <mailet match="All" class="com.linagora.tmail.mailets.TmailLocalDelivery">
  *     <consume>false</consume>
  * </mailet>
- * <mailet match="aibot-allowed" class="com.linagora.tmail.mailet.AIBotMailet">
+ * <mailet match="aibot-allowed" class="com.linagora.tmail.aibotreplier.AIBotMailet">
  *     <botAddress>gpt@example.com</botAddress>
  * </mailet>
  * <mailet match="All" class="Null"/>
