@@ -15,11 +15,9 @@
  *  PURPOSE. See the GNU Affero General Public License for          *
  *  more details.                                                   *
  ********************************************************************/
-package com.linagora.tmail.mailet.rag.httpclient;
+package com.linagora.tmail.common.httpclient;
 
 import javax.net.ssl.SSLException;
-
-import com.linagora.tmail.mailet.conf.AiHttpClientConfiguration;
 
 import io.netty.handler.ssl.SslContext;
 import io.netty.handler.ssl.SslContextBuilder;

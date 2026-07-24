@@ -19,8 +19,8 @@ package com.linagora.tmail.scribe;
 
 import jakarta.inject.Inject;
 
-import com.linagora.tmail.mailet.conf.AiHttpClientConfiguration;
-import com.linagora.tmail.mailet.rag.httpclient.AiHttpClientFactory;
+import com.linagora.tmail.common.httpclient.AiHttpClientConfiguration;
+import com.linagora.tmail.common.httpclient.AiHttpClientFactory;
 
 import io.netty.buffer.Unpooled;
 import reactor.core.publisher.Mono;

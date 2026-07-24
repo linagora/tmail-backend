@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.mailet.conf;
+package com.linagora.tmail.common;
 
 import static com.linagora.tmail.classifier.listener.LlmMailBackendClassifierListener.LLM_MAIL_CLASSIFIER_CONFIGURATION;
 import static com.linagora.tmail.event.TmailEventModule.TMAIL_EVENT_BUS_INJECT_NAME;
@@ -52,20 +52,9 @@ import com.linagora.tmail.classifier.listener.LlmMailBackendClassifierListener;
 import com.linagora.tmail.classifier.listener.LlmMailClassifierListener;
 import com.linagora.tmail.classifier.prompt.DefaultPromptRetrieverFactory;
 import com.linagora.tmail.classifier.prompt.PromptRetriever;
+import com.linagora.tmail.common.chatlanguagemodel.LlmConfig;
+import com.linagora.tmail.common.chatlanguagemodel.StreamChatLanguageModelFactory;
 import com.linagora.tmail.james.jmap.event.ApplyWhenFilter;
-import com.linagora.tmail.listener.rag.LlmMailBackendClassifierListener;
-import com.linagora.tmail.listener.rag.LlmMailClassifierListener;
-import com.linagora.tmail.listener.rag.event.AIAnalysisNeededEventSerializer;
-import com.linagora.tmail.listener.rag.prompt.DefaultPromptRetrieverFactory;
-import com.linagora.tmail.listener.rag.prompt.PromptRetriever;
-import com.linagora.tmail.mailet.AIBotConfig;
-import com.linagora.tmail.mailet.AIRedactionalHelper;
-import com.linagora.tmail.mailet.LangchainAIRedactionalHelper;
-import com.linagora.tmail.mailet.StreamChatLanguageModelFactory;
-import com.linagora.tmail.mailet.rag.RagConfig;
-import com.linagora.tmail.mailet.rag.RagListener;
-import com.linagora.tmail.mailet.rag.httpclient.OpenRagClient;
-import com.linagora.tmail.mailet.rag.httpclient.Partition;
 import com.linagora.tmail.rag.configuration.RagConfig;
 import com.linagora.tmail.rag.httpclient.OpenRagClient;
 import com.linagora.tmail.rag.listener.RagListener;

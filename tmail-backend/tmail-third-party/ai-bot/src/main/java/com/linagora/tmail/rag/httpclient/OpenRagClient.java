@@ -29,8 +29,8 @@ import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
-import com.linagora.tmail.mailet.conf.AiHttpClientConfiguration;
-import com.linagora.tmail.mailet.rag.RagConfig;
+import com.linagora.tmail.common.httpclient.AiHttpClientConfiguration;
+import com.linagora.tmail.common.httpclient.AiHttpClientFactory;
 import com.linagora.tmail.rag.configuration.RagConfig;
 import com.linagora.tmail.rag.utils.DocumentConflictException;
 import com.linagora.tmail.rag.utils.DocumentId;

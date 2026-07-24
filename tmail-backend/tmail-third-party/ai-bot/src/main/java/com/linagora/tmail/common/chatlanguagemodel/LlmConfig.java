@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.mailet;
+package com.linagora.tmail.common.chatlanguagemodel;
 
 import java.net.MalformedURLException;
 import java.net.URI;
