@@ -30,7 +30,7 @@
     </listener>
 
     <listener>
-        <class>com.linagora.tmail.listener.rag.LlmMailClassifierListener</class>
+        <class>com.linagora.tmail.classifier.listener.LlmMailClassifierListener</class>
         <configuration>
             <applyWhen>com.linagora.tmail.saas.filter.SaaSPayingUser</applyWhen>
 
