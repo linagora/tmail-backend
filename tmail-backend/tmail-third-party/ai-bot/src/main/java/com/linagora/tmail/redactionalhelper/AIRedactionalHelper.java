@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.mailet;
+package com.linagora.tmail.redactionalhelper;
 
 import java.io.IOException;
 import java.util.Optional;

@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.mailet;
+package com.linagora.tmail.redactionalhelper;
 
 import static com.linagora.tmail.mailet.AIBotConfig.DEFAULT_TIMEOUT;
 import static org.assertj.core.api.Assertions.assertThat;

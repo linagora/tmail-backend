@@ -21,6 +21,8 @@ import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
 import com.linagora.tmail.james.jmap.event.ApplyWhenFilter
 import com.linagora.tmail.jmap.aibot.CapabilityIdentifier.LINAGORA_AIBOT
+import com.linagora.tmail.jmap.aibot.redationalHelper.AiSuggestionMethod
+import com.linagora.tmail.jmap.aibot.scribe.AIChatCompletionRoutes
 import eu.timepit.refined.auto._
 import jakarta.inject.Inject
 import org.apache.james.core.Username
