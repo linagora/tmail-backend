@@ -41,7 +41,7 @@ import com.google.common.collect.ImmutableList;
  *
  * <pre>
  * {@code
- * <mailet match="com.linagora.tmail.mailet.RecipientsContain=recipient1@example.com,recipient2@example.com" class="org.apache.james.transport.mailets.Null"/>
+ * <mailet match="com.linagora.tmail.aibotreplier.RecipientsContain=recipient1@example.com,recipient2@example.com" class="org.apache.james.transport.mailets.Null"/>
  * }
  * </pre>
  *
