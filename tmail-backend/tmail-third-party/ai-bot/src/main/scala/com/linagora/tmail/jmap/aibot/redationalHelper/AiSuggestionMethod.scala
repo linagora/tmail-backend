@@ -15,17 +15,16 @@
  * PURPOSE. See the GNU Affero General Public License for          *
  * more details.                                                   *
  * ****************************************************************** */
-package com.linagora.tmail.jmap.aibot
+package com.linagora.tmail.jmap.aibot.redationalHelper
 
 import com.linagora.tmail.jmap.aibot.CapabilityIdentifier.LINAGORA_AIBOT
 import com.linagora.tmail.jmap.aibot.json.AiBotSerializer
-import com.linagora.tmail.mailet.AIRedactionalHelper
+import com.linagora.tmail.redactionalhelper.AIRedactionalHelper
 import eu.timepit.refined.auto._
 import jakarta.inject.Inject
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.{Invocation, SessionTranslator}
-import org.apache.james.jmap.json.ResponseSerializer
 import org.apache.james.jmap.method.{InvocationWithContext, MethodRequiringAccountId, standardErrorMessage}
 import org.apache.james.jmap.routes.SessionSupplier
 import org.apache.james.mailbox.model.{FetchGroup, MessageId, MessageResult}

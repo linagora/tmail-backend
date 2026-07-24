@@ -20,7 +20,7 @@ package com.linagora.tmail.common.httpclient;
 import java.net.URL;
 import java.util.Optional;
 
-import com.linagora.tmail.mailet.rag.RagConfig;
+import com.linagora.tmail.rag.configuration.RagConfig;
 import com.linagora.tmail.scribe.ScribeConfiguration;
 
 public record AiHttpClientConfiguration(String authorizationToken,

@@ -70,8 +70,7 @@ import com.google.inject.name.Names;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.probe.JmapSettingsProbe;
 import com.linagora.tmail.james.common.probe.JmapSettingsProbeModule;
-import com.linagora.tmail.listener.rag.LlmMailBackendClassifierListener;
-import com.linagora.tmail.mailet.conf.AIBaseModule;
+import com.linagora.tmail.classifier.listener.LlmMailBackendClassifierListener;
 
 @Disabled("Unstable test https://github.com/linagora/tmail-backend/issues/1303")
 class AIIntegrationTest {
@@ -134,7 +133,7 @@ class AIIntegrationTest {
         String listenersContent = """
             <listeners>
                 <listener>
-                    <class>com.linagora.tmail.listener.rag.LlmMailClassifierListener</class>
+                    <class>com.linagora.tmail.classifier.listener.LlmMailClassifierListener</class>
                     <configuration>
                         <maxBodyLength>%d</maxBodyLength>
                     </configuration>
