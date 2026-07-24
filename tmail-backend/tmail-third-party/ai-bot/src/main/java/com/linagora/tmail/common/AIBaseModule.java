@@ -110,8 +110,8 @@ public class AIBaseModule extends AbstractModule {
     }
 
     @Provides
-    public static AIBotConfig provideAiBotExtensionConfiguration(@Named("ai") Configuration configuration) {
-        return AIBotConfig.from(configuration);
+    public static LlmConfig provideAiBotExtensionConfiguration(@Named("ai") Configuration configuration) {
+        return LlmConfig.from(configuration);
     }
 
     @Provides
@@ -139,7 +139,7 @@ public class AIBaseModule extends AbstractModule {
 
     @Provides
     @Singleton
-    public StreamingChatLanguageModel provideStreamingChatLanguageModel(AIBotConfig config, StreamChatLanguageModelFactory chatLanguageModelFactory) {
+    public StreamingChatLanguageModel provideStreamingChatLanguageModel(LlmConfig config, StreamChatLanguageModelFactory chatLanguageModelFactory) {
         return chatLanguageModelFactory.createChatLanguageModel(config);
     }
 

@@ -59,21 +59,21 @@ public class AIBotMailetTest {
     private static final MailAddress BOT_ADDRESS = createMailAddress("gpt@localhost");
 
     private MailetContext mailetContext;
-    private AIBotConfig aiBotConfig;
+    private LlmConfig llmConfig;
     private MailAddress botAddress;
     private AIBotMailet testee;
 
     @BeforeEach
     void setUp() throws Exception {
-        aiBotConfig = new AIBotConfig(
+        llmConfig = new LlmConfig(
             "sk-fakefakefakefakefakefakefakefake",
             new LlmModel("lucie-7b-instruct-v1.1"),
             Optional.of(URI.create("https://chat.lucie.ovh.linagora.com/v1/").toURL()),
             DEFAULT_TIMEOUT);
         botAddress = new MailAddress("gpt@localhost");
         StreamChatLanguageModelFactory streamChatLanguageModelFactory = new StreamChatLanguageModelFactory();
-        StreamingChatLanguageModel chatLanguageModel = streamChatLanguageModelFactory.createChatLanguageModel(aiBotConfig);
-        testee = new AIBotMailet(aiBotConfig, botAddress, chatLanguageModel, new JsoupHtmlTextExtractor());
+        StreamingChatLanguageModel chatLanguageModel = streamChatLanguageModelFactory.createChatLanguageModel(llmConfig);
+        testee = new AIBotMailet(llmConfig, botAddress, chatLanguageModel, new JsoupHtmlTextExtractor());
         mailetContext = Mockito.mock(MailetContext.class);
     }
 

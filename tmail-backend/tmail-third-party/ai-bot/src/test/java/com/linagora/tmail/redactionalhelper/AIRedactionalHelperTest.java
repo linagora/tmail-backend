@@ -40,16 +40,16 @@ import reactor.core.publisher.Mono;
 public class AIRedactionalHelperTest {
     private AIRedactionalHelper aiRedactionalHelper;
     private Configuration configuration;
-    private AIBotConfig aiBotConfig;
+    private LlmConfig llmConfig;
 
     @BeforeEach
     void setUp() throws Exception{
-        aiBotConfig = new AIBotConfig(
+        llmConfig = new LlmConfig(
             "sk-fakefakefakefakefakefakefakefake",
             new LlmModel("lucie-7b-instruct-v1.1"),
             Optional.of(URI.create("https://chat.lucie.ovh.linagora.com/v1/").toURL()),
             DEFAULT_TIMEOUT);
-        StreamingChatLanguageModel chatLanguageModel = new StreamChatLanguageModelFactory().createChatLanguageModel(aiBotConfig);
+        StreamingChatLanguageModel chatLanguageModel = new StreamChatLanguageModelFactory().createChatLanguageModel(llmConfig);
 
         aiRedactionalHelper = new LangchainAIRedactionalHelper(chatLanguageModel);
     }

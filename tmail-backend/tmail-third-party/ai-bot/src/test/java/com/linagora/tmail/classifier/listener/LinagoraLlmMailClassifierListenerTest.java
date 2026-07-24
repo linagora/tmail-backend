@@ -140,13 +140,13 @@ public class LinagoraLlmMailClassifierListenerTest implements LlmMailClassifierL
         listenerConfig = new BaseHierarchicalConfiguration();
         listenerConfig.addProperty("systemPrompt", PromptRetrieverConfiguration.DEFAULT_SYSTEM_PROMPT);
         promptRetrieverFactory = new DefaultPromptRetrieverFactory();
-        AIBotConfig aiBotConfig = new AIBotConfig(
+        LlmConfig llmConfig = new LlmConfig(
             Optional.ofNullable(System.getenv("LLM_API_KEY")).orElse("change-me"),
             new LlmModel("openai/gpt-oss-120b"),
             Optional.of(URI.create("https://ai.linagora.com/api/v1/").toURL()),
             DEFAULT_TIMEOUT);
         StreamChatLanguageModelFactory streamChatLanguageModelFactory = new StreamChatLanguageModelFactory();
-        chatLanguageModel = streamChatLanguageModelFactory.createChatLanguageModel(aiBotConfig);
+        chatLanguageModel = streamChatLanguageModelFactory.createChatLanguageModel(llmConfig);
         identityRepository = setUpIdentityRepository(tmailEventBus);
         jmapSettingsRepository = new MemoryJmapSettingsRepository();
         labelRepository = new MemoryLabelRepository(tmailEventBus);
