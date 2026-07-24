@@ -124,7 +124,7 @@ The listener supports two optional parameters:
 ```xml
 <listeners>
     <listener>
-        <class>com.linagora.tmail.listener.rag.LlmMailClassifierListener</class>
+        <class>com.linagora.tmail.classifier.listener.LlmMailClassifierListenercom.linagora.tmail.classifier.listener.LlmMailClassifierListener</class>
         <configuration>
             <!-- Optional custom system prompt -->
             <systemPrompt>You are an email triage assistant. Return YES or NO only.</systemPrompt>

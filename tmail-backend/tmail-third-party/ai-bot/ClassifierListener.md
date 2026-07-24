@@ -12,7 +12,7 @@ Example:
 ```xml
 
 <listener>
-    <class>com.linagora.tmail.listener.rag.LlmMailClassifierListener</class>
+    <class>com.linagora.tmail.classifier.listener.LlmMailClassifierListenercom.linagora.tmail.classifier.listener.LlmMailClassifierListener</class>
     <configuration>
         <filter>
             <and>
@@ -153,7 +153,7 @@ Users without a SaaS account or users with a non-paying account will not have th
 
 ```xml
 <listener>
-    <class>com.linagora.tmail.listener.rag.LlmMailClassifierListener</class>
+    <class>com.linagora.tmail.classifier.listener.LlmMailClassifierListener</class>
     <configuration>
         <applyWhen>com.linagora.tmail.saas.filter.SaaSPayingUser</applyWhen>
     </configuration>

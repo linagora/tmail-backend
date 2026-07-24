@@ -18,8 +18,8 @@
 
 package com.linagora.tmail.mailet.conf;
 
+import static com.linagora.tmail.classifier.listener.LlmMailBackendClassifierListener.LLM_MAIL_CLASSIFIER_CONFIGURATION;
 import static com.linagora.tmail.event.TmailEventModule.TMAIL_EVENT_BUS_INJECT_NAME;
-import static com.linagora.tmail.listener.rag.LlmMailBackendClassifierListener.LLM_MAIL_CLASSIFIER_CONFIGURATION;
 import static org.apache.james.events.EventDeadLettersHealthCheck.DEAD_LETTERS_IGNORED_GROUPS;
 
 import java.io.FileNotFoundException;
@@ -47,6 +47,11 @@ import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Named;
 import com.google.inject.name.Names;
+import com.linagora.tmail.classifier.event.AIAnalysisNeededEventSerializer;
+import com.linagora.tmail.classifier.listener.LlmMailBackendClassifierListener;
+import com.linagora.tmail.classifier.listener.LlmMailClassifierListener;
+import com.linagora.tmail.classifier.prompt.DefaultPromptRetrieverFactory;
+import com.linagora.tmail.classifier.prompt.PromptRetriever;
 import com.linagora.tmail.james.jmap.event.ApplyWhenFilter;
 import com.linagora.tmail.listener.rag.LlmMailBackendClassifierListener;
 import com.linagora.tmail.listener.rag.LlmMailClassifierListener;
