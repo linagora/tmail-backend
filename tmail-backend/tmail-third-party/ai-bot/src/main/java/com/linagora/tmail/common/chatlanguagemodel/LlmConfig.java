@@ -32,7 +32,7 @@ import org.apache.james.util.DurationParser;
 import com.google.common.base.Preconditions;
 import com.google.common.base.Strings;
 
-public class AIBotConfig {
+public class LlmConfig {
     public static String API_KEY_PARAMETER_NAME = "apiKey";
     public static String MODEL_PARAMETER_NAME = "model";
     public static String BASE_URL_PARAMETER_NAME = "baseURL";
@@ -47,7 +47,7 @@ public class AIBotConfig {
     private final LlmModel llmModel;
     private final Duration timeout;
 
-    public AIBotConfig(String apiKey, LlmModel llmModel, Optional<URL> baseURLOpt, Duration timeout) {
+    public LlmConfig(String apiKey, LlmModel llmModel, Optional<URL> baseURLOpt, Duration timeout) {
         Preconditions.checkNotNull(apiKey);
         Preconditions.checkNotNull(llmModel);
         Preconditions.checkNotNull(baseURLOpt);
@@ -59,7 +59,7 @@ public class AIBotConfig {
         this.timeout = timeout;
     }
 
-    public static AIBotConfig from(Configuration configuration) throws IllegalArgumentException {
+    public static LlmConfig from(Configuration configuration) throws IllegalArgumentException {
         String apiKeyParam = Optional.ofNullable(configuration.getString(API_KEY_PARAMETER_NAME, null))
             .orElseThrow(() ->  new IllegalArgumentException("No value for " + API_KEY_PARAMETER_NAME + " parameter was provided."));
         LlmModel llmModelParam = Optional.ofNullable(configuration.getString(MODEL_PARAMETER_NAME))
@@ -70,7 +70,7 @@ public class AIBotConfig {
 
         Optional<URL> baseURLOpt = Optional.ofNullable(baseUrlParam)
             .filter(baseUrlString -> !Strings.isNullOrEmpty(baseUrlString))
-            .flatMap(AIBotConfig::baseURLStringToURL);
+            .flatMap(LlmConfig::baseURLStringToURL);
 
         Duration timeout = Optional.ofNullable(configuration.getString(TIMEOUT_PARAMETER_NAME, null))
             .map(value -> DurationParser.parse(value, ChronoUnit.SECONDS))
@@ -78,7 +78,7 @@ public class AIBotConfig {
 
 
         try {
-            return new AIBotConfig(apiKeyParam, llmModelParam, baseURLOpt, timeout);
+            return new LlmConfig(apiKeyParam, llmModelParam, baseURLOpt, timeout);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
@@ -100,7 +100,7 @@ public class AIBotConfig {
         if (o == null || getClass() != o.getClass()) {
             return false;
         }
-        AIBotConfig that = (AIBotConfig) o;
+        LlmConfig that = (LlmConfig) o;
         return Objects.equals(apiKey, that.apiKey) &&
             Objects.equals(llmModel, that.llmModel) &&
             Objects.equals(Optional.ofNullable(baseURLOpt).map(opt -> opt.map(URL::toString)),

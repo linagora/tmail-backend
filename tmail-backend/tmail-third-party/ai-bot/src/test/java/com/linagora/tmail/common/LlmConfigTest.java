@@ -32,14 +32,14 @@ import org.junit.jupiter.api.Test;
 
 import nl.jqno.equalsverifier.EqualsVerifier;
 
-class AIBotConfigTest {
+class LlmConfigTest {
     @Test
     void shouldThrowIllegalArgumentExceptionWhenApiKeyIsNull() {
         Configuration configuration = new PropertiesConfiguration();
         configuration.addProperty("model", "Lucie");
         configuration.addProperty("baseURL", "https://chat.lucie.exemple.com");
 
-        assertThatThrownBy(() -> AIBotConfig.from(configuration))
+        assertThatThrownBy(() -> LlmConfig.from(configuration))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("No value for apiKey parameter was provided.");
     }
@@ -51,7 +51,7 @@ class AIBotConfigTest {
         configuration.addProperty("model", "Lucie");
         configuration.addProperty("baseURL", "htp://example.com");
 
-        assertThatThrownBy(() -> AIBotConfig.from(configuration))
+        assertThatThrownBy(() -> LlmConfig.from(configuration))
                 .isInstanceOf(RuntimeException.class)
                 .hasMessageContaining("Invalid LLM API base URL");
     }
@@ -66,9 +66,9 @@ class AIBotConfigTest {
         configuration.addProperty("timeout", "5s");
 
         //act
-        AIBotConfig expected = new AIBotConfig("sk-fakefakefakefakefakefakefakefake", new LlmModel("Lucie"), Optional.of(URI.create("https://chat.lucie.exemple.com").toURL()),
+        LlmConfig expected = new LlmConfig("sk-fakefakefakefakefakefakefakefake", new LlmModel("Lucie"), Optional.of(URI.create("https://chat.lucie.exemple.com").toURL()),
             Duration.ofSeconds(5));
-        AIBotConfig actual = AIBotConfig.from(configuration);
+        LlmConfig actual = LlmConfig.from(configuration);
 
         //Assertions
         assertThat(actual).isEqualTo(expected);
@@ -81,9 +81,9 @@ class AIBotConfigTest {
         configuration.addProperty("model", "Lucie");
         configuration.addProperty("baseURL", "");
 
-        AIBotConfig expected = new AIBotConfig("sk-fakefakefakefakefakefakefakefake", new LlmModel("Lucie"), Optional.empty(),
+        LlmConfig expected = new LlmConfig("sk-fakefakefakefakefakefakefakefake", new LlmModel("Lucie"), Optional.empty(),
             Duration.ofSeconds(10));
-        AIBotConfig actual = AIBotConfig.from(configuration);
+        LlmConfig actual = LlmConfig.from(configuration);
 
         assertThat(actual).isEqualTo(expected);
     }
@@ -95,16 +95,16 @@ class AIBotConfigTest {
         configuration.addProperty("model", "");
         configuration.addProperty("baseURL", "https://chat.lucie.exemple.com");
 
-        AIBotConfig expected = new AIBotConfig("sk-fakefakefakefakefakefakefakefake", new LlmModel(""),
+        LlmConfig expected = new LlmConfig("sk-fakefakefakefakefakefakefakefake", new LlmModel(""),
             Optional.of(URI.create("https://chat.lucie.exemple.com").toURL()), Duration.ofSeconds(10));
-        AIBotConfig actual = AIBotConfig.from(configuration);
+        LlmConfig actual = LlmConfig.from(configuration);
 
         assertThat(actual).isEqualTo(expected);
     }
     
     @Test
     void shouldRespectEqualsAndHashCodeContract() {
-        EqualsVerifier.simple().forClass(AIBotConfig.class).verify();
+        EqualsVerifier.simple().forClass(LlmConfig.class).verify();
     }
 }
 

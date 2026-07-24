@@ -121,6 +121,6 @@ public class RagConfigTest {
     
     @Test
     void shouldRespectEqualsAndHashCodeContract() {
-        EqualsVerifier.simple().forClass(AIBotConfig.class).verify();
+        EqualsVerifier.simple().forClass(LlmConfig.class).verify();
     }
 }

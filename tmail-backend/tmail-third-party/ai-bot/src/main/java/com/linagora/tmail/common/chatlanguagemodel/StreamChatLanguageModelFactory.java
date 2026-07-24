@@ -28,7 +28,7 @@ import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 public class StreamChatLanguageModelFactory {
     private static final String USE_DEFAULT_BASE_URL = "http://langchain4j.dev/demo/openai/v1";
 
-    public StreamingChatLanguageModel createChatLanguageModel(AIBotConfig config) {
+    public StreamingChatLanguageModel createChatLanguageModel(LlmConfig config) {
         String apiKey = config.getApiKey();
         LlmModel llmModel = config.getLlmModel();
         Optional<URL> baseURLOpt = config.getBaseURL();

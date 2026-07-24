@@ -101,13 +101,13 @@ public class AIBotMailet extends GenericMailet {
     public static String BOT_ADDRESS_PARAMETER_NAME = "botAddress";
 
     private final HtmlTextExtractor htmlTextExtractor;
-    private AIBotConfig config;
+    private LlmConfig config;
     private MailAddress botAddress;
     private StreamingChatLanguageModel chatLanguageModel;
 
     @Inject
-    public AIBotMailet(AIBotConfig aiBotConfig, StreamingChatLanguageModel chatLanguageModel, HtmlTextExtractor htmlTextExtractor) {
-        this.config = aiBotConfig;
+    public AIBotMailet(LlmConfig llmConfig, StreamingChatLanguageModel chatLanguageModel, HtmlTextExtractor htmlTextExtractor) {
+        this.config = llmConfig;
         this.chatLanguageModel = chatLanguageModel;
         this.htmlTextExtractor = htmlTextExtractor;
         // botAddress will be eventually initialized by `init()`
@@ -120,10 +120,10 @@ public class AIBotMailet extends GenericMailet {
         }
     }
 
-    public AIBotMailet(AIBotConfig aiBotConfig, MailAddress botAddress, StreamingChatLanguageModel chatLanguageModel, HtmlTextExtractor htmlTextExtractor) {
+    public AIBotMailet(LlmConfig llmConfig, MailAddress botAddress, StreamingChatLanguageModel chatLanguageModel, HtmlTextExtractor htmlTextExtractor) {
         Preconditions.checkNotNull(botAddress);
 
-        this.config = aiBotConfig;
+        this.config = llmConfig;
         this.botAddress = botAddress;
         this.chatLanguageModel = chatLanguageModel;
         this.htmlTextExtractor = htmlTextExtractor;
