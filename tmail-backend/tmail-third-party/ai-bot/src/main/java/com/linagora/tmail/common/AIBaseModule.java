@@ -70,6 +70,8 @@ import com.linagora.tmail.rag.configuration.RagConfig;
 import com.linagora.tmail.rag.httpclient.OpenRagClient;
 import com.linagora.tmail.rag.listener.RagListener;
 import com.linagora.tmail.rag.utils.Partition;
+import com.linagora.tmail.redactionalhelper.AIRedactionalHelper;
+import com.linagora.tmail.redactionalhelper.LangchainAIRedactionalHelper;
 import com.linagora.tmail.scribe.ScribeClient;
 import com.linagora.tmail.scribe.ScribeConfiguration;
 

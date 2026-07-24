@@ -17,7 +17,7 @@
  * ****************************************************************** */
 package com.linagora.tmail.jmap.aibot.json
 
-import com.linagora.tmail.jmap.aibot.{AiBotSuggestReplyRequest, AiBotSuggestReplyResponse}
+import com.linagora.tmail.jmap.aibot.redationalHelper.{AiBotSuggestReplyRequest, AiBotSuggestReplyResponse}
 import play.api.libs.json._
 
 
