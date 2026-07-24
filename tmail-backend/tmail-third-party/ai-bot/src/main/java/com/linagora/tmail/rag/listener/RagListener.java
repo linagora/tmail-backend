@@ -15,7 +15,7 @@
  *  PURPOSE. See the GNU Affero General Public License for          *
  *  more details.                                                   *
  ********************************************************************/
-package com.linagora.tmail.mailet.rag;
+package com.linagora.tmail.rag.listener;
 
 import static org.apache.mailet.base.DateFormats.RFC822_DATE_FORMAT;
 
@@ -70,9 +70,10 @@ import com.google.inject.Inject;
 import com.linagora.tmail.james.jmap.event.ApplyWhenFilter;
 import com.linagora.tmail.james.jmap.settings.JmapSettings;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
-import com.linagora.tmail.mailet.rag.httpclient.DocumentId;
-import com.linagora.tmail.mailet.rag.httpclient.OpenRagClient;
-import com.linagora.tmail.mailet.rag.httpclient.Partition;
+import com.linagora.tmail.rag.httpclient.OpenRagClient;
+import com.linagora.tmail.rag.utils.DocumentId;
+import com.linagora.tmail.rag.utils.LatestEmailReplyExtractor;
+import com.linagora.tmail.rag.utils.Partition;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;

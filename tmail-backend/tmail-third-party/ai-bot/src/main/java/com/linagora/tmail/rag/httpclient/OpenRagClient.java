@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.mailet.rag.httpclient;
+package com.linagora.tmail.rag.httpclient;
 
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
@@ -31,6 +31,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.linagora.tmail.mailet.conf.AiHttpClientConfiguration;
 import com.linagora.tmail.mailet.rag.RagConfig;
+import com.linagora.tmail.rag.configuration.RagConfig;
+import com.linagora.tmail.rag.utils.DocumentConflictException;
+import com.linagora.tmail.rag.utils.DocumentId;
+import com.linagora.tmail.rag.utils.Partition;
 
 import io.netty.handler.codec.http.HttpMethod;
 import io.netty.handler.codec.http.HttpResponseStatus;

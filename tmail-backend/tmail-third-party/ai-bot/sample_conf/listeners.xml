@@ -21,7 +21,7 @@
 
 <listeners>
     <listener>
-        <class>com.linagora.tmail.mailet.rag.RagListener</class>
+        <class>com.linagora.tmail.rag.listener.RagListener</class>
         <configuration>
             <applyWhen>com.linagora.tmail.saas.filter.SaaSPayingUser</applyWhen>
 

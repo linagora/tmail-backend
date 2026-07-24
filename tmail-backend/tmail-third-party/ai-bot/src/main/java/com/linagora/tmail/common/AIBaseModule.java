@@ -61,6 +61,10 @@ import com.linagora.tmail.mailet.rag.RagConfig;
 import com.linagora.tmail.mailet.rag.RagListener;
 import com.linagora.tmail.mailet.rag.httpclient.OpenRagClient;
 import com.linagora.tmail.mailet.rag.httpclient.Partition;
+import com.linagora.tmail.rag.configuration.RagConfig;
+import com.linagora.tmail.rag.httpclient.OpenRagClient;
+import com.linagora.tmail.rag.listener.RagListener;
+import com.linagora.tmail.rag.utils.Partition;
 import com.linagora.tmail.scribe.ScribeClient;
 import com.linagora.tmail.scribe.ScribeConfiguration;
 

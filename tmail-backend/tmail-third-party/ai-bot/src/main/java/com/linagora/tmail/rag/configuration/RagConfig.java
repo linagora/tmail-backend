@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.mailet.rag;
+package com.linagora.tmail.rag.configuration;
 
 import java.net.MalformedURLException;
 import java.net.URI;

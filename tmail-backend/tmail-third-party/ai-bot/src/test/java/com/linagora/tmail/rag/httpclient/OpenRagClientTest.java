@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.mailet.rag.http;
+package com.linagora.tmail.rag.httpclient;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.deleteRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
@@ -30,11 +30,9 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.linagora.tmail.extension.WireMockAiServerExtension;
-import com.linagora.tmail.mailet.rag.RagConfig;
-import com.linagora.tmail.mailet.rag.httpclient.DocumentId;
-import com.linagora.tmail.mailet.rag.httpclient.OpenRagClient;
-import com.linagora.tmail.mailet.rag.httpclient.OpenRagUnexpectedException;
-import com.linagora.tmail.mailet.rag.httpclient.Partition;
+import com.linagora.tmail.rag.configuration.RagConfig;
+import com.linagora.tmail.rag.utils.DocumentId;
+import com.linagora.tmail.rag.utils.Partition;
 
 public class OpenRagClientTest {
     private static final String CHAT_COMPLETIONS_ENDPOINT = "/v1/chat/completions";

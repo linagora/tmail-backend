@@ -40,7 +40,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Module;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
-import com.linagora.tmail.mailet.rag.RagConfig;
+import com.linagora.tmail.rag.configuration.RagConfig;
 
 public class WireMockAiServerExtension extends WireMockExtension implements GuiceModuleTestExtension {
     private static final String CHAT_COMPLETIONS_ENDPOINT = "/v1/chat/completions";

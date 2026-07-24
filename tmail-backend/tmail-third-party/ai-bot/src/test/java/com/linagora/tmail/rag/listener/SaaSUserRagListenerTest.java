@@ -15,7 +15,7 @@
  *  PURPOSE. See the GNU Affero General Public License for          *
  *  more details.                                                   *
  ********************************************************************/
-package com.linagora.tmail.mailet.rag;
+package com.linagora.tmail.rag.listener;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.postRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
@@ -25,6 +25,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
+import com.linagora.tmail.rag.configuration.RagConfig;
 import jakarta.mail.util.SharedByteArrayInputStream;
 
 import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
@@ -57,8 +58,8 @@ import com.linagora.tmail.james.jmap.event.ApplyWhenFilter;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
 import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
-import com.linagora.tmail.mailet.rag.httpclient.OpenRagClient;
-import com.linagora.tmail.mailet.rag.httpclient.Partition;
+import com.linagora.tmail.rag.httpclient.OpenRagClient;
+import com.linagora.tmail.rag.utils.Partition;
 import com.linagora.tmail.saas.api.memory.MemorySaaSAccountRepository;
 import com.linagora.tmail.saas.filter.SaaSPayingUser;
 import com.linagora.tmail.saas.model.SaaSAccount;
