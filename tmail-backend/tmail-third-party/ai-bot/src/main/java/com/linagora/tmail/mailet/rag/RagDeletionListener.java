@@ -16,36 +16,44 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.rag;
+package com.linagora.tmail.mailet.rag;
 
-import static com.linagora.tmail.rag.listener.RagDeletionListener.RAG_DELETION_LISTENER_GROUP;
-import static org.apache.james.events.EventDeadLettersHealthCheck.DEAD_LETTERS_IGNORED_GROUPS;
+import jakarta.inject.Inject;
 
-import org.apache.james.events.EventListener;
 import org.apache.james.events.Group;
+import org.apache.james.mailbox.SessionProvider;
+import org.apache.james.mailbox.store.MailboxSessionMapperFactory;
 
-import com.google.inject.AbstractModule;
-import com.google.inject.multibindings.Multibinder;
-import com.google.inject.name.Names;
-import com.linagora.tmail.rag.listener.RagDeletionListener;
+import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
+import com.linagora.tmail.rag.httpclient.OpenRagClient;
+import com.linagora.tmail.rag.utils.Partition;
 
-public class RagDeletionModule extends AbstractModule {
-    private static final String CONTENT_DELETION = "contentDeletion";
+/**
+ * Backward-compatible wrapper for the renamed RagDeletionListener.
+ *
+ * @deprecated Use {@link com.linagora.tmail.rag.listener.RagDeletionListener} instead.
+ * This class is kept only for backward compatibility with existing deployments
+ * that reference the old fully qualified class name.
+ */
+@Deprecated
+public class RagDeletionListener extends com.linagora.tmail.rag.listener.RagDeletionListener {
+
+    @Inject
+    public RagDeletionListener(JmapSettingsRepository jmapSettingsRepository,
+                               SessionProvider sessionProvider,
+                               MailboxSessionMapperFactory mapperFactory,
+                               Partition.Factory partitionFactory,
+                               OpenRagClient openRagClient) {
+        super(jmapSettingsRepository, sessionProvider, mapperFactory, partitionFactory, openRagClient);
+    }
 
     @Override
-    protected void configure() {
-        Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class, Names.named(CONTENT_DELETION))
-            .addBinding()
-            .to(RagDeletionListener.class);
-
-        Multibinder<Group> deadLetterIgnoredGroups = Multibinder.newSetBinder(binder(), Group.class, Names.named(DEAD_LETTERS_IGNORED_GROUPS));
-        deadLetterIgnoredGroups.addBinding().toInstance(RAG_DELETION_LISTENER_GROUP);
-        // Backward-compatible old group name (see deprecated wrapper in com.linagora.tmail.mailet.rag)
-        deadLetterIgnoredGroups.addBinding().toInstance(new Group() {
+    public Group getDefaultGroup() {
+        return new Group() {
             @Override
             public String asString() {
                 return "com.linagora.tmail.mailet.rag.RagDeletionListener$RagDeletionListenerGroup";
             }
-        });
+        };
     }
 }
