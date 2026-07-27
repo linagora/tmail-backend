@@ -116,7 +116,12 @@ public class AIBaseModule extends AbstractModule {
     public HierarchicalConfiguration<ImmutableNode> provideLlmMailPrioritizationListenerConfiguration(ListenersConfiguration listenersConfiguration) {
         return listenersConfiguration.getListenersConfiguration()
             .stream()
-            .filter(listener -> listener.getClazz().equals(LlmMailClassifierListener.class.getCanonicalName()))
+            .filter(listener -> {
+                String clazz = listener.getClazz();
+                // Accept both new and legacy (deprecated) class names for backward compatibility
+                return clazz.equals(LlmMailClassifierListener.class.getCanonicalName())
+                    || clazz.equals("com.linagora.tmail.listener.rag.LlmMailClassifierListener");
+            })
             .map(ListenerConfiguration::getConfiguration)
             .flatMap(Optional::stream)
             .findFirst()

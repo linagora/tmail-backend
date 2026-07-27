@@ -8,6 +8,6 @@ This matcher will return all recipients of the email if all specified addresses 
 
 [source,xml]
 ----
-<mailet match="com.linagora.tmail.aiBotReplier.RecipientsContain=gpt1@linagora.com,gpt2@linagora.com" class="org.apache.james.transport.mailets.Null">
+<mailet match="com.linagora.tmail.aibotreplier.RecipientsContain=gpt1@linagora.com,gpt2@linagora.com" class="org.apache.james.transport.mailets.Null">
 </mailet>
 ----

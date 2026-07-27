@@ -12,7 +12,7 @@ Example:
 ```xml
 
 <listener>
-    <class>com.linagora.tmail.classifier.listener.LlmMailClassifierListenercom.linagora.tmail.classifier.listener.LlmMailClassifierListener</class>
+    <class>com.linagora.tmail.classifier.listener.LlmMailClassifierListener</class>
     <configuration>
         <filter>
             <and>

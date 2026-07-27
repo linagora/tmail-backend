@@ -10,6 +10,23 @@ Before getting started, make sure you have:
    - An API endpoint URL
 2. **A suitable LLM model** for your use case
 
+## Backward-Compatible Fully Qualified Class Names
+
+The following classes were renamed as part of code refactoring. Backward-compatible wrappers are provided so that existing configurations continue to work without modification.
+
+| Old FQDN (deprecated, but still works) | New FQDN (recommended) |
+|---|---|
+| `com.linagora.tmail.mailet.conf.AIBaseModule` | `com.linagora.tmail.common.AIBaseModule` |
+| `com.linagora.tmail.mailet.conf.RagDeletionModule` | `com.linagora.tmail.rag.RagDeletionModule` |
+| `com.linagora.tmail.mailet.AIBotMailet` | `com.linagora.tmail.aibotreplier.AIBotMailet` |
+| `com.linagora.tmail.mailet.RecipientsContain` | `com.linagora.tmail.aibotreplier.RecipientsContain` |
+| `com.linagora.tmail.mailet.rag.RagListener` | `com.linagora.tmail.rag.listener.RagListener` |
+| `com.linagora.tmail.mailet.rag.RagDeletionListener` | `com.linagora.tmail.rag.listener.RagDeletionListener` |
+| `com.linagora.tmail.listener.rag.LlmMailClassifierListener` | `com.linagora.tmail.classifier.listener.LlmMailClassifierListener` |
+| `com.linagora.tmail.listener.rag.LlmMailBackendClassifierListener` | `com.linagora.tmail.classifier.listener.LlmMailBackendClassifierListener` |
+
+# The old class names are marked as `@Deprecated` they are  still supported .
+
 ## Configuration Files
 
 ### API configuration
@@ -124,7 +141,7 @@ The listener supports two optional parameters:
 ```xml
 <listeners>
     <listener>
-        <class>com.linagora.tmail.classifier.listener.LlmMailClassifierListenercom.linagora.tmail.classifier.listener.LlmMailClassifierListener</class>
+        <class>com.linagora.tmail.classifier.listener.LlmMailClassifierListener</class>
         <configuration>
             <!-- Optional custom system prompt -->
             <systemPrompt>You are an email triage assistant. Return YES or NO only.</systemPrompt>
@@ -238,7 +255,7 @@ To enable RAG, you need to mount a configuration file called listeners.xml, whic
 ```xml
 <listeners>
    <listener>
-      <class>com.linagora.tmail.rag.listener.RagListenercom.linagora.tmail.rag.listener.RagListener</class>
+      <class>com.linagora.tmail.rag.listener.RagListener</class>
    </listener>
 </listeners>
 ```
