@@ -78,6 +78,25 @@ public class AIBaseModule extends AbstractModule {
         deadLetterIgnoredGroups.addBinding().toInstance(RagListener.GROUP);
         deadLetterIgnoredGroups.addBinding().toInstance(LlmMailClassifierListener.GROUP);
         deadLetterIgnoredGroups.addBinding().toInstance(LlmMailBackendClassifierListener.GROUP);
+        // Backward-compatible old group names (see deprecated wrappers in com.linagora.tmail.mailet.rag / com.linagora.tmail.listener.rag)
+        deadLetterIgnoredGroups.addBinding().toInstance(new Group() {
+            @Override
+            public String asString() {
+                return "com.linagora.tmail.mailet.rag.RagListener$RagListenerGroup";
+            }
+        });
+        deadLetterIgnoredGroups.addBinding().toInstance(new Group() {
+            @Override
+            public String asString() {
+                return "com.linagora.tmail.listener.rag.LlmMailClassifierListener$LlmMailPrioritizationClassifierGroup";
+            }
+        });
+        deadLetterIgnoredGroups.addBinding().toInstance(new Group() {
+            @Override
+            public String asString() {
+                return "com.linagora.tmail.listener.rag.LlmMailBackendClassifierListener$LlmMailPrioritizationBackendClassifierGroup";
+            }
+        });
 
         Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class, Names.named(TMAIL_EVENT_BUS_INJECT_NAME))
             .addBinding()

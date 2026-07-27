@@ -183,7 +183,7 @@ class SaaSUserRagListenerTest {
 
             List<HierarchicalConfiguration<ImmutableNode>> listeners = xmlConfig.configurationsAt("listener");
             for (HierarchicalConfiguration<ImmutableNode> listener : listeners) {
-                if (RagListener.class.getName().equals(listener.getString("class"))) {
+                if (com.linagora.tmail.mailet.rag.RagListener.class.getName().equals(listener.getString("class"))) {
                     return listener.configurationsAt("configuration")
                         .stream()
                         .findFirst()

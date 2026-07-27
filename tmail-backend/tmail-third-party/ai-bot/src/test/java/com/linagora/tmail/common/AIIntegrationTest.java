@@ -33,8 +33,8 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Map;
 
-import com.linagora.tmail.aibotreplier.AIBotMailet;
-import com.linagora.tmail.aibotreplier.RecipientsContain;
+import com.linagora.tmail.mailet.AIBotMailet;
+import com.linagora.tmail.mailet.RecipientsContain;
 import jakarta.inject.Inject;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeMessage;
@@ -133,7 +133,7 @@ class AIIntegrationTest {
         String listenersContent = """
             <listeners>
                 <listener>
-                    <class>com.linagora.tmail.classifier.listener.LlmMailClassifierListener</class>
+                    <class>com.linagora.tmail.listener.rag.LlmMailClassifierListener</class>
                     <configuration>
                         <maxBodyLength>%d</maxBodyLength>
                     </configuration>
