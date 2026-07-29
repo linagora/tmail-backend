@@ -60,6 +60,7 @@ import org.apache.james.modules.server.DKIMMailetModule;
 import org.apache.james.modules.server.DropListsRoutesModule;
 import org.apache.james.modules.server.JMXServerModule;
 import org.apache.james.modules.server.TaskManagerModule;
+import org.apache.james.modules.server.WebAdminServerModule;
 import org.apache.james.oidc.memory.CaffeineOidcTokenCacheModule;
 import org.apache.james.rate.limiter.memory.MemoryRateLimiterModule;
 import org.apache.james.util.Host;
@@ -209,7 +210,8 @@ public class MemoryServer {
           new JmapSettingsReportRoutesModule(),
           new JmapSettingsRoutesModule(),
           new DKIMMailetModule())
-        .with(new TeamMailboxModule(),
+        .with(WebAdminServerModule.defaultPasswordGenerationModule(false),
+            new TeamMailboxModule(),
             new TMailScanningQuotaSearcherModule(),
             new MemoryRateLimiterModule(),
             new MemoryRateLimitingModule(),

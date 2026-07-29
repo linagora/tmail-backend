@@ -6,6 +6,15 @@ The following document discusses additional webAdmin routes exposed by TMail.
 It follows the conventions of xref:3.7.0@james-distributed-app:operate/webadmin.adoc[existing routes for the Apache James
 Distributed Server].
 
+[WARNING]
+====
+Unlike Apache James, TMail defaults WebAdmin password generation to disabled when `password.generate` is not configured.
+Set `password.generate=true` in `webadmin.properties` to enable it.
+
+Without JWT or any configured password, WebAdmin requests are unauthenticated. Do not expose the WebAdmin endpoint outside
+of a trusted environment in that configuration.
+====
+
 == Team Mailboxes
 
 === Listing Team Mailboxes for a domain
