@@ -404,7 +404,8 @@ public class PostgresTmailServer {
             POSTGRES_SERVER_MODULE,
             PROTOCOLS,
             PLUGINS))
-        .with(new TeamMailboxModule(),
+        .with(WebAdminServerModule.defaultPasswordGenerationModule(false),
+            new TeamMailboxModule(),
             new TMailMailboxSortOrderProviderModule(),
             new PostgresRateLimitingModule(),
             new PostgresUserQuotaReporterModule(),

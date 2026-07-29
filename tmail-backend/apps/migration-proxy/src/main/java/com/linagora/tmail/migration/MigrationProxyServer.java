@@ -160,7 +160,7 @@ public class MigrationProxyServer {
 
         return GuiceJamesServer.forConfiguration(configuration)
             .combineWith(Modules.override(PROTOCOLS, DATA, chooseSslModule(), eventBusModuleChoice.module())
-                .with(MIGRATION_PROXY))
+                .with(MIGRATION_PROXY, WebAdminServerModule.defaultPasswordGenerationModule(false)))
             .combineWith(new UsersRepositoryModuleChooser(new PostgresUsersRepositoryModule())
                 .chooseModules(usersRepositoryImplementation));
     }

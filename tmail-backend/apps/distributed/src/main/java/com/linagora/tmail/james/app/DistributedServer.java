@@ -397,7 +397,8 @@ public class DistributedServer {
             new MailetProcessingModule(),
             REQUIRE_TASK_MANAGER_MODULE,
             new DistributedTaskManagerModule()))
-        .with(new CassandraLabelRepositoryModule(),
+        .with(WebAdminServerModule.defaultPasswordGenerationModule(false),
+            new CassandraLabelRepositoryModule(),
             new CassandraDomainSignatureTemplateRepositoryModule(),
             new CassandraRateLimitingModule(),
             new CassandraUserQuotaReporterModule(),
