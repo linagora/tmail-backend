@@ -39,5 +39,6 @@ public class PostgresFirebaseSubscriptionGetMethodTest implements FirebaseSubscr
                 bind(FirebasePushClient.class).toInstance(FirebaseSubscriptionGetMethodContract.firebasePushClient());
             }
         })
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }
