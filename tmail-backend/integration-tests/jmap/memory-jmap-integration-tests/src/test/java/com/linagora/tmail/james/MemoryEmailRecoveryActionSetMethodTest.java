@@ -50,6 +50,7 @@ public class MemoryEmailRecoveryActionSetMethodTest implements EmailRecoveryActi
             .overrideWith(new DeletedMessageVaultProbeModule())
             .overrideWith(new LinagoraTestJMAPServerModule()))
         .extension(new ClockExtension())
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_ENCLOSING_CLASS)
         .build();
 
     @Override
