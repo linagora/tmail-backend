@@ -18,13 +18,17 @@
 
 package com.linagora.tmail.james.common
 
-import java.time.ZonedDateTime
+import java.nio.charset.StandardCharsets
 import java.time.format.DateTimeFormatter
+import java.time.{Instant, ZonedDateTime}
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
 
 import com.google.common.collect.ImmutableSet
+import com.google.common.hash.Hashing
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
-import com.linagora.tmail.james.common.FirebaseSubscriptionGetMethodContract.{FIREBASE_SUBSCRIPTION_CREATE_REQUEST, TIME_FORMATTER}
+import com.linagora.tmail.james.common.FirebaseSubscriptionGetMethodContract.TIME_FORMATTER
 import com.linagora.tmail.james.jmap.firebase.{FirebasePushClient, FirebaseSubscriptionRepository}
 import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseSubscription, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionId, FirebaseToken}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
@@ -40,7 +44,7 @@ import org.apache.james.jmap.change.MailboxTypeName
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.core.UTCDate
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE_PASSWORD, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.utils.{DataProbeImpl, GuiceProbe, UpdatableTickingClock}
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
@@ -65,6 +69,12 @@ class FirebaseSubscriptionProbeModule extends AbstractModule {
 }
 
 object FirebaseSubscriptionGetMethodContract {
+  case class TestContext(bobUsername: Username,
+                         bobAccountId: String,
+                         andreUsername: Username,
+                         firebaseSubscriptionCreateRequest: FirebaseSubscriptionCreationRequest)
+
+  private val currentContext: AtomicReference[TestContext] = new AtomicReference[TestContext]()
   val TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX")
   val FIREBASE_SUBSCRIPTION_CREATE_REQUEST: FirebaseSubscriptionCreationRequest = FirebaseSubscriptionCreationRequest(
     deviceClientId = DeviceClientId("ipad gen 9"),
@@ -76,16 +86,41 @@ object FirebaseSubscriptionGetMethodContract {
 
 trait FirebaseSubscriptionGetMethodContract {
 
+  def bobUsername: Username = FirebaseSubscriptionGetMethodContract.currentContext.get().bobUsername
+
+  def bobAccountId: String = FirebaseSubscriptionGetMethodContract.currentContext.get().bobAccountId
+
+  def andreUsername: Username = FirebaseSubscriptionGetMethodContract.currentContext.get().andreUsername
+
+  def firebaseSubscriptionCreateRequest: FirebaseSubscriptionCreationRequest =
+    FirebaseSubscriptionGetMethodContract.currentContext.get().firebaseSubscriptionCreateRequest
+
   @BeforeEach
-  def setUp(server: GuiceJamesServer): Unit = {
+  def setUp(server: GuiceJamesServer, clock: UpdatableTickingClock): Unit = {
+    clock.setInstant(Instant.now())
+
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    val bob = Username.fromLocalPartWithDomain(s"bob$uniqueSuffix", DOMAIN)
+    val andre = Username.fromLocalPartWithDomain(s"andre$uniqueSuffix", DOMAIN)
+    val firebaseSubscriptionCreateRequest = FirebaseSubscriptionCreationRequest(
+      deviceClientId = DeviceClientId("ipad gen 9"),
+      token = FirebaseToken(s"fire-base-token-$uniqueSuffix"),
+      expires = Some(FirebaseSubscriptionExpiredTime(UTCDate(ZonedDateTime.now().plusDays(1)).asUTC)),
+      types = Seq(MailboxTypeName))
+    FirebaseSubscriptionGetMethodContract.currentContext.set(FirebaseSubscriptionGetMethodContract.TestContext(
+      bobUsername = bob,
+      bobAccountId = Hashing.sha256().hashString(bob.asString(), StandardCharsets.UTF_8).toString,
+      andreUsername = andre,
+      firebaseSubscriptionCreateRequest = firebaseSubscriptionCreateRequest))
+
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
       .addDomain(DOMAIN.asString())
-      .addUser(BOB.asString(), BOB_PASSWORD)
-      .addUser(ANDRE.asString(), ANDRE_PASSWORD)
+      .addUser(bob.asString(), BOB_PASSWORD)
+      .addUser(andre.asString(), ANDRE_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .setAuth(authScheme(UserCredential(bob, BOB_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build()
   }
@@ -101,7 +136,7 @@ trait FirebaseSubscriptionGetMethodContract {
            |  "methodCalls": [[
            |    "FirebaseRegistration/get",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "ids": null
            |    },
            |    "c1"]]
@@ -132,7 +167,7 @@ trait FirebaseSubscriptionGetMethodContract {
   @Test
   def getShouldReturnEntryWhenHaveSubscription(server: GuiceJamesServer): Unit = {
     val firebaseSubscription = server.getProbe(classOf[FirebaseSubscriptionProbe])
-      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+      .createSubscription(bobUsername, firebaseSubscriptionCreateRequest)
 
     val response = `given`
       .body(
@@ -143,7 +178,7 @@ trait FirebaseSubscriptionGetMethodContract {
            |  "methodCalls": [[
            |    "FirebaseRegistration/get",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "ids": null
            |    },
            |    "c1"]]
@@ -167,7 +202,7 @@ trait FirebaseSubscriptionGetMethodContract {
          |                "notFound": [],
          |                "list": [
          |                    {
-         |                        "expires": "${FIREBASE_SUBSCRIPTION_CREATE_REQUEST.expires.get.value.format(TIME_FORMATTER)}",
+         |                        "expires": "${firebaseSubscriptionCreateRequest.expires.get.value.format(TIME_FORMATTER)}",
          |                        "id": "${firebaseSubscription.id.value.toString}",
          |                        "deviceClientId": "ipad gen 9",
          |                        "types": ["Mailbox"]
@@ -183,7 +218,7 @@ trait FirebaseSubscriptionGetMethodContract {
   @Test
   def getShouldNotReturnExpiredSubscriptionAndTriggerTheDeletion(server: GuiceJamesServer, clock: UpdatableTickingClock): Unit = {
     val firebaseSubscription = server.getProbe(classOf[FirebaseSubscriptionProbe])
-      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+      .createSubscription(bobUsername, firebaseSubscriptionCreateRequest)
 
     clock.setInstant(ZonedDateTime.now().plusDays(100).toInstant)
 
@@ -196,7 +231,7 @@ trait FirebaseSubscriptionGetMethodContract {
            |  "methodCalls": [[
            |    "FirebaseRegistration/get",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "ids": null
            |    },
            |    "c1"]]
@@ -225,20 +260,20 @@ trait FirebaseSubscriptionGetMethodContract {
          |}""".stripMargin)
 
     assertThat(server.getProbe(classOf[FirebaseSubscriptionProbe])
-      .retrieveSubscription(BOB, firebaseSubscription.id))
+      .retrieveSubscription(bobUsername, firebaseSubscription.id))
       .isNull()
   }
 
   @Test
   def getShouldReturnEntriesWhenHaveSeveralSubscription(server: GuiceJamesServer): Unit = {
-    val createRequest2: FirebaseSubscriptionCreationRequest = FIREBASE_SUBSCRIPTION_CREATE_REQUEST.copy(
+    val createRequest2: FirebaseSubscriptionCreationRequest = firebaseSubscriptionCreateRequest.copy(
       deviceClientId = DeviceClientId("ipad gen 10"),
-      token = FirebaseToken("fire-base-token-3"))
+      token = FirebaseToken(s"fire-base-token-${UUID.randomUUID()}"))
 
     val firebaseSubscription1 = server.getProbe(classOf[FirebaseSubscriptionProbe])
-      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+      .createSubscription(bobUsername, firebaseSubscriptionCreateRequest)
     val firebaseSubscription2 = server.getProbe(classOf[FirebaseSubscriptionProbe])
-      .createSubscription(BOB, createRequest2)
+      .createSubscription(bobUsername, createRequest2)
 
     val response = `given`
       .body(
@@ -249,7 +284,7 @@ trait FirebaseSubscriptionGetMethodContract {
            |  "methodCalls": [[
            |    "FirebaseRegistration/get",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "ids": null
            |    },
            |    "c1"]]
@@ -275,7 +310,7 @@ trait FirebaseSubscriptionGetMethodContract {
            |                "notFound": [],
            |                "list": [
            |                    {
-           |                        "expires": "${FIREBASE_SUBSCRIPTION_CREATE_REQUEST.expires.get.value.format(TIME_FORMATTER)}",
+           |                        "expires": "${firebaseSubscriptionCreateRequest.expires.get.value.format(TIME_FORMATTER)}",
            |                        "id": "${firebaseSubscription1.id.value.toString}",
            |                        "deviceClientId": "ipad gen 9",
            |                        "types": ["Mailbox"]
@@ -297,7 +332,7 @@ trait FirebaseSubscriptionGetMethodContract {
   @Test
   def getShouldReturnEmptyListWhenIdsAreEmpty(server: GuiceJamesServer): Unit = {
     val firebaseSubscription = server.getProbe(classOf[FirebaseSubscriptionProbe])
-      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+      .createSubscription(bobUsername, firebaseSubscriptionCreateRequest)
 
     val response = `given`
       .body(
@@ -308,7 +343,7 @@ trait FirebaseSubscriptionGetMethodContract {
            |  "methodCalls": [[
            |    "FirebaseRegistration/get",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "ids": []
            |    },
            |    "c1"]]
@@ -341,7 +376,7 @@ trait FirebaseSubscriptionGetMethodContract {
   @Test
   def getShouldReturnNotFoundWhenIdDoesNotExist(server: GuiceJamesServer): Unit = {
     val firebaseSubscription = server.getProbe(classOf[FirebaseSubscriptionProbe])
-      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+      .createSubscription(bobUsername, firebaseSubscriptionCreateRequest)
 
     val response = `given`
       .body(
@@ -352,7 +387,7 @@ trait FirebaseSubscriptionGetMethodContract {
            |  "methodCalls": [[
            |    "FirebaseRegistration/get",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "ids": ["notFound1"]
            |    },
            |    "c1"]]
@@ -385,7 +420,7 @@ trait FirebaseSubscriptionGetMethodContract {
   @Test
   def getShouldReturnNotFoundAndListWhenMixCases(server: GuiceJamesServer): Unit = {
     val firebaseSubscription = server.getProbe(classOf[FirebaseSubscriptionProbe])
-      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+      .createSubscription(bobUsername, firebaseSubscriptionCreateRequest)
 
     val response = `given`
       .body(
@@ -396,7 +431,7 @@ trait FirebaseSubscriptionGetMethodContract {
            |  "methodCalls": [[
            |    "FirebaseRegistration/get",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "ids": ["notFound1", "${firebaseSubscription.id.value}"]
            |    },
            |    "c1"]]
@@ -420,7 +455,7 @@ trait FirebaseSubscriptionGetMethodContract {
          |                "notFound": ["notFound1"],
          |                "list": [
          |                    {
-         |                        "expires": "${FIREBASE_SUBSCRIPTION_CREATE_REQUEST.expires.get.value.format(TIME_FORMATTER)}",
+         |                        "expires": "${firebaseSubscriptionCreateRequest.expires.get.value.format(TIME_FORMATTER)}",
          |                        "id": "${firebaseSubscription.id.value.toString}",
          |                        "deviceClientId": "ipad gen 9",
          |                        "types": ["Mailbox"]
@@ -436,7 +471,7 @@ trait FirebaseSubscriptionGetMethodContract {
   @Test
   def getShouldNotReturnSubscriptionOfOtherAccount(server: GuiceJamesServer): Unit = {
     val andreFirebaseSubscription = server.getProbe(classOf[FirebaseSubscriptionProbe])
-      .createSubscription(ANDRE, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+      .createSubscription(andreUsername, firebaseSubscriptionCreateRequest)
 
     val response = `given`
       .body(
@@ -447,7 +482,7 @@ trait FirebaseSubscriptionGetMethodContract {
            |  "methodCalls": [[
            |    "FirebaseRegistration/get",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "ids": null
            |    },
            |    "c1"]]
@@ -480,7 +515,7 @@ trait FirebaseSubscriptionGetMethodContract {
   @Test
   def getShouldReturnNotFoundWhenDoesNotHavePermission(server: GuiceJamesServer): Unit = {
     val andreFirebaseSubscription = server.getProbe(classOf[FirebaseSubscriptionProbe])
-      .createSubscription(ANDRE, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+      .createSubscription(andreUsername, firebaseSubscriptionCreateRequest)
 
     val response = `given`
       .body(
@@ -491,7 +526,7 @@ trait FirebaseSubscriptionGetMethodContract {
            |  "methodCalls": [[
            |    "FirebaseRegistration/get",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "ids": ["${andreFirebaseSubscription.id.value}"]
            |    },
            |    "c1"]]
@@ -524,7 +559,7 @@ trait FirebaseSubscriptionGetMethodContract {
   @Test
   def getShouldReturnOnlyRequestedProperties(server: GuiceJamesServer): Unit = {
     val andreFirebaseSubscription = server.getProbe(classOf[FirebaseSubscriptionProbe])
-      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+      .createSubscription(bobUsername, firebaseSubscriptionCreateRequest)
 
     val response = `given`
       .body(
@@ -535,7 +570,7 @@ trait FirebaseSubscriptionGetMethodContract {
            |  "methodCalls": [[
            |    "FirebaseRegistration/get",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "ids": null,
            |      "properties": ["deviceClientId","types"]
            |    },
@@ -577,7 +612,7 @@ trait FirebaseSubscriptionGetMethodContract {
   @Test
   def getShouldFailWhenInvalidProperties(server: GuiceJamesServer): Unit = {
     val andreFirebaseSubscription = server.getProbe(classOf[FirebaseSubscriptionProbe])
-      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+      .createSubscription(bobUsername, firebaseSubscriptionCreateRequest)
 
     val response = `given`
       .body(
@@ -588,7 +623,7 @@ trait FirebaseSubscriptionGetMethodContract {
            |  "methodCalls": [[
            |    "FirebaseRegistration/get",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "ids": null,
            |      "properties": ["token"]
            |    },
@@ -622,7 +657,7 @@ trait FirebaseSubscriptionGetMethodContract {
   @Test
   def getShouldFailWhenInvalidIds(server: GuiceJamesServer): Unit = {
     val andreFirebaseSubscription = server.getProbe(classOf[FirebaseSubscriptionProbe])
-      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+      .createSubscription(bobUsername, firebaseSubscriptionCreateRequest)
 
     val response = `given`
       .body(
@@ -633,7 +668,7 @@ trait FirebaseSubscriptionGetMethodContract {
            |  "methodCalls": [[
            |    "FirebaseRegistration/get",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "ids": ["#==id"]
            |    },
            |    "c1"]]
@@ -673,7 +708,7 @@ trait FirebaseSubscriptionGetMethodContract {
            |  "methodCalls": [[
            |    "FirebaseRegistration/get",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "ids": null
            |    },
            |    "c1"]]
@@ -709,7 +744,7 @@ trait FirebaseSubscriptionGetMethodContract {
            |  "methodCalls": [[
            |    "FirebaseRegistration/get",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "ids": null
            |    },
            |    "c1"]]
