@@ -81,6 +81,7 @@ public class DistributedTMailHealthCheckIntegrationTests extends TMailHealthChec
             .overrideWith(new RedisRateLimiterModule())
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new DistributedSaaSModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @Test
