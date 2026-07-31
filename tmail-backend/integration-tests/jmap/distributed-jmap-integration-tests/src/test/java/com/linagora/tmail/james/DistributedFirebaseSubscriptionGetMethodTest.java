@@ -41,7 +41,7 @@ import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class DistributedFirebaseSubscriptionGetMethodTest implements FirebaseSubscriptionGetMethodContract {
     @RegisterExtension
-    JamesServerExtension testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
+    static JamesServerExtension testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
         DistributedJamesConfiguration.builder()
             .workingDirectory(tmpDir)
             .configurationFromClasspath()
@@ -66,5 +66,6 @@ public class DistributedFirebaseSubscriptionGetMethodTest implements FirebaseSub
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new FirebaseSubscriptionProbeModule())
             .overrideWith(binder -> binder.bind(FirebasePushClient.class).toInstance(FirebaseSubscriptionGetMethodContract.firebasePushClient())))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }
