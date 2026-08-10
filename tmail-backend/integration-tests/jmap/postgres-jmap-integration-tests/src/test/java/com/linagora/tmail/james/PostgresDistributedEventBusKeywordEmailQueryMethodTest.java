@@ -80,5 +80,6 @@ public class PostgresDistributedEventBusKeywordEmailQueryMethodTest implements K
         .extension(new ClockExtension())
         .extension(new RabbitMQExtension())
         .extension(new RedisExtension())
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }
