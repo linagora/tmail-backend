@@ -36,5 +36,6 @@ public class PostgresFolderFilteringActionGetMethodTest implements FolderFilteri
             binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding().to(TeamMailboxProbe.class),
             new JmapGuiceCustomModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }

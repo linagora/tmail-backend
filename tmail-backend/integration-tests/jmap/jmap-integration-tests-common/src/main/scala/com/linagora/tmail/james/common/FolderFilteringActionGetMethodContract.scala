@@ -20,6 +20,8 @@ package com.linagora.tmail.james.common
 
 import java.nio.charset.StandardCharsets
 import java.util.Optional
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
 
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Inject}
@@ -41,7 +43,7 @@ import org.apache.james.jmap.api.filtering.Rule.Action
 import org.apache.james.jmap.api.filtering.{Rule, Rules, Version}
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE_PASSWORD, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.{MailboxId, MailboxPath}
@@ -72,20 +74,32 @@ class RunRulesTaskProbe @Inject()(taskManager: TaskManager,
 }
 
 object FolderFilteringActionGetMethodContract {
+  case class TestContext(bobUsername: Username, andreUsername: Username)
+
+  private val currentContext: AtomicReference[TestContext] = new AtomicReference[TestContext]()
   private var webAdminApi: RequestSpecification = _
 }
 
 trait FolderFilteringActionGetMethodContract {
+  def bobUsername: Username = FolderFilteringActionGetMethodContract.currentContext.get().bobUsername
+
+  def andreUsername: Username = FolderFilteringActionGetMethodContract.currentContext.get().andreUsername
+
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    val bob = Username.fromLocalPartWithDomain(s"bob$uniqueSuffix", DOMAIN)
+    val andre = Username.fromLocalPartWithDomain(s"andre$uniqueSuffix", DOMAIN)
+    FolderFilteringActionGetMethodContract.currentContext.set(FolderFilteringActionGetMethodContract.TestContext(bob, andre))
+
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
       .addDomain(DOMAIN.asString())
-      .addUser(BOB.asString(), BOB_PASSWORD)
-      .addUser(ANDRE.asString(), ANDRE_PASSWORD)
+      .addUser(bob.asString(), BOB_PASSWORD)
+      .addUser(andre.asString(), ANDRE_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .setAuth(authScheme(UserCredential(bob, BOB_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build()
 
@@ -127,7 +141,7 @@ trait FolderFilteringActionGetMethodContract {
     .`then`()
       .body("status", Matchers.is("completed"))
 
-  private def createMessagesRestoreTask(userCredential: UserCredential = UserCredential(BOB, BOB_PASSWORD), subjectQuery: String) = {
+  private def createMessagesRestoreTask(userCredential: UserCredential = UserCredential(bobUsername, BOB_PASSWORD), subjectQuery: String) = {
     val taskId: String = `given`
       .auth.basic(userCredential.username.asString(), userCredential.password)
       .body(
@@ -272,17 +286,17 @@ trait FolderFilteringActionGetMethodContract {
   @Test
   @Tag(CategoryTags.BASIC_FEATURE)
   def shouldReturnAllPropertiesByDefault(server: GuiceJamesServer): Unit = {
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(bobUsername))
     val message: Message = Message.Builder
       .of
       .setSubject("matchedRules")
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
     server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, MailboxPath.inbox(BOB), AppendCommand.from(message))
+      .appendMessage(bobUsername.asString, MailboxPath.inbox(bobUsername), AppendCommand.from(message))
       .getMessageId
 
-    val taskId: String = createAndRunRulesTask(server, UserCredential(BOB, BOB_PASSWORD), MailboxPath.inbox(BOB).getName, "Processed")
+    val taskId: String = createAndRunRulesTask(server, UserCredential(bobUsername, BOB_PASSWORD), MailboxPath.inbox(bobUsername).getName, "Processed")
 
     val response: String = `given`
       .body(
@@ -364,9 +378,9 @@ trait FolderFilteringActionGetMethodContract {
 
   @Test
   def mixedFoundAndNotFoundCase(server: GuiceJamesServer): Unit = {
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(bobUsername))
 
-    val taskId: String = createAndRunRulesTask(server, UserCredential(BOB, BOB_PASSWORD), MailboxPath.inbox(BOB).getName, "Processed")
+    val taskId: String = createAndRunRulesTask(server, UserCredential(bobUsername, BOB_PASSWORD), MailboxPath.inbox(bobUsername).getName, "Processed")
 
     val response: String = `given`
       .body(
@@ -413,9 +427,9 @@ trait FolderFilteringActionGetMethodContract {
   @Test
   def shouldFilterProperties(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[MailboxProbeImpl])
-      .createMailbox(MailboxPath.inbox(BOB))
+      .createMailbox(MailboxPath.inbox(bobUsername))
 
-    val taskId: String = createAndRunRulesTask(server, UserCredential(BOB, BOB_PASSWORD), MailboxPath.inbox(BOB).getName, "Processed")
+    val taskId: String = createAndRunRulesTask(server, UserCredential(bobUsername, BOB_PASSWORD), MailboxPath.inbox(bobUsername).getName, "Processed")
 
     val response = `given`
       .body(
@@ -459,12 +473,12 @@ trait FolderFilteringActionGetMethodContract {
   @Test
   def shouldNotReturnFolderFilteringActionOfOtherUsers(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[MailboxProbeImpl])
-      .createMailbox(MailboxPath.inbox(ANDRE))
+      .createMailbox(MailboxPath.inbox(andreUsername))
 
-    val andreTaskId: String = createAndRunRulesTask(server, UserCredential(ANDRE, ANDRE_PASSWORD), MailboxPath.inbox(ANDRE).getName, "Processed")
+    val andreTaskId: String = createAndRunRulesTask(server, UserCredential(andreUsername, ANDRE_PASSWORD), MailboxPath.inbox(andreUsername).getName, "Processed")
 
     val response: String = `given`
-      .auth.basic(BOB.asString(), BOB_PASSWORD)
+      .auth.basic(bobUsername.asString(), BOB_PASSWORD)
       .body(
         s"""{
            |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:filter"],
@@ -545,7 +559,7 @@ trait FolderFilteringActionGetMethodContract {
     val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
     val teamMailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
       .getMailboxId(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", DOMAIN).asString(), "marketing")
     val message: Message = Message.Builder
@@ -554,11 +568,11 @@ trait FolderFilteringActionGetMethodContract {
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
     server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, teamMailbox.mailboxPath, AppendCommand.from(message))
+      .appendMessage(bobUsername.asString, teamMailbox.mailboxPath, AppendCommand.from(message))
 
     // Assume user set rules via Filter/set
     server.getProbe(classOf[JmapGuiceCustomProbe])
-      .setRulesForUser(BOB,
+      .setRulesForUser(bobUsername,
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
