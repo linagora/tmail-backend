@@ -71,6 +71,7 @@ public class DistributedFolderFilteringActionSetMethodTest implements FolderFilt
                 .addBinding().to(TeamMailboxProbe.class))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding().to(TaskManagerProbe.class)))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @Override
