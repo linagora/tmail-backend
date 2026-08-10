@@ -68,5 +68,6 @@ public class DistributedFolderFilteringActionGetMethodTest implements FolderFilt
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding().to(TeamMailboxProbe.class))
             .overrideWith(new JmapGuiceCustomModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }
