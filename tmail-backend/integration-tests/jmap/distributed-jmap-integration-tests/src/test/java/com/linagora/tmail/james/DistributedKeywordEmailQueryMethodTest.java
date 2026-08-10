@@ -68,5 +68,6 @@ public class DistributedKeywordEmailQueryMethodTest implements KeywordEmailQuery
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule(ImmutableMap.of("view.keyword.query.enabled", true))))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }

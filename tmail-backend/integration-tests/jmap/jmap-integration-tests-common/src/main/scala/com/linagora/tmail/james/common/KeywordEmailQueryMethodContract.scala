@@ -21,7 +21,9 @@ package com.linagora.tmail.james.common
 import java.nio.charset.StandardCharsets
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import java.util.UUID
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 import java.util.{Date, Optional}
 
 import com.google.common.hash.Hashing
@@ -32,10 +34,11 @@ import jakarta.mail.Flags
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
+import org.apache.james.core.Username
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.core.UTCDate
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE_PASSWORD, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.{MailboxPath, MessageId}
 import org.apache.james.mime4j.dom.Message
@@ -45,7 +48,19 @@ import org.awaitility.Awaitility
 import org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS
 import org.junit.jupiter.api.{BeforeEach, Test}
 
+object KeywordEmailQueryMethodContract {
+  case class TestContext(bobUsername: Username, andreUsername: Username, bobAccountId: String)
+
+  private val currentContext: AtomicReference[TestContext] = new AtomicReference[TestContext]()
+}
+
 trait KeywordEmailQueryMethodContract {
+  def bobUsername: Username = KeywordEmailQueryMethodContract.currentContext.get().bobUsername
+
+  def andreUsername: Username = KeywordEmailQueryMethodContract.currentContext.get().andreUsername
+
+  def bobAccountId: String = KeywordEmailQueryMethodContract.currentContext.get().bobAccountId
+
   private lazy val slowPacedPollInterval = ONE_HUNDRED_MILLISECONDS
   private lazy val calmlyAwait = Awaitility.`with`
     .pollInterval(slowPacedPollInterval)
@@ -57,35 +72,43 @@ trait KeywordEmailQueryMethodContract {
 
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    val bob = Username.fromLocalPartWithDomain(s"bob$uniqueSuffix", DOMAIN)
+    val andre = Username.fromLocalPartWithDomain(s"andre$uniqueSuffix", DOMAIN)
+    KeywordEmailQueryMethodContract.currentContext.set(KeywordEmailQueryMethodContract.TestContext(
+      bobUsername = bob,
+      andreUsername = andre,
+      bobAccountId = Hashing.sha256().hashString(bob.asString, StandardCharsets.UTF_8).toString))
+
     server.getProbe(classOf[DataProbeImpl])
       .fluent
       .addDomain(DOMAIN.asString)
-      .addUser(BOB.asString, BOB_PASSWORD)
-      .addUser(ANDRE.asString, ANDRE_PASSWORD)
+      .addUser(bob.asString, BOB_PASSWORD)
+      .addUser(andre.asString, ANDRE_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .setAuth(authScheme(UserCredential(bob, BOB_PASSWORD)))
       .build
   }
 
   @Test
   def hasKeywordSortedByReceivedAtShouldReturnOnlyMailsWithThisCustomKeyword(server: GuiceJamesServer): Unit = {
     val message: Message = buildTestMessage
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(bobUsername))
 
     val messageId = sendMessageToBobInbox(server, message, Optional.empty(), new Flags("custom"))
 
     sendMessageToBobInbox(server, message, Optional.empty(), new Flags())
 
     val request =
-      """{
+      s"""{
         |  "using": [
         |    "urn:ietf:params:jmap:core",
         |    "urn:ietf:params:jmap:mail"],
         |  "methodCalls": [[
         |    "Email/query",
         |    {
-        |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        |      "accountId": "${bobAccountId}",
         |      "filter" : {
         |        "hasKeyword": "custom"
         |      },
@@ -124,7 +147,7 @@ trait KeywordEmailQueryMethodContract {
     val afterRequestDate1 = Date.from(ZonedDateTime.now().toInstant)
     val afterRequestDate2 = Date.from(ZonedDateTime.now().plusDays(1).toInstant)
     val mailboxProbe = server.getProbe(classOf[MailboxProbeImpl])
-    val mailboxId = mailboxProbe.createMailbox(MailboxPath.inbox(BOB))
+    val mailboxId = mailboxProbe.createMailbox(MailboxPath.inbox(bobUsername))
 
     val messageId1 = sendMessageToBobInbox(server, buildTestMessage, Optional.of(beforeRequestDate1), new Flags("custom"))
 
@@ -135,14 +158,14 @@ trait KeywordEmailQueryMethodContract {
     val messageId4 = sendMessageToBobInbox(server, buildTestMessage, Optional.of(afterRequestDate2), new Flags("custom"))
 
     val request =
-      """{
+      s"""{
         |  "using": [
         |    "urn:ietf:params:jmap:core",
         |    "urn:ietf:params:jmap:mail"],
         |  "methodCalls": [[
         |    "Email/query",
         |    {
-        |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        |      "accountId": "${bobAccountId}",
         |      "filter" : {
         |        "hasKeyword": "custom"
         |      },
@@ -180,7 +203,7 @@ trait KeywordEmailQueryMethodContract {
     val afterRequestDate1 = Date.from(ZonedDateTime.now().toInstant)
     val afterRequestDate2 = Date.from(ZonedDateTime.now().plusDays(1).toInstant)
     val mailboxProbe = server.getProbe(classOf[MailboxProbeImpl])
-    val mailboxId = mailboxProbe.createMailbox(MailboxPath.inbox(BOB))
+    val mailboxId = mailboxProbe.createMailbox(MailboxPath.inbox(bobUsername))
 
     val messageId1 = sendMessageToBobInbox(server, buildTestMessage, Optional.of(beforeRequestDate1), new Flags("custom"))
 
@@ -198,7 +221,7 @@ trait KeywordEmailQueryMethodContract {
          |  "methodCalls": [[
          |    "Email/query",
          |    {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "filter": {
          |        "hasKeyword": "custom"
          |       },
@@ -231,7 +254,7 @@ trait KeywordEmailQueryMethodContract {
            |    "methodResponses": [[
            |            "Email/query",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "queryState": "${generateQueryState(messageId3, messageId2)}",
            |                "canCalculateChanges": false,
            |                "position": 1,
@@ -251,7 +274,7 @@ trait KeywordEmailQueryMethodContract {
     val afterRequestDate1 = Date.from(ZonedDateTime.now().toInstant)
     val afterRequestDate2 = Date.from(ZonedDateTime.now().plusDays(1).toInstant)
     val mailboxProbe = server.getProbe(classOf[MailboxProbeImpl])
-    val mailboxId = mailboxProbe.createMailbox(MailboxPath.inbox(BOB))
+    val mailboxId = mailboxProbe.createMailbox(MailboxPath.inbox(bobUsername))
 
     val messageId1 = sendMessageToBobInbox(server, buildTestMessage, Optional.of(beforeRequestDate1), new Flags("custom"))
 
@@ -269,7 +292,7 @@ trait KeywordEmailQueryMethodContract {
          |  "methodCalls": [[
          |    "Email/query",
          |    {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "filter": {
          |        "hasKeyword": "custom",
          |        "after": "${UTCDate(requestDate).asUTC.format(UTC_DATE_FORMAT)}"
@@ -301,7 +324,7 @@ trait KeywordEmailQueryMethodContract {
            |    "methodResponses": [[
            |            "Email/query",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "queryState": "${generateQueryState(messageId4, messageId3)}",
            |                "canCalculateChanges": false,
            |                "position": 0,
@@ -322,7 +345,7 @@ trait KeywordEmailQueryMethodContract {
     val afterRequestDate1 = Date.from(ZonedDateTime.now().toInstant)
     val afterRequestDate2 = Date.from(ZonedDateTime.now().plusDays(1).toInstant)
     val mailboxProbe = server.getProbe(classOf[MailboxProbeImpl])
-    val mailboxId = mailboxProbe.createMailbox(MailboxPath.inbox(BOB))
+    val mailboxId = mailboxProbe.createMailbox(MailboxPath.inbox(bobUsername))
 
     val messageId1 = sendMessageToBobInbox(server, buildTestMessage, Optional.of(beforeRequestDate1), new Flags("custom"))
 
@@ -340,7 +363,7 @@ trait KeywordEmailQueryMethodContract {
          |  "methodCalls": [[
          |    "Email/query",
          |    {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "filter": {
          |        "hasKeyword": "custom",
          |        "after": "${UTCDate(requestDate).asUTC.format(UTC_DATE_FORMAT)}"
@@ -374,7 +397,7 @@ trait KeywordEmailQueryMethodContract {
            |    "methodResponses": [[
            |            "Email/query",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "queryState": "${generateQueryState(messageId3)}",
            |                "canCalculateChanges": false,
            |                "position": 1,
@@ -394,7 +417,7 @@ trait KeywordEmailQueryMethodContract {
     val requestDate = ZonedDateTime.now()
     val afterRequestDate1 = Date.from(ZonedDateTime.now().plusDays(1).toInstant)
     val mailboxProbe = server.getProbe(classOf[MailboxProbeImpl])
-    val mailboxId = mailboxProbe.createMailbox(MailboxPath.inbox(BOB))
+    val mailboxId = mailboxProbe.createMailbox(MailboxPath.inbox(bobUsername))
 
     val messageId1 = sendMessageToBobInbox(server, buildTestMessage, Optional.of(beforeRequestDate1), new Flags("custom"))
 
@@ -412,7 +435,7 @@ trait KeywordEmailQueryMethodContract {
          |  "methodCalls": [[
          |    "Email/query",
          |    {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "filter": {
          |        "hasKeyword": "custom",
          |        "before": "${UTCDate(requestDate).asUTC.format(UTC_DATE_FORMAT)}"
@@ -444,7 +467,7 @@ trait KeywordEmailQueryMethodContract {
            |    "methodResponses": [[
            |            "Email/query",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "queryState": "${generateQueryState(messageId3, messageId2, messageId1)}",
            |                "canCalculateChanges": false,
            |                "position": 0,
@@ -465,7 +488,7 @@ trait KeywordEmailQueryMethodContract {
     val requestDate = ZonedDateTime.now()
     val afterRequestDate1 = Date.from(ZonedDateTime.now().plusDays(1).toInstant)
     val mailboxProbe = server.getProbe(classOf[MailboxProbeImpl])
-    val mailboxId = mailboxProbe.createMailbox(MailboxPath.inbox(BOB))
+    val mailboxId = mailboxProbe.createMailbox(MailboxPath.inbox(bobUsername))
 
     val messageId1 = sendMessageToBobInbox(server, buildTestMessage, Optional.of(beforeRequestDate1), new Flags("custom"))
 
@@ -483,7 +506,7 @@ trait KeywordEmailQueryMethodContract {
          |  "methodCalls": [[
          |    "Email/query",
          |    {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "filter": {
          |        "hasKeyword": "custom",
          |        "before": "${UTCDate(requestDate).asUTC.format(UTC_DATE_FORMAT)}"
@@ -517,7 +540,7 @@ trait KeywordEmailQueryMethodContract {
            |    "methodResponses": [[
            |            "Email/query",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "queryState": "${generateQueryState(messageId2)}",
            |                "canCalculateChanges": false,
            |                "position": 1,
@@ -539,7 +562,7 @@ trait KeywordEmailQueryMethodContract {
     val threeDaysBefore = Date.from(ZonedDateTime.now().minusDays(3).toInstant)
     val twoDaysBefore = Date.from(ZonedDateTime.now().minusDays(2).toInstant)
     val oneDayBefore = Date.from(ZonedDateTime.now().minusDays(1).toInstant)
-    val mailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    val mailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(bobUsername))
 
     // Thread 1: message 1 (oldest), message 2 (newest)
     // Thread 2: message 3
@@ -557,7 +580,7 @@ trait KeywordEmailQueryMethodContract {
          |  "methodCalls": [[
          |    "Email/query",
          |    {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "filter": {
          |        "hasKeyword": "custom"
          |      },
@@ -589,7 +612,7 @@ trait KeywordEmailQueryMethodContract {
            |    "methodResponses": [[
            |            "Email/query",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "queryState": "${generateQueryState(messageId2, messageId3, messageId4)}",
            |                "canCalculateChanges": false,
            |                "position": 0,
@@ -612,7 +635,7 @@ trait KeywordEmailQueryMethodContract {
     val threeDaysBefore = Date.from(ZonedDateTime.now().minusDays(3).toInstant)
     val twoDaysBefore = Date.from(ZonedDateTime.now().minusDays(2).toInstant)
     val oneDayBefore = Date.from(ZonedDateTime.now().minusDays(1).toInstant)
-    val mailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    val mailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(bobUsername))
 
     // Thread 1: message 1 (oldest), message 2 (newest)
     // Thread 2: message 3
@@ -630,7 +653,7 @@ trait KeywordEmailQueryMethodContract {
          |  "methodCalls": [[
          |    "Email/query",
          |    {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "filter": {
          |        "hasKeyword": "custom"
          |      },
@@ -664,7 +687,7 @@ trait KeywordEmailQueryMethodContract {
            |    "methodResponses": [[
            |            "Email/query",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "queryState": "${generateQueryState(messageId3, messageId4)}",
            |                "canCalculateChanges": false,
            |                "position": 1,
@@ -688,7 +711,7 @@ trait KeywordEmailQueryMethodContract {
     val afterRequestDate2 = Date.from(ZonedDateTime.now().toInstant)
     val afterRequestDate3 = Date.from(ZonedDateTime.now().plusDays(1).toInstant)
     val mailboxProbe = server.getProbe(classOf[MailboxProbeImpl])
-    val mailboxId = mailboxProbe.createMailbox(MailboxPath.inbox(BOB))
+    val mailboxId = mailboxProbe.createMailbox(MailboxPath.inbox(bobUsername))
 
     val messageId1 = sendMessageToBobInbox(server, thread1Message, Optional.of(beforeRequestDate1), new Flags("custom"))
 
@@ -706,7 +729,7 @@ trait KeywordEmailQueryMethodContract {
          |  "methodCalls": [[
          |    "Email/query",
          |    {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "filter": {
          |        "hasKeyword": "custom",
          |        "after": "${UTCDate(requestDate).asUTC.format(UTC_DATE_FORMAT)}"
@@ -739,7 +762,7 @@ trait KeywordEmailQueryMethodContract {
            |    "methodResponses": [[
            |            "Email/query",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "queryState": "${generateQueryState(messageId4, messageId3)}",
            |                "canCalculateChanges": false,
            |                "position": 0,
@@ -764,7 +787,7 @@ trait KeywordEmailQueryMethodContract {
     val requestDate = ZonedDateTime.now()
     val afterRequestDate1 = Date.from(ZonedDateTime.now().plusDays(1).toInstant)
     val mailboxProbe = server.getProbe(classOf[MailboxProbeImpl])
-    val mailboxId = mailboxProbe.createMailbox(MailboxPath.inbox(BOB))
+    val mailboxId = mailboxProbe.createMailbox(MailboxPath.inbox(bobUsername))
 
     val messageId1: MessageId = sendMessageToBobInbox(server, thread1Message, Optional.of(beforeRequestDate1), new Flags("custom"))
     val messageId2: MessageId = sendMessageToBobInbox(server, thread2Message, Optional.of(beforeRequestDate2), new Flags("custom"))
@@ -779,7 +802,7 @@ trait KeywordEmailQueryMethodContract {
          |  "methodCalls": [[
          |    "Email/query",
          |    {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "filter": {
          |        "hasKeyword": "custom",
          |        "before": "${UTCDate(requestDate).asUTC.format(UTC_DATE_FORMAT)}"
@@ -812,7 +835,7 @@ trait KeywordEmailQueryMethodContract {
            |    "methodResponses": [[
            |            "Email/query",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "queryState": "${generateQueryState(messageId3, messageId1)}",
            |                "canCalculateChanges": false,
            |                "position": 0,
@@ -835,7 +858,7 @@ trait KeywordEmailQueryMethodContract {
 
   private def sendMessageToBobInbox(server: GuiceJamesServer, message: Message, requestDate: Optional[Date], flags: Flags): MessageId =
     server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, MailboxPath.inbox(BOB),
+      .appendMessage(bobUsername.asString, MailboxPath.inbox(bobUsername),
         AppendCommand.builder()
           .withInternalDate(requestDate)
           .withFlags(flags)

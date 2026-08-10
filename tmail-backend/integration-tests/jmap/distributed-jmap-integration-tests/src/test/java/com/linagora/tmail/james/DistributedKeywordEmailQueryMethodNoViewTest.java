@@ -73,5 +73,6 @@ public class DistributedKeywordEmailQueryMethodNoViewTest implements KeywordEmai
                     .randomPort()
                     .disableEmailQueryView()
                     .build())))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }
