@@ -19,12 +19,12 @@
 package com.linagora.tmail.james.common
 
 import java.nio.charset.StandardCharsets
-import java.util.Optional
+import java.util.concurrent.atomic.AtomicReference
+import java.util.{Optional, UUID}
 
 import com.linagora.tmail.james.common.probe.JmapGuiceCustomProbe
 import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
 import com.linagora.tmail.team.{TeamMailbox, TeamMailboxName, TeamMailboxProbe}
-import eu.timepit.refined.auto._
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
@@ -39,7 +39,7 @@ import org.apache.james.core.Username
 import org.apache.james.jmap.api.filtering.Rule
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE_PASSWORD, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.MailboxACL.Right
 import org.apache.james.mailbox.model.MailboxPath.inbox
@@ -53,24 +53,41 @@ import org.hamcrest.Matchers
 import org.junit.jupiter.api.{BeforeEach, Test}
 
 object FolderFilteringActionSetMethodContract {
+  case class TestContext(bobUsername: Username, andreUsername: Username, teamMailboxName: String)
+
+  private val currentContext: AtomicReference[TestContext] = new AtomicReference[TestContext]()
   private var webAdminApi: RequestSpecification = _
 }
 
 trait FolderFilteringActionSetMethodContract {
   import FolderFilteringActionSetMethodContract.webAdminApi
 
+  def bobUsername: Username = FolderFilteringActionSetMethodContract.currentContext.get().bobUsername
+
+  def andreUsername: Username = FolderFilteringActionSetMethodContract.currentContext.get().andreUsername
+
+  def teamMailboxName: String = FolderFilteringActionSetMethodContract.currentContext.get().teamMailboxName
+
   def errorInvalidMailboxIdMessage(value: String): String
 
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    val bob = Username.fromLocalPartWithDomain(s"bob$uniqueSuffix", DOMAIN)
+    val andre = Username.fromLocalPartWithDomain(s"andre$uniqueSuffix", DOMAIN)
+    FolderFilteringActionSetMethodContract.currentContext.set(FolderFilteringActionSetMethodContract.TestContext(
+      bobUsername = bob,
+      andreUsername = andre,
+      teamMailboxName = s"marketing$uniqueSuffix"))
+
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
       .addDomain(DOMAIN.asString())
-      .addUser(BOB.asString(), BOB_PASSWORD)
-      .addUser(ANDRE.asString(), ANDRE_PASSWORD)
+      .addUser(bob.asString(), BOB_PASSWORD)
+      .addUser(andre.asString(), ANDRE_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .setAuth(authScheme(UserCredential(bob, BOB_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build()
 
@@ -88,7 +105,7 @@ trait FolderFilteringActionSetMethodContract {
       .body("status", Matchers.is("completed"))
 
   def createFolderFilteringActionTaskId(server: GuiceJamesServer): String = {
-    val mailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    val mailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(bobUsername))
 
     `given`
       .body(
@@ -189,18 +206,18 @@ trait FolderFilteringActionSetMethodContract {
 
   @Test
   def createShouldSubmitTheTaskSuccessfully(server: GuiceJamesServer): Unit = {
-    val mailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    val mailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(bobUsername))
     val message: Message = Message.Builder
       .of
       .setSubject("matchedRules")
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
     server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, MailboxPath.inbox(BOB), AppendCommand.from(message))
+      .appendMessage(bobUsername.asString, MailboxPath.inbox(bobUsername), AppendCommand.from(message))
 
     // Assume user set rules via Filter/set
     server.getProbe(classOf[JmapGuiceCustomProbe])
-      .setRulesForUser(BOB,
+      .setRulesForUser(bobUsername,
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
@@ -279,14 +296,14 @@ trait FolderFilteringActionSetMethodContract {
 
   @Test
   def createShouldSucceedWhenUserHasEmptyRules(server: GuiceJamesServer): Unit = {
-    val mailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    val mailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(bobUsername))
     val message: Message = Message.Builder
       .of
       .setSubject("matchedRules")
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
     server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, MailboxPath.inbox(BOB), AppendCommand.from(message))
+      .appendMessage(bobUsername.asString, MailboxPath.inbox(bobUsername), AppendCommand.from(message))
 
     // Assume user set no rules
 
@@ -362,23 +379,23 @@ trait FolderFilteringActionSetMethodContract {
 
   @Test
   def createShouldSucceedOnTeamMailboxWhenSharedCapability(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName.fromString(teamMailboxName).toOption.get)
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
     val teamMailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", DOMAIN).asString(), "marketing")
+      .getMailboxId(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", DOMAIN).asString(), teamMailboxName)
     val message: Message = Message.Builder
       .of
       .setSubject("matchedRules")
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
     server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, teamMailbox.mailboxPath, AppendCommand.from(message))
+      .appendMessage(bobUsername.asString, teamMailbox.mailboxPath, AppendCommand.from(message))
 
     // Assume user set rules via Filter/set
     server.getProbe(classOf[JmapGuiceCustomProbe])
-      .setRulesForUser(BOB,
+      .setRulesForUser(bobUsername,
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
@@ -416,12 +433,12 @@ trait FolderFilteringActionSetMethodContract {
 
   @Test
   def createShouldFailOnTeamMailboxWhenMissingSharedCapability(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName.fromString(teamMailboxName).toOption.get)
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
     val teamMailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", DOMAIN).asString(), "marketing")
+      .getMailboxId(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", DOMAIN).asString(), teamMailboxName)
 
     val response: String = `given`
       .body(
@@ -468,21 +485,21 @@ trait FolderFilteringActionSetMethodContract {
   def createShouldSucceedOnSharedMailbox(server: GuiceJamesServer): Unit = {
     // Given: andres inbox with a message
     val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
-    val andreInboxId = mailboxProbe.createMailbox(inbox(ANDRE))
+    val andreInboxId = mailboxProbe.createMailbox(inbox(andreUsername))
     val message: Message = Message.Builder
       .of
       .setSubject("matchedRules")
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
-    mailboxProbe.appendMessage(ANDRE.asString, inbox(ANDRE), AppendCommand.from(message)).getMessageId
+    mailboxProbe.appendMessage(andreUsername.asString, inbox(andreUsername), AppendCommand.from(message)).getMessageId
 
     // Given: Andre shares rights for Bob to access the share mailbox
     server.getProbe(classOf[ACLProbeImpl])
-      .replaceRights(inbox(ANDRE), BOB.asString, new MailboxACL.Rfc4314Rights(Right.Lookup, Right.Read, Right.DeleteMessages))
+      .replaceRights(inbox(andreUsername), bobUsername.asString, new MailboxACL.Rfc4314Rights(Right.Lookup, Right.Read, Right.DeleteMessages))
 
     // Assume Bob set rules via Filter/set
     server.getProbe(classOf[JmapGuiceCustomProbe])
-      .setRulesForUser(BOB,
+      .setRulesForUser(bobUsername,
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
@@ -563,21 +580,21 @@ trait FolderFilteringActionSetMethodContract {
   def createShouldFailOnSharedMailboxWhenMissingShareCapability(server: GuiceJamesServer): Unit = {
     // Given: andres inbox with a message
     val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
-    val andreInboxId = mailboxProbe.createMailbox(inbox(ANDRE))
+    val andreInboxId = mailboxProbe.createMailbox(inbox(andreUsername))
     val message: Message = Message.Builder
       .of
       .setSubject("matchedRules")
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
-    mailboxProbe.appendMessage(ANDRE.asString, inbox(ANDRE), AppendCommand.from(message)).getMessageId
+    mailboxProbe.appendMessage(andreUsername.asString, inbox(andreUsername), AppendCommand.from(message)).getMessageId
 
     // Given: Andre shares rights for Bob to access the share mailbox
     server.getProbe(classOf[ACLProbeImpl])
-      .replaceRights(inbox(ANDRE), BOB.asString, new MailboxACL.Rfc4314Rights(Right.Lookup, Right.DeleteMessages))
+      .replaceRights(inbox(andreUsername), bobUsername.asString, new MailboxACL.Rfc4314Rights(Right.Lookup, Right.DeleteMessages))
 
     // Assume Bob set rules via Filter/set
     server.getProbe(classOf[JmapGuiceCustomProbe])
-      .setRulesForUser(BOB,
+      .setRulesForUser(bobUsername,
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
@@ -630,21 +647,21 @@ trait FolderFilteringActionSetMethodContract {
   def createShouldFailOnSharedMailboxWhenMissingReadRight(server: GuiceJamesServer): Unit = {
     // Given: andres inbox with a message
     val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
-    val andreInboxId = mailboxProbe.createMailbox(inbox(ANDRE))
+    val andreInboxId = mailboxProbe.createMailbox(inbox(andreUsername))
     val message: Message = Message.Builder
       .of
       .setSubject("matchedRules")
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
-    mailboxProbe.appendMessage(ANDRE.asString, inbox(ANDRE), AppendCommand.from(message)).getMessageId
+    mailboxProbe.appendMessage(andreUsername.asString, inbox(andreUsername), AppendCommand.from(message)).getMessageId
 
     // Given: Andre shares rights for Bob to access the share mailbox
     server.getProbe(classOf[ACLProbeImpl])
-      .replaceRights(inbox(ANDRE), BOB.asString, new MailboxACL.Rfc4314Rights(Right.Lookup, Right.DeleteMessages))
+      .replaceRights(inbox(andreUsername), bobUsername.asString, new MailboxACL.Rfc4314Rights(Right.Lookup, Right.DeleteMessages))
 
     // Assume Bob set rules via Filter/set
     server.getProbe(classOf[JmapGuiceCustomProbe])
-      .setRulesForUser(BOB,
+      .setRulesForUser(bobUsername,
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
@@ -697,21 +714,21 @@ trait FolderFilteringActionSetMethodContract {
   def createShouldFailOnSharedMailboxWhenMissingDeleteMessageRight(server: GuiceJamesServer): Unit = {
     // Given: andres inbox with a message
     val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
-    val andreInboxId = mailboxProbe.createMailbox(inbox(ANDRE))
+    val andreInboxId = mailboxProbe.createMailbox(inbox(andreUsername))
     val message: Message = Message.Builder
       .of
       .setSubject("matchedRules")
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
-    mailboxProbe.appendMessage(ANDRE.asString, inbox(ANDRE), AppendCommand.from(message)).getMessageId
+    mailboxProbe.appendMessage(andreUsername.asString, inbox(andreUsername), AppendCommand.from(message)).getMessageId
 
     // Given: Andre shares rights for Bob to access the share mailbox
     server.getProbe(classOf[ACLProbeImpl])
-      .replaceRights(inbox(ANDRE), BOB.asString, new MailboxACL.Rfc4314Rights(Right.Lookup, Right.Read))
+      .replaceRights(inbox(andreUsername), bobUsername.asString, new MailboxACL.Rfc4314Rights(Right.Lookup, Right.Read))
 
     // Assume Bob set rules via Filter/set
     server.getProbe(classOf[JmapGuiceCustomProbe])
-      .setRulesForUser(BOB,
+      .setRulesForUser(bobUsername,
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
@@ -762,7 +779,7 @@ trait FolderFilteringActionSetMethodContract {
 
   @Test
   def createShouldFailWhenTargetOtherUserMailbox(server: GuiceJamesServer): Unit = {
-    val andreInboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(ANDRE))
+    val andreInboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(andreUsername))
 
     val response: String = `given`
       .body(
@@ -807,7 +824,7 @@ trait FolderFilteringActionSetMethodContract {
 
   @Test
   def createShouldRejectUnsupportedProperties(server: GuiceJamesServer): Unit = {
-    val mailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    val mailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(bobUsername))
 
     val response: String = `given`
       .body(
@@ -978,12 +995,12 @@ trait FolderFilteringActionSetMethodContract {
 
   @Test
   def updateFilteringActionOnTeamMailboxShouldSucceed(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName.fromString(teamMailboxName).toOption.get)
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
     val teamMailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", DOMAIN).asString(), "marketing")
+      .getMailboxId(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", DOMAIN).asString(), teamMailboxName)
 
     // This makes the run rules task will wait until the hanging task is completed
     val hangingTask : Task = new MemoryReferenceTask(() => {
@@ -1076,21 +1093,21 @@ trait FolderFilteringActionSetMethodContract {
 
     // Given: andres inbox with a message
     val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
-    val andreInboxId = mailboxProbe.createMailbox(inbox(ANDRE))
+    val andreInboxId = mailboxProbe.createMailbox(inbox(andreUsername))
     val message: Message = Message.Builder
       .of
       .setSubject("matchedRules")
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
-    mailboxProbe.appendMessage(ANDRE.asString, inbox(ANDRE), AppendCommand.from(message)).getMessageId
+    mailboxProbe.appendMessage(andreUsername.asString, inbox(andreUsername), AppendCommand.from(message)).getMessageId
 
     // Given: Andre shares rights for Bob to access the share mailbox
     server.getProbe(classOf[ACLProbeImpl])
-      .replaceRights(inbox(ANDRE), BOB.asString, new MailboxACL.Rfc4314Rights(Right.Lookup, Right.Read, Right.DeleteMessages))
+      .replaceRights(inbox(andreUsername), bobUsername.asString, new MailboxACL.Rfc4314Rights(Right.Lookup, Right.Read, Right.DeleteMessages))
 
     // Assume Bob set rules via Filter/set
     server.getProbe(classOf[JmapGuiceCustomProbe])
-      .setRulesForUser(BOB,
+      .setRulesForUser(bobUsername,
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
@@ -1408,7 +1425,7 @@ trait FolderFilteringActionSetMethodContract {
     val taskIdOfBob: String = createFolderFilteringActionTaskId(server)
 
     val responseOfAndre: String = `given`(baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+      .setAuth(authScheme(UserCredential(andreUsername, ANDRE_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build)
       .body(
