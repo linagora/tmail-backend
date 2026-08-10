@@ -41,5 +41,6 @@ public class PostgresFirebaseSubscriptionSetMethodTest implements FirebaseSubscr
 
     @RegisterExtension
     static JamesServerExtension testExtension = JAMES_SERVER_EXTENSION_FUNCTION.apply(FIREBASE_TEST_MODULE)
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }

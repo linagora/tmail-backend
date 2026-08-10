@@ -18,10 +18,13 @@
 
 package com.linagora.tmail.james.common
 
+import java.nio.charset.StandardCharsets
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
 
+import com.google.common.hash.Hashing
 import com.linagora.tmail.james.common.FirebaseSubscriptionGetMethodContract.{FIREBASE_SUBSCRIPTION_CREATE_REQUEST, TIME_FORMATTER}
 import com.linagora.tmail.james.common.FirebaseSubscriptionSetMethodContract.firebasePushClient
 import com.linagora.tmail.james.jmap.firebase.FirebasePushClient
@@ -35,6 +38,7 @@ import net.javacrumbs.jsonunit.core.Option
 import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
+import org.apache.james.core.Username
 import org.apache.james.jmap.change.ThreadTypeName
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.core.UTCDate
@@ -49,21 +53,47 @@ import org.mockito.Mockito.{mock, when}
 import reactor.core.publisher.Mono
 
 object FirebaseSubscriptionSetMethodContract {
+  case class TestContext(bobUsername: Username,
+                         bobAccountId: String,
+                         andreUsername: Username,
+                         firebaseSubscriptionCreateRequest: FirebaseSubscriptionCreationRequest)
+
+  private val currentContext: AtomicReference[TestContext] = new AtomicReference[TestContext]()
   val firebasePushClient: FirebasePushClient = mock(classOf[FirebasePushClient])
 }
 
 trait FirebaseSubscriptionSetMethodContract {
 
+  def bobUsername: Username = FirebaseSubscriptionSetMethodContract.currentContext.get().bobUsername
+
+  def bobAccountId: String = FirebaseSubscriptionSetMethodContract.currentContext.get().bobAccountId
+
+  def andreUsername: Username = FirebaseSubscriptionSetMethodContract.currentContext.get().andreUsername
+
+  def firebaseSubscriptionCreateRequest: FirebaseSubscriptionCreationRequest =
+    FirebaseSubscriptionSetMethodContract.currentContext.get().firebaseSubscriptionCreateRequest
+
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    val bob = Username.fromLocalPartWithDomain(s"bob$uniqueSuffix", DOMAIN)
+    val andre = Username.fromLocalPartWithDomain(s"andre$uniqueSuffix", DOMAIN)
+    val createRequest = FIREBASE_SUBSCRIPTION_CREATE_REQUEST.copy(
+      token = FirebaseToken(s"fire-base-token-$uniqueSuffix"))
+    FirebaseSubscriptionSetMethodContract.currentContext.set(FirebaseSubscriptionSetMethodContract.TestContext(
+      bobUsername = bob,
+      bobAccountId = Hashing.sha256().hashString(bob.asString(), StandardCharsets.UTF_8).toString,
+      andreUsername = andre,
+      firebaseSubscriptionCreateRequest = createRequest))
+
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
       .addDomain(DOMAIN.asString())
-      .addUser(BOB.asString(), BOB_PASSWORD)
-      .addUser(ANDRE.asString(), ANDRE_PASSWORD)
+      .addUser(bob.asString(), BOB_PASSWORD)
+      .addUser(andre.asString(), ANDRE_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .setAuth(authScheme(UserCredential(bob, BOB_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build()
 
@@ -85,7 +115,7 @@ trait FirebaseSubscriptionSetMethodContract {
            |            "create": {
            |                "4f29": {
            |                  "deviceClientId": "a889-ffea-910",
-           |                  "token": "token1",
+           |                  "token": "${firebaseSubscriptionCreateRequest.token.value}",
            |                  "types": ["Mailbox"]
            |                }
            |              }
@@ -136,7 +166,7 @@ trait FirebaseSubscriptionSetMethodContract {
            |            "create": {
            |                "4f29": {
            |                  "deviceClientId": "a889-ffea-910",
-           |                  "token": "token1",
+           |                  "token": "${firebaseSubscriptionCreateRequest.token.value}",
            |                  "types": ["Mailbox"]
            |                }
            |              }
@@ -164,7 +194,7 @@ trait FirebaseSubscriptionSetMethodContract {
            |  "methodCalls": [[
            |    "FirebaseRegistration/get",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "ids": null
            |    },
            |    "c1"]]
@@ -273,7 +303,7 @@ trait FirebaseSubscriptionSetMethodContract {
            |          "create": {
            |            "4f29": {
            |              "deviceClientId": "a889-ffea-910",
-           |              "token": "token1",
+           |              "token": "${firebaseSubscriptionCreateRequest.token.value}",
            |              "types": ["Mailbox"]
            |            }
            |          }
@@ -373,7 +403,7 @@ trait FirebaseSubscriptionSetMethodContract {
            |        {
            |            "create": {
            |                "4f29": {
-           |                  "token": "token1",
+           |                  "token": "${firebaseSubscriptionCreateRequest.token.value}",
            |                  "types": ["Mailbox"]
            |                }
            |              }
@@ -424,7 +454,7 @@ trait FirebaseSubscriptionSetMethodContract {
            |            "create": {
            |                "4f29": {
            |                  "deviceClientId": "a889-ffea-910",
-           |                  "token": "token1"
+           |                  "token": "${firebaseSubscriptionCreateRequest.token.value}"
            |                }
            |              }
            |        },
@@ -474,7 +504,7 @@ trait FirebaseSubscriptionSetMethodContract {
            |            "create": {
            |                "4f29": {
            |                  "deviceClientId": "a889-ffea-910",
-           |                  "token": "token1",
+           |                  "token": "${firebaseSubscriptionCreateRequest.token.value}",
            |                  "types": ["invalidType1"]
            |                }
            |              }
@@ -525,7 +555,7 @@ trait FirebaseSubscriptionSetMethodContract {
            |            "create": {
            |                "4f29": {
            |                  "deviceClientId": "a889-ffea-910",
-           |                  "token": "token1",
+           |                  "token": "${firebaseSubscriptionCreateRequest.token.value}",
            |                  "types": []
            |                }
            |              }
@@ -578,7 +608,7 @@ trait FirebaseSubscriptionSetMethodContract {
            |            "create": {
            |                "4f29": {
            |                  "deviceClientId": "a889-ffea-910",
-           |                  "token": "token1",
+           |                  "token": "${firebaseSubscriptionCreateRequest.token.value}",
            |                  "expires": "$expires",
            |                  "types": ["Mailbox"]
            |                }
@@ -631,7 +661,7 @@ trait FirebaseSubscriptionSetMethodContract {
            |            "create": {
            |                "4f29": {
            |                  "deviceClientId": "a889-ffea-910",
-           |                  "token": "token1",
+           |                  "token": "${firebaseSubscriptionCreateRequest.token.value}",
            |                  "expires": "$expires",
            |                  "types": ["Mailbox"]
            |                }
@@ -685,7 +715,7 @@ trait FirebaseSubscriptionSetMethodContract {
            |            "create": {
            |                "4f29": {
            |                  "deviceClientId": "a889-ffea-910",
-           |                  "token": "token1",
+           |                  "token": "${firebaseSubscriptionCreateRequest.token.value}",
            |                  "expires": "$expires",
            |                  "types": ["Mailbox"]
            |                }
@@ -740,7 +770,7 @@ trait FirebaseSubscriptionSetMethodContract {
            |            "create": {
            |                "4f29": {
            |                  "deviceClientId": "a889-ffea-910",
-           |                  "token": "token1",
+           |                  "token": "${firebaseSubscriptionCreateRequest.token.value}",
            |                  "expires": "notFormat",
            |                  "types": ["Mailbox"]
            |                }
@@ -792,12 +822,12 @@ trait FirebaseSubscriptionSetMethodContract {
            |            "create": {
            |                "k1": {
            |                  "deviceClientId": "a889-ffea-910",
-           |                  "token": "token1",
+           |                  "token": "${firebaseSubscriptionCreateRequest.token.value}",
            |                  "types": ["Mailbox"]
            |                },
            |                "k2": {
            |                  "deviceClientId": "a889-ffea-912",
-           |                  "token": "token2",
+           |                  "token": "${firebaseSubscriptionCreateRequest.token.value}-2",
            |                  "types": ["Mailbox"]
            |                }
            |              }
@@ -855,7 +885,7 @@ trait FirebaseSubscriptionSetMethodContract {
            |            "create": {
            |                "k1": {
            |                  "deviceClientId": "a889-ffea-910",
-           |                  "token": "token1",
+           |                  "token": "${firebaseSubscriptionCreateRequest.token.value}",
            |                  "types": ["Mailbox"]
            |                },
            |                "k2": {
@@ -917,7 +947,7 @@ trait FirebaseSubscriptionSetMethodContract {
            |                "create": {
            |                    "4f29": {
            |                        "deviceClientId": "a889-ffea-910",
-           |                        "token": "token1",
+           |                        "token": "${firebaseSubscriptionCreateRequest.token.value}",
            |                        "types": [
            |                            "Mailbox"
            |                        ]
@@ -929,7 +959,7 @@ trait FirebaseSubscriptionSetMethodContract {
            |        [
            |            "FirebaseRegistration/get",
            |            {
-           |                "accountId": "$ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "ids": [
            |                    "#4f29"
            |                ]
@@ -998,7 +1028,7 @@ trait FirebaseSubscriptionSetMethodContract {
            |            "create": {
            |                "4f29": {
            |                  "deviceClientId": "a889-ffea-910",
-           |                  "token": "token1",
+           |                  "token": "${firebaseSubscriptionCreateRequest.token.value}",
            |                  "types": ["Mailbox"]
            |                }
            |              }
@@ -1039,7 +1069,7 @@ trait FirebaseSubscriptionSetMethodContract {
            |            "create": {
            |                "4f29": {
            |                  "deviceClientId": "a889-ffea-910",
-           |                  "token": "token1",
+           |                  "token": "${firebaseSubscriptionCreateRequest.token.value}",
            |                  "types": ["Mailbox"]
            |                }
            |              }
@@ -1071,7 +1101,7 @@ trait FirebaseSubscriptionSetMethodContract {
   @Test
   def creationShouldFailWhenTokenIsNotUnique(server: GuiceJamesServer): Unit = {
     val firebaseSubscription = server.getProbe(classOf[FirebaseSubscriptionProbe])
-      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+      .createSubscription(bobUsername, firebaseSubscriptionCreateRequest)
 
     val response = `given`
       .body(
@@ -1085,7 +1115,7 @@ trait FirebaseSubscriptionSetMethodContract {
            |            "create": {
            |                "4f29": {
            |                  "deviceClientId": "a889-ffea-910",
-           |                  "token": "${FIREBASE_SUBSCRIPTION_CREATE_REQUEST.token.value}",
+           |                  "token": "${firebaseSubscriptionCreateRequest.token.value}",
            |                  "types": ["Mailbox"]
            |                }
            |              }
@@ -1128,7 +1158,7 @@ trait FirebaseSubscriptionSetMethodContract {
   @Test
   def updateTypesShouldReturnUpdatedResponseWhenValidUpdateRequest(server: GuiceJamesServer): Unit = {
     val firebaseSubscription = server.getProbe(classOf[FirebaseSubscriptionProbe])
-      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+      .createSubscription(bobUsername, firebaseSubscriptionCreateRequest)
 
     val response = `given`
       .body(
@@ -1177,7 +1207,7 @@ trait FirebaseSubscriptionSetMethodContract {
   @Test
   def updateTypesShouldFailWhenTypesPropertyIsEmpty(server: GuiceJamesServer): Unit = {
     val firebaseSubscription = server.getProbe(classOf[FirebaseSubscriptionProbe])
-      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+      .createSubscription(bobUsername, firebaseSubscriptionCreateRequest)
 
     val response = `given`
       .body(
@@ -1235,7 +1265,7 @@ trait FirebaseSubscriptionSetMethodContract {
   @Test
   def updateTypeRequestShouldChangeSubscriptionData(server: GuiceJamesServer): Unit = {
     val firebaseSubscription = server.getProbe(classOf[FirebaseSubscriptionProbe])
-      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+      .createSubscription(bobUsername, firebaseSubscriptionCreateRequest)
 
     `given`
       .body(
@@ -1272,7 +1302,7 @@ trait FirebaseSubscriptionSetMethodContract {
            |        [
            |            "FirebaseRegistration/get",
            |            {
-           |                "accountId": "$ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "ids": null
            |            },
            |            "c1"
@@ -1322,7 +1352,7 @@ trait FirebaseSubscriptionSetMethodContract {
   @Test
   def updateShouldFailWhenInvalidTypes(server: GuiceJamesServer): Unit = {
     val firebaseSubscription = server.getProbe(classOf[FirebaseSubscriptionProbe])
-      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+      .createSubscription(bobUsername, firebaseSubscriptionCreateRequest)
 
     val response = `given`
       .body(
@@ -1380,7 +1410,7 @@ trait FirebaseSubscriptionSetMethodContract {
   @Test
   def updateShouldFailWhenInvalidProperty(server: GuiceJamesServer): Unit = {
     val firebaseSubscription = server.getProbe(classOf[FirebaseSubscriptionProbe])
-      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+      .createSubscription(bobUsername, firebaseSubscriptionCreateRequest)
 
     val response = `given`
       .body(
@@ -1544,10 +1574,10 @@ trait FirebaseSubscriptionSetMethodContract {
   @Test
   def setShouldSuccessWhenUpdateSeveralSubscriptions(server: GuiceJamesServer): Unit = {
     val firebaseSubscription1 = server.getProbe(classOf[FirebaseSubscriptionProbe])
-      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+      .createSubscription(bobUsername, firebaseSubscriptionCreateRequest)
 
     val firebaseSubscription2 = server.getProbe(classOf[FirebaseSubscriptionProbe])
-      .createSubscription(BOB, FirebaseSubscriptionCreationRequest(deviceClientId = DeviceClientId("device2"),
+      .createSubscription(bobUsername, FirebaseSubscriptionCreationRequest(deviceClientId = DeviceClientId("device2"),
         token = FirebaseToken("token2"),
         types = Seq(ThreadTypeName)))
 
@@ -1615,7 +1645,7 @@ trait FirebaseSubscriptionSetMethodContract {
            |  "methodCalls": [[
            |    "FirebaseRegistration/get",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "ids": null
            |    },
            |    "c1"]]
@@ -1669,7 +1699,7 @@ trait FirebaseSubscriptionSetMethodContract {
   @Tag(CategoryTags.BASIC_FEATURE)
   def updateRequestShouldReturnCorrectResponseWhenMixCases(server: GuiceJamesServer): Unit = {
     val firebaseSubscription1 = server.getProbe(classOf[FirebaseSubscriptionProbe])
-      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+      .createSubscription(bobUsername, firebaseSubscriptionCreateRequest)
 
     val updateResponse = `given`
       .body(
@@ -1732,7 +1762,7 @@ trait FirebaseSubscriptionSetMethodContract {
   def destroyShouldSucceed(server: GuiceJamesServer): Unit = {
     val probe = server.getProbe(classOf[FirebaseSubscriptionProbe])
     val firebaseSubscription = probe
-      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+      .createSubscription(bobUsername, firebaseSubscriptionCreateRequest)
 
     val request: String =
       s"""{
@@ -1775,7 +1805,7 @@ trait FirebaseSubscriptionSetMethodContract {
            |    ]
            |}""".stripMargin)
 
-    assertThat(probe.retrieveSubscription(BOB, firebaseSubscription.id)).isNull()
+    assertThat(probe.retrieveSubscription(bobUsername, firebaseSubscription.id)).isNull()
   }
 
   @Test
@@ -1877,14 +1907,14 @@ trait FirebaseSubscriptionSetMethodContract {
   @Test
   def destroyShouldHandleMixedCases(server: GuiceJamesServer): Unit = {
     val probe = server.getProbe(classOf[FirebaseSubscriptionProbe])
-    val createRequest2: FirebaseSubscriptionCreationRequest = FIREBASE_SUBSCRIPTION_CREATE_REQUEST.copy(
+    val createRequest2: FirebaseSubscriptionCreationRequest = firebaseSubscriptionCreateRequest.copy(
       deviceClientId = DeviceClientId("ipad gen 10"),
-      token = FirebaseToken("fire-base-token-3"))
+      token = FirebaseToken(s"fire-base-token-${UUID.randomUUID()}"))
 
     val firebaseSubscription1 = probe
-      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+      .createSubscription(bobUsername, firebaseSubscriptionCreateRequest)
     val firebaseSubscription2 = probe
-      .createSubscription(BOB, createRequest2)
+      .createSubscription(bobUsername, createRequest2)
 
     val request: String =
       s"""{
@@ -1943,7 +1973,7 @@ trait FirebaseSubscriptionSetMethodContract {
   def destroyShouldNotRevokeIdOfOtherAccount(server: GuiceJamesServer): Unit = {
     val probe = server.getProbe(classOf[FirebaseSubscriptionProbe])
     val firebaseSubscription = probe
-      .createSubscription(ANDRE, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+      .createSubscription(andreUsername, firebaseSubscriptionCreateRequest)
 
     val request: String =
       s"""{
@@ -1986,13 +2016,13 @@ trait FirebaseSubscriptionSetMethodContract {
            |    ]
            |}""".stripMargin)
 
-    assertThat(probe.retrieveSubscription(ANDRE, firebaseSubscription.id)).isNotNull()
+    assertThat(probe.retrieveSubscription(andreUsername, firebaseSubscription.id)).isNotNull()
   }
 
   @Test
   def updateExpiresShouldReturnUpdatedWhenValidRequest(server: GuiceJamesServer): Unit = {
     val firebaseSubscription1 = server.getProbe(classOf[FirebaseSubscriptionProbe])
-      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+      .createSubscription(bobUsername, firebaseSubscriptionCreateRequest)
 
     val newExpires = UTCDate(ZonedDateTime.now().plusDays(3)).asUTC.format(TIME_FORMATTER)
 
@@ -2043,7 +2073,7 @@ trait FirebaseSubscriptionSetMethodContract {
   @Test
   def updateExpiresShouldReturnNotUpdatedWhenInvalidExpires(server: GuiceJamesServer): Unit = {
     val firebaseSubscription1 = server.getProbe(classOf[FirebaseSubscriptionProbe])
-      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+      .createSubscription(bobUsername, firebaseSubscriptionCreateRequest)
 
     val updateResponse = `given`
       .body(
@@ -2101,7 +2131,7 @@ trait FirebaseSubscriptionSetMethodContract {
   @Test
   def updateExpiresShouldReturnNotUpdatedWhenExpiresIsNotCorrectFormat(server: GuiceJamesServer): Unit = {
     val firebaseSubscription1 = server.getProbe(classOf[FirebaseSubscriptionProbe])
-      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+      .createSubscription(bobUsername, firebaseSubscriptionCreateRequest)
 
     val newExpires = UTCDate(ZonedDateTime.now().plusDays(3)).asUTC.format(DateTimeFormatter.ofPattern("yyyy-dd-MM'T'HH:mm"))
 
@@ -2162,7 +2192,7 @@ trait FirebaseSubscriptionSetMethodContract {
   @Test
   def updateExpiresShouldReturnNotUpdatedWhenExpiresIsOld(server: GuiceJamesServer): Unit = {
     val firebaseSubscription1 = server.getProbe(classOf[FirebaseSubscriptionProbe])
-      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+      .createSubscription(bobUsername, firebaseSubscriptionCreateRequest)
 
     val newExpires = UTCDate(ZonedDateTime.now().minusDays(3)).asUTC.format(TIME_FORMATTER)
 
@@ -2222,7 +2252,7 @@ trait FirebaseSubscriptionSetMethodContract {
   @Test
   def updateExpiresShouldSuccessWhenExpiresIsGreaterThanThreshold(server: GuiceJamesServer): Unit = {
     val firebaseSubscription1 = server.getProbe(classOf[FirebaseSubscriptionProbe])
-      .createSubscription(BOB, FIREBASE_SUBSCRIPTION_CREATE_REQUEST)
+      .createSubscription(bobUsername, firebaseSubscriptionCreateRequest)
 
     val newExpires = UTCDate(ZonedDateTime.now().plusMonths(1)).asUTC.format(TIME_FORMATTER)
 

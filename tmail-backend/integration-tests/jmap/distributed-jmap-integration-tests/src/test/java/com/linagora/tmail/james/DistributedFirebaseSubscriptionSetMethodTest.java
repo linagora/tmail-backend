@@ -64,5 +64,6 @@ public class DistributedFirebaseSubscriptionSetMethodTest implements FirebaseSub
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new FirebaseSubscriptionProbeModule())
             .overrideWith(binder -> binder.bind(FirebasePushClient.class).toInstance(FirebaseSubscriptionSetMethodContract.firebasePushClient())))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }
