@@ -29,6 +29,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.Date;
 import java.util.Iterator;
+import java.util.UUID;
 
 import jakarta.inject.Inject;
 import jakarta.mail.Flags;
@@ -105,19 +106,38 @@ class DistributedTeamMailboxDeletedMessageVaultIntegrationTest {
     }
 
     private static final String DOMAIN = "linagora.com";
-    private static final Username ANDRE = Username.fromLocalPartWithDomain("andre", Domain.of(DOMAIN));
-    private static final Username BOB = Username.fromLocalPartWithDomain("bob", Domain.of(DOMAIN));
-    private static final String TEAM_MAILBOX_ADDRESS = "marketing@" + DOMAIN;
     private static final String PASSWORD = "secret";
     private static final String PERSONAL_BOX = "Archive";
     private static final String TEAM_FOLDER = "Projects";
     private static final ConditionFactory WAIT_AT_MOST_ONE_MINUTE = Awaitility.await()
         .pollInterval(Duration.ofMillis(100))
         .atMost(Duration.ofMinutes(1));
-    private static final TeamMailbox TEAM_MAILBOX =
-        OptionConverters.toJava(TeamMailbox.fromJava(Domain.of(DOMAIN), "marketing")).orElseThrow();
     private static final byte[] MESSAGE_CONTENT = "Subject: deleted mail\r\n\r\ndeleted body".getBytes(StandardCharsets.UTF_8);
     private static final byte[] SECOND_MESSAGE_CONTENT = "Subject: deleted mail 2\r\n\r\ndeleted body 2".getBytes(StandardCharsets.UTF_8);
+
+    private static class TestContext {
+        private final Domain domain;
+        private final Username andre;
+        private final Username bob;
+        private final TeamMailbox teamMailbox;
+        private final String teamMailboxAddress;
+
+        private TestContext(Domain domain, Username andre, Username bob, TeamMailbox teamMailbox) {
+            this.domain = domain;
+            this.andre = andre;
+            this.bob = bob;
+            this.teamMailbox = teamMailbox;
+            this.teamMailboxAddress = teamMailbox.asString();
+        }
+
+        private static TestContext create() {
+            Domain domain = Domain.of("team-vault-" + UUID.randomUUID() + ".linagora.com");
+            Username andre = Username.fromLocalPartWithDomain("andre", domain);
+            Username bob = Username.fromLocalPartWithDomain("bob", domain);
+            TeamMailbox teamMailbox = OptionConverters.toJava(TeamMailbox.fromJava(domain, "marketing")).orElseThrow();
+            return new TestContext(domain, andre, bob, teamMailbox);
+        }
+    }
 
     @RegisterExtension
     static JamesServerExtension testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
@@ -147,14 +167,26 @@ class DistributedTeamMailboxDeletedMessageVaultIntegrationTest {
                 Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(MailboxMessageCountProbe.class);
                 Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(DistributedPopulateKeywordEmailQueryViewTaskIntegrationTest.MailboxManagerProbe.class);
             }))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
+
+    private TestContext context;
+    private Username ANDRE;
+    private Username BOB;
+    private TeamMailbox TEAM_MAILBOX;
+    private String TEAM_MAILBOX_ADDRESS;
 
     @BeforeEach
     void setUp(GuiceJamesServer server) throws Exception {
-        server.getProbe(DataProbeImpl.class).addDomain(DOMAIN);
-        server.getProbe(DataProbeImpl.class).addUser(ANDRE.asString(), PASSWORD);
-        server.getProbe(DataProbeImpl.class).addUser(BOB.asString(), PASSWORD);
-        server.getProbe(TeamMailboxProbe.class).create(TEAM_MAILBOX);
+        context = TestContext.create();
+        ANDRE = context.andre;
+        BOB = context.bob;
+        TEAM_MAILBOX = context.teamMailbox;
+        TEAM_MAILBOX_ADDRESS = context.teamMailboxAddress;
+        server.getProbe(DataProbeImpl.class).addDomain(context.domain.asString());
+        server.getProbe(DataProbeImpl.class).addUser(context.andre.asString(), PASSWORD);
+        server.getProbe(DataProbeImpl.class).addUser(context.bob.asString(), PASSWORD);
+        server.getProbe(TeamMailboxProbe.class).create(context.teamMailbox);
 
         RestAssured.requestSpecification = WebAdminUtils
             .buildRequestSpecification(server.getProbe(WebAdminGuiceProbe.class).getWebAdminPort())
