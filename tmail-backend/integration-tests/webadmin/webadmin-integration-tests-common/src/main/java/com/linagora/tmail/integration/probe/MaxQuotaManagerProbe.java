@@ -46,4 +46,12 @@ public class MaxQuotaManagerProbe implements GuiceProbe {
         maxQuotaManager.setMaxStorage(userQuotaRootResolver.forUser(username), maxStorageQuota);
     }
 
+    public void removeDomainMaxStorage(Domain domain) throws MailboxException {
+        maxQuotaManager.removeDomainMaxStorage(domain);
+    }
+
+    public void removeMaxStorage(Username username) throws MailboxException {
+        maxQuotaManager.removeMaxStorage(userQuotaRootResolver.forUser(username));
+    }
+
 }
