@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
 
 import java.util.Map;
+import java.util.UUID;
 
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.core.MailAddress;
@@ -61,22 +62,27 @@ public abstract class UserDeletionIntegrationContract {
         .and().pollDelay(ONE_HUNDRED_MILLISECONDS)
         .await();
     private static final String DOMAIN = "linagora.com";
-    private static final Username ALICE  = Username.fromLocalPartWithDomain("alice", DOMAIN);
-    private static final Username BOB = Username.fromLocalPartWithDomain("bob", DOMAIN);
-    private static final AccountId ALICE_ACCOUNT_ID = AccountId.fromUsername(ALICE);
     private static final String PASSWORD = "123456";
 
+    private Username alice;
+    private Username bob;
+    private AccountId aliceAccountId;
     private RequestSpecification webAdminApi;
 
-    public abstract void awaitDocumentsIndexed(Long documentCount);
+    public abstract void awaitDocumentsIndexed(AccountId accountId, Long documentCount);
 
     @BeforeEach
     void setUp(GuiceJamesServer server) throws Exception {
+        String suffix = UUID.randomUUID().toString();
+        alice = Username.fromLocalPartWithDomain("alice-" + suffix, DOMAIN);
+        bob = Username.fromLocalPartWithDomain("bob-" + suffix, DOMAIN);
+        aliceAccountId = AccountId.fromUsername(alice);
+
         server.getProbe(DataProbeImpl.class)
             .fluent()
             .addDomain(DOMAIN)
-            .addUser(ALICE.asString(), PASSWORD)
-            .addUser(BOB.asString(), PASSWORD);
+            .addUser(alice.asString(), PASSWORD)
+            .addUser(bob.asString(), PASSWORD);
 
         Port jmapPort = server.getProbe(JmapGuiceProbe.class).getJmapPort();
         RestAssured.requestSpecification = jmapRequestSpecBuilder
@@ -90,13 +96,13 @@ public abstract class UserDeletionIntegrationContract {
     void shouldDeleteContacts(GuiceJamesServer server) throws Exception {
         ContactFields contactFields = new ContactFields(new MailAddress("andre@linagora.com"), "Andre", "Dupont");
         server.getProbe(JmapGuiceContactAutocompleteProbe.class)
-            .index(ALICE_ACCOUNT_ID, contactFields);
+            .index(aliceAccountId, contactFields);
 
-        awaitDocumentsIndexed(1L);
+        awaitDocumentsIndexed(aliceAccountId, 1L);
 
         String taskId = webAdminApi
             .queryParam("action", "deleteData")
-            .post("/users/" + ALICE.asString())
+            .post("/users/" + alice.asString())
             .jsonPath()
             .get("taskId");
 
@@ -105,7 +111,7 @@ public abstract class UserDeletionIntegrationContract {
             .body("additionalInformation.status.ContactUserDataDeletionTaskStep", Matchers.is("DONE"));
 
         CALMLY_AWAIT.atMost(Durations.TEN_SECONDS)
-            .untilAsserted(() -> assertThat(server.getProbe(JmapGuiceContactAutocompleteProbe.class).list(ALICE_ACCOUNT_ID))
+            .untilAsserted(() -> assertThat(server.getProbe(JmapGuiceContactAutocompleteProbe.class).list(aliceAccountId))
                 .isEmpty());
     }
 
@@ -113,11 +119,11 @@ public abstract class UserDeletionIntegrationContract {
     void shouldDeletePGPPublicKeys(GuiceJamesServer server) throws Exception {
         byte[] publicKeyPayload = ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.pub").readAllBytes();
         JmapGuiceKeystoreManagerProbe keystoreManagerProbe = server.getProbe(JmapGuiceKeystoreManagerProbe.class);
-        keystoreManagerProbe.save(ALICE, publicKeyPayload);
+        keystoreManagerProbe.save(alice, publicKeyPayload);
 
         String taskId = webAdminApi
             .queryParam("action", "deleteData")
-            .post("/users/" + ALICE.asString())
+            .post("/users/" + alice.asString())
             .jsonPath()
             .get("taskId");
 
@@ -125,18 +131,18 @@ public abstract class UserDeletionIntegrationContract {
             .then()
             .body("additionalInformation.status.PGPKeysUserDeletionTaskStep", Matchers.is("DONE"));
 
-        assertThat(keystoreManagerProbe.getKeyPayLoads(ALICE))
+        assertThat(keystoreManagerProbe.getKeyPayLoads(alice))
             .isEmpty();
     }
 
     @Test
     void shouldDeleteLabels(GuiceJamesServer server) {
         JmapGuiceLabelProbe labelProbe = server.getProbe(JmapGuiceLabelProbe.class);
-        labelProbe.addLabel(ALICE, new LabelCreationRequest(new DisplayName("Important"), Option.empty(), Option.empty(), false));
+        labelProbe.addLabel(alice, new LabelCreationRequest(new DisplayName("Important"), Option.empty(), Option.empty(), false));
 
         String taskId = webAdminApi
             .queryParam("action", "deleteData")
-            .post("/users/" + ALICE.asString())
+            .post("/users/" + alice.asString())
             .jsonPath()
             .get("taskId");
 
@@ -144,7 +150,7 @@ public abstract class UserDeletionIntegrationContract {
             .then()
             .body("additionalInformation.status.LabelUserDeletionTaskStep", Matchers.is("DONE"));
 
-        assertThat(labelProbe.listLabels(ALICE))
+        assertThat(labelProbe.listLabels(alice))
             .isEmpty();
     }
 
@@ -152,11 +158,11 @@ public abstract class UserDeletionIntegrationContract {
     void shouldDeleteJmapSettings(GuiceJamesServer server) {
         JmapSettingsProbe settingsProbe = server.getProbe(JmapSettingsProbe.class);
 
-        settingsProbe.reset(ALICE, Map.of("key", "value"));
+        settingsProbe.reset(alice, Map.of("key", "value"));
 
         String taskId = webAdminApi
             .queryParam("action", "deleteData")
-            .post("/users/" + ALICE.asString())
+            .post("/users/" + alice.asString())
             .jsonPath()
             .get("taskId");
 
@@ -164,17 +170,17 @@ public abstract class UserDeletionIntegrationContract {
             .then()
             .body("additionalInformation.status.JmapSettingsUserDeletionTaskStep", Matchers.is("DONE"));
 
-        assertThat(settingsProbe.get(BOB)).isNull();
+        assertThat(settingsProbe.get(alice)).isNull();
     }
 
     @Test
     void shouldDeletePublicAssets(GuiceJamesServer server) {
         PublicAssetProbe publicAssetProbe = server.getProbe(PublicAssetProbe.class);
-        publicAssetProbe.create(ALICE, PublicAssetGetMethodContract.CREATION_REQUEST());
+        publicAssetProbe.create(alice, PublicAssetGetMethodContract.CREATION_REQUEST());
 
         String taskId = webAdminApi
             .queryParam("action", "deleteData")
-            .post("/users/" + ALICE.asString())
+            .post("/users/" + alice.asString())
             .jsonPath()
             .get("taskId");
 
@@ -182,7 +188,7 @@ public abstract class UserDeletionIntegrationContract {
             .then()
             .body("additionalInformation.status.PublicAssetDeletionTaskStep", Matchers.is("DONE"));
 
-        assertThat(CollectionConverters.asJava(publicAssetProbe.list(ALICE)))
+        assertThat(CollectionConverters.asJava(publicAssetProbe.list(alice)))
             .isEmpty();
     }
 }

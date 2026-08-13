@@ -31,11 +31,19 @@ import com.google.inject.Module;
 
 public class DockerOpenSearchExtension implements GuiceModuleTestExtension {
 
+    public static final boolean CLEAN_UP_AFTER_EACH = true;
+    public static final boolean CLEAN_UP_AFTER_ALL = false;
+
     private final DockerOpenSearch dockerOpenSearch;
+    private final boolean cleanUpAfterEach;
     private Optional<Duration> requestTimeout;
 
     public DockerOpenSearchExtension() {
-        this(DockerOpenSearchSingleton.INSTANCE);
+        this(DockerOpenSearchSingleton.INSTANCE, CLEAN_UP_AFTER_EACH);
+    }
+
+    public DockerOpenSearchExtension(boolean cleanUpAfterEach) {
+        this(DockerOpenSearchSingleton.INSTANCE, cleanUpAfterEach);
     }
 
     public DockerOpenSearchExtension withRequestTimeout(Duration requestTimeout) {
@@ -44,7 +52,12 @@ public class DockerOpenSearchExtension implements GuiceModuleTestExtension {
     }
 
     public DockerOpenSearchExtension(DockerOpenSearch dockerOpenSearch) {
+        this(dockerOpenSearch, CLEAN_UP_AFTER_EACH);
+    }
+
+    public DockerOpenSearchExtension(DockerOpenSearch dockerOpenSearch, boolean cleanUpAfterEach) {
         this.dockerOpenSearch = dockerOpenSearch;
+        this.cleanUpAfterEach = cleanUpAfterEach;
         requestTimeout = Optional.empty();
     }
 
@@ -63,7 +76,16 @@ public class DockerOpenSearchExtension implements GuiceModuleTestExtension {
 
     @Override
     public void afterEach(ExtensionContext extensionContext) {
-        dockerOpenSearch.cleanUpData();
+        if (cleanUpAfterEach) {
+            dockerOpenSearch.cleanUpData();
+        }
+    }
+
+    @Override
+    public void afterAll(ExtensionContext extensionContext) {
+        if (!cleanUpAfterEach) {
+            dockerOpenSearch.cleanUpData();
+        }
     }
 
     @Override
