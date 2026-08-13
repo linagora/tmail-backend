@@ -23,6 +23,8 @@ import static org.hamcrest.Matchers.empty;
 import static org.hamcrest.Matchers.is;
 import static org.hamcrest.Matchers.notNullValue;
 
+import java.util.UUID;
+
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.core.Domain;
 import org.apache.james.utils.DataProbeImpl;
@@ -41,21 +43,38 @@ import com.linagora.tmail.team.TeamMailboxProbe;
 import io.restassured.RestAssured;
 
 public abstract class RecomputeQuotaTeamMailboxesRouteIntegrationContract {
-    private static final String TEAM_MAILBOX_DOMAIN = "linagora.com";
-    private static final TeamMailbox MARKETING_TEAM_MAILBOX = TeamMailbox.apply(Domain.of(TEAM_MAILBOX_DOMAIN), TeamMailboxName.fromString("marketing").toOption().get());
-    private static final String BASE_PATH = Constants.SEPARATOR + "domains" + Constants.SEPARATOR + TEAM_MAILBOX_DOMAIN + Constants.SEPARATOR + "team-mailboxes";
+    private static class TestContext {
+        private final Domain domain;
+        private final TeamMailbox teamMailbox;
+        private final String basePath;
+
+        private TestContext(Domain domain, TeamMailbox teamMailbox) {
+            this.domain = domain;
+            this.teamMailbox = teamMailbox;
+            this.basePath = Constants.SEPARATOR + "domains" + Constants.SEPARATOR + domain.asString() + Constants.SEPARATOR + "team-mailboxes";
+        }
+
+        private static TestContext create() {
+            Domain domain = Domain.of("quota-" + UUID.randomUUID() + ".linagora.com");
+            TeamMailbox teamMailbox = TeamMailbox.apply(domain, TeamMailboxName.fromString("marketing").toOption().get());
+            return new TestContext(domain, teamMailbox);
+        }
+    }
+
+    private TestContext context;
 
     @BeforeEach
     void setUp(GuiceJamesServer server) throws Exception {
+        context = TestContext.create();
         server.getProbe(DataProbeImpl.class)
-                .addDomain(TEAM_MAILBOX_DOMAIN);
+                .addDomain(context.domain.asString());
 
         server.getProbe(TeamMailboxProbe.class)
-            .create(MARKETING_TEAM_MAILBOX);
+            .create(context.teamMailbox);
 
         WebAdminGuiceProbe webAdminGuiceProbe = server.getProbe(WebAdminGuiceProbe.class);
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminGuiceProbe.getWebAdminPort())
-            .setBasePath(BASE_PATH)
+            .setBasePath(context.basePath)
             .build();
         RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
     }
@@ -92,7 +111,7 @@ public abstract class RecomputeQuotaTeamMailboxesRouteIntegrationContract {
             .body("type", is("recompute-quota-team-mailboxes"))
             .body("additionalInformation.timestamp", is(notNullValue()))
             .body("additionalInformation.type", is("recompute-quota-team-mailboxes"))
-            .body("additionalInformation.domain", is("linagora.com"))
+            .body("additionalInformation.domain", is(context.domain.asString()))
             .body("additionalInformation.failedQuotaRoots", is(empty()))
             .body("additionalInformation.processedQuotaRoots", is(1));
     }
