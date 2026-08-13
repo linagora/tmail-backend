@@ -21,6 +21,8 @@ package com.linagora.tmail.integration;
 import static io.restassured.RestAssured.given;
 import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
 
+import java.util.UUID;
+
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
@@ -31,6 +33,7 @@ import org.apache.james.utils.WebAdminGuiceProbe;
 import org.apache.james.webadmin.WebAdminUtils;
 import org.eclipse.jetty.http.HttpStatus;
 import org.hamcrest.CoreMatchers;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -40,15 +43,18 @@ import io.restassured.RestAssured;
 import io.restassured.http.ContentType;
 
 public abstract class UserQuotaReporterRoutesIntegrationContract {
-    private static final Domain DOMAIN = Domain.of("domain.tld");
-    private static final Username BOB = Username.of("bob@domain.tld");
+    private Domain domain;
+    private Username bob;
 
     @BeforeEach
     void setUp(GuiceJamesServer server) throws Exception {
+        domain = Domain.of("quota-" + UUID.randomUUID() + ".linagora.com");
+        bob = Username.fromLocalPartWithDomain("bob", domain);
+
         server.getProbe(DataProbeImpl.class)
             .fluent()
-            .addDomain(DOMAIN.asString())
-            .addUser(BOB.asString(), "password");
+            .addDomain(domain.asString())
+            .addUser(bob.asString(), "password");
 
         WebAdminGuiceProbe webAdminGuiceProbe = server.getProbe(WebAdminGuiceProbe.class);
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminGuiceProbe.getWebAdminPort())
@@ -56,13 +62,21 @@ public abstract class UserQuotaReporterRoutesIntegrationContract {
         RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
     }
 
+    @AfterEach
+    void tearDown(GuiceJamesServer server) throws Exception {
+        MaxQuotaManagerProbe quotaProbe = server.getProbe(MaxQuotaManagerProbe.class);
+        quotaProbe.removeMaxStorage(bob);
+        quotaProbe.removeDomainMaxStorage(domain);
+        server.getProbe(DataProbeImpl.class).removeUser(bob.asString());
+    }
+
     @Test
     void shouldCountUsersHavingSpecificQuota(GuiceJamesServer server) throws MailboxException {
         server.getProbe(MaxQuotaManagerProbe.class)
-            .setDomainMaxStorage(DOMAIN, QuotaSizeLimit.size(100));
+            .setDomainMaxStorage(domain, QuotaSizeLimit.size(100));
 
         server.getProbe(MaxQuotaManagerProbe.class)
-            .setMaxStorage(BOB, QuotaSizeLimit.size(1000));
+            .setMaxStorage(bob, QuotaSizeLimit.size(1000));
 
         given()
             .get("/reports/quota/users/count?hasSpecificQuota")
@@ -75,10 +89,10 @@ public abstract class UserQuotaReporterRoutesIntegrationContract {
     @Test
     void shouldReturnUsersHavingSpecificQuota(GuiceJamesServer server) throws MailboxException {
         server.getProbe(MaxQuotaManagerProbe.class)
-            .setDomainMaxStorage(DOMAIN, QuotaSizeLimit.size(100));
+            .setDomainMaxStorage(domain, QuotaSizeLimit.size(100));
 
         server.getProbe(MaxQuotaManagerProbe.class)
-            .setMaxStorage(BOB, QuotaSizeLimit.size(1000));
+            .setMaxStorage(bob, QuotaSizeLimit.size(1000));
 
         String response = given()
             .get("/reports/quota/users?hasSpecificQuota")
@@ -92,21 +106,21 @@ public abstract class UserQuotaReporterRoutesIntegrationContract {
             .isEqualTo("""
                 [
                     {
-                        "user": "bob@domain.tld",
+                        "user": "%s",
                         "storageLimit": 1000,
                         "countLimit": null
                     }
                 ]
-                    """);
+                    """.formatted(bob.asString()));
     }
 
     @Test
     void shouldReturnExtraQuotaSum(GuiceJamesServer server) throws MailboxException {
         server.getProbe(MaxQuotaManagerProbe.class)
-            .setDomainMaxStorage(DOMAIN, QuotaSizeLimit.size(100));
+            .setDomainMaxStorage(domain, QuotaSizeLimit.size(100));
 
         server.getProbe(MaxQuotaManagerProbe.class)
-            .setMaxStorage(BOB, QuotaSizeLimit.size(1000));
+            .setMaxStorage(bob, QuotaSizeLimit.size(1000));
 
         String response = given()
             .get("/reports/quota/users/sum?hasSpecificQuota")
