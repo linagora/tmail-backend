@@ -27,6 +27,7 @@ import static org.mockito.Mockito.when;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
@@ -71,9 +72,27 @@ import scala.jdk.javaapi.CollectionConverters;
 import scala.jdk.javaapi.OptionConverters;
 
 public class DistributedProtocolServerIntegrationTest {
-    protected static final Domain DOMAIN = Domain.of("domain.tld");
-    protected static final Username BOB = Username.fromLocalPartWithDomain("bob", DOMAIN);
-    protected static final Username ALICE = Username.fromLocalPartWithDomain("alice", DOMAIN);
+    private static class TestContext {
+        private final Domain domain;
+        private final Username bob;
+        private final Username alice;
+        private final FirebaseSubscriptionCreationRequest subscriptionCreationRequest;
+
+        private TestContext(Domain domain, Username bob, Username alice,
+                            FirebaseSubscriptionCreationRequest subscriptionCreationRequest) {
+            this.domain = domain;
+            this.bob = bob;
+            this.alice = alice;
+            this.subscriptionCreationRequest = subscriptionCreationRequest;
+        }
+
+        private static TestContext create() {
+            Domain domain = Domain.of("protocol-" + UUID.randomUUID() + ".domain.tld");
+            Username bob = Username.fromLocalPartWithDomain("bob", domain);
+            Username alice = Username.fromLocalPartWithDomain("alice", domain);
+            return new TestContext(domain, bob, alice, createFirebaseSubscriptionCreationRequest());
+        }
+    }
 
     @RegisterExtension
     static RabbitMQExtension rabbitMQExtension = new RabbitMQExtension();
@@ -101,9 +120,10 @@ public class DistributedProtocolServerIntegrationTest {
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule(), new FirebaseSubscriptionProbeModule())
             .overrideWith(binder -> binder.bind(FirebasePushClient.class).toInstance(FirebasePushContract.firebasePushClient())))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
-
+    private TestContext context;
     private SimpleConnectionPool connectionPool;
     private ReactorRabbitMQChannelPool channelPool;
 
@@ -127,9 +147,10 @@ public class DistributedProtocolServerIntegrationTest {
         WebAdminGuiceProbe webAdminGuiceProbe = server.getProbe(WebAdminGuiceProbe.class);
 
         DataProbeImpl dataProbe = server.getProbe(DataProbeImpl.class);
-        dataProbe.addDomain(DOMAIN.asString());
-        dataProbe.addUser(BOB.asString(), "password");
-        dataProbe.addUser(ALICE.asString(), "password");
+        context = TestContext.create();
+        dataProbe.addDomain(context.domain.asString());
+        dataProbe.addUser(context.bob.asString(), "password");
+        dataProbe.addUser(context.alice.asString(), "password");
 
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminGuiceProbe.getWebAdminPort())
             .setBasePath("/servers/channels")
@@ -151,20 +172,20 @@ public class DistributedProtocolServerIntegrationTest {
     void disconnectShouldRevokeUserFirebaseSubscription(GuiceJamesServer server) {
         // Given a subscription
         FirebaseSubscriptionProbe firebaseSubscriptionProbe = server.getProbe(FirebaseSubscriptionProbe.class);
-        FirebaseSubscription subscription = firebaseSubscriptionProbe.createSubscription(BOB, createFirebaseSubscriptionCreationRequest());
+        FirebaseSubscription subscription = firebaseSubscriptionProbe.createSubscription(context.bob, context.subscriptionCreationRequest);
 
-        assertThat(firebaseSubscriptionProbe.retrieveSubscription(BOB, subscription.id()))
+        assertThat(firebaseSubscriptionProbe.retrieveSubscription(context.bob, subscription.id()))
             .isNotNull();
 
         // When we disconnect
         when()
-            .delete("/" + BOB.asString())
+            .delete("/" + context.bob.asString())
         .then()
             .statusCode(HttpStatus.NO_CONTENT_204);
 
         // Then the subscription should be revoked
         CALMLY_AWAIT.atMost(Durations.TEN_SECONDS)
-            .untilAsserted(() -> assertThat(firebaseSubscriptionProbe.retrieveSubscription(BOB, subscription.id()))
+            .untilAsserted(() -> assertThat(firebaseSubscriptionProbe.retrieveSubscription(context.bob, subscription.id()))
                 .isNull());
     }
 
@@ -172,31 +193,31 @@ public class DistributedProtocolServerIntegrationTest {
     void disconnectShouldNotRevokeUserFirebaseSubscriptionOfUnPredicateUser(GuiceJamesServer server) throws InterruptedException {
         // Given a subscription for BOB
         FirebaseSubscriptionProbe firebaseSubscriptionProbe = server.getProbe(FirebaseSubscriptionProbe.class);
-        FirebaseSubscription subscription = firebaseSubscriptionProbe.createSubscription(BOB, createFirebaseSubscriptionCreationRequest());
+        FirebaseSubscription subscription = firebaseSubscriptionProbe.createSubscription(context.bob, context.subscriptionCreationRequest);
 
-        assertThat(firebaseSubscriptionProbe.retrieveSubscription(BOB, subscription.id()))
+        assertThat(firebaseSubscriptionProbe.retrieveSubscription(context.bob, subscription.id()))
             .isNotNull();
 
         // When we disconnect ALICE
         when()
-            .delete("/" + ALICE.asString())
+            .delete("/" + context.alice.asString())
         .then()
             .statusCode(HttpStatus.NO_CONTENT_204);
 
         // Then the subscription of BOB should still be there
         Thread.sleep(500);
 
-        assertThat(firebaseSubscriptionProbe.retrieveSubscription(BOB, subscription.id()))
+        assertThat(firebaseSubscriptionProbe.retrieveSubscription(context.bob, subscription.id()))
             .isNotNull();
     }
 
-    private FirebaseSubscriptionCreationRequest createFirebaseSubscriptionCreationRequest() {
+    private static FirebaseSubscriptionCreationRequest createFirebaseSubscriptionCreationRequest() {
         var mockTypeName = mock(TypeName.class);
         when(mockTypeName.asString()).thenReturn("mockTypeName");
 
         return new FirebaseSubscriptionCreationRequest(
-            "device2",
-            "token2",
+            "device-" + UUID.randomUUID(),
+            "token-" + UUID.randomUUID(),
             OptionConverters.toScala(Optional.empty()),
             CollectionConverters.asScala(List.of(mockTypeName)).toSeq());
     }
