@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
 
 import java.util.Map;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.apache.http.HttpStatus;
@@ -63,23 +64,29 @@ public abstract class UsernameChangeIntegrationContract {
         .and().pollDelay(ONE_HUNDRED_MILLISECONDS)
         .await();
     private static final String DOMAIN = "linagora.com";
-    private static final Username ALICE  = Username.fromLocalPartWithDomain("alice", DOMAIN);
-    private static final Username BOB = Username.fromLocalPartWithDomain("bob", DOMAIN);
-    private static final AccountId ALICE_ACCOUNT_ID = AccountId.fromUsername(ALICE);
-    private static final AccountId BOB_ACCOUNT_ID = AccountId.fromUsername(BOB);
     private static final String PASSWORD = "123456";
 
+    private Username alice;
+    private Username bob;
+    private AccountId aliceAccountId;
+    private AccountId bobAccountId;
     private RequestSpecification webAdminApi;
 
-    public abstract void awaitDocumentsIndexed(Long documentCount);
+    public abstract void awaitDocumentsIndexed(AccountId accountId, Long documentCount);
 
     @BeforeEach
     void setUp(GuiceJamesServer server) throws Exception {
+        String suffix = UUID.randomUUID().toString();
+        alice = Username.fromLocalPartWithDomain("alice-" + suffix, DOMAIN);
+        bob = Username.fromLocalPartWithDomain("bob-" + suffix, DOMAIN);
+        aliceAccountId = AccountId.fromUsername(alice);
+        bobAccountId = AccountId.fromUsername(bob);
+
         server.getProbe(DataProbeImpl.class)
             .fluent()
             .addDomain(DOMAIN)
-            .addUser(ALICE.asString(), PASSWORD)
-            .addUser(BOB.asString(), PASSWORD);
+            .addUser(alice.asString(), PASSWORD)
+            .addUser(bob.asString(), PASSWORD);
 
         Port jmapPort = server.getProbe(JmapGuiceProbe.class).getJmapPort();
         RestAssured.requestSpecification = jmapRequestSpecBuilder
@@ -94,13 +101,13 @@ public abstract class UsernameChangeIntegrationContract {
         ContactFields contactFields = new ContactFields(new MailAddress("andre@linagora.com"), "Andre", "Dupont");
 
         JmapGuiceContactAutocompleteProbe contactProbe = server.getProbe(JmapGuiceContactAutocompleteProbe.class);
-        EmailAddressContact contact = contactProbe.index(ALICE_ACCOUNT_ID, contactFields);
+        EmailAddressContact contact = contactProbe.index(aliceAccountId, contactFields);
 
-        awaitDocumentsIndexed(1L);
+        awaitDocumentsIndexed(aliceAccountId, 1L);
 
         String taskId = webAdminApi
             .queryParam("action", "rename")
-            .post("/users/" + ALICE.asString() + "/rename/" + BOB.asString())
+            .post("/users/" + alice.asString() + "/rename/" + bob.asString())
             .jsonPath()
             .get("taskId");
 
@@ -108,9 +115,9 @@ public abstract class UsernameChangeIntegrationContract {
 
         CALMLY_AWAIT.atMost(Durations.TEN_SECONDS)
             .untilAsserted(() -> {
-                assertThat(contactProbe.list(BOB_ACCOUNT_ID))
+                assertThat(contactProbe.list(bobAccountId))
                     .containsOnly(contact);
-                assertThat(contactProbe.list(ALICE_ACCOUNT_ID))
+                assertThat(contactProbe.list(aliceAccountId))
                     .isEmpty();
             });
     }
@@ -119,19 +126,19 @@ public abstract class UsernameChangeIntegrationContract {
     void shouldMigratePGPPublicKeys(GuiceJamesServer server) throws Exception {
         byte[] publicKeyPayload = ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.pub").readAllBytes();
         JmapGuiceKeystoreManagerProbe keystoreManagerProbe = server.getProbe(JmapGuiceKeystoreManagerProbe.class);
-        keystoreManagerProbe.save(ALICE, publicKeyPayload);
+        keystoreManagerProbe.save(alice, publicKeyPayload);
 
         String taskId = webAdminApi
             .queryParam("action", "rename")
-            .post("/users/" + ALICE.asString() + "/rename/" + BOB.asString())
+            .post("/users/" + alice.asString() + "/rename/" + bob.asString())
             .jsonPath()
             .get("taskId");
 
         webAdminApi.get("/tasks/" + taskId + "/await");
 
-        assertThat(keystoreManagerProbe.getKeyPayLoads(BOB))
+        assertThat(keystoreManagerProbe.getKeyPayLoads(bob))
             .containsOnly(publicKeyPayload);
-        assertThat(keystoreManagerProbe.getKeyPayLoads(ALICE))
+        assertThat(keystoreManagerProbe.getKeyPayLoads(alice))
             .isEmpty();
     }
 
@@ -139,11 +146,11 @@ public abstract class UsernameChangeIntegrationContract {
     void shouldMigrateLabels(GuiceJamesServer server) {
         JmapGuiceLabelProbe labelProbe = server.getProbe(JmapGuiceLabelProbe.class);
 
-        Label label = labelProbe.addLabel(ALICE, new LabelCreationRequest(new DisplayName("Important"), Option.empty(), Option.empty(), false));
+        Label label = labelProbe.addLabel(alice, new LabelCreationRequest(new DisplayName("Important"), Option.empty(), Option.empty(), false));
 
         String taskId = webAdminApi
             .queryParam("action", "rename")
-            .post("/users/" + ALICE.asString() + "/rename/" + BOB.asString())
+            .post("/users/" + alice.asString() + "/rename/" + bob.asString())
             .jsonPath()
             .get("taskId");
 
@@ -152,7 +159,7 @@ public abstract class UsernameChangeIntegrationContract {
             .statusCode(HttpStatus.SC_OK)
             .body("additionalInformation.status.LabelUsernameChangeTaskStep", Matchers.is("DONE"));
 
-        assertThat(labelProbe.listLabels(BOB))
+        assertThat(labelProbe.listLabels(bob))
             .containsExactly(label);
     }
 
@@ -160,11 +167,11 @@ public abstract class UsernameChangeIntegrationContract {
     void shouldMigrateJmapSettings(GuiceJamesServer server) {
         JmapSettingsProbe settingsProbe = server.getProbe(JmapSettingsProbe.class);
 
-        settingsProbe.reset(ALICE, Map.of("key", "value"));
+        settingsProbe.reset(alice, Map.of("key", "value"));
 
         String taskId = webAdminApi
             .queryParam("action", "rename")
-            .post("/users/" + ALICE.asString() + "/rename/" + BOB.asString())
+            .post("/users/" + alice.asString() + "/rename/" + bob.asString())
             .jsonPath()
             .get("taskId");
 
@@ -173,7 +180,7 @@ public abstract class UsernameChangeIntegrationContract {
             .statusCode(HttpStatus.SC_OK)
             .body("additionalInformation.status.JmapSettingsUsernameChangeTaskStep", Matchers.is("DONE"));
 
-        assertThat(JavaConverters.asJava(settingsProbe.get(BOB).settings())
+        assertThat(JavaConverters.asJava(settingsProbe.get(bob).settings())
             .entrySet()
             .stream()
             .map(entry -> Map.entry(entry.getKey().asString(), entry.getValue().value()))

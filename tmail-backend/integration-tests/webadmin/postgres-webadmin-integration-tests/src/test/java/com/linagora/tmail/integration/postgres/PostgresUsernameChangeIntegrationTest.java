@@ -19,6 +19,7 @@
 package com.linagora.tmail.integration.postgres;
 
 import static com.linagora.tmail.james.app.PostgresTmailConfiguration.EventBusImpl.IN_MEMORY;
+import static com.linagora.tmail.james.jmap.ContactMappingFactory.ACCOUNT_ID;
 import static com.linagora.tmail.james.jmap.OpenSearchContactConfiguration.DEFAULT_CONFIGURATION;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
@@ -31,12 +32,14 @@ import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.opensearch.ReactorOpenSearchClient;
 import org.apache.james.backends.postgres.PostgresExtension;
+import org.apache.james.jmap.api.model.AccountId;
 import org.apache.james.utils.GuiceProbe;
 import org.awaitility.Awaitility;
 import org.awaitility.Durations;
 import org.awaitility.core.ConditionFactory;
-import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.opensearch.client.opensearch._types.FieldValue;
 import org.opensearch.client.opensearch._types.query_dsl.QueryBuilders;
 import org.opensearch.client.opensearch.core.SearchRequest;
 
@@ -94,20 +97,22 @@ public class PostgresUsernameChangeIntegrationTest extends UsernameChangeIntegra
         .extensions(opensearchExtension)
         .build();
 
-    private final ReactorOpenSearchClient client = opensearchExtension.getDockerOS().clientProvider().get();
+    private static final ReactorOpenSearchClient client = opensearchExtension.getDockerOS().clientProvider().get();
 
-    @AfterEach
-    void tearDown() throws IOException {
+    @AfterAll
+    static void tearDown() throws IOException {
         client.close();
     }
 
     @Override
-    public void awaitDocumentsIndexed(Long documentCount) {
+    public void awaitDocumentsIndexed(AccountId accountId, Long documentCount) {
         CALMLY_AWAIT.atMost(Durations.TEN_SECONDS)
             .untilAsserted(() -> assertThat(client.search(
                     new SearchRequest.Builder()
                         .index(DEFAULT_CONFIGURATION.getUserContactIndexName().getValue(), DEFAULT_CONFIGURATION.getDomainContactIndexName().getValue())
-                        .query(QueryBuilders.matchAll().build().toQuery())
+                        .query(QueryBuilders.term().field(ACCOUNT_ID)
+                            .value(new FieldValue.Builder().stringValue(accountId.getIdentifier()).build())
+                            .build().toQuery())
                         .build())
                 .block()
                 .hits().total().value()).isEqualTo(documentCount));
