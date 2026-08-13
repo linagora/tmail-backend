@@ -25,6 +25,7 @@ import static org.hamcrest.Matchers.nullValue;
 
 import java.io.ByteArrayInputStream;
 import java.util.Date;
+import java.util.UUID;
 
 import jakarta.mail.Flags;
 
@@ -38,25 +39,30 @@ import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.WebAdminGuiceProbe;
 import org.apache.james.webadmin.WebAdminUtils;
 import org.apache.james.webadmin.routes.TasksRoutes;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import io.restassured.RestAssured;
 
 public abstract class RspamdFeedMessageRouteIntegrationContract {
-    protected static final Domain DOMAIN = Domain.of("domain.tld");
-    protected static final Username BOB = Username.fromLocalPartWithDomain("bob", DOMAIN);
-    protected static final MailboxPath BOB_SPAM_MAILBOX = MailboxPath.forUser(BOB, "Spam");
+    protected Domain domain;
+    protected Username bob;
+    protected MailboxPath bobSpamMailbox;
 
     @BeforeEach
     void setUp(GuiceJamesServer server) throws Exception {
+        domain = Domain.of("rspamd-" + UUID.randomUUID() + ".linagora.com");
+        bob = Username.fromLocalPartWithDomain("bob", domain);
+        bobSpamMailbox = MailboxPath.forUser(bob, "Spam");
+
         DataProbeImpl dataProbe = server.getProbe(DataProbeImpl.class);
-        dataProbe.addDomain(DOMAIN.asString());
-        dataProbe.addUser(BOB.asString(), "password");
+        dataProbe.addDomain(domain.asString());
+        dataProbe.addUser(bob.asString(), "password");
 
         MailboxProbeImpl mailboxProbe = server.getProbe(MailboxProbeImpl.class);
-        mailboxProbe.createMailbox(MailboxPath.inbox(BOB));
-        mailboxProbe.createMailbox(BOB_SPAM_MAILBOX);
+        mailboxProbe.createMailbox(MailboxPath.inbox(bob));
+        mailboxProbe.createMailbox(bobSpamMailbox);
 
 
         WebAdminGuiceProbe webAdminGuiceProbe = server.getProbe(WebAdminGuiceProbe.class);
@@ -64,6 +70,11 @@ public abstract class RspamdFeedMessageRouteIntegrationContract {
             .setBasePath("/rspamd")
             .build();
         RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
+    }
+
+    @AfterEach
+    void tearDown(GuiceJamesServer server) throws Exception {
+        server.getProbe(DataProbeImpl.class).removeUser(bob.asString());
     }
 
 
@@ -87,7 +98,7 @@ public abstract class RspamdFeedMessageRouteIntegrationContract {
 
     @Test
     void feedSpamTaskShouldWork(GuiceJamesServer server) throws MailboxException {
-        appendMessage(BOB, BOB_SPAM_MAILBOX, server);
+        appendMessage(bob, bobSpamMailbox, server);
 
         String taskId = given()
             .queryParam("action", "reportSpam")
@@ -123,7 +134,7 @@ public abstract class RspamdFeedMessageRouteIntegrationContract {
 
     @Test
     void feedHamTaskShouldWork(GuiceJamesServer server) throws MailboxException {
-        appendMessage(BOB, MailboxPath.inbox(BOB), server);
+        appendMessage(bob, MailboxPath.inbox(bob), server);
 
         String taskId = given()
             .queryParam("action", "reportHam")
