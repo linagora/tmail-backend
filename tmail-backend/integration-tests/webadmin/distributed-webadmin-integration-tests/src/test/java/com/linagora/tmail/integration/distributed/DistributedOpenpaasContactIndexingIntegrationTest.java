@@ -104,19 +104,19 @@ public class DistributedOpenpaasContactIndexingIntegrationTest extends ContactIn
     void contactIndexingTaskShouldCreateCardDavContact(GuiceJamesServer server) throws Exception {
         // Given a message in bob sent mailbox. With an email to andre
         server.getProbe(MailboxProbeImpl.class)
-            .appendMessage(BOB.asString(), BOB_SENT_MAILBOX, appendCommandTO(ANDRE.asString()));
+            .appendMessage(bob.asString(), bobSentMailbox, appendCommandTO(andre.asString()));
 
         // Set up the scenario for openpaas & carddav extensions
         OpenPaaSUserId bobOpenPassUid = new OpenPaaSUserId(UUID.randomUUID().toString());
-        DavUid andreContactUid = CardDavUtils.createContactUid(ANDRE.asMailAddress());
+        DavUid andreContactUid = CardDavUtils.createContactUid(andre.asMailAddress());
 
-        openPaasServerExtension.setSearchEmailExist(BOB, bobOpenPassUid);
-        davServerExtension.setCollectedContactExists(BOB, bobOpenPassUid, andreContactUid, false);
-        davServerExtension.setCreateCollectedContact(BOB, bobOpenPassUid, andreContactUid);
+        openPaasServerExtension.setSearchEmailExist(bob, bobOpenPassUid);
+        davServerExtension.setCollectedContactExists(bob, bobOpenPassUid, andreContactUid, false);
+        davServerExtension.setCreateCollectedContact(bob, bobOpenPassUid, andreContactUid);
 
         // Verify that the andre contact is not indexed
         given(jmapSpec)
-            .auth().basic(BOB.asString(), BOB_PASSWORD)
+            .auth().basic(bob.asString(), BOB_PASSWORD)
             .header(ACCEPT_JMAP_RFC_HEADER)
             .body("""
             {
@@ -155,6 +155,6 @@ public class DistributedOpenpaasContactIndexingIntegrationTest extends ContactIn
             .body("additionalInformation.failedUsers", empty());
 
         // Verify that the andre contact was created in carddav
-        davServerExtension.assertCreateCollectedContactWasCalled(BOB, bobOpenPassUid, andreContactUid, 1);
+        davServerExtension.assertCreateCollectedContactWasCalled(bob, bobOpenPassUid, andreContactUid, 1);
     }
 }

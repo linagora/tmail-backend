@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.integration;
 
+import static com.linagora.tmail.integration.TestFixture.CALMLY_AWAIT;
 import static io.restassured.RestAssured.given;
 import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
 import static org.apache.james.jmap.JMAPTestingConstants.jmapRequestSpecBuilder;
@@ -42,7 +43,9 @@ import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.WebAdminGuiceProbe;
 import org.apache.james.webadmin.WebAdminUtils;
 import org.apache.james.webadmin.routes.TasksRoutes;
+import org.awaitility.Durations;
 import org.eclipse.jetty.http.HttpStatus;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -54,14 +57,14 @@ import io.restassured.specification.RequestSpecification;
 import net.javacrumbs.jsonunit.core.Option;
 
 public abstract class ContactIndexingIntegrationContract {
-    protected static final Domain DOMAIN = Domain.of("domain.tld");
-    protected static final Username BOB = Username.fromLocalPartWithDomain("bob", DOMAIN);
+    protected Domain domain;
+    protected Username bob;
     protected static final String BOB_PASSWORD = "password";
-    protected static final Username ANDRE = Username.fromLocalPartWithDomain("andre", DOMAIN);
-    protected static final Username CEDRIC = Username.fromLocalPartWithDomain("cedric", DOMAIN);
-    protected static final Username DAVID = Username.fromLocalPartWithDomain("david", DOMAIN);
-    protected static final MailboxPath BOB_SENT_MAILBOX = MailboxPath.forUser(BOB, "Sent");
-    protected static final MailboxPath ANDRE_SENT_MAILBOX = MailboxPath.forUser(ANDRE, "Sent");
+    protected Username andre;
+    protected Username cedric;
+    protected Username david;
+    protected MailboxPath bobSentMailbox;
+    protected MailboxPath andreSentMailbox;
 
     protected RequestSpecification webAdminApiSpec;
     protected RequestSpecification jmapSpec;
@@ -70,14 +73,22 @@ public abstract class ContactIndexingIntegrationContract {
 
     @BeforeEach
     void setUp(GuiceJamesServer server) throws Exception {
+        domain = Domain.of("contacts-" + UUID.randomUUID() + ".linagora.com");
+        bob = Username.fromLocalPartWithDomain("bob", domain);
+        andre = Username.fromLocalPartWithDomain("andre", domain);
+        cedric = Username.fromLocalPartWithDomain("cedric", domain);
+        david = Username.fromLocalPartWithDomain("david", domain);
+        bobSentMailbox = MailboxPath.forUser(bob, "Sent");
+        andreSentMailbox = MailboxPath.forUser(andre, "Sent");
+
         DataProbeImpl dataProbe = server.getProbe(DataProbeImpl.class);
-        dataProbe.addDomain(DOMAIN.asString());
-        dataProbe.addUser(BOB.asString(), BOB_PASSWORD);
-        dataProbe.addUser(ANDRE.asString(), "password");
+        dataProbe.addDomain(domain.asString());
+        dataProbe.addUser(bob.asString(), BOB_PASSWORD);
+        dataProbe.addUser(andre.asString(), "password");
 
         MailboxProbeImpl mailboxProbe = server.getProbe(MailboxProbeImpl.class);
-        mailboxProbe.createMailbox(BOB_SENT_MAILBOX);
-        mailboxProbe.createMailbox(MailboxPath.forUser(ANDRE, "Sent"));
+        mailboxProbe.createMailbox(bobSentMailbox);
+        mailboxProbe.createMailbox(andreSentMailbox);
 
         WebAdminGuiceProbe webAdminGuiceProbe = server.getProbe(WebAdminGuiceProbe.class);
 
@@ -92,7 +103,7 @@ public abstract class ContactIndexingIntegrationContract {
             .build();
 
         bobAccountId = given(jmapSpec)
-            .auth().basic(BOB.asString(), BOB_PASSWORD)
+            .auth().basic(bob.asString(), BOB_PASSWORD)
             .header(ACCEPT_JMAP_RFC_HEADER)
             .get("/session")
         .then()
@@ -103,6 +114,14 @@ public abstract class ContactIndexingIntegrationContract {
             .path("primaryAccounts[\"urn:ietf:params:jmap:core\"]");
 
         RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
+    }
+
+    @AfterEach
+    void tearDown(GuiceJamesServer server) throws Exception {
+        DataProbeImpl dataProbe = server.getProbe(DataProbeImpl.class);
+        dataProbe.removeUser(bob.asString());
+        dataProbe.removeUser(andre.asString());
+        dataProbe.removeDomain(domain.asString());
     }
 
     @Test
@@ -139,11 +158,11 @@ public abstract class ContactIndexingIntegrationContract {
         // Bob: Andre, Cedric, David
         // Andre: andretwo
         server.getProbe(MailboxProbeImpl.class)
-            .appendMessage(BOB.asString(), BOB_SENT_MAILBOX, appendCommandTO(ANDRE.asString(), CEDRIC.asString()));
+            .appendMessage(bob.asString(), bobSentMailbox, appendCommandTO(andre.asString(), cedric.asString()));
         server.getProbe(MailboxProbeImpl.class)
-            .appendMessage(BOB.asString(), BOB_SENT_MAILBOX, appendCommandTO(DAVID.asString()));
+            .appendMessage(bob.asString(), bobSentMailbox, appendCommandTO(david.asString()));
         server.getProbe(MailboxProbeImpl.class)
-            .appendMessage(ANDRE.asString(), ANDRE_SENT_MAILBOX, appendCommandTO("andretwo@domain.tld"));
+            .appendMessage(andre.asString(), andreSentMailbox, appendCommandTO("andretwo@" + domain.asString()));
         Thread.sleep(1000);
 
         String autoCompleteQueryRequest = """
@@ -160,7 +179,7 @@ public abstract class ContactIndexingIntegrationContract {
 
         // Verify that the andre contact is not indexed
         given(jmapSpec)
-            .auth().basic(BOB.asString(), BOB_PASSWORD)
+            .auth().basic(bob.asString(), BOB_PASSWORD)
             .header(ACCEPT_JMAP_RFC_HEADER)
             .body(autoCompleteQueryRequest)
             .post()
@@ -188,30 +207,33 @@ public abstract class ContactIndexingIntegrationContract {
             .body("additionalInformation.failedContactsCount", is(0))
             .body("additionalInformation.failedUsers", empty());
 
-        // Verify that the andre contact is indexed
-        String response = given(jmapSpec)
-            .auth().basic(BOB.asString(), BOB_PASSWORD)
-            .header(ACCEPT_JMAP_RFC_HEADER)
-            .body(autoCompleteQueryRequest)
-            .post()
-        .then()
-            .statusCode(HttpStatus.OK_200)
-            .extract()
-            .body()
-            .asString();
+        // Verify that the read model has caught up with the completed indexing task
+        CALMLY_AWAIT.atMost(Durations.TEN_SECONDS)
+            .untilAsserted(() -> {
+                String response = given(jmapSpec)
+                    .auth().basic(bob.asString(), BOB_PASSWORD)
+                    .header(ACCEPT_JMAP_RFC_HEADER)
+                    .body(autoCompleteQueryRequest)
+                    .post()
+                .then()
+                    .statusCode(HttpStatus.OK_200)
+                    .extract()
+                    .body()
+                    .asString();
 
-        assertThatJson(response)
-            .when(Option.IGNORING_ARRAY_ORDER)
-            .inPath("$.methodResponses[0][1].list")
-            .isEqualTo("""
-                [
-                    {
-                        "id": "${json-unit.ignore}",
-                        "emailAddress": "andre@domain.tld",
-                        "firstname": "",
-                        "surname": ""
-                    }
-                ]""");
+                assertThatJson(response)
+                    .when(Option.IGNORING_ARRAY_ORDER)
+                    .inPath("$.methodResponses[0][1].list")
+                    .isEqualTo("""
+                        [
+                            {
+                                "id": "${json-unit.ignore}",
+                                "emailAddress": "andre@%s",
+                                "firstname": "",
+                                "surname": ""
+                            }
+                        ]""".formatted(domain.asString()));
+            });
     }
 
     protected MessageManager.AppendCommand appendCommandTO(String... to) {
