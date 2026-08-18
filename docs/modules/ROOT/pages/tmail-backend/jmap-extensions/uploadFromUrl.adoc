@@ -2,24 +2,34 @@
 :navtitle: JMAP Upload From URL
 
 This extension lets an authenticated JMAP client import one remote file as a
-normal JMAP upload without transferring the file through the client.
+normal JMAP upload without transferring the file through the client. It enables
+backend-to-backend uploads, for example to attach a file selected from a remote
+Drive service to an email.
 
 == Capability
 
 Servers supporting this extension advertise
 `com:linagora:params:jmap:upload:from-url` in the JMAP session capabilities.
 
-The capability object contains one property:
+The capability object contains these properties:
 
 - `uploadUrl`: an absolute URL template for the upload-from-URL endpoint. The
   template contains the `{accountId}` variable.
+- `allowedOrigins`: optional. An array of origin patterns explicitly
+  accepted by the server. An origin contains no path, query, fragment, or
+  credentials. The `%` token matches a non-empty fragment within one DNS label.
+
+When `allowedOrigins` is absent, the server applies a dynamic URL security
+policy that cannot be advertised as a fixed list. Its absence does not mean
+that arbitrary remote URLs are accepted.
 
 Example:
 
 ....
 {
   "com:linagora:params:jmap:upload:from-url": {
-    "uploadUrl": "https://jmap.example.com/upload-from-url/{accountId}"
+    "uploadUrl": "https://jmap.example.com/upload-from-url/{accountId}",
+    "allowedOrigins": ["https://%-mail.twake.example.com"]
   }
 }
 ....
@@ -78,8 +88,6 @@ Content-Type: application/json
 
 The returned blob has the same ownership, expiry, quota, download, and
 `Email/set` attachment behavior as a traditional JMAP upload.
-
-Server could return the upload progress through Server-Sent Events, for example `{"progress":432743}` prior termination at a fixed rate (2 seconds).
 
 === Errors
 
