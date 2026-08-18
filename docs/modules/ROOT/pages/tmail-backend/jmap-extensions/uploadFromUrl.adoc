@@ -1,0 +1,127 @@
+= JMAP Upload From URL
+:navtitle: JMAP Upload From URL
+
+This extension lets an authenticated JMAP client import one remote file as a
+normal JMAP upload without transferring the file through the client. It enables
+backend-to-backend uploads, for example to attach a file selected from a remote
+Drive service to an email.
+
+== Capability
+
+Servers supporting this extension advertise
+`com:linagora:params:jmap:upload:from-url` in the JMAP session capabilities.
+
+The capability object contains these properties:
+
+- `uploadUrl`: an absolute URL template for the upload-from-URL endpoint. The
+  template contains the `{accountId}` variable.
+- `allowedSources`: optional. An array of remote source patterns explicitly
+  accepted by the server. A source contains no path, query, fragment, or
+  credentials. The `%` token matches a non-empty fragment within one DNS label.
+
+When `allowedSources` is absent, the server applies a dynamic URL security
+policy that cannot be advertised as a fixed list. Its absence does not mean
+that arbitrary remote URLs are accepted.
+
+Example:
+
+....
+{
+  "com:linagora:params:jmap:upload:from-url": {
+    "uploadUrl": "https://jmap.example.com/upload-from-url/{accountId}",
+    "allowedSources": ["https://%-drive.twake.example.com"]
+  }
+}
+....
+
+When this capability is absent, clients must treat upload from URL as
+unavailable.
+
+== Upload route
+
+The extension defines the following authenticated route:
+
+....
+POST /upload-from-url/{accountId}
+....
+
+The request has an empty body and uses these headers:
+
+- `Content-Location`: required. An absolute URL identifying the remote file.
+- `Content-Type`: optional. The media type to associate with the resulting JMAP
+  upload.
+
+One request imports exactly one file. The server applies its configured remote
+URL policy; advertising the capability does not imply that every HTTPS URL is
+accepted.
+
+Example request:
+
+....
+POST /upload-from-url/ACCOUNT_ID HTTP/1.1
+Authorization: Bearer TOKEN
+Content-Location: https://drive.example.com/files/downloads/token/report.pdf
+Content-Type: application/pdf
+....
+
+The optional request `Content-Type` hints the media type. When it is absent or
+invalid, the server should attempt to obtain the media type from the remote response.
+
+The imported file is subject to the normal JMAP upload size limit.
+
+=== Success response
+
+Success uses the response defined by RFC 8620 for binary upload and returns
+`201 Created`:
+
+....
+HTTP/1.1 201 Created
+Content-Type: application/json
+
+{
+  "accountId": "ACCOUNT_ID",
+  "blobId": "uploads-...",
+  "type": "application/pdf",
+  "size": 123456
+}
+....
+
+The returned blob has the same ownership, expiry, quota, download, and
+`Email/set` attachment behavior as a traditional JMAP upload.
+
+=== Errors
+
+Errors use Problem Details with matching HTTP and `status` values:
+
+|===
+| Status | Meaning
+
+| `400`
+| Missing or malformed request metadata, non-empty request body, or rejected URL.
+
+| `401`
+| Authentication failed.
+
+| `403`
+| The target account is not accessible.
+
+| `413`
+| The decoded remote file exceeds the configured JMAP upload size.
+
+| `429`
+| Remote file transfer capacity is unavailable.
+
+| `500`
+| Upload persistence failed unexpectedly.
+
+| `502`
+| The remote server could not be reached, returned an unsupported response, or
+  supplied content that could not be decoded.
+
+| `504`
+| The remote connection or transfer timed out.
+|===
+
+If the client disconnects while an import is in progress, the server cancels the
+remote transfer and upload consumption. This does not guarantee rollback when
+the existing JMAP upload service has already committed the upload.

@@ -43,6 +43,7 @@
 *** xref:tmail-backend/jmap-extensions/teamMailboxRevokeAccess.adoc[]
 *** xref:tmail-backend/jmap-extensions/ticketAuthentication.adoc[]
 *** xref:tmail-backend/jmap-extensions/unauthenticatedBlobAccess.adoc[]
+*** xref:tmail-backend/jmap-extensions/uploadFromUrl.adoc[]
 ** xref:tmail-backend/smtp-extensions/index.adoc[]
 *** xref:tmail-backend/smtp-extensions/smtpAuthDelegationExtension.adoc[]
 ** xref:tmail-backend/webadmin.adoc[]
