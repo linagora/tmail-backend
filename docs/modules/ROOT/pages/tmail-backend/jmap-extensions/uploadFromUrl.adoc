@@ -15,11 +15,11 @@ The capability object contains these properties:
 
 - `uploadUrl`: an absolute URL template for the upload-from-URL endpoint. The
   template contains the `{accountId}` variable.
-- `allowedOrigins`: optional. An array of origin patterns explicitly
-  accepted by the server. An origin contains no path, query, fragment, or
+- `allowedSources`: optional. An array of remote source patterns explicitly
+  accepted by the server. A source contains no path, query, fragment, or
   credentials. The `%` token matches a non-empty fragment within one DNS label.
 
-When `allowedOrigins` is absent, the server applies a dynamic URL security
+When `allowedSources` is absent, the server applies a dynamic URL security
 policy that cannot be advertised as a fixed list. Its absence does not mean
 that arbitrary remote URLs are accepted.
 
@@ -29,7 +29,7 @@ Example:
 {
   "com:linagora:params:jmap:upload:from-url": {
     "uploadUrl": "https://jmap.example.com/upload-from-url/{accountId}",
-    "allowedOrigins": ["https://%-mail.twake.example.com"]
+    "allowedSources": ["https://%-drive.twake.example.com"]
   }
 }
 ....
