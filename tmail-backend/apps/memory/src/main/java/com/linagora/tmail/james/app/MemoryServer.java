@@ -121,8 +121,8 @@ import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.listener.CollectTrustedContactsListenerModule;
 import com.linagora.tmail.listener.FilteringRuleReferenceUpdaterListenerModule;
-import com.linagora.tmail.mailbox.quota.memory.MemoryUserQuotaReporterModule;
 import com.linagora.tmail.mailbox.quota.memory.MemoryQuotaSumDaoModule;
+import com.linagora.tmail.mailbox.quota.memory.MemoryUserQuotaReporterModule;
 import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingModule;
 import com.linagora.tmail.smtp.TMailSMTPModule;
 import com.linagora.tmail.team.TMailScanningQuotaSearcherModule;
@@ -143,8 +143,8 @@ import com.linagora.tmail.webadmin.label.LabelRoutesModule;
 import com.linagora.tmail.webadmin.mailbox.MailboxResourcesLocationRoutesModule;
 import com.linagora.tmail.webadmin.mailinglist.MailingListConfigurationModule;
 import com.linagora.tmail.webadmin.mailinglist.MailingListRoutesModule;
-import com.linagora.tmail.webadmin.quota.UserQuotaReporterRoutesModule;
 import com.linagora.tmail.webadmin.quota.QuotaSumRoutesModule;
+import com.linagora.tmail.webadmin.quota.UserQuotaReporterRoutesModule;
 import com.linagora.tmail.webadmin.templates.TemplatesProvisionModule;
 
 public class MemoryServer {
