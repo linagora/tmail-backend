@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### TMail
+
+#### Added
+
+- ISSUE-2536 WebAdmin routes to expose the sum of quota (count and size) globally and per domain
+
 ## [1.0.19] - 2026-06-08
 
 ### James
