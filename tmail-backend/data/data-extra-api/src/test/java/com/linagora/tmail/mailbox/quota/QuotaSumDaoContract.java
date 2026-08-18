@@ -12,7 +12,7 @@
  *  This program is distributed in the hope that it will be         *
  *  useful, but WITHOUT ANY WARRANTY; without even the implied      *
  *  warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR         *
- *  PURPOSE. See the GNU Affero General Public License for          *
+ *  purpose. See the GNU Affero General Public License for          *
  *  more details.                                                   *
  *******************************************************************/
 
@@ -21,7 +21,6 @@ package com.linagora.tmail.mailbox.quota;
 import static org.apache.james.mailbox.store.quota.DefaultUserQuotaRootResolver.SEPARATOR;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.when;
 
 import java.util.Optional;
 
@@ -29,17 +28,22 @@ import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.apache.james.core.quota.QuotaCountUsage;
 import org.apache.james.core.quota.QuotaSizeUsage;
+import org.apache.james.dnsservice.api.DNSService;
+import org.apache.james.domainlist.api.DomainListException;
+import org.apache.james.domainlist.lib.DomainListConfiguration;
+import org.apache.james.domainlist.memory.MemoryDomainList;
 import org.apache.james.mailbox.exception.MailboxException;
+import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
 import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailbox.model.QuotaOperation;
 import org.apache.james.mailbox.model.QuotaRoot;
 import org.apache.james.mailbox.quota.CurrentQuotaManager;
 import org.apache.james.mailbox.quota.UserQuotaRootResolver;
 import org.apache.james.user.api.UsersRepository;
-
+import org.apache.james.user.api.UsersRepositoryException;
+import org.apache.james.user.memory.MemoryUsersRepository;
 import org.junit.jupiter.api.Test;
 
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public interface QuotaSumDaoContract {
@@ -59,19 +63,24 @@ public interface QuotaSumDaoContract {
     CurrentQuotaManager currentQuotaManager();
 
     default UsersRepository usersRepository() throws MailboxException {
-        UsersRepository usersRepository = mock(UsersRepository.class);
-        when(usersRepository.listUsersOfADomainReactive(DOMAIN_1)).thenReturn(Flux.just(BOB, ALICE));
-        when(usersRepository.listUsersOfADomainReactive(DOMAIN_2)).thenReturn(Flux.just(ANDRE));
-        return usersRepository;
+        try {
+            DNSService dnsService = mock(DNSService.class);
+            MemoryDomainList domainList = new MemoryDomainList(dnsService);
+            domainList.configure(DomainListConfiguration.DEFAULT);
+            domainList.addDomain(DOMAIN_1);
+            domainList.addDomain(DOMAIN_2);
+            MemoryUsersRepository usersRepository = MemoryUsersRepository.withVirtualHosting(domainList);
+            usersRepository.addUser(BOB, "pass");
+            usersRepository.addUser(ALICE, "pass");
+            usersRepository.addUser(ANDRE, "pass");
+            return usersRepository;
+        } catch (DomainListException | UsersRepositoryException | org.apache.commons.configuration2.ex.ConfigurationException e) {
+            throw new MailboxException("Failed to set up the in-memory users repository", e);
+        }
     }
 
-    default UserQuotaRootResolver userQuotaRootResolver() throws MailboxException {
-        UserQuotaRootResolver userQuotaRootResolver = mock(UserQuotaRootResolver.class);
-        when(userQuotaRootResolver.forUser(BOB)).thenReturn(BOB_QUOTA_ROOT);
-        when(userQuotaRootResolver.forUser(ALICE)).thenReturn(ALICE_QUOTA_ROOT);
-        when(userQuotaRootResolver.forUser(ANDRE)).thenReturn(ANDRE_QUOTA_ROOT);
-        when(userQuotaRootResolver.forUser(LOCAL_PART_ONLY)).thenReturn(LOCAL_PART_ONLY_QUOTA_ROOT);
-        return userQuotaRootResolver;
+    default UserQuotaRootResolver userQuotaRootResolver() {
+        return InMemoryIntegrationResources.defaultResources().getDefaultUserQuotaRootResolver();
     }
 
     default void setCurrentQuotas(QuotaRoot quotaRoot, long count, long size) {

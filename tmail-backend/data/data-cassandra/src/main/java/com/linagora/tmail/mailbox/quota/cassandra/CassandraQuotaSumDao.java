@@ -12,7 +12,7 @@
  *  This program is distributed in the hope that it will be         *
  *  useful, but WITHOUT ANY WARRANTY; without even the implied      *
  *  warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR         *
- *  PURPOSE. See the GNU Affero General Public License for          *
+ *  purpose. See the GNU Affero General Public License for          *
  *  more details.                                                   *
  *******************************************************************/
 
@@ -28,6 +28,7 @@ import static org.apache.james.backends.cassandra.components.CassandraQuotaCurre
 import jakarta.inject.Inject;
 
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
+import org.apache.james.core.Domain;
 import org.apache.james.core.quota.QuotaComponent;
 import org.apache.james.core.quota.QuotaCurrentValue;
 import org.apache.james.core.quota.QuotaType;
@@ -44,20 +45,26 @@ import com.linagora.tmail.mailbox.quota.QuotaSumDao;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-public class CassandraQuotaSumDao extends QuotaSumDao {
+public class CassandraQuotaSumDao implements QuotaSumDao {
+    private static final int DEFAULT_CONCURRENCY = 16;
     private static final QuotaComponent MAILBOX_COMPONENT = QuotaComponent.MAILBOX;
 
     private final CassandraAsyncExecutor executor;
     private final PreparedStatement getAllStatement;
+    private final UsersRepository usersRepository;
+    private final UserQuotaRootResolver userQuotaRootResolver;
+    private final CurrentQuotaManager currentQuotaManager;
 
     @Inject
     public CassandraQuotaSumDao(CqlSession session,
-                                 UsersRepository usersRepository,
-                                 UserQuotaRootResolver userQuotaRootResolver,
-                                 CurrentQuotaManager currentQuotaManager) {
-        super(usersRepository, userQuotaRootResolver, currentQuotaManager);
+                                UsersRepository usersRepository,
+                                UserQuotaRootResolver userQuotaRootResolver,
+                                CurrentQuotaManager currentQuotaManager) {
         this.executor = new CassandraAsyncExecutor(session);
         this.getAllStatement = session.prepare(selectFrom(TABLE_NAME).all().build());
+        this.usersRepository = usersRepository;
+        this.userQuotaRootResolver = userQuotaRootResolver;
+        this.currentQuotaManager = currentQuotaManager;
     }
 
     @Override
@@ -65,6 +72,14 @@ public class CassandraQuotaSumDao extends QuotaSumDao {
         return mailboxCurrentValues()
             .filter(value -> value.getCurrentValue() > 0)
             .reduce(QuotaSum.ZERO, QuotaSum::accumulate);
+    }
+
+    @Override
+    public Mono<QuotaSum> domainUsage(Domain domain) {
+        return Flux.from(usersRepository.listUsersOfADomainReactive(domain))
+            .flatMap(user -> Mono.from(currentQuotaManager.getCurrentQuotas(userQuotaRootResolver.forUser(user))), DEFAULT_CONCURRENCY)
+            .map(QuotaSum::from)
+            .reduce(QuotaSum.ZERO, QuotaSum::sum);
     }
 
     private Flux<QuotaCurrentValue> mailboxCurrentValues() {

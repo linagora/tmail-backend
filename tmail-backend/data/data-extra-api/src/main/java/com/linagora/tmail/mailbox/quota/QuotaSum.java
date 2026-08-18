@@ -18,11 +18,16 @@
 
 package com.linagora.tmail.mailbox.quota;
 
-import org.apache.james.core.quota.QuotaType;
 import org.apache.james.core.quota.QuotaCurrentValue;
+import org.apache.james.core.quota.QuotaType;
+import org.apache.james.mailbox.model.CurrentQuotas;
 
 public record QuotaSum(long count, long size) {
     public static final QuotaSum ZERO = new QuotaSum(0L, 0L);
+
+    public static QuotaSum from(CurrentQuotas quotas) {
+        return new QuotaSum(quotas.count().asLong(), quotas.size().asLong());
+    }
 
     public QuotaSum accumulate(QuotaCurrentValue value) {
         if (value.getQuotaType().equals(QuotaType.COUNT)) {
