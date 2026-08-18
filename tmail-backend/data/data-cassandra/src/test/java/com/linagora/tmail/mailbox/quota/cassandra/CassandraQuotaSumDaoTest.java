@@ -39,9 +39,10 @@ public class CassandraQuotaSumDaoTest implements QuotaSumDaoContract {
 
     @BeforeEach
     void setUp() throws MailboxException {
-        testee = new CassandraQuotaSumDao(cassandraCluster.getCassandraCluster().getConf(), quotaRootResolver());
         currentQuotaManager = new CassandraCurrentQuotaManagerV2(
             new CassandraQuotaCurrentValueDao(cassandraCluster.getCassandraCluster().getConf()));
+        testee = new CassandraQuotaSumDao(cassandraCluster.getCassandraCluster().getConf(),
+            usersRepository(), userQuotaRootResolver(), currentQuotaManager);
     }
 
     @Override

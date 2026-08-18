@@ -28,12 +28,12 @@ import static org.apache.james.backends.cassandra.components.CassandraQuotaCurre
 import jakarta.inject.Inject;
 
 import org.apache.james.backends.cassandra.utils.CassandraAsyncExecutor;
-import org.apache.james.core.Domain;
-import org.apache.james.core.Username;
 import org.apache.james.core.quota.QuotaComponent;
 import org.apache.james.core.quota.QuotaCurrentValue;
 import org.apache.james.core.quota.QuotaType;
-import org.apache.james.mailbox.quota.QuotaRootResolver;
+import org.apache.james.mailbox.quota.CurrentQuotaManager;
+import org.apache.james.mailbox.quota.UserQuotaRootResolver;
+import org.apache.james.user.api.UsersRepository;
 
 import com.datastax.oss.driver.api.core.CqlSession;
 import com.datastax.oss.driver.api.core.cql.PreparedStatement;
@@ -44,43 +44,33 @@ import com.linagora.tmail.mailbox.quota.QuotaSumDao;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-public class CassandraQuotaSumDao implements QuotaSumDao {
+public class CassandraQuotaSumDao extends QuotaSumDao {
+    private static final QuotaComponent MAILBOX_COMPONENT = QuotaComponent.MAILBOX;
+
     private final CassandraAsyncExecutor executor;
     private final PreparedStatement getAllStatement;
-    private final QuotaRootResolver quotaRootResolver;
 
     @Inject
-    public CassandraQuotaSumDao(CqlSession session, QuotaRootResolver quotaRootResolver) {
+    public CassandraQuotaSumDao(CqlSession session,
+                                 UsersRepository usersRepository,
+                                 UserQuotaRootResolver userQuotaRootResolver,
+                                 CurrentQuotaManager currentQuotaManager) {
+        super(usersRepository, userQuotaRootResolver, currentQuotaManager);
         this.executor = new CassandraAsyncExecutor(session);
         this.getAllStatement = session.prepare(selectFrom(TABLE_NAME).all().build());
-        this.quotaRootResolver = quotaRootResolver;
     }
 
     @Override
     public Mono<QuotaSum> globalUsage() {
         return mailboxCurrentValues()
             .filter(value -> value.getCurrentValue() > 0)
-            .reduce(QuotaSum.ZERO, CassandraQuotaSumDao::accumulate);
-    }
-
-    @Override
-    public Mono<QuotaSum> domainUsage(Domain domain) {
-        return mailboxCurrentValues()
-            .filter(value -> value.getCurrentValue() > 0)
-            .filterWhen(value -> matchesDomain(value, domain))
-            .reduce(QuotaSum.ZERO, CassandraQuotaSumDao::accumulate);
+            .reduce(QuotaSum.ZERO, QuotaSum::accumulate);
     }
 
     private Flux<QuotaCurrentValue> mailboxCurrentValues() {
         return executor.executeRows(getAllStatement.bind())
             .map(this::toCurrentValue)
-            .filter(value -> value.getQuotaComponent().equals(QuotaComponent.MAILBOX));
-    }
-
-    private Mono<Boolean> matchesDomain(QuotaCurrentValue value, Domain domain) {
-        return Mono.fromCallable(() -> quotaRootResolver.associatedUsername(quotaRootResolver.fromString(value.getIdentifier())))
-            .map(Username::getDomainPart)
-            .map(maybeDomain -> maybeDomain.map(domain::equals).orElse(false));
+            .filter(value -> value.getQuotaComponent().equals(MAILBOX_COMPONENT));
     }
 
     private QuotaCurrentValue toCurrentValue(Row row) {
@@ -90,15 +80,5 @@ public class CassandraQuotaSumDao implements QuotaSumDao {
             .quotaType(QuotaType.of(row.get(QUOTA_TYPE, String.class)))
             .currentValue(row.get(CURRENT_VALUE, Long.class))
             .build();
-    }
-
-    private static QuotaSum accumulate(QuotaSum acc, QuotaCurrentValue value) {
-        if (value.getQuotaType().equals(QuotaType.COUNT)) {
-            return new QuotaSum(acc.count() + value.getCurrentValue(), acc.size());
-        }
-        if (value.getQuotaType().equals(QuotaType.SIZE)) {
-            return new QuotaSum(acc.count(), acc.size() + value.getCurrentValue());
-        }
-        return acc;
     }
 }

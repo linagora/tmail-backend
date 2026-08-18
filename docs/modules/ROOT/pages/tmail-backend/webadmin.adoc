@@ -1410,6 +1410,50 @@ Response codes:
 * 400: Error in the request. Details can be found in the reported error.
 * 415: Content type is invalid. It must be `application/x-www-form-urlencoded`.
 
+== Quota sum
+
+Exposes the total current mailbox quota usage (message count and storage size), aggregated across all users or restricted to a single domain.
+
+The `count` field is the total number of messages, and the `size` field is the total storage in bytes. Only mailbox quota rows (`QuotaComponent.MAILBOX`) are accounted for; other quota components such as Sieve are excluded.
+
+=== Get the global quota usage sum
+
+....
+curl -XGET http://ip:port/quota/sum
+....
+
+Returns the sum of current mailbox quota usage across all users of the server:
+
+....
+{
+    "count": 37346,
+    "size": 3486924565
+}
+....
+
+Return codes:
+
+- `200` the aggregated sum was returned
+
+=== Get the quota usage sum for a domain
+
+....
+curl -XGET http://ip:port/quota/domains/:domain
+....
+
+Returns the sum of current mailbox quota usage for the users of the given domain. The users of the domain are enumerated and their individual mailbox quotas are summed, which is more efficient than scanning all quota rows in multi-tenant (SaaS) deployments with many small domains.
+
+....
+{
+    "count": 37346,
+    "size": 3486924565
+}
+....
+
+Return codes:
+
+- `200` the aggregated sum was returned (returns `{ "count": 0, "size": 0 }` when the domain has no usage or no users)
+
 == User quota reports
 
 === Get count of users having specific quotas

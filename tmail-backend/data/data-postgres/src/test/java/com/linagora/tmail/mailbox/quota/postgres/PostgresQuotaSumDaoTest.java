@@ -39,9 +39,10 @@ public class PostgresQuotaSumDaoTest implements QuotaSumDaoContract {
 
     @BeforeEach
     void setUp() throws MailboxException {
-        testee = new PostgresQuotaSumDao(postgresExtension.getDefaultPostgresExecutor(), quotaRootResolver());
         currentQuotaManager = new PostgresCurrentQuotaManager(
             new PostgresQuotaCurrentValueDAO(postgresExtension.getDefaultPostgresExecutor()));
+        testee = new PostgresQuotaSumDao(postgresExtension.getDefaultPostgresExecutor(),
+            usersRepository(), userQuotaRootResolver(), currentQuotaManager);
     }
 
     @Override

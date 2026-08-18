@@ -19,11 +19,39 @@
 package com.linagora.tmail.mailbox.quota;
 
 import org.apache.james.core.Domain;
+import org.apache.james.mailbox.model.CurrentQuotas;
+import org.apache.james.mailbox.quota.CurrentQuotaManager;
+import org.apache.james.mailbox.quota.UserQuotaRootResolver;
+import org.apache.james.user.api.UsersRepository;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-public interface QuotaSumDao {
-    Mono<QuotaSum> globalUsage();
+public abstract class QuotaSumDao {
+    private static final int DEFAULT_CONCURRENCY = 16;
 
-    Mono<QuotaSum> domainUsage(Domain domain);
+    private final UsersRepository usersRepository;
+    private final UserQuotaRootResolver userQuotaRootResolver;
+    private final CurrentQuotaManager currentQuotaManager;
+
+    protected QuotaSumDao(UsersRepository usersRepository,
+                           UserQuotaRootResolver userQuotaRootResolver,
+                           CurrentQuotaManager currentQuotaManager) {
+        this.usersRepository = usersRepository;
+        this.userQuotaRootResolver = userQuotaRootResolver;
+        this.currentQuotaManager = currentQuotaManager;
+    }
+
+    public abstract Mono<QuotaSum> globalUsage();
+
+    public Mono<QuotaSum> domainUsage(Domain domain) {
+        return Flux.from(usersRepository.listUsersOfADomainReactive(domain))
+            .flatMap(user -> Mono.from(currentQuotaManager.getCurrentQuotas(userQuotaRootResolver.forUser(user))), DEFAULT_CONCURRENCY)
+            .map(QuotaSumDao::toQuotaSum)
+            .reduce(QuotaSum.ZERO, QuotaSum::sum);
+    }
+
+    private static QuotaSum toQuotaSum(CurrentQuotas quotas) {
+        return new QuotaSum(quotas.count().asLong(), quotas.size().asLong());
+    }
 }

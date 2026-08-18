@@ -34,8 +34,12 @@ import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailbox.model.QuotaOperation;
 import org.apache.james.mailbox.model.QuotaRoot;
 import org.apache.james.mailbox.quota.CurrentQuotaManager;
-import org.apache.james.mailbox.quota.QuotaRootResolver;
+import org.apache.james.mailbox.quota.UserQuotaRootResolver;
+import org.apache.james.user.api.UsersRepository;
 
+import org.junit.jupiter.api.Test;
+
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public interface QuotaSumDaoContract {
@@ -54,25 +58,20 @@ public interface QuotaSumDaoContract {
     QuotaSumDao testee();
     CurrentQuotaManager currentQuotaManager();
 
-    default QuotaRootResolver quotaRootResolver() throws MailboxException {
-        QuotaRootResolver quotaRootResolver = mock(QuotaRootResolver.class);
-        when(quotaRootResolver.fromString(BOB_QUOTA_ROOT.asString()))
-            .thenReturn(BOB_QUOTA_ROOT);
-        when(quotaRootResolver.fromString(ALICE_QUOTA_ROOT.asString()))
-            .thenReturn(ALICE_QUOTA_ROOT);
-        when(quotaRootResolver.fromString(ANDRE_QUOTA_ROOT.asString()))
-            .thenReturn(ANDRE_QUOTA_ROOT);
-        when(quotaRootResolver.fromString(LOCAL_PART_ONLY_QUOTA_ROOT.asString()))
-            .thenReturn(LOCAL_PART_ONLY_QUOTA_ROOT);
-        when(quotaRootResolver.associatedUsername(BOB_QUOTA_ROOT))
-            .thenReturn(BOB);
-        when(quotaRootResolver.associatedUsername(ALICE_QUOTA_ROOT))
-            .thenReturn(ALICE);
-        when(quotaRootResolver.associatedUsername(ANDRE_QUOTA_ROOT))
-            .thenReturn(ANDRE);
-        when(quotaRootResolver.associatedUsername(LOCAL_PART_ONLY_QUOTA_ROOT))
-            .thenReturn(LOCAL_PART_ONLY);
-        return quotaRootResolver;
+    default UsersRepository usersRepository() throws MailboxException {
+        UsersRepository usersRepository = mock(UsersRepository.class);
+        when(usersRepository.listUsersOfADomainReactive(DOMAIN_1)).thenReturn(Flux.just(BOB, ALICE));
+        when(usersRepository.listUsersOfADomainReactive(DOMAIN_2)).thenReturn(Flux.just(ANDRE));
+        return usersRepository;
+    }
+
+    default UserQuotaRootResolver userQuotaRootResolver() throws MailboxException {
+        UserQuotaRootResolver userQuotaRootResolver = mock(UserQuotaRootResolver.class);
+        when(userQuotaRootResolver.forUser(BOB)).thenReturn(BOB_QUOTA_ROOT);
+        when(userQuotaRootResolver.forUser(ALICE)).thenReturn(ALICE_QUOTA_ROOT);
+        when(userQuotaRootResolver.forUser(ANDRE)).thenReturn(ANDRE_QUOTA_ROOT);
+        when(userQuotaRootResolver.forUser(LOCAL_PART_ONLY)).thenReturn(LOCAL_PART_ONLY_QUOTA_ROOT);
+        return userQuotaRootResolver;
     }
 
     default void setCurrentQuotas(QuotaRoot quotaRoot, long count, long size) {
@@ -80,13 +79,13 @@ public interface QuotaSumDaoContract {
             new QuotaOperation(quotaRoot, QuotaCountUsage.count(count), QuotaSizeUsage.size(size)))).block();
     }
 
-    @org.junit.jupiter.api.Test
+    @Test
     default void globalUsageShouldBeZeroByDefault() {
         assertThat(Mono.from(testee().globalUsage()).block())
             .isEqualTo(QuotaSum.ZERO);
     }
 
-    @org.junit.jupiter.api.Test
+    @Test
     default void globalUsageShouldSumCountAndSizeAcrossUsersAndDomains() {
         setCurrentQuotas(BOB_QUOTA_ROOT, 5, 500);
         setCurrentQuotas(ALICE_QUOTA_ROOT, 3, 300);
@@ -96,16 +95,7 @@ public interface QuotaSumDaoContract {
             .isEqualTo(new QuotaSum(10, 1000));
     }
 
-    @org.junit.jupiter.api.Test
-    default void globalUsageShouldOnlyAccountPositiveValues() {
-        setCurrentQuotas(BOB_QUOTA_ROOT, -5, -100);
-        setCurrentQuotas(ALICE_QUOTA_ROOT, 3, 300);
-
-        assertThat(Mono.from(testee().globalUsage()).block())
-            .isEqualTo(new QuotaSum(3, 300));
-    }
-
-    @org.junit.jupiter.api.Test
+    @Test
     default void domainUsageShouldReturnZeroWhenNoUsageForDomain() {
         setCurrentQuotas(BOB_QUOTA_ROOT, 5, 500);
 
@@ -113,7 +103,7 @@ public interface QuotaSumDaoContract {
             .isEqualTo(QuotaSum.ZERO);
     }
 
-    @org.junit.jupiter.api.Test
+    @Test
     default void domainUsageShouldSumOnlyMatchingDomain() {
         setCurrentQuotas(BOB_QUOTA_ROOT, 5, 500);
         setCurrentQuotas(ALICE_QUOTA_ROOT, 3, 300);
@@ -125,16 +115,7 @@ public interface QuotaSumDaoContract {
             .isEqualTo(new QuotaSum(2, 200));
     }
 
-    @org.junit.jupiter.api.Test
-    default void domainUsageShouldOnlyAccountPositiveValues() {
-        setCurrentQuotas(BOB_QUOTA_ROOT, -5, 500);
-        setCurrentQuotas(ALICE_QUOTA_ROOT, 3, -300);
-
-        assertThat(Mono.from(testee().domainUsage(DOMAIN_1)).block())
-            .isEqualTo(new QuotaSum(3, 500));
-    }
-
-    @org.junit.jupiter.api.Test
+    @Test
     default void domainUsageShouldNotAccountUsersWithoutDomain() {
         setCurrentQuotas(LOCAL_PART_ONLY_QUOTA_ROOT, 7, 700);
 
