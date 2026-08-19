@@ -19,7 +19,6 @@
 package com.linagora.tmail.saas.rabbitmq.subscription;
 
 import static com.linagora.tmail.saas.rabbitmq.TWPConstants.TWP_INJECTION_KEY;
-import static org.apache.james.backends.rabbitmq.Constants.DURABLE;
 import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
 import java.io.Closeable;
@@ -29,47 +28,29 @@ import java.util.Optional;
 import jakarta.annotation.PreDestroy;
 import jakarta.inject.Named;
 
-import org.apache.james.backends.rabbitmq.QueueArguments;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
-import org.apache.james.backends.rabbitmq.ReceiverProvider;
 import org.apache.james.lifecycle.api.Startable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.ImmutableList;
+import com.linagora.tmail.rabbitmq.ManagedRabbitMQConsumer;
+import com.linagora.tmail.rabbitmq.QueueDeclaration;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
-import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
-import com.rabbitmq.client.ShutdownSignalException;
 
-import reactor.core.Disposable;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.AcknowledgableDelivery;
-import reactor.rabbitmq.BindingSpecification;
-import reactor.rabbitmq.ConsumeOptions;
-import reactor.rabbitmq.ExchangeSpecification;
-import reactor.rabbitmq.QueueSpecification;
-import reactor.rabbitmq.Receiver;
-import reactor.rabbitmq.Sender;
 
 public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
     public record DomainSubscriptionConsumerConfig(String queue, String deadLetterQueue) {
         public static DomainSubscriptionConsumerConfig DEFAULT = new DomainSubscriptionConsumerConfig("tmail-saas-domain-subscription", "tmail-saas-domain-subscription-dead-letter");
     }
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SaaSDomainSubscriptionConsumer.class);
-    private static final boolean REQUEUE_ON_NACK = true;
+    private static final Duration CONSUMER_TIMEOUT = Duration.ofMinutes(10L);
 
-    private final ReceiverProvider receiverProvider;
-    private final Sender sender;
-    private final RabbitMQConfiguration rabbitMQConfiguration;
-    private final TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration;
-    private final SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration;
+    private final ManagedRabbitMQConsumer consumer;
     private final SaaSMessageHandler saasDomainSubscriptionHandler;
     private final DomainSubscriptionConsumerConfig consumerConfig;
-    private Disposable consumeSubscriptionDisposable;
 
     public SaaSDomainSubscriptionConsumer(@Named(TWP_INJECTION_KEY) ReactorRabbitMQChannelPool channelPool,
                                           @Named(TWP_INJECTION_KEY) RabbitMQConfiguration rabbitMQConfiguration,
@@ -77,114 +58,44 @@ public class SaaSDomainSubscriptionConsumer implements Closeable, Startable {
                                           SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration,
                                           SaaSMessageHandler saasDomainSubscriptionHandler,
                                           DomainSubscriptionConsumerConfig consumerConfig) {
-        this.receiverProvider = channelPool::createReceiver;
-        this.sender = channelPool.getSender();
-        this.rabbitMQConfiguration = rabbitMQConfiguration;
-        this.twpCommonRabbitMQConfiguration = twpCommonRabbitMQConfiguration;
-        this.saasSubscriptionRabbitMQConfiguration = saasSubscriptionRabbitMQConfiguration;
         this.saasDomainSubscriptionHandler = saasDomainSubscriptionHandler;
         this.consumerConfig = consumerConfig;
+        this.consumer = new ManagedRabbitMQConsumer.Factory(channelPool)
+            .create(new ManagedRabbitMQConsumer.Parameters(
+                new QueueDeclaration(
+                    ImmutableList.of(
+                        new QueueDeclaration.ExchangeBinding(saasSubscriptionRabbitMQConfiguration.exchange(), BuiltinExchangeType.TOPIC, saasSubscriptionRabbitMQConfiguration.domainRoutingKey()),
+                        new QueueDeclaration.ExchangeBinding(saasSubscriptionRabbitMQConfiguration.configurationExchange(), BuiltinExchangeType.TOPIC, saasSubscriptionRabbitMQConfiguration.domainConfigurationRoutingKey())),
+                    consumerConfig.queue(),
+                    consumerConfig.deadLetterQueue(), BuiltinExchangeType.FANOUT, consumerConfig.deadLetterQueue(),
+                    Optional.empty()),
+                () -> SaaSSubscriptionConsumer.queueArgumentSupplier(rabbitMQConfiguration, twpCommonRabbitMQConfiguration),
+                true,
+                Optional.of(CONSUMER_TIMEOUT),
+                Optional.of(DEFAULT_CONCURRENCY),
+                1,
+                this::consumeDomainSubscriptionUpdate));
     }
 
     public void init() {
-        declareExchangeAndQueue();
-        startConsumer();
+        consumer.init();
     }
 
     protected DomainSubscriptionConsumerConfig getConsumerConfig() {
         return consumerConfig;
     }
 
-    public void declareExchangeAndQueue() {
-        Flux.concat(
-                declareExchange(saasSubscriptionRabbitMQConfiguration.exchange()),
-                declareExchange(saasSubscriptionRabbitMQConfiguration.configurationExchange()),
-                sender.declareExchange(ExchangeSpecification.exchange(consumerConfig.deadLetterQueue())
-                    .durable(DURABLE).type(BuiltinExchangeType.FANOUT.getType())),
-                sender.declareQueue(QueueSpecification
-                    .queue(consumerConfig.deadLetterQueue())
-                    .durable(DURABLE)
-                    .arguments(queueArgumentSupplier()
-                        .build())),
-                sender.bind(BindingSpecification.binding()
-                    .exchange(consumerConfig.deadLetterQueue())
-                    .queue(consumerConfig.deadLetterQueue())
-                    .routingKey("")),
-                sender.declareQueue(QueueSpecification
-                    .queue(consumerConfig.queue())
-                    .durable(DURABLE)
-                    .arguments(queueArgumentSupplier()
-                        .deadLetter(consumerConfig.deadLetterQueue())
-                        .singleActiveConsumer()
-                        .consumerTimeout(Duration.ofMinutes(10L).toMillis())
-                        .build())),
-                sender.bind(BindingSpecification.binding()
-                    .exchange(saasSubscriptionRabbitMQConfiguration.exchange())
-                    .queue(consumerConfig.queue())
-                    .routingKey(saasSubscriptionRabbitMQConfiguration.domainRoutingKey())),
-                sender.bind(BindingSpecification.binding()
-                    .exchange(saasSubscriptionRabbitMQConfiguration.configurationExchange())
-                    .queue(consumerConfig.queue())
-                    .routingKey(saasSubscriptionRabbitMQConfiguration.domainConfigurationRoutingKey())))
-            .then()
-            .block();
-    }
-
-    private Mono<AMQP.Exchange.DeclareOk> declareExchange(String exchange) {
-        return sender.declareExchange(ExchangeSpecification.exchange(exchange)
-                .durable(DURABLE).type(BuiltinExchangeType.TOPIC.getType()))
-            .onErrorResume(error -> error instanceof ShutdownSignalException && error.getMessage().contains("reply-code=406, reply-text=PRECONDITION_FAILED"),
-                error -> {
-                    LOGGER.warn("Exchange `{}` already exists but with different configuration. Ignoring this error. \nError message: {}", exchange, error.getMessage());
-                    return Mono.empty();
-                });
-    }
-
-    private QueueArguments.Builder queueArgumentSupplier() {
-        if (!twpCommonRabbitMQConfiguration.quorumQueuesBypass()) {
-            return rabbitMQConfiguration.workQueueArgumentsBuilder();
-        }
-        return QueueArguments.builder();
-    }
-
-    public void startConsumer() {
-        consumeSubscriptionDisposable = consumeDomainSubscriptionQueue();
-    }
-
     public void restartConsumer() {
-        Disposable previousConsumer = consumeSubscriptionDisposable;
-        consumeSubscriptionDisposable = consumeDomainSubscriptionQueue();
-        Optional.ofNullable(previousConsumer)
-            .ifPresent(Disposable::dispose);
+        consumer.restart();
     }
 
-    private Disposable consumeDomainSubscriptionQueue() {
-        return delivery(consumerConfig.queue())
-            .concatMap(delivery -> consumeDomainSubscriptionUpdate(delivery, delivery.getBody()))
-            .subscribeOn(Schedulers.boundedElastic())
-            .subscribe();
-    }
-
-    public Flux<AcknowledgableDelivery> delivery(String queue) {
-        return Flux.using(receiverProvider::createReceiver,
-            receiver -> receiver.consumeManualAck(queue, new ConsumeOptions()
-                .qos(DEFAULT_CONCURRENCY)),
-            Receiver::close);
-    }
-
-    private Mono<Void> consumeDomainSubscriptionUpdate(AcknowledgableDelivery ackDelivery, byte[] messagePayload) {
-        return saasDomainSubscriptionHandler.handleMessage(messagePayload)
-            .doOnSuccess(result -> ackDelivery.ack())
-            .onErrorResume(error -> {
-                LOGGER.error("Error when consuming SaaS domain subscription message", error);
-                ackDelivery.nack(!REQUEUE_ON_NACK);
-                return Mono.empty();
-            });
+    private Mono<Void> consumeDomainSubscriptionUpdate(AcknowledgableDelivery ackDelivery) {
+        return saasDomainSubscriptionHandler.handleMessage(ackDelivery.getBody());
     }
 
     @PreDestroy
     @Override
     public void close() {
-        Optional.ofNullable(consumeSubscriptionDisposable).ifPresent(Disposable::dispose);
+        consumer.close();
     }
 }
