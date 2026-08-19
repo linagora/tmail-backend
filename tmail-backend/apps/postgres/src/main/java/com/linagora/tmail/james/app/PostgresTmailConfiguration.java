@@ -51,6 +51,7 @@ import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.settings.TWPSettingsModuleChooserConfiguration;
+import com.linagora.tmail.james.jmap.upload.UploadFromUrlConfiguration;
 
 public record PostgresTmailConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories,
                                          BlobStoreConfiguration blobStoreConfiguration,
@@ -62,6 +63,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
                                          OpenPaasModuleChooserConfiguration openPaasModuleChooserConfiguration,
                                          TWPSettingsModuleChooserConfiguration twpSettingsModuleChooserConfiguration,
                                          boolean jmapEnabled,
+                                         UploadFromUrlConfiguration uploadFromUrlConfiguration,
                                          boolean rlsEnabled,
                                          PropertiesProvider propertiesProvider,
                                          ExtensionConfiguration extentionConfiguration,
@@ -126,6 +128,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
         private Optional<OpenPaasModuleChooserConfiguration> openPaasModuleChooserConfiguration;
         private Optional<TWPSettingsModuleChooserConfiguration> twpSettingsModuleChooserConfiguration;
         private Optional<Boolean> jmapEnabled;
+        private Optional<UploadFromUrlConfiguration> uploadFromUrlConfiguration;
         private Optional<Boolean> rlsEnabled;
         private Optional<ExtensionConfiguration> extentionConfiguration;
         private Optional<EventBusImpl> eventBusImpl;
@@ -146,6 +149,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
             openPaasModuleChooserConfiguration = Optional.empty();
             twpSettingsModuleChooserConfiguration = Optional.empty();
             jmapEnabled = Optional.empty();
+            uploadFromUrlConfiguration = Optional.empty();
             rlsEnabled = Optional.empty();
             extentionConfiguration = Optional.empty();
             eventBusImpl = Optional.empty();
@@ -263,6 +267,11 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
             return this;
         }
 
+        public Builder uploadFromUrlConfiguration(UploadFromUrlConfiguration configuration) {
+            this.uploadFromUrlConfiguration = Optional.of(configuration);
+            return this;
+        }
+
         public PostgresTmailConfiguration build() {
             ConfigurationPath configurationPath = this.configurationPath.orElse(new ConfigurationPath(FileSystem.FILE_PROTOCOL_AND_CONF));
             JamesServerResourceLoader directories = new JamesServerResourceLoader(rootDirectory
@@ -348,6 +357,16 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
                 }
             });
 
+            UploadFromUrlConfiguration uploadFromUrlConfiguration = this.uploadFromUrlConfiguration.orElseGet(() -> {
+                try {
+                    return JMAPExtensionConfiguration.from(propertiesProvider.getConfiguration("jmap")).uploadFromUrlConfiguration();
+                } catch (FileNotFoundException e) {
+                    return UploadFromUrlConfiguration.DISABLED();
+                } catch (ConfigurationException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
             return new PostgresTmailConfiguration(
                 configurationPath,
                 directories,
@@ -360,6 +379,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
                 openPaasModuleChooserConfiguration,
                 twpSettingsModuleChooserConfiguration,
                 jmapEnabled,
+                uploadFromUrlConfiguration,
                 rlsEnabled,
                 propertiesProvider,
                 extentionConfiguration,

@@ -119,6 +119,7 @@ import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscovery
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
+import com.linagora.tmail.james.jmap.upload.UploadFromUrlJmapModule;
 import com.linagora.tmail.listener.CollectTrustedContactsListenerModule;
 import com.linagora.tmail.listener.FilteringRuleReferenceUpdaterListenerModule;
 import com.linagora.tmail.mailbox.quota.memory.MemoryUserQuotaReporterModule;
@@ -263,6 +264,7 @@ public class MemoryServer {
             .overrideWith(ExtensionModuleProvider.extentionModules(configuration.extentionConfiguration()))
             .overrideWith(chooseOpenPaas(configuration.openPaasModuleChooserConfiguration()))
             .overrideWith(chooseJmapModule(configuration))
+            .overrideWith(chooseUploadFromUrlModule(configuration))
             .overrideWith(chooseJmapOidc(configuration))
             .overrideWith(chooseJmapModule(configuration))
             .overrideWith(binder -> {
@@ -281,6 +283,14 @@ public class MemoryServer {
     private static Module chooseJmapModule(MemoryConfiguration configuration) {
         if (configuration.jmapEnabled()) {
             return new JMAPListenerModule();
+        }
+        return binder -> {
+        };
+    }
+
+    private static Module chooseUploadFromUrlModule(MemoryConfiguration configuration) {
+        if (configuration.jmapEnabled() && configuration.uploadFromUrlConfiguration().isEnabled()) {
+            return new UploadFromUrlJmapModule(configuration.uploadFromUrlConfiguration());
         }
         return binder -> {
         };

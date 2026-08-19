@@ -27,6 +27,7 @@ import com.google.common.base.Preconditions
 import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration.{CALENDAR_EVENT_REPLY_SUPPORTED_LANGUAGES_DEFAULT, PUBLIC_ASSET_TOTAL_SIZE_LIMIT_DEFAULT, TICKET_IP_VALIDATION_ENABLED}
 import com.linagora.tmail.james.jmap.method.CalendarEventReplySupportedLanguage.LANGUAGE_DEFAULT
 import com.linagora.tmail.james.jmap.model.LanguageLocation
+import com.linagora.tmail.james.jmap.upload.UploadFromUrlConfiguration
 import org.apache.commons.configuration2.Configuration
 import org.apache.james.core.MailAddress
 import org.apache.james.server.core.MissingArgumentException
@@ -89,6 +90,8 @@ object JMAPExtensionConfiguration {
 
     val viewKeywordQueryEnabled: Boolean = configuration.getBoolean(VIEW_KEYWORD_QUERY_ENABLED, VIEW_KEYWORD_QUERY_ENABLED_DEFAULT)
 
+    val uploadFromUrlConfiguration: UploadFromUrlConfiguration = UploadFromUrlConfiguration.from(configuration)
+
     JMAPExtensionConfiguration(publicAssetTotalSizeLimit = publicAssetTotalSizeLimit,
       supportMailAddress = supportMailAddressOpt,
       supportHttpLink = supportHttpLinkOpt,
@@ -98,7 +101,8 @@ object JMAPExtensionConfiguration {
       unauthenticatedBlobAccessConfiguration = unauthenticatedBlobAccessConfiguration,
       webFingerConfiguration = webFingerConfiguration,
       readOnlySettingsProviders = readOnlySettingsProviders,
-      viewKeywordQueryEnabled = viewKeywordQueryEnabled)
+      viewKeywordQueryEnabled = viewKeywordQueryEnabled,
+      uploadFromUrlConfiguration = uploadFromUrlConfiguration)
   }
 }
 
@@ -111,7 +115,8 @@ case class JMAPExtensionConfiguration(publicAssetTotalSizeLimit: PublicAssetTota
                                       unauthenticatedBlobAccessConfiguration: UnauthenticatedBlobAccessConfiguration = UnauthenticatedBlobAccessConfiguration.DEFAULT,
                                       webFingerConfiguration: WebFingerConfiguration = WebFingerConfiguration.DEFAULT,
                                       readOnlySettingsProviders: Option[java.util.List[String]] = None,
-                                      viewKeywordQueryEnabled: Boolean = false) {
+                                      viewKeywordQueryEnabled: Boolean = false,
+                                      uploadFromUrlConfiguration: UploadFromUrlConfiguration = UploadFromUrlConfiguration.DISABLED) {
   def this(publicAssetTotalSizeLimit: PublicAssetTotalSizeLimit) = {
     this(publicAssetTotalSizeLimit, Option.empty)
   }
