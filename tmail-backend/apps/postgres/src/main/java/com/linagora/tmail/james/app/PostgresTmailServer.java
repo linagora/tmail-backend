@@ -191,6 +191,7 @@ import com.linagora.tmail.james.jmap.settings.TWPSettingsModuleChooserConfigurat
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.PostgresTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
+import com.linagora.tmail.james.jmap.upload.UploadFromUrlJmapModule;
 import com.linagora.tmail.listener.CollectTrustedContactsListenerModule;
 import com.linagora.tmail.listener.FilteringRuleReferenceUpdaterListenerModule;
 import com.linagora.tmail.mailbox.opensearch.TmailOpenSearchMailboxMappingModule;
@@ -293,6 +294,7 @@ public class PostgresTmailServer {
             })
             .overrideWith(chooseOpenPaasModule(configuration.openPaasModuleChooserConfiguration()))
             .overrideWith(chooseJmapModule(configuration))
+            .overrideWith(chooseUploadFromUrlModule(configuration))
             .overrideWith(chooseTaskManagerModules(configuration))
             .overrideWith(chooseJmapOidc(configuration))
             .overrideWith(chooseUnauthenticatedBlobAccessModules(configuration))
@@ -536,6 +538,14 @@ public class PostgresTmailServer {
     private static Module chooseJmapModule(PostgresTmailConfiguration configuration) {
         if (configuration.jmapEnabled()) {
             return Modules.combine(chooseJmapListenerModule(configuration));
+        }
+        return binder -> {
+        };
+    }
+
+    private static Module chooseUploadFromUrlModule(PostgresTmailConfiguration configuration) {
+        if (configuration.jmapEnabled() && configuration.uploadFromUrlConfiguration().isEnabled()) {
+            return new UploadFromUrlJmapModule(configuration.uploadFromUrlConfiguration());
         }
         return binder -> {
         };

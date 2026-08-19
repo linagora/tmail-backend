@@ -210,6 +210,7 @@ import com.linagora.tmail.james.jmap.settings.TWPSettingsModuleChooserConfigurat
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxJmapModule;
 import com.linagora.tmail.james.jmap.ticket.CassandraTicketStoreModule;
 import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
+import com.linagora.tmail.james.jmap.upload.UploadFromUrlJmapModule;
 import com.linagora.tmail.listener.CollectTrustedContactsListenerModule;
 import com.linagora.tmail.listener.FilteringRuleReferenceUpdaterListenerModule;
 import com.linagora.tmail.mailbox.opensearch.TmailOpenSearchMailboxMappingModule;
@@ -477,6 +478,7 @@ public class DistributedServer {
             .overrideWith(chooseTWPSettingsModule(configuration.twpSettingsModuleChooserConfiguration()))
             .overrideWith(chooseModules(searchConfiguration))
             .overrideWith(chooseJmapModule(configuration))
+            .overrideWith(chooseUploadFromUrlModule(configuration))
             .overrideWith(overrideEventBusModule(configuration))
             .overrideWith(chooseDropListsModule(configuration))
             .overrideWith(chooseJmapOidc(configuration))
@@ -533,6 +535,14 @@ public class DistributedServer {
                 return new TMailJMAPListenerModule();
             }
             return new JMAPListenerModule();
+        }
+        return binder -> {
+        };
+    }
+
+    private static Module chooseUploadFromUrlModule(DistributedJamesConfiguration configuration) {
+        if (configuration.jmapEnabled() && configuration.uploadFromUrlConfiguration().isEnabled()) {
+            return new UploadFromUrlJmapModule(configuration.uploadFromUrlConfiguration());
         }
         return binder -> {
         };

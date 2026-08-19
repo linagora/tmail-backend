@@ -40,6 +40,7 @@ import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
+import com.linagora.tmail.james.jmap.upload.UploadFromUrlConfiguration;
 
 public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories,
                                   UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation,
@@ -49,6 +50,7 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
                                   FileConfigurationProvider fileConfigurationProvider,
                                   ExtensionConfiguration extentionConfiguration,
                                   boolean jmapEnabled,
+                                  UploadFromUrlConfiguration uploadFromUrlConfiguration,
                                   boolean dropListEnabled,
                                   boolean oidcEnabled) implements Configuration {
     public static class Builder {
@@ -60,6 +62,7 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
         private Optional<OpenPaasModuleChooserConfiguration> openPaasModuleChooserConfiguration;
         private Optional<ExtensionConfiguration> extentionConfiguration;
         private Optional<Boolean> jmapEnabled;
+        private Optional<UploadFromUrlConfiguration> uploadFromUrlConfiguration;
         private Optional<Boolean> dropListsEnabled;
         private Optional<Boolean> oidcEnabled;
 
@@ -72,6 +75,7 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
             openPaasModuleChooserConfiguration = Optional.empty();
             extentionConfiguration = Optional.empty();
             jmapEnabled = Optional.empty();
+            uploadFromUrlConfiguration = Optional.empty();
             dropListsEnabled = Optional.empty();
             oidcEnabled = Optional.empty();
         }
@@ -134,6 +138,11 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
             return this;
         }
 
+        public Builder uploadFromUrlConfiguration(UploadFromUrlConfiguration configuration) {
+            this.uploadFromUrlConfiguration = Optional.of(configuration);
+            return this;
+        }
+
         public Builder enableDropLists() {
             this.dropListsEnabled = Optional.of(true);
             return this;
@@ -189,6 +198,16 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
                 }
             });
 
+            UploadFromUrlConfiguration uploadFromUrlConfiguration = this.uploadFromUrlConfiguration.orElseGet(() -> {
+                try {
+                    return UploadFromUrlConfiguration.from(propertiesProvider.getConfiguration("jmap"));
+                } catch (FileNotFoundException e) {
+                    return UploadFromUrlConfiguration.DISABLED();
+                } catch (ConfigurationException e) {
+                    throw new RuntimeException(e);
+                }
+            });
+
             boolean dropListsEnabled = this.dropListsEnabled.orElseGet(() -> {
                 try {
                     return propertiesProvider.getConfiguration("droplists").getBoolean("enabled", false);
@@ -219,6 +238,7 @@ public record MemoryConfiguration(ConfigurationPath configurationPath, JamesDire
                 configurationProvider,
                 extentionConfiguration,
                 jmapEnabled,
+                uploadFromUrlConfiguration,
                 dropListsEnabled,
                 oidcEnabled);
         }
