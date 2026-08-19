@@ -23,7 +23,6 @@ import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
 import java.io.Closeable;
 import java.nio.charset.StandardCharsets;
-import java.util.Optional;
 
 import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
@@ -58,17 +57,18 @@ public class RabbitMQEmailAddressContactSubscriber implements Startable, Closeab
                                                  RabbitMQConfiguration commonRabbitMQConfiguration) {
         this.messageHandler = messageHandler;
         this.consumer = new ManagedRabbitMQConsumer.Factory(sender, receiverProvider)
-            .create(new ManagedRabbitMQConsumer.Parameters(
-                QueueDeclaration.singleExchange(configuration.getExchangeName(), BuiltinExchangeType.DIRECT, EMPTY_ROUTING_KEY,
-                    configuration.queueName(),
-                    configuration.getDeadLetterExchange(), BuiltinExchangeType.DIRECT, configuration.getDeadLetterQueue(),
-                    Optional.of(EMPTY_ROUTING_KEY)),
-                commonRabbitMQConfiguration::workQueueArgumentsBuilder,
-                false,
-                Optional.empty(),
-                Optional.empty(),
-                DEFAULT_CONCURRENCY,
-                this::messageConsume));
+            .create(ManagedRabbitMQConsumer.Parameters.builder()
+                .queueDeclaration(QueueDeclaration.builder()
+                    .binding(configuration.getExchangeName(), BuiltinExchangeType.DIRECT, EMPTY_ROUTING_KEY)
+                    .queue(configuration.queueName())
+                    .deadLetterExchange(configuration.getDeadLetterExchange(), BuiltinExchangeType.DIRECT)
+                    .deadLetterQueue(configuration.getDeadLetterQueue())
+                    .deadLetterRoutingKey(EMPTY_ROUTING_KEY)
+                    .build())
+                .queueArguments(commonRabbitMQConfiguration::workQueueArgumentsBuilder)
+                .concurrency(DEFAULT_CONCURRENCY)
+                .handleDelivery(this::messageConsume)
+                .build());
     }
 
     public void start() {

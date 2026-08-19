@@ -37,6 +37,7 @@ import org.apache.james.lifecycle.api.Startable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.base.Preconditions;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.ShutdownSignalException;
@@ -55,13 +56,72 @@ import reactor.rabbitmq.Sender;
 
 public class ManagedRabbitMQConsumer implements Startable, Closeable {
 
-    public record Parameters(QueueDeclaration spec,
-                             Supplier<QueueArguments.Builder> queueArgumentsBuilderSupplier,
+    public record Parameters(QueueDeclaration queueDeclaration,
+                             Supplier<QueueArguments.Builder> queueArguments,
                              boolean singleActiveConsumer,
                              Optional<Duration> consumerTimeout,
                              Optional<Integer> qos,
                              int concurrency,
                              Function<AcknowledgableDelivery, Mono<Void>> handleDelivery) {
+
+        public static final int SEQUENTIAL = 1;
+
+        public static Builder builder() {
+            return new Builder();
+        }
+
+        public static class Builder {
+            private QueueDeclaration queueDeclaration;
+            private Supplier<QueueArguments.Builder> queueArguments = QueueArguments::builder;
+            private boolean singleActiveConsumer = false;
+            private Optional<Duration> consumerTimeout = Optional.empty();
+            private Optional<Integer> qos = Optional.empty();
+            private int concurrency = SEQUENTIAL;
+            private Function<AcknowledgableDelivery, Mono<Void>> handleDelivery;
+
+            public Builder queueDeclaration(QueueDeclaration queueDeclaration) {
+                this.queueDeclaration = queueDeclaration;
+                return this;
+            }
+
+            public Builder queueArguments(Supplier<QueueArguments.Builder> queueArguments) {
+                this.queueArguments = queueArguments;
+                return this;
+            }
+
+            public Builder singleActiveConsumer() {
+                this.singleActiveConsumer = true;
+                return this;
+            }
+
+            public Builder consumerTimeout(Duration consumerTimeout) {
+                this.consumerTimeout = Optional.of(consumerTimeout);
+                return this;
+            }
+
+            public Builder qos(int qos) {
+                this.qos = Optional.of(qos);
+                return this;
+            }
+
+            public Builder concurrency(int concurrency) {
+                this.concurrency = concurrency;
+                return this;
+            }
+
+            public Builder handleDelivery(Function<AcknowledgableDelivery, Mono<Void>> handleDelivery) {
+                this.handleDelivery = handleDelivery;
+                return this;
+            }
+
+            public Parameters build() {
+                Preconditions.checkState(queueDeclaration != null, "'queueDeclaration' is compulsory");
+                Preconditions.checkState(handleDelivery != null, "'handleDelivery' is compulsory");
+
+                return new Parameters(queueDeclaration, queueArguments, singleActiveConsumer,
+                    consumerTimeout, qos, concurrency, handleDelivery);
+            }
+        }
     }
 
     public static class Factory {
@@ -102,14 +162,14 @@ public class ManagedRabbitMQConsumer implements Startable, Closeable {
     }
 
     public Mono<Void> declare() {
-        QueueDeclaration spec = parameters.spec();
+        QueueDeclaration spec = parameters.queueDeclaration();
         return Flux.concat(
                 Flux.fromIterable(spec.bindings())
                     .concatMap(binding -> declareExchange(binding.exchange(), binding.exchangeType())),
                 declareExchange(spec.deadLetterExchange(), spec.deadLetterExchangeType()),
                 sender.declareQueue(QueueSpecification.queue(spec.deadLetterQueue())
                     .durable(DURABLE)
-                    .arguments(parameters.queueArgumentsBuilderSupplier().get()
+                    .arguments(parameters.queueArguments().get()
                         .build())),
                 sender.bind(BindingSpecification.binding()
                     .exchange(spec.deadLetterExchange())
@@ -138,8 +198,8 @@ public class ManagedRabbitMQConsumer implements Startable, Closeable {
     }
 
     private Map<String, Object> mainQueueArguments() {
-        QueueDeclaration spec = parameters.spec();
-        QueueArguments.Builder builder = parameters.queueArgumentsBuilderSupplier().get()
+        QueueDeclaration spec = parameters.queueDeclaration();
+        QueueArguments.Builder builder = parameters.queueArguments().get()
             .deadLetter(spec.deadLetterExchange());
         // Queue arguments are immutable once declared: only set x-dead-letter-routing-key for queues that already carry it,
         // otherwise redeclaring an existing queue fails with PRECONDITION_FAILED.
@@ -172,7 +232,7 @@ public class ManagedRabbitMQConsumer implements Startable, Closeable {
 
     public Flux<AcknowledgableDelivery> delivery() {
         return Flux.using(receiverProvider::createReceiver,
-            receiver -> receiver.consumeManualAck(parameters.spec().queue(), consumeOptions()),
+            receiver -> receiver.consumeManualAck(parameters.queueDeclaration().queue(), consumeOptions()),
             Receiver::close);
     }
 
@@ -186,7 +246,7 @@ public class ManagedRabbitMQConsumer implements Startable, Closeable {
         return parameters.handleDelivery().apply(delivery)
             .doOnSuccess(result -> delivery.ack())
             .onErrorResume(error -> {
-                LOGGER.error("Error when consuming message on queue `{}`", parameters.spec().queue(), error);
+                LOGGER.error("Error when consuming message on queue `{}`", parameters.queueDeclaration().queue(), error);
                 delivery.nack(REQUEUE_ON_NACK);
                 return Mono.empty();
             });
