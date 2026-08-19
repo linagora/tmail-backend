@@ -20,6 +20,7 @@ package com.linagora.tmail.mailbox.quota;
 
 import static org.apache.james.mailbox.store.quota.DefaultUserQuotaRootResolver.SEPARATOR;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.mock;
 
 import java.util.Optional;
 
@@ -27,6 +28,10 @@ import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.apache.james.core.quota.QuotaCountUsage;
 import org.apache.james.core.quota.QuotaSizeUsage;
+import org.apache.james.dnsservice.api.DNSService;
+import org.apache.james.domainlist.api.DomainListException;
+import org.apache.james.domainlist.lib.DomainListConfiguration;
+import org.apache.james.domainlist.memory.MemoryDomainList;
 import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
 import org.apache.james.mailbox.model.MailboxConstants;
@@ -35,6 +40,8 @@ import org.apache.james.mailbox.model.QuotaRoot;
 import org.apache.james.mailbox.quota.CurrentQuotaManager;
 import org.apache.james.mailbox.quota.UserQuotaRootResolver;
 import org.apache.james.user.api.UsersRepository;
+import org.apache.james.user.api.UsersRepositoryException;
+import org.apache.james.user.memory.MemoryUsersRepository;
 import org.junit.jupiter.api.Test;
 
 import reactor.core.publisher.Mono;
@@ -55,7 +62,22 @@ public interface QuotaSumDaoContract {
     QuotaSumDao testee();
     CurrentQuotaManager currentQuotaManager();
 
-    UsersRepository usersRepository() throws MailboxException;
+    default UsersRepository usersRepository() throws MailboxException {
+        try {
+            DNSService dnsService = mock(DNSService.class);
+            MemoryDomainList domainList = new MemoryDomainList(dnsService);
+            domainList.configure(DomainListConfiguration.DEFAULT);
+            domainList.addDomain(DOMAIN_1);
+            domainList.addDomain(DOMAIN_2);
+            MemoryUsersRepository usersRepository = MemoryUsersRepository.withVirtualHosting(domainList);
+            usersRepository.addUser(BOB, "pass");
+            usersRepository.addUser(ALICE, "pass");
+            usersRepository.addUser(ANDRE, "pass");
+            return usersRepository;
+        } catch (DomainListException | UsersRepositoryException | org.apache.commons.configuration2.ex.ConfigurationException e) {
+            throw new MailboxException("Failed to set up the in-memory users repository", e);
+        }
+    }
 
     default UserQuotaRootResolver userQuotaRootResolver() {
         return InMemoryIntegrationResources.defaultResources().getDefaultUserQuotaRootResolver();
