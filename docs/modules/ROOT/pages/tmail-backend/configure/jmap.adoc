@@ -62,4 +62,36 @@ Example: `settings.readonly.properties.providers=com.linagora.tmail.james.jmap.s
 | Optional boolean. Defaults to false. Should simple keyword Email/query be resolved against a {backend-name} projection, or should we resolve them against OpenSearch?
 This enables a higher resilience, but the projection needs to be correctly populated.
 
+| `upload.from.url.enabled`
+| Optional boolean. Defaults to false. Enables the
+link:../jmap-extensions/uploadFromUrl.adoc[JMAP Upload From URL] route and
+capability. Disabled deployments expose neither the route nor the capability.
+
+| `upload.from.url.allowed.sources`
+| Optional comma-separated or repeated list of HTTPS remote sources accepted by
+JMAP Upload From URL. Sources contain no path, query, fragment, or credentials. An
+explicit port is matched exactly; otherwise the effective port is `443`.
+
+The `%` token matches a non-empty fragment inside one DNS label. For example,
+`https://%-drive.twake.linagora.com` matches
+`https://bob-drive.twake.linagora.com`, but does not match an empty fragment,
+another DNS label, or an extended suffix.
+
+When the feature is enabled without this property, the server starts with a
+warning and accepts only HTTPS URLs on port `443` that pass SSRF validation.
+
+The imported decoded content is limited by the standard `upload.max.size`
+setting.
+
+| `upload.from.url.source.response.timeout`
+| Optional duration. Configures the maximum inactivity allowed between reads
+from the remote source response. Defaults to `1m`. This is not a total download
+deadline: a download can take longer while data continues to arrive.
+
+| `upload.from.url.source.trust.all.ssl.certs`
+| Optional boolean. Defaults to `false`. When enabled, certificate-chain
+validation is disabled for source HTTPS connections while hostname verification
+remains enabled. This option requires `upload.from.url.allowed.sources`, emits a
+warning at startup, and should only be used for development or private PKI.
+
 |===
