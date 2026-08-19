@@ -22,7 +22,6 @@ import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
 import java.io.Closeable;
 import java.time.Duration;
-import java.util.Optional;
 
 import jakarta.annotation.PreDestroy;
 
@@ -34,7 +33,6 @@ import org.apache.james.lifecycle.api.Startable;
 import com.linagora.tmail.rabbitmq.ManagedRabbitMQConsumer;
 import com.linagora.tmail.rabbitmq.QueueDeclaration;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
-import com.rabbitmq.client.BuiltinExchangeType;
 
 import reactor.core.publisher.Mono;
 import reactor.rabbitmq.AcknowledgableDelivery;
@@ -57,17 +55,18 @@ public class TWPSettingsConsumer implements Closeable, Startable {
                                TWPSettingsUpdater settingsUpdater) {
         this.settingsUpdater = settingsUpdater;
         this.consumer = new ManagedRabbitMQConsumer.Factory(channelPool)
-            .create(new ManagedRabbitMQConsumer.Parameters(
-                QueueDeclaration.singleExchange(twpSettingsRabbitMQConfiguration.exchange(), BuiltinExchangeType.TOPIC, twpSettingsRabbitMQConfiguration.routingKey(),
-                    consumerConfig.queue(),
-                    consumerConfig.deadLetterQueue(), BuiltinExchangeType.FANOUT, consumerConfig.deadLetterQueue(),
-                    Optional.empty()),
-                () -> queueArgumentSupplier(rabbitMQConfiguration, twpCommonRabbitMQConfiguration),
-                true,
-                Optional.of(CONSUMER_TIMEOUT),
-                Optional.of(DEFAULT_CONCURRENCY),
-                1,
-                this::consumeSettingsUpdate));
+            .create(ManagedRabbitMQConsumer.Parameters.builder()
+                .queueDeclaration(QueueDeclaration.builder()
+                    .binding(twpSettingsRabbitMQConfiguration.exchange(), twpSettingsRabbitMQConfiguration.routingKey())
+                    .queue(consumerConfig.queue())
+                    .deadLetterQueue(consumerConfig.deadLetterQueue())
+                    .build())
+                .queueArguments(() -> queueArgumentSupplier(rabbitMQConfiguration, twpCommonRabbitMQConfiguration))
+                .singleActiveConsumer()
+                .consumerTimeout(CONSUMER_TIMEOUT)
+                .qos(DEFAULT_CONCURRENCY)
+                .handleDelivery(this::consumeSettingsUpdate)
+                .build());
     }
 
     private static QueueArguments.Builder queueArgumentSupplier(RabbitMQConfiguration rabbitMQConfiguration,

@@ -25,19 +25,16 @@ import static org.awaitility.Awaitility.await;
 
 import java.time.Duration;
 import java.util.List;
-import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.atomic.AtomicBoolean;
 
-import org.apache.james.backends.rabbitmq.QueueArguments;
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
-import com.google.common.collect.ImmutableList;
 import com.rabbitmq.client.BuiltinExchangeType;
 
 import reactor.core.publisher.Flux;
@@ -62,10 +59,12 @@ class ManagedRabbitMQConsumerTest {
     @BeforeEach
     void setUp() {
         String suffix = UUID.randomUUID().toString();
-        spec = QueueDeclaration.singleExchange("exchange-" + suffix, BuiltinExchangeType.TOPIC, ROUTING_KEY,
-            "queue-" + suffix,
-            "dead-letter-exchange-" + suffix, BuiltinExchangeType.FANOUT, "dead-letter-queue-" + suffix,
-            Optional.empty());
+        spec = QueueDeclaration.builder()
+            .binding("exchange-" + suffix, ROUTING_KEY)
+            .queue("queue-" + suffix)
+            .deadLetterExchange("dead-letter-exchange-" + suffix, BuiltinExchangeType.FANOUT)
+            .deadLetterQueue("dead-letter-queue-" + suffix)
+            .build();
         consumedMessages = new ConcurrentLinkedQueue<>();
         handlerShouldFail = new AtomicBoolean(false);
         consumer = consumer(spec);
@@ -79,19 +78,16 @@ class ManagedRabbitMQConsumerTest {
 
     private ManagedRabbitMQConsumer consumer(QueueDeclaration queueDeclaration) {
         return new ManagedRabbitMQConsumer.Factory(rabbitMQExtension.getRabbitChannelPool())
-            .create(new ManagedRabbitMQConsumer.Parameters(queueDeclaration,
-                QueueArguments::builder,
-                false,
-                Optional.empty(),
-                Optional.empty(),
-                1,
-                delivery -> {
+            .create(ManagedRabbitMQConsumer.Parameters.builder()
+                .queueDeclaration(queueDeclaration)
+                .handleDelivery(delivery -> {
                     if (handlerShouldFail.get()) {
                         return Mono.error(new RuntimeException("Handler failure"));
                     }
                     consumedMessages.add(new String(delivery.getBody(), UTF_8));
                     return Mono.empty();
-                }));
+                })
+                .build());
     }
 
     private void publish(String exchange, String routingKey, String payload) {
@@ -183,13 +179,12 @@ class ManagedRabbitMQConsumerTest {
     @Test
     void shouldConsumeMessagesFromEveryBoundExchange() {
         String suffix = UUID.randomUUID().toString();
-        QueueDeclaration multiBindingSpec = new QueueDeclaration(
-            ImmutableList.of(
-                new QueueDeclaration.ExchangeBinding("first-exchange-" + suffix, BuiltinExchangeType.TOPIC, "first-routing-key"),
-                new QueueDeclaration.ExchangeBinding("second-exchange-" + suffix, BuiltinExchangeType.TOPIC, "second-routing-key")),
-            "multi-binding-queue-" + suffix,
-            "multi-binding-dead-letter-exchange-" + suffix, BuiltinExchangeType.FANOUT, "multi-binding-dead-letter-queue-" + suffix,
-            Optional.empty());
+        QueueDeclaration multiBindingSpec = QueueDeclaration.builder()
+            .binding("first-exchange-" + suffix, "first-routing-key")
+            .binding("second-exchange-" + suffix, "second-routing-key")
+            .queue("multi-binding-queue-" + suffix)
+            .deadLetterQueue("multi-binding-dead-letter-queue-" + suffix)
+            .build();
         ManagedRabbitMQConsumer multiBindingConsumer = consumer(multiBindingSpec);
         multiBindingConsumer.init();
 
