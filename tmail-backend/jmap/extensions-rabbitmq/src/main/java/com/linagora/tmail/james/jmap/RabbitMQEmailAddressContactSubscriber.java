@@ -18,10 +18,7 @@
 
 package com.linagora.tmail.james.jmap;
 
-import static org.apache.james.backends.rabbitmq.Constants.DURABLE;
 import static org.apache.james.backends.rabbitmq.Constants.EMPTY_ROUTING_KEY;
-import static org.apache.james.backends.rabbitmq.Constants.REQUEUE;
-import static org.apache.james.backends.rabbitmq.Constants.evaluateDurable;
 import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
 import java.io.Closeable;
@@ -35,35 +32,23 @@ import jakarta.inject.Named;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.ReceiverProvider;
 import org.apache.james.lifecycle.api.Startable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import com.linagora.tmail.james.jmap.contact.ContactMessageHandlerResult;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactMessageHandler;
 import com.linagora.tmail.james.jmap.contact.Failure;
 import com.linagora.tmail.james.jmap.json.EmailAddressContactMessageSerializer;
+import com.linagora.tmail.rabbitmq.ManagedRabbitMQConsumer;
+import com.linagora.tmail.rabbitmq.QueueDeclaration;
+import com.rabbitmq.client.BuiltinExchangeType;
 
-import reactor.core.Disposable;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.AcknowledgableDelivery;
-import reactor.rabbitmq.BindingSpecification;
-import reactor.rabbitmq.ExchangeSpecification;
-import reactor.rabbitmq.QueueSpecification;
-import reactor.rabbitmq.Receiver;
 import reactor.rabbitmq.Sender;
 
 public class RabbitMQEmailAddressContactSubscriber implements Startable, Closeable {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(RabbitMQEmailAddressContactSubscriber.class);
-
-    private final RabbitMQEmailAddressContactConfiguration rabbitMQEmailAddressContactConfiguration;
-    private final ReceiverProvider receiverProvider;
+    private final ManagedRabbitMQConsumer consumer;
     private final EmailAddressContactMessageHandler messageHandler;
-    private final Sender sender;
-    private final RabbitMQConfiguration commonRabbitMQConfiguration;
-    private Disposable messageConsume;
 
     @Inject
     public RabbitMQEmailAddressContactSubscriber(@Named(EmailAddressContactInjectKeys.AUTOCOMPLETE) ReceiverProvider receiverProvider,
@@ -71,79 +56,42 @@ public class RabbitMQEmailAddressContactSubscriber implements Startable, Closeab
                                                  RabbitMQEmailAddressContactConfiguration configuration,
                                                  EmailAddressContactMessageHandler messageHandler,
                                                  RabbitMQConfiguration commonRabbitMQConfiguration) {
-        this.rabbitMQEmailAddressContactConfiguration = configuration;
-        this.receiverProvider = receiverProvider;
         this.messageHandler = messageHandler;
-        this.sender = sender;
-        this.commonRabbitMQConfiguration = commonRabbitMQConfiguration;
+        this.consumer = new ManagedRabbitMQConsumer.Factory(sender, receiverProvider)
+            .create(new ManagedRabbitMQConsumer.Parameters(
+                QueueDeclaration.singleExchange(configuration.getExchangeName(), BuiltinExchangeType.DIRECT, EMPTY_ROUTING_KEY,
+                    configuration.queueName(),
+                    configuration.getDeadLetterExchange(), BuiltinExchangeType.DIRECT, configuration.getDeadLetterQueue(),
+                    Optional.of(EMPTY_ROUTING_KEY)),
+                commonRabbitMQConfiguration::workQueueArgumentsBuilder,
+                false,
+                Optional.empty(),
+                Optional.empty(),
+                DEFAULT_CONCURRENCY,
+                this::messageConsume));
     }
 
     public void start() {
-        Flux.concat(
-                sender.declareExchange(ExchangeSpecification.exchange(rabbitMQEmailAddressContactConfiguration.getExchangeName())
-                    .durable(DURABLE)),
-                sender.declareExchange(ExchangeSpecification.exchange(rabbitMQEmailAddressContactConfiguration.getDeadLetterExchange())
-                    .durable(DURABLE)),
-                sender.declareQueue(QueueSpecification
-                    .queue(rabbitMQEmailAddressContactConfiguration.queueName())
-                    .durable(evaluateDurable(DURABLE, commonRabbitMQConfiguration.isQuorumQueuesUsed()))
-                    .arguments(commonRabbitMQConfiguration.workQueueArgumentsBuilder()
-                        .put("x-dead-letter-exchange", rabbitMQEmailAddressContactConfiguration.getDeadLetterExchange())
-                        .put("x-dead-letter-routing-key", EMPTY_ROUTING_KEY)
-                        .build())),
-                sender.declareQueue(QueueSpecification
-                    .queue(rabbitMQEmailAddressContactConfiguration.getDeadLetterQueue())
-                    .durable(evaluateDurable(DURABLE, commonRabbitMQConfiguration.isQuorumQueuesUsed()))
-                    .arguments(commonRabbitMQConfiguration.workQueueArgumentsBuilder()
-                        .build())),
-                sender.bind(BindingSpecification.binding()
-                    .exchange(rabbitMQEmailAddressContactConfiguration.getExchangeName())
-                    .queue(rabbitMQEmailAddressContactConfiguration.queueName())
-                    .routingKey(EMPTY_ROUTING_KEY)),
-                sender.bind(BindingSpecification.binding()
-                    .exchange(rabbitMQEmailAddressContactConfiguration.getDeadLetterExchange())
-                    .queue(rabbitMQEmailAddressContactConfiguration.getDeadLetterQueue())
-                    .routingKey(EMPTY_ROUTING_KEY)))
-            .then()
-            .block();
-
-        messageConsume = messagesConsume();
+        consumer.init();
     }
 
-    public Flux<AcknowledgableDelivery> delivery() {
-        return Flux.using(receiverProvider::createReceiver,
-            receiver -> receiver.consumeManualAck(rabbitMQEmailAddressContactConfiguration.queueName()),
-            Receiver::close);
-    }
-
-    private Disposable messagesConsume() {
-        return delivery()
-            .flatMap(delivery -> messageConsume(delivery, new String(delivery.getBody(), StandardCharsets.UTF_8)), DEFAULT_CONCURRENCY)
-            .subscribeOn(Schedulers.boundedElastic())
-            .subscribe();
-    }
-
-    private Mono<ContactMessageHandlerResult> messageConsume(AcknowledgableDelivery ackDelivery, String messagePayload) {
-        return Mono.just(messagePayload)
+    private Mono<Void> messageConsume(AcknowledgableDelivery ackDelivery) {
+        return Mono.fromCallable(() -> new String(ackDelivery.getBody(), StandardCharsets.UTF_8))
             .map(EmailAddressContactMessageSerializer::deserializeEmailAddressContactMessageAsJava)
             .flatMap(message -> Mono.from(messageHandler.handler(message)))
-            .flatMap(handlerResult -> {
-                if (handlerResult instanceof Failure failure) {
-                    return Mono.error(failure.error());
-                }
-                ackDelivery.ack();
-                return Mono.just(handlerResult);
-            })
-            .onErrorResume(error -> {
-                LOGGER.error("Error when consume message '{}'", messagePayload, error);
-                ackDelivery.nack(!REQUEUE);
-                return Mono.empty();
-            });
+            .flatMap(this::failOnHandlerFailure);
+    }
+
+    private Mono<Void> failOnHandlerFailure(ContactMessageHandlerResult handlerResult) {
+        if (handlerResult instanceof Failure failure) {
+            return Mono.error(failure.error());
+        }
+        return Mono.empty();
     }
 
     @PreDestroy
     @Override
     public void close() {
-        Optional.ofNullable(messageConsume).ifPresent(Disposable::dispose);
+        consumer.close();
     }
 }
