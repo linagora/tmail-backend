@@ -29,6 +29,7 @@ import jakarta.inject.Singleton;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
+import org.apache.james.backends.rabbitmq.SimpleConnectionPool;
 import org.apache.james.core.healthcheck.HealthCheck;
 import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.mailbox.quota.MaxQuotaManager;
@@ -42,6 +43,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
+import com.linagora.tmail.rabbitmq.ConsumerReconnectionHandler;
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
@@ -124,6 +126,18 @@ public class SaaSSubscriptionModule extends AbstractModule {
         return InitilizationOperationBuilder
             .forClass(SaaSDomainSubscriptionConsumer.class)
             .init(instance::init);
+    }
+
+    @ProvidesIntoSet
+    public SimpleConnectionPool.ReconnectionHandler provideSaaSSubscriptionConsumerReconnectionHandler(SaaSSubscriptionConsumer instance) {
+        return new ConsumerReconnectionHandler(instance::restartConsumer,
+            "Error while restarting the SaaS subscription consumer upon reconnection");
+    }
+
+    @ProvidesIntoSet
+    public SimpleConnectionPool.ReconnectionHandler provideSaaSDomainSubscriptionConsumerReconnectionHandler(SaaSDomainSubscriptionConsumer instance) {
+        return new ConsumerReconnectionHandler(instance::restartConsumer,
+            "Error while restarting the SaaS domain subscription consumer upon reconnection");
     }
 
     @Provides

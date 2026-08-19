@@ -41,6 +41,7 @@ import com.google.inject.multibindings.ProvidesIntoSet;
 import com.linagora.tmail.james.jmap.EmailAddressContactInjectKeys;
 import com.linagora.tmail.james.jmap.RabbitMQEmailAddressContactConfiguration;
 import com.linagora.tmail.james.jmap.RabbitMQEmailAddressContactSubscriber;
+import com.linagora.tmail.rabbitmq.ConsumerReconnectionHandler;
 
 import reactor.rabbitmq.RabbitFlux;
 import reactor.rabbitmq.ReceiverOptions;
@@ -115,6 +116,12 @@ public class RabbitMQEmailAddressContactModule extends AbstractModule {
         return InitilizationOperationBuilder
             .forClass(RabbitMQEmailAddressContactSubscriber.class)
             .init(instance::start);
+    }
+
+    @ProvidesIntoSet
+    public SimpleConnectionPool.ReconnectionHandler contactSubscriberReconnectionHandler(RabbitMQEmailAddressContactSubscriber instance) {
+        return new ConsumerReconnectionHandler(instance::restartConsumer,
+            "Error while restarting the email address contact consumer upon reconnection");
     }
 
     private ReactorRabbitMQChannelPool.Configuration provideChannelPoolConfiguration(Provider<Configuration> configuration) {

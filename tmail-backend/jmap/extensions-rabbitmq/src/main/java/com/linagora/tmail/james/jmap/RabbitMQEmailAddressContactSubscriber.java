@@ -75,6 +75,10 @@ public class RabbitMQEmailAddressContactSubscriber implements Startable, Closeab
         consumer.init();
     }
 
+    public void restartConsumer() {
+        consumer.restart();
+    }
+
     private Mono<Void> messageConsume(AcknowledgableDelivery ackDelivery) {
         return Mono.fromCallable(() -> new String(ackDelivery.getBody(), StandardCharsets.UTF_8))
             .map(EmailAddressContactMessageSerializer::deserializeEmailAddressContactMessageAsJava)
