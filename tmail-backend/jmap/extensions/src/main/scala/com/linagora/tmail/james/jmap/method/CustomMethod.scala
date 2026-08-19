@@ -48,6 +48,7 @@ object CapabilityIdentifier {
   val LINAGORA_UNAUTHENTICATED_BLOB_ACCESS: CapabilityIdentifier = "com:linagora:params:jmap:unauthenticated:blob:access"
   val LINAGORA_CONTACT_SUPPORT: CapabilityIdentifier = "com:linagora:params:jmap:contact:support"
   val LINAGORA_DOWNLOAD_ALL: CapabilityIdentifier = "com:linagora:params:downloadAll"
+  val LINAGORA_UPLOAD_FROM_URL: CapabilityIdentifier = "com:linagora:params:jmap:upload:from-url"
   val LINAGORA_MAILBOX_CLEAR: CapabilityIdentifier = "com:linagora:params:jmap:mailbox:clear"
   val LINAGORA_SAAS: CapabilityIdentifier = "com:linagora:params:saas"
 }
