@@ -137,7 +137,7 @@ class UploadFromUrlRoutes @Inject()(@Named(InjectionKeys.RFC_8621) authenticator
       LOGGER.info("Invalid upload-from-URL request by user {} for remote URL {}", username.asString(), remoteUrlForLogging(request))
       respondDetails(response, BAD_REQUEST, "The upload-from-URL request is invalid")
     case rejectedException: RemoteUrlRejectedException =>
-      LOGGER.info("User {} requested upload from rejected remote URL {}", username.asString(), rejectedException.requestedUrl)
+      LOGGER.info("User {} requested upload from rejected remote URL {}", username.asString(), RemoteUrlForLogging.sanitize(rejectedException.requestedUrl))
       respondDetails(response, BAD_REQUEST, "The remote URL is not allowed")
     case tooLargeException: RemoteUploadTooLargeException =>
       LOGGER.info("Remote upload by user {} from URL {} exceeded the size limit of {} bytes; requested size is at least {}",
@@ -203,6 +203,7 @@ class UploadFromUrlRoutes @Inject()(@Named(InjectionKeys.RFC_8621) authenticator
     Option(request.requestHeaders().get(CONTENT_LOCATION))
       .map(_.trim)
       .filter(_.nonEmpty)
+      .map(RemoteUrlForLogging.sanitize)
       .getOrElse("<missing>")
 
   private def validateEmptyBody(request: HttpServerRequest): SMono[Unit] =
