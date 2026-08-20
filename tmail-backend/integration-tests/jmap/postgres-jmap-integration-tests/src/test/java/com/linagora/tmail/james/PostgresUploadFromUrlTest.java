@@ -33,6 +33,7 @@ import com.linagora.tmail.james.app.PostgresTmailServer;
 import com.linagora.tmail.james.common.UploadFromUrlContract;
 import com.linagora.tmail.james.common.extension.RemoteFileServerExtension;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
+import com.linagora.tmail.james.jmap.upload.UploadFromUrlJmapModule;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class PostgresUploadFromUrlTest implements UploadFromUrlContract {
@@ -55,10 +56,10 @@ public class PostgresUploadFromUrlTest implements UploadFromUrlContract {
             .searchConfiguration(SearchConfiguration.scanning())
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .eventBusImpl(IN_MEMORY)
-            .uploadFromUrlConfiguration(remoteFileServer.uploadFromUrlConfiguration())
             .build())
         .server(configuration -> PostgresTmailServer.createServer(configuration)
-            .overrideWith(new LinagoraTestJMAPServerModule()))
+            .overrideWith(new LinagoraTestJMAPServerModule())
+            .overrideWith(new UploadFromUrlJmapModule(remoteFileServer.uploadFromUrlConfiguration())))
         .extension(PostgresExtension.empty())
         .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();

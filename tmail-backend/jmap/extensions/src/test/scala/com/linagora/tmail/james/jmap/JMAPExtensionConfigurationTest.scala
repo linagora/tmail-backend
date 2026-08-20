@@ -20,24 +20,11 @@ package com.linagora.tmail.james.jmap
 
 import java.time.Duration
 
-import com.linagora.tmail.james.jmap.upload.UploadFromUrlConfiguration
 import org.apache.commons.configuration2.PropertiesConfiguration
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
 import org.junit.jupiter.api.Test
 
 class JMAPExtensionConfigurationTest {
-
-  @Test
-  def uploadFromUrlShouldBeDisabledByDefault(): Unit =
-    assertThat(JMAPExtensionConfiguration.from(new PropertiesConfiguration).uploadFromUrlConfiguration.isEnabled).isFalse
-
-  @Test
-  def shouldParseUploadFromUrlConfiguration(): Unit = {
-    val configuration = new PropertiesConfiguration
-    configuration.setProperty(UploadFromUrlConfiguration.ENABLED_PROPERTY, true)
-
-    assertThat(JMAPExtensionConfiguration.from(configuration).uploadFromUrlConfiguration.isEnabled).isTrue
-  }
 
   @Test
   def shouldThrowWhenBothSupportMailAddressAndHttpLinkAreDefined(): Unit = {

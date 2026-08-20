@@ -264,7 +264,7 @@ public class MemoryServer {
             .overrideWith(ExtensionModuleProvider.extentionModules(configuration.extentionConfiguration()))
             .overrideWith(chooseOpenPaas(configuration.openPaasModuleChooserConfiguration()))
             .overrideWith(chooseJmapModule(configuration))
-            .overrideWith(chooseUploadFromUrlModule(configuration))
+            .overrideWith(UploadFromUrlJmapModule.from(configuration))
             .overrideWith(chooseJmapOidc(configuration))
             .overrideWith(chooseJmapModule(configuration))
             .overrideWith(binder -> {
@@ -283,14 +283,6 @@ public class MemoryServer {
     private static Module chooseJmapModule(MemoryConfiguration configuration) {
         if (configuration.jmapEnabled()) {
             return new JMAPListenerModule();
-        }
-        return binder -> {
-        };
-    }
-
-    private static Module chooseUploadFromUrlModule(MemoryConfiguration configuration) {
-        if (configuration.jmapEnabled() && configuration.uploadFromUrlConfiguration().isEnabled()) {
-            return new UploadFromUrlJmapModule(configuration.uploadFromUrlConfiguration());
         }
         return binder -> {
         };

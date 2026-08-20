@@ -292,7 +292,7 @@ public class PostgresTmailServer {
             })
             .overrideWith(chooseOpenPaasModule(configuration.openPaasModuleChooserConfiguration()))
             .overrideWith(chooseJmapModule(configuration))
-            .overrideWith(chooseUploadFromUrlModule(configuration))
+            .overrideWith(UploadFromUrlJmapModule.from(configuration))
             .overrideWith(chooseTaskManagerModules(configuration))
             .overrideWith(chooseJmapOidc(configuration))
             .overrideWith(chooseUnauthenticatedBlobAccessModules(configuration))
@@ -534,14 +534,6 @@ public class PostgresTmailServer {
     private static Module chooseJmapModule(PostgresTmailConfiguration configuration) {
         if (configuration.jmapEnabled()) {
             return Modules.combine(chooseJmapListenerModule(configuration));
-        }
-        return binder -> {
-        };
-    }
-
-    private static Module chooseUploadFromUrlModule(PostgresTmailConfiguration configuration) {
-        if (configuration.jmapEnabled() && configuration.uploadFromUrlConfiguration().isEnabled()) {
-            return new UploadFromUrlJmapModule(configuration.uploadFromUrlConfiguration());
         }
         return binder -> {
         };
