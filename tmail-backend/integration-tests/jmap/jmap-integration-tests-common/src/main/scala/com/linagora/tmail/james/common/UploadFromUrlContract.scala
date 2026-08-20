@@ -106,79 +106,13 @@ trait UploadFromUrlContract {
     remoteFileServer.serve(remotePath, remoteContent, "application/pdf")
 
     // Import the remote file as a JMAP upload blob.
-    val blobId: String = `given`()
-      .basePath("")
-      .config(newConfig.encoderConfig(encoderConfig.appendDefaultContentCharsetToContentTypeIfUndefined(false)))
-      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .header(CONTENT_LOCATION.toString, remoteFileServer.url(remotePath))
-      .header(CONTENT_TYPE.toString, "application/pdf")
-    .when()
-      .post(s"/upload-from-url/$accountId")
-    .`then`()
-      .statusCode(SC_CREATED)
-      .contentType(JSON)
-      .body("accountId", equalTo(accountId))
-      .body("type", equalTo("application/pdf"))
-      .body("size", equalTo(remoteContent.length))
-      .body("blobId", Matchers.notNullValue())
-      .extract()
-      .path("blobId")
-
-    assertThat(blobId).startsWith("uploads-")
+    val blobId: String = importRemoteFile(remotePath, remoteContent.length)
 
     // Verify that the imported blob can be downloaded with its content type and bytes preserved.
-    val downloadedContent: Array[Byte] = `given`()
-      .basePath("")
-      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-    .when()
-      .get(s"/download/$accountId/$blobId")
-    .`then`()
-      .statusCode(SC_OK)
-      .contentType("application/pdf")
-      .extract()
-      .body()
-      .asByteArray()
-
-    assertThat(downloadedContent).isEqualTo(remoteContent)
+    verifyDownloadedBlob(blobId, remoteContent)
 
     // Use the imported blob as an attachment when creating an email.
-    val mailboxId: String = server.getProbe(classOf[MailboxProbeImpl])
-      .createMailbox(MailboxPath.inbox(username))
-      .serialize()
-    `given`()
-      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .body(
-        s"""{
-           |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail"],
-           |  "methodCalls": [[
-           |    "Email/set",
-           |    {
-           |      "accountId": "$accountId",
-           |      "create": {
-           |        "remote-file": {
-           |          "mailboxIds": {"$mailboxId": true},
-           |          "keywords": {},
-           |          "subject": "Remote attachment",
-           |          "from": [{"email": "${username.asString}"}],
-           |          "to": [{"email": "recipient@localhost"}],
-           |          "attachments": [{
-           |            "blobId": "$blobId",
-           |            "type": "application/pdf",
-           |            "name": "report.pdf",
-           |            "disposition": "attachment"
-           |          }]
-           |        }
-           |      }
-           |    },
-           |    "c1"
-           |  ]]
-           |}""".stripMargin)
-    .when()
-      .post()
-    .`then`()
-      .statusCode(SC_OK)
-      .contentType(JSON)
-      .body("methodResponses[0][1].created.'remote-file'", Matchers.notNullValue())
+    createEmailWithAttachment(server, blobId)
   }
 
   @Test
@@ -341,5 +275,87 @@ trait UploadFromUrlContract {
       .body("type", equalTo("about:blank"))
       .body("detail", equalTo("Upload to this account is forbidden"))
   }
+
+  private def importRemoteFile(remotePath: String, expectedSize: Int): String = {
+    val blobId: String = `given`()
+      .basePath("")
+      .config(newConfig.encoderConfig(encoderConfig.appendDefaultContentCharsetToContentTypeIfUndefined(false)))
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .header(CONTENT_LOCATION.toString, remoteFileServer.url(remotePath))
+      .header(CONTENT_TYPE.toString, "application/pdf")
+    .when()
+      .post(s"/upload-from-url/$accountId")
+    .`then`()
+      .statusCode(SC_CREATED)
+      .contentType(JSON)
+      .body("accountId", equalTo(accountId))
+      .body("type", equalTo("application/pdf"))
+      .body("size", equalTo(expectedSize))
+      .body("blobId", Matchers.notNullValue())
+      .extract()
+      .path("blobId")
+
+    assertThat(blobId).startsWith("uploads-")
+    blobId
+  }
+
+  private def verifyDownloadedBlob(blobId: String, expectedContent: Array[Byte]): Unit = {
+    val downloadedContent: Array[Byte] = `given`()
+      .basePath("")
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+    .when()
+      .get(s"/download/$accountId/$blobId")
+    .`then`()
+      .statusCode(SC_OK)
+      .contentType("application/pdf")
+      .extract()
+      .body()
+      .asByteArray()
+
+    assertThat(downloadedContent).isEqualTo(expectedContent)
+  }
+
+  private def createEmailWithAttachment(server: GuiceJamesServer, blobId: String): Unit = {
+    val mailboxId: String = server.getProbe(classOf[MailboxProbeImpl])
+      .createMailbox(MailboxPath.inbox(username))
+      .serialize()
+
+    `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(emailCreationRequest(mailboxId, blobId))
+    .when()
+      .post()
+    .`then`()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0][1].created.'remote-file'", Matchers.notNullValue())
+  }
+
+  private def emailCreationRequest(mailboxId: String, blobId: String): String =
+    s"""{
+       |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail"],
+       |  "methodCalls": [[
+       |    "Email/set",
+       |    {
+       |      "accountId": "$accountId",
+       |      "create": {
+       |        "remote-file": {
+       |          "mailboxIds": {"$mailboxId": true},
+       |          "keywords": {},
+       |          "subject": "Remote attachment",
+       |          "from": [{"email": "${username.asString}"}],
+       |          "to": [{"email": "recipient@localhost"}],
+       |          "attachments": [{
+       |            "blobId": "$blobId",
+       |            "type": "application/pdf",
+       |            "name": "report.pdf",
+       |            "disposition": "attachment"
+       |          }]
+       |        }
+       |      }
+       |    },
+       |    "c1"
+       |  ]]
+       |}""".stripMargin
 
 }
