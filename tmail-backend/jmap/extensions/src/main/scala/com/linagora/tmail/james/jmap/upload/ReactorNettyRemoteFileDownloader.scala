@@ -115,7 +115,7 @@ class ReactorNettyRemoteFileDownloader @Inject()(configuration: UploadFromUrlCon
   private def fetch[T](remoteUrl: ValidatedRemoteUrl,
                        maximumSize: Long,
                        use: DownloadedRemoteFile => SMono[T]): SMono[T] = {
-    val client = httpClient.doOnConnected(connection => BoundedRemoteContentDecompressor.install(connection, maximumSize.toInt))
+    val client = httpClient.doOnConnected(connection => BoundedRemoteContentDecompressor.install(connection, maximumSize))
     val request: HttpClient.RequestSender = client.request(GET)
       .uri(remoteUrl.uri)
 

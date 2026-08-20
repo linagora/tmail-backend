@@ -45,10 +45,10 @@ object BoundedRemoteContentDecompressor {
     Option.when(Brotli.isAvailable)("br") ++
     Option.when(Zstd.isAvailable)("zstd")).mkString(", ")
 
-  def install(connection: Connection, maximumAllocation: Int): Unit = {
+  def install(connection: Connection, maximumSize: Long): Unit = {
     val pipeline = connection.channel().pipeline()
     if (pipeline.get(NettyPipeline.HttpDecompressor) == null) {
-      val decompressor = new HttpContentDecompressor(false, maximumAllocation)
+      val decompressor = new HttpContentDecompressor(false, maximumAllocation(maximumSize))
       if (pipeline.get(NettyPipeline.ReactiveBridge) == null) {
         pipeline.addLast(NettyPipeline.HttpDecompressor, decompressor)
       } else {
@@ -56,4 +56,7 @@ object BoundedRemoteContentDecompressor {
       }
     }
   }
+
+  private[upload] def maximumAllocation(maximumSize: Long): Int =
+    Math.min(maximumSize, Int.MaxValue.toLong).toInt
 }
