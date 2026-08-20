@@ -19,7 +19,6 @@
 package com.linagora.tmail;
 
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
@@ -63,7 +62,7 @@ public final class AmqpUri {
         ConnectionFactory connectionFactory = new ConnectionFactory();
         try {
             connectionFactory.setUri(uri);
-        } catch (URISyntaxException | NoSuchAlgorithmException | KeyManagementException e) {
+        } catch (NoSuchAlgorithmException | KeyManagementException e) {
             throw new RuntimeException(String.format("Invalid AmqpUri: '%s'", uri), e);
         }
 
