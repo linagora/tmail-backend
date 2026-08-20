@@ -161,19 +161,17 @@ class UploadFromUrlRoutes @Inject()(@Named(InjectionKeys.RFC_8621) authenticator
       .map(remoteUrlPolicy.validate)
       .flatMap(remoteUrl => downloader.withDownloadedFile(remoteUrl,
         configuration.maxUploadSize.value.value) {
-        downloadedFile => uploadContent(accountId,
-          selectContentType(request, downloadedFile.contentType),
+        downloadedFile => uploadContent(selectContentType(request, downloadedFile.contentType),
           downloadedFile,
           mailboxSession)
       })
+      .map(metadata => toUploadResponse(metadata, accountId))
       .flatMap(uploadResponse => writeUploadResponse(response, uploadResponse))
 
-  private def uploadContent(accountId: AccountId,
-                            contentType: ContentType,
+  private def uploadContent(contentType: ContentType,
                             downloadedFile: DownloadedRemoteFile,
-                            mailboxSession: MailboxSession): SMono[UploadResponse] =
+                            mailboxSession: MailboxSession): SMono[UploadMetaData] =
     SMono(uploadService.upload(downloadedFile.content, contentType, mailboxSession.getUser))
-      .map(metadata => toUploadResponse(metadata, accountId))
 
   private def validateRequest(request: HttpServerRequest): String =
     Option(request.requestHeaders().get(CONTENT_LOCATION))
