@@ -19,12 +19,10 @@
 package com.linagora.tmail.saas.rabbitmq.subscription;
 
 import static com.linagora.tmail.saas.rabbitmq.TWPConstants.TWP_INJECTION_KEY;
-import static org.apache.james.backends.rabbitmq.Constants.DURABLE;
 import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
 import java.io.Closeable;
 import java.time.Duration;
-import java.util.Optional;
 
 import jakarta.annotation.PreDestroy;
 import jakarta.inject.Named;
@@ -32,153 +30,75 @@ import jakarta.inject.Named;
 import org.apache.james.backends.rabbitmq.QueueArguments;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
-import org.apache.james.backends.rabbitmq.ReceiverProvider;
 import org.apache.james.lifecycle.api.Startable;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
+import com.linagora.tmail.rabbitmq.ManagedRabbitMQConsumer;
+import com.linagora.tmail.rabbitmq.QueueDeclaration;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
-import com.rabbitmq.client.AMQP;
-import com.rabbitmq.client.BuiltinExchangeType;
-import com.rabbitmq.client.ShutdownSignalException;
 
-import reactor.core.Disposable;
-import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.AcknowledgableDelivery;
-import reactor.rabbitmq.BindingSpecification;
-import reactor.rabbitmq.ConsumeOptions;
-import reactor.rabbitmq.ExchangeSpecification;
-import reactor.rabbitmq.QueueSpecification;
-import reactor.rabbitmq.Receiver;
-import reactor.rabbitmq.Sender;
 
 public class SaaSSubscriptionConsumer implements Closeable, Startable {
     public record SubscriptionConsumerConfig(String queue, String deadLetterQueue) {
         public static SubscriptionConsumerConfig DEFAULT = new SubscriptionConsumerConfig("tmail-saas-subscription", "tmail-saas-subscription-dead-letter");
     }
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(SaaSSubscriptionConsumer.class);
-    private static final boolean REQUEUE_ON_NACK = true;
+    private static final Duration CONSUMER_TIMEOUT = Duration.ofMinutes(10L);
 
-    private final ReceiverProvider receiverProvider;
-    private final Sender sender;
-    private final RabbitMQConfiguration rabbitMQConfiguration;
-    private final TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration;
-    private final SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration;
+    private final ManagedRabbitMQConsumer consumer;
     private final SaaSMessageHandler saasSubscriptionHandler;
     private final SubscriptionConsumerConfig consumerConfig;
-    private Disposable consumeSubscriptionDisposable;
 
     public SaaSSubscriptionConsumer(@Named(TWP_INJECTION_KEY) ReactorRabbitMQChannelPool channelPool,
                                     @Named(TWP_INJECTION_KEY) RabbitMQConfiguration rabbitMQConfiguration,
                                     TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration,
                                     SaaSSubscriptionRabbitMQConfiguration saasSubscriptionRabbitMQConfiguration, SaaSMessageHandler saasSubscriptionHandler,
                                     SubscriptionConsumerConfig consumerConfig) {
-        this.receiverProvider = channelPool::createReceiver;
-        this.sender = channelPool.getSender();
-        this.rabbitMQConfiguration = rabbitMQConfiguration;
-        this.twpCommonRabbitMQConfiguration = twpCommonRabbitMQConfiguration;
-        this.saasSubscriptionRabbitMQConfiguration = saasSubscriptionRabbitMQConfiguration;
         this.saasSubscriptionHandler = saasSubscriptionHandler;
         this.consumerConfig = consumerConfig;
+        this.consumer = new ManagedRabbitMQConsumer.Factory(channelPool)
+            .create(ManagedRabbitMQConsumer.Parameters.builder()
+                .queueDeclaration(QueueDeclaration.builder()
+                    .binding(saasSubscriptionRabbitMQConfiguration.exchange(), saasSubscriptionRabbitMQConfiguration.routingKey())
+                    .queue(consumerConfig.queue())
+                    .deadLetterQueue(consumerConfig.deadLetterQueue())
+                    .build())
+                .queueArguments(() -> queueArgumentSupplier(rabbitMQConfiguration, twpCommonRabbitMQConfiguration))
+                .singleActiveConsumer()
+                .consumerTimeout(CONSUMER_TIMEOUT)
+                .qos(DEFAULT_CONCURRENCY)
+                .handleDelivery(this::consumeSubscriptionUpdate)
+                .build());
     }
 
-    public void init() {
-        declareExchangeAndQueue(saasSubscriptionRabbitMQConfiguration.exchange(), consumerConfig.queue(), consumerConfig.deadLetterQueue());
-        startConsumer();
-    }
-
-    protected SubscriptionConsumerConfig getConsumerConfig() {
-        return consumerConfig;
-    }
-
-    public void declareExchangeAndQueue(String exchange, String queue, String deadLetter) {
-        Flux.concat(
-                declareExchange(exchange),
-                sender.declareExchange(ExchangeSpecification.exchange(deadLetter)
-                    .durable(DURABLE).type(BuiltinExchangeType.FANOUT.getType())),
-                sender.declareQueue(QueueSpecification
-                    .queue(deadLetter)
-                    .durable(DURABLE)
-                    .arguments(queueArgumentSupplier()
-                        .build())),
-                sender.bind(BindingSpecification.binding()
-                    .exchange(deadLetter)
-                    .queue(deadLetter)
-                    .routingKey("")),
-                sender.declareQueue(QueueSpecification
-                    .queue(queue)
-                    .durable(DURABLE)
-                    .arguments(queueArgumentSupplier()
-                        .deadLetter(deadLetter)
-                        .singleActiveConsumer()
-                        .consumerTimeout(Duration.ofMinutes(10L).toMillis())
-                        .build())),
-                sender.bind(BindingSpecification.binding()
-                    .exchange(exchange)
-                    .queue(queue)
-                    .routingKey(saasSubscriptionRabbitMQConfiguration.routingKey())))
-            .then()
-            .block();
-    }
-
-    private Mono<AMQP.Exchange.DeclareOk> declareExchange(String exchange) {
-        return sender.declareExchange(ExchangeSpecification.exchange(exchange)
-                .durable(DURABLE).type(BuiltinExchangeType.TOPIC.getType()))
-            .onErrorResume(error -> error instanceof ShutdownSignalException && error.getMessage().contains("reply-code=406, reply-text=PRECONDITION_FAILED"),
-                error -> {
-                    LOGGER.warn("Exchange `{}` already exists but with different configuration. Ignoring this error. \nError message: {}", exchange, error.getMessage());
-                    return Mono.empty();
-                });
-    }
-
-    private QueueArguments.Builder queueArgumentSupplier() {
+    static QueueArguments.Builder queueArgumentSupplier(RabbitMQConfiguration rabbitMQConfiguration,
+                                                        TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration) {
         if (!twpCommonRabbitMQConfiguration.quorumQueuesBypass()) {
             return rabbitMQConfiguration.workQueueArgumentsBuilder();
         }
         return QueueArguments.builder();
     }
 
-    public void startConsumer() {
-        consumeSubscriptionDisposable = consumeSubscriptionQueue();
+    public void init() {
+        consumer.init();
+    }
+
+    protected SubscriptionConsumerConfig getConsumerConfig() {
+        return consumerConfig;
     }
 
     public void restartConsumer() {
-        Disposable previousConsumer = consumeSubscriptionDisposable;
-        consumeSubscriptionDisposable = consumeSubscriptionQueue();
-        Optional.ofNullable(previousConsumer)
-            .ifPresent(Disposable::dispose);
+        consumer.restart();
     }
 
-    private Disposable consumeSubscriptionQueue() {
-        return delivery(consumerConfig.queue())
-            .concatMap(delivery -> consumeSubscriptionUpdate(delivery, delivery.getBody()))
-            .subscribeOn(Schedulers.boundedElastic())
-            .subscribe();
-    }
-
-    public Flux<AcknowledgableDelivery> delivery(String queue) {
-        return Flux.using(receiverProvider::createReceiver,
-            receiver -> receiver.consumeManualAck(queue, new ConsumeOptions()
-                .qos(DEFAULT_CONCURRENCY)),
-            Receiver::close);
-    }
-
-    private Mono<Void> consumeSubscriptionUpdate(AcknowledgableDelivery ackDelivery, byte[] messagePayload) {
-        return saasSubscriptionHandler.handleMessage(messagePayload)
-            .doOnSuccess(result -> ackDelivery.ack())
-            .onErrorResume(error -> {
-                LOGGER.error("Error when consuming SaaS subscription message", error);
-                ackDelivery.nack(!REQUEUE_ON_NACK);
-                return Mono.empty();
-            });
+    private Mono<Void> consumeSubscriptionUpdate(AcknowledgableDelivery ackDelivery) {
+        return saasSubscriptionHandler.handleMessage(ackDelivery.getBody());
     }
 
     @PreDestroy
     @Override
     public void close() {
-        Optional.ofNullable(consumeSubscriptionDisposable).ifPresent(Disposable::dispose);
+        consumer.close();
     }
 }
