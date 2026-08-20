@@ -177,7 +177,7 @@ public class ScheduledReconnectionHandler implements Startable {
                 .then());
     }
     
-    public boolean restartNeeded() {
+    private boolean restartNeeded() {
         return queuesToMonitor.stream()
             .anyMatch(this::restartNeeded);
     }

@@ -41,10 +41,6 @@ public class ScheduledReconnectionHandlerProbe implements GuiceProbe {
         this.scheduledReconnectionHandler = scheduledReconnectionHandler;
     }
 
-    public boolean restartNeeded() {
-        return scheduledReconnectionHandler.restartNeeded();
-    }
-
     public ImmutableList<String> getQueuesToMonitor() {
         return scheduledReconnectionHandler.getQueuesToMonitor();
     }
