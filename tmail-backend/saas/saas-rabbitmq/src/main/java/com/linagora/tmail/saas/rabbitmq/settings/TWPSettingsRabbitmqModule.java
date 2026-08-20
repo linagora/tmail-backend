@@ -50,7 +50,6 @@ import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.linagora.tmail.AmqpUri;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
-import com.linagora.tmail.rabbitmq.ConsumerReconnectionHandler;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
 
 public class TWPSettingsRabbitmqModule extends AbstractModule {
@@ -100,12 +99,6 @@ public class TWPSettingsRabbitmqModule extends AbstractModule {
         return InitilizationOperationBuilder
             .forClass(TWPSettingsConsumer.class)
             .init(instance::init);
-    }
-
-    @ProvidesIntoSet
-    public SimpleConnectionPool.ReconnectionHandler provideTWPSettingsConsumerReconnectionHandler(TWPSettingsConsumer instance) {
-        return new ConsumerReconnectionHandler(instance::restartConsumer,
-            "Error while restarting the TWP settings consumer upon reconnection");
     }
 
     @Provides
