@@ -20,12 +20,13 @@ package com.linagora.tmail.james.jmap.upload
 
 import java.io.InputStream
 
+import org.apache.james.jmap.api.model.UploadMetaData
 import reactor.core.scala.publisher.SMono
 
 case class DownloadedRemoteFile(contentType: Option[String], content: InputStream)
 
 trait RemoteFileDownloader {
-  def withDownloadedFile[T](remoteUrl: ValidatedRemoteUrl,
-                            maximumSize: Long)
-                           (use: DownloadedRemoteFile => SMono[T]): SMono[T]
+  def withDownloadedFile(remoteUrl: ValidatedRemoteUrl,
+                         maximumSize: Long)
+                        (use: DownloadedRemoteFile => SMono[UploadMetaData]): SMono[UploadMetaData]
 }

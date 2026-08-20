@@ -32,6 +32,7 @@ import io.netty.handler.ssl.util.InsecureTrustManagerFactory
 import io.netty.handler.timeout.{ReadTimeoutException, WriteTimeoutException}
 import jakarta.inject.{Inject, Singleton}
 import org.apache.commons.fileupload.util.LimitedInputStream
+import org.apache.james.jmap.api.model.UploadMetaData
 import org.apache.james.util.ReactorUtils
 import org.reactivestreams.Publisher
 import reactor.core.publisher.{Flux, Mono}
@@ -74,9 +75,9 @@ class ReactorNettyRemoteFileDownloader @Inject()(configuration: UploadFromUrlCon
     baseClient
   }
 
-  override def withDownloadedFile[T](remoteUrl: ValidatedRemoteUrl,
-                                     maximumSize: Long)
-                                    (use: DownloadedRemoteFile => SMono[T]): SMono[T] =
+  override def withDownloadedFile(remoteUrl: ValidatedRemoteUrl,
+                                  maximumSize: Long)
+                                 (use: DownloadedRemoteFile => SMono[UploadMetaData]): SMono[UploadMetaData] =
     SMono.defer(() =>
       validateIfNeeded(remoteUrl)
         .flatMap(_ => fetch(remoteUrl, maximumSize, use)))
@@ -94,9 +95,9 @@ class ReactorNettyRemoteFileDownloader @Inject()(configuration: UploadFromUrlCon
       SMono.just(())
     }
 
-  private def fetch[T](remoteUrl: ValidatedRemoteUrl,
-                       maximumSize: Long,
-                       use: DownloadedRemoteFile => SMono[T]): SMono[T] = {
+  private def fetch(remoteUrl: ValidatedRemoteUrl,
+                    maximumSize: Long,
+                    use: DownloadedRemoteFile => SMono[UploadMetaData]): SMono[UploadMetaData] = {
     val client = httpClient.doOnConnected(connection => BoundedRemoteContentDecompressor.install(connection, maximumSize))
     val request: HttpClient.RequestSender = client.request(GET)
       .uri(remoteUrl.uri)
@@ -107,10 +108,10 @@ class ReactorNettyRemoteFileDownloader @Inject()(configuration: UploadFromUrlCon
       .single())
   }
 
-  private def handleResponse[T](response: HttpClientResponse,
-                                body: ByteBufFlux,
-                                maximumUploadSize: Long,
-                                use: DownloadedRemoteFile => SMono[T]): Publisher[T] = {
+  private def handleResponse(response: HttpClientResponse,
+                             body: ByteBufFlux,
+                             maximumUploadSize: Long,
+                             use: DownloadedRemoteFile => SMono[UploadMetaData]): Publisher[UploadMetaData] = {
     val unsupportedEncoding = hasUnsupportedEncoding(response)
     val contentLength: Option[Long] = identityContentLength(response, unsupportedEncoding)
 
@@ -122,15 +123,15 @@ class ReactorNettyRemoteFileDownloader @Inject()(configuration: UploadFromUrlCon
     }
   }
 
-  private def persistResponse[T](response: HttpClientResponse,
-                                 body: ByteBufFlux,
-                                 maximumSize: Long,
-                                 use: DownloadedRemoteFile => SMono[T]): Publisher[T] = {
+  private def persistResponse(response: HttpClientResponse,
+                              body: ByteBufFlux,
+                              maximumSize: Long,
+                              use: DownloadedRemoteFile => SMono[UploadMetaData]): Publisher[UploadMetaData] = {
     val contentType = Option(response.responseHeaders().get(CONTENT_TYPE))
     val decodedBody: Flux[ByteBuffer] = body.asByteArray()
       .map[ByteBuffer](bytes => ByteBuffer.wrap(bytes))
     val resourceSupplier: Callable[InputStream] = () => limitedInputStream(ReactorUtils.toInputStream(decodedBody), maximumSize)
-    val sourceSupplier: java.util.function.Function[InputStream, Mono[T]] =
+    val sourceSupplier: java.util.function.Function[InputStream, Mono[UploadMetaData]] =
       content => use(DownloadedRemoteFile(contentType, content)).asJava()
     val resourceRelease: Consumer[InputStream] = content => content.close()
 
