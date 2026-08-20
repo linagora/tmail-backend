@@ -5,6 +5,7 @@ Twake mail ships some slight blob store enhancements:
  - BlobId list allows limiting the could of save request for similar objects onto the blob store,
 thus improving overall efficiency.
  - Secondary blob store reads and write to several S3 sites providing higher resiliency.
+ - Mail processing deduplication can be turned off, so that mails in transit do not outlive their processing.
 
 == Object Storage: BlobId list
 
@@ -32,6 +33,37 @@ Example `blob.properties`:
 # This prevents isolation issues for Swift backed S3 deployments, also adds a performance boost.
 # Mandatory, Allowed values are: true, false
 single.save.enable=false
+[...]
+....
+
+== Mail processing deduplication
+
+Mails in transit - the ones stored by the mail queue and by the mail repositories - are, by default, deduplicated with
+the copies eventually stored within the mailboxes: they share the very same blobs.
+
+This means their blobs can not be deleted when the mail leaves the mail queue - the mailboxes might reference them -
+and can only be reclaimed by the deduplication garbage collector, several generations later. For deployments handling
+a high volume of transactional traffic, the object storage thus holds mails long after they have been delivered, and
+the mail queue content can not be rebuilt out of the object storage alone, as it is split and shared.
+
+Setting `mailprocessing.deduplication.enabled=false` stores each mail in transit as a single, standalone RFC822 object
+within the `mail-processing` bucket. That object is deleted as soon as the mail leaves the mail queue or the mail
+repository holding it. This trades storage volume - a mail delivered locally is stored twice: once for the transit,
+once for the mailbox - for a bounded, self-managed transit storage, and allows replaying the mail queue content out of
+the `mail-processing` bucket.
+
+Example `blob.properties`:
+
+....
+[...]
+# Whether mails in transit are deduplicated with the copies eventually stored within the mailboxes.
+# Optional, Allowed values are: true, false, defaults to true
+# `mailprocessing.deduplication.enable` is accepted as an alias.
+mailprocessing.deduplication.enabled=false
+
+# Bucket storing mails in transit when mailprocessing.deduplication.enabled is false.
+# Optional, defaults to mail-processing
+# mailprocessing.bucket=mail-processing
 [...]
 ....
 

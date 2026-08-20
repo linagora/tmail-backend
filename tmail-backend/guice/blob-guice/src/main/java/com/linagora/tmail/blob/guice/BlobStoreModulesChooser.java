@@ -372,6 +372,7 @@ public class BlobStoreModulesChooser {
             .add(new BaseObjectStorageModule())
             .addAll(chooseStoragePolicyModule(blobStoreConfiguration.storageStrategy()))
             .add(new StoragePolicyConfigurationSanityEnforcementModule(blobStoreConfiguration))
+            .add(new MailProcessingModule())
             .build();
     }
 
