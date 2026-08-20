@@ -33,7 +33,7 @@ import io.restassured.builder.ResponseBuilder
 import io.restassured.config.EncoderConfig.encoderConfig
 import io.restassured.config.RestAssuredConfig.newConfig
 import io.restassured.http.ContentType.JSON
-import org.apache.http.HttpStatus.{SC_BAD_GATEWAY, SC_BAD_REQUEST, SC_CREATED, SC_FORBIDDEN, SC_NOT_FOUND, SC_OK, SC_REQUEST_TOO_LONG, SC_UNAUTHORIZED}
+import org.apache.http.HttpStatus.{SC_BAD_REQUEST, SC_CREATED, SC_FORBIDDEN, SC_INTERNAL_SERVER_ERROR, SC_NOT_FOUND, SC_OK, SC_REQUEST_TOO_LONG, SC_UNAUTHORIZED}
 import org.apache.james.GuiceJamesServer
 import org.apache.james.core.Username
 import org.apache.james.jmap.JmapGuiceProbe
@@ -252,7 +252,7 @@ trait UploadFromUrlContract {
   }
 
   @Test
-  def shouldReturnBadGatewayWhenRemoteReturnsNonSuccess(): Unit = {
+  def shouldReturnInternalServerErrorWhenRemoteReturnsNonSuccess(): Unit = {
     // Configure the remote source to reject the download request.
     val remotePath = "/files/not-found"
     remoteFileServer.serveStatus(remotePath, SC_NOT_FOUND)
@@ -265,13 +265,13 @@ trait UploadFromUrlContract {
     .when()
       .post(s"/upload-from-url/$accountId")
 
-    // Verify that the upstream failure is exposed as a gateway error.
+    // Verify that the remote operational failure is exposed as a server error.
     .`then`()
-      .statusCode(SC_BAD_GATEWAY)
+      .statusCode(SC_INTERNAL_SERVER_ERROR)
       .contentType(JSON)
-      .body("status", equalTo(SC_BAD_GATEWAY))
+      .body("status", equalTo(SC_INTERNAL_SERVER_ERROR))
       .body("type", equalTo("about:blank"))
-      .body("detail", equalTo("The remote file could not be downloaded"))
+      .body("detail", equalTo("The remote file could not be uploaded"))
   }
 
   @Test

@@ -131,12 +131,9 @@ class UploadFromUrlRoutes @Inject()(@Named(InjectionKeys.RFC_8621) authenticator
     case capacityException: RemoteUploadCapacityException =>
       LOGGER.warn("Remote upload capacity unavailable for user {} requesting URL {}", username.asString(), remoteUrlForLogging(request), capacityException)
       respondDetails(response, TOO_MANY_REQUESTS, "Remote upload capacity is unavailable")
-    case timeoutException: RemoteUploadTimeoutException =>
-      LOGGER.warn("Remote upload timed out for user {} requesting URL {}", username.asString(), remoteUrlForLogging(request), timeoutException)
-      respondDetails(response, HttpResponseStatus.GATEWAY_TIMEOUT, "The remote transfer timed out")
-    case upstreamException: RemoteUpstreamException =>
-      LOGGER.warn("Remote upload failed for user {} requesting URL {}", username.asString(), remoteUrlForLogging(request), upstreamException)
-      respondDetails(response, HttpResponseStatus.BAD_GATEWAY, "The remote file could not be downloaded")
+    case remoteException @ (_: RemoteUploadTimeoutException | _: RemoteUpstreamException) =>
+      LOGGER.warn("Remote upload failed for user {} requesting URL {}", username.asString(), remoteUrlForLogging(request), remoteException)
+      respondDetails(response, INTERNAL_SERVER_ERROR, "The remote file could not be uploaded")
     case unexpectedException =>
       LOGGER.error("Unexpected upload-from-URL error for user {} requesting URL {}", username.asString(), remoteUrlForLogging(request), unexpectedException)
       respondDetails(response, INTERNAL_SERVER_ERROR, "The remote file could not be uploaded")
