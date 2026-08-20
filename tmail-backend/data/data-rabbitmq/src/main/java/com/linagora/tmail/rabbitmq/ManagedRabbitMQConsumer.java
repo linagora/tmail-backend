@@ -148,6 +148,7 @@ public class ManagedRabbitMQConsumer implements Startable, Closeable {
     private final Sender sender;
     private final ReceiverProvider receiverProvider;
     private final Parameters parameters;
+    private final Object lifecycleLock = new Object();
     private Disposable consumer;
 
     private ManagedRabbitMQConsumer(Sender sender, ReceiverProvider receiverProvider, Parameters parameters) {
@@ -212,12 +213,19 @@ public class ManagedRabbitMQConsumer implements Startable, Closeable {
     }
 
     public void start() {
-        consumer = consumeQueue();
+        replaceConsumer();
     }
 
     public void restart() {
-        Disposable previousConsumer = consumer;
-        consumer = consumeQueue();
+        replaceConsumer();
+    }
+
+    private void replaceConsumer() {
+        Disposable previousConsumer;
+        synchronized (lifecycleLock) {
+            previousConsumer = consumer;
+            consumer = consumeQueue();
+        }
         Optional.ofNullable(previousConsumer)
             .ifPresent(Disposable::dispose);
     }
@@ -255,6 +263,11 @@ public class ManagedRabbitMQConsumer implements Startable, Closeable {
     @PreDestroy
     @Override
     public void close() {
-        Optional.ofNullable(consumer).ifPresent(Disposable::dispose);
+        Disposable previousConsumer;
+        synchronized (lifecycleLock) {
+            previousConsumer = consumer;
+            consumer = null;
+        }
+        Optional.ofNullable(previousConsumer).ifPresent(Disposable::dispose);
     }
 }

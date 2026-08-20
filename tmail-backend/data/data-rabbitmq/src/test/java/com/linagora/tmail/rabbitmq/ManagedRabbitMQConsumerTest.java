@@ -167,6 +167,17 @@ class ManagedRabbitMQConsumerTest {
     }
 
     @Test
+    void restartAfterCloseShouldResumeConsumingMessages() {
+        consumer.close();
+        consumer.restart();
+
+        publish(spec.bindings().get(0).exchange(), ROUTING_KEY, "hello");
+
+        await().atMost(TIMEOUT)
+            .untilAsserted(() -> assertThat(consumedMessages).containsExactly("hello"));
+    }
+
+    @Test
     void declareShouldBeIdempotent() {
         consumer.declare().block();
 
