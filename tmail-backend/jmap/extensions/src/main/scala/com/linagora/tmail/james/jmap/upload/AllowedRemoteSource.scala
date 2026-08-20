@@ -20,7 +20,7 @@ package com.linagora.tmail.james.jmap.upload
 
 import java.net.{IDN, URI}
 import java.util.Locale
-import java.util.regex.Pattern
+import java.util.regex.{Matcher, Pattern}
 
 import com.google.common.base.CharMatcher
 
@@ -36,35 +36,44 @@ object AllowedRemoteSource {
 
   def parse(value: String): Either[IllegalArgumentException, AllowedRemoteSource] =
     Try {
-      val matcher = SOURCE_PATTERN.matcher(value.trim)
-      if (!matcher.matches()) {
-        throw new IllegalArgumentException("Expected an HTTPS remote source")
-      }
+      val source = value.trim
+      val matcher = sourceMatcher(source)
+      val hostPattern = validateHostPattern(matcher.group(1).stripSuffix("."))
 
-      val hostPattern: String = matcher.group(1).stripSuffix(".")
-      if (hostPattern.isEmpty || containsPercentEncoding(hostPattern)) {
-        throw new IllegalArgumentException("Invalid remote source host pattern")
-      }
-
-      val port: Int = Option(matcher.group(2)).map(_.toInt).getOrElse(DEFAULT_HTTPS_PORT)
-      if (port < 1 || port > 65535) {
-        throw new IllegalArgumentException("Invalid HTTPS remote source port")
-      }
-
-      val labels: Seq[String] = hostPattern.split("\\.", -1).toSeq
-      if (labels.exists(_.isEmpty)) {
-        throw new IllegalArgumentException("Invalid DNS label")
-      }
-
-      val compiledLabels: Seq[String] = labels.map(compileLabel)
-      AllowedRemoteSource(
-        Pattern.compile("^" + compiledLabels.mkString("\\.") + "$"),
-        port,
-        value.trim)
+      AllowedRemoteSource(compileHostPattern(hostPattern), parsePort(Option(matcher.group(2))), source)
     }.toEither.left.map {
       case exception: IllegalArgumentException => exception
       case exception => new IllegalArgumentException("Invalid HTTPS remote source", exception)
     }
+
+  private def sourceMatcher(source: String): Matcher = {
+    val matcher = SOURCE_PATTERN.matcher(source)
+    if (!matcher.matches()) {
+      throw new IllegalArgumentException("Expected an HTTPS remote source")
+    }
+    matcher
+  }
+
+  private def validateHostPattern(hostPattern: String): String = {
+    if (hostPattern.isEmpty || containsPercentEncoding(hostPattern)) {
+      throw new IllegalArgumentException("Invalid remote source host pattern")
+    }
+    if (hostPattern.split("\\.", -1).exists(_.isEmpty)) {
+      throw new IllegalArgumentException("Invalid DNS label")
+    }
+    hostPattern
+  }
+
+  private def parsePort(configuredPort: Option[String]): Int = {
+    val port = configuredPort.map(_.toInt).getOrElse(DEFAULT_HTTPS_PORT)
+    if (port < 1 || port > 65535) {
+      throw new IllegalArgumentException("Invalid HTTPS remote source port")
+    }
+    port
+  }
+
+  private def compileHostPattern(hostPattern: String): Pattern =
+    Pattern.compile("^" + hostPattern.split("\\.", -1).map(compileLabel).mkString("\\.") + "$")
 
   private[upload] def normalizeHost(host: String): String = {
     val normalized: String = IDN.toASCII(host.stripSuffix("."), IDN.USE_STD3_ASCII_RULES)
@@ -77,20 +86,19 @@ object AllowedRemoteSource {
     normalized
   }
 
-  private def compileLabel(label: String): String = {
-    val wildcardCount = label.count(_ == '%')
-    if (wildcardCount == 0) {
-      Pattern.quote(normalizeHost(label))
-    } else if (wildcardCount == 1) {
-      val parts: Array[String] = label.split("%", -1)
-      if (parts.exists(part => !WILDCARD_LITERAL_CHARACTERS.matchesAllOf(part)) ||
-        parts.headOption.exists(_.startsWith("-")) || parts.lastOption.exists(_.endsWith("-"))) {
-        throw new IllegalArgumentException("Invalid wildcard DNS label")
-      }
-      Pattern.quote(parts.head.toLowerCase(Locale.US)) + "[a-z0-9-]+" + Pattern.quote(parts.last.toLowerCase(Locale.US))
-    } else {
-      throw new IllegalArgumentException("Only one wildcard is allowed per DNS label")
+  private def compileLabel(label: String): String = label.count(_ == '%') match {
+    case 0 => Pattern.quote(normalizeHost(label))
+    case 1 => compileWildcardLabel(label)
+    case _ => throw new IllegalArgumentException("Only one wildcard is allowed per DNS label")
+  }
+
+  private def compileWildcardLabel(label: String): String = {
+    val parts: Array[String] = label.split("%", -1)
+    if (parts.exists(part => !WILDCARD_LITERAL_CHARACTERS.matchesAllOf(part)) ||
+      parts.head.startsWith("-") || parts.last.endsWith("-")) {
+      throw new IllegalArgumentException("Invalid wildcard DNS label")
     }
+    Pattern.quote(parts.head.toLowerCase(Locale.US)) + "[a-z0-9-]+" + Pattern.quote(parts.last.toLowerCase(Locale.US))
   }
 
   private def containsPercentEncoding(value: String): Boolean =
