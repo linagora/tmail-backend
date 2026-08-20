@@ -112,14 +112,7 @@ Errors use Problem Details with matching HTTP and `status` values:
 | Remote file transfer capacity is unavailable.
 
 | `500`
-| Upload persistence failed unexpectedly.
-
-| `502`
-| The remote server could not be reached, returned an unsupported response, or
-  supplied content that could not be decoded.
-
-| `504`
-| The remote connection or transfer timed out.
+| The remote file could not be downloaded or persisted.
 |===
 
 If the client disconnects while an import is in progress, the server cancels the
