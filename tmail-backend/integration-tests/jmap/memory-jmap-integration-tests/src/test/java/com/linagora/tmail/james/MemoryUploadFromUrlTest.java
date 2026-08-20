@@ -30,6 +30,7 @@ import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.UploadFromUrlContract;
 import com.linagora.tmail.james.common.extension.RemoteFileServerExtension;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
+import com.linagora.tmail.james.jmap.upload.UploadFromUrlJmapModule;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class MemoryUploadFromUrlTest implements UploadFromUrlContract {
@@ -45,10 +46,10 @@ public class MemoryUploadFromUrlTest implements UploadFromUrlContract {
             .configurationFromClasspath()
             .usersRepository(DEFAULT)
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
-            .uploadFromUrlConfiguration(remoteFileServer.uploadFromUrlConfiguration())
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
-            .overrideWith(new LinagoraTestJMAPServerModule()))
+            .overrideWith(new LinagoraTestJMAPServerModule())
+            .overrideWith(new UploadFromUrlJmapModule(remoteFileServer.uploadFromUrlConfiguration())))
         .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 

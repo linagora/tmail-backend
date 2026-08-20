@@ -48,7 +48,6 @@ import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.service.discovery.LinagoraServicesDiscoveryModuleChooserConfiguration;
 import com.linagora.tmail.james.jmap.settings.TWPSettingsModuleChooserConfiguration;
-import com.linagora.tmail.james.jmap.upload.UploadFromUrlConfiguration;
 
 public record DistributedJamesConfiguration(ConfigurationPath configurationPath, JamesDirectoriesProvider directories,
                                             BlobStoreConfiguration blobStoreConfiguration,
@@ -60,7 +59,6 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                                             OpenPaasModuleChooserConfiguration openPaasModuleChooserConfiguration,
                                             TWPSettingsModuleChooserConfiguration twpSettingsModuleChooserConfiguration,
                                             boolean jmapEnabled,
-                                            UploadFromUrlConfiguration uploadFromUrlConfiguration,
                                             PropertiesProvider propertiesProvider,
                                             FileConfigurationProvider fileConfigurationProvider,
                                             boolean quotaCompatibilityMode,
@@ -84,7 +82,6 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
         private Optional<OpenPaasModuleChooserConfiguration> openPaasModuleChooserConfiguration;
         private Optional<TWPSettingsModuleChooserConfiguration> twpSettingsModuleChooserConfiguration;
         private Optional<Boolean> jmapEnabled;
-        private Optional<UploadFromUrlConfiguration> uploadFromUrlConfiguration;
         private Optional<EventBusKeysChoice> eventBusKeysChoice;
         private Optional<Boolean> quotaCompatibilityMode;
         private Optional<Boolean> dropListsEnabled;
@@ -107,7 +104,6 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             openPaasModuleChooserConfiguration = Optional.empty();
             twpSettingsModuleChooserConfiguration = Optional.empty();
             jmapEnabled = Optional.empty();
-            uploadFromUrlConfiguration = Optional.empty();
             quotaCompatibilityMode = Optional.empty();
             eventBusKeysChoice = Optional.empty();
             dropListsEnabled = Optional.empty();
@@ -237,11 +233,6 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
             return this;
         }
 
-        public Builder uploadFromUrlConfiguration(UploadFromUrlConfiguration configuration) {
-            this.uploadFromUrlConfiguration = Optional.of(configuration);
-            return this;
-        }
-
         public DistributedJamesConfiguration build() {
             ConfigurationPath configurationPath = this.configurationPath.orElse(new ConfigurationPath(FileSystem.FILE_PROTOCOL_AND_CONF));
             JamesServerResourceLoader directories = new JamesServerResourceLoader(rootDirectory
@@ -355,16 +346,6 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 }
             });
 
-            UploadFromUrlConfiguration uploadFromUrlConfiguration = this.uploadFromUrlConfiguration.orElseGet(() -> {
-                try {
-                    return JMAPExtensionConfiguration.from(propertiesProvider.getConfiguration("jmap")).uploadFromUrlConfiguration();
-                } catch (FileNotFoundException e) {
-                    return UploadFromUrlConfiguration.DISABLED();
-                } catch (ConfigurationException e) {
-                    throw new RuntimeException(e);
-                }
-            });
-
             return new DistributedJamesConfiguration(
                 configurationPath,
                 directories,
@@ -377,7 +358,6 @@ public record DistributedJamesConfiguration(ConfigurationPath configurationPath,
                 openPaasModuleChooserConfiguration,
                 twpSettingsModuleChooserConfiguration,
                 jmapEnabled,
-                uploadFromUrlConfiguration,
                 propertiesProvider,
                 configurationProvider,
                 quotaCompatibilityMode,

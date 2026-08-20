@@ -478,7 +478,7 @@ public class DistributedServer {
             .overrideWith(chooseTWPSettingsModule(configuration.twpSettingsModuleChooserConfiguration()))
             .overrideWith(chooseModules(searchConfiguration))
             .overrideWith(chooseJmapModule(configuration))
-            .overrideWith(chooseUploadFromUrlModule(configuration))
+            .overrideWith(UploadFromUrlJmapModule.from(configuration))
             .overrideWith(overrideEventBusModule(configuration))
             .overrideWith(chooseDropListsModule(configuration))
             .overrideWith(chooseJmapOidc(configuration))
@@ -535,14 +535,6 @@ public class DistributedServer {
                 return new TMailJMAPListenerModule();
             }
             return new JMAPListenerModule();
-        }
-        return binder -> {
-        };
-    }
-
-    private static Module chooseUploadFromUrlModule(DistributedJamesConfiguration configuration) {
-        if (configuration.jmapEnabled() && configuration.uploadFromUrlConfiguration().isEnabled()) {
-            return new UploadFromUrlJmapModule(configuration.uploadFromUrlConfiguration());
         }
         return binder -> {
         };

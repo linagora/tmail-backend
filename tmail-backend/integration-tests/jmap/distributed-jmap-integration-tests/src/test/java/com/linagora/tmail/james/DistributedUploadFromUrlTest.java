@@ -35,6 +35,7 @@ import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.UploadFromUrlContract;
 import com.linagora.tmail.james.common.extension.RemoteFileServerExtension;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
+import com.linagora.tmail.james.jmap.upload.UploadFromUrlJmapModule;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class DistributedUploadFromUrlTest implements UploadFromUrlContract {
@@ -58,14 +59,14 @@ public class DistributedUploadFromUrlTest implements UploadFromUrlContract {
             .eventBusKeysChoice(EventBusKeysChoice.REDIS)
             .firebaseModuleChooserConfiguration(FirebaseModuleChooserConfiguration.DISABLED)
             .searchConfiguration(SearchConfiguration.scanning())
-            .uploadFromUrlConfiguration(remoteFileServer.uploadFromUrlConfiguration())
             .build())
         .extension(new CassandraExtension())
         .extension(new RabbitMQExtension())
         .extension(new RedisExtension())
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
-            .overrideWith(new LinagoraTestJMAPServerModule()))
+            .overrideWith(new LinagoraTestJMAPServerModule())
+            .overrideWith(new UploadFromUrlJmapModule(remoteFileServer.uploadFromUrlConfiguration())))
         .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
