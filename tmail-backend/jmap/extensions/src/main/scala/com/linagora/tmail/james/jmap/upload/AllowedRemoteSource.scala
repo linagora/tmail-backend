@@ -20,7 +20,7 @@ package com.linagora.tmail.james.jmap.upload
 
 import java.net.{IDN, URI}
 import java.util.Locale
-import java.util.regex.{Matcher, Pattern}
+import java.util.regex.Pattern
 
 import com.google.common.base.CharMatcher
 
@@ -28,31 +28,50 @@ import scala.util.Try
 
 object AllowedRemoteSource {
   val DEFAULT_HTTPS_PORT: Int = 443
-  private val SOURCE_PATTERN: Pattern = Pattern.compile("(?i)^https://([^/:?#@]+)(?::([0-9]{1,5}))?$")
   private val LOWERCASE_ALPHANUMERIC: CharMatcher = CharMatcher.inRange('a', 'z')
     .or(CharMatcher.inRange('0', '9'))
   private val DNS_LABEL_CHARACTERS: CharMatcher = LOWERCASE_ALPHANUMERIC.or(CharMatcher.is('-'))
   private val WILDCARD_LITERAL_CHARACTERS: CharMatcher = DNS_LABEL_CHARACTERS.or(CharMatcher.inRange('A', 'Z'))
 
+  private case class ParsedSource(uri: URI, hostPattern: String)
+
   def parse(value: String): Either[IllegalArgumentException, AllowedRemoteSource] =
     Try {
       val source = value.trim
-      val matcher = sourceMatcher(source)
-      val hostPattern = validateHostPattern(matcher.group(1).stripSuffix("."))
+      val parsedSource = parseSource(source)
+      val hostPattern = validateHostPattern(parsedSource.hostPattern.stripSuffix("."))
 
-      AllowedRemoteSource(compileHostPattern(hostPattern), parsePort(Option(matcher.group(2))), source)
+      AllowedRemoteSource(compileHostPattern(hostPattern), parsePort(parsedSource.uri), source)
     }.toEither.left.map {
       case exception: IllegalArgumentException => exception
       case exception => new IllegalArgumentException("Invalid HTTPS remote source", exception)
     }
 
-  private def sourceMatcher(source: String): Matcher = {
-    val matcher = SOURCE_PATTERN.matcher(source)
-    if (!matcher.matches()) {
+  private def parseSource(source: String): ParsedSource = {
+    ensureValidSource(!containsPercentEncoding(source))
+    val wildcardPlaceholder = availableWildcardPlaceholder(source)
+    val sourceUri = new URI(source.replace("%", wildcardPlaceholder))
+    ensureValidSource(sourceUri.isAbsolute)
+    ensureValidSource(!sourceUri.isOpaque)
+    ensureValidSource(Option(sourceUri.getScheme).exists(_.equalsIgnoreCase("https")))
+    ensureValidSource(Option(sourceUri.getHost).exists(_.nonEmpty))
+    ensureValidSource(sourceUri.getUserInfo == null)
+    ensureValidSource(Option(sourceUri.getPath).forall(_.isEmpty))
+    ensureValidSource(sourceUri.getQuery == null)
+    ensureValidSource(sourceUri.getFragment == null)
+    ParsedSource(sourceUri, sourceUri.getHost.replace(wildcardPlaceholder, "%"))
+  }
+
+  private def availableWildcardPlaceholder(source: String): String =
+    Iterator.from(0)
+      .map(index => s"uploadfromurlwildcard$index")
+      .find(placeholder => !source.toLowerCase(Locale.US).contains(placeholder))
+      .get
+
+  private def ensureValidSource(condition: Boolean): Unit =
+    if (!condition) {
       throw new IllegalArgumentException("Expected an HTTPS remote source")
     }
-    matcher
-  }
 
   private def validateHostPattern(hostPattern: String): String = {
     if (hostPattern.isEmpty || containsPercentEncoding(hostPattern)) {
@@ -64,8 +83,11 @@ object AllowedRemoteSource {
     hostPattern
   }
 
-  private def parsePort(configuredPort: Option[String]): Int = {
-    val port = configuredPort.map(_.toInt).getOrElse(DEFAULT_HTTPS_PORT)
+  private def parsePort(sourceUri: URI): Int = {
+    val port = sourceUri.getPort match {
+      case -1 => DEFAULT_HTTPS_PORT
+      case configuredPort => configuredPort
+    }
     if (port < 1 || port > 65535) {
       throw new IllegalArgumentException("Invalid HTTPS remote source port")
     }
@@ -94,12 +116,16 @@ object AllowedRemoteSource {
 
   private def compileWildcardLabel(label: String): String = {
     val parts: Array[String] = label.split("%", -1)
-    if (parts.exists(part => !WILDCARD_LITERAL_CHARACTERS.matchesAllOf(part)) ||
-      parts.head.startsWith("-") || parts.last.endsWith("-")) {
-      throw new IllegalArgumentException("Invalid wildcard DNS label")
-    }
+    ensureValidWildcardLabel(parts.forall(WILDCARD_LITERAL_CHARACTERS.matchesAllOf))
+    ensureValidWildcardLabel(!parts.head.startsWith("-"))
+    ensureValidWildcardLabel(!parts.last.endsWith("-"))
     Pattern.quote(parts.head.toLowerCase(Locale.US)) + "[a-z0-9-]+" + Pattern.quote(parts.last.toLowerCase(Locale.US))
   }
+
+  private def ensureValidWildcardLabel(condition: Boolean): Unit =
+    if (!condition) {
+      throw new IllegalArgumentException("Invalid wildcard DNS label")
+    }
 
   private def containsPercentEncoding(value: String): Boolean =
     value.sliding(3).exists(candidate => candidate.length == 3 && candidate.head == '%' &&
@@ -118,6 +144,7 @@ case class AllowedRemoteSource private(hostPattern: Pattern,
                                        private val advertisedValue: String) {
   def asString: String = advertisedValue
 
+  // RemoteUrlPolicy parses and validates the HTTPS URI; regex matching is restricted to its normalized host.
   def matches(uri: URI): Boolean =
     Option(uri.getScheme).exists(_.equalsIgnoreCase("https")) &&
       effectivePort(uri) == port &&
