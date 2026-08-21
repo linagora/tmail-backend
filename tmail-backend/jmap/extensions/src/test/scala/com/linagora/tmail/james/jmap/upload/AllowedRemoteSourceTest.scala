@@ -72,6 +72,21 @@ class AllowedRemoteSourceTest {
       .isInstanceOf(classOf[IllegalArgumentException])
 
   @Test
+  def shouldRejectQueryInConfiguredSource(): Unit =
+    assertThatThrownBy(() => parse("https://drive.example.com?token=secret"))
+      .isInstanceOf(classOf[IllegalArgumentException])
+
+  @Test
+  def shouldRejectUserInfoInConfiguredSource(): Unit =
+    assertThatThrownBy(() => parse("https://user@drive.example.com"))
+      .isInstanceOf(classOf[IllegalArgumentException])
+
+  @Test
+  def shouldRejectNonHttpsConfiguredSource(): Unit =
+    assertThatThrownBy(() => parse("http://drive.example.com"))
+      .isInstanceOf(classOf[IllegalArgumentException])
+
+  @Test
   def shouldRejectPercentEncodingInConfiguredHost(): Unit =
     assertThatThrownBy(() => parse("https://%25-drive.twake.linagora.com"))
       .isInstanceOf(classOf[IllegalArgumentException])
