@@ -113,6 +113,9 @@ Errors use Problem Details with matching HTTP and `status` values:
 
 | `500`
 | The remote file could not be downloaded or persisted.
+
+| `501`
+| The upload-from-URL capability is not available.
 |===
 
 If the client disconnects while an import is in progress, the server cancels the
