@@ -22,9 +22,10 @@ import java.nio.charset.StandardCharsets
 import java.util.stream
 import java.util.stream.Stream
 
+import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_UPLOAD_FROM_URL
 import com.linagora.tmail.james.jmap.upload._
 import io.netty.handler.codec.http.HttpHeaderNames.{CONTENT_LENGTH, CONTENT_LOCATION, CONTENT_TYPE}
-import io.netty.handler.codec.http.HttpResponseStatus.{BAD_REQUEST, CREATED, FORBIDDEN, INTERNAL_SERVER_ERROR, TOO_MANY_REQUESTS, UNAUTHORIZED}
+import io.netty.handler.codec.http.HttpResponseStatus.{BAD_REQUEST, CREATED, FORBIDDEN, INTERNAL_SERVER_ERROR, NOT_IMPLEMENTED, TOO_MANY_REQUESTS, UNAUTHORIZED}
 import io.netty.handler.codec.http.{HttpMethod, HttpResponseStatus}
 import jakarta.inject.{Inject, Named}
 import org.apache.james.core.Username
@@ -86,6 +87,15 @@ class UploadFromUrlRoutes @Inject()(@Named(InjectionKeys.RFC_8621) authenticator
     addCorsHeaders(response).send().`then`()
 
   private[routes] def post(request: HttpServerRequest, response: HttpServerResponse): Mono[Void] =
+    (if (configuration.disabledCapabilities.contains(LINAGORA_UPLOAD_FROM_URL)) {
+      respondDetails(response, NOT_IMPLEMENTED, "The upload-from-URL capability is not available")
+    } else {
+      handleUploadFromUrl(request, response)
+    })
+      .asJava()
+      .`then`()
+
+  private def handleUploadFromUrl(request: HttpServerRequest, response: HttpServerResponse): SMono[Void] =
     SMono(authenticator.authenticate(request))
       .flatMap(authenticatedSession => {
         delegateIfNeeded(request, authenticatedSession)
@@ -103,8 +113,6 @@ class UploadFromUrlRoutes @Inject()(@Named(InjectionKeys.RFC_8621) authenticator
           respondDetails(response, INTERNAL_SERVER_ERROR, "The remote file could not be uploaded")
       }
       .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
-      .asJava()
-      .`then`()
 
   private def handleAuthenticatedError(request: HttpServerRequest,
                                        response: HttpServerResponse,
