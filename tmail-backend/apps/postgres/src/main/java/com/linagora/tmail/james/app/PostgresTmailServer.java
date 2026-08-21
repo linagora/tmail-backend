@@ -194,6 +194,7 @@ import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.listener.CollectTrustedContactsListenerModule;
 import com.linagora.tmail.listener.FilteringRuleReferenceUpdaterListenerModule;
 import com.linagora.tmail.mailbox.opensearch.TmailOpenSearchMailboxMappingModule;
+import com.linagora.tmail.mailbox.quota.postgres.PostgresQuotaSumDaoModule;
 import com.linagora.tmail.mailbox.quota.postgres.PostgresUserQuotaReporterModule;
 import com.linagora.tmail.modules.data.PostgresKeywordEmailQueryViewModule;
 import com.linagora.tmail.modules.data.TMailPostgresDataModule;
@@ -221,6 +222,7 @@ import com.linagora.tmail.webadmin.mailbox.AllUsersReindexingRoutesModule;
 import com.linagora.tmail.webadmin.mailbox.MailboxResourcesLocationRoutesModule;
 import com.linagora.tmail.webadmin.mailinglist.MailingListConfigurationModule;
 import com.linagora.tmail.webadmin.mailinglist.MailingListRoutesModule;
+import com.linagora.tmail.webadmin.quota.QuotaSumRoutesModule;
 import com.linagora.tmail.webadmin.quota.UserQuotaReporterRoutesModule;
 import com.linagora.tmail.webadmin.templates.TemplatesProvisionModule;
 
@@ -320,6 +322,7 @@ public class PostgresTmailServer {
         new PopulateKeywordEmailQueryViewTaskModule(),
         new RateLimitsRoutesModule(),
         new UserQuotaReporterRoutesModule(),
+        new QuotaSumRoutesModule(),
         new ReIndexingModule(),
         new SieveRoutesModule(),
         new TeamMailboxModule(),
@@ -409,6 +412,7 @@ public class PostgresTmailServer {
             new TMailMailboxSortOrderProviderModule(),
             new PostgresRateLimitingModule(),
             new PostgresUserQuotaReporterModule(),
+            new PostgresQuotaSumDaoModule(),
             new RateLimitsRoutesModule(),
             new EmailAddressContactRoutesModule(),
             new PostgresLabelRepositoryModule(),

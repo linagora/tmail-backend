@@ -213,6 +213,7 @@ import com.linagora.tmail.james.jmap.ticket.TicketRoutesModule;
 import com.linagora.tmail.listener.CollectTrustedContactsListenerModule;
 import com.linagora.tmail.listener.FilteringRuleReferenceUpdaterListenerModule;
 import com.linagora.tmail.mailbox.opensearch.TmailOpenSearchMailboxMappingModule;
+import com.linagora.tmail.mailbox.quota.cassandra.CassandraQuotaSumDaoModule;
 import com.linagora.tmail.mailbox.quota.cassandra.CassandraUserQuotaReporterModule;
 import com.linagora.tmail.modules.data.CassandraKeywordEmailQueryViewModule;
 import com.linagora.tmail.modules.data.CassandraUserDataTieringModule;
@@ -243,6 +244,7 @@ import com.linagora.tmail.webadmin.mailbox.AllUsersReindexingRoutesModule;
 import com.linagora.tmail.webadmin.mailbox.MailboxResourcesLocationRoutesModule;
 import com.linagora.tmail.webadmin.mailinglist.MailingListConfigurationModule;
 import com.linagora.tmail.webadmin.mailinglist.MailingListRoutesModule;
+import com.linagora.tmail.webadmin.quota.QuotaSumRoutesModule;
 import com.linagora.tmail.webadmin.quota.UserQuotaReporterRoutesModule;
 import com.linagora.tmail.webadmin.templates.TemplatesProvisionModule;
 
@@ -288,6 +290,7 @@ public class DistributedServer {
         new MailRepositoriesRoutesModule(),
         new RateLimitsRoutesModule(),
         new UserQuotaReporterRoutesModule(),
+        new QuotaSumRoutesModule(),
         new TeamMailboxModule(),
         new TeamMailboxRoutesModule(),
         new LabelRoutesModule(),
@@ -402,6 +405,7 @@ public class DistributedServer {
             new CassandraDomainSignatureTemplateRepositoryModule(),
             new CassandraRateLimitingModule(),
             new CassandraUserQuotaReporterModule(),
+            new CassandraQuotaSumDaoModule(),
             new CassandraJmapSettingsRepositoryModule(),
             new CassandraPublicAssetRepositoryModule(),
             new DistributedTaskSerializationModule(),
