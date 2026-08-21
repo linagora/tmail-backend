@@ -22,6 +22,8 @@ import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
+import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.matching;
 import static com.github.tomakehurst.wiremock.client.WireMock.notFound;
 import static com.github.tomakehurst.wiremock.client.WireMock.ok;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
@@ -100,6 +102,19 @@ class DavClientTest {
         davServerExtension.setCollectedContactExists(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, collectedContactUid, true);
         assertThat(client.carddav(OPENPAAS_USER_NAME).existsCollectedContact(OPENPAAS_USER_ID, collectedContactUid).block())
             .isTrue();
+    }
+
+    @Test
+    void davClientShouldSendDistinctUserAgentHeader() {
+        DavUid collectedContactUid = new DavUid(UUID.randomUUID().toString());
+        davServerExtension.setCollectedContactExists(OPENPAAS_USER_NAME, OPENPAAS_USER_ID, collectedContactUid, true);
+
+        assertThat(client.carddav(OPENPAAS_USER_NAME).existsCollectedContact(OPENPAAS_USER_ID, collectedContactUid).block())
+            .isTrue();
+
+        davServerExtension.verify(
+            getRequestedFor(urlEqualTo("/addressbooks/%s/collected/%s.vcf".formatted(OPENPAAS_USER_ID.value(), collectedContactUid.value())))
+                .withHeader("User-Agent", matching("tmail-openpaas ReactorNetty.*")));
     }
 
     @Test

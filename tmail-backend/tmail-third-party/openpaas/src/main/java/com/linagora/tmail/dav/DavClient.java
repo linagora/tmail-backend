@@ -37,6 +37,7 @@ import reactor.netty.http.client.HttpClient;
 
 public class DavClient {
     private static final String ACCEPT_VCARD_JSON = "application/vcard+json";
+    private static final String USER_AGENT = "tmail-openpaas " + HttpClient.USER_AGENT;
 
     private final HttpClient httpClient;
     private final DavConfiguration config;
@@ -63,7 +64,8 @@ public class DavClient {
     private static HttpClient createHttpClient(DavConfiguration config) throws SSLException {
         HttpClient client = HttpClient.create()
             .baseUrl(config.baseUrl().toString())
-            .responseTimeout(config.responseTimeout());
+            .responseTimeout(config.responseTimeout())
+            .headers(headers -> headers.set(HttpHeaderNames.USER_AGENT, USER_AGENT));
         if (config.trustAllSslCerts()) {
             SslContext sslContext = SslContextBuilder.forClient().trustManager(InsecureTrustManagerFactory.INSTANCE).build();
             return client.secure(sslContextSpec -> sslContextSpec.sslContext(sslContext));
