@@ -365,6 +365,10 @@
             <artifactId>james-server-protocols-smtp-dkim</artifactId>
         </dependency>
         <dependency>
+            <groupId>${james.protocols.groupId}</groupId>
+            <artifactId>protocols-sasl-kerberos</artifactId>
+        </dependency>
+        <dependency>
             <groupId>${james.groupId}</groupId>
             <artifactId>james-server-rate-limiter-redis</artifactId>
         </dependency>
