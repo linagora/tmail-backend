@@ -111,6 +111,7 @@
 
     <properties>
         <james.groupId>org.apache.james</james.groupId>
+        <james.protocols.groupId>${james.groupId}.protocols</james.protocols.groupId>
         <james.version>3.10.0-SNAPSHOT</james.version>
         <firebase-admin-sdk.version>9.3.0</firebase-admin-sdk.version>
         <bouncycastle.version>1.82</bouncycastle.version>
