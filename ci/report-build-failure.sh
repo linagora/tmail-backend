@@ -42,9 +42,12 @@ LOG_TAIL_LINES="${LOG_TAIL_LINES:-50}"
 
 MARKER='<!-- tmail-ci-failure-report -->'
 
-# Each stage tees its output to $CI_LOG_DIR/<stage name>.log, so the most
-# recently written one is the output of the stage that broke the build, and its
-# name is the name of that stage.
+# Every stage that holds no credential tees its output to
+# $CI_LOG_DIR/<stage name>.log, so the most recently written one is the output of
+# the stage that broke the build, and its name is the name of that stage. The
+# delivery stages are deliberately not teed: the tee step captures the stream
+# before the console filter that masks secrets, so their log would carry the
+# DockerHub and GitHub credentials in clear text - and this script publishes it.
 resolve_build_log() {
     [ -n "$BUILD_LOG" ] && return 0
 
