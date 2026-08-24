@@ -183,7 +183,8 @@ write_report() {
 }
 
 # Posts the report as a PR review, falling back on a plain issue comment when
-# the review API refuses it.
+# the review API refuses it. Both calls are bounded in time and retried: the
+# build is already over, a hanging curl would only hold the executor.
 post_to_github() {
     local payload="$WORKSPACE/ci-failure-report.json"
     local response="$WORKSPACE/ci-failure-report-response.json"
@@ -192,6 +193,7 @@ post_to_github() {
     printf '{"body":"%s","event":"COMMENT"}' "$(json_escape < "$REPORT_FILE")" > "$payload"
 
     status=$(curl -s -o "$response" -w '%{http_code}' -X POST \
+        --connect-timeout 10 --max-time 60 --retry 2 --retry-delay 2 \
         -H "Authorization: token $GITHUB_TOKEN" \
         -H "Content-Type: application/json" \
         --data-binary "@$payload" \
@@ -207,6 +209,7 @@ post_to_github() {
 
     printf '{"body":"%s"}' "$(json_escape < "$REPORT_FILE")" > "$payload"
     status=$(curl -s -o "$response" -w '%{http_code}' -X POST \
+        --connect-timeout 10 --max-time 60 --retry 2 --retry-delay 2 \
         -H "Authorization: token $GITHUB_TOKEN" \
         -H "Content-Type: application/json" \
         --data-binary "@$payload" \

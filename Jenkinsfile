@@ -72,17 +72,37 @@ def changedCiFiles() {
     return offending
 }
 
-// The report script is handed the GitHub token, so it has to be the reviewed
-// version of it: for a change request the workspace copy belongs to the
-// contributor, and the target branch one is the one we trust. The guard stage
-// already refuses untrusted changes to `ci/`, this is the second lock.
+// The report script is handed the GitHub token, so it has to be a reviewed
+// version of it. On a branch or tag build, and for a contributor allowed to
+// change CI files, the workspace copy is that version. For anybody else the
+// workspace copy is unreviewed code, so the target branch one is extracted
+// instead - the guard stage already refuses such a change request, this is the
+// second lock. Returns null when no trusted copy can be found, and the failure
+// is then simply not reported rather than reported by untrusted code.
 def trustedReportScript() {
-    def scriptPath = "${env.WORKSPACE_TMP ?: '/tmp'}/report-build-failure-${env.BUILD_NUMBER}.sh"
-    if (env.CHANGE_ID) {
-        fetchChangeTarget()
-        sh "git show 'origin/${env.CHANGE_TARGET}:ci/report-build-failure.sh' > '${scriptPath}'"
-    } else {
-        sh "cp ci/report-build-failure.sh '${scriptPath}'"
+    if (!env.CHANGE_ID || isTrustedContributor()) {
+        return 'ci/report-build-failure.sh'
+    }
+
+    fetchChangeTarget()
+    // mktemp, in the temporary directory Jenkins owns next to the workspace: a
+    // predictable path under a world writable /tmp could be pre-created by
+    // anything else running on this shared agent, and what lands there is about
+    // to be run with the GitHub token.
+    def tmpDir = env.WORKSPACE_TMP ?: "${env.WORKSPACE}@tmp"
+    def scriptPath = sh(
+        returnStdout: true,
+        script: "mkdir -p '${tmpDir}' && mktemp '${tmpDir}/report-build-failure-XXXXXXXX.sh'"
+    ).trim()
+
+    def extracted = sh(
+        returnStatus: true,
+        script: "git show 'origin/${env.CHANGE_TARGET}:ci/report-build-failure.sh' > '${scriptPath}'"
+    )
+    if (extracted != 0) {
+        echo "No report script on ${env.CHANGE_TARGET}: the build failure is not reported."
+        sh "rm -f '${scriptPath}'"
+        return null
     }
     return scriptPath
 }
@@ -95,15 +115,28 @@ def trustedReportScript() {
 // captures the raw stream, before the console log filter that masks secrets, so
 // a teed log of a stage handling credentials would carry them in clear text -
 // straight into a public pull request comment.
+// Reporting is best effort: a GitHub API hiccup or a missing target branch must
+// not hide the failure being reported, nor turn an unstable build into a failed
+// one, so nothing here is allowed to escape.
 def reportBuildFailure() {
-    archiveArtifacts artifacts: 'ci-logs/*.log', allowEmptyArchive: true, fingerprint: false
+    def reportScript = null
+    try {
+        archiveArtifacts artifacts: 'ci-logs/*.log', allowEmptyArchive: true, fingerprint: false
 
-    def reportScript = trustedReportScript()
-    withCredentials([usernamePassword(credentialsId: 'github',
-            usernameVariable: 'GITHUB_CREDENTIAL_USR', passwordVariable: 'GITHUB_TOKEN')]) {
-        sh "bash '${reportScript}' || true"
+        reportScript = trustedReportScript()
+        if (reportScript != null) {
+            withCredentials([usernamePassword(credentialsId: 'github',
+                    usernameVariable: 'GITHUB_CREDENTIAL_USR', passwordVariable: 'GITHUB_TOKEN')]) {
+                sh "bash '${reportScript}' || true"
+            }
+        }
+    } catch (Exception e) {
+        echo "Could not report the build failure: ${e.message}"
+    } finally {
+        if (reportScript != null && reportScript != 'ci/report-build-failure.sh') {
+            sh "rm -f '${reportScript}'"
+        }
     }
-    sh "rm -f '${reportScript}'"
 }
 
 pipeline {
