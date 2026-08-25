@@ -40,6 +40,7 @@ import org.junit.jupiter.api.Test;
 
 import com.linagora.tmail.migration.core.MemoryMigratedUsersRepository;
 import com.linagora.tmail.migration.core.MigratedUsersRepository;
+import com.linagora.tmail.migration.core.MigrationSwitchService;
 
 import io.restassured.RestAssured;
 
@@ -56,7 +57,7 @@ class MigratedUsersRoutesTest {
         repository = new MemoryMigratedUsersRepository();
         disconnectorNotifier = mock(DisconnectorNotifier.class);
         webAdminServer = WebAdminUtils.createWebAdminServer(
-                new MigratedUsersRoutes(repository, disconnectorNotifier, new JsonTransformer()))
+                new MigratedUsersRoutes(repository, new MigrationSwitchService(repository, disconnectorNotifier), new JsonTransformer()))
             .start();
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer).build();
     }
