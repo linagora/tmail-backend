@@ -18,7 +18,6 @@
 
 package com.linagora.tmail.migration.core;
 
-import java.nio.charset.StandardCharsets;
 import java.util.Optional;
 
 import org.apache.james.core.MailAddress;
@@ -53,7 +52,7 @@ public record MigrationSwitchMessage(@JsonProperty("migratedUser") MigratedUser 
             MailAddress mailAddress = new MailAddress(message.migratedUser().mailAddress());
             return Optional.of(Username.fromMailAddress(mailAddress));
         } catch (Exception e) {
-            LOGGER.warn("Dropping unparsable migration switch message: {}", new String(payload, StandardCharsets.UTF_8), e);
+            LOGGER.warn("Dropping unparsable migration switch message (size={})", payload.length, e);
             return Optional.empty();
         }
     }
