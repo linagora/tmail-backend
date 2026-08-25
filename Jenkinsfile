@@ -1,3 +1,144 @@
+// Files that the pipeline itself executes, or that decide what it executes.
+// Jenkins loads the Jenkinsfile from the trusted revision - the target branch -
+// so a pull request can never change the pipeline definition. Everything else
+// below is read from the workspace, which holds the contributor's code, so a
+// pull request changing them would be running its own code inside our CI.
+def protectedCiPaths() {
+    return ['Jenkinsfile', 'ci/', '.mvn/', '.gitmodules']
+}
+
+// A contributor is trusted when they can already push to the repository: either
+// the change request comes from a branch of linagora/tmail-backend, or from a
+// fork owned by a member of the linagora organisation.
+def isTrustedContributor() {
+    if (!env.CHANGE_FORK) {
+        return true
+    }
+
+    def forkOwner = env.CHANGE_FORK.split('/')[0]
+    def status = null
+    withCredentials([usernamePassword(credentialsId: 'github',
+            usernameVariable: 'GITHUB_CREDENTIAL_USR', passwordVariable: 'GITHUB_CREDENTIAL_PSW')]) {
+        status = sh(
+            script: """curl -s -o /dev/null -w "%{http_code}" \
+              -H "Authorization: token \${GITHUB_CREDENTIAL_PSW}" \
+              "https://api.github.com/orgs/linagora/members/${forkOwner}" """,
+            returnStdout: true
+        ).trim()
+    }
+
+    echo "GitHub org membership check returned HTTP ${status} for '${forkOwner}'"
+    if (status == '204') {
+        return true
+    }
+    if (status == '404') {
+        return false
+    }
+    if (status == '401' || status == '403') {
+        error("Authentication/permission error validating fork owner: ${status}")
+    }
+    error("GitHub API error ${status} while checking membership for '${forkOwner}'")
+}
+
+// Makes the target branch reachable as origin/<target> so that the change
+// request can be diffed against it, whatever pull request discovery strategy
+// the job is configured with.
+def fetchChangeTarget() {
+    if (!env.CHANGE_TARGET) {
+        error('CHANGE_TARGET is not set: cannot determine what this change request modifies.')
+    }
+    sh "git fetch --no-tags --quiet origin '+refs/heads/${env.CHANGE_TARGET}:refs/remotes/origin/${env.CHANGE_TARGET}'"
+}
+
+def changedCiFiles() {
+    def changed = sh(
+        script: "git diff --name-only 'origin/${env.CHANGE_TARGET}...HEAD'",
+        returnStdout: true
+    )
+
+    def offending = []
+    for (String path : changed.split('\n')) {
+        String candidate = path.trim()
+        if (candidate.isEmpty()) {
+            continue
+        }
+        for (String protectedPath : protectedCiPaths()) {
+            if (candidate == protectedPath || candidate.startsWith(protectedPath)) {
+                offending.add(candidate)
+                break
+            }
+        }
+    }
+    return offending
+}
+
+// The report script is handed the GitHub token, so it has to be a reviewed
+// version of it. On a branch or tag build, and for a contributor allowed to
+// change CI files, the workspace copy is that version. For anybody else the
+// workspace copy is unreviewed code, so the target branch one is extracted
+// instead - the guard stage already refuses such a change request, this is the
+// second lock. Returns null when no trusted copy can be found, and the failure
+// is then simply not reported rather than reported by untrusted code.
+def trustedReportScript() {
+    if (!env.CHANGE_ID || isTrustedContributor()) {
+        return 'ci/report-build-failure.sh'
+    }
+
+    fetchChangeTarget()
+    // mktemp, in the temporary directory Jenkins owns next to the workspace: a
+    // predictable path under a world writable /tmp could be pre-created by
+    // anything else running on this shared agent, and what lands there is about
+    // to be run with the GitHub token.
+    def tmpDir = env.WORKSPACE_TMP ?: "${env.WORKSPACE}@tmp"
+    def scriptPath = sh(
+        returnStdout: true,
+        script: "mkdir -p '${tmpDir}' && mktemp '${tmpDir}/report-build-failure-XXXXXXXX.sh'"
+    ).trim()
+
+    def extracted = sh(
+        returnStatus: true,
+        script: "git show 'origin/${env.CHANGE_TARGET}:ci/report-build-failure.sh' > '${scriptPath}'"
+    )
+    if (extracted != 0) {
+        echo "No report script on ${env.CHANGE_TARGET}: the build failure is not reported."
+        sh "rm -f '${scriptPath}'"
+        return null
+    }
+    return scriptPath
+}
+
+// Posts the failing tests - or, when none was reported, the tail of the failing
+// stage output - back to the pull request, so that a coding agent can pick the
+// build failure up and drive it back to green on its own.
+//
+// Only the stages that hold no credential are teed to ci-logs: the tee step
+// captures the raw stream, before the console log filter that masks secrets, so
+// a teed log of a stage handling credentials would carry them in clear text -
+// straight into a public pull request comment.
+// Reporting is best effort: a GitHub API hiccup or a missing target branch must
+// not hide the failure being reported, nor turn an unstable build into a failed
+// one, so nothing here is allowed to escape.
+def reportBuildFailure() {
+    def reportScript = null
+    try {
+        archiveArtifacts artifacts: 'ci-logs/*.log', allowEmptyArchive: true, fingerprint: false
+
+        reportScript = trustedReportScript()
+        if (reportScript != null) {
+            withCredentials([usernamePassword(credentialsId: 'github',
+                    usernameVariable: 'GITHUB_CREDENTIAL_USR', passwordVariable: 'GITHUB_TOKEN')]) {
+                sh "bash '${reportScript}' || true"
+            }
+        }
+    } catch (Exception e) {
+        echo "Could not report the build failure: ${e.message}"
+    } finally {
+        if (reportScript != null && reportScript != 'ci/report-build-failure.sh') {
+            sh "rm -f '${reportScript}'"
+        }
+    }
+}
+
 pipeline {
     agent {
         label 'heavy'
@@ -7,33 +148,57 @@ pipeline {
         jdk 'jdk_25'
     }
 
-    environment {
-        DOCKER_HUB_CREDENTIAL = credentials('dockerHub')
-        GITHUB_CREDENTIAL = credentials('github')
-    }
-
     options {
         // Configure an overall timeout for the build.
         timeout(time: 4, unit: 'HOURS')
         disableConcurrentBuilds()
     }
-    
+
     stages {
+        // First stage on purpose: nothing from the change request has been run
+        // yet at this point, not even `git submodule update`.
+        stage('Validate CI files') {
+            when {
+                changeRequest()
+            }
+            steps {
+                script {
+                    fetchChangeTarget()
+                    def offending = changedCiFiles()
+                    if (offending.isEmpty()) {
+                        echo 'No CI file touched by this change request.'
+                    } else if (isTrustedContributor()) {
+                        echo "Trusted contributor, changes to ${offending.join(', ')} allowed."
+                    } else {
+                        error("""This change request modifies files the CI executes: ${offending.join(', ')}.
+Contributors outside the linagora organisation cannot change them, as the build would then run unreviewed code with access to the CI credentials.
+Please drop these changes from the pull request, or ask a linagora member to carry them.""")
+                    }
+                }
+            }
+        }
         stage('Git submodule init') {
             steps {
-                sh 'git submodule init'
-                sh 'git submodule update'
+                sh 'mkdir -p ci-logs'
+                tee('ci-logs/Git submodule init.log') {
+                    sh 'git submodule init'
+                    sh 'git submodule update'
+                }
             }
         }
         stage('Compile') {
             steps {
-                sh 'mvn clean install -Dmaven.javadoc.skip=true -DskipTests -T1C'
+                tee('ci-logs/Compile.log') {
+                    sh 'mvn clean install -Dmaven.javadoc.skip=true -DskipTests -T1C'
+                }
             }
         }
         stage('Test') {
             steps {
-                dir("tmail-backend") {
-                    sh 'mvn -B -Dapi.version=1.43 surefire:test'
+                tee('ci-logs/Test.log') {
+                    dir("tmail-backend") {
+                        sh 'mvn -B -Dapi.version=1.43 surefire:test'
+                    }
                 }
             }
             post {
@@ -52,20 +217,10 @@ pipeline {
           }
           steps {
             script {
-              if (env.CHANGE_FORK) {
-                def forkOwner = env.CHANGE_FORK.split('/')[0]
-                def memberStatus = sh(
-                  script: """curl -s -o /dev/null -w "%{http_code}" \
-                    -H "Authorization: token \${GITHUB_CREDENTIAL_PSW}" \
-                    "https://api.github.com/orgs/linagora/members/${forkOwner}" """,
-                  returnStdout: true
-                ).trim()
-                echo "GitHub org membership check returned HTTP ${memberStatus} for '${forkOwner}'"
-                if (memberStatus == '204') {
-                  echo "Fork owner '${forkOwner}' is a linagora org member, proceeding."
-                } else if (memberStatus == '404') {
-                  echo "Fork owner '${forkOwner}' is not a member of the linagora organization."
-                  def approvedByMember = false
+              if (env.CHANGE_FORK && !isTrustedContributor()) {
+                def approvedByMember = false
+                withCredentials([usernamePassword(credentialsId: 'github',
+                        usernameVariable: 'GITHUB_CREDENTIAL_USR', passwordVariable: 'GITHUB_CREDENTIAL_PSW')]) {
                   def commentsJson = sh(
                     script: """curl -s \
                       -H "Authorization: token \${GITHUB_CREDENTIAL_PSW}" \
@@ -89,35 +244,40 @@ pipeline {
                       }
                     }
                   }
-                  if (!approvedByMember) {
-                    echo "No linagora member approval found. Skipping PR image delivery."
-                    return
-                  }
-                } else if (memberStatus == '401' || memberStatus == '403') {
-                  error("Authentication/permission error validating fork owner: ${memberStatus}")
-                } else {
-                  error("GitHub API error ${memberStatus} while checking membership for '${forkOwner}'")
+                }
+                if (!approvedByMember) {
+                  echo "No linagora member approval found. Skipping PR image delivery."
+                  return
                 }
               }
 
-              dir("tmail-backend") {
-                sh 'mvn -Pci jib:build -Djib.to.image=linagora/tmail-backend-pr -Djib.to.tags=$CHANGE_ID -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -pl apps/distributed'
-                sh 'mvn -Pci jib:build -Djib.to.image=linagora/tmail-migration-proxy-pr -Djib.to.tags=$CHANGE_ID -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -pl apps/migration-proxy'
-                // Build tmail distributed AI PR image
-                sh 'cp tmail-third-party/ai-bot/target/tmail-ai-bot-jar-with-dependencies.jar apps/distributed/src/main/extensions-jars'
-                sh 'mvn -Pci jib:build -Djib.to.image=linagora/tmail-backend-distributed-pr -Djib.to.tags=ai-$CHANGE_ID -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -pl apps/distributed'
+              // jib runs the change request's own pom.xml, so the DockerHub
+              // credential is only bound once the delivery is approved above.
+              withCredentials([usernamePassword(credentialsId: 'dockerHub',
+                      usernameVariable: 'DOCKER_HUB_CREDENTIAL_USR', passwordVariable: 'DOCKER_HUB_CREDENTIAL_PSW')]) {
+                dir("tmail-backend") {
+                  sh 'mvn -Pci jib:build -Djib.to.image=linagora/tmail-backend-pr -Djib.to.tags=$CHANGE_ID -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -pl apps/distributed'
+                  sh 'mvn -Pci jib:build -Djib.to.image=linagora/tmail-migration-proxy-pr -Djib.to.tags=$CHANGE_ID -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -pl apps/migration-proxy'
+                  // Build tmail distributed AI PR image
+                  sh 'cp tmail-third-party/ai-bot/target/tmail-ai-bot-jar-with-dependencies.jar apps/distributed/src/main/extensions-jars'
+                  sh 'mvn -Pci jib:build -Djib.to.image=linagora/tmail-backend-distributed-pr -Djib.to.tags=ai-$CHANGE_ID -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -pl apps/distributed'
+                }
               }
-              sh """
-                HTTP_STATUS=\$(curl -s -o /tmp/gh_comment_response.json -w "%{http_code}" -X POST \\
-                  -H "Authorization: token \${GITHUB_CREDENTIAL_PSW}" \\
-                  -H "Content-Type: application/json" \\
-                  -d "{\\"body\\": \\"Docker images published for this PR:\\\\n - linagora/tmail-backend-pr:\${CHANGE_ID}\\\\n - linagora/tmail-backend-distributed-pr:ai-\${CHANGE_ID}\\\\n - linagora/tmail-migration-proxy-pr:\${CHANGE_ID}\\"}" \\
-                  "https://api.github.com/repos/linagora/tmail-backend/issues/\${CHANGE_ID}/comments")
-                if [ "\$HTTP_STATUS" -lt 200 ] || [ "\$HTTP_STATUS" -ge 300 ]; then
-                  echo "WARNING: GitHub API comment failed with HTTP \$HTTP_STATUS"
-                  cat /tmp/gh_comment_response.json
-                fi
-              """
+
+              withCredentials([usernamePassword(credentialsId: 'github',
+                      usernameVariable: 'GITHUB_CREDENTIAL_USR', passwordVariable: 'GITHUB_CREDENTIAL_PSW')]) {
+                sh """
+                  HTTP_STATUS=\$(curl -s -o /tmp/gh_comment_response.json -w "%{http_code}" -X POST \\
+                    -H "Authorization: token \${GITHUB_CREDENTIAL_PSW}" \\
+                    -H "Content-Type: application/json" \\
+                    -d "{\\"body\\": \\"Docker images published for this PR:\\\\n - linagora/tmail-backend-pr:\${CHANGE_ID}\\\\n - linagora/tmail-backend-distributed-pr:ai-\${CHANGE_ID}\\\\n - linagora/tmail-migration-proxy-pr:\${CHANGE_ID}\\"}" \\
+                    "https://api.github.com/repos/linagora/tmail-backend/issues/\${CHANGE_ID}/comments")
+                  if [ "\$HTTP_STATUS" -lt 200 ] || [ "\$HTTP_STATUS" -ge 300 ]; then
+                    echo "WARNING: GitHub API comment failed with HTTP \$HTTP_STATUS"
+                    cat /tmp/gh_comment_response.json
+                  fi
+                """
+              }
             }
           }
         }
@@ -137,15 +297,18 @@ pipeline {
 
               echo "Docker tag: ${env.DOCKER_TAG}"
               // build and push docker images
-              dir("tmail-backend") {
-                sh 'mvn -Pci jib:build -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -Djib.to.tags=distributed-$DOCKER_TAG -pl apps/distributed -X'
-                sh 'mvn -Pci jib:build -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -Djib.to.tags=memory-$DOCKER_TAG -pl apps/memory -X'
-                sh 'mvn -Pci jib:build -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -Djib.to.tags=postgresql-$DOCKER_TAG -pl apps/postgres -X'
-                sh 'mvn -Pci jib:build -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -Djib.to.tags=$DOCKER_TAG -pl apps/migration-proxy -X'
+              withCredentials([usernamePassword(credentialsId: 'dockerHub',
+                      usernameVariable: 'DOCKER_HUB_CREDENTIAL_USR', passwordVariable: 'DOCKER_HUB_CREDENTIAL_PSW')]) {
+                dir("tmail-backend") {
+                  sh 'mvn -Pci jib:build -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -Djib.to.tags=distributed-$DOCKER_TAG -pl apps/distributed -X'
+                  sh 'mvn -Pci jib:build -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -Djib.to.tags=memory-$DOCKER_TAG -pl apps/memory -X'
+                  sh 'mvn -Pci jib:build -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -Djib.to.tags=postgresql-$DOCKER_TAG -pl apps/postgres -X'
+                  sh 'mvn -Pci jib:build -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -Djib.to.tags=$DOCKER_TAG -pl apps/migration-proxy -X'
 
-                // Build tmail distributed AI image
-                sh 'cp tmail-third-party/ai-bot/target/tmail-ai-bot-jar-with-dependencies.jar apps/distributed/src/main/extensions-jars'
-                sh 'mvn -Pci jib:build -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -Djib.to.tags=distributed-ai-$DOCKER_TAG -pl apps/distributed -X'
+                  // Build tmail distributed AI image
+                  sh 'cp tmail-third-party/ai-bot/target/tmail-ai-bot-jar-with-dependencies.jar apps/distributed/src/main/extensions-jars'
+                  sh 'mvn -Pci jib:build -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -Djib.to.tags=distributed-ai-$DOCKER_TAG -pl apps/distributed -X'
+                }
               }
             }
           }
@@ -168,8 +331,11 @@ Check console output at "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BRANC
         }
     }
     post {
-        always {
-            deleteDir() /* clean up our workspace */
+        failure {
+            reportBuildFailure()
+        }
+        unstable {
+            reportBuildFailure()
         }
         success {
             script {
@@ -178,6 +344,9 @@ Check console output at "<a href="${env.BUILD_URL}">${env.JOB_NAME} [${env.BRANC
                     build (job: 'James Gatling build/master', propagate: false, wait: false)
                 }
             }
+        }
+        cleanup {
+            deleteDir() /* clean up our workspace */
         }
     }
 }

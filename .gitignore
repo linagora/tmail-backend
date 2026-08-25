@@ -1,2 +1,6 @@
 target/
 docs/build/
+ci-logs/
+ci-failure-report.md
+ci-failure-report.json
+ci-failure-report-response.json
