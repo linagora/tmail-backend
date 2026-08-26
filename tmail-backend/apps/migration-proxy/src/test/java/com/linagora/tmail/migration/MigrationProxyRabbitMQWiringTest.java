@@ -22,12 +22,18 @@ import static org.apache.james.backends.rabbitmq.RabbitMQFixture.DEFAULT_MANAGEM
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.io.File;
+import java.util.List;
+import java.util.Set;
+
+import jakarta.inject.Inject;
 
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.backends.postgres.PostgresExtension;
 import org.apache.james.backends.rabbitmq.DockerRabbitMQ;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
+import org.apache.james.backends.rabbitmq.SimpleConnectionPool;
 import org.apache.james.server.core.configuration.Configuration;
+import org.apache.james.utils.GuiceProbe;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -38,7 +44,10 @@ import org.junit.jupiter.api.io.TempDir;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
+import com.google.inject.multibindings.Multibinder;
+import com.linagora.tmail.ScheduledReconnectionHandler;
 import com.linagora.tmail.migration.MigrationProxyServer.EventBusModuleChoice;
+import com.linagora.tmail.migration.core.MigrationSwitchConsumer;
 
 /**
  * Boots the migration proxy against a real RabbitMQ with the distributed (HA) event bus injected, to
@@ -48,6 +57,29 @@ import com.linagora.tmail.migration.MigrationProxyServer.EventBusModuleChoice;
  * {@code rabbitmq.properties} file, which is the point of resolving the choice from the configuration.
  */
 class MigrationProxyRabbitMQWiringTest {
+    static class ReconnectionHandlersProbe implements GuiceProbe {
+        private final Set<SimpleConnectionPool.ReconnectionHandler> reconnectionHandlers;
+        private final MigrationSwitchConsumer migrationSwitchConsumer;
+        private final ScheduledReconnectionHandler scheduledReconnectionHandler;
+
+        @Inject
+        ReconnectionHandlersProbe(Set<SimpleConnectionPool.ReconnectionHandler> reconnectionHandlers,
+                                  MigrationSwitchConsumer migrationSwitchConsumer,
+                                  ScheduledReconnectionHandler scheduledReconnectionHandler) {
+            this.reconnectionHandlers = reconnectionHandlers;
+            this.migrationSwitchConsumer = migrationSwitchConsumer;
+            this.scheduledReconnectionHandler = scheduledReconnectionHandler;
+        }
+
+        boolean containsMigrationSwitchConsumer() {
+            return reconnectionHandlers.contains(migrationSwitchConsumer);
+        }
+
+        List<String> queuesToMonitor() {
+            return scheduledReconnectionHandler.getQueuesToMonitor();
+        }
+    }
+
     @RegisterExtension
     static PostgresExtension postgresExtension = PostgresExtension.empty();
 
@@ -84,10 +116,17 @@ class MigrationProxyRabbitMQWiringTest {
 
         proxy = MigrationProxyServer.createServer(configuration, EventBusModuleChoice.RABBITMQ)
             .overrideWith(postgresExtension.getModule())
-            .overrideWith(new RabbitMQConfigurationModule());
+            .overrideWith(new RabbitMQConfigurationModule())
+            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
+                .addBinding().to(ReconnectionHandlersProbe.class));
         proxy.start();
 
         assertThat(proxy.isStarted()).isTrue();
+
+        // reconnection on migration switch queue's consumer
+        assertThat(proxy.getProbe(ReconnectionHandlersProbe.class).containsMigrationSwitchConsumer()).isTrue();
+        assertThat(proxy.getProbe(ReconnectionHandlersProbe.class).queuesToMonitor())
+            .containsExactly(MigrationSwitchConsumer.QUEUE);
     }
 
     private static class RabbitMQConfigurationModule extends AbstractModule {

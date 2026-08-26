@@ -23,10 +23,13 @@ import java.io.Closeable;
 import jakarta.annotation.PreDestroy;
 
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
+import org.apache.james.backends.rabbitmq.SimpleConnectionPool;
 import org.apache.james.lifecycle.api.Startable;
+import org.reactivestreams.Publisher;
 
 import com.linagora.tmail.rabbitmq.ManagedRabbitMQConsumer;
 import com.linagora.tmail.rabbitmq.QueueDeclaration;
+import com.rabbitmq.client.Connection;
 
 import reactor.core.publisher.Mono;
 import reactor.rabbitmq.AcknowledgableDelivery;
@@ -41,7 +44,7 @@ import reactor.rabbitmq.AcknowledgableDelivery;
  * {@code MigrationProxyServer.EventBusModuleChoice}), riding the same RabbitMQ backend as the disconnection
  * event bus.
  */
-public class MigrationSwitchConsumer implements Startable, Closeable {
+public class MigrationSwitchConsumer implements Startable, Closeable, SimpleConnectionPool.ReconnectionHandler {
     public static final String EXCHANGE = "migration:switch";
     public static final String ROUTING_KEY = "mail";
     public static final String QUEUE = "migration:switch:proxy";
@@ -69,6 +72,11 @@ public class MigrationSwitchConsumer implements Startable, Closeable {
 
     public void init() {
         consumer.init();
+    }
+
+    @Override
+    public Publisher<Void> handleReconnection(Connection connection) {
+        return Mono.fromRunnable(consumer::restart);
     }
 
     @PreDestroy

@@ -79,6 +79,11 @@
             <artifactId>data-rabbitmq</artifactId>
         </dependency>
         <dependency>
+            <!-- Scheduled Rabbit consumer reconnection handler -->
+            <groupId>com.linagora.tmail</groupId>
+            <artifactId>tmail-guice-distributed</artifactId>
+        </dependency>
+        <dependency>
             <groupId>${james.groupId}</groupId>
             <artifactId>apache-james-backends-postgres</artifactId>
             <type>test-jar</type>

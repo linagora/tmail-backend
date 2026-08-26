@@ -18,15 +18,21 @@
 
 package com.linagora.tmail.migration.modules;
 
+import static com.linagora.tmail.ScheduledReconnectionHandler.Module.QUEUES_TO_MONITOR_INJECT_KEY;
+
+import java.util.Set;
+
 import jakarta.inject.Singleton;
 
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
+import org.apache.james.backends.rabbitmq.SimpleConnectionPool;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.multibindings.ProvidesIntoSet;
+import com.google.inject.name.Named;
 import com.linagora.tmail.migration.core.MigrationSwitchConsumer;
 import com.linagora.tmail.migration.core.MigrationSwitchService;
 
@@ -37,9 +43,21 @@ import com.linagora.tmail.migration.core.MigrationSwitchService;
  */
 public class MigrationProxyMigrationSwitchModule extends AbstractModule {
     @Provides
+    @Named(QUEUES_TO_MONITOR_INJECT_KEY)
+    @Singleton
+    Set<String> queuesToMonitor() {
+        return Set.of(MigrationSwitchConsumer.QUEUE);
+    }
+
+    @Provides
     @Singleton
     MigrationSwitchConsumer provideMigrationSwitchConsumer(ReactorRabbitMQChannelPool channelPool, MigrationSwitchService migrationSwitchService) {
         return new MigrationSwitchConsumer(channelPool, migrationSwitchService);
+    }
+
+    @ProvidesIntoSet
+    SimpleConnectionPool.ReconnectionHandler migrationSwitchConsumerReconnectionHandler(MigrationSwitchConsumer consumer) {
+        return consumer;
     }
 
     @ProvidesIntoSet

@@ -37,6 +37,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.linagora.tmail.ScheduledReconnectionHandler;
+import com.rabbitmq.client.Channel;
+
 import reactor.core.publisher.Mono;
 import reactor.rabbitmq.OutboundMessage;
 
@@ -75,6 +78,12 @@ class MigrationSwitchConsumerTest {
             .send(Mono.just(new OutboundMessage(MigrationSwitchConsumer.EXCHANGE,
                 MigrationSwitchConsumer.ROUTING_KEY, payload.getBytes(UTF_8))))
             .block();
+    }
+
+    private long consumerCount() throws Exception {
+        try (Channel channel = rabbitMQExtension.getConnectionPool().getResilientConnection().block().createChannel()) {
+            return channel.consumerCount(MigrationSwitchConsumer.QUEUE);
+        }
     }
 
     @Test
@@ -122,5 +131,29 @@ class MigrationSwitchConsumerTest {
 
         await().atMost(TIMEOUT)
             .untilAsserted(() -> assertThat(migratedUsersRepository.isMigrated(BOB).block()).isTrue());
+    }
+
+    @Test
+    void shouldResumeConsumingWhenScheduledReconnectionDetectsMissingConsumer() throws Exception {
+        ScheduledReconnectionHandler scheduledReconnectionHandler = new ScheduledReconnectionHandler(
+            Set.of(consumer),
+            rabbitMQExtension.getRabbitMQ().getConfiguration(),
+            rabbitMQExtension.getConnectionPool(),
+            new ScheduledReconnectionHandler.ScheduledReconnectionHandlerConfiguration(true, Duration.ofMillis(100)),
+            Set.of(MigrationSwitchConsumer.QUEUE));
+
+        scheduledReconnectionHandler.start();
+        try {
+            consumer.close();
+            await().atMost(TIMEOUT)
+                .untilAsserted(() -> assertThat(consumerCount()).isEqualTo(1));
+
+            publish("{\"migratedUser\":{\"mailAddress\": \"" + BOB.asString() + "\"}}");
+
+            await().atMost(TIMEOUT)
+                .untilAsserted(() -> assertThat(migratedUsersRepository.isMigrated(BOB).block()).isTrue());
+        } finally {
+            scheduledReconnectionHandler.stop();
+        }
     }
 }
