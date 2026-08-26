@@ -61,10 +61,11 @@ class MigrationSwitchConsumerTest {
     private MigrationSwitchConsumer consumer;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         migratedUsersRepository = new MemoryMigratedUsersRepository();
         disconnectorNotifier = mock(DisconnectorNotifier.class);
         consumer = new MigrationSwitchConsumer(rabbitMQExtension.getRabbitChannelPool(),
+            rabbitMQExtension.getRabbitMQ().getConfiguration(),
             new MigrationSwitchService(migratedUsersRepository, disconnectorNotifier));
         consumer.init();
     }
