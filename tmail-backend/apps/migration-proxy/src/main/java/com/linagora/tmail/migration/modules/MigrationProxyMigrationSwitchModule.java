@@ -24,6 +24,7 @@ import java.util.Set;
 
 import jakarta.inject.Singleton;
 
+import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.james.backends.rabbitmq.SimpleConnectionPool;
 import org.apache.james.utils.InitializationOperation;
@@ -51,8 +52,9 @@ public class MigrationProxyMigrationSwitchModule extends AbstractModule {
 
     @Provides
     @Singleton
-    MigrationSwitchConsumer provideMigrationSwitchConsumer(ReactorRabbitMQChannelPool channelPool, MigrationSwitchService migrationSwitchService) {
-        return new MigrationSwitchConsumer(channelPool, migrationSwitchService);
+    MigrationSwitchConsumer provideMigrationSwitchConsumer(ReactorRabbitMQChannelPool channelPool, RabbitMQConfiguration rabbitMQConfiguration,
+                                                           MigrationSwitchService migrationSwitchService) {
+        return new MigrationSwitchConsumer(channelPool, rabbitMQConfiguration, migrationSwitchService);
     }
 
     @ProvidesIntoSet

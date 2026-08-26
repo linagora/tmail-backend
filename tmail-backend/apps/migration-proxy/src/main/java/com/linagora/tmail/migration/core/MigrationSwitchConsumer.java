@@ -22,6 +22,7 @@ import java.io.Closeable;
 
 import jakarta.annotation.PreDestroy;
 
+import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.james.backends.rabbitmq.SimpleConnectionPool;
 import org.apache.james.lifecycle.api.Startable;
@@ -52,7 +53,8 @@ public class MigrationSwitchConsumer implements Startable, Closeable, SimpleConn
 
     private final ManagedRabbitMQConsumer consumer;
 
-    public MigrationSwitchConsumer(ReactorRabbitMQChannelPool channelPool, MigrationSwitchService migrationSwitchService) {
+    public MigrationSwitchConsumer(ReactorRabbitMQChannelPool channelPool, RabbitMQConfiguration rabbitMQConfiguration,
+                                   MigrationSwitchService migrationSwitchService) {
         this.consumer = new ManagedRabbitMQConsumer.Factory(channelPool)
             .create(ManagedRabbitMQConsumer.Parameters.builder()
                 .queueDeclaration(QueueDeclaration.builder()
@@ -60,6 +62,7 @@ public class MigrationSwitchConsumer implements Startable, Closeable, SimpleConn
                     .queue(QUEUE)
                     .deadLetterQueue(DEAD_LETTER_QUEUE)
                     .build())
+                .queueArguments(rabbitMQConfiguration::workQueueArgumentsBuilder)
                 .handleDelivery(delivery -> handle(delivery, migrationSwitchService))
                 .build());
     }
