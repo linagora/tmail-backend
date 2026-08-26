@@ -29,6 +29,8 @@ mvn clean install
 mvn compile com.google.cloud.tools:jib-maven-plugin:3.4.3:dockerBuild
 ```
 
+This produces a *local* image named `linagora/tmail-backend-distributed:latest`.
+
 ## Run
 
 ### Run manually
@@ -56,7 +58,7 @@ docker run -d --network emaily --name=tika apache/tika:3.2.0.0 #Optional
 Then you can finally start the James distributed server. If you included the JWT keys in the build:
 
 ```
-docker run -d --network emaily --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" --name james -t linagora/tmail-backend-distributed
+docker run -d --network emaily --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" --name james -t linagora/tmail-backend:distributed-branch-master
 ```
 
 If not, you need to bind them to the container for Twake Mail to start:
@@ -66,14 +68,14 @@ docker run --network emaily --hostname HOSTNAME \
 --mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PUBLICKEY],target=/root/conf/jwt_publickey \
 --mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PRIVATEKEY],target=/root/conf/jwt_privatekey \
 -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" \
---name james -t linagora/tmail-backend-distributed
+--name james -t linagora/tmail-backend:distributed-branch-master
 ```
 
 Use the [JAVA_TOOL_OPTIONS environment option](https://github.com/GoogleContainerTools/jib/blob/master/docs/faq.md#jvm-flags)
 to pass extra JVM flags. For instance:
 
 ```
-docker run -d --network emaily -e "JAVA_TOOL_OPTIONS=-Xmx500m -Xms500m" --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" --name james -t linagora/tmail-backend-distributed
+docker run -d --network emaily -e "JAVA_TOOL_OPTIONS=-Xmx500m -Xms500m" --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" --name james -t linagora/tmail-backend:distributed-branch-master
 ```
 
 ### With docker-compose 
@@ -105,7 +107,7 @@ Disabled by default, its java agent can easily be enabled.
 If you run the distributed server manually, you can do like this:
 
 ```
-docker run -d --network emaily -e "JAVA_TOOL_OPTIONS=-javaagent:/root/glowroot/glowroot.jar" --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" --name james -t linagora/tmail-backend-distributed
+docker run -d --network emaily -e "JAVA_TOOL_OPTIONS=-javaagent:/root/glowroot/glowroot.jar" --hostname HOSTNAME -p "25:25" -p 80:80 -p "110:110" -p "143:143" -p "465:465" -p "587:587" -p "993:993" -p "8000:8000" --name james -t linagora/tmail-backend:distributed-branch-master
 ```
 
 If you use the docker-compose file, you can add an environment variable to the distributed server container:

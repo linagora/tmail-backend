@@ -19,7 +19,7 @@ services:
         condition: service_started
       s3:
         condition: service_started
-    image: linagora/tmail-backend-distributed
+    image: linagora/tmail-backend:distributed-branch-master
     container_name: tmail-backend
     hostname: tmail-backend.local
     ports:

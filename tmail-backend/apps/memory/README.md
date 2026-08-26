@@ -29,10 +29,12 @@ You can add the -DskipTests flag as well if you don't want to run the tests.
 mvn clean install -DskipTests
 ```
 
+This produces a *local* image named `linagora/tmail-backend-memory:latest`.
+
 Then you can finally start the James memory server. If you included the JWT keys in the build:
 
 ```
-docker run linagora/tmail-backend-memory
+docker run linagora/tmail-backend:memory-branch-master
 ```
 
 If not, you need to bind them to the container for Twake Mail to start:
@@ -40,21 +42,21 @@ If not, you need to bind them to the container for Twake Mail to start:
 ```
 docker run --mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PUBLICKEY],target=/root/conf/jwt_publickey \
 --mount type=bind,source=[/ABSOLUTE/PATH/TO/JWT_PRIVATEKEY],target=/root/conf/jwt_privatekey \
-linagora/tmail-backend-memory
+linagora/tmail-backend:memory-branch-master
 ```
 
 Use the [JAVA_TOOL_OPTIONS environment option](https://github.com/GoogleContainerTools/jib/blob/master/docs/faq.md#jvm-flags) 
 to pass extra JVM flags. For instance:
 
 ```
-docker run -e "JAVA_TOOL_OPTIONS=-Xmx500m -Xms500m" linagora/tmail-backend-memory
+docker run -e "JAVA_TOOL_OPTIONS=-Xmx500m -Xms500m" linagora/tmail-backend:memory-branch-master
 ```
 
 [Glowroot APM]() is packaged as part of the docker distribution to easily enable valuable performances insights.
 Disabled by default, its java agent can easily be enabled:
 
 ```
-docker run -e "JAVA_TOOL_OPTIONS=-javaagent:/root/glowroot/glowroot.jar" linagora/tmail-backend-memory
+docker run -e "JAVA_TOOL_OPTIONS=-javaagent:/root/glowroot/glowroot.jar" linagora/tmail-backend:memory-branch-master
 ```
 The [CLI](https://james.apache.org/server/manage-cli.html) can easily be used:
 

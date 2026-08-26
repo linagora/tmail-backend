@@ -6,17 +6,22 @@
 # The proxy is a mailbox-less MTA: SMTP routes mail per recipient (migrated -> new, other managed
 # domain -> old, else external) while IMAP byte-proxies each authenticated connection to old/new.
 #
-# Build the proxy image first (jib produces a tar):
+# The images referenced below are the ones the Jenkinsfile publishes from master, so
+# `docker compose up` pulls them and needs no local build.
+#
+# To test an uncommitted change to the proxy instead, build it locally and point the
+# migration-proxy service at linagora/tmail-migration-proxy:latest:
 #   mvn -pl tmail-backend/apps/migration-proxy package -DskipTests
 #   docker load < tmail-backend/apps/migration-proxy/target/jib-image.tar
-# Then `docker compose up` and:
+#
+# Once up:
 #   - PUT http://localhost:8000/domains/managed.tld          -> declare a managed (local) domain
 #   - PUT http://localhost:8000/migratedUsers/bob@managed.tld -> route bob to the new backend
 #   - inbound SMTP on :25 (public) and old/new submissions on :26 (relay); IMAP on localhost:1430.
 
 services:
   migration-proxy:
-    image: linagora/tmail-migration-proxy:latest
+    image: linagora/tmail-migration-proxy:branch-master
     container_name: migration-proxy
     depends_on:
       - old-backend
@@ -33,7 +38,7 @@ services:
   # Both backends mirror their users' authenticated submissions to the proxy and only deliver
   # locally the (unauthenticated) mail coming from the proxy — see backend/mailetcontainer.xml.
   old-backend:
-    image: linagora/tmail-backend-memory:latest
+    image: linagora/tmail-backend:memory-branch-master
     container_name: migration-proxy-old-backend
     depends_on:
       - ldap
@@ -57,7 +62,7 @@ services:
       - "8001:8000"  # webadmin
 
   new-backend:
-    image: linagora/tmail-backend-memory:latest
+    image: linagora/tmail-backend:memory-branch-master
     container_name: migration-proxy-new-backend
     depends_on:
       - ldap

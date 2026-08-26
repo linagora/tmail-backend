@@ -17,7 +17,7 @@ services:
         condition: service_started
       rabbitmq:
         condition: service_started
-    image: linagora/tmail-backend-postgresql-experimental
+    image: linagora/tmail-backend:postgresql-branch-master
     container_name: tmail-backend
     hostname: tmail-backend.local
     command:
