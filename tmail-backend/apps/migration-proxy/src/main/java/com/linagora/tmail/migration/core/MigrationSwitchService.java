@@ -18,8 +18,6 @@
 
 package com.linagora.tmail.migration.core;
 
-import java.util.Set;
-
 import jakarta.inject.Inject;
 
 import org.apache.james.DisconnectorNotifier;
@@ -29,6 +27,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 /**
  * Marks a user migrated (routed to the new backend) and best-effort disconnects its live proxied
@@ -49,11 +48,10 @@ public class MigrationSwitchService {
 
     public Mono<Void> markMigrated(Username username) {
         return migratedUsersRepository.addMigratedUser(username)
-            .then(Mono.fromRunnable(() -> disconnect(username)))
-            .then();
+            .then(disconnect(username));
     }
 
-    private void disconnect(Username username) {
+    private Mono<Void> disconnect(Username username) {
         // Force the user's live proxied sessions to reconnect so they land on the new backend straight
         // away rather than staying pinned to the old one until they disconnect. The request goes through
         // the event bus so that, in a cluster of migration proxies, the node actually holding the
@@ -61,10 +59,11 @@ public class MigrationSwitchService {
         // Best-effort: the user is already flagged migrated, so a disconnection publishing failure (e.g.
         // a transient event-bus issue) must not fail the caller - the stale sessions will simply
         // reconnect on the new backend the next time they cycle.
-        try {
-            disconnectorNotifier.disconnect(MultipleUserRequest.of(Set.of(username)));
-        } catch (Exception e) {
-            LOGGER.warn("Failed to publish the disconnection request for migrated user {}", username.asString(), e);
-        }
+        return Mono.<Void>fromRunnable(() -> disconnectorNotifier.disconnect(MultipleUserRequest.of(username)))
+            .subscribeOn(Schedulers.boundedElastic())
+            .onErrorResume(e -> {
+                LOGGER.warn("Failed to publish the disconnection request for migrated user {}", username.asString(), e);
+                return Mono.empty();
+            });
     }
 }
