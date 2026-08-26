@@ -54,10 +54,12 @@ import org.slf4j.LoggerFactory;
 
 import com.google.inject.Module;
 import com.google.inject.util.Modules;
+import com.linagora.tmail.ScheduledReconnectionHandler;
 import com.linagora.tmail.migration.modules.MigratedUsersModule;
 import com.linagora.tmail.migration.modules.MigrationProxyDisconnectorModule;
 import com.linagora.tmail.migration.modules.MigrationProxyImapModule;
 import com.linagora.tmail.migration.modules.MigrationProxyMemoryEventBusModule;
+import com.linagora.tmail.migration.modules.MigrationProxyMigrationSwitchModule;
 import com.linagora.tmail.migration.modules.MigrationProxyRabbitMQEventBusModule;
 
 /**
@@ -103,7 +105,11 @@ public class MigrationProxyServer {
         Module module() {
             return switch (this) {
                 case IN_MEMORY -> new MigrationProxyMemoryEventBusModule();
-                case RABBITMQ -> new MigrationProxyRabbitMQEventBusModule();
+                // The migration:switch AMQP consumer (letting an external orchestrator drive the old→new
+                // switch over AMQP) only makes sense once RabbitMQ is configured, so it rides this branch.
+                case RABBITMQ -> Modules.combine(new MigrationProxyRabbitMQEventBusModule(),
+                    Modules.override(new ScheduledReconnectionHandler.Module())
+                        .with(new MigrationProxyMigrationSwitchModule()));
             };
         }
     }
