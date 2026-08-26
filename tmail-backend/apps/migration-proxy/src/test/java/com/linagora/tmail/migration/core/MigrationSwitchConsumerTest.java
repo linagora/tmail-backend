@@ -49,6 +49,7 @@ import reactor.rabbitmq.OutboundMessage;
  */
 class MigrationSwitchConsumerTest {
     private static final Duration TIMEOUT = Duration.ofSeconds(10);
+    private static final Username ALICE = Username.of("alice@linagora.com");
     private static final Username BOB = Username.of("btellier@linagora.com");
 
     @RegisterExtension
@@ -106,12 +107,13 @@ class MigrationSwitchConsumerTest {
     void shouldIgnoreMessagesPublishedWithAnotherRoutingKey() {
         rabbitMQExtension.getSender()
             .send(Mono.just(new OutboundMessage(MigrationSwitchConsumer.EXCHANGE, "another-routing-key",
-                ("{\"migratedUser\":{\"mailAddress\": \"" + BOB.asString() + "\"}}").getBytes(UTF_8))))
+                ("{\"migratedUser\":{\"mailAddress\": \"" + ALICE.asString() + "\"}}").getBytes(UTF_8))))
             .block();
         publish("{\"migratedUser\":{\"mailAddress\": \"" + BOB.asString() + "\"}}");
 
         await().atMost(TIMEOUT)
             .untilAsserted(() -> assertThat(migratedUsersRepository.isMigrated(BOB).block()).isTrue());
+        assertThat(migratedUsersRepository.isMigrated(ALICE).block()).isFalse();
         assertThat(migratedUsersRepository.listMigratedUsers().collectList().block()).containsExactly(BOB);
     }
 
