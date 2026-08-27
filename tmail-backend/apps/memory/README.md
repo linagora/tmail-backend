@@ -21,6 +21,9 @@ Then to build your server:
 ```
 mvn clean install
 mvn compile com.google.cloud.tools:jib-maven-plugin:3.4.3:dockerBuild
+
+# For Apple Silicon users, you can build the image for ARM64 architecture with:
+mvn compile com.google.cloud.tools:jib-maven-plugin:3.4.3:dockerBuild -Djib.from.platforms=linux/arm64
 ```
 
 You can add the -DskipTests flag as well if you don't want to run the tests.
