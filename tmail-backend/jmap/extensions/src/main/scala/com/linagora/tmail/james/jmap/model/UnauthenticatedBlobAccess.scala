@@ -25,9 +25,9 @@ import org.apache.james.jmap.method.{SetRequest, WithAccountId}
 import play.api.libs.json.JsValue
 
 case class UnauthenticatedBlobAccessSetRequest(accountId: AccountId,
-                                                create: Option[Map[String, JsValue]],
-                                                update: Option[Map[String, JsValue]],
-                                                destroy: Option[Seq[String]]) extends WithAccountId with SetRequest {
+                                               create: Option[Map[String, JsValue]],
+                                               update: Option[Map[String, JsValue]],
+                                               destroy: Option[Seq[String]]) extends WithAccountId with SetRequest {
   override def idCount: Int =
     create.fold(0)(_.size) +
       update.fold(0)(_.size) +
