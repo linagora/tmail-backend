@@ -48,7 +48,7 @@ trait UnauthenticatedBlobDownloadTokenRepositoryContract {
 
   @Test
   def generatedTokenShouldReturnUsername(): Unit = {
-    val token = testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block()
+    val token = testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block().token()
 
     assertThat(testee.check(ACCOUNT_ID, BLOB_ID, token).block())
       .contains(USERNAME)
@@ -64,7 +64,7 @@ trait UnauthenticatedBlobDownloadTokenRepositoryContract {
 
   @Test
   def correctTokenWithWrongAccountShouldReturnEmpty(): Unit = {
-    val token = testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block()
+    val token = testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block().token()
 
     assertThat(testee.check(ACCOUNT_ID_2, BLOB_ID, token).block())
       .isEmpty
@@ -72,7 +72,7 @@ trait UnauthenticatedBlobDownloadTokenRepositoryContract {
 
   @Test
   def correctTokenWithWrongBlobShouldReturnEmpty(): Unit = {
-    val token = testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block()
+    val token = testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block().token()
 
     assertThat(testee.check(ACCOUNT_ID, BLOB_ID_2, token).block())
       .isEmpty
@@ -80,8 +80,8 @@ trait UnauthenticatedBlobDownloadTokenRepositoryContract {
 
   @Test
   def generatingANewTokenShouldInvalidatePreviousTokenForSameBlob(): Unit = {
-    val firstToken = testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block()
-    val secondToken = testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block()
+    val firstToken = testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block().token()
+    val secondToken = testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block().token()
 
     assertThat(testee.check(ACCOUNT_ID, BLOB_ID, firstToken).block())
       .isEmpty
@@ -91,8 +91,8 @@ trait UnauthenticatedBlobDownloadTokenRepositoryContract {
 
   @Test
   def tokensForDifferentBlobsShouldBeIndependent(): Unit = {
-    val firstToken = testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block()
-    val secondToken = testee.generate(ACCOUNT_ID, BLOB_ID_2, USERNAME).block()
+    val firstToken = testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block().token()
+    val secondToken = testee.generate(ACCOUNT_ID, BLOB_ID_2, USERNAME).block().token()
 
     assertThat(testee.check(ACCOUNT_ID, BLOB_ID, firstToken).block())
       .contains(USERNAME)
@@ -102,8 +102,8 @@ trait UnauthenticatedBlobDownloadTokenRepositoryContract {
 
   @Test
   def tokensForDifferentAccountsShouldBeIndependent(): Unit = {
-    val firstToken = testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block()
-    val secondToken = testee.generate(ACCOUNT_ID_2, BLOB_ID, USERNAME_2).block()
+    val firstToken = testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block().token()
+    val secondToken = testee.generate(ACCOUNT_ID_2, BLOB_ID, USERNAME_2).block().token()
 
     assertThat(testee.check(ACCOUNT_ID, BLOB_ID, firstToken).block())
       .contains(USERNAME)
@@ -113,7 +113,7 @@ trait UnauthenticatedBlobDownloadTokenRepositoryContract {
 
   @Test
   def tokenShouldBeReusableDuringTtl(): Unit = {
-    val token = testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block()
+    val token = testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block().token()
 
     assertThat(testee.check(ACCOUNT_ID, BLOB_ID, token).block())
       .contains(USERNAME)
@@ -123,7 +123,7 @@ trait UnauthenticatedBlobDownloadTokenRepositoryContract {
 
   @Test
   def tokenShouldRejectAfterTtl(): Unit = {
-    val token = testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block()
+    val token = testee.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block().token()
 
     advanceClockAfterTtl()
 
