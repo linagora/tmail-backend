@@ -18,6 +18,8 @@
 
 package com.linagora.tmail.migration.core;
 
+import java.util.Optional;
+
 import org.apache.james.util.Host;
 
 import com.google.common.base.MoreObjects;
@@ -33,11 +35,15 @@ import com.google.common.base.Preconditions;
  * @param forwardProxyInfo when true the proxy forwards the PROXY protocol information it received from
  *                         the client connection (requires the inbound proxy protocol to be active),
  *                         relaying the original client address to the backend
+ * @param admin            administrator this backend delegates user sessions to, required when clients
+ *                         authenticate with Kerberos since the proxy then has no user password to replay
  */
-public record Backend(String name, Host host, boolean ssl, boolean sslIgnoreCertificates, boolean forwardProxyInfo) {
+public record Backend(String name, Host host, boolean ssl, boolean sslIgnoreCertificates, boolean forwardProxyInfo,
+                      Optional<AdminCredentials> admin) {
     public Backend {
         Preconditions.checkNotNull(name);
         Preconditions.checkNotNull(host);
+        Preconditions.checkNotNull(admin);
     }
 
     @Override
@@ -49,6 +55,7 @@ public record Backend(String name, Host host, boolean ssl, boolean sslIgnoreCert
             .add("ssl", ssl)
             .add("sslIgnoreCertificates", sslIgnoreCertificates)
             .add("forwardProxyInfo", forwardProxyInfo)
+            .add("admin", admin.map(AdminCredentials::username).orElse("none"))
             .toString();
     }
 }

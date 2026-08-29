@@ -166,6 +166,23 @@
             <artifactId>james-server-protocols-imap4</artifactId>
         </dependency>
         <dependency>
+            <!-- Optional GSSAPI authentication of the proxy IMAP clients, see KerberosConfiguration -->
+            <groupId>${james.protocols.groupId}</groupId>
+            <artifactId>protocols-sasl-kerberos</artifactId>
+        </dependency>
+        <dependency>
+            <!-- Embedded KDC fixtures (KerberosTestExtension, GssapiTestClient) for MigrationGssapiTest -->
+            <groupId>${james.protocols.groupId}</groupId>
+            <artifactId>protocols-sasl-kerberos</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.kerby</groupId>
+            <artifactId>kerb-simplekdc</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>${james.groupId}</groupId>
             <artifactId>james-server-protocols-library</artifactId>
         </dependency>

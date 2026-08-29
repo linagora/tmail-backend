@@ -89,7 +89,7 @@ class BackendRelayTest {
             Channel clientChannel = acceptedClientChannel.get();
 
             Optional<Channel> backendChannel = relay.connectAndAuthenticate(clientChannel,
-                new BackendRelay.RelayRequest(new Backend("new", Host.from("127.0.0.1", backendPort), false, false, false),
+                new BackendRelay.RelayRequest(new Backend("new", Host.from("127.0.0.1", backendPort), false, false, false, Optional.empty()),
                     () -> new ImapBackendDialog("bob@domain.tld", "secret"),
                     Optional.empty(), Duration.ofSeconds(10), Optional.empty()));
 
@@ -98,7 +98,7 @@ class BackendRelayTest {
                 .untilAsserted(() -> assertThat(backend.receivedLines()).anyMatch(line -> line.startsWith(LOGIN_PREFIX)));
 
             relay.takeOverClient(clientChannel, backendChannel.get(),
-                new Backend("new", Host.from("127.0.0.1", backendPort), false, false, false));
+                new Backend("new", Host.from("127.0.0.1", backendPort), false, false, false, Optional.empty()));
 
             // client -> backend
             OutputStream out = clientSocket.getOutputStream();
@@ -129,7 +129,7 @@ class BackendRelayTest {
             Channel clientChannel = acceptedClientChannel.get();
 
             Optional<Channel> backendChannel = relay.connectAndAuthenticate(clientChannel,
-                new BackendRelay.RelayRequest(new Backend("new", Host.from("127.0.0.1", backendPort), false, false, true),
+                new BackendRelay.RelayRequest(new Backend("new", Host.from("127.0.0.1", backendPort), false, false, true, Optional.empty()),
                     () -> new ImapBackendDialog("bob@domain.tld", "secret"),
                     Optional.empty(), Duration.ofSeconds(10), Optional.of(inboundProxyInfo)));
 
@@ -148,7 +148,7 @@ class BackendRelayTest {
 
         try (Socket clientSocket = new Socket("127.0.0.1", clientFacingPort)) {
             Channel clientChannel = acceptedClientChannel.get();
-            Backend forwardingBackend = new Backend("new", Host.from("127.0.0.1", backendPort), false, false, true);
+            Backend forwardingBackend = new Backend("new", Host.from("127.0.0.1", backendPort), false, false, true, Optional.empty());
 
             assertThatThrownBy(() -> relay.connectAndAuthenticate(clientChannel,
                     new BackendRelay.RelayRequest(forwardingBackend,
