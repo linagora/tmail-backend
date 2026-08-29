@@ -60,6 +60,20 @@ Standard James IMAP server configuration (bind address, `tls` plaintext / STARTT
 `proxyRequired` to accept an upstream HAProxy PROXY protocol header). It drives the proxy's listening
 side; the custom `ProxyImapProcessor` is wired in by the application.
 
+=== Client authentication
+
+The processor answers `CAPABILITY`, negotiates `STARTTLS`, authenticates the client, then relays the
+connection raw -- any other command before authentication is refused.
+
+Without Kerberos the proxy accepts both `LOGIN` and `AUTHENTICATE PLAIN` (it advertises
+`AUTH=PLAIN SASL-IR`, with or without an initial client response). Both capture the credentials and
+replay them as a `LOGIN` against the resolved backend: the proxy has no user database, so *the backend
+is the only authority on the password* -- it rejecting the credentials is what the client reads as a
+`NO`. SASL delegation (an authorization identity distinct from the authenticated one) is refused.
+
+With Kerberos enabled both are disabled in favour of `AUTHENTICATE GSSAPI` -- see the Kerberos section
+above.
+
 == SMTP servers -- `smtpserver.xml`
 
 Two servers enforce the relay policy by port:
