@@ -27,23 +27,34 @@ import org.apache.james.protocols.api.sasl.SaslFailure;
 import org.apache.james.protocols.api.sasl.SaslIdentity;
 
 /**
- * Decides what a completed SASL exchange means for the proxy.
+ * Decides what a completed SASL exchange means for the proxy. One instance per {@code AUTHENTICATE}
+ * command: it carries the credentials the exchange yielded.
  *
- * <p>The proxy holds no user database: a valid Kerberos ticket <strong>is</strong> the authentication,
- * exactly like James, which does not look the principal up either once GSSAPI succeeded. The identity
- * is taken as-is - the realm becomes the domain, no rewriting - so that the user the proxy resolves a
- * backend for, and the one it asks the backend to authorize it as, are the same string everywhere.
+ * <p>The proxy holds no user database, so the two mechanisms it exposes end differently:
+ * <ul>
+ *   <li>{@code PLAIN} hands it a password, which it does not - cannot - verify. It captures it and the
+ *   backend is the authority: a wrong password fails the relay, which the client reads as a {@code NO}.</li>
+ *   <li>{@code GSSAPI} authenticated the user inside the exchange. Like James, which does not look the
+ *   principal up either, the proxy takes the identity as-is - the realm becomes the domain, no
+ *   rewriting - so that the user it resolves a backend for, and the one it opens the backend session
+ *   for, are the same string everywhere.</li>
+ * </ul>
  *
- * <p>Delegation (a SASL authorization identity distinct from the authenticated principal) is refused:
- * the proxy has no way to tell which delegations a backend would allow.
+ * <p>Delegation (an authorization identity distinct from the authenticated one) is refused in both
+ * cases: the proxy has no way to tell which delegations a backend would allow.
  */
 public class ProxySaslAuthenticator implements SaslAuthenticator {
+    private Optional<String> capturedPassword = Optional.empty();
+
     @Override
     public SaslAuthenticationResult authenticatePassword(Username authenticationId, Optional<Username> authorizationId,
                                                          String password) {
-        // Unreachable: the proxy only ever exposes GSSAPI, which authenticates inside the SASL exchange.
-        return new SaslAuthenticationResult.Failure(SaslFailure.authenticationFailed(Optional.of(authenticationId),
-            authorizationId, "The migration proxy does not support password based SASL mechanisms."));
+        if (isDelegation(authenticationId, authorizationId)) {
+            return new SaslAuthenticationResult.Failure(SaslFailure.delegationForbidden(authenticationId,
+                authorizationId.get(), "The migration proxy does not support SASL delegation."));
+        }
+        capturedPassword = Optional.of(password);
+        return new SaslAuthenticationResult.Success(new SaslIdentity(authenticationId, authenticationId));
     }
 
     @Override
@@ -53,5 +64,19 @@ public class ProxySaslAuthenticator implements SaslAuthenticator {
                 identity.authorizationId(), "The migration proxy does not support SASL delegation."));
         }
         return new SaslAuthenticationResult.Success(identity);
+    }
+
+    /**
+     * The password the exchange captured, if the mechanism carried one: it is then replayed against the
+     * backend. Empty for GSSAPI, where the proxy opens the backend session by delegation instead.
+     */
+    public Optional<String> capturedPassword() {
+        return capturedPassword;
+    }
+
+    private static boolean isDelegation(Username authenticationId, Optional<Username> authorizationId) {
+        return authorizationId
+            .filter(identity -> !identity.equals(authenticationId))
+            .isPresent();
     }
 }

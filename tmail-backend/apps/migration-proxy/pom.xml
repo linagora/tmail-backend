@@ -166,6 +166,11 @@
             <artifactId>james-server-protocols-imap4</artifactId>
         </dependency>
         <dependency>
+            <!-- PlainSaslMechanism: AUTHENTICATE PLAIN of the proxy IMAP clients -->
+            <groupId>${james.protocols.groupId}</groupId>
+            <artifactId>protocols-sasl</artifactId>
+        </dependency>
+        <dependency>
             <!-- Optional GSSAPI authentication of the proxy IMAP clients, see KerberosConfiguration -->
             <groupId>${james.protocols.groupId}</groupId>
             <artifactId>protocols-sasl-kerberos</artifactId>

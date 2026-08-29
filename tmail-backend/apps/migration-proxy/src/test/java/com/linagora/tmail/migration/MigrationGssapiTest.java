@@ -20,17 +20,10 @@ package com.linagora.tmail.migration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.IOException;
-import java.io.InputStreamReader;
-import java.io.OutputStream;
-import java.net.Socket;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import org.apache.james.GuiceJamesServer;
@@ -48,6 +41,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
 import com.linagora.tmail.migration.imap.ImapBackendDialog;
+import com.linagora.tmail.migration.postgres.MigratedUsersDataDefinition;
 
 /**
  * End to end coverage of the optional Kerberos support: a real KDC issues the client its ticket, the
@@ -72,7 +66,10 @@ class MigrationGssapiTest {
 
     @Order(2)
     @RegisterExtension
-    static PostgresExtension postgresExtension = PostgresExtension.empty();
+    static PostgresExtension postgresExtension =
+        // The proxy outlives the per test schema reset, so the extension has to recreate its table
+        // rather than leave it dropped behind it.
+        PostgresExtension.withoutRowLevelSecurity(MigratedUsersDataDefinition.MODULE);
 
     @TempDir
     static File workingDirectory;
@@ -132,7 +129,7 @@ class MigrationGssapiTest {
 
     @Test
     void capabilityShouldDisableLoginAndAdvertiseGssapi() throws Exception {
-        try (ProxyClient client = new ProxyClient()) {
+        try (ProxyImapClient client = new ProxyImapClient(PROXY_IMAP_PORT)) {
             client.send("a1 CAPABILITY");
 
             assertThat(client.untilTagged("a1"))
@@ -146,28 +143,28 @@ class MigrationGssapiTest {
 
     @Test
     void loginShouldBeRejected() throws Exception {
-        try (ProxyClient client = new ProxyClient()) {
+        try (ProxyImapClient client = new ProxyImapClient(PROXY_IMAP_PORT)) {
             client.send("a1 LOGIN " + USER + " whatever");
 
-            assertThat(client.tagged("a1")).startsWith("a1 NO");
+            assertThat(client.tagged("a1")).isEqualTo("a1 NO LOGIN is disabled, use AUTHENTICATE GSSAPI.");
         }
     }
 
     @Test
     void unsupportedMechanismShouldBeRejected() throws Exception {
-        try (ProxyClient client = new ProxyClient()) {
+        try (ProxyImapClient client = new ProxyImapClient(PROXY_IMAP_PORT)) {
             client.send("a1 AUTHENTICATE PLAIN");
 
-            assertThat(client.tagged("a1")).startsWith("a1 NO");
+            assertThat(client.tagged("a1")).isEqualTo("a1 NO Unsupported authentication mechanism.");
         }
     }
 
     @Test
     void gssapiShouldAuthenticateThenDelegateTheBackendSessionToTheAdmin() throws Exception {
-        try (ProxyClient client = new ProxyClient();
+        try (ProxyImapClient client = new ProxyImapClient(PROXY_IMAP_PORT);
              GssapiTestClient gssapiClient = kerberos.client(SERVICE)) {
             client.send("a1 AUTHENTICATE GSSAPI " + encode(gssapiClient.initialResponse()));
-            String response = client.completeGssapiExchange(gssapiClient);
+            String response = completeGssapiExchange(client, gssapiClient);
 
             // The proxy never replays a user password: it authenticates as the admin, authorized as the user.
             assertThat(oldBackend.receivedLines())
@@ -191,68 +188,21 @@ class MigrationGssapiTest {
     }
 
     /**
-     * A raw IMAP client: the proxy speaks a hand written subset of IMAP, so a line oriented socket is a
-     * closer reading of what is on the wire than a full blown client library.
+     * Relays each server challenge through the JDK GSSAPI client until the proxy answers a tagged line.
      */
-    private static final class ProxyClient implements AutoCloseable {
-        private final Socket socket;
-        private final BufferedReader reader;
-
-        private ProxyClient() throws IOException {
-            this.socket = new Socket("127.0.0.1", PROXY_IMAP_PORT);
-            this.socket.setSoTimeout(60_000);
-            this.reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
-            assertThat(readLine()).startsWith("* OK");
-        }
-
-        private void send(String line) throws IOException {
-            OutputStream out = socket.getOutputStream();
-            out.write((line + "\r\n").getBytes(StandardCharsets.UTF_8));
-            out.flush();
-        }
-
-        private String readLine() throws IOException {
-            String line = reader.readLine();
-            if (line == null) {
-                throw new AssertionError("The proxy closed the connection");
+    private static String completeGssapiExchange(ProxyImapClient client, GssapiTestClient gssapiClient) throws Exception {
+        for (int round = 0; round < MAX_SASL_ROUNDS; round++) {
+            String line = client.readLine();
+            if (!line.startsWith("+")) {
+                return line;
             }
-            return line;
+            client.send(encode(gssapiClient.evaluate(challenge(line))));
         }
+        throw new AssertionError("The GSSAPI exchange did not complete in " + MAX_SASL_ROUNDS + " rounds");
+    }
 
-        private String tagged(String tag) throws IOException {
-            return untilTagged(tag).getLast();
-        }
-
-        private List<String> untilTagged(String tag) throws IOException {
-            List<String> lines = new ArrayList<>();
-            while (lines.stream().noneMatch(line -> line.startsWith(tag + " "))) {
-                lines.add(readLine());
-            }
-            return lines;
-        }
-
-        /**
-         * Relays each server challenge through the JDK GSSAPI client until the proxy answers a tagged line.
-         */
-        private String completeGssapiExchange(GssapiTestClient gssapiClient) throws Exception {
-            for (int round = 0; round < MAX_SASL_ROUNDS; round++) {
-                String line = readLine();
-                if (!line.startsWith("+")) {
-                    return line;
-                }
-                send(encode(gssapiClient.evaluate(challenge(line))));
-            }
-            throw new AssertionError("The GSSAPI exchange did not complete in " + MAX_SASL_ROUNDS + " rounds");
-        }
-
-        private static byte[] challenge(String continuation) {
-            String payload = continuation.substring(1).trim();
-            return payload.isEmpty() ? new byte[0] : Base64.getDecoder().decode(payload);
-        }
-
-        @Override
-        public void close() throws IOException {
-            socket.close();
-        }
+    private static byte[] challenge(String continuation) {
+        String payload = continuation.substring(1).trim();
+        return payload.isEmpty() ? new byte[0] : Base64.getDecoder().decode(payload);
     }
 }
