@@ -219,7 +219,7 @@ trait UnauthenticatedBlobAccessSetMethodContract {
       .isEqualTo(
         s"""{
            |    "$messageBlobId": {
-           |        "token": "$${json-unit.ignore}"
+           |        "token": "$${json-unit.ignore}",
            |        "validUntil": "$${json-unit.ignore}"
            |    }
            |}""".stripMargin)
@@ -249,7 +249,7 @@ trait UnauthenticatedBlobAccessSetMethodContract {
       .isEqualTo(
         s"""{
            |    "$messagePartBlobId": {
-           |        "token": "$${json-unit.ignore}"
+           |        "token": "$${json-unit.ignore}",
            |        "validUntil": "$${json-unit.ignore}"
            |    }
            |}""".stripMargin)
@@ -269,7 +269,7 @@ trait UnauthenticatedBlobAccessSetMethodContract {
       .isEqualTo(
         s"""{
            |    "$attachmentBlobId": {
-           |        "token": "$${json-unit.ignore}"
+           |        "token": "$${json-unit.ignore}",
            |        "validUntil": "$${json-unit.ignore}"
            |    }
            |}""".stripMargin)
@@ -469,7 +469,7 @@ trait UnauthenticatedBlobAccessSetMethodContract {
       .isEqualTo(
         s"""{
            |    "$andreBlobId": {
-           |        "token": "$${json-unit.ignore}"
+           |        "token": "$${json-unit.ignore}",
            |        "validUntil": "$${json-unit.ignore}"
            |    }
            |}""".stripMargin)
@@ -540,7 +540,7 @@ trait UnauthenticatedBlobAccessSetMethodContract {
            |        "accountId": "$bobAccountId",
            |        "created": {
            |            "$blobId": {
-           |                "token": "$${json-unit.ignore}"
+           |                "token": "$${json-unit.ignore}",
            |                "validUntil": "$${json-unit.ignore}"
            |            }
            |        },
@@ -567,7 +567,7 @@ trait UnauthenticatedBlobAccessSetMethodContract {
       .isEqualTo(
         s"""{
            |    "$blobId": {
-           |        "token": "$${json-unit.ignore}"
+           |        "token": "$${json-unit.ignore}",
            |        "validUntil": "$${json-unit.ignore}"
            |    }
            |}""".stripMargin)
@@ -749,7 +749,7 @@ trait UnauthenticatedBlobAccessSetMethodContract {
            |        "accountId": "$bobAccountId",
            |        "created": {
            |            "$blobId": {
-           |                "token": "$${json-unit.ignore}"
+           |                "token": "$${json-unit.ignore}",
            |                "validUntil": "$${json-unit.ignore}"
            |            }
            |        },
