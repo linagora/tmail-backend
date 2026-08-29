@@ -18,6 +18,9 @@
 
 package com.linagora.tmail.migration.modules;
 
+import java.util.Optional;
+
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.filesystem.api.FileSystem;
 import org.apache.james.imap.api.ConnectionCheckFactory;
 import org.apache.james.imap.encode.main.DefaultImapEncoderFactory;
@@ -25,6 +28,7 @@ import org.apache.james.imap.main.DefaultImapDecoderFactory;
 import org.apache.james.imapserver.netty.IMAPServerFactory;
 import org.apache.james.metrics.api.GaugeRegistry;
 import org.apache.james.metrics.api.MetricFactory;
+import org.apache.james.protocols.api.sasl.SaslMechanism;
 import org.apache.james.protocols.netty.Encryption;
 import org.apache.james.server.core.configuration.ConfigurationProvider;
 import org.apache.james.utils.InitializationOperation;
@@ -62,9 +66,20 @@ public class MigrationProxyImapModule extends AbstractModule {
     ProxyImapProcessor provideProxyImapProcessor(BackendResolver backendResolver, BackendRelay backendRelay,
                                                  BackendSslContextFactory sslContextFactory,
                                                  ProxyConnectionRegistry connectionRegistry,
-                                                 MigrationProxyConfiguration configuration) {
+                                                 MigrationProxyConfiguration configuration) throws ConfigurationException {
         return new ProxyImapProcessor(backendResolver, backendRelay, sslContextFactory,
-            connectionRegistry, configuration.handshakeTimeout());
+            connectionRegistry, configuration.handshakeTimeout(), gssapiMechanism(configuration));
+    }
+
+    /**
+     * Building the mechanism validates the principal against the keytab and acquires the acceptor
+     * credentials: a misconfigured Kerberos setup keeps the proxy from starting at all.
+     */
+    private static Optional<SaslMechanism> gssapiMechanism(MigrationProxyConfiguration configuration) throws ConfigurationException {
+        if (configuration.kerberos().isEmpty()) {
+            return Optional.empty();
+        }
+        return Optional.of(configuration.kerberos().get().saslMechanism());
     }
 
     @Provides
