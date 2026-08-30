@@ -18,12 +18,15 @@
 
 package com.linagora.tmail.james.jmap.json
 
+import java.time.Instant
+
 import com.linagora.tmail.james.jmap.model.{UnauthenticatedBlobAccessCreationResponse, UnauthenticatedBlobAccessSetRequest, UnauthenticatedBlobAccessSetResponse}
 import org.apache.james.jmap.core.SetError
 import org.apache.james.jmap.json.mapWrites
-import play.api.libs.json.{JsValue, Json, Reads, Writes}
+import play.api.libs.json.{JsString, JsValue, Json, Reads, Writes}
 
 object UnauthenticatedBlobAccessSerializer {
+  private implicit val instantWrites: Writes[Instant] = Writes[Instant](instant => JsString(instant.toString))
   private implicit val creationResponseWrites: Writes[UnauthenticatedBlobAccessCreationResponse] =
     Json.writes[UnauthenticatedBlobAccessCreationResponse]
   private implicit val stringCreationResponseMapWrites: Writes[Map[String, UnauthenticatedBlobAccessCreationResponse]] =

@@ -62,9 +62,12 @@ Return codes:
 
 The `UnauthenticatedBlobAccess` object represents a temporary access token for a blob.
 
-It has the following field:
+It has the following fields:
 
 - *token*: `String`. Server-set. The token to be used with the unauthenticated download endpoint.
+- *validUntil*: `UTCDate`. Server-set. The instant until which the token grants access, as an RFC 3339 UTC date
+  (for example `2026-08-28T12:00:00Z`). Matches the `tokenTtlInSeconds` advertised by the capability, counted from
+  the token generation time.
 
 Tokens are reusable until they expire. Generating a new token for the same account and blob replaces the previous token:
 the latest token remains valid until its TTL expires and the previous token no longer grants access.
@@ -122,7 +125,8 @@ Response:
         "accountId": "ACCOUNT_ID",
         "created": {
           "BLOB_ID_1": {
-            "token": "TOKEN_VALUE"
+            "token": "TOKEN_VALUE",
+            "validUntil": "2026-08-28T12:05:00Z"
           }
         }
       },

@@ -175,7 +175,8 @@ trait UnauthenticatedBlobAccessSetMethodContract {
            |        "accountId": "$bobAccountId",
            |        "created": {
            |            "$blobId": {
-           |                "token": "$${json-unit.ignore}"
+           |                "token": "$${json-unit.ignore}",
+           |                "validUntil": "$${json-unit.ignore}"
            |            }
            |        }
            |    },
@@ -197,6 +198,17 @@ trait UnauthenticatedBlobAccessSetMethodContract {
   }
 
   @Test
+  def validUntilShouldAdvertiseTokenValidityPeriod(server: GuiceJamesServer): Unit = {
+    val blobId: String = uploadBlob(server, bobUsername, BOB_PASSWORD, bobAccountId)
+    val response: String = createAccess(server, bobAccountId, blobId)
+
+    val validUntil: java.time.Instant = java.time.Instant.parse(createdValidUntil(response, blobId))
+    val now: java.time.Instant = java.time.Instant.now()
+    assertThat(validUntil.isAfter(now)).isTrue
+    assertThat(validUntil.isBefore(now.plus(java.time.Duration.ofSeconds(3600)))).isTrue
+  }
+
+  @Test
   def shouldGrantAccessForMessageBlob(server: GuiceJamesServer): Unit = {
     val messageBlobId = appendMessage(server, bobUsername).serialize()
     val response: String = createAccess(server, bobAccountId, messageBlobId)
@@ -207,7 +219,8 @@ trait UnauthenticatedBlobAccessSetMethodContract {
       .isEqualTo(
         s"""{
            |    "$messageBlobId": {
-           |        "token": "$${json-unit.ignore}"
+           |        "token": "$${json-unit.ignore}",
+           |        "validUntil": "$${json-unit.ignore}"
            |    }
            |}""".stripMargin)
     assertThat(tokenProbe(server).isValid(bobAccountId, messageBlobId, token)).isTrue
@@ -236,7 +249,8 @@ trait UnauthenticatedBlobAccessSetMethodContract {
       .isEqualTo(
         s"""{
            |    "$messagePartBlobId": {
-           |        "token": "$${json-unit.ignore}"
+           |        "token": "$${json-unit.ignore}",
+           |        "validUntil": "$${json-unit.ignore}"
            |    }
            |}""".stripMargin)
     assertThat(tokenProbe(server).isValid(bobAccountId, messagePartBlobId, token)).isTrue
@@ -255,7 +269,8 @@ trait UnauthenticatedBlobAccessSetMethodContract {
       .isEqualTo(
         s"""{
            |    "$attachmentBlobId": {
-           |        "token": "$${json-unit.ignore}"
+           |        "token": "$${json-unit.ignore}",
+           |        "validUntil": "$${json-unit.ignore}"
            |    }
            |}""".stripMargin)
     assertThat(tokenProbe(server).isValid(bobAccountId, attachmentBlobId, token)).isTrue
@@ -454,7 +469,8 @@ trait UnauthenticatedBlobAccessSetMethodContract {
       .isEqualTo(
         s"""{
            |    "$andreBlobId": {
-           |        "token": "$${json-unit.ignore}"
+           |        "token": "$${json-unit.ignore}",
+           |        "validUntil": "$${json-unit.ignore}"
            |    }
            |}""".stripMargin)
 
@@ -524,7 +540,8 @@ trait UnauthenticatedBlobAccessSetMethodContract {
            |        "accountId": "$bobAccountId",
            |        "created": {
            |            "$blobId": {
-           |                "token": "$${json-unit.ignore}"
+           |                "token": "$${json-unit.ignore}",
+           |                "validUntil": "$${json-unit.ignore}"
            |            }
            |        },
            |        "notCreated": {
@@ -550,7 +567,8 @@ trait UnauthenticatedBlobAccessSetMethodContract {
       .isEqualTo(
         s"""{
            |    "$blobId": {
-           |        "token": "$${json-unit.ignore}"
+           |        "token": "$${json-unit.ignore}",
+           |        "validUntil": "$${json-unit.ignore}"
            |    }
            |}""".stripMargin)
     assertThat(firstToken).isNotEqualTo(secondToken)
@@ -731,7 +749,8 @@ trait UnauthenticatedBlobAccessSetMethodContract {
            |        "accountId": "$bobAccountId",
            |        "created": {
            |            "$blobId": {
-           |                "token": "$${json-unit.ignore}"
+           |                "token": "$${json-unit.ignore}",
+           |                "validUntil": "$${json-unit.ignore}"
            |            }
            |        },
            |        "notUpdated": {
@@ -895,6 +914,9 @@ trait UnauthenticatedBlobAccessSetMethodContract {
 
   private def createdToken(response: String, blobId: String): String =
     (firstArguments(response) \ "created" \ blobId \ "token").as[String]
+
+  private def createdValidUntil(response: String, blobId: String): String =
+    (firstArguments(response) \ "created" \ blobId \ "validUntil").as[String]
 
   private def assertUnauthorizedDownload(accountId: String, blobId: String, token: Option[String]): Unit =
     `given`()

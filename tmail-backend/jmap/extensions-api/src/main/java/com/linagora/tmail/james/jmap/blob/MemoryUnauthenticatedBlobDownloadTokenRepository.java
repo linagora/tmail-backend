@@ -53,11 +53,12 @@ public class MemoryUnauthenticatedBlobDownloadTokenRepository implements Unauthe
     }
 
     @Override
-    public Mono<UnauthenticatedBlobDownloadToken> generate(AccountId accountId, BlobId blobId, Username username) {
+    public Mono<GeneratedBlobDownloadToken> generate(AccountId accountId, BlobId blobId, Username username) {
         return Mono.fromCallable(() -> {
             UnauthenticatedBlobDownloadToken token = UnauthenticatedBlobDownloadToken.generate();
-            store.put(new TokenKey(accountId, blobId), new StoredToken(token, username, clock.instant().plus(tokenTtl)));
-            return token;
+            Instant validUntil = clock.instant().plus(tokenTtl);
+            store.put(new TokenKey(accountId, blobId), new StoredToken(token, username, validUntil));
+            return new GeneratedBlobDownloadToken(token, validUntil);
         });
     }
 

@@ -18,6 +18,8 @@
 
 package com.linagora.tmail.james.jmap.model
 
+import java.time.Instant
+
 import org.apache.james.jmap.core.{AccountId, SetError}
 import org.apache.james.jmap.method.{SetRequest, WithAccountId}
 import play.api.libs.json.JsValue
@@ -32,7 +34,7 @@ case class UnauthenticatedBlobAccessSetRequest(accountId: AccountId,
       destroy.fold(0)(_.size)
 }
 
-case class UnauthenticatedBlobAccessCreationResponse(token: String)
+case class UnauthenticatedBlobAccessCreationResponse(token: String, validUntil: Instant)
 
 case class UnauthenticatedBlobAccessSetResponse(accountId: AccountId,
                                                 created: Option[Map[String, UnauthenticatedBlobAccessCreationResponse]],

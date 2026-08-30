@@ -18,16 +18,13 @@
 
 package com.linagora.tmail.james.jmap.blob;
 
-import java.util.Optional;
+import java.time.Instant;
 
-import org.apache.james.blob.api.BlobId;
-import org.apache.james.core.Username;
-import org.apache.james.jmap.api.model.AccountId;
+import com.google.common.base.Preconditions;
 
-import reactor.core.publisher.Mono;
-
-public interface UnauthenticatedBlobDownloadTokenRepository {
-    Mono<GeneratedBlobDownloadToken> generate(AccountId accountId, BlobId blobId, Username username);
-
-    Mono<Optional<Username>> check(AccountId accountId, BlobId blobId, UnauthenticatedBlobDownloadToken token);
+public record GeneratedBlobDownloadToken(UnauthenticatedBlobDownloadToken token, Instant validUntil) {
+    public GeneratedBlobDownloadToken {
+        Preconditions.checkNotNull(token);
+        Preconditions.checkNotNull(validUntil);
+    }
 }

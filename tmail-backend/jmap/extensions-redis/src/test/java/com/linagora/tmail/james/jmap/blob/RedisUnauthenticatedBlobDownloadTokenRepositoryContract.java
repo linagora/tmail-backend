@@ -74,7 +74,7 @@ public abstract class RedisUnauthenticatedBlobDownloadTokenRepositoryContract im
 
     @Test
     public void generateShouldStoreHashedTokenAndEncodedUsernameWithTtl() {
-        UnauthenticatedBlobDownloadToken token = repository.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block();
+        UnauthenticatedBlobDownloadToken token = repository.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block().token();
         String redisKey = RedisUnauthenticatedBlobDownloadTokenRepository.resolveKey(ACCOUNT_ID, BLOB_ID);
 
         String storedValue = redisCommands.get(redisKey).block().orElseThrow();
@@ -88,7 +88,7 @@ public abstract class RedisUnauthenticatedBlobDownloadTokenRepositoryContract im
     @Test
     public void generateShouldOverwriteStoredHashForSameBlob() {
         repository.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block();
-        UnauthenticatedBlobDownloadToken secondToken = repository.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block();
+        UnauthenticatedBlobDownloadToken secondToken = repository.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block().token();
         String redisKey = RedisUnauthenticatedBlobDownloadTokenRepository.resolveKey(ACCOUNT_ID, BLOB_ID);
 
         assertThat(redisCommands.get(redisKey).block().orElseThrow())

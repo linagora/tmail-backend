@@ -42,12 +42,20 @@ class MemoryUnauthenticatedBlobDownloadTokenRepositoryTest extends Unauthenticat
 
   @Test
   def expiredTokenShouldBeRemovedLazily(): Unit = {
-    val token = repository.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block()
+    val token = repository.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block().token()
 
     advanceClockAfterTtl()
     repository.check(ACCOUNT_ID, BLOB_ID, token).block()
 
     assertThat(repository.isStored(ACCOUNT_ID, BLOB_ID))
       .isFalse
+  }
+
+  @Test
+  def generateShouldAdvertiseTokenValidityPeriod(): Unit = {
+    val generated = repository.generate(ACCOUNT_ID, BLOB_ID, USERNAME).block()
+
+    assertThat(generated.validUntil())
+      .isEqualTo(initialInstant.plus(tokenTtl))
   }
 }
