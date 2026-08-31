@@ -22,6 +22,8 @@ import static io.restassured.RestAssured.given;
 import static org.awaitility.Awaitility.await;
 
 import java.io.File;
+import java.nio.file.Files;
+import java.nio.file.Paths;
 import java.time.Duration;
 
 import org.apache.james.GuiceJamesServer;
@@ -40,7 +42,7 @@ import org.junit.jupiter.api.io.TempDir;
 import org.testcontainers.Testcontainers;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.wait.strategy.Wait;
-import org.testcontainers.images.builder.ImageFromDockerfile;
+import org.testcontainers.utility.MountableFile;
 
 import com.linagora.tmail.migration.postgres.PostgresMigratedUsersDAO;
 
@@ -74,19 +76,9 @@ class MigrationMirroringTest {
     @TempDir
     static File workingDirectory;
 
-    // Derive the backend image baking our adapted mailetcontainer.xml in (no volume mount, CI/DinD safe).
-    private static final ImageFromDockerfile BACKEND_IMAGE = new ImageFromDockerfile()
-        .withDockerfileFromBuilder(builder -> builder
-            .from(IMAGE)
-            .copy("mailetcontainer.xml", "/root/conf/mailetcontainer.xml")
-            .copy("smtpserver.xml", "/root/conf/smtpserver.xml")
-            .copy("imapserver.xml", "/root/conf/imapserver.xml")
-            .copy("jmap.properties", "/root/conf/jmap.properties")
-            .build())
-        .withFileFromClasspath("mailetcontainer.xml", "backend/mailetcontainer.xml")
-        .withFileFromClasspath("smtpserver.xml", "backend/smtpserver.xml")
-        .withFileFromClasspath("imapserver.xml", "backend/imapserver.xml")
-        .withFileFromClasspath("jmap.properties", "backend/jmap.properties");
+    // The memory app image is built by Jib's buildTar (creates a tar, does not load into Docker).
+    // setUpAll loads it so GenericContainer can use it without pulling from a registry
+    // (the image is not published under linagora/tmail-backend-memory:latest).
 
     @SuppressWarnings("resource")
     static GenericContainer<?> oldBackend = adaptedBackend();
@@ -94,10 +86,14 @@ class MigrationMirroringTest {
     static GenericContainer<?> newBackend = adaptedBackend();
 
     private static GenericContainer<?> adaptedBackend() {
-        return new GenericContainer<>(BACKEND_IMAGE)
+        return new GenericContainer<>(IMAGE)
             .withExposedPorts(25, 587, 143, 8000)
             .withEnv("MIGRATION_PROXY_HOST", "host.testcontainers.internal")
             .withEnv("MIGRATION_PROXY_PORT", String.valueOf(PROXY_RELAY_PORT))
+            .withCopyFileToContainer(MountableFile.forClasspathResource("backend/mailetcontainer.xml"), "/root/conf/mailetcontainer.xml")
+            .withCopyFileToContainer(MountableFile.forClasspathResource("backend/smtpserver.xml"), "/root/conf/smtpserver.xml")
+            .withCopyFileToContainer(MountableFile.forClasspathResource("backend/imapserver.xml"), "/root/conf/imapserver.xml")
+            .withCopyFileToContainer(MountableFile.forClasspathResource("backend/jmap.properties"), "/root/conf/jmap.properties")
             .waitingFor(Wait.forLogMessage(".*JAMES server started.*", 1)
                 .withStartupTimeout(Duration.ofMinutes(5)));
     }
@@ -106,6 +102,14 @@ class MigrationMirroringTest {
 
     @BeforeAll
     static void setUpAll() throws Exception {
+        // Jib's buildTar creates a tar but does not load it into Docker. Load it so that
+        // GenericContainer can use linagora/tmail-backend-memory:latest without pulling
+        // from a registry (the image is not published under that name).
+        String memoryImageTar = new File("").getAbsolutePath().replace(
+            Paths.get("tmail-backend", "apps", "migration-proxy").toString(),
+            Paths.get("tmail-backend", "apps", "memory", "target", "jib-image.tar").toString());
+        oldBackend.getDockerClient().loadImageCmd(Files.newInputStream(Paths.get(memoryImageTar))).exec();
+
         Testcontainers.exposeHostPorts(PROXY_RELAY_PORT);
         oldBackend.start();
         newBackend.start();
