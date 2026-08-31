@@ -22,8 +22,12 @@ import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
+import org.apache.commons.net.MalformedServerReplyException;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
@@ -53,14 +57,17 @@ class IMAPTeamMailboxMigrationIntegrationTest {
     static final String DOMAIN = "domain.tld";
     static final Username MINISTER = Username.of("minister@" + DOMAIN);
     static final Username OTHER = Username.of("other@" + DOMAIN);
+    static final Username MANAGER = Username.of("manager@" + DOMAIN);
     static final Username ADMIN = Username.of("admin@" + DOMAIN);
     static final Username IMAP_ADMIN = Username.of("imapadmin@" + DOMAIN);
     static final String MINISTER_PASSWORD = "secret";
     static final String OTHER_PASSWORD = "secret";
+    static final String MANAGER_PASSWORD = "secret";
     static final String ADMIN_PASSWORD = "secret";
     static final String IMAP_ADMIN_PASSWORD = "secret";
     static final String IMAP_HOST = "127.0.0.1";
     static int imapPort;
+    static final Pattern MY_RIGHTS_RESPONSE = Pattern.compile("\\* MYRIGHTS \"[^\"]*\" \"([^\"]*)\"");
     static final TeamMailbox MARKETING_TEAM_MAILBOX = TeamMailbox.apply(Domain.of(DOMAIN),
         TeamMailboxName.fromString("marketing").toOption().get());
 
@@ -87,6 +94,7 @@ class IMAPTeamMailboxMigrationIntegrationTest {
             .addDomain(DOMAIN)
             .addUser(MINISTER.asString(), MINISTER_PASSWORD)
             .addUser(OTHER.asString(), OTHER_PASSWORD)
+            .addUser(MANAGER.asString(), MANAGER_PASSWORD)
             .addUser(ADMIN.asString(), ADMIN_PASSWORD)
             .addUser(IMAP_ADMIN.asString(), IMAP_ADMIN_PASSWORD);
 
@@ -95,7 +103,8 @@ class IMAPTeamMailboxMigrationIntegrationTest {
 
         server.getProbe(TeamMailboxProbe.class)
             .create(MARKETING_TEAM_MAILBOX)
-            .addMember(MARKETING_TEAM_MAILBOX, MINISTER);
+            .addMember(MARKETING_TEAM_MAILBOX, MINISTER)
+            .addManager(MARKETING_TEAM_MAILBOX, MANAGER);
 
         mailboxProbe.appendMessage(MINISTER.asString(), MARKETING_TEAM_MAILBOX.mailboxPath("INBOX"),
             MessageManager.AppendCommand.from(Message.Builder.of()
@@ -108,6 +117,16 @@ class IMAPTeamMailboxMigrationIntegrationTest {
 
     private Username scopedLogin(Username member) {
         return Username.fromLocalPartWithDomain(member.getLocalPart() + "+marketing", DOMAIN);
+    }
+
+    /**
+     * The rights the scoped session holds on the designated team mailbox folder, as reported by MYRIGHTS.
+     */
+    private String myRights(TestIMAPClient imapClient, String mailbox) throws IOException {
+        String response = imapClient.sendCommand("MYRIGHTS \"" + mailbox + "\"");
+        Matcher matcher = MY_RIGHTS_RESPONSE.matcher(response);
+        assertThat(matcher.find()).describedAs("MYRIGHTS untagged response in [%s]", response).isTrue();
+        return matcher.group(1);
     }
 
     private Username delegatedLogin(Username delegate, String authorizationLocalPart) {
@@ -285,5 +304,80 @@ class IMAPTeamMailboxMigrationIntegrationTest {
             .contains("SELECT completed");
         assertThat(imapClient.sendCommand("FETCH 1 BODY[TEXT]"))
             .contains("This is content of the team mailbox");
+    }
+
+    @Test
+    void memberShouldNotBeGrantedAdministerRightOnTeamMailbox() throws Exception {
+        TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(scopedLogin(MINISTER), MINISTER_PASSWORD);
+
+        assertThat(myRights(imapClient, "INBOX")).doesNotContain("a");
+    }
+
+    @Test
+    void memberShouldNotBeAllowedToSetAclOnTeamMailbox() throws Exception {
+        TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(scopedLogin(MINISTER), MINISTER_PASSWORD);
+
+        assertThatThrownBy(() -> imapClient.sendCommand("SETACL \"INBOX\" \"" + OTHER.asString() + "\" lr"))
+            .isInstanceOf(MalformedServerReplyException.class)
+            .hasMessageContaining("NO SETACL You need the Administer right to perform command SETACL on mailbox INBOX.");
+    }
+
+    @Test
+    void managerShouldBeGrantedAdministerRightOnTeamMailbox() throws Exception {
+        TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(scopedLogin(MANAGER), MANAGER_PASSWORD);
+
+        assertThat(myRights(imapClient, "INBOX")).contains("a");
+    }
+
+    @Test
+    void managerShouldBeAllowedToSetAclOnTeamMailbox() throws Exception {
+        TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(scopedLogin(MANAGER), MANAGER_PASSWORD);
+
+        assertThat(imapClient.sendCommand("SETACL \"INBOX\" \"" + OTHER.asString() + "\" lr"))
+            .contains("OK SETACL completed");
+        assertThat(imapClient.sendCommand("GETACL \"INBOX\""))
+            .contains("\"" + OTHER.asString() + "\" \"lr\"");
+    }
+
+    @Test
+    void adminShouldBeGrantedAdministerRightOnTeamMailboxHeIsNotMemberOf() throws Exception {
+        TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(scopedLogin(ADMIN), ADMIN_PASSWORD);
+
+        assertThat(myRights(imapClient, "INBOX")).contains("a");
+    }
+
+    @Test
+    void adminShouldBeAllowedToSetAclOnTeamMailboxHeIsNotMemberOf() throws Exception {
+        TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(scopedLogin(ADMIN), ADMIN_PASSWORD);
+
+        assertThat(imapClient.sendCommand("SETACL \"INBOX\" \"" + OTHER.asString() + "\" lr"))
+            .contains("OK SETACL completed");
+        assertThat(imapClient.sendCommand("GETACL \"INBOX\""))
+            .contains("\"" + OTHER.asString() + "\" \"lr\"");
+    }
+
+    @Test
+    void imapConfiguredAdminShouldBeGrantedAdministerRightOnTeamMailboxHeIsNotMemberOf() throws Exception {
+        TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(scopedLogin(IMAP_ADMIN), IMAP_ADMIN_PASSWORD);
+
+        assertThat(myRights(imapClient, "INBOX")).contains("a");
+    }
+
+    @Test
+    void imapConfiguredAdminShouldBeAllowedToSetAclOnTeamMailboxHeIsNotMemberOf() throws Exception {
+        TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
+            .login(scopedLogin(IMAP_ADMIN), IMAP_ADMIN_PASSWORD);
+
+        assertThat(imapClient.sendCommand("SETACL \"INBOX\" \"" + OTHER.asString() + "\" lr"))
+            .contains("OK SETACL completed");
+        assertThat(imapClient.sendCommand("GETACL \"INBOX\""))
+            .contains("\"" + OTHER.asString() + "\" \"lr\"");
     }
 }
