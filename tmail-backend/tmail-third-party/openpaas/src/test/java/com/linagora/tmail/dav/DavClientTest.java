@@ -415,8 +415,8 @@ class DavClientTest {
     }
 
     @Test
-    void sendITIPRequestShouldTruncateSabreResponseToFirstKilobyte() {
-        String longBody = "a".repeat(2 * DavClientException.SABRE_RESPONSE_MAX_BYTES);
+    void sendITIPRequestShouldTruncateSabreResponseToMaxChars() {
+        String longBody = "a".repeat(2 * DavClientException.SABRE_RESPONSE_MAX_CHARS);
         davServerExtension.stubFor(
             itip("/calendars/" + ALICE_ID)
                 .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
@@ -424,7 +424,22 @@ class DavClientTest {
 
         assertThatThrownBy(() -> client.caldav(Username.of(ALICE)).sendITIPRequest(URI.create("/calendars/" + ALICE_ID), ITIP_PAYLOAD).block())
             .isInstanceOfSatisfying(DavClientException.class,
-                exception -> assertThat(exception.sabreResponse()).contains("a".repeat(DavClientException.SABRE_RESPONSE_MAX_BYTES)));
+                exception -> assertThat(exception.sabreResponse()).contains("a".repeat(DavClientException.SABRE_RESPONSE_MAX_CHARS)));
+    }
+
+    @Test
+    void sendITIPRequestShouldTruncateSabreResponseByCharacterRatherThanByte() {
+        // Each emoji is 4 UTF-8 bytes and a UTF-16 surrogate pair; the leading ASCII char shifts the emojis so that
+        // a byte-based cut at 1024 would land in the middle of one, yielding an invalid code point
+        String multiByteBody = "a" + "😀".repeat(2 * DavClientException.SABRE_RESPONSE_MAX_CHARS);
+        davServerExtension.stubFor(
+            itip("/calendars/" + ALICE_ID)
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
+                .willReturn(badRequest().withBody(multiByteBody)));
+
+        assertThatThrownBy(() -> client.caldav(Username.of(ALICE)).sendITIPRequest(URI.create("/calendars/" + ALICE_ID), ITIP_PAYLOAD).block())
+            .isInstanceOfSatisfying(DavClientException.class,
+                exception -> assertThat(exception.sabreResponse()).contains("a" + "😀".repeat(DavClientException.SABRE_RESPONSE_MAX_CHARS - 1)));
     }
 
     @Test

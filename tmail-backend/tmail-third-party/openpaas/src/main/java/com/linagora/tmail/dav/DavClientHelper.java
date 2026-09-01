@@ -30,8 +30,9 @@ class DavClientHelper {
     static <T> Mono<T> unexpectedStatus(HttpClientResponse response, ByteBufMono content, String context) {
         return content.asByteArray()
             .switchIfEmpty(Mono.just(EMPTY_BODY))
+            .map(body -> new String(body, StandardCharsets.UTF_8))
             .flatMap(body -> Mono.error(new DavClientException(
-                "Unexpected status code: %d when %s: %s".formatted(response.status().code(), context, new String(body, StandardCharsets.UTF_8)),
+                "Unexpected status code: %d when %s: %s".formatted(response.status().code(), context, body),
                 DavClientException.truncateSabreResponse(body))));
     }
 }
