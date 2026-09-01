@@ -19,11 +19,13 @@
 package com.linagora.tmail.dav;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.aResponse;
+import static com.github.tomakehurst.wiremock.client.WireMock.badRequest;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalToJson;
 import static com.github.tomakehurst.wiremock.client.WireMock.get;
 import static com.github.tomakehurst.wiremock.client.WireMock.getRequestedFor;
 import static com.github.tomakehurst.wiremock.client.WireMock.matching;
+import static com.github.tomakehurst.wiremock.client.WireMock.noContent;
 import static com.github.tomakehurst.wiremock.client.WireMock.notFound;
 import static com.github.tomakehurst.wiremock.client.WireMock.ok;
 import static com.github.tomakehurst.wiremock.client.WireMock.post;
@@ -41,6 +43,7 @@ import static com.linagora.tmail.dav.DavServerExtension.ALICE_DAV_USER;
 import static com.linagora.tmail.dav.DavServerExtension.ALICE_ID;
 import static com.linagora.tmail.dav.DavServerExtension.ALICE_VEVENT_1;
 import static com.linagora.tmail.dav.DavServerExtension.createDelegatedBasicAuthenticationToken;
+import static com.linagora.tmail.dav.DavServerExtension.itip;
 import static com.linagora.tmail.dav.DavServerExtension.propfind;
 import static com.linagora.tmail.dav.DavServerExtension.report;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -48,6 +51,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThatCode;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
@@ -79,6 +83,13 @@ class DavClientTest {
     private static final OpenPaaSUserId OPENPAAS_USER_ID = new OpenPaaSUserId("openpaasUserId1");
     private static final DavUser OPEN_PAAS_DAV_USER = new DavUser(OPENPAAS_USER_ID, OPENPAAS_USER_NAME);
     private static final UnaryOperator<DavCalendarObject> DUMMY_CALENDAR_OBJECT_UPDATER = calendarObject -> calendarObject;
+    private static final byte[] ITIP_PAYLOAD = "{\"ical\": \"BEGIN:VCALENDAR\\nEND:VCALENDAR\"}".getBytes(StandardCharsets.UTF_8);
+    private static final String SABRE_ERROR_BODY = """
+        <?xml version="1.0" encoding="utf-8"?>
+        <d:error xmlns:d="DAV:" xmlns:s="http://sabredav.org/ns">
+          <s:exception>Sabre\\VObject\\ITip\\ITipException</s:exception>
+          <s:message>The supplied message must have a valid METHOD property</s:message>
+        </d:error>""";
 
     @RegisterExtension
     static DavServerExtension davServerExtension = new DavServerExtension();
@@ -153,6 +164,41 @@ class DavClientTest {
 
         assertThatCode(() -> client.carddav(OPENPAAS_USER_NAME).createCollectedContact(OPENPAAS_USER_ID, request).block())
             .doesNotThrowAnyException();
+    }
+
+    @Test
+    void existsCollectedContactShouldExposeSabreResponseWhenHTTPResponseIs500() {
+        DavUid collectedContactUid = new DavUid(UUID.randomUUID().toString());
+        davServerExtension.stubFor(
+            get("/addressbooks/%s/collected/%s.vcf".formatted(OPENPAAS_USER_ID.value(), collectedContactUid.value()))
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(OPENPAAS_USER_NAME.asString())))
+                .willReturn(serverError().withBody(SABRE_ERROR_BODY)));
+
+        assertThatThrownBy(() -> client.carddav(OPENPAAS_USER_NAME).existsCollectedContact(OPENPAAS_USER_ID, collectedContactUid).block())
+            .isInstanceOfSatisfying(DavClientException.class,
+                exception -> assertThat(exception.sabreResponse()).contains(SABRE_ERROR_BODY));
+    }
+
+    @Test
+    void createCollectedContactShouldExposeSabreResponseWhenHTTPResponseIs400() throws Exception {
+        DavUid collectedContactUid = new DavUid(UUID.randomUUID().toString());
+        davServerExtension.stubFor(
+            put("/addressbooks/%s/collected/%s.vcf".formatted(OPENPAAS_USER_ID.value(), collectedContactUid.value()))
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(OPENPAAS_USER_NAME.asString())))
+                .willReturn(badRequest().withBody(SABRE_ERROR_BODY)));
+
+        CardDavCreationObjectRequest request = new CardDavCreationObjectRequest(
+            "4.0",
+            collectedContactUid,
+            Optional.of("An Bach4"),
+            Optional.of(List.of("An", "Bach4")),
+            new CardDavCreationObjectRequest.Email(
+                List.of(EmailType.HOME),
+                new MailAddress("anbach4@lina.com")));
+
+        assertThatThrownBy(() -> client.carddav(OPENPAAS_USER_NAME).createCollectedContact(OPENPAAS_USER_ID, request).block())
+            .isInstanceOfSatisfying(DavClientException.class,
+                exception -> assertThat(exception.sabreResponse()).contains(SABRE_ERROR_BODY));
     }
 
     @Test
@@ -329,6 +375,56 @@ class DavClientTest {
                 urlEqualTo(ALICE_CALENDAR_OBJECT_1))
                 .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
                 .withHeader("Accept", equalTo("application/xml")));
+    }
+
+    @Test
+    void sendITIPRequestShouldSucceedWhenHTTPResponseIs204() {
+        davServerExtension.stubFor(
+            itip("/calendars/" + ALICE_ID)
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
+                .willReturn(noContent()));
+
+        assertThatCode(() -> client.caldav(Username.of(ALICE)).sendITIPRequest(URI.create("/calendars/" + ALICE_ID), ITIP_PAYLOAD).block())
+            .doesNotThrowAnyException();
+    }
+
+    @Test
+    void sendITIPRequestShouldExposeSabreResponseWhenHTTPResponseIs400() {
+        davServerExtension.stubFor(
+            itip("/calendars/" + ALICE_ID)
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
+                .willReturn(badRequest().withBody(SABRE_ERROR_BODY)));
+
+        assertThatThrownBy(() -> client.caldav(Username.of(ALICE)).sendITIPRequest(URI.create("/calendars/" + ALICE_ID), ITIP_PAYLOAD).block())
+            .isInstanceOfSatisfying(DavClientException.class, exception -> {
+                assertThat(exception.sabreResponse()).contains(SABRE_ERROR_BODY);
+                assertThat(exception.getMessage()).contains("Unexpected status code: 400 when sending itip request for '/calendars/ALICE_ID'");
+            });
+    }
+
+    @Test
+    void sendITIPRequestShouldExposeEmptySabreResponseWhenHTTPResponseHasNoBody() {
+        davServerExtension.stubFor(
+            itip("/calendars/" + ALICE_ID)
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
+                .willReturn(badRequest()));
+
+        assertThatThrownBy(() -> client.caldav(Username.of(ALICE)).sendITIPRequest(URI.create("/calendars/" + ALICE_ID), ITIP_PAYLOAD).block())
+            .isInstanceOfSatisfying(DavClientException.class,
+                exception -> assertThat(exception.sabreResponse()).contains(""));
+    }
+
+    @Test
+    void sendITIPRequestShouldTruncateSabreResponseToFirstKilobyte() {
+        String longBody = "a".repeat(2 * DavClientException.SABRE_RESPONSE_MAX_BYTES);
+        davServerExtension.stubFor(
+            itip("/calendars/" + ALICE_ID)
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
+                .willReturn(badRequest().withBody(longBody)));
+
+        assertThatThrownBy(() -> client.caldav(Username.of(ALICE)).sendITIPRequest(URI.create("/calendars/" + ALICE_ID), ITIP_PAYLOAD).block())
+            .isInstanceOfSatisfying(DavClientException.class,
+                exception -> assertThat(exception.sabreResponse()).contains("a".repeat(DavClientException.SABRE_RESPONSE_MAX_BYTES)));
     }
 
     @Test

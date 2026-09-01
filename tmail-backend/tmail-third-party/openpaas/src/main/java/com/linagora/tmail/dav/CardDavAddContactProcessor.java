@@ -26,6 +26,7 @@ import jakarta.inject.Singleton;
 
 import org.apache.james.core.Username;
 import org.apache.james.util.FunctionalUtils;
+import org.apache.james.util.MDCBuilder;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,10 +74,8 @@ public class CardDavAddContactProcessor implements ContactAddIndexingProcessor {
                 return cardDavClient.existsCollectedContact(openPassUserId, cardDavCreationObjectRequest.uid())
                     .filter(FunctionalUtils.identityPredicate().negate())
                     .flatMap(exists -> cardDavClient.createCollectedContact(openPassUserId, cardDavCreationObjectRequest))
-                    .onErrorResume(error -> {
-                        LOGGER.error("Error while creating collected contact if not exists.", error);
-                        return Mono.empty();
-                    });
+                    .onErrorResume(error -> Mono.fromRunnable(() -> MDCBuilder.withMdc(DavClientException.mdcOf(error),
+                        () -> LOGGER.error("Error while creating collected contact if not exists.", error))));
             });
     }
 }

@@ -28,6 +28,7 @@ import com.linagora.tmail.dav.request.CardDavCreationObjectRequest;
 import io.netty.buffer.Unpooled;
 import io.netty.handler.codec.http.HttpHeaderNames;
 import reactor.core.publisher.Mono;
+import reactor.netty.ByteBufMono;
 import reactor.netty.http.client.HttpClient;
 import reactor.netty.http.client.HttpClientResponse;
 
@@ -45,16 +46,15 @@ public class CardDavClient {
     public Mono<Boolean> existsCollectedContact(OpenPaaSUserId userId, DavUid collectedId) {
         return client.get()
             .uri(String.format(COLLECTED_ADDRESS_BOOK_PATH, userId.value(), collectedId.value()))
-            .responseSingle((response, byteBufMono) -> handleContactExistsResponse(response, userId, collectedId));
+            .responseSingle((response, byteBufMono) -> handleContactExistsResponse(response, byteBufMono, userId, collectedId));
     }
 
-    private Mono<Boolean> handleContactExistsResponse(HttpClientResponse response, OpenPaaSUserId userId, DavUid collectedId) {
+    private Mono<Boolean> handleContactExistsResponse(HttpClientResponse response, ByteBufMono responseContent, OpenPaaSUserId userId, DavUid collectedId) {
         return switch (response.status().code()) {
             case 200 -> Mono.just(true);
             case 404 -> Mono.just(false);
-            default -> Mono.error(new DavClientException(
-                String.format("Unexpected status code: %d when checking contact exists for userId: %s and collectedId: %s",
-                    response.status().code(), userId.value(), collectedId.value())));
+            default -> DavClientHelper.unexpectedStatus(response, responseContent,
+                "checking contact exists for userId: %s and collectedId: %s".formatted(userId.value(), collectedId.value()));
         };
     }
 
@@ -67,18 +67,18 @@ public class CardDavClient {
             .put()
             .uri(String.format(COLLECTED_ADDRESS_BOOK_PATH, userId.value(), vcardUid.value()))
             .send(Mono.just(Unpooled.wrappedBuffer(vcardPayload)))
-            .responseSingle((response, byteBufMono) -> handleContactCreationResponse(response, userId, vcardUid));
+            .responseSingle((response, byteBufMono) -> handleContactCreationResponse(response, byteBufMono, userId, vcardUid));
     }
 
-    private Mono<Void> handleContactCreationResponse(HttpClientResponse response, OpenPaaSUserId userId, DavUid vcardUid) {
+    private Mono<Void> handleContactCreationResponse(HttpClientResponse response, ByteBufMono responseContent, OpenPaaSUserId userId, DavUid vcardUid) {
         return switch (response.status().code()) {
             case 201 -> Mono.empty();
             case 204 -> {
                 LOGGER.info("Contact for user {} and collected id {} already exists", userId.value(), vcardUid.value());
                 yield Mono.empty();
             }
-            default -> Mono.error(new DavClientException(
-                String.format("Unexpected status code: %d when creating contact for user: %s and collected id: %s", response.status().code(), userId.value(), vcardUid.value())));
+            default -> DavClientHelper.unexpectedStatus(response, responseContent,
+                "creating contact for user: %s and collected id: %s".formatted(userId.value(), vcardUid.value()));
         };
     }
 }

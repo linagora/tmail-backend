@@ -261,4 +261,8 @@ public class DavServerExtension extends WireMockExtension {
     public static MappingBuilder report(String url) {
         return request("REPORT", new UrlPattern(equalTo(url), !USE_REGEX));
     }
+
+    public static MappingBuilder itip(String url) {
+        return request("ITIP", new UrlPattern(equalTo(url), !USE_REGEX));
+    }
 }
