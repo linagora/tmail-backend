@@ -423,8 +423,10 @@ class DavClientTest {
                 .willReturn(badRequest().withBody(longBody)));
 
         assertThatThrownBy(() -> client.caldav(Username.of(ALICE)).sendITIPRequest(URI.create("/calendars/" + ALICE_ID), ITIP_PAYLOAD).block())
-            .isInstanceOfSatisfying(DavClientException.class,
-                exception -> assertThat(exception.sabreResponse()).contains("a".repeat(DavClientException.SABRE_RESPONSE_MAX_CHARS)));
+            .isInstanceOfSatisfying(DavClientException.class, exception -> {
+                assertThat(exception.sabreResponse()).contains("a".repeat(DavClientException.SABRE_RESPONSE_MAX_CHARS));
+                assertThat(exception.getMessage()).doesNotContain("a".repeat(DavClientException.SABRE_RESPONSE_MAX_CHARS + 1));
+            });
     }
 
     @Test
