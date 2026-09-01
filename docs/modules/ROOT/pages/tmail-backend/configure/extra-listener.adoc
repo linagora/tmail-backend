@@ -200,6 +200,10 @@ Unlike the other listeners of this page, it is triggered upon ACL updates, not u
 </listeners>
 ----
 
+NOTE: By default, the mailbox manager refuses ACL entries whose domain differs from the one of the mailbox owner,
+which includes local-part-only entries (`SETACL INBOX alice lrs` is answered `NO`). For such entries to reach this
+listener, cross-domain sharing must be allowed by setting `james.rights.crossdomain.allow=true` in `jvm.properties`.
+
 == Label Provisioner Listener
 
 This listener automatically creates a predefined set of JMAP labels for every new user.
