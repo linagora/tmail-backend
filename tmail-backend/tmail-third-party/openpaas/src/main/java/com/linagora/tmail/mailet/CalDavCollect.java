@@ -31,6 +31,7 @@ import jakarta.mail.MessagingException;
 
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
+import org.apache.james.util.MDCBuilder;
 import org.apache.mailet.AttributeName;
 import org.apache.mailet.AttributeUtils;
 import org.apache.mailet.AttributeValue;
@@ -42,6 +43,7 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linagora.tmail.dav.DavClient;
+import com.linagora.tmail.dav.DavClientException;
 import com.linagora.tmail.dav.DavUser;
 import com.linagora.tmail.dav.DavUserProvider;
 
@@ -123,7 +125,8 @@ public class CalDavCollect extends GenericMailet {
             } catch (ParserException e) {
                 LOGGER.warn("Failed to parse calendar in mail {} with recipient {}: malformed iCalendar payload", mail.getName(), recipient, e);
             } catch (Exception e) {
-                LOGGER.error("Error while handling calendar in mail {} with recipient {}", mail.getName(), recipient, e);
+                MDCBuilder.withMdc(DavClientException.mdcOf(e),
+                    () -> LOGGER.error("Error while handling calendar in mail {} with recipient {}", mail.getName(), recipient, e));
             }
         }
     }

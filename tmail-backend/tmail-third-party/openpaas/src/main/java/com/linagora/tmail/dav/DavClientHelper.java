@@ -20,19 +20,18 @@ package com.linagora.tmail.dav;
 
 import java.nio.charset.StandardCharsets;
 
-import org.apache.commons.lang3.StringUtils;
-
 import reactor.core.publisher.Mono;
 import reactor.netty.ByteBufMono;
 import reactor.netty.http.client.HttpClientResponse;
 
 class DavClientHelper {
-
+    private static final byte[] EMPTY_BODY = new byte[0];
 
     static <T> Mono<T> unexpectedStatus(HttpClientResponse response, ByteBufMono content, String context) {
-        return content.asString(StandardCharsets.UTF_8)
-            .switchIfEmpty(Mono.just(StringUtils.EMPTY))
+        return content.asByteArray()
+            .switchIfEmpty(Mono.just(EMPTY_BODY))
             .flatMap(body -> Mono.error(new DavClientException(
-                "Unexpected status code: %d when %s: %s".formatted(response.status().code(), context, body))));
+                "Unexpected status code: %d when %s: %s".formatted(response.status().code(), context, new String(body, StandardCharsets.UTF_8)),
+                DavClientException.truncateSabreResponse(body))));
     }
 }
