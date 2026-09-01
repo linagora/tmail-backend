@@ -81,8 +81,8 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
     private static final Time TIMEOUT = new Time.Builder().time("1m").build();
     private static final int HTTP_CONFLICT = 409;
     private static final int DELETE_BY_QUERY_MAX_RETRIES = 3;
-    // Above the default 1s refresh interval so a retry searches a refreshed view of the index
-    private static final Duration DELETE_BY_QUERY_RETRY_BACKOFF = Duration.ofMillis(500);
+    // Fixed delay (no jitter) above the default 1s refresh interval so each retry searches a refreshed view of the index
+    private static final Duration DELETE_BY_QUERY_RETRY_DELAY = Duration.ofMillis(1500);
 
     private static final List<String> ALL_SEARCH_FIELDS = List.of(EMAIL, FIRSTNAME, SURNAME);
     private final OpenSearchIndexer userContactIndexer;
@@ -175,7 +175,7 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
         // defer: the underlying request is sent eagerly, each retry must issue a fresh one
         return Mono.defer(() -> userContactIndexer.deleteAllMatchingQuery(combinedQuery,
                 RoutingKey.fromString(address.asString())))
-            .retryWhen(Retry.backoff(DELETE_BY_QUERY_MAX_RETRIES, DELETE_BY_QUERY_RETRY_BACKOFF)
+            .retryWhen(Retry.fixedDelay(DELETE_BY_QUERY_MAX_RETRIES, DELETE_BY_QUERY_RETRY_DELAY)
                 .filter(OSEmailAddressContactSearchEngine::isVersionConflict))
             .then();
     }
