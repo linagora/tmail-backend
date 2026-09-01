@@ -26,6 +26,7 @@ import static com.linagora.tmail.james.jmap.ContactMappingFactory.EMAIL;
 import static com.linagora.tmail.james.jmap.ContactMappingFactory.FIRSTNAME;
 import static com.linagora.tmail.james.jmap.ContactMappingFactory.SURNAME;
 
+import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
 import java.util.Optional;
@@ -45,6 +46,7 @@ import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
 import org.apache.james.jmap.api.model.AccountId;
 import org.apache.james.util.FunctionalUtils;
+import org.opensearch.client.ResponseException;
 import org.opensearch.client.opensearch._types.FieldValue;
 import org.opensearch.client.opensearch._types.Time;
 import org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
@@ -72,10 +74,15 @@ import com.linagora.tmail.james.jmap.dto.DomainContactDocument;
 import com.linagora.tmail.james.jmap.dto.UserContactDocument;
 
 import reactor.core.publisher.Mono;
+import reactor.util.retry.Retry;
 
 public class OSEmailAddressContactSearchEngine implements EmailAddressContactSearchEngine {
     private static final String DELIMITER = ":";
     private static final Time TIMEOUT = new Time.Builder().time("1m").build();
+    private static final int HTTP_CONFLICT = 409;
+    private static final int DELETE_BY_QUERY_MAX_RETRIES = 3;
+    // Above the default 1s refresh interval so a retry searches a refreshed view of the index
+    private static final Duration DELETE_BY_QUERY_RETRY_BACKOFF = Duration.ofMillis(500);
 
     private static final List<String> ALL_SEARCH_FIELDS = List.of(EMAIL, FIRSTNAME, SURNAME);
     private final OpenSearchIndexer userContactIndexer;
@@ -165,9 +172,19 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
                 .field(ACCOUNT_ID)
                 .value(new FieldValue.Builder().stringValue(accountId.getIdentifier()).build())).toQuery())).toQuery();
 
-        return userContactIndexer.deleteAllMatchingQuery(combinedQuery,
-                RoutingKey.fromString(address.asString()))
+        // defer: the underlying request is sent eagerly, each retry must issue a fresh one
+        return Mono.defer(() -> userContactIndexer.deleteAllMatchingQuery(combinedQuery,
+                RoutingKey.fromString(address.asString())))
+            .retryWhen(Retry.backoff(DELETE_BY_QUERY_MAX_RETRIES, DELETE_BY_QUERY_RETRY_BACKOFF)
+                .filter(OSEmailAddressContactSearchEngine::isVersionConflict))
             .then();
+    }
+
+    // A concurrent delete removed documents between the delete-by-query search and delete phases:
+    // replaying the query then sees a refreshed snapshot and completes.
+    private static boolean isVersionConflict(Throwable throwable) {
+        return throwable instanceof ResponseException responseException
+            && responseException.getResponse().getStatusLine().getStatusCode() == HTTP_CONFLICT;
     }
 
     @Override

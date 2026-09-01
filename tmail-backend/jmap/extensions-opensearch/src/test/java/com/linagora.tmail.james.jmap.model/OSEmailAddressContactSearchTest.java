@@ -20,18 +20,24 @@ package com.linagora.tmail.james.jmap.model;
 
 import static com.linagora.tmail.james.jmap.OpenSearchContactConfiguration.DEFAULT_CONFIGURATION;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
 
 import java.util.Optional;
+import java.util.UUID;
 
 import org.apache.james.backends.opensearch.DockerOpenSearchExtension;
 import org.apache.james.backends.opensearch.IndexCreationFactory;
 import org.apache.james.backends.opensearch.OpenSearchConfiguration;
 import org.apache.james.backends.opensearch.ReactorOpenSearchClient;
+import org.apache.james.core.MailAddress;
+import org.apache.james.core.Username;
+import org.apache.james.jmap.api.model.AccountId;
 import org.awaitility.Awaitility;
 import org.awaitility.Durations;
 import org.awaitility.core.ConditionFactory;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.opensearch.client.opensearch._types.FieldValue;
 import org.opensearch.client.opensearch._types.query_dsl.Query;
@@ -40,12 +46,20 @@ import org.opensearch.client.opensearch.core.SearchRequest;
 
 import com.linagora.tmail.james.jmap.ContactMappingFactory;
 import com.linagora.tmail.james.jmap.OSEmailAddressContactSearchEngine;
+import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngineContract;
+import com.linagora.tmail.james.jmap.contact.MatchAllQuery;
 import com.linagora.tmail.james.jmap.contact.MatchQuery;
 import com.linagora.tmail.james.jmap.contact.QueryType;
 
+import reactor.core.publisher.Flux;
+import reactor.core.publisher.Mono;
+
 public class OSEmailAddressContactSearchTest implements EmailAddressContactSearchEngineContract {
+    private static final AccountId ACCOUNT_ID = AccountId.fromUsername(Username.of("bob@linagora.com"));
+    private static final int ADDRESS_BOOK_COUNT = 5;
+    private static final int CONCURRENT_DELETES = 10;
     private static final ConditionFactory CALMLY_AWAIT = Awaitility
         .with().pollInterval(ONE_HUNDRED_MILLISECONDS)
         .and().pollDelay(ONE_HUNDRED_MILLISECONDS)
@@ -83,6 +97,25 @@ public class OSEmailAddressContactSearchTest implements EmailAddressContactSearc
                         .build())
                 .block()
                 .hits().total().value()).isEqualTo(documentCount));
+    }
+
+    @Test
+    void concurrentDeletesOfTheSameAddressShouldNotFail() throws Exception {
+        MailAddress mailAddress = new MailAddress("multi@linagora.com");
+        ContactFields fields = ContactFields.of(mailAddress, "Multi", "Contact");
+        Flux.range(0, ADDRESS_BOOK_COUNT)
+            .flatMap(any -> searchEngine.index(ACCOUNT_ID, fields, UUID.randomUUID().toString()))
+            .then()
+            .block();
+        awaitDocumentsIndexed(new MatchAllQuery(), ADDRESS_BOOK_COUNT);
+
+        assertThatCode(() -> Flux.range(0, CONCURRENT_DELETES)
+            .flatMap(any -> Mono.from(searchEngine.delete(ACCOUNT_ID, mailAddress)))
+            .then()
+            .block())
+            .doesNotThrowAnyException();
+
+        awaitDocumentsIndexed(new MatchAllQuery(), 0);
     }
 
     private Query extractOpenSearchQuery(QueryType queryType) {
