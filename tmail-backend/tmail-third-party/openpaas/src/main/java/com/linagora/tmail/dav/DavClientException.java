@@ -18,15 +18,13 @@
 
 package com.linagora.tmail.dav;
 
-import java.nio.charset.StandardCharsets;
-import java.util.Arrays;
 import java.util.Optional;
 
 import org.apache.james.util.MDCBuilder;
 
 public class DavClientException extends RuntimeException {
     public static final String SABRE_RESPONSE_MDC_KEY = "sabreResponse";
-    public static final int SABRE_RESPONSE_MAX_BYTES = 1024;
+    public static final int SABRE_RESPONSE_MAX_CHARS = 1024;
 
     /**
      * Builds the MDC context to be used when logging the given error: when it is a {@link DavClientException}
@@ -39,9 +37,15 @@ public class DavClientException extends RuntimeException {
         return MDCBuilder.create();
     }
 
-    public static String truncateSabreResponse(byte[] responseBody) {
-        byte[] truncated = Arrays.copyOf(responseBody, Math.min(responseBody.length, SABRE_RESPONSE_MAX_BYTES));
-        return new String(truncated, StandardCharsets.UTF_8);
+    /**
+     * Truncates by Unicode code points rather than by bytes so that no multi-byte UTF-8 sequence
+     * nor UTF-16 surrogate pair gets split, which would yield an invalid string.
+     */
+    public static String truncateSabreResponse(String responseBody) {
+        return responseBody.codePoints()
+            .limit(SABRE_RESPONSE_MAX_CHARS)
+            .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
+            .toString();
     }
 
     private final Optional<String> sabreResponse;
@@ -63,7 +67,7 @@ public class DavClientException extends RuntimeException {
 
     /**
      * Body of the Dav server response that caused this exception, truncated to the first
-     * {@value #SABRE_RESPONSE_MAX_BYTES} bytes, when available.
+     * {@value #SABRE_RESPONSE_MAX_CHARS} characters, when available.
      */
     public Optional<String> sabreResponse() {
         return sabreResponse;
