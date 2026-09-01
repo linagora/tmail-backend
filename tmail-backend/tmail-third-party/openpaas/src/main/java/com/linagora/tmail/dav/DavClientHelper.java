@@ -31,8 +31,9 @@ class DavClientHelper {
         return content.asByteArray()
             .switchIfEmpty(Mono.just(EMPTY_BODY))
             .map(body -> new String(body, StandardCharsets.UTF_8))
-            .flatMap(body -> Mono.error(new DavClientException(
-                "Unexpected status code: %d when %s: %s".formatted(response.status().code(), context, body),
-                DavClientException.truncateSabreResponse(body))));
+            .map(DavClientException::truncateSabreResponse)
+            .flatMap(truncatedBody -> Mono.error(new DavClientException(
+                "Unexpected status code: %d when %s: %s".formatted(response.status().code(), context, truncatedBody),
+                truncatedBody)));
     }
 }
