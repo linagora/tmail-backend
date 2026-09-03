@@ -18,11 +18,14 @@
 
 package com.linagora.tmail.james.jmap.contact
 
-import ContactUsernameChangeTaskStepTest.{ALICE, ALICE_ACCOUNT_ID, ANDRE_CONTACT, BOB, BOB_ACCOUNT_ID, MARIE_CONTACT}
+import java.util.concurrent.atomic.AtomicInteger
+
+import ContactUsernameChangeTaskStepTest.{ADDRESS_BOOK_1, ADDRESS_BOOK_2, ALICE, ALICE_ACCOUNT_ID, ANDRE_CONTACT, BOB, BOB_ACCOUNT_ID, MARIE_CONTACT}
 import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.jmap.api.model.AccountId
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
+import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.CollectionConverters._
@@ -39,6 +42,8 @@ object ContactUsernameChangeTaskStepTest {
   val MARIE_CONTACT: ContactFields = ContactFields(MARIE_MAIL_ADDRESS, "Marie", "Bourdier")
   val ALICE_MAIL_ADDRESS: MailAddress = new MailAddress("alice@linagora.com")
   val ALICE_CONTACT: ContactFields = ContactFields(ALICE_MAIL_ADDRESS, "Alice", "Gwen")
+  val ADDRESS_BOOK_1: String = "addressBook1"
+  val ADDRESS_BOOK_2: String = "addressBook2"
 }
 
 class ContactUsernameChangeTaskStepTest {
@@ -99,5 +104,41 @@ class ContactUsernameChangeTaskStepTest {
       .map(_.fields)
       .collectSeq().block().asJava)
       .containsExactlyInAnyOrder(ANDRE_CONTACT, MARIE_CONTACT)
+  }
+
+  @Test
+  def shouldMigrateContactPresentInSeveralAddressBooks(): Unit = {
+    SMono.fromPublisher(searchEngine.index(ALICE_ACCOUNT_ID, ANDRE_CONTACT, ADDRESS_BOOK_1)).block()
+    SMono.fromPublisher(searchEngine.index(ALICE_ACCOUNT_ID, ANDRE_CONTACT, ADDRESS_BOOK_2)).block()
+
+    SMono.fromPublisher(testee.changeUsername(ALICE, BOB)).block()
+
+    assertThat(SFlux.fromPublisher(searchEngine.list(BOB_ACCOUNT_ID))
+      .map(_.fields)
+      .collectSeq().block().asJava)
+      .containsExactly(ANDRE_CONTACT)
+    assertThat(SFlux.fromPublisher(searchEngine.list(ALICE_ACCOUNT_ID))
+      .map(_.fields)
+      .collectSeq().block().asJava)
+      .isEmpty()
+  }
+
+  @Test
+  def shouldDeleteEachAddressOnlyOnce(): Unit = {
+    val deleteCount: AtomicInteger = new AtomicInteger(0)
+    val countingSearchEngine: EmailAddressContactSearchEngine = new InMemoryEmailAddressContactSearchEngine {
+      override def delete(accountId: AccountId, mailAddress: MailAddress): Publisher[Void] = {
+        deleteCount.incrementAndGet()
+        super.delete(accountId, mailAddress)
+      }
+    }
+    testee = new ContactUsernameChangeTaskStep(countingSearchEngine)
+    SMono.fromPublisher(countingSearchEngine.index(ALICE_ACCOUNT_ID, ANDRE_CONTACT, ADDRESS_BOOK_1)).block()
+    SMono.fromPublisher(countingSearchEngine.index(ALICE_ACCOUNT_ID, ANDRE_CONTACT, ADDRESS_BOOK_2)).block()
+    SMono.fromPublisher(countingSearchEngine.index(ALICE_ACCOUNT_ID, MARIE_CONTACT, ADDRESS_BOOK_1)).block()
+
+    SMono.fromPublisher(testee.changeUsername(ALICE, BOB)).block()
+
+    assertThat(deleteCount.get()).isEqualTo(2)
   }
 }

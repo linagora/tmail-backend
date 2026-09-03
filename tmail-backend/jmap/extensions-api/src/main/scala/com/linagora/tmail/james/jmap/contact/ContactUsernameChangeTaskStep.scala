@@ -34,7 +34,11 @@ class ContactUsernameChangeTaskStep @Inject()(contactSearchEngine: EmailAddressC
     val oldAccountId: AccountId = AccountId.fromUsername(oldUsername)
     val newAccountId: AccountId = AccountId.fromUsername(newUsername)
 
+    // An address stored in several address books is listed once per address book while
+    // delete(accountId, address) removes all of them at once: deduplicate to avoid concurrent
+    // delete-by-query racing each other on the same documents (409 version conflicts).
     SFlux.fromPublisher(contactSearchEngine.list(oldAccountId))
+      .distinct(_.fields.address)
       .flatMap(contact => SMono.fromPublisher(contactSearchEngine.index(newAccountId, contact.fields))
         .`then`(SMono.fromPublisher(contactSearchEngine.delete(oldAccountId, contact.fields.address))))
       .`then`()
