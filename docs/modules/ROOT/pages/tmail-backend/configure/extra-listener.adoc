@@ -172,6 +172,38 @@ In a SaaS context, use the `applyWhen` filter to restrict signature provisioning
 </defaultText>
 ----
 
+== Enrich ACL Listener
+
+Twake Mail identifies users by their full email address. Some deployments nevertheless end up with ACL entries
+designating a user by its sole local part (e.g. `alice` instead of `alice@domain.tld`), typically set through
+IMAP `SETACL` by legacy clients or imported from another mail system.
+
+This listener reacts to ACL updates and rewrites such local-part-only user entries by appending the domain of the
+mailbox owner: `alice` becomes `alice@domain.tld` (and the `alice` entry is removed). Sharing is thereby restricted
+within the domain of the mailbox owner.
+
+Behaviour details:
+
+- Rights of the local-part-only entry are merged into the fully qualified entry when the latter already exists.
+- Negative entries (`-alice`) are rewritten as well (`-alice@domain.tld`).
+- Group (`$sales`) and special (`anyone`, `authenticated`, `owner`) entries are left untouched.
+- Mailboxes whose owner has no domain are ignored.
+
+Unlike the other listeners of this page, it is triggered upon ACL updates, not upon INBOX creation.
+
+[source,xml]
+----
+<listeners>
+  <listener>
+    <class>com.linagora.tmail.listener.EnrichACLListener</class>
+  </listener>
+</listeners>
+----
+
+NOTE: By default, the mailbox manager refuses ACL entries whose domain differs from the one of the mailbox owner,
+which includes local-part-only entries (`SETACL INBOX alice lrs` is answered `NO`). For such entries to reach this
+listener, cross-domain sharing must be allowed by setting `james.rights.crossdomain.allow=true` in `jvm.properties`.
+
 == Label Provisioner Listener
 
 This listener automatically creates a predefined set of JMAP labels for every new user.
