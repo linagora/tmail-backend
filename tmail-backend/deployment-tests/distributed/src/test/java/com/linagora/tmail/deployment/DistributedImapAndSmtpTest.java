@@ -24,7 +24,7 @@ import org.testcontainers.containers.GenericContainer;
 
 public class DistributedImapAndSmtpTest extends ImapAndSmtpContract {
     @RegisterExtension
-    TmailDistributedExtension extension = new TmailDistributedExtension();
+    static final TmailDistributedExtension extension = new TmailDistributedExtension();
 
     @Override
     protected ExternalJamesConfiguration configuration() {

@@ -78,8 +78,8 @@ public class TmailLdapPostgresExtension extends TmailPostgresExtension {
     }
 
     @Override
-    public void afterEach(ExtensionContext extensionContext) throws Exception {
-        super.afterEach(extensionContext);
+    public void afterAll(ExtensionContext extensionContext) throws Exception {
+        super.afterAll(extensionContext);
         ldap.stop();
     }
 }

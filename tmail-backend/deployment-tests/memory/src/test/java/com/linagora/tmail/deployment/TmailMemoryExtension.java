@@ -26,13 +26,13 @@ import java.util.UUID;
 
 import org.apache.james.mpt.imapmailbox.external.james.host.external.ExternalJamesConfiguration;
 import org.apache.james.util.Port;
-import org.junit.jupiter.api.extension.AfterEachCallback;
-import org.junit.jupiter.api.extension.BeforeEachCallback;
+import org.junit.jupiter.api.extension.AfterAllCallback;
+import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.utility.MountableFile;
 
-public class TmailMemoryExtension implements BeforeEachCallback, AfterEachCallback {
+public class TmailMemoryExtension implements BeforeAllCallback, AfterAllCallback {
 
     private final GenericContainer<?> container = new GenericContainer<>("linagora/tmail-backend-memory:latest")
         .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/imapserver.xml"), "/root/conf/")
@@ -44,7 +44,7 @@ public class TmailMemoryExtension implements BeforeEachCallback, AfterEachCallba
         .withExposedPorts(25, 143, 80, 8000);
 
     @Override
-    public void beforeEach(ExtensionContext extensionContext) throws IOException {
+    public void beforeAll(ExtensionContext extensionContext) throws IOException {
         String dockerSaveFileUrl = new File("").getAbsolutePath().replace(Paths.get("tmail-backend", "deployment-tests", "memory").toString(),
             Paths.get("tmail-backend", "apps", "memory", "target", "jib-image.tar").toString());
         container.getDockerClient().loadImageCmd(Files.newInputStream(Paths.get(dockerSaveFileUrl))).exec();
@@ -52,7 +52,7 @@ public class TmailMemoryExtension implements BeforeEachCallback, AfterEachCallba
     }
 
     @Override
-    public void afterEach(ExtensionContext extensionContext) {
+    public void afterAll(ExtensionContext extensionContext) {
         container.stop();
     }
 

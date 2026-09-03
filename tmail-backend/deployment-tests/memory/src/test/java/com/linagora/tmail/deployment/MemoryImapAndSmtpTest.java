@@ -24,7 +24,7 @@ import org.testcontainers.containers.GenericContainer;
 
 public class MemoryImapAndSmtpTest extends ImapAndSmtpContract {
     @RegisterExtension
-    static TmailMemoryExtension extension = new TmailMemoryExtension();
+    static final TmailMemoryExtension extension = new TmailMemoryExtension();
 
     @Override
     protected ExternalJamesConfiguration configuration() {

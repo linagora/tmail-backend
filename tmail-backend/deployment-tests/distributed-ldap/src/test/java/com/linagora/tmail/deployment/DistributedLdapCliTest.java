@@ -23,7 +23,7 @@ import org.testcontainers.containers.GenericContainer;
 
 public class DistributedLdapCliTest implements CliContract {
     @RegisterExtension
-    TmailDistributedLdapExtension extension = new TmailDistributedLdapExtension();
+    static final TmailDistributedLdapExtension extension = new TmailDistributedLdapExtension();
 
     @Override
     public GenericContainer<?> jamesContainer() {

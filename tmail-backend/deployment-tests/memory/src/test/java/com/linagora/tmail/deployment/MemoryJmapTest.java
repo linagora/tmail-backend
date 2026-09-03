@@ -23,7 +23,7 @@ import org.testcontainers.containers.GenericContainer;
 
 public class MemoryJmapTest implements JmapContract {
     @RegisterExtension
-    static TmailMemoryExtension extension = new TmailMemoryExtension();
+    static final TmailMemoryExtension extension = new TmailMemoryExtension();
 
     @Override
     public GenericContainer<?> jmapContainer() {

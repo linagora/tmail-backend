@@ -36,8 +36,8 @@ import java.util.UUID;
 import org.apache.james.mpt.imapmailbox.external.james.host.external.ExternalJamesConfiguration;
 import org.apache.james.util.Port;
 import org.apache.james.util.Runnables;
-import org.junit.jupiter.api.extension.AfterEachCallback;
-import org.junit.jupiter.api.extension.BeforeEachCallback;
+import org.junit.jupiter.api.extension.AfterAllCallback;
+import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
@@ -46,7 +46,7 @@ import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.images.builder.ImageFromDockerfile;
 import org.testcontainers.utility.MountableFile;
 
-public class TmailDistributedLdapExtension implements BeforeEachCallback, AfterEachCallback {
+public class TmailDistributedLdapExtension implements BeforeAllCallback, AfterAllCallback {
 
     private final Network network;
     private final GenericContainer<?> cassandra;
@@ -104,7 +104,7 @@ public class TmailDistributedLdapExtension implements BeforeEachCallback, AfterE
     }
 
     @Override
-    public void beforeEach(ExtensionContext extensionContext) throws IOException {
+    public void beforeAll(ExtensionContext extensionContext) throws IOException {
         String dockerSaveFileUrl = new File("").getAbsolutePath().replace(Paths.get("tmail-backend", "deployment-tests", "distributed-ldap").toString(),
             Paths.get("tmail-backend", "apps", "distributed", "target", "jib-image.tar").toString());
         james.getDockerClient().loadImageCmd(Files.newInputStream(Paths.get(dockerSaveFileUrl))).exec();
@@ -112,7 +112,7 @@ public class TmailDistributedLdapExtension implements BeforeEachCallback, AfterE
     }
 
     @Override
-    public void afterEach(ExtensionContext extensionContext) {
+    public void afterAll(ExtensionContext extensionContext) {
         james.stop();
         Runnables.runParallel(
             cassandra::stop,

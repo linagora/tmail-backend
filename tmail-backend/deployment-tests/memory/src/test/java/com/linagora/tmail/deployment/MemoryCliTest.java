@@ -23,7 +23,7 @@ import org.testcontainers.containers.GenericContainer;
 
 class MemoryCliTest implements CliContract {
     @RegisterExtension
-    TmailMemoryExtension extension = new TmailMemoryExtension();
+    static final TmailMemoryExtension extension = new TmailMemoryExtension();
 
     @Override
     public GenericContainer<?> jamesContainer() {
