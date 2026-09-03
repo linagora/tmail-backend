@@ -34,15 +34,15 @@ import java.util.UUID;
 import org.apache.james.mpt.imapmailbox.external.james.host.external.ExternalJamesConfiguration;
 import org.apache.james.util.Port;
 import org.apache.james.util.Runnables;
-import org.junit.jupiter.api.extension.AfterEachCallback;
-import org.junit.jupiter.api.extension.BeforeEachCallback;
+import org.junit.jupiter.api.extension.AfterAllCallback;
+import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.testcontainers.containers.GenericContainer;
 import org.testcontainers.containers.Network;
 import org.testcontainers.containers.wait.strategy.LogMessageWaitStrategy;
 import org.testcontainers.utility.MountableFile;
 
-public class TmailPostgresExtension implements BeforeEachCallback, AfterEachCallback {
+public class TmailPostgresExtension implements BeforeAllCallback, AfterAllCallback {
     protected final Network network;
     protected final GenericContainer<?> postgres;
     protected final GenericContainer<?> opensearch;
@@ -92,7 +92,7 @@ public class TmailPostgresExtension implements BeforeEachCallback, AfterEachCall
     }
 
     @Override
-    public void beforeEach(ExtensionContext extensionContext) throws Exception {
+    public void beforeAll(ExtensionContext extensionContext) throws Exception {
         String dockerSaveFileUrl = new File("").getAbsolutePath().replace(Paths.get("tmail-backend", "deployment-tests", "postgres").toString(),
             Paths.get("tmail-backend", "apps", "postgres", "target", "jib-image.tar").toString());
         tmailBackend.getDockerClient().loadImageCmd(Files.newInputStream(Paths.get(dockerSaveFileUrl))).exec();
@@ -100,7 +100,7 @@ public class TmailPostgresExtension implements BeforeEachCallback, AfterEachCall
     }
 
     @Override
-    public void afterEach(ExtensionContext extensionContext) throws Exception {
+    public void afterAll(ExtensionContext extensionContext) throws Exception {
         tmailBackend.stop();
         Runnables.runParallel(
             postgres::stop,

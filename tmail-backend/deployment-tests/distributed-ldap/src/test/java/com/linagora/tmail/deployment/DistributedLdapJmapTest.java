@@ -23,7 +23,7 @@ import org.testcontainers.containers.GenericContainer;
 
 public class DistributedLdapJmapTest implements JmapContract {
     @RegisterExtension
-    TmailDistributedLdapExtension extension = new TmailDistributedLdapExtension();
+    static final TmailDistributedLdapExtension extension = new TmailDistributedLdapExtension();
 
     @Override
     public GenericContainer<?> jmapContainer() {

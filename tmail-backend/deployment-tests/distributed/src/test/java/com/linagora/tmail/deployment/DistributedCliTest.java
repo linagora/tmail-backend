@@ -23,7 +23,7 @@ import org.testcontainers.containers.GenericContainer;
 
 public class DistributedCliTest implements CliContract {
     @RegisterExtension
-    TmailDistributedExtension extension = new TmailDistributedExtension();
+    static final TmailDistributedExtension extension = new TmailDistributedExtension();
 
     @Override
     public GenericContainer<?> jamesContainer() {

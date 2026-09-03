@@ -25,7 +25,7 @@ import org.testcontainers.containers.GenericContainer;
 public class PostgresImapAndSmtpTest extends ImapAndSmtpContract {
 
     @RegisterExtension
-    TmailPostgresExtension extension = new TmailPostgresExtension();
+    static final TmailPostgresExtension extension = new TmailPostgresExtension();
 
     @Override
     protected ExternalJamesConfiguration configuration() {
