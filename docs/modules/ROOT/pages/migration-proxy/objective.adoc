@@ -18,8 +18,9 @@ the *old* one.
 IMAP and SMTP are handled differently, because the routing key is not the same:
 
 * *IMAP is routed on the authenticated user.* The proxy speaks just enough IMAP to identify the user
-at `LOGIN`, then relays the whole connection byte-for-byte to the backend that hosts that user. This
-is a transparent TCP proxy with a protocol-aware handshake.
+when it authenticates (`LOGIN`, `AUTHENTICATE PLAIN`, or `AUTHENTICATE GSSAPI` when Kerberos is
+enabled), then relays the whole connection byte-for-byte to the backend that hosts that user. This is
+a transparent TCP proxy with a protocol-aware handshake.
 
 * *SMTP is routed on the recipient.* The proxy is a real (mailbox-less) Twake Mail MTA whose mailet
 container routes each recipient to the backend that hosts it:

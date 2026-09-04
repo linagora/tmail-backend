@@ -12,7 +12,7 @@ byte-proxy and the migrated-users routing.
                  |                                          |
         +--------v---------+                      +---------v----------+
         | ProxyImapProcessor|                     |  SMTP server stack |
-        |  (LOGIN -> relay) |                      |  (CoreCmdHandler)  |
+        |  (auth -> relay)  |                      |  (CoreCmdHandler)  |
         +--------+---------+                       +---------+----------+
                  |                                            | spool
           BackendRelay                               mailetcontainer.xml
@@ -25,14 +25,21 @@ byte-proxy and the migrated-users routing.
 == IMAP byte-proxy
 
 * `ProxyImapProcessor` is a minimal `ImapProcessor` that only answers `CAPABILITY`, negotiates
-`STARTTLS` (delegated to James' `ImapSession#startTLS`) and, on `LOGIN`, captures the user and
-password. TLS (plaintext / STARTTLS / implicit SSL) is provided by reusing James' `IMAPServer`.
+`STARTTLS` (delegated to James' `ImapSession#startTLS`) and authenticates the client. TLS (plaintext /
+STARTTLS / implicit SSL) is provided by reusing James' `IMAPServer`.
+
+* Authentication has two mutually exclusive modes. By default `LOGIN` and `AUTHENTICATE PLAIN` (James'
+`PlainSaslMechanism`) both capture the user and password, replayed as-is against the backend. With
+Kerberos enabled both are disabled in favour of `AUTHENTICATE GSSAPI` (James' `GssapiSaslMechanism`):
+the proxy then holds no password and opens the backend session by SASL PLAIN delegation from a
+configured backend administrator (`ImapPlainImpersonationBackendDialog`). Either way the proxy verifies
+nothing itself -- it has no user database.
 
 * `BackendResolver` picks the backend: migrated user -> new, otherwise -> old (from the
 `MigratedUsersRepository`).
 
 * `BackendRelay` opens a client connection to the resolved backend, authenticates there on the user's
-behalf (`ImapBackendDialog`: tagged `LOGIN`), then pipes raw bytes both ways between the client and
+behalf (`ImapBackendDialog`: tagged `LOGIN`, or the delegation dialog under Kerberos), then pipes raw bytes both ways between the client and
 the backend channels. The handover is done in two steps so the IMAP tagged `OK` is emitted at the
 right time. Per-backend options: implicit TLS, ignoring backend certificates, and `forwardProxyInfo`
 (forward the inbound HAProxy PROXY protocol information to the backend, error if required but absent).
