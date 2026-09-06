@@ -48,6 +48,7 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.google.inject.Module;
 import com.google.inject.TypeLiteral;
 import com.google.inject.multibindings.Multibinder;
@@ -73,8 +74,6 @@ import software.amazon.awssdk.services.s3.model.ListBucketsResponse;
 class DistributedBlobStoreBucketShardingTest {
     private static final int SHARD_COUNT = 4;
     private static final int BLOBS_PER_BUCKET = 16;
-    /** {@code objectstorage.bucketPrefix} */
-    private static final String BUCKET_PREFIX = "tmail-";
 
     /** The default bucket, holding mailbox content. Named after {@code objectstorage.namespace}. */
     private static final BucketName DEFAULT_BUCKET = BucketName.of("blobs");
@@ -93,6 +92,12 @@ class DistributedBlobStoreBucketShardingTest {
      * the random ones {@code AwsS3BlobStoreExtension} uses, so that physical bucket names can be asserted upon.
      */
     static class FixedNamesAwsS3BlobStoreExtension implements GuiceModuleTestExtension {
+        private final String bucketPrefix;
+
+        FixedNamesAwsS3BlobStoreExtension(String bucketPrefix) {
+            this.bucketPrefix = bucketPrefix;
+        }
+
         @Override
         public void beforeAll(ExtensionContext extensionContext) {
             DockerAwsS3Singleton.singleton.dockerAwsS3();
@@ -109,7 +114,7 @@ class DistributedBlobStoreBucketShardingTest {
                 .authConfiguration(authConfiguration)
                 .region(DockerAwsS3Container.REGION)
                 .defaultBucketName(DEFAULT_BUCKET)
-                .bucketPrefix(BUCKET_PREFIX)
+                .bucketPrefix(bucketPrefix)
                 .build();
 
             return binder -> {
@@ -163,7 +168,7 @@ class DistributedBlobStoreBucketShardingTest {
         }
     }
 
-    private static JamesServerExtension serverExtension(Optional<BucketSharding> bucketSharding) {
+    private static JamesServerExtension serverExtension(String bucketPrefix, Optional<BucketSharding> bucketSharding) {
         return new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
             DistributedJamesConfiguration.builder()
                 .workingDirectory(tmpDir)
@@ -183,7 +188,7 @@ class DistributedBlobStoreBucketShardingTest {
             .extension(new CassandraExtension())
             .extension(new RabbitMQExtension())
             .extension(new RedisExtension())
-            .extension(new FixedNamesAwsS3BlobStoreExtension())
+            .extension(new FixedNamesAwsS3BlobStoreExtension(bucketPrefix))
             .server(configuration -> DistributedServer.createServer(configuration)
                 .overrideWith(new LinagoraTestJMAPServerModule())
                 .overrideWith(binder -> binder.bind(new TypeLiteral<Optional<BucketSharding>>() {})
@@ -195,28 +200,52 @@ class DistributedBlobStoreBucketShardingTest {
             .build();
     }
 
+    /**
+     * Each case runs under its own {@code objectstorage.bucketPrefix}: the docker S3 is shared by the whole test
+     * run, and the three layouts would otherwise land on top of one another.
+     */
     @Nested
     class WithFourShards {
         @RegisterExtension
-        static JamesServerExtension testExtension = serverExtension(Optional.of(new BucketSharding(SHARD_COUNT)));
+        static JamesServerExtension testExtension = serverExtension("allshards-",
+            Optional.of(new BucketSharding(SHARD_COUNT)));
 
         @Test
         void everyLogicalBucketShouldBeSplitInFourPhysicalBuckets(GuiceJamesServer server) {
             assertThat(server.getProbe(BucketLayoutProbe.class).bucketsCreatedByFillingEveryLogicalBucket())
                 .containsExactlyInAnyOrder(
+                    "allshards-blobs-0", "allshards-blobs-1", "allshards-blobs-2", "allshards-blobs-3",
+                    "allshards-jmap-uploads-0", "allshards-jmap-uploads-1",
+                    "allshards-jmap-uploads-2", "allshards-jmap-uploads-3",
+                    "allshards-tmail-deleted-message-vault-0", "allshards-tmail-deleted-message-vault-1",
+                    "allshards-tmail-deleted-message-vault-2", "allshards-tmail-deleted-message-vault-3",
+                    "allshards-mail-processing-0", "allshards-mail-processing-1",
+                    "allshards-mail-processing-2", "allshards-mail-processing-3");
+        }
+    }
+
+    @Nested
+    class WithFourShardsAndOmittedBuckets {
+        @RegisterExtension
+        static JamesServerExtension testExtension = serverExtension("tmail-",
+            Optional.of(new BucketSharding(SHARD_COUNT, ImmutableSet.of(UPLOADS_BUCKET, MAIL_PROCESSING_BUCKET))));
+
+        @Test
+        void omittedBucketsShouldKeepTheirUnshardedPhysicalName(GuiceJamesServer server) {
+            assertThat(server.getProbe(BucketLayoutProbe.class).bucketsCreatedByFillingEveryLogicalBucket())
+                .containsExactlyInAnyOrder(
                     "tmail-blobs-0", "tmail-blobs-1", "tmail-blobs-2", "tmail-blobs-3",
-                    "tmail-jmap-uploads-0", "tmail-jmap-uploads-1", "tmail-jmap-uploads-2", "tmail-jmap-uploads-3",
                     "tmail-tmail-deleted-message-vault-0", "tmail-tmail-deleted-message-vault-1",
                     "tmail-tmail-deleted-message-vault-2", "tmail-tmail-deleted-message-vault-3",
-                    "tmail-mail-processing-0", "tmail-mail-processing-1",
-                    "tmail-mail-processing-2", "tmail-mail-processing-3");
+                    "tmail-jmap-uploads",
+                    "tmail-mail-processing");
         }
     }
 
     @Nested
     class WithoutSharding {
         @RegisterExtension
-        static JamesServerExtension testExtension = serverExtension(Optional.empty());
+        static JamesServerExtension testExtension = serverExtension("noshards-", Optional.empty());
 
         @Test
         void everyLogicalBucketShouldKeepItsUnshardedPhysicalName(GuiceJamesServer server) {
@@ -224,9 +253,9 @@ class DistributedBlobStoreBucketShardingTest {
                 .containsExactlyInAnyOrder(
                     // the default bucket is the namespace, and as such is the one bucket left unprefixed
                     "blobs",
-                    "tmail-jmap-uploads",
-                    "tmail-tmail-deleted-message-vault",
-                    "tmail-mail-processing");
+                    "noshards-jmap-uploads",
+                    "noshards-tmail-deleted-message-vault",
+                    "noshards-mail-processing");
         }
     }
 }
