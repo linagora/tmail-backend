@@ -48,12 +48,10 @@ import org.junit.jupiter.api.extension.ExtensionContext;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 import com.google.inject.Module;
-import com.google.inject.TypeLiteral;
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
-import com.linagora.tmail.blob.sharding.BucketSharding;
+import com.linagora.tmail.blob.sharding.TmailBlobStoreShardingConfiguration;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
@@ -168,7 +166,8 @@ class DistributedBlobStoreBucketShardingTest {
         }
     }
 
-    private static JamesServerExtension serverExtension(String bucketPrefix, Optional<BucketSharding> bucketSharding) {
+    private static JamesServerExtension serverExtension(String bucketPrefix,
+                                                        TmailBlobStoreShardingConfiguration shardingConfiguration) {
         return new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
             DistributedJamesConfiguration.builder()
                 .workingDirectory(tmpDir)
@@ -191,8 +190,8 @@ class DistributedBlobStoreBucketShardingTest {
             .extension(new FixedNamesAwsS3BlobStoreExtension(bucketPrefix))
             .server(configuration -> DistributedServer.createServer(configuration)
                 .overrideWith(new LinagoraTestJMAPServerModule())
-                .overrideWith(binder -> binder.bind(new TypeLiteral<Optional<BucketSharding>>() {})
-                    .toInstance(bucketSharding))
+                .overrideWith(binder -> binder.bind(TmailBlobStoreShardingConfiguration.class)
+                    .toInstance(shardingConfiguration))
                 .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                     .addBinding()
                     .to(BucketLayoutProbe.class)))
@@ -208,7 +207,7 @@ class DistributedBlobStoreBucketShardingTest {
     class WithFourShards {
         @RegisterExtension
         static JamesServerExtension testExtension = serverExtension("allshards-",
-            Optional.of(new BucketSharding(SHARD_COUNT)));
+            TmailBlobStoreShardingConfiguration.of(SHARD_COUNT));
 
         @Test
         void everyLogicalBucketShouldBeSplitInFourPhysicalBuckets(GuiceJamesServer server) {
@@ -228,7 +227,7 @@ class DistributedBlobStoreBucketShardingTest {
     class WithFourShardsAndOmittedBuckets {
         @RegisterExtension
         static JamesServerExtension testExtension = serverExtension("tmail-",
-            Optional.of(new BucketSharding(SHARD_COUNT, ImmutableSet.of(UPLOADS_BUCKET, MAIL_PROCESSING_BUCKET))));
+            TmailBlobStoreShardingConfiguration.of(SHARD_COUNT, UPLOADS_BUCKET, MAIL_PROCESSING_BUCKET));
 
         @Test
         void omittedBucketsShouldKeepTheirUnshardedPhysicalName(GuiceJamesServer server) {
@@ -245,7 +244,8 @@ class DistributedBlobStoreBucketShardingTest {
     @Nested
     class WithoutSharding {
         @RegisterExtension
-        static JamesServerExtension testExtension = serverExtension("noshards-", Optional.empty());
+        static JamesServerExtension testExtension = serverExtension("noshards-",
+            TmailBlobStoreShardingConfiguration.DISABLED);
 
         @Test
         void everyLogicalBucketShouldKeepItsUnshardedPhysicalName(GuiceJamesServer server) {

@@ -28,17 +28,21 @@ import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.api.ObjectNotFoundException;
 import org.apache.james.blob.api.ObjectStoreIOException;
 
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 /**
- * Spreads the blobs of a logical bucket over {@link BucketSharding#shardCount()} physical buckets, so that no
- * single Ceph / Rados gateway bucket index grows past the point where an ordered listing stops being affordable.
+ * Spreads the blobs of a logical bucket over {@link TmailBlobStoreShardingConfiguration#shardCount()} physical
+ * buckets, so that no single Ceph / Rados gateway bucket index grows past the point where an ordered listing stops
+ * being affordable.
  *
  * <p>Reads, writes and single deletes are routed to the one bucket owning the blobId. Listings and bucket deletions
  * fan out over every shard.</p>
+ *
+ * @see TmailBlobStoreShardingConfiguration
  */
 public class ShardedBlobStoreDAO implements BlobStoreDAO {
     /**
@@ -49,11 +53,13 @@ public class ShardedBlobStoreDAO implements BlobStoreDAO {
     private static final int DELETION_CONCURRENCY = 8;
 
     private final BlobStoreDAO delegate;
-    private final BucketSharding sharding;
+    private final TmailBlobStoreShardingConfiguration configuration;
 
-    public ShardedBlobStoreDAO(BlobStoreDAO delegate, BucketSharding sharding) {
+    public ShardedBlobStoreDAO(BlobStoreDAO delegate, TmailBlobStoreShardingConfiguration configuration) {
+        Preconditions.checkArgument(configuration.enabled(),
+            "Sharding is disabled, %s should not be wrapped", BlobStoreDAO.class.getSimpleName());
         this.delegate = delegate;
-        this.sharding = sharding;
+        this.configuration = configuration;
     }
 
     @Override
@@ -94,7 +100,7 @@ public class ShardedBlobStoreDAO implements BlobStoreDAO {
 
     @Override
     public Mono<Void> deleteBucket(BucketName bucketName) {
-        return Flux.fromIterable(sharding.physicalBuckets(bucketName))
+        return Flux.fromIterable(configuration.physicalBuckets(bucketName))
             .flatMap(delegate::deleteBucket, DELETION_CONCURRENCY)
             .then();
     }
@@ -102,23 +108,23 @@ public class ShardedBlobStoreDAO implements BlobStoreDAO {
     @Override
     public Flux<BucketName> listBuckets() {
         return Flux.from(delegate.listBuckets())
-            .flatMap(physicalBucket -> Mono.justOrEmpty(sharding.logicalBucket(physicalBucket)))
+            .flatMap(physicalBucket -> Mono.justOrEmpty(configuration.logicalBucket(physicalBucket)))
             .distinct();
     }
 
     @Override
     public Flux<BlobId> listBlobs(BucketName bucketName) {
-        return Flux.fromIterable(sharding.physicalBuckets(bucketName))
+        return Flux.fromIterable(configuration.physicalBuckets(bucketName))
             .flatMap(delegate::listBlobs, LISTING_CONCURRENCY);
     }
 
     @Override
     public Flux<BlobId> listBlobs(BucketName bucketName, String prefix) {
-        return Flux.fromIterable(sharding.physicalBuckets(bucketName))
+        return Flux.fromIterable(configuration.physicalBuckets(bucketName))
             .flatMap(physicalBucket -> delegate.listBlobs(physicalBucket, prefix), LISTING_CONCURRENCY);
     }
 
     private BucketName shard(BucketName bucketName, BlobId blobId) {
-        return sharding.physicalBucket(bucketName, blobId);
+        return configuration.physicalBucket(bucketName, blobId);
     }
 }
