@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.blob.sharding;
 
+import static org.apache.james.blob.api.BlobStoreDAOFixture.CUSTOM_BUCKET_NAME;
 import static org.apache.james.blob.api.BlobStoreDAOFixture.SHORT_BYTEARRAY;
 import static org.apache.james.blob.api.BlobStoreDAOFixture.TEST_BUCKET_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -37,6 +38,7 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -123,6 +125,42 @@ class ShardedBlobStoreDAOTest implements BlobStoreDAOContract, MetadataAwareBlob
 
         assertThat(Flux.from(testee.listBlobs(TEST_BUCKET_NAME)).collectList().block())
             .isEmpty();
+    }
+
+    @Test
+    void omittedBucketShouldBeStoredUnderItsPlainName() {
+        ShardedBlobStoreDAO omittingTestBucket = new ShardedBlobStoreDAO(delegate,
+            new BucketSharding(SHARDING.shardCount(), ImmutableSet.of(TEST_BUCKET_NAME)));
+        List<BlobId> blobIds = someBlobIds(100);
+
+        blobIds.forEach(blobId -> Mono.from(omittingTestBucket.save(TEST_BUCKET_NAME, blobId, SHORT_BYTEARRAY)).block());
+
+        assertThat(Flux.from(delegate.listBuckets()).collectList().block())
+            .containsExactly(TEST_BUCKET_NAME);
+        assertThat(Flux.from(omittingTestBucket.listBlobs(TEST_BUCKET_NAME)).collectList().block())
+            .containsExactlyInAnyOrderElementsOf(blobIds);
+        assertThat(Flux.from(omittingTestBucket.listBuckets()).collectList().block())
+            .containsExactly(TEST_BUCKET_NAME);
+    }
+
+    @Test
+    void omittedBucketShouldNotAffectTheShardedOnes() {
+        ShardedBlobStoreDAO omittingCustomBucket = new ShardedBlobStoreDAO(delegate,
+            new BucketSharding(SHARDING.shardCount(), ImmutableSet.of(CUSTOM_BUCKET_NAME)));
+        List<BlobId> blobIds = someBlobIds(100);
+
+        blobIds.forEach(blobId -> {
+            Mono.from(omittingCustomBucket.save(TEST_BUCKET_NAME, blobId, SHORT_BYTEARRAY)).block();
+            Mono.from(omittingCustomBucket.save(CUSTOM_BUCKET_NAME, blobId, SHORT_BYTEARRAY)).block();
+        });
+
+        assertThat(Flux.from(delegate.listBuckets()).collectList().block())
+            .containsExactlyInAnyOrderElementsOf(ImmutableList.<BucketName>builder()
+                .addAll(SHARDING.physicalBuckets(TEST_BUCKET_NAME))
+                .add(CUSTOM_BUCKET_NAME)
+                .build());
+        assertThat(Flux.from(omittingCustomBucket.listBuckets()).collectList().block())
+            .containsExactlyInAnyOrder(TEST_BUCKET_NAME, CUSTOM_BUCKET_NAME);
     }
 
     @Test

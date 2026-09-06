@@ -114,6 +114,17 @@ written and never move afterwards:
 Omitting it disables sharding entirely, which is the behaviour of deployments predating this option. It is only
 honoured by S3 backed deployments (`implementation=s3`).
 
+Buckets that stay small enough to be listed as they are can be left out of the layout, and are then stored under
+their plain name. Slicing the JMAP uploads - bounded by their expiration - or the mails in transit - bounded by the
+time they spend in the queue - into 256 buckets buys nothing:
+
+....
+-Dtmail.blobstore.shards.ommited.buckets=jmap-uploads,mail-processing
+....
+
+Comma separated list of *logical* bucket names, empty by default. Like the shard count, it is written in stone for
+the buckets it names: moving a bucket in or out of the list makes what it already holds unreachable.
+
 The bucket names it produces are then resolved by the S3 connector as usual, out of `blob.properties`
 (`blobstore.properties` is accepted as a legacy name):
 
@@ -131,8 +142,9 @@ objectstorage.bucketPrefix=tmail-
 === Resulting layout
 
 A physical bucket is named after the logical bucket followed by the zero padded shard number, and the S3 connector
-then prepends `objectstorage.bucketPrefix` to it. With the configuration above and `-Dtmail.blobstore.shards=4`, the
-four logical buckets a distributed deployment writes to map as follows:
+then prepends `objectstorage.bucketPrefix` to it. With the configuration above, `-Dtmail.blobstore.shards=4` and
+`-Dtmail.blobstore.shards.ommited.buckets=jmap-uploads,mail-processing`, the four logical buckets a distributed
+deployment writes to map as follows:
 
 |===
 | Logical bucket | Holds | Physical S3 buckets
@@ -141,18 +153,22 @@ four logical buckets a distributed deployment writes to map as follows:
 | Mailbox content. This is `objectstorage.namespace`.
 | `tmail-blobs-0`, `tmail-blobs-1`, `tmail-blobs-2`, `tmail-blobs-3`
 
-| `jmap-uploads`
-| JMAP uploads.
-| `tmail-jmap-uploads-0` … `tmail-jmap-uploads-3`
-
 | `tmail-deleted-message-vault`
 | Deleted message vault.
 | `tmail-tmail-deleted-message-vault-0` … `tmail-tmail-deleted-message-vault-3`
 
+| `jmap-uploads`
+| JMAP uploads. Omitted, thus not sharded.
+| `tmail-jmap-uploads`
+
 | `mail-processing`
-| Mails in transit, when `mailprocessing.deduplication.enabled=false`.
-| `tmail-mail-processing-0` … `tmail-mail-processing-3`
+| Mails in transit, when `mailprocessing.deduplication.enabled=false`. Omitted, thus not sharded.
+| `tmail-mail-processing`
 |===
+
+Dropping `tmail.blobstore.shards.ommited.buckets` would instead split all four, `jmap-uploads` becoming
+`tmail-jmap-uploads-0` … `tmail-jmap-uploads-3` and `mail-processing` becoming `tmail-mail-processing-0` …
+`tmail-mail-processing-3`.
 
 Without `tmail.blobstore.shards`, the very same configuration yields the layout deployments already have, unchanged:
 
@@ -179,9 +195,9 @@ The shard count is *written in stone*. Changing it on a non-empty deployment rel
 bucket, making the already written blobs unreachable. Pick it once, at install time, out of the volume the deployment
 is expected to reach.
 
-Mind also the total bucket count: every logical bucket is multiplied by the shard count, so those four become 1024
-buckets at 256 shards. Ceph caps the number of buckets a user owns with `rgw_max_buckets` (1000 by default), which
-needs raising accordingly.
+Mind also the total bucket count: every sharded logical bucket is multiplied by the shard count, so at 256 shards
+the two sharded buckets above become 512, and all four would become 1024 were none omitted. Ceph caps the number of
+buckets a user owns with `rgw_max_buckets` (1000 by default), which needs raising accordingly.
 ====
 
 Note that Ceph auto-resharding should be turned off, and the bucket index sharded at the right size, for this to hold.

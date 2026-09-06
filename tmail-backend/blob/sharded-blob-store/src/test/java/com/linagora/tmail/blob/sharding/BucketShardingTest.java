@@ -22,8 +22,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
@@ -32,12 +34,22 @@ import org.apache.james.blob.api.TestBlobId;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
+import com.google.common.collect.ImmutableSet;
+
 class BucketShardingTest {
     private static final BucketName BUCKET = BucketName.of("blobs");
+
+    /** The four logical buckets a distributed Twake Mail deployment writes to. */
+    private static final BucketName UPLOADS_BUCKET = BucketName.of("jmap-uploads");
+    private static final BucketName VAULT_BUCKET = BucketName.of("tmail-deleted-message-vault");
+    private static final BucketName MAIL_PROCESSING_BUCKET = BucketName.of("mail-processing");
+    private static final Set<BucketName> TMAIL_BUCKETS =
+        ImmutableSet.of(BUCKET, UPLOADS_BUCKET, VAULT_BUCKET, MAIL_PROCESSING_BUCKET);
 
     @AfterEach
     void tearDown() {
         System.clearProperty(BucketSharding.SHARD_COUNT_PROPERTY);
+        System.clearProperty(BucketSharding.OMITTED_BUCKETS_PROPERTY);
     }
 
     @Test
@@ -129,6 +141,105 @@ class BucketShardingTest {
         System.setProperty(BucketSharding.SHARD_COUNT_PROPERTY, "256");
 
         assertThat(BucketSharding.fromSystemProperties()).contains(new BucketSharding(256));
+    }
+
+    @Test
+    void omittedBucketShouldNotBeSharded() {
+        BucketSharding sharding = new BucketSharding(256, ImmutableSet.of(BUCKET));
+
+        assertThat(sharding.physicalBuckets(BUCKET)).containsExactly(BUCKET);
+        assertThat(sharding.physicalBucket(BUCKET, new TestBlobId("blob-1"))).isEqualTo(BUCKET);
+    }
+
+    @Test
+    void omittedBucketShouldBeItsOwnLogicalBucket() {
+        BucketSharding sharding = new BucketSharding(256, ImmutableSet.of(BUCKET));
+
+        assertThat(sharding.logicalBucket(BUCKET)).contains(BUCKET);
+    }
+
+    @Test
+    void omittingABucketShouldNotAffectTheOthers() {
+        BucketSharding sharding = new BucketSharding(4, ImmutableSet.of(BucketName.of("jmap-uploads")));
+
+        assertThat(sharding.physicalBuckets(BUCKET))
+            .containsExactly(BucketName.of("blobs-0"), BucketName.of("blobs-1"),
+                BucketName.of("blobs-2"), BucketName.of("blobs-3"));
+    }
+
+    @Test
+    void fromSystemPropertiesShouldDefaultToNoOmittedBucket() {
+        System.setProperty(BucketSharding.SHARD_COUNT_PROPERTY, "256");
+
+        assertThat(BucketSharding.fromSystemProperties()).contains(new BucketSharding(256, ImmutableSet.of()));
+    }
+
+    @Test
+    void fromSystemPropertiesShouldReadOmittedBuckets() {
+        System.setProperty(BucketSharding.SHARD_COUNT_PROPERTY, "256");
+        System.setProperty(BucketSharding.OMITTED_BUCKETS_PROPERTY, "jmap-uploads, mail-processing");
+
+        assertThat(BucketSharding.fromSystemProperties())
+            .contains(new BucketSharding(256, ImmutableSet.of(
+                BucketName.of("jmap-uploads"), BucketName.of("mail-processing"))));
+    }
+
+    @Test
+    void fromSystemPropertiesShouldIgnoreOmittedBucketsWhenShardingIsOff() {
+        System.setProperty(BucketSharding.OMITTED_BUCKETS_PROPERTY, "jmap-uploads");
+
+        assertThat(BucketSharding.fromSystemProperties()).isEmpty();
+    }
+
+    /**
+     * Worked example over the four logical buckets of a Twake Mail deployment, sharded four ways, with the two
+     * buckets that stay small enough to be listed as they are left out.
+     *
+     * <p>The object storage connector then resolves those into actual bucket names, which for S3 also means
+     * prepending {@code objectstorage.bucketPrefix} - see {@code DistributedBlobStoreBucketShardingTest} in the
+     * distributed app for the end to end picture.</p>
+     */
+    @Test
+    void fourShardsOverTmailBucketsShouldYieldTheDocumentedLayout() {
+        BucketSharding sharding = new BucketSharding(4, ImmutableSet.of(UPLOADS_BUCKET, MAIL_PROCESSING_BUCKET));
+
+        assertThat(TMAIL_BUCKETS.stream()
+            .collect(Collectors.toMap(BucketName::asString, sharding::physicalBuckets)))
+            .containsExactlyInAnyOrderEntriesOf(Map.of(
+                "blobs", List.of(BucketName.of("blobs-0"), BucketName.of("blobs-1"),
+                    BucketName.of("blobs-2"), BucketName.of("blobs-3")),
+                "tmail-deleted-message-vault", List.of(BucketName.of("tmail-deleted-message-vault-0"),
+                    BucketName.of("tmail-deleted-message-vault-1"), BucketName.of("tmail-deleted-message-vault-2"),
+                    BucketName.of("tmail-deleted-message-vault-3")),
+                "jmap-uploads", List.of(UPLOADS_BUCKET),
+                "mail-processing", List.of(MAIL_PROCESSING_BUCKET)));
+    }
+
+    @Test
+    void everyTmailBucketShouldBeReadBackFromItsShards() {
+        BucketSharding sharding = new BucketSharding(4, ImmutableSet.of(UPLOADS_BUCKET, MAIL_PROCESSING_BUCKET));
+
+        assertThat(TMAIL_BUCKETS.stream()
+            .flatMap(logicalBucket -> sharding.physicalBuckets(logicalBucket).stream())
+            .map(sharding::logicalBucket)
+            .flatMap(Optional::stream)
+            .collect(ImmutableSet.toImmutableSet()))
+            .containsExactlyInAnyOrderElementsOf(TMAIL_BUCKETS);
+    }
+
+    /**
+     * Guards the sample size used by {@code DistributedBlobStoreBucketShardingTest}: sixteen blobs are enough for
+     * every one of the four shards of every one of those buckets to be actually created.
+     */
+    @Test
+    void sixteenBlobsShouldReachEveryShardOfEveryTmailBucket() {
+        BucketSharding sharding = new BucketSharding(4);
+
+        TMAIL_BUCKETS.forEach(logicalBucket -> assertThat(IntStream.range(0, 16)
+            .mapToObj(i -> new TestBlobId(logicalBucket.asString() + "-blob-" + i))
+            .map(blobId -> sharding.physicalBucket(logicalBucket, blobId))
+            .collect(ImmutableSet.toImmutableSet()))
+            .containsExactlyInAnyOrderElementsOf(sharding.physicalBuckets(logicalBucket)));
     }
 
     @Test
