@@ -41,6 +41,7 @@ authorize it as the end user. Both backends must therefore carry administrator c
 | `kerberos.principal` | service principal, must read as `<serviceName>/<serverName>@REALM`
 | `kerberos.keyTab` | path to the keytab holding that principal
 | `kerberos.requireSSL` | only offer GSSAPI over an encrypted transport (default `true`, which requires `socketTLS` or `startTLS` in `imapserver.xml`)
+| `kerberos.realmMapping.<REALM>` | optional, one key per Kerberos realm: the mail domain it maps onto (see below)
 |===
 
 The principal is validated against the keytab and the acceptor credentials are acquired at startup: a
@@ -48,11 +49,31 @@ misconfigured Kerberos setup keeps the proxy from starting rather than failing a
 
 === Identity mapping
 
-The authenticated principal becomes the James username as-is, exactly as James itself does: the realm
-is *not* stripped, it becomes the domain. `alice@EXAMPLE.COM` is the user `alice@example.com` — the
-Kerberos realm must therefore match the mail domain. The proxy holds no user database: a valid ticket
-is the authentication, and no lookup is performed. SASL delegation requested by the client (an
-authorization identity distinct from the authenticated principal) is refused.
+The authenticated principal becomes the James username exactly as James itself maps it. Only canonical
+principals are accepted -- ASCII only, lower case name components, upper case realm, e.g.
+`alice@EXAMPLE.COM` -- so that case-distinct Kerberos principals cannot collapse onto the same
+case-insensitive James username.
+
+By default the realm is *not* stripped, it becomes the domain: `alice@EXAMPLE.COM` is the user
+`alice@example.com`, and the Kerberos realm has to match the mail domain.
+
+A deployment whose realm is not its mail domain declares the correspondence instead, one key per realm:
+
+----
+kerberos.realmMapping.CORP.EXAMPLE.COM=example.com
+kerberos.realmMapping.SUB.EXAMPLE.COM=sub.example.com
+----
+
+`alice@CORP.EXAMPLE.COM` is then the user `alice@example.com`, and that mapped identity is the one the
+proxy resolves a backend for and opens the backend session for. Realms are written in upper case, as
+Kerberos spells them, and the mapping is exhaustive: a principal whose realm is not listed is rejected.
+Two realms may not share a mail domain, as that would let the principals of one authenticate as those
+of the other. Only the realm is rewritten -- the principal name components become the local part as
+they are.
+
+The proxy holds no user database: a valid ticket is the authentication, and no lookup is performed.
+SASL delegation requested by the client (an authorization identity distinct from the authenticated
+principal) is refused.
 
 == IMAP server -- `imapserver.xml`
 
