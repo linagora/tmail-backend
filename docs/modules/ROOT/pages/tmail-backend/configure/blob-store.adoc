@@ -102,16 +102,76 @@ Twake Mail thus offers *applicative sharding* of the buckets: the blobId decides
 the blob. Given 10 billion objects and 256 shards, each bucket holds ~39 million objects, thus ~500 index shards of
 ~78K entries: each bucket stays comfortably listable.
 
+=== Turning it on
+
+The shard count is a JVM system property, not a `blob.properties` entry, as it must be settled before anything is
+written and never move afterwards:
+
 ....
 -Dtmail.blobstore.shards=256
 ....
 
-Physical buckets are named after the logical bucket followed by the zero padded shard number, eg. `blobs-000` up to
-`blobs-255`. Listings (including the ones driven by the deduplication garbage collector) transparently merge every
-shard, with a concurrency of 2.
+Omitting it disables sharding entirely, which is the behaviour of deployments predating this option. It is only
+honoured by S3 backed deployments (`implementation=s3`).
 
-Sharding sits at the very bottom of the blob store layers, and thus also applies to the secondary blob store when one
-is configured.
+The bucket names it produces are then resolved by the S3 connector as usual, out of `blob.properties`
+(`blobstore.properties` is accepted as a legacy name):
+
+.blob.properties
+....
+implementation=s3
+
+# The default bucket, holding mailbox content. Left unprefixed by the S3 connector.
+objectstorage.namespace=blobs
+
+# Prepended to every other bucket name.
+objectstorage.bucketPrefix=tmail-
+....
+
+=== Resulting layout
+
+A physical bucket is named after the logical bucket followed by the zero padded shard number, and the S3 connector
+then prepends `objectstorage.bucketPrefix` to it. With the configuration above and `-Dtmail.blobstore.shards=4`, the
+four logical buckets a distributed deployment writes to map as follows:
+
+|===
+| Logical bucket | Holds | Physical S3 buckets
+
+| `blobs`
+| Mailbox content. This is `objectstorage.namespace`.
+| `tmail-blobs-0`, `tmail-blobs-1`, `tmail-blobs-2`, `tmail-blobs-3`
+
+| `jmap-uploads`
+| JMAP uploads.
+| `tmail-jmap-uploads-0` … `tmail-jmap-uploads-3`
+
+| `tmail-deleted-message-vault`
+| Deleted message vault.
+| `tmail-tmail-deleted-message-vault-0` … `tmail-tmail-deleted-message-vault-3`
+
+| `mail-processing`
+| Mails in transit, when `mailprocessing.deduplication.enabled=false`.
+| `tmail-mail-processing-0` … `tmail-mail-processing-3`
+|===
+
+Without `tmail.blobstore.shards`, the very same configuration yields the layout deployments already have, unchanged:
+
+|===
+| Logical bucket | Physical S3 bucket
+
+| `blobs` | `blobs`
+| `jmap-uploads` | `tmail-jmap-uploads`
+| `tmail-deleted-message-vault` | `tmail-tmail-deleted-message-vault`
+| `mail-processing` | `tmail-mail-processing`
+|===
+
+Note that `objectstorage.namespace` is the one bucket the S3 connector leaves unprefixed, and that this exemption
+only holds for its exact name: once sharded, `blobs-0` is no longer the namespace and thus does get the prefix. A
+consequence is that `objectstorage.namespace.read.fallback` no longer matches anything once sharding is on.
+
+Listings - including the ones driven by the deduplication garbage collector - transparently merge every shard, with a
+concurrency of 2. Sharding sits at the very bottom of the blob store layers, and thus also applies to the secondary
+blob store when one is configured.
 
 [WARNING]
 ====
@@ -119,8 +179,9 @@ The shard count is *written in stone*. Changing it on a non-empty deployment rel
 bucket, making the already written blobs unreachable. Pick it once, at install time, out of the volume the deployment
 is expected to reach.
 
-Omitting `tmail.blobstore.shards` disables sharding entirely, which is the behaviour of deployments predating this
-option. The option is only honoured by S3 backed deployments.
+Mind also the total bucket count: every logical bucket is multiplied by the shard count, so those four become 1024
+buckets at 256 shards. Ceph caps the number of buckets a user owns with `rgw_max_buckets` (1000 by default), which
+needs raising accordingly.
 ====
 
 Note that Ceph auto-resharding should be turned off, and the bucket index sharded at the right size, for this to hold.
