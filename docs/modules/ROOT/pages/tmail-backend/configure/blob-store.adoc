@@ -6,6 +6,7 @@ Twake mail ships some slight blob store enhancements:
 thus improving overall efficiency.
  - Secondary blob store reads and write to several S3 sites providing higher resiliency.
  - Mail processing deduplication can be turned off, so that mails in transit do not outlive their processing.
+ - Buckets can be sharded applicatively, keeping Ceph / Rados gateway bucket indexes listable.
 
 == Object Storage: BlobId list
 
@@ -86,3 +87,40 @@ Specified to TMail backend, we can configure the following configurations in the
 | objectstorage.s3.secondary.secretKey
 | https://docs.aws.amazon.com/general/latest/gr/aws-sec-cred-types.html#access-keys-and-secret-access-keys[S3 access key secret]
 |===
+
+== Object storage bucket sharding (Ceph / Rados gateway)
+
+S3 compatibility is an API contract, not a behaviour contract: the same verb with the same signature is backed by an
+omap index in RocksDB on one side, and by something else entirely on the other.
+
+A Ceph / Rados gateway bucket index is split into shards, each shard being an omap that should ideally not hold more
+than 100K entries. Holding 10 billion objects within a single bucket would thus require ~100.000 index shards, and
+because S3 listings are *ordered*, serving a 1000 key page then means actively merging 100.000 index shards. This does
+not hold, and listing is required by the deduplication garbage collector.
+
+Twake Mail thus offers *applicative sharding* of the buckets: the blobId decides which one of N physical buckets holds
+the blob. Given 10 billion objects and 256 shards, each bucket holds ~39 million objects, thus ~500 index shards of
+~78K entries: each bucket stays comfortably listable.
+
+....
+-Dtmail.blobstore.shards=256
+....
+
+Physical buckets are named after the logical bucket followed by the zero padded shard number, eg. `blobs-000` up to
+`blobs-255`. Listings (including the ones driven by the deduplication garbage collector) transparently merge every
+shard, with a concurrency of 2.
+
+Sharding sits at the very bottom of the blob store layers, and thus also applies to the secondary blob store when one
+is configured.
+
+[WARNING]
+====
+The shard count is *written in stone*. Changing it on a non-empty deployment relocates every blobId onto another
+bucket, making the already written blobs unreachable. Pick it once, at install time, out of the volume the deployment
+is expected to reach.
+
+Omitting `tmail.blobstore.shards` disables sharding entirely, which is the behaviour of deployments predating this
+option. The option is only honoured by S3 backed deployments.
+====
+
+Note that Ceph auto-resharding should be turned off, and the bucket index sharded at the right size, for this to hold.
