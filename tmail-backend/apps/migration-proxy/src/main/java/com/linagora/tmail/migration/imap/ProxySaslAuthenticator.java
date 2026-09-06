@@ -35,9 +35,9 @@ import org.apache.james.protocols.api.sasl.SaslIdentity;
  *   <li>{@code PLAIN} hands it a password, which it does not - cannot - verify. It captures it and the
  *   backend is the authority: a wrong password fails the relay, which the client reads as a {@code NO}.</li>
  *   <li>{@code GSSAPI} authenticated the user inside the exchange. Like James, which does not look the
- *   principal up either, the proxy takes the identity as-is - the realm becomes the domain, no
- *   rewriting - so that the user it resolves a backend for, and the one it opens the backend session
- *   for, are the same string everywhere.</li>
+ *   principal up either, the proxy takes the identity the mechanism yields - the realm becomes the
+ *   domain, or the domain {@code kerberos.realmMapping} declares for it - so that the user it resolves
+ *   a backend for, and the one it opens the backend session for, are the same string everywhere.</li>
  * </ul>
  *
  * <p>Delegation (an authorization identity distinct from the authenticated one) is refused in both

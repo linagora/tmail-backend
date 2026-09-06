@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.util.Map;
 import java.util.Optional;
 
 import org.apache.commons.configuration2.BaseConfiguration;
@@ -67,7 +68,42 @@ class MigrationProxyConfigurationTest {
     void shouldReadKerberosSettings() {
         assertThat(MigrationProxyConfiguration.from(kerberised()).kerberos())
             .contains(new KerberosConfiguration("imap", "imap.domain.tld", "imap/imap.domain.tld@DOMAIN.TLD",
-                "/root/conf/imap.keytab", true));
+                "/root/conf/imap.keytab", true, Map.of()));
+    }
+
+    @Test
+    void realmMappingShouldDefaultToEmpty() {
+        assertThat(MigrationProxyConfiguration.from(kerberised()).kerberos().map(KerberosConfiguration::realmMapping))
+            .contains(Map.of());
+    }
+
+    @Test
+    void shouldReadRealmMapping() {
+        Configuration configuration = kerberised();
+        configuration.addProperty("kerberos.realmMapping.DOMAIN.TLD", "domain.tld");
+        configuration.addProperty("kerberos.realmMapping.SUB.DOMAIN.TLD", "sub.domain.tld");
+
+        assertThat(MigrationProxyConfiguration.from(configuration).kerberos().map(KerberosConfiguration::realmMapping))
+            .contains(Map.of("DOMAIN.TLD", "domain.tld", "SUB.DOMAIN.TLD", "sub.domain.tld"));
+    }
+
+    @Test
+    void emptyRealmMappingEntryShouldReadAsAbsent() {
+        Configuration configuration = kerberised();
+        configuration.addProperty("kerberos.realmMapping.DOMAIN.TLD", "");
+
+        assertThat(MigrationProxyConfiguration.from(configuration).kerberos().map(KerberosConfiguration::realmMapping))
+            .contains(Map.of());
+    }
+
+    @Test
+    void shouldThrowWhenRealmMappingEntryDoesNotNameARealm() {
+        Configuration configuration = kerberised();
+        configuration.addProperty("kerberos.realmMapping", "domain.tld");
+
+        assertThatThrownBy(() -> MigrationProxyConfiguration.from(configuration))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("kerberos.realmMapping.<REALM>");
     }
 
     @Test
