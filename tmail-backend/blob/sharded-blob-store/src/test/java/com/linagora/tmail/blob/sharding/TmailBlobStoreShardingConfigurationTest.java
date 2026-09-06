@@ -19,9 +19,9 @@
 package com.linagora.tmail.blob.sharding;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.StringReader;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -29,14 +29,16 @@ import java.util.Set;
 import java.util.stream.Collectors;
 import java.util.stream.IntStream;
 
+import org.apache.commons.configuration2.Configuration;
+import org.apache.commons.configuration2.PropertiesConfiguration;
+import org.apache.commons.configuration2.convert.DefaultListDelimiterHandler;
 import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.api.TestBlobId;
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.ImmutableSet;
 
-class BucketShardingTest {
+class TmailBlobStoreShardingConfigurationTest {
     private static final BucketName BUCKET = BucketName.of("blobs");
 
     /** The four logical buckets a distributed Twake Mail deployment writes to. */
@@ -46,15 +48,17 @@ class BucketShardingTest {
     private static final Set<BucketName> TMAIL_BUCKETS =
         ImmutableSet.of(BUCKET, UPLOADS_BUCKET, VAULT_BUCKET, MAIL_PROCESSING_BUCKET);
 
-    @AfterEach
-    void tearDown() {
-        System.clearProperty(BucketSharding.SHARD_COUNT_PROPERTY);
-        System.clearProperty(BucketSharding.OMITTED_BUCKETS_PROPERTY);
+    /** Built the way James' {@code PropertiesProvider} does, comma list delimiter included. */
+    private static Configuration blobProperties(String... lines) throws Exception {
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.setListDelimiterHandler(new DefaultListDelimiterHandler(','));
+        configuration.read(new StringReader(String.join("\n", lines)));
+        return configuration;
     }
 
     @Test
     void physicalBucketShouldZeroPadTheShardNumber() {
-        BucketSharding sharding = new BucketSharding(256);
+        TmailBlobStoreShardingConfiguration sharding = TmailBlobStoreShardingConfiguration.of(256);
 
         assertThat(sharding.physicalBuckets(BUCKET))
             .startsWith(BucketName.of("blobs-000"), BucketName.of("blobs-001"))
@@ -64,7 +68,7 @@ class BucketShardingTest {
 
     @Test
     void physicalBucketShouldNotPadBeyondTheShardCountWidth() {
-        BucketSharding sharding = new BucketSharding(10);
+        TmailBlobStoreShardingConfiguration sharding = TmailBlobStoreShardingConfiguration.of(10);
 
         assertThat(sharding.physicalBuckets(BUCKET))
             .containsExactly(BucketName.of("blobs-0"), BucketName.of("blobs-1"), BucketName.of("blobs-2"),
@@ -75,7 +79,7 @@ class BucketShardingTest {
 
     @Test
     void logicalBucketShouldReverPhysicalBucket() {
-        BucketSharding sharding = new BucketSharding(256);
+        TmailBlobStoreShardingConfiguration sharding = TmailBlobStoreShardingConfiguration.of(256);
 
         assertThat(sharding.physicalBuckets(BUCKET)
             .stream()
@@ -86,7 +90,7 @@ class BucketShardingTest {
 
     @Test
     void logicalBucketShouldRejectBucketsOutOfTheLayout() {
-        BucketSharding sharding = new BucketSharding(256);
+        TmailBlobStoreShardingConfiguration sharding = TmailBlobStoreShardingConfiguration.of(256);
 
         assertThat(sharding.logicalBucket(BucketName.of("blobs"))).isEmpty();
         assertThat(sharding.logicalBucket(BucketName.of("blobs-1"))).isEmpty();
@@ -97,7 +101,7 @@ class BucketShardingTest {
 
     @Test
     void shardOfShouldBeStableAcrossCalls() {
-        BucketSharding sharding = new BucketSharding(256);
+        TmailBlobStoreShardingConfiguration sharding = TmailBlobStoreShardingConfiguration.of(256);
         TestBlobId blobId = new TestBlobId("2b8b46e9-1a1e-4a4a-bb0a-3f4a3f37a1e0");
 
         assertThat(sharding.shardOf(blobId)).isEqualTo(sharding.shardOf(blobId));
@@ -107,7 +111,7 @@ class BucketShardingTest {
     void shardOfShouldSpreadBlobIdsEvenly() {
         int shardCount = 256;
         int blobCount = 256 * 400;
-        BucketSharding sharding = new BucketSharding(shardCount);
+        TmailBlobStoreShardingConfiguration sharding = TmailBlobStoreShardingConfiguration.of(shardCount);
 
         Map<Integer, Long> perShard = IntStream.range(0, blobCount)
             .mapToObj(i -> new TestBlobId("d6f0c1a5b2e34" + i))
@@ -117,35 +121,34 @@ class BucketShardingTest {
         assertThat(perShard.values()).allSatisfy(count -> assertThat(count).isBetween(300L, 500L));
     }
 
+
     @Test
-    void shardCountShouldBeStrictlyPositive() {
-        assertThatThrownBy(() -> new BucketSharding(0)).isInstanceOf(IllegalArgumentException.class);
-        assertThatThrownBy(() -> new BucketSharding(-1)).isInstanceOf(IllegalArgumentException.class);
-        assertThatCode(() -> new BucketSharding(1)).doesNotThrowAnyException();
+    void fromShouldBeDisabledWhenPropertyIsOmitted() throws Exception {
+        assertThat(TmailBlobStoreShardingConfiguration.from(blobProperties("implementation=s3")))
+            .isEqualTo(TmailBlobStoreShardingConfiguration.DISABLED);
     }
 
     @Test
-    void fromSystemPropertiesShouldBeEmptyWhenPropertyIsOmitted() {
-        assertThat(BucketSharding.fromSystemProperties()).isEmpty();
+    void fromShouldBeDisabledWhenPropertyIsBlank() throws Exception {
+        assertThat(TmailBlobStoreShardingConfiguration.from(blobProperties("tmail.blobstore.shards=")))
+            .isEqualTo(TmailBlobStoreShardingConfiguration.DISABLED);
     }
 
     @Test
-    void fromSystemPropertiesShouldBeEmptyWhenPropertyIsBlank() {
-        System.setProperty(BucketSharding.SHARD_COUNT_PROPERTY, "  ");
-
-        assertThat(BucketSharding.fromSystemProperties()).isEmpty();
+    void disabledShouldNotBeEnabled() {
+        assertThat(TmailBlobStoreShardingConfiguration.DISABLED.enabled()).isFalse();
     }
 
     @Test
-    void fromSystemPropertiesShouldReadTheShardCount() {
-        System.setProperty(BucketSharding.SHARD_COUNT_PROPERTY, "256");
-
-        assertThat(BucketSharding.fromSystemProperties()).contains(new BucketSharding(256));
+    void fromShouldReadTheShardCount() throws Exception {
+        assertThat(TmailBlobStoreShardingConfiguration.from(blobProperties("tmail.blobstore.shards=256")))
+            .isEqualTo(TmailBlobStoreShardingConfiguration.of(256));
+        assertThat(TmailBlobStoreShardingConfiguration.of(256).enabled()).isTrue();
     }
 
     @Test
     void omittedBucketShouldNotBeSharded() {
-        BucketSharding sharding = new BucketSharding(256, ImmutableSet.of(BUCKET));
+        TmailBlobStoreShardingConfiguration sharding = TmailBlobStoreShardingConfiguration.of(256, BUCKET);
 
         assertThat(sharding.physicalBuckets(BUCKET)).containsExactly(BUCKET);
         assertThat(sharding.physicalBucket(BUCKET, new TestBlobId("blob-1"))).isEqualTo(BUCKET);
@@ -153,14 +156,14 @@ class BucketShardingTest {
 
     @Test
     void omittedBucketShouldBeItsOwnLogicalBucket() {
-        BucketSharding sharding = new BucketSharding(256, ImmutableSet.of(BUCKET));
+        TmailBlobStoreShardingConfiguration sharding = TmailBlobStoreShardingConfiguration.of(256, BUCKET);
 
         assertThat(sharding.logicalBucket(BUCKET)).contains(BUCKET);
     }
 
     @Test
     void omittingABucketShouldNotAffectTheOthers() {
-        BucketSharding sharding = new BucketSharding(4, ImmutableSet.of(BucketName.of("jmap-uploads")));
+        TmailBlobStoreShardingConfiguration sharding = TmailBlobStoreShardingConfiguration.of(4, BucketName.of("jmap-uploads"));
 
         assertThat(sharding.physicalBuckets(BUCKET))
             .containsExactly(BucketName.of("blobs-0"), BucketName.of("blobs-1"),
@@ -168,27 +171,25 @@ class BucketShardingTest {
     }
 
     @Test
-    void fromSystemPropertiesShouldDefaultToNoOmittedBucket() {
-        System.setProperty(BucketSharding.SHARD_COUNT_PROPERTY, "256");
-
-        assertThat(BucketSharding.fromSystemProperties()).contains(new BucketSharding(256, ImmutableSet.of()));
+    void fromShouldDefaultToNoOmittedBucket() throws Exception {
+        assertThat(TmailBlobStoreShardingConfiguration.from(blobProperties("tmail.blobstore.shards=256")).omittedBuckets())
+            .isEmpty();
     }
 
     @Test
-    void fromSystemPropertiesShouldReadOmittedBuckets() {
-        System.setProperty(BucketSharding.SHARD_COUNT_PROPERTY, "256");
-        System.setProperty(BucketSharding.OMITTED_BUCKETS_PROPERTY, "jmap-uploads, mail-processing");
-
-        assertThat(BucketSharding.fromSystemProperties())
-            .contains(new BucketSharding(256, ImmutableSet.of(
-                BucketName.of("jmap-uploads"), BucketName.of("mail-processing"))));
+    void fromShouldReadOmittedBuckets() throws Exception {
+        assertThat(TmailBlobStoreShardingConfiguration.from(blobProperties(
+            "tmail.blobstore.shards=256",
+            "tmail.blobstore.shards.ommited.buckets=jmap-uploads, mail-processing")))
+            .isEqualTo(TmailBlobStoreShardingConfiguration.of(256,
+                BucketName.of("jmap-uploads"), BucketName.of("mail-processing")));
     }
 
     @Test
-    void fromSystemPropertiesShouldIgnoreOmittedBucketsWhenShardingIsOff() {
-        System.setProperty(BucketSharding.OMITTED_BUCKETS_PROPERTY, "jmap-uploads");
-
-        assertThat(BucketSharding.fromSystemProperties()).isEmpty();
+    void fromShouldIgnoreOmittedBucketsWhenShardingIsOff() throws Exception {
+        assertThat(TmailBlobStoreShardingConfiguration.from(blobProperties(
+            "tmail.blobstore.shards.ommited.buckets=jmap-uploads")))
+            .isEqualTo(TmailBlobStoreShardingConfiguration.DISABLED);
     }
 
     /**
@@ -201,7 +202,7 @@ class BucketShardingTest {
      */
     @Test
     void fourShardsOverTmailBucketsShouldYieldTheDocumentedLayout() {
-        BucketSharding sharding = new BucketSharding(4, ImmutableSet.of(UPLOADS_BUCKET, MAIL_PROCESSING_BUCKET));
+        TmailBlobStoreShardingConfiguration sharding = TmailBlobStoreShardingConfiguration.of(4, UPLOADS_BUCKET, MAIL_PROCESSING_BUCKET);
 
         assertThat(TMAIL_BUCKETS.stream()
             .collect(Collectors.toMap(BucketName::asString, sharding::physicalBuckets)))
@@ -217,7 +218,7 @@ class BucketShardingTest {
 
     @Test
     void everyTmailBucketShouldBeReadBackFromItsShards() {
-        BucketSharding sharding = new BucketSharding(4, ImmutableSet.of(UPLOADS_BUCKET, MAIL_PROCESSING_BUCKET));
+        TmailBlobStoreShardingConfiguration sharding = TmailBlobStoreShardingConfiguration.of(4, UPLOADS_BUCKET, MAIL_PROCESSING_BUCKET);
 
         assertThat(TMAIL_BUCKETS.stream()
             .flatMap(logicalBucket -> sharding.physicalBuckets(logicalBucket).stream())
@@ -233,7 +234,7 @@ class BucketShardingTest {
      */
     @Test
     void sixteenBlobsShouldReachEveryShardOfEveryTmailBucket() {
-        BucketSharding sharding = new BucketSharding(4);
+        TmailBlobStoreShardingConfiguration sharding = TmailBlobStoreShardingConfiguration.of(4);
 
         TMAIL_BUCKETS.forEach(logicalBucket -> assertThat(IntStream.range(0, 16)
             .mapToObj(i -> new TestBlobId(logicalBucket.asString() + "-blob-" + i))
@@ -243,10 +244,16 @@ class BucketShardingTest {
     }
 
     @Test
-    void fromSystemPropertiesShouldThrowOnInvalidShardCount() {
-        System.setProperty(BucketSharding.SHARD_COUNT_PROPERTY, "invalid");
+    void fromShouldThrowOnInvalidShardCount() throws Exception {
+        Configuration configuration = blobProperties("tmail.blobstore.shards=invalid");
 
-        assertThatThrownBy(BucketSharding::fromSystemProperties)
+        assertThatThrownBy(() -> TmailBlobStoreShardingConfiguration.from(configuration))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void shardCountShouldRejectNegativeValues() {
+        assertThatThrownBy(() -> TmailBlobStoreShardingConfiguration.of(-1))
             .isInstanceOf(IllegalArgumentException.class);
     }
 }

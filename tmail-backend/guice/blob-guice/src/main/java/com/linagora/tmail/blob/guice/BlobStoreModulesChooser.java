@@ -18,11 +18,13 @@
 
 package com.linagora.tmail.blob.guice;
 
+import java.io.FileNotFoundException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.util.List;
 import java.util.Optional;
 
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.blob.aes.AESBlobStoreDAO;
 import org.apache.james.blob.aes.CryptoConfig;
 import org.apache.james.blob.api.BlobId;
@@ -53,6 +55,7 @@ import org.apache.james.modules.blobstore.BlobDeduplicationGCModule;
 import org.apache.james.modules.blobstore.validation.EventsourcingStorageStrategy;
 import org.apache.james.modules.blobstore.validation.StorageStrategyModule;
 import org.apache.james.modules.mailbox.BlobStoreAPIModule;
+import org.apache.james.modules.mailbox.ConfigurationComponent;
 import org.apache.james.modules.mailbox.DefaultBucketModule;
 import org.apache.james.modules.objectstorage.S3BlobStoreModule;
 import org.apache.james.modules.objectstorage.S3BucketModule;
@@ -60,6 +63,9 @@ import org.apache.james.server.blob.deduplication.DeDuplicationBlobStore;
 import org.apache.james.server.blob.deduplication.PassThroughBlobStore;
 import org.apache.james.server.blob.deduplication.StorageStrategy;
 import org.apache.james.server.core.MissingArgumentException;
+import org.apache.james.utils.PropertiesProvider;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.collect.ImmutableList;
@@ -79,12 +85,14 @@ import com.linagora.tmail.blob.blobid.list.SingleSaveBlobStoreDAO;
 import com.linagora.tmail.blob.blobid.list.postgres.PostgresSingleSaveBlobStoreModule;
 import com.linagora.tmail.blob.secondaryblobstore.FailedBlobOperationListener;
 import com.linagora.tmail.blob.secondaryblobstore.SecondaryBlobStoreDAO;
-import com.linagora.tmail.blob.sharding.BucketSharding;
 import com.linagora.tmail.blob.sharding.ShardedBlobStoreDAO;
+import com.linagora.tmail.blob.sharding.TmailBlobStoreShardingConfiguration;
 
 import modules.BlobPostgresModule;
 
 public class BlobStoreModulesChooser {
+    private static final Logger LOGGER = LoggerFactory.getLogger(BlobStoreModulesChooser.class);
+
     public static final String INITIAL_BLOBSTORE_DAO = "initial_blobstore_dao";
     public static final String MAYBE_SECONDARY_BLOBSTORE = "maybe_secondary_blob_store_dao";
     public static final String MAYBE_ENCRYPTION_BLOBSTORE = "maybe_encryption_blob_store_dao";
@@ -105,8 +113,9 @@ public class BlobStoreModulesChooser {
         @Provides
         @Singleton
         @Named(INITIAL_BLOBSTORE_DAO)
-        BlobStoreDAO provideInitialBlobStoreDAO(S3BlobStoreDAO s3BlobStoreDAO, Optional<BucketSharding> bucketSharding) {
-            return maybeShard(s3BlobStoreDAO, bucketSharding);
+        BlobStoreDAO provideInitialBlobStoreDAO(S3BlobStoreDAO s3BlobStoreDAO,
+                                                TmailBlobStoreShardingConfiguration shardingConfiguration) {
+            return maybeShard(s3BlobStoreDAO, shardingConfiguration);
         }
 
         @Provides
@@ -155,24 +164,34 @@ public class BlobStoreModulesChooser {
 
     /**
      * Applicative sharding of the object storage buckets, needed to keep Ceph / Rados gateway bucket indexes small
-     * enough to stay listable. Off unless {@code -Dtmail.blobstore.shards} is set, and only applied to S3 backed
-     * deployments.
+     * enough to stay listable. Off unless {@code tmail.blobstore.shards} is set in {@code blob.properties}, and only
+     * applied to S3 backed deployments.
      *
      * <p>Sharding sits at the very bottom of the blobStore mille-feuille: the layers above it (secondary blob store,
      * encryption, compression, single save) need to keep reasoning in terms of logical buckets.</p>
+     *
+     * @see TmailBlobStoreShardingConfiguration
      */
     static class ShardingModule extends AbstractModule {
         @Provides
         @Singleton
-        Optional<BucketSharding> provideBucketSharding() {
-            return BucketSharding.fromSystemProperties();
+        TmailBlobStoreShardingConfiguration shardingConfiguration(PropertiesProvider propertiesProvider) {
+            try {
+                return TmailBlobStoreShardingConfiguration.from(propertiesProvider.getConfigurations(ConfigurationComponent.NAMES));
+            } catch (FileNotFoundException e) {
+                LOGGER.warn("Could not find {} configuration file, not sharding the object storage buckets", ConfigurationComponent.NAME);
+                return TmailBlobStoreShardingConfiguration.DISABLED;
+            } catch (ConfigurationException e) {
+                throw new RuntimeException("Failed reading " + ConfigurationComponent.NAME + " configuration file", e);
+            }
         }
     }
 
-    private static BlobStoreDAO maybeShard(BlobStoreDAO blobStoreDAO, Optional<BucketSharding> bucketSharding) {
-        return bucketSharding
-            .<BlobStoreDAO>map(sharding -> new ShardedBlobStoreDAO(blobStoreDAO, sharding))
-            .orElse(blobStoreDAO);
+    private static BlobStoreDAO maybeShard(BlobStoreDAO blobStoreDAO, TmailBlobStoreShardingConfiguration shardingConfiguration) {
+        if (shardingConfiguration.enabled()) {
+            return new ShardedBlobStoreDAO(blobStoreDAO, shardingConfiguration);
+        }
+        return blobStoreDAO;
     }
 
     static class BaseObjectStorageModule extends AbstractModule {
@@ -206,11 +225,11 @@ public class BlobStoreModulesChooser {
                                                 MetricFactory metricFactory,
                                                 GaugeRegistry gaugeRegistry,
                                                 S3RequestOption s3RequestOption,
-                                                Optional<BucketSharding> bucketSharding) {
+                                                TmailBlobStoreShardingConfiguration shardingConfiguration) {
             S3ClientFactory s3SecondaryClientFactory = new S3ClientFactory(secondaryS3BlobStoreConfiguration.s3BlobStoreConfiguration(),
                 () -> new JamesS3MetricPublisher(metricFactory, gaugeRegistry, "secondary_s3"));
             return maybeShard(new S3BlobStoreDAO(s3SecondaryClientFactory, secondaryS3BlobStoreConfiguration.s3BlobStoreConfiguration(), blobIdFactory, s3RequestOption),
-                bucketSharding);
+                shardingConfiguration);
         }
 
         @ProvidesIntoSet

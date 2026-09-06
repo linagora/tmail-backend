@@ -23,20 +23,21 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.IntStream;
+import java.util.stream.Stream;
 
+import org.apache.commons.configuration2.Configuration;
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.BucketName;
 
 import com.google.common.base.Preconditions;
-import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.hash.HashFunction;
 import com.google.common.hash.Hashing;
 
 /**
- * Maps a James logical {@link BucketName} onto a fixed set of physical buckets, the shard being derived from the
- * {@link BlobId}.
+ * How a James logical {@link BucketName} is spread over a fixed set of physical buckets, the shard being derived from
+ * the {@link BlobId}.
  *
  * <p>S3 compatibility is an API contract, not a behaviour contract: a Ceph / Rados gateway bucket is backed by
  * sharded omap indexes that should not hold much more than 100K entries each. Holding billions of objects in a
@@ -45,19 +46,33 @@ import com.google.common.hash.Hashing;
  * bucket index within a listable size.</p>
  *
  * <p>Physical buckets are named {@code <logical bucket>-<zero padded shard number>}, eg. {@code default-000} up to
- * {@code default-255} for 256 shards. <strong>The shard count is written in stone</strong>: changing it relocates
- * every blob and makes the already written ones unreadable. Because blobIds are content addressed, deduplication
- * and garbage collection still hold within a shard.</p>
+ * {@code default-255} for 256 shards. Because blobIds are content addressed, deduplication and garbage collection
+ * still hold within a shard.</p>
  *
- * <p>Buckets that stay small enough to be listed as they are - the JMAP uploads and the mails in transit, say - can
- * be left out of the layout entirely, and are then stored under their plain name.</p>
+ * <p>Read from <code>blob.properties</code>:</p>
+ *
+ * <pre>
+ * tmail.blobstore.shards=256
+ * tmail.blobstore.shards.ommited.buckets=jmap-uploads,mail-processing
+ * </pre>
+ *
+ * <p><strong>Both are written in stone</strong>: changing the shard count, or moving a bucket in or out of the
+ * omitted list, relocates blobs onto another bucket and makes the already written ones unreachable.</p>
+ *
+ * @param shardCount        how many physical buckets a logical bucket is spread over, {@link #NO_SHARDING} to store
+ *                          every bucket under its plain name
+ * @param omittedBuckets    logical buckets left out of the layout, small enough to be listed as they are, and thus
+ *                          stored under their plain name
  */
-public record BucketSharding(int shardCount, Set<BucketName> omittedBuckets) {
-    public static final String SHARD_COUNT_PROPERTY = "tmail.blobstore.shards";
-    public static final String OMITTED_BUCKETS_PROPERTY = "tmail.blobstore.shards.ommited.buckets";
-    public static final char SEPARATOR = '-';
+public record TmailBlobStoreShardingConfiguration(int shardCount, Set<BucketName> omittedBuckets) {
+    public static final int NO_SHARDING = 0;
+    public static final TmailBlobStoreShardingConfiguration DISABLED =
+        new TmailBlobStoreShardingConfiguration(NO_SHARDING, ImmutableSet.of());
 
-    private static final Splitter OMITTED_BUCKETS_SPLITTER = Splitter.on(',').trimResults().omitEmptyStrings();
+    static final String SHARD_COUNT_PROPERTY = "tmail.blobstore.shards";
+    static final String OMITTED_BUCKETS_PROPERTY = "tmail.blobstore.shards.ommited.buckets";
+
+    public static final char SEPARATOR = '-';
 
     /**
      * Murmur3 is stable across JVMs and Guava releases, which {@link String#hashCode()} guarantees too but with a
@@ -65,39 +80,55 @@ public record BucketSharding(int shardCount, Set<BucketName> omittedBuckets) {
      */
     private static final HashFunction HASH_FUNCTION = Hashing.murmur3_32_fixed();
 
-    /**
-     * @return the sharding configured by {@code -Dtmail.blobstore.shards=256} and
-     * {@code -Dtmail.blobstore.shards.ommited.buckets=jmap-uploads,mail-processing}, or {@link Optional#empty()} when
-     * the shard count property is omitted, in which case no sharding is applied at all.
-     */
-    public static Optional<BucketSharding> fromSystemProperties() {
-        return Optional.ofNullable(System.getProperty(SHARD_COUNT_PROPERTY))
+    public static TmailBlobStoreShardingConfiguration from(Configuration configuration) {
+        int shardCount = Optional.ofNullable(configuration.getString(SHARD_COUNT_PROPERTY, null))
             .map(String::trim)
             .filter(value -> !value.isEmpty())
-            .map(shardCount -> parse(shardCount, System.getProperty(OMITTED_BUCKETS_PROPERTY, "")));
+            .map(TmailBlobStoreShardingConfiguration::parseShardCount)
+            .orElse(NO_SHARDING);
+
+        if (shardCount == NO_SHARDING) {
+            return DISABLED;
+        }
+        return new TmailBlobStoreShardingConfiguration(shardCount,
+            omittedBuckets(configuration.getStringArray(OMITTED_BUCKETS_PROPERTY)));
     }
 
-    private static BucketSharding parse(String shardCount, String omittedBuckets) {
+    private static int parseShardCount(String shardCount) {
         try {
-            return new BucketSharding(Integer.parseInt(shardCount), parseOmittedBuckets(omittedBuckets));
+            return Integer.parseInt(shardCount);
         } catch (NumberFormatException e) {
             throw new IllegalArgumentException(SHARD_COUNT_PROPERTY + " must be a positive integer, got " + shardCount, e);
         }
     }
 
-    private static Set<BucketName> parseOmittedBuckets(String omittedBuckets) {
-        return OMITTED_BUCKETS_SPLITTER.splitToStream(omittedBuckets)
+    /**
+     * James reads {@code blob.properties} with a comma list delimiter, so the property already reaches us split.
+     * Values are trimmed nonetheless, blank ones dropped, so that {@code a, b} and {@code a,b,} both work.
+     */
+    private static Set<BucketName> omittedBuckets(String... omittedBuckets) {
+        return Stream.of(omittedBuckets)
+            .map(String::trim)
+            .filter(bucketName -> !bucketName.isEmpty())
             .map(BucketName::of)
             .collect(ImmutableSet.toImmutableSet());
     }
 
-    public BucketSharding(int shardCount) {
-        this(shardCount, ImmutableSet.of());
+    public static TmailBlobStoreShardingConfiguration of(int shardCount) {
+        return new TmailBlobStoreShardingConfiguration(shardCount, ImmutableSet.of());
     }
 
-    public BucketSharding {
-        Preconditions.checkArgument(shardCount > 0, "%s must be strictly positive", SHARD_COUNT_PROPERTY);
+    public static TmailBlobStoreShardingConfiguration of(int shardCount, BucketName... omittedBuckets) {
+        return new TmailBlobStoreShardingConfiguration(shardCount, ImmutableSet.copyOf(omittedBuckets));
+    }
+
+    public TmailBlobStoreShardingConfiguration {
+        Preconditions.checkArgument(shardCount >= NO_SHARDING, "%s cannot be negative", SHARD_COUNT_PROPERTY);
         omittedBuckets = ImmutableSet.copyOf(omittedBuckets);
+    }
+
+    public boolean enabled() {
+        return shardCount > NO_SHARDING;
     }
 
     /**

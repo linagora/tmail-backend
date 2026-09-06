@@ -38,13 +38,12 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.ImmutableList;
-import com.google.common.collect.ImmutableSet;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 class ShardedBlobStoreDAOTest implements BlobStoreDAOContract, MetadataAwareBlobStoreDAOContract {
-    private static final BucketSharding SHARDING = new BucketSharding(8);
+    private static final TmailBlobStoreShardingConfiguration SHARDING = TmailBlobStoreShardingConfiguration.of(8);
 
     private MemoryBlobStoreDAO delegate;
     private ShardedBlobStoreDAO testee;
@@ -130,7 +129,7 @@ class ShardedBlobStoreDAOTest implements BlobStoreDAOContract, MetadataAwareBlob
     @Test
     void omittedBucketShouldBeStoredUnderItsPlainName() {
         ShardedBlobStoreDAO omittingTestBucket = new ShardedBlobStoreDAO(delegate,
-            new BucketSharding(SHARDING.shardCount(), ImmutableSet.of(TEST_BUCKET_NAME)));
+            TmailBlobStoreShardingConfiguration.of(SHARDING.shardCount(), TEST_BUCKET_NAME));
         List<BlobId> blobIds = someBlobIds(100);
 
         blobIds.forEach(blobId -> Mono.from(omittingTestBucket.save(TEST_BUCKET_NAME, blobId, SHORT_BYTEARRAY)).block());
@@ -146,7 +145,7 @@ class ShardedBlobStoreDAOTest implements BlobStoreDAOContract, MetadataAwareBlob
     @Test
     void omittedBucketShouldNotAffectTheShardedOnes() {
         ShardedBlobStoreDAO omittingCustomBucket = new ShardedBlobStoreDAO(delegate,
-            new BucketSharding(SHARDING.shardCount(), ImmutableSet.of(CUSTOM_BUCKET_NAME)));
+            TmailBlobStoreShardingConfiguration.of(SHARDING.shardCount(), CUSTOM_BUCKET_NAME));
         List<BlobId> blobIds = someBlobIds(100);
 
         blobIds.forEach(blobId -> {

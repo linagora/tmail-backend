@@ -104,33 +104,20 @@ the blob. Given 10 billion objects and 256 shards, each bucket holds ~39 million
 
 === Turning it on
 
-The shard count is a JVM system property, not a `blob.properties` entry, as it must be settled before anything is
-written and never move afterwards:
-
-....
--Dtmail.blobstore.shards=256
-....
-
-Omitting it disables sharding entirely, which is the behaviour of deployments predating this option. It is only
-honoured by S3 backed deployments (`implementation=s3`).
-
-Buckets that stay small enough to be listed as they are can be left out of the layout, and are then stored under
-their plain name. Slicing the JMAP uploads - bounded by their expiration - or the mails in transit - bounded by the
-time they spend in the queue - into 256 buckets buys nothing:
-
-....
--Dtmail.blobstore.shards.ommited.buckets=jmap-uploads,mail-processing
-....
-
-Comma separated list of *logical* bucket names, empty by default. Like the shard count, it is written in stone for
-the buckets it names: moving a bucket in or out of the list makes what it already holds unreachable.
-
-The bucket names it produces are then resolved by the S3 connector as usual, out of `blob.properties`
-(`blobstore.properties` is accepted as a legacy name):
+Sharding is configured in `blob.properties` (`blobstore.properties` is accepted as a legacy name), alongside the
+object storage settings the bucket names are then resolved with:
 
 .blob.properties
 ....
 implementation=s3
+
+# How many physical buckets a logical bucket is spread over.
+# Optional, defaults to 0, which disables sharding altogether.
+tmail.blobstore.shards=256
+
+# Logical buckets left out of the layout, stored under their plain name. Comma separated.
+# Optional, defaults to none.
+tmail.blobstore.shards.ommited.buckets=jmap-uploads,mail-processing
 
 # The default bucket, holding mailbox content. Left unprefixed by the S3 connector.
 objectstorage.namespace=blobs
@@ -139,12 +126,18 @@ objectstorage.namespace=blobs
 objectstorage.bucketPrefix=tmail-
 ....
 
+Leaving `tmail.blobstore.shards` out disables sharding entirely, which is the behaviour of deployments predating this
+option. It is only honoured by S3 backed deployments (`implementation=s3`).
+
+Slicing a bucket that stays small enough to be listed as it is buys nothing: the JMAP uploads are bounded by their
+expiration, and the mails in transit by the time they spend in the queue. Those go in
+`tmail.blobstore.shards.ommited.buckets`, which takes *logical* bucket names.
+
 === Resulting layout
 
 A physical bucket is named after the logical bucket followed by the zero padded shard number, and the S3 connector
-then prepends `objectstorage.bucketPrefix` to it. With the configuration above, `-Dtmail.blobstore.shards=4` and
-`-Dtmail.blobstore.shards.ommited.buckets=jmap-uploads,mail-processing`, the four logical buckets a distributed
-deployment writes to map as follows:
+then prepends `objectstorage.bucketPrefix` to it. With the configuration above, `tmail.blobstore.shards` lowered to
+`4` for readability, the four logical buckets a distributed deployment writes to map as follows:
 
 |===
 | Logical bucket | Holds | Physical S3 buckets
@@ -170,7 +163,8 @@ Dropping `tmail.blobstore.shards.ommited.buckets` would instead split all four, 
 `tmail-jmap-uploads-0` … `tmail-jmap-uploads-3` and `mail-processing` becoming `tmail-mail-processing-0` …
 `tmail-mail-processing-3`.
 
-Without `tmail.blobstore.shards`, the very same configuration yields the layout deployments already have, unchanged:
+Without `tmail.blobstore.shards`, the very same `blob.properties` yields the layout deployments already have,
+unchanged:
 
 |===
 | Logical bucket | Physical S3 bucket
@@ -191,9 +185,10 @@ blob store when one is configured.
 
 [WARNING]
 ====
-The shard count is *written in stone*. Changing it on a non-empty deployment relocates every blobId onto another
-bucket, making the already written blobs unreachable. Pick it once, at install time, out of the volume the deployment
-is expected to reach.
+Both `tmail.blobstore.shards` and `tmail.blobstore.shards.ommited.buckets` are *written in stone*. Changing the
+shard count on a non-empty deployment relocates every blobId onto another bucket, and moving a bucket in or out of
+the omitted list does the same for that bucket: the already written blobs become unreachable. Pick them once, at
+install time, out of the volume the deployment is expected to reach.
 
 Mind also the total bucket count: every sharded logical bucket is multiplied by the shard count, so at 256 shards
 the two sharded buckets above become 512, and all four would become 1024 were none omitted. Ceph caps the number of
