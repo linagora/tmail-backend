@@ -40,6 +40,7 @@
 
         <module>blob/blobid-list</module>
         <module>blob/secondary-blob-store</module>
+        <module>blob/sharded-blob-store</module>
 
         <module>combined-identity</module>
 
@@ -262,6 +263,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>secondary-blob-store</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>sharded-blob-store</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>

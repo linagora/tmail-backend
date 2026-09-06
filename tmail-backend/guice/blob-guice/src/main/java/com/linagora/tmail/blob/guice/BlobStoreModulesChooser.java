@@ -79,6 +79,8 @@ import com.linagora.tmail.blob.blobid.list.SingleSaveBlobStoreDAO;
 import com.linagora.tmail.blob.blobid.list.postgres.PostgresSingleSaveBlobStoreModule;
 import com.linagora.tmail.blob.secondaryblobstore.FailedBlobOperationListener;
 import com.linagora.tmail.blob.secondaryblobstore.SecondaryBlobStoreDAO;
+import com.linagora.tmail.blob.sharding.BucketSharding;
+import com.linagora.tmail.blob.sharding.ShardedBlobStoreDAO;
 
 import modules.BlobPostgresModule;
 
@@ -97,10 +99,14 @@ public class BlobStoreModulesChooser {
             install(new S3BlobStoreModule());
             install(new S3BucketModule());
 
-            bind(BlobStoreDAO.class)
-                .annotatedWith(Names.named(INITIAL_BLOBSTORE_DAO))
-                .to(S3BlobStoreDAO.class)
-                .in(Scopes.SINGLETON);
+            bind(S3BlobStoreDAO.class).in(Scopes.SINGLETON);
+        }
+
+        @Provides
+        @Singleton
+        @Named(INITIAL_BLOBSTORE_DAO)
+        BlobStoreDAO provideInitialBlobStoreDAO(S3BlobStoreDAO s3BlobStoreDAO, Optional<BucketSharding> bucketSharding) {
+            return maybeShard(s3BlobStoreDAO, bucketSharding);
         }
 
         @Provides
@@ -147,6 +153,28 @@ public class BlobStoreModulesChooser {
         }
     }
 
+    /**
+     * Applicative sharding of the object storage buckets, needed to keep Ceph / Rados gateway bucket indexes small
+     * enough to stay listable. Off unless {@code -Dtmail.blobstore.shards} is set, and only applied to S3 backed
+     * deployments.
+     *
+     * <p>Sharding sits at the very bottom of the blobStore mille-feuille: the layers above it (secondary blob store,
+     * encryption, compression, single save) need to keep reasoning in terms of logical buckets.</p>
+     */
+    static class ShardingModule extends AbstractModule {
+        @Provides
+        @Singleton
+        Optional<BucketSharding> provideBucketSharding() {
+            return BucketSharding.fromSystemProperties();
+        }
+    }
+
+    private static BlobStoreDAO maybeShard(BlobStoreDAO blobStoreDAO, Optional<BucketSharding> bucketSharding) {
+        return bucketSharding
+            .<BlobStoreDAO>map(sharding -> new ShardedBlobStoreDAO(blobStoreDAO, sharding))
+            .orElse(blobStoreDAO);
+    }
+
     static class BaseObjectStorageModule extends AbstractModule {
         @Provides
         @Singleton
@@ -177,10 +205,12 @@ public class BlobStoreModulesChooser {
         BlobStoreDAO getSecondaryS3BlobStoreDAO(BlobId.Factory blobIdFactory,
                                                 MetricFactory metricFactory,
                                                 GaugeRegistry gaugeRegistry,
-                                                S3RequestOption s3RequestOption) {
+                                                S3RequestOption s3RequestOption,
+                                                Optional<BucketSharding> bucketSharding) {
             S3ClientFactory s3SecondaryClientFactory = new S3ClientFactory(secondaryS3BlobStoreConfiguration.s3BlobStoreConfiguration(),
                 () -> new JamesS3MetricPublisher(metricFactory, gaugeRegistry, "secondary_s3"));
-            return new S3BlobStoreDAO(s3SecondaryClientFactory, secondaryS3BlobStoreConfiguration.s3BlobStoreConfiguration(), blobIdFactory, s3RequestOption);
+            return maybeShard(new S3BlobStoreDAO(s3SecondaryClientFactory, secondaryS3BlobStoreConfiguration.s3BlobStoreConfiguration(), blobIdFactory, s3RequestOption),
+                bucketSharding);
         }
 
         @ProvidesIntoSet
@@ -364,6 +394,7 @@ public class BlobStoreModulesChooser {
 
     public static List<Module> chooseModules(BlobStoreConfiguration blobStoreConfiguration, SingleSaveDeclarationModule.BackedStorage backedSingleSaveStorage) {
         return ImmutableList.<Module>builder()
+            .add(new ShardingModule())
             .add(chooseBlobStoreDAOModule(blobStoreConfiguration.implementation()))
             .add(chooseSecondaryObjectStorageModule(blobStoreConfiguration.maybeSecondaryS3BlobStoreConfiguration()))
             .add(chooseEncryptionModule(blobStoreConfiguration.cryptoConfig()))
