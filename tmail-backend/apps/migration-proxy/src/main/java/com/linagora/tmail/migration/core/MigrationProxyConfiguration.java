@@ -47,16 +47,24 @@ import com.google.common.base.Strings;
  * <p>An optional {@code imap.handshakeTimeout} (default {@code 30s}) bounds how long the proxy waits
  * while connecting to and replaying the authentication against a backend before giving up on a LOGIN.
  *
+ * <p>{@code kerberos.enforceVerifiedBackendTLS} (default {@code true}) requires verified TLS for
+ * backend delegation. When disabled, each backend's {@code ssl} settings remain authoritative.
+ *
  * <p>See {@link KerberosConfiguration} for the optional {@code kerberos.} settings.
  */
 public record MigrationProxyConfiguration(Backend imapOld, Backend imapNew, Duration handshakeTimeout,
-                                          Optional<KerberosConfiguration> kerberos) {
+                                          Optional<KerberosConfiguration> kerberos,
+                                          boolean enforceVerifiedBackendTLS) {
     public static final Duration DEFAULT_HANDSHAKE_TIMEOUT = Duration.ofSeconds(30);
+    public static final boolean ENFORCE_VERIFIED_BACKEND_TLS_DEFAULT = true;
 
-    private static void requireVerifiedAdminDelegation(Backend backend) {
+    private static void requireAdminDelegation(Backend backend) {
         Preconditions.checkArgument(backend.admin().isPresent(),
             "Kerberos requires 'imap.%s.admin.username' and 'imap.%s.admin.password' to be set",
             backend.name(), backend.name());
+    }
+
+    private static void requireVerifiedAdminDelegation(Backend backend) {
         Preconditions.checkArgument(backend.ssl(),
             "Kerberos requires 'imap.%s.ssl=true' to protect administrator delegation credentials",
             backend.name());
@@ -71,10 +79,14 @@ public record MigrationProxyConfiguration(Backend imapOld, Backend imapNew, Dura
         Preconditions.checkNotNull(handshakeTimeout);
         Preconditions.checkNotNull(kerberos);
         if (kerberos.isPresent()) {
-            // Kerberos authenticated clients never hand us their password: the only way into a backend is
-            // then delegation from a configured administrator over an authenticated TLS connection.
-            requireVerifiedAdminDelegation(imapOld);
-            requireVerifiedAdminDelegation(imapNew);
+            requireAdminDelegation(imapOld);
+            requireAdminDelegation(imapNew);
+            if (enforceVerifiedBackendTLS) {
+                // Kerberos authenticated clients never hand us their password: the only way into a backend is
+                // then delegation from a configured administrator over an authenticated TLS connection.
+                requireVerifiedAdminDelegation(imapOld);
+                requireVerifiedAdminDelegation(imapNew);
+            }
         }
     }
 
@@ -83,7 +95,9 @@ public record MigrationProxyConfiguration(Backend imapOld, Backend imapNew, Dura
             readBackend(configuration, Target.OLD),
             readBackend(configuration, Target.NEW),
             readHandshakeTimeout(configuration),
-            KerberosConfiguration.from(configuration));
+            KerberosConfiguration.from(configuration),
+            configuration.getBoolean("kerberos.enforceVerifiedBackendTLS",
+                ENFORCE_VERIFIED_BACKEND_TLS_DEFAULT));
     }
 
     private static Duration readHandshakeTimeout(Configuration configuration) {

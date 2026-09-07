@@ -126,6 +126,22 @@ class MigrationProxyConfigurationTest {
     }
 
     @Test
+    void enforceVerifiedBackendTLSShouldDefaultToTrue() {
+        assertThat(MigrationProxyConfiguration.from(kerberised()).enforceVerifiedBackendTLS()).isTrue();
+    }
+
+    @Test
+    void shouldHonorBackendSslSettingsWhenVerifiedTLSIsNotEnforced() {
+        Configuration configuration = kerberised();
+        configuration.setProperty("kerberos.enforceVerifiedBackendTLS", "false");
+        configuration.setProperty("imap.old.ssl", "false");
+        configuration.setProperty("imap.new.ssl.ignoreCertificates", "true");
+
+        assertThatCode(() -> MigrationProxyConfiguration.from(configuration)).doesNotThrowAnyException();
+        assertThat(MigrationProxyConfiguration.from(configuration).enforceVerifiedBackendTLS()).isFalse();
+    }
+
+    @Test
     void shouldThrowWhenKerberosSettingIsMissing() {
         Configuration configuration = kerberised();
         configuration.clearProperty("kerberos.principal");
@@ -149,6 +165,17 @@ class MigrationProxyConfigurationTest {
     @Test
     void shouldThrowWhenKerberosIsEnabledWithoutBackendAdmin() {
         Configuration configuration = kerberised();
+        configuration.clearProperty("imap.old.admin.username");
+
+        assertThatThrownBy(() -> MigrationProxyConfiguration.from(configuration))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("imap.old.admin.username");
+    }
+
+    @Test
+    void shouldStillRequireBackendAdminWhenVerifiedTLSIsNotEnforced() {
+        Configuration configuration = kerberised();
+        configuration.setProperty("kerberos.enforceVerifiedBackendTLS", "false");
         configuration.clearProperty("imap.old.admin.username");
 
         assertThatThrownBy(() -> MigrationProxyConfiguration.from(configuration))
