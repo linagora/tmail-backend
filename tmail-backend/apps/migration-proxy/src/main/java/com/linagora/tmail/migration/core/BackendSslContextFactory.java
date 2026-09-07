@@ -34,8 +34,8 @@ import io.netty.handler.ssl.util.InsecureTrustManagerFactory;
  * Builds the client-side {@link SslContext} the proxy uses to reach a backend over implicit TLS.
  *
  * <p>Two flavours are cached: one that validates the backend certificate against the system trust
- * store, and one that trusts any certificate (for self-signed certs during a migration), selected
- * per backend through {@link Backend#sslIgnoreCertificates()}.
+ * store and verifies the backend hostname, and one that trusts any certificate (for self-signed
+ * certs during a migration), selected per backend through {@link Backend#sslIgnoreCertificates()}.
  *
  * <p>The TLS provider follows the same {@code james.tcnative.enabled} toggle as the listening side:
  * BoringSSL/OpenSSL via netty-tcnative when enabled and available, the JDK provider (nio) otherwise.
@@ -67,6 +67,8 @@ public class BackendSslContextFactory {
                 if (validating == null) {
                     validating = Throwing.supplier(() -> SslContextBuilder.forClient()
                         .sslProvider(sslProvider)
+                        // JSSE calls its hostname-verification algorithm "HTTPS"; the protocol remains IMAP over TLS.
+                        .endpointIdentificationAlgorithm("HTTPS")
                         .build()).get();
                 }
             }

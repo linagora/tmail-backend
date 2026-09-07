@@ -43,6 +43,9 @@ behalf (`ImapBackendDialog`: tagged `LOGIN`, or the delegation dialog under Kerb
 the backend channels. The handover is done in two steps so the IMAP tagged `OK` is emitted at the
 right time. Per-backend options: implicit TLS, ignoring backend certificates, and `forwardProxyInfo`
 (forward the inbound HAProxy PROXY protocol information to the backend, error if required but absent).
+Kerberos delegation requires implicit TLS with certificate and hostname validation for both backends;
+the proxy refuses to start with plaintext or ignored certificates because the delegated administrator
+password is sent with SASL PLAIN.
 
 == SMTP routing MTA
 

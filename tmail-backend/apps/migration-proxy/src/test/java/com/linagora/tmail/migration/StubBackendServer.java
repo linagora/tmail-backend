@@ -36,6 +36,7 @@ import io.netty.channel.nio.NioEventLoopGroup;
 import io.netty.channel.socket.SocketChannel;
 import io.netty.channel.socket.nio.NioServerSocketChannel;
 import io.netty.handler.codec.LineBasedFrameDecoder;
+import io.netty.handler.ssl.SslContext;
 
 /**
  * A scriptable stand-in for a backend IMAP/SMTP server: it sends a greeting on connect, replies to
@@ -46,13 +47,19 @@ public class StubBackendServer implements AutoCloseable {
     private final EventLoopGroup bossGroup = new NioEventLoopGroup(1);
     private final EventLoopGroup workerGroup = new NioEventLoopGroup(1);
     private final String greeting;
+    private final SslContext sslContext;
     private final Map<String, String> scriptedReplies = new ConcurrentHashMap<>();
     private final CopyOnWriteArrayList<String> receivedLines = new CopyOnWriteArrayList<>();
     private volatile Channel serverChannel;
     private volatile Channel lastClientChannel;
 
     public StubBackendServer(String greeting) {
+        this(greeting, null);
+    }
+
+    public StubBackendServer(String greeting, SslContext sslContext) {
         this.greeting = greeting;
+        this.sslContext = sslContext;
     }
 
     public StubBackendServer reply(String linePrefix, String response) {
@@ -68,6 +75,9 @@ public class StubBackendServer implements AutoCloseable {
                 @Override
                 protected void initChannel(SocketChannel channel) {
                     lastClientChannel = channel;
+                    if (sslContext != null) {
+                        channel.pipeline().addLast(sslContext.newHandler(channel.alloc()));
+                    }
                     channel.pipeline().addLast(new LineBasedFrameDecoder(65536, false, false));
                     channel.pipeline().addLast(new StubHandler());
                 }

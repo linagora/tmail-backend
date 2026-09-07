@@ -39,6 +39,7 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.linagora.tmail.migration.BackendTlsTestFixture;
 import com.linagora.tmail.migration.StubBackendServer;
 import com.linagora.tmail.migration.imap.ImapBackendDialog;
 
@@ -60,6 +61,7 @@ class BackendRelayTest {
     private Channel clientFacingServer;
     private final CompletableFuture<Channel> acceptedClientChannel = new CompletableFuture<>();
     private BackendRelay relay;
+    private BackendTlsTestFixture tlsFixture;
 
     @BeforeEach
     void setUp() {
@@ -75,6 +77,9 @@ class BackendRelayTest {
         clientFacingGroup.shutdownGracefully();
         if (backend != null) {
             backend.close();
+        }
+        if (tlsFixture != null) {
+            tlsFixture.close();
         }
     }
 
@@ -155,6 +160,29 @@ class BackendRelayTest {
                         () -> new ImapBackendDialog("bob@domain.tld", "secret"),
                         Optional.empty(), Duration.ofSeconds(10), Optional.empty())))
                 .isInstanceOf(MissingProxyInformationException.class);
+        }
+    }
+
+    @Test
+    void shouldRejectTlsBackendWhenCertificateDoesNotMatchConfiguredHost() throws Exception {
+        tlsFixture = new BackendTlsTestFixture();
+        backend = tlsFixture.server("* OK backend ready")
+            .reply(LOGIN_PREFIX, ImapBackendDialog.PROXY_TAG + " OK LOGIN completed");
+        int backendPort = backend.start();
+        int clientFacingPort = startClientFacingServer();
+
+        try (Socket clientSocket = new Socket("127.0.0.1", clientFacingPort)) {
+            Channel clientChannel = acceptedClientChannel.get();
+            Backend mismatchingBackend = new Backend("new", Host.from("127.0.0.1", backendPort),
+                true, false, false, Optional.empty());
+
+            Optional<Channel> backendChannel = relay.connectAndAuthenticate(clientChannel,
+                new BackendRelay.RelayRequest(mismatchingBackend,
+                    () -> new ImapBackendDialog("bob@domain.tld", "secret"),
+                    Optional.of(tlsFixture.clientContext()), Duration.ofSeconds(10), Optional.empty()));
+
+            assertThat(backendChannel).isEmpty();
+            assertThat(backend.receivedLines()).isEmpty();
         }
     }
 

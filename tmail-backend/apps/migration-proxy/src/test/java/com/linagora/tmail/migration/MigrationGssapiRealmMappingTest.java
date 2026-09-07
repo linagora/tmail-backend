@@ -40,6 +40,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.api.parallel.ResourceLock;
 
+import com.linagora.tmail.migration.core.BackendSslContextFactory;
 import com.linagora.tmail.migration.imap.ImapBackendDialog;
 import com.linagora.tmail.migration.postgres.MigratedUsersDataDefinition;
 
@@ -78,21 +79,25 @@ class MigrationGssapiRealmMappingTest {
 
     private static final Map<String, String> PREVIOUS_PROPERTIES = new HashMap<>();
 
+    private static BackendTlsTestFixture backendTls;
     private static StubBackendServer oldBackend;
     private static GuiceJamesServer proxy;
 
     @BeforeAll
     static void setUpAll() throws Exception {
         // The old backend authorizes the configured administrator as the user, then serves the session.
-        oldBackend = new StubBackendServer("* OK backend ready")
+        backendTls = new BackendTlsTestFixture();
+        oldBackend = backendTls.server("* OK backend ready")
             .reply(ImapBackendDialog.PROXY_TAG + " AUTHENTICATE PLAIN", "+ ")
             .reply(expectedDelegation(), ImapBackendDialog.PROXY_TAG + " OK AUTHENTICATE completed");
         int backendPort = oldBackend.start();
 
-        setProperty("migration.imap.old.host", "127.0.0.1");
+        setProperty("migration.imap.old.host", BackendTlsTestFixture.HOSTNAME);
         setProperty("migration.imap.old.port", String.valueOf(backendPort));
+        setProperty("migration.imap.old.ssl", "true");
         setProperty("migration.imap.old.admin.username", ADMIN);
         setProperty("migration.imap.old.admin.password", ADMIN_PASSWORD);
+        setProperty("migration.imap.new.ssl", "true");
         setProperty("migration.imap.new.admin.username", ADMIN);
         setProperty("migration.imap.new.admin.password", ADMIN_PASSWORD);
         setProperty("migration.kerberos.enabled", "true");
@@ -109,7 +114,9 @@ class MigrationGssapiRealmMappingTest {
             .workingDirectory(workingDirectory)
             .configurationFromClasspath()
             .build();
-        proxy = MigrationProxyServer.createServer(configuration).overrideWith(postgresExtension.getModule());
+        proxy = MigrationProxyServer.createServer(configuration)
+            .overrideWith(postgresExtension.getModule(),
+                binder -> binder.bind(BackendSslContextFactory.class).toInstance(backendTls.sslContextFactory()));
         proxy.start();
     }
 
@@ -120,6 +127,9 @@ class MigrationGssapiRealmMappingTest {
         }
         if (oldBackend != null) {
             oldBackend.close();
+        }
+        if (backendTls != null) {
+            backendTls.close();
         }
         PREVIOUS_PROPERTIES.forEach((property, previousValue) -> {
             if (previousValue == null) {

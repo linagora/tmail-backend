@@ -28,6 +28,8 @@ import java.util.Optional;
 import org.apache.commons.configuration2.BaseConfiguration;
 import org.apache.commons.configuration2.Configuration;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 class MigrationProxyConfigurationTest {
     private static Configuration backends() {
@@ -46,8 +48,10 @@ class MigrationProxyConfigurationTest {
         configuration.addProperty("kerberos.keyTab", "/root/conf/imap.keytab");
         configuration.addProperty("imap.old.admin.username", "old-admin@domain.tld");
         configuration.addProperty("imap.old.admin.password", "old-password");
+        configuration.addProperty("imap.old.ssl", "true");
         configuration.addProperty("imap.new.admin.username", "new-admin@domain.tld");
         configuration.addProperty("imap.new.admin.password", "new-password");
+        configuration.addProperty("imap.new.ssl", "true");
         return configuration;
     }
 
@@ -160,6 +164,28 @@ class MigrationProxyConfigurationTest {
         assertThatThrownBy(() -> MigrationProxyConfiguration.from(configuration))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("Admin password");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"old", "new"})
+    void shouldRequireSslForEachKerberosBackend(String target) {
+        Configuration configuration = kerberised();
+        configuration.setProperty("imap." + target + ".ssl", "false");
+
+        assertThatThrownBy(() -> MigrationProxyConfiguration.from(configuration))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("Kerberos requires 'imap.%s.ssl=true' to protect administrator delegation credentials", target);
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"old", "new"})
+    void shouldRequireCertificateValidationForEachKerberosBackend(String target) {
+        Configuration configuration = kerberised();
+        configuration.setProperty("imap." + target + ".ssl.ignoreCertificates", "true");
+
+        assertThatThrownBy(() -> MigrationProxyConfiguration.from(configuration))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("Kerberos requires 'imap.%s.ssl.ignoreCertificates=false' to authenticate the backend", target);
     }
 
     @Test
