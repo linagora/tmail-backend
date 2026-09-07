@@ -60,7 +60,6 @@ class MigrationGssapiRealmMappingTest {
     private static final String USER = "alice@" + MAIL_DOMAIN;
     private static final String ADMIN = "admin@" + MAIL_DOMAIN;
     private static final String ADMIN_PASSWORD = "admin-password";
-    private static final int PROXY_IMAP_PORT = 10143; // conf/imapserver.xml binds the proxy IMAP server here
     private static final int MAX_SASL_ROUNDS = 10;
 
     @Order(1)
@@ -82,6 +81,7 @@ class MigrationGssapiRealmMappingTest {
     private static BackendTlsTestFixture backendTls;
     private static StubBackendServer oldBackend;
     private static GuiceJamesServer proxy;
+    private static int proxyImapPort;
 
     @BeforeAll
     static void setUpAll() throws Exception {
@@ -116,8 +116,10 @@ class MigrationGssapiRealmMappingTest {
             .build();
         proxy = MigrationProxyServer.createServer(configuration)
             .overrideWith(postgresExtension.getModule(),
-                binder -> binder.bind(BackendSslContextFactory.class).toInstance(backendTls.sslContextFactory()));
+                binder -> binder.bind(BackendSslContextFactory.class).toInstance(backendTls.sslContextFactory()),
+                MigrationProxyImapProbe.MODULE);
         proxy.start();
+        proxyImapPort = proxy.getProbe(MigrationProxyImapProbe.class).getImapPort();
     }
 
     @AfterAll
@@ -143,7 +145,7 @@ class MigrationGssapiRealmMappingTest {
 
     @Test
     void gssapiShouldOpenTheBackendSessionForTheMappedUser() throws Exception {
-        try (ProxyImapClient client = new ProxyImapClient(PROXY_IMAP_PORT);
+        try (ProxyImapClient client = new ProxyImapClient(proxyImapPort);
              GssapiTestClient gssapiClient = kerberos.client(SERVICE)) {
             client.send("a1 AUTHENTICATE GSSAPI " + encode(gssapiClient.initialResponse()));
             String response = completeGssapiExchange(client, gssapiClient);

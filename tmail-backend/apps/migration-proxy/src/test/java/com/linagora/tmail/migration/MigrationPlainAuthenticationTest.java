@@ -48,7 +48,6 @@ class MigrationPlainAuthenticationTest {
     private static final String USER = "bob@" + DOMAIN; // not migrated: the proxy relays it to the old backend
     private static final String PASSWORD = "secret";
     private static final String REJECTED_USER = "mallory@" + DOMAIN;
-    private static final int PROXY_IMAP_PORT = 10143; // conf/imapserver.xml binds the proxy IMAP server here
 
     @RegisterExtension
     static PostgresExtension postgresExtension =
@@ -61,6 +60,7 @@ class MigrationPlainAuthenticationTest {
 
     private static StubBackendServer oldBackend;
     private static GuiceJamesServer proxy;
+    private static int proxyImapPort;
 
     @BeforeAll
     static void setUpAll() throws Exception {
@@ -76,8 +76,10 @@ class MigrationPlainAuthenticationTest {
             .workingDirectory(workingDirectory)
             .configurationFromClasspath()
             .build();
-        proxy = MigrationProxyServer.createServer(configuration).overrideWith(postgresExtension.getModule());
+        proxy = MigrationProxyServer.createServer(configuration)
+            .overrideWith(postgresExtension.getModule(), MigrationProxyImapProbe.MODULE);
         proxy.start();
+        proxyImapPort = proxy.getProbe(MigrationProxyImapProbe.class).getImapPort();
     }
 
     @AfterAll
@@ -94,7 +96,7 @@ class MigrationPlainAuthenticationTest {
 
     @Test
     void capabilityShouldAdvertisePlainAndKeepLoginEnabled() throws Exception {
-        try (ProxyImapClient client = new ProxyImapClient(PROXY_IMAP_PORT)) {
+        try (ProxyImapClient client = new ProxyImapClient(proxyImapPort)) {
             client.send("a1 CAPABILITY");
 
             assertThat(client.untilTagged("a1"))
@@ -109,7 +111,7 @@ class MigrationPlainAuthenticationTest {
 
     @Test
     void authenticatePlainShouldReplayTheCredentialsAgainstTheBackend() throws Exception {
-        try (ProxyImapClient client = new ProxyImapClient(PROXY_IMAP_PORT)) {
+        try (ProxyImapClient client = new ProxyImapClient(proxyImapPort)) {
             client.send("a1 AUTHENTICATE PLAIN " + plainResponse(USER, PASSWORD));
 
             assertThat(client.tagged("a1")).startsWith("a1 OK");
@@ -119,7 +121,7 @@ class MigrationPlainAuthenticationTest {
 
     @Test
     void authenticatePlainShouldSupportAContinuationRatherThanAnInitialResponse() throws Exception {
-        try (ProxyImapClient client = new ProxyImapClient(PROXY_IMAP_PORT)) {
+        try (ProxyImapClient client = new ProxyImapClient(proxyImapPort)) {
             client.send("a1 AUTHENTICATE PLAIN");
             assertThat(client.readLine()).startsWith("+");
 
@@ -131,7 +133,7 @@ class MigrationPlainAuthenticationTest {
 
     @Test
     void authenticatePlainShouldSetUpTheRelayForTheEnsuingExchange() throws Exception {
-        try (ProxyImapClient client = new ProxyImapClient(PROXY_IMAP_PORT)) {
+        try (ProxyImapClient client = new ProxyImapClient(proxyImapPort)) {
             client.send("a1 AUTHENTICATE PLAIN " + plainResponse(USER, PASSWORD));
             assertThat(client.tagged("a1")).startsWith("a1 OK");
 
@@ -145,7 +147,7 @@ class MigrationPlainAuthenticationTest {
 
     @Test
     void authenticatePlainShouldBeRejectedWhenTheBackendRejectsTheCredentials() throws Exception {
-        try (ProxyImapClient client = new ProxyImapClient(PROXY_IMAP_PORT)) {
+        try (ProxyImapClient client = new ProxyImapClient(proxyImapPort)) {
             client.send("a1 AUTHENTICATE PLAIN " + plainResponse(REJECTED_USER, "wrong"));
 
             assertThat(client.tagged("a1")).isEqualTo("a1 NO AUTHENTICATE failed against backend.");
@@ -154,7 +156,7 @@ class MigrationPlainAuthenticationTest {
 
     @Test
     void authenticatePlainShouldRejectDelegation() throws Exception {
-        try (ProxyImapClient client = new ProxyImapClient(PROXY_IMAP_PORT)) {
+        try (ProxyImapClient client = new ProxyImapClient(proxyImapPort)) {
             client.send("a1 AUTHENTICATE PLAIN " + encode(REJECTED_USER + '\0' + USER + '\0' + PASSWORD));
 
             assertThat(client.tagged("a1")).isEqualTo("a1 NO AUTHENTICATE failed.");
@@ -163,7 +165,7 @@ class MigrationPlainAuthenticationTest {
 
     @Test
     void authenticatePlainShouldRejectAMalformedInitialResponse() throws Exception {
-        try (ProxyImapClient client = new ProxyImapClient(PROXY_IMAP_PORT)) {
+        try (ProxyImapClient client = new ProxyImapClient(proxyImapPort)) {
             client.send("a1 AUTHENTICATE PLAIN @@@@");
 
             assertThat(client.tagged("a1")).startsWith("a1 BAD");
@@ -172,7 +174,7 @@ class MigrationPlainAuthenticationTest {
 
     @Test
     void authenticatePlainShouldRejectAPayloadThatIsNotSaslPlain() throws Exception {
-        try (ProxyImapClient client = new ProxyImapClient(PROXY_IMAP_PORT)) {
+        try (ProxyImapClient client = new ProxyImapClient(proxyImapPort)) {
             client.send("a1 AUTHENTICATE PLAIN " + encode("no-separator-here"));
 
             assertThat(client.tagged("a1")).isEqualTo("a1 NO AUTHENTICATE failed.");
@@ -181,7 +183,7 @@ class MigrationPlainAuthenticationTest {
 
     @Test
     void authenticatePlainShouldSupportClientAbort() throws Exception {
-        try (ProxyImapClient client = new ProxyImapClient(PROXY_IMAP_PORT)) {
+        try (ProxyImapClient client = new ProxyImapClient(proxyImapPort)) {
             client.send("a1 AUTHENTICATE PLAIN");
             assertThat(client.readLine()).startsWith("+");
 
@@ -193,7 +195,7 @@ class MigrationPlainAuthenticationTest {
 
     @Test
     void authenticateGssapiShouldBeRejectedWhenKerberosIsDisabled() throws Exception {
-        try (ProxyImapClient client = new ProxyImapClient(PROXY_IMAP_PORT)) {
+        try (ProxyImapClient client = new ProxyImapClient(proxyImapPort)) {
             client.send("a1 AUTHENTICATE GSSAPI");
 
             assertThat(client.tagged("a1")).isEqualTo("a1 NO Unsupported authentication mechanism.");

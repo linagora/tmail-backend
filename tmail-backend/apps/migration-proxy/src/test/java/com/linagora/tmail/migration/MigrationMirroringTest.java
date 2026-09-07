@@ -124,7 +124,8 @@ class MigrationMirroringTest {
             .workingDirectory(workingDirectory)
             .configurationFromClasspath()
             .build();
-        proxy = MigrationProxyServer.createServer(configuration).overrideWith(postgresExtension.getModule());
+        proxy = MigrationProxyServer.createServer(configuration)
+            .overrideWith(postgresExtension.getModule(), MigrationProxyImapProbe.MODULE);
         proxy.start();
         proxy.getProbe(DataProbeImpl.class).fluent().addDomain(DOMAIN);
         new PostgresMigratedUsersDAO(postgresExtension.getDefaultPostgresExecutor())
