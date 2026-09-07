@@ -28,6 +28,7 @@ import org.apache.james.imap.api.ImapConfiguration;
 import org.apache.james.imap.api.ImapMessage;
 import org.apache.james.imap.api.Tag;
 import org.apache.james.imap.api.message.request.ImapRequest;
+import org.apache.james.imap.api.process.ImapLineHandler;
 import org.apache.james.imap.api.process.ImapProcessor;
 import org.apache.james.imap.api.process.ImapSaslExchangeTracker;
 import org.apache.james.imap.api.process.ImapSession;
@@ -84,6 +85,15 @@ public class ProxyImapProcessor implements ImapProcessor {
     // carries the very same credentials - would only push clients back onto the weaker command.
     private static final boolean REQUIRES_SSL = false;
     private static final SaslMechanism PLAIN = new PlainSaslMechanism(PlainSaslMechanism.ENABLED, REQUIRES_SSL);
+
+    static void pushContinuationHandler(ImapSession session, SaslExchange exchange, ImapLineHandler lineHandler) {
+        try {
+            session.pushLineHandler(lineHandler);
+        } catch (RuntimeException e) {
+            ImapSaslExchangeTracker.forSession(session).closeExchange(exchange);
+            throw e;
+        }
+    }
 
     private final BackendResolver backendResolver;
     private final BackendRelay backendRelay;
@@ -211,7 +221,8 @@ public class ProxyImapProcessor implements ImapProcessor {
         if (step instanceof SaslStep.Challenge challenge) {
             // A single line handler drives the whole exchange: it stays pushed until a terminal step, so
             // that the base64 continuations are not parsed as IMAP commands.
-            session.pushLineHandler((lineSession, data) -> continuation(pending, lineSession, data));
+            pushContinuationHandler(session, pending.exchange(),
+                (lineSession, data) -> continuation(pending, lineSession, data));
             writeChallenge(pending.clientChannel(), challenge);
             return;
         }
