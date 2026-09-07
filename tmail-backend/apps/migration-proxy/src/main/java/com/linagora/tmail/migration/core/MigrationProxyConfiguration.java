@@ -38,7 +38,7 @@ import com.google.common.base.Strings;
  *   imap.&lt;target&gt;.host
  *   imap.&lt;target&gt;.port
  *   imap.&lt;target&gt;.ssl                    (default false: implicit TLS to the backend)
- *   imap.&lt;target&gt;.ssl.ignoreCertificates  (default false: trust self-signed backend certs)
+ *   imap.&lt;target&gt;.ssl.ignoreCertificates  (default false: validate backend certificates)
  *   imap.&lt;target&gt;.forwardProxyInfo        (default false: forward the inbound PROXY protocol info)
  *   imap.&lt;target&gt;.admin.username           (required when Kerberos is enabled)
  *   imap.&lt;target&gt;.admin.password           (required when Kerberos is enabled)
@@ -53,6 +53,18 @@ public record MigrationProxyConfiguration(Backend imapOld, Backend imapNew, Dura
                                           Optional<KerberosConfiguration> kerberos) {
     public static final Duration DEFAULT_HANDSHAKE_TIMEOUT = Duration.ofSeconds(30);
 
+    private static void requireVerifiedAdminDelegation(Backend backend) {
+        Preconditions.checkArgument(backend.admin().isPresent(),
+            "Kerberos requires 'imap.%s.admin.username' and 'imap.%s.admin.password' to be set",
+            backend.name(), backend.name());
+        Preconditions.checkArgument(backend.ssl(),
+            "Kerberos requires 'imap.%s.ssl=true' to protect administrator delegation credentials",
+            backend.name());
+        Preconditions.checkArgument(!backend.sslIgnoreCertificates(),
+            "Kerberos requires 'imap.%s.ssl.ignoreCertificates=false' to authenticate the backend",
+            backend.name());
+    }
+
     public MigrationProxyConfiguration {
         Preconditions.checkNotNull(imapOld);
         Preconditions.checkNotNull(imapNew);
@@ -60,16 +72,10 @@ public record MigrationProxyConfiguration(Backend imapOld, Backend imapNew, Dura
         Preconditions.checkNotNull(kerberos);
         if (kerberos.isPresent()) {
             // Kerberos authenticated clients never hand us their password: the only way into a backend is
-            // then delegation from a configured administrator.
-            requireAdmin(imapOld);
-            requireAdmin(imapNew);
+            // then delegation from a configured administrator over an authenticated TLS connection.
+            requireVerifiedAdminDelegation(imapOld);
+            requireVerifiedAdminDelegation(imapNew);
         }
-    }
-
-    private static void requireAdmin(Backend backend) {
-        Preconditions.checkArgument(backend.admin().isPresent(),
-            "Kerberos requires 'imap.%s.admin.username' and 'imap.%s.admin.password' to be set",
-            backend.name(), backend.name());
     }
 
     public static MigrationProxyConfiguration from(Configuration configuration) {
