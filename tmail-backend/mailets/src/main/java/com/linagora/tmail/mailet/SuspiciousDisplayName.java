@@ -57,15 +57,15 @@ import com.unboundid.ldap.sdk.SearchScope;
  * <p>Configuration:</p>
  * <pre><code>
  * &lt;!-- userBase from LdapRepositoryConfiguration, default stop words --&gt;
- * &lt;mailet match="SuspiciousDisplayName" class="AddHeader"&gt;
+ * &lt;mailet match="SuspiciousDisplayName" class="SetMimeHeader"&gt;
  *   &lt;name&gt;X-Suspicious-DisplayName&lt;/name&gt;&lt;value&gt;true&lt;/value&gt;
  * &lt;/mailet&gt;
  *
  * &lt;!-- explicit userBase --&gt;
- * &lt;mailet match="SuspiciousDisplayName=ou=people,dc=james,dc=org" class="AddHeader"&gt; ... &lt;/mailet&gt;
+ * &lt;mailet match="SuspiciousDisplayName=ou=people,dc=james,dc=org" class="SetMimeHeader"&gt; ... &lt;/mailet&gt;
  *
  * &lt;!-- explicit userBase + custom stop words --&gt;
- * &lt;mailet match="SuspiciousDisplayName=ou=people,dc=james,dc=org?stopWords=Mr,Mme,Mrs,Dr" class="AddHeader"&gt;
+ * &lt;mailet match="SuspiciousDisplayName=ou=people,dc=james,dc=org?stopWords=Mr,Mme,Mrs,Dr" class="SetMimeHeader"&gt;
  *   ...
  * &lt;/mailet&gt;
  * </code></pre>

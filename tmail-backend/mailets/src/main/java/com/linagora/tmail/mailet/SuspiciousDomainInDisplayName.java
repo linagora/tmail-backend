@@ -51,7 +51,7 @@ import com.google.common.collect.ImmutableList;
  *
  * <p>No configuration parameter is required:</p>
  * <pre><code>
- * &lt;mailet matcher="SuspiciousDomainInDisplayName" class="AddHeader"&gt;
+ * &lt;mailet matcher="SuspiciousDomainInDisplayName" class="SetMimeHeader"&gt;
  *   &lt;name&gt;X-Suspicious-Domain&lt;/name&gt;&lt;value&gt;true&lt;/value&gt;
  * &lt;/mailet&gt;
  * </code></pre>

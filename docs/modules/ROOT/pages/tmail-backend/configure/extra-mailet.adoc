@@ -211,7 +211,7 @@ SuspiciousDisplayName[=<userBase>][?stopWords=<csv>]
 *Minimal — uses configured userBase and default stop words:*
 
 ....
-<mailet match="SuspiciousDisplayName" class="AddHeader">
+<mailet match="SuspiciousDisplayName" class="SetMimeHeader">
   <name>X-Suspicious-DisplayName</name>
   <value>true</value>
 </mailet>
@@ -220,7 +220,7 @@ SuspiciousDisplayName[=<userBase>][?stopWords=<csv>]
 *Explicit userBase:*
 
 ....
-<mailet match="SuspiciousDisplayName=ou=people,dc=james,dc=org" class="AddHeader">
+<mailet match="SuspiciousDisplayName=ou=people,dc=james,dc=org" class="SetMimeHeader">
   <name>X-Suspicious-DisplayName</name>
   <value>true</value>
 </mailet>
@@ -230,7 +230,7 @@ SuspiciousDisplayName[=<userBase>][?stopWords=<csv>]
 
 ....
 <mailet match="SuspiciousDisplayName=ou=people,dc=james,dc=org?stopWords=Mr,Mme,Mrs,Dr,Prof"
-        class="AddHeader">
+        class="SetMimeHeader">
   <name>X-Suspicious-DisplayName</name>
   <value>true</value>
 </mailet>
@@ -270,7 +270,7 @@ No condition parameter is required. The list of local domains is taken directly 
 server's configured domain list.
 
 ....
-<mailet match="SuspiciousDomainInDisplayName" class="AddHeader">
+<mailet match="SuspiciousDomainInDisplayName" class="SetMimeHeader">
   <name>X-Suspicious-Domain</name>
   <value>true</value>
 </mailet>
