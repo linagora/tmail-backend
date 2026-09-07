@@ -78,7 +78,7 @@ class SmtpRoutingTest {
             .configurationFromClasspath()
             .build();
         server = MigrationProxyServer.createServer(configuration)
-            .overrideWith(postgresExtension.getModule());
+            .overrideWith(postgresExtension.getModule(), MigrationProxyImapProbe.MODULE);
         server.start();
 
         server.getProbe(DataProbeImpl.class).fluent().addDomain(DOMAIN);

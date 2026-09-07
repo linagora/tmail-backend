@@ -117,6 +117,7 @@ class MigrationProxyRabbitMQWiringTest {
         proxy = MigrationProxyServer.createServer(configuration, EventBusModuleChoice.RABBITMQ)
             .overrideWith(postgresExtension.getModule())
             .overrideWith(new RabbitMQConfigurationModule())
+            .overrideWith(MigrationProxyImapProbe.MODULE)
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding().to(ReconnectionHandlersProbe.class));
         proxy.start();

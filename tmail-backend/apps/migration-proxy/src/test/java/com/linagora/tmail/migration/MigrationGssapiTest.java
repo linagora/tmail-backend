@@ -58,7 +58,6 @@ class MigrationGssapiTest {
     private static final String USER = "alice@james.test";
     private static final String ADMIN = "admin@james.test";
     private static final String ADMIN_PASSWORD = "admin-password";
-    private static final int PROXY_IMAP_PORT = 10143; // conf/imapserver.xml binds the proxy IMAP server here
     private static final int MAX_SASL_ROUNDS = 10;
 
     @Order(1)
@@ -80,6 +79,7 @@ class MigrationGssapiTest {
     private static BackendTlsTestFixture backendTls;
     private static StubBackendServer oldBackend;
     private static GuiceJamesServer proxy;
+    private static int proxyImapPort;
 
     @BeforeAll
     static void setUpAll() throws Exception {
@@ -112,8 +112,10 @@ class MigrationGssapiTest {
             .build();
         proxy = MigrationProxyServer.createServer(configuration)
             .overrideWith(postgresExtension.getModule(),
-                binder -> binder.bind(BackendSslContextFactory.class).toInstance(backendTls.sslContextFactory()));
+                binder -> binder.bind(BackendSslContextFactory.class).toInstance(backendTls.sslContextFactory()),
+                MigrationProxyImapProbe.MODULE);
         proxy.start();
+        proxyImapPort = proxy.getProbe(MigrationProxyImapProbe.class).getImapPort();
     }
 
     @AfterAll
@@ -139,7 +141,7 @@ class MigrationGssapiTest {
 
     @Test
     void capabilityShouldDisableLoginAndAdvertiseGssapi() throws Exception {
-        try (ProxyImapClient client = new ProxyImapClient(PROXY_IMAP_PORT)) {
+        try (ProxyImapClient client = new ProxyImapClient(proxyImapPort)) {
             client.send("a1 CAPABILITY");
 
             assertThat(client.untilTagged("a1"))
@@ -153,7 +155,7 @@ class MigrationGssapiTest {
 
     @Test
     void loginShouldBeRejected() throws Exception {
-        try (ProxyImapClient client = new ProxyImapClient(PROXY_IMAP_PORT)) {
+        try (ProxyImapClient client = new ProxyImapClient(proxyImapPort)) {
             client.send("a1 LOGIN " + USER + " whatever");
 
             assertThat(client.tagged("a1")).isEqualTo("a1 NO LOGIN is disabled, use AUTHENTICATE GSSAPI.");
@@ -162,7 +164,7 @@ class MigrationGssapiTest {
 
     @Test
     void unsupportedMechanismShouldBeRejected() throws Exception {
-        try (ProxyImapClient client = new ProxyImapClient(PROXY_IMAP_PORT)) {
+        try (ProxyImapClient client = new ProxyImapClient(proxyImapPort)) {
             client.send("a1 AUTHENTICATE PLAIN");
 
             assertThat(client.tagged("a1")).isEqualTo("a1 NO Unsupported authentication mechanism.");
@@ -171,7 +173,7 @@ class MigrationGssapiTest {
 
     @Test
     void gssapiShouldAuthenticateThenDelegateTheBackendSessionToTheAdmin() throws Exception {
-        try (ProxyImapClient client = new ProxyImapClient(PROXY_IMAP_PORT);
+        try (ProxyImapClient client = new ProxyImapClient(proxyImapPort);
              GssapiTestClient gssapiClient = kerberos.client(SERVICE)) {
             client.send("a1 AUTHENTICATE GSSAPI " + encode(gssapiClient.initialResponse()));
             String response = completeGssapiExchange(client, gssapiClient);

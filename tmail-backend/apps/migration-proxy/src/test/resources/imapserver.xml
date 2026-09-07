@@ -8,7 +8,7 @@
 <imapservers>
     <imapserver enabled="true">
         <jmxName>migration-proxy-imap</jmxName>
-        <bind>0.0.0.0:10143</bind>
+        <bind>127.0.0.1:0</bind>
         <connectionBacklog>200</connectionBacklog>
         <!-- Set to true to accept the HAProxy PROXY protocol from an upstream load balancer -->
         <proxyRequired>false</proxyRequired>

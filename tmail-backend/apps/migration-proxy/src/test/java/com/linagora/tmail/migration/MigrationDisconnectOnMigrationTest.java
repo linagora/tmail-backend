@@ -61,7 +61,6 @@ class MigrationDisconnectOnMigrationTest {
     private static final String DOMAIN = "managed.tld";
     private static final String USER = "bob@" + DOMAIN; // not migrated: the proxy relays it to the old backend
     private static final String PASSWORD = "secret";
-    private static final int PROXY_IMAP_PORT = 10143; // conf/imapserver.xml binds the proxy IMAP server here
 
     @RegisterExtension
     static PostgresExtension postgresExtension = PostgresExtension.empty();
@@ -71,6 +70,7 @@ class MigrationDisconnectOnMigrationTest {
 
     private StubBackendServer oldBackend;
     private GuiceJamesServer proxy;
+    private int proxyImapPort;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -85,8 +85,10 @@ class MigrationDisconnectOnMigrationTest {
             .workingDirectory(workingDirectory)
             .configurationFromClasspath()
             .build();
-        proxy = MigrationProxyServer.createServer(configuration).overrideWith(postgresExtension.getModule());
+        proxy = MigrationProxyServer.createServer(configuration)
+            .overrideWith(postgresExtension.getModule(), MigrationProxyImapProbe.MODULE);
         proxy.start();
+        proxyImapPort = proxy.getProbe(MigrationProxyImapProbe.class).getImapPort();
 
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(
             proxy.getProbe(WebAdminGuiceProbe.class).getWebAdminPort()).build();
@@ -107,7 +109,7 @@ class MigrationDisconnectOnMigrationTest {
 
     @Test
     void puttingAUserAsMigratedShouldCutItsEstablishedProxiedConnection() throws Exception {
-        try (Socket clientSocket = new Socket("127.0.0.1", PROXY_IMAP_PORT)) {
+        try (Socket clientSocket = new Socket("127.0.0.1", proxyImapPort)) {
             clientSocket.setSoTimeout(60_000);
             BufferedReader reader = new BufferedReader(new InputStreamReader(clientSocket.getInputStream(), StandardCharsets.UTF_8));
             OutputStream out = clientSocket.getOutputStream();
