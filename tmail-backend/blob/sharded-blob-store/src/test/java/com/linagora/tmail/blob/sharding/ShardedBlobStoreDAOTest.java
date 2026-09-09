@@ -163,6 +163,31 @@ class ShardedBlobStoreDAOTest implements BlobStoreDAOContract, MetadataAwareBlob
     }
 
     @Test
+    void secondaryOmittedBucketShouldSupportListingAndBulkDeletion() {
+        // SecondaryBlobStoreDAO appends "-copy" before delegating. Adapt omissions as production wiring does.
+        BucketName secondaryBucket = BucketName.of(TEST_BUCKET_NAME.asString() + "-copy");
+        ShardedBlobStoreDAO secondary = new ShardedBlobStoreDAO(delegate,
+            TmailBlobStoreShardingConfiguration.of(SHARDING.shardCount(), TEST_BUCKET_NAME)
+                .forBucketSuffix("-copy"));
+        List<BlobId> blobIds = someBlobIds(100);
+        blobIds.forEach(blobId -> Mono.from(secondary.save(secondaryBucket, blobId, SHORT_BYTEARRAY)).block());
+
+        // An omitted secondary bucket stays as one physical bucket while exposing all its blobs.
+        assertThat(Flux.from(secondary.listBlobs(secondaryBucket)).collectList().block())
+            .containsExactlyInAnyOrderElementsOf(blobIds);
+        assertThat(Flux.from(delegate.listBuckets()).collectList().block())
+            .containsExactly(secondaryBucket);
+
+        // GC bulk-deletes listed IDs, so listing and deletion must resolve to the same physical bucket.
+        Mono.from(secondary.delete(secondaryBucket, blobIds)).block();
+
+        assertThat(Flux.from(secondary.listBlobs(secondaryBucket)).collectList().block())
+            .isEmpty();
+        assertThat(Flux.from(delegate.listBuckets()).collectList().block())
+            .isEmpty();
+    }
+
+    @Test
     void listBucketsShouldIgnoreBucketsNotBelongingToTheShardingLayout() {
         BlobId blobId = new TestBlobId("blob-1");
         Mono.from(testee.save(TEST_BUCKET_NAME, blobId, SHORT_BYTEARRAY)).block();

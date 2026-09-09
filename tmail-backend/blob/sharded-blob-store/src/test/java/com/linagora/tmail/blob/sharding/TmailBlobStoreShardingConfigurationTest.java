@@ -78,7 +78,7 @@ class TmailBlobStoreShardingConfigurationTest {
     }
 
     @Test
-    void logicalBucketShouldReverPhysicalBucket() {
+    void logicalBucketShouldReversePhysicalBucketMapping() {
         TmailBlobStoreShardingConfiguration sharding = TmailBlobStoreShardingConfiguration.of(256);
 
         assertThat(sharding.physicalBuckets(BUCKET)
@@ -121,7 +121,6 @@ class TmailBlobStoreShardingConfigurationTest {
         assertThat(perShard.values()).allSatisfy(count -> assertThat(count).isBetween(300L, 500L));
     }
 
-
     @Test
     void fromShouldBeDisabledWhenPropertyIsOmitted() throws Exception {
         assertThat(TmailBlobStoreShardingConfiguration.from(blobProperties("implementation=s3")))
@@ -140,6 +139,33 @@ class TmailBlobStoreShardingConfigurationTest {
     }
 
     @Test
+    void disabledPhysicalBucketShouldPreserveLogicalBucket() {
+        assertThat(TmailBlobStoreShardingConfiguration.DISABLED.physicalBucket(BUCKET, new TestBlobId("blob-1")))
+            .isEqualTo(BUCKET);
+        assertThat(TmailBlobStoreShardingConfiguration.DISABLED.physicalBucket(BUCKET, 0))
+            .isEqualTo(BUCKET);
+    }
+
+    @Test
+    void disabledPhysicalBucketsShouldPreserveLogicalBucket() {
+        assertThat(TmailBlobStoreShardingConfiguration.DISABLED.physicalBuckets(BUCKET))
+            .containsExactly(BUCKET);
+    }
+
+    @Test
+    void disabledLogicalBucketShouldPreservePhysicalBucket() {
+        assertThat(TmailBlobStoreShardingConfiguration.DISABLED.logicalBucket(BUCKET))
+            .contains(BUCKET);
+    }
+
+    @Test
+    void shardOfShouldRejectDisabledSharding() {
+        assertThatThrownBy(() -> TmailBlobStoreShardingConfiguration.DISABLED.shardOf(new TestBlobId("blob-1")))
+            .isInstanceOf(IllegalStateException.class)
+            .hasMessage("Cannot compute a shard when sharding is disabled");
+    }
+
+    @Test
     void fromShouldReadTheShardCount() throws Exception {
         assertThat(TmailBlobStoreShardingConfiguration.from(blobProperties("tmail.blobstore.shards=256")))
             .isEqualTo(TmailBlobStoreShardingConfiguration.of(256));
@@ -152,6 +178,7 @@ class TmailBlobStoreShardingConfigurationTest {
 
         assertThat(sharding.physicalBuckets(BUCKET)).containsExactly(BUCKET);
         assertThat(sharding.physicalBucket(BUCKET, new TestBlobId("blob-1"))).isEqualTo(BUCKET);
+        assertThat(sharding.physicalBucket(BUCKET, 0)).isEqualTo(BUCKET);
     }
 
     @Test
@@ -186,10 +213,28 @@ class TmailBlobStoreShardingConfigurationTest {
     }
 
     @Test
+    void fromShouldIgnoreBlankOmittedBucketEntries() throws Exception {
+        assertThat(TmailBlobStoreShardingConfiguration.from(blobProperties(
+            "tmail.blobstore.shards=256",
+            "tmail.blobstore.shards.ommited.buckets=jmap-uploads, , mail-processing,")))
+            .isEqualTo(TmailBlobStoreShardingConfiguration.of(256,
+                BucketName.of("jmap-uploads"), BucketName.of("mail-processing")));
+    }
+
+    @Test
     void fromShouldIgnoreOmittedBucketsWhenShardingIsOff() throws Exception {
         assertThat(TmailBlobStoreShardingConfiguration.from(blobProperties(
             "tmail.blobstore.shards.ommited.buckets=jmap-uploads")))
             .isEqualTo(TmailBlobStoreShardingConfiguration.DISABLED);
+    }
+
+    @Test
+    void forBucketSuffixShouldAdaptOmittedBuckets() {
+        TmailBlobStoreShardingConfiguration sharding = TmailBlobStoreShardingConfiguration.of(4, UPLOADS_BUCKET, MAIL_PROCESSING_BUCKET);
+
+        assertThat(sharding.forBucketSuffix("-copy"))
+            .isEqualTo(TmailBlobStoreShardingConfiguration.of(4,
+                BucketName.of("jmap-uploads-copy"), BucketName.of("mail-processing-copy")));
     }
 
     /**
@@ -254,6 +299,26 @@ class TmailBlobStoreShardingConfigurationTest {
     @Test
     void shardCountShouldRejectNegativeValues() {
         assertThatThrownBy(() -> TmailBlobStoreShardingConfiguration.of(-1))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void physicalBucketShouldRejectShardOutsideLayout() {
+        TmailBlobStoreShardingConfiguration sharding = TmailBlobStoreShardingConfiguration.of(4);
+
+        assertThatThrownBy(() -> sharding.physicalBucket(BUCKET, -1))
+            .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> sharding.physicalBucket(BUCKET, 4))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void omittedPhysicalBucketShouldRejectShardOutsideLayout() {
+        TmailBlobStoreShardingConfiguration sharding = TmailBlobStoreShardingConfiguration.of(4, BUCKET);
+
+        assertThatThrownBy(() -> sharding.physicalBucket(BUCKET, -1))
+            .isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> sharding.physicalBucket(BUCKET, 4))
             .isInstanceOf(IllegalArgumentException.class);
     }
 }

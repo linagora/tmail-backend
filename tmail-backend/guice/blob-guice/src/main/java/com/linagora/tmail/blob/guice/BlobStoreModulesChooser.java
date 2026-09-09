@@ -228,8 +228,10 @@ public class BlobStoreModulesChooser {
                                                 TmailBlobStoreShardingConfiguration shardingConfiguration) {
             S3ClientFactory s3SecondaryClientFactory = new S3ClientFactory(secondaryS3BlobStoreConfiguration.s3BlobStoreConfiguration(),
                 () -> new JamesS3MetricPublisher(metricFactory, gaugeRegistry, "secondary_s3"));
+            // SecondaryBlobStoreDAO adds the suffix before calling this DAO. Mirror it in omitted bucket names so
+            // the omission configuration remains expressed with the original logical names.
             return maybeShard(new S3BlobStoreDAO(s3SecondaryClientFactory, secondaryS3BlobStoreConfiguration.s3BlobStoreConfiguration(), blobIdFactory, s3RequestOption),
-                shardingConfiguration);
+                shardingConfiguration.forBucketSuffix(secondaryS3BlobStoreConfiguration.secondaryBucketSuffix()));
         }
 
         @ProvidesIntoSet
