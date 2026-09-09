@@ -181,7 +181,8 @@ consequence is that `objectstorage.namespace.read.fallback` no longer matches an
 
 Listings - including the ones driven by the deduplication garbage collector - transparently merge every shard, with a
 concurrency of 2. Sharding sits at the very bottom of the blob store layers, and thus also applies to the secondary
-blob store when one is configured.
+blob store when one is configured. Omitted buckets are configured without the secondary bucket suffix; Twake Mail
+applies that suffix automatically before matching them on the secondary store.
 
 [WARNING]
 ====

@@ -132,6 +132,25 @@ public record TmailBlobStoreShardingConfiguration(int shardCount, Set<BucketName
     }
 
     /**
+     * Adapts omitted bucket names to a delegate receiving suffixed logical bucket names.
+     *
+     * <p>The secondary blob store appends its suffix before invoking its delegate, while omitted buckets are
+     * configured using their original logical names. Without applying the same suffix here, an omitted bucket such
+     * as {@code jmap-uploads} would be received as {@code jmap-uploads-copy}, fail the omission check, and be
+     * unexpectedly sharded on the secondary store.</p>
+     */
+    public TmailBlobStoreShardingConfiguration forBucketSuffix(String bucketSuffix) {
+        Preconditions.checkNotNull(bucketSuffix, "bucketSuffix");
+        if (bucketSuffix.isEmpty()) {
+            return this;
+        }
+        return new TmailBlobStoreShardingConfiguration(shardCount,
+            omittedBuckets.stream()
+                .map(bucket -> BucketName.of(bucket.asString() + bucketSuffix))
+                .collect(ImmutableSet.toImmutableSet()));
+    }
+
+    /**
      * @return whether this bucket is left out of the layout, and thus stored under its plain name.
      */
     public boolean isOmitted(BucketName logicalBucket) {
@@ -139,22 +158,31 @@ public record TmailBlobStoreShardingConfiguration(int shardCount, Set<BucketName
     }
 
     public int shardOf(BlobId blobId) {
+        Preconditions.checkState(enabled(), "Cannot compute a shard when sharding is disabled");
         return Math.floorMod(HASH_FUNCTION.hashString(blobId.asString(), StandardCharsets.UTF_8).asInt(), shardCount);
     }
 
     public BucketName physicalBucket(BucketName logicalBucket, BlobId blobId) {
-        if (isOmitted(logicalBucket)) {
+        if (!enabled() || isOmitted(logicalBucket)) {
             return logicalBucket;
         }
         return physicalBucket(logicalBucket, shardOf(blobId));
     }
 
     public BucketName physicalBucket(BucketName logicalBucket, int shard) {
+        if (!enabled()) {
+            return logicalBucket;
+        }
+        Preconditions.checkArgument(shard >= 0 && shard < shardCount,
+            "Shard must be between 0 and %s, got %s", shardCount - 1, shard);
+        if (isOmitted(logicalBucket)) {
+            return logicalBucket;
+        }
         return BucketName.of(logicalBucket.asString() + SEPARATOR + format(shard));
     }
 
     public List<BucketName> physicalBuckets(BucketName logicalBucket) {
-        if (isOmitted(logicalBucket)) {
+        if (!enabled() || isOmitted(logicalBucket)) {
             return ImmutableList.of(logicalBucket);
         }
         return IntStream.range(0, shardCount)
@@ -169,7 +197,7 @@ public record TmailBlobStoreShardingConfiguration(int shardCount, Set<BucketName
      * may well hold buckets written before sharding was turned on, or by other tools.
      */
     public Optional<BucketName> logicalBucket(BucketName physicalBucket) {
-        if (isOmitted(physicalBucket)) {
+        if (!enabled() || isOmitted(physicalBucket)) {
             return Optional.of(physicalBucket);
         }
         String value = physicalBucket.asString();
