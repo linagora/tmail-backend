@@ -43,6 +43,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 class ShardedBlobStoreDAOTest implements BlobStoreDAOContract, MetadataAwareBlobStoreDAOContract {
+    private static final String PREFIX = "prefix-";
     private static final TmailBlobStoreShardingConfiguration SHARDING = TmailBlobStoreShardingConfiguration.of(8);
 
     private MemoryBlobStoreDAO delegate;
@@ -95,14 +96,14 @@ class ShardedBlobStoreDAOTest implements BlobStoreDAOContract, MetadataAwareBlob
 
     @Test
     void listBlobsWithPrefixShouldMergeEveryShard() {
-        List<BlobId> recoveryBlobIds = IntStream.range(0, 100)
-            .mapToObj(i -> (BlobId) new TestBlobId(BlobStoreDAO.RECOVERY_BLOB_PREFIX + i))
+        List<BlobId> prefixedBlobIds = IntStream.range(0, 100)
+            .mapToObj(i -> (BlobId) new TestBlobId(PREFIX + i))
             .collect(ImmutableList.toImmutableList());
-        recoveryBlobIds.forEach(blobId -> Mono.from(testee.save(TEST_BUCKET_NAME, blobId, SHORT_BYTEARRAY)).block());
+        prefixedBlobIds.forEach(blobId -> Mono.from(testee.save(TEST_BUCKET_NAME, blobId, SHORT_BYTEARRAY)).block());
         someBlobIds(100).forEach(blobId -> Mono.from(testee.save(TEST_BUCKET_NAME, blobId, SHORT_BYTEARRAY)).block());
 
-        assertThat(Flux.from(testee.listBlobs(TEST_BUCKET_NAME, BlobStoreDAO.RECOVERY_BLOB_PREFIX)).collectList().block())
-            .containsExactlyInAnyOrderElementsOf(recoveryBlobIds);
+        assertThat(Flux.from(testee.listBlobs(TEST_BUCKET_NAME, PREFIX)).collectList().block())
+            .containsExactlyInAnyOrderElementsOf(prefixedBlobIds);
     }
 
     @Test
