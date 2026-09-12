@@ -24,6 +24,7 @@ import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.BlobIdEntropy;
 import org.apache.james.mailbox.cassandra.mail.ContentRecoveryMessageContentSaver;
 import org.apache.james.server.blob.deduplication.GenerationAware;
+import org.apache.james.server.blob.deduplication.MinIOGenerationAwareBlobId;
 
 /**
  * Tells the header blobs apart from the content addressed blobs the {@link BlobIdList} exists for.
@@ -42,9 +43,8 @@ import org.apache.james.server.blob.deduplication.GenerationAware;
 public class HeaderBlobIdPredicate implements Predicate<BlobId> {
     /** What closes the family and the generation: {@code _} for a generation aware id, {@code /} for its MinIO flavour. */
     private static final String GENERATION_SEPARATORS = "_/";
-    /** The MinIO flavour also spreads the first two characters of the payload into folders. */
-    private static final String FOLDER_SEPARATOR = "/";
-    private static final String NO_SEPARATOR = "";
+    /** The MinIO flavour also spreads the first two characters of the payload into as many folders. */
+    private static final int MINIO_FOLDER_SEPARATORS = 2;
     private static final int NONE = -1;
 
     private final int contentAddressedPayloadLength;
@@ -63,17 +63,18 @@ public class HeaderBlobIdPredicate implements Predicate<BlobId> {
 
     /**
      * A generation aware id spells out a {@code family_generation_} prefix, and its MinIO flavour further spreads the
-     * first two characters of the payload into folders: neither is payload. Any other id is payload throughout, and
-     * digits or slashes it happens to spell out are to be counted like any other characters.
+     * first two characters of the payload into folders: neither is payload. Anything else is, slashes included, as
+     * standard Base64 spells them out.
      */
     private static int payloadLengthOf(BlobId blobId) {
         String id = blobId.asString();
-        if (!(blobId instanceof GenerationAware)) {
-            return id.length();
+        if (blobId instanceof MinIOGenerationAwareBlobId) {
+            return withoutGenerationPrefix(id).length() - MINIO_FOLDER_SEPARATORS;
         }
-        return withoutGenerationPrefix(id)
-            .replace(FOLDER_SEPARATOR, NO_SEPARATOR)
-            .length();
+        if (blobId instanceof GenerationAware) {
+            return withoutGenerationPrefix(id).length();
+        }
+        return id.length();
     }
 
     /**

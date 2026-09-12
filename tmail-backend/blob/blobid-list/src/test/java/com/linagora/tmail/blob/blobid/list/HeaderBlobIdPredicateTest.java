@@ -106,6 +106,13 @@ class HeaderBlobIdPredicateTest {
             return new GenerationAwareBlobId.Factory(Clock.systemUTC(), new PlainBlobId.Factory(),
                 GenerationAwareBlobId.Configuration.DEFAULT);
         }
+
+        @Test
+        void shouldAcceptHeaderBlobsWhosePayloadSpellsOutSlashes() {
+            // Standard Base64 spells out slashes: only the MinIO flavour injects folder separators.
+            assertThat(testee().test(headerIdWithPayloadOpeningOn(blobIdFactory(), "a/b/c/d/")))
+                .isTrue();
+        }
     }
 
     @Nested
