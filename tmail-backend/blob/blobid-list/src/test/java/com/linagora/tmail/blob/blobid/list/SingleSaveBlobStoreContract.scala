@@ -22,7 +22,8 @@ import java.time.Duration
 import java.util.UUID
 
 import org.apache.james.blob.api.BlobStoreDAOFixture.{SHORT_BYTEARRAY, TEST_BUCKET_NAME}
-import org.apache.james.blob.api.{BlobId, BlobStoreDAOContract, BucketName, ObjectStoreException}
+import org.apache.james.blob.api.{BlobId, BlobIdEntropy, BlobStoreDAOContract, BucketName, ObjectStoreException}
+import org.apache.james.mailbox.cassandra.mail.ContentRecoveryMessageContentSaver.HEADER_BLOB_ID_SUFFIX
 import org.apache.james.util.concurrency.ConcurrentTestRunner
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
 import org.assertj.core.api.ThrowableAssert.ThrowingCallable
@@ -162,6 +163,41 @@ trait SingleSaveBlobStoreContract extends BlobStoreDAOContract {
 
     assertThat(SMono.fromPublisher(testee.readBytes(defaultBucketName, blobId)).block().payload())
       .isEqualTo(SHORT_BYTEARRAY.payload())
+  }
+
+  @Test
+  def saveShouldNotListHeaderBlobs(): Unit = {
+    val blobId: BlobId = blobIdFactory.random().withSuffix(HEADER_BLOB_ID_SUFFIX)
+    SMono.fromPublisher(testee.save(defaultBucketName, blobId, SHORT_BYTEARRAY)).block()
+
+    assertThat(SMono.fromPublisher(blobIdList.isStored(blobId)).block()).isFalse
+  }
+
+  @Test
+  def saveShouldStoreHeaderBlobs(): Unit = {
+    val blobId: BlobId = blobIdFactory.random().withSuffix(HEADER_BLOB_ID_SUFFIX)
+    SMono.fromPublisher(testee.save(defaultBucketName, blobId, SHORT_BYTEARRAY)).block()
+
+    assertThat(SMono.fromPublisher(testee.readBytes(defaultBucketName, blobId)).block().payload())
+      .isEqualTo(SHORT_BYTEARRAY.payload())
+  }
+
+  @Test
+  def saveShouldOverwriteHeaderBlobs(): Unit = {
+    val blobId: BlobId = blobIdFactory.random().withSuffix(HEADER_BLOB_ID_SUFFIX)
+    SMono.fromPublisher(testee.save(defaultBucketName, blobId, SHORT_BYTEARRAY)).block()
+
+    assertThatCode(() => SMono.fromPublisher(testee.save(defaultBucketName, blobId, SHORT_BYTEARRAY)).block())
+      .doesNotThrowAnyException()
+  }
+
+  @Test
+  def saveShouldListContentAddressedBlobsEndingWithTheHeaderSuffix(): Unit = {
+    val payloadLength: Int = blobIdFactory.encoding().encode(new Array[Byte](BlobIdEntropy.entropyBytes())).length
+    val blobId: BlobId = blobIdFactory.of("A" * (payloadLength - HEADER_BLOB_ID_SUFFIX.length) + HEADER_BLOB_ID_SUFFIX)
+    SMono.fromPublisher(testee.save(defaultBucketName, blobId, SHORT_BYTEARRAY)).block()
+
+    assertThat(SMono.fromPublisher(blobIdList.isStored(blobId)).block()).isTrue
   }
 
   @Test
