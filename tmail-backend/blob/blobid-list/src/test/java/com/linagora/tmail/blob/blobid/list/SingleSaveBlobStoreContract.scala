@@ -21,7 +21,7 @@ package com.linagora.tmail.blob.blobid.list
 import java.time.Duration
 import java.util.UUID
 
-import org.apache.james.blob.api.BlobStoreDAOFixture.{SHORT_BYTEARRAY, TEST_BUCKET_NAME}
+import org.apache.james.blob.api.BlobStoreDAOFixture.{ELEVEN_KILOBYTES, SHORT_BYTEARRAY, TEST_BUCKET_NAME}
 import org.apache.james.blob.api.{BlobId, BlobIdEntropy, BlobStoreDAOContract, BucketName, ObjectStoreException}
 import org.apache.james.mailbox.cassandra.mail.ContentRecoveryMessageContentSaver.HEADER_BLOB_ID_SUFFIX
 import org.apache.james.util.concurrency.ConcurrentTestRunner
@@ -187,8 +187,10 @@ trait SingleSaveBlobStoreContract extends BlobStoreDAOContract {
     val blobId: BlobId = blobIdFactory.random().withSuffix(HEADER_BLOB_ID_SUFFIX)
     SMono.fromPublisher(testee.save(defaultBucketName, blobId, SHORT_BYTEARRAY)).block()
 
-    assertThatCode(() => SMono.fromPublisher(testee.save(defaultBucketName, blobId, SHORT_BYTEARRAY)).block())
+    assertThatCode(() => SMono.fromPublisher(testee.save(defaultBucketName, blobId, ELEVEN_KILOBYTES)).block())
       .doesNotThrowAnyException()
+    assertThat(SMono.fromPublisher(testee.readBytes(defaultBucketName, blobId)).block().payload())
+      .isEqualTo(ELEVEN_KILOBYTES.payload())
   }
 
   @Test

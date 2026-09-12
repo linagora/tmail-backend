@@ -37,14 +37,24 @@ class HeaderBlobIdPredicateTest {
      * encoding spells them out like any others, so only the length tells it apart from a header.
      */
     private static BlobId contentAddressedIdEndingWithHeaderSuffix(BlobId.Factory blobIdFactory) {
-        int payloadLength = blobIdFactory.encoding().encode(new byte[BlobIdEntropy.entropyBytes()]).length();
-        return blobIdFactory.of("A".repeat(payloadLength - HEADER_BLOB_ID_SUFFIX.length()) + HEADER_BLOB_ID_SUFFIX);
+        return blobIdFactory.of("A".repeat(payloadLength(blobIdFactory) - HEADER_BLOB_ID_SUFFIX.length())
+            + HEADER_BLOB_ID_SUFFIX);
+    }
+
+    /** A header id whose payload happens to open on {@code payloadPrefix}. */
+    private static BlobId headerIdWithPayloadOpeningOn(BlobId.Factory blobIdFactory, String payloadPrefix) {
+        return blobIdFactory.of(payloadPrefix + "A".repeat(payloadLength(blobIdFactory) - payloadPrefix.length()))
+            .withSuffix(HEADER_BLOB_ID_SUFFIX);
+    }
+
+    private static int payloadLength(BlobId.Factory blobIdFactory) {
+        return blobIdFactory.encoding().encode(new byte[BlobIdEntropy.entropyBytes()]).length();
     }
 
     abstract static class Contract {
         abstract BlobId.Factory blobIdFactory();
 
-        private HeaderBlobIdPredicate testee() {
+        HeaderBlobIdPredicate testee() {
             return new HeaderBlobIdPredicate(blobIdFactory());
         }
 
@@ -72,6 +82,20 @@ class HeaderBlobIdPredicateTest {
         @Override
         BlobId.Factory blobIdFactory() {
             return new PlainBlobId.Factory();
+        }
+
+        @Test
+        void shouldAcceptHeaderBlobsWhosePayloadOpensOnAGenerationPrefix() {
+            // A plain id carries no family and no generation: `12_34_` is payload here, and counts as such.
+            assertThat(testee().test(headerIdWithPayloadOpeningOn(blobIdFactory(), "12_34_")))
+                .isTrue();
+        }
+
+        @Test
+        void shouldAcceptHeaderBlobsWhosePayloadOpensOnFolderSeparators() {
+            // Only the MinIO flavour spreads a payload into folders: slashes are payload here.
+            assertThat(testee().test(headerIdWithPayloadOpeningOn(blobIdFactory(), "a/b/c/d/")))
+                .isTrue();
         }
     }
 

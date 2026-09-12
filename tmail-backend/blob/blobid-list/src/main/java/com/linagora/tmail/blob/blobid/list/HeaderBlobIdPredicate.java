@@ -23,6 +23,7 @@ import java.util.function.Predicate;
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.BlobIdEntropy;
 import org.apache.james.mailbox.cassandra.mail.ContentRecoveryMessageContentSaver;
+import org.apache.james.server.blob.deduplication.GenerationAware;
 
 /**
  * Tells the header blobs apart from the content addressed blobs the {@link BlobIdList} exists for.
@@ -56,20 +57,28 @@ public class HeaderBlobIdPredicate implements Predicate<BlobId> {
 
     @Override
     public boolean test(BlobId blobId) {
-        String id = blobId.asString();
-
-        return id.endsWith(ContentRecoveryMessageContentSaver.HEADER_BLOB_ID_SUFFIX)
-            && payloadOf(id).length() > contentAddressedPayloadLength;
-    }
-
-    private String payloadOf(String id) {
-        return withoutGenerationPrefix(id)
-            .replace(FOLDER_SEPARATOR, NO_SEPARATOR);
+        return blobId.asString().endsWith(ContentRecoveryMessageContentSaver.HEADER_BLOB_ID_SUFFIX)
+            && payloadLengthOf(blobId) > contentAddressedPayloadLength;
     }
 
     /**
-     * Drops the {@code family_generation_} an id is prefixed with once it is generation aware, leaving an id that
-     * carries no such prefix untouched.
+     * A generation aware id spells out a {@code family_generation_} prefix, and its MinIO flavour further spreads the
+     * first two characters of the payload into folders: neither is payload. Any other id is payload throughout, and
+     * digits or slashes it happens to spell out are to be counted like any other characters.
+     */
+    private static int payloadLengthOf(BlobId blobId) {
+        String id = blobId.asString();
+        if (!(blobId instanceof GenerationAware)) {
+            return id.length();
+        }
+        return withoutGenerationPrefix(id)
+            .replace(FOLDER_SEPARATOR, NO_SEPARATOR)
+            .length();
+    }
+
+    /**
+     * Drops the {@code family_generation_} a generation aware id is prefixed with, leaving one that carries no such
+     * prefix untouched.
      */
     private static String withoutGenerationPrefix(String id) {
         int afterFamily = separatorClosingNumberAt(id, 0);
