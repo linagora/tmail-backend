@@ -336,8 +336,9 @@ public class BlobStoreModulesChooser {
         @Named(MAYBE_SINGLE_SAVE_BLOBSTORE)
         BlobStoreDAO provideSingleSaveBlobStoreDAO(@Named(MAYBE_COMPRESSION_BLOBSTORE) BlobStoreDAO blobStoreDAO,
                                                    BlobIdList blobIdList,
-                                                   BucketName defaultBucketName) {
-            return new SingleSaveBlobStoreDAO(blobStoreDAO, blobIdList, defaultBucketName);
+                                                   BucketName defaultBucketName,
+                                                   BlobId.Factory blobIdFactory) {
+            return new SingleSaveBlobStoreDAO(blobStoreDAO, blobIdList, defaultBucketName, blobIdFactory);
         }
     }
 
