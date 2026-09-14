@@ -68,6 +68,30 @@ mailprocessing.deduplication.enabled=false
 [...]
 ....
 
+== Buckets startup check
+
+At startup, Twake Mail makes sure the buckets it writes to exist, and creates the missing ones: the default bucket,
+`jmap-uploads`, `tmail-deleted-message-vault` when the deleted message vault is enabled, and `mail-processing` when
+`mailprocessing.deduplication.enabled=false`. Bucket prefix, sharding and the secondary blob store are taken into
+account.
+
+This turns a misconfigured object storage - missing permissions, invalid bucket names - into a boot time failure listing
+the faulty buckets, rather than a runtime failure upon the first write. It also avoids concurrent writers racing to
+create the same bucket.
+
+The S3 credentials thus need to be allowed to run `HeadBucket` on those buckets, and to create them unless they are
+provisioned beforehand.
+
+Example `blob.properties`:
+
+....
+[...]
+# Whether the buckets Twake Mail writes to are checked, and created if missing, at startup.
+# Optional, Allowed values are: true, false, defaults to true
+buckets.startup.check=false
+[...]
+....
+
 == Secondary blob store configurations
 Specified to TMail backend, we can configure the following configurations in the *blob.properties* file for the second blob store.
 

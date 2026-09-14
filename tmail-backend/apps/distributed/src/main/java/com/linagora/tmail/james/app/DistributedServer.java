@@ -43,6 +43,7 @@ import org.apache.james.eventsourcing.eventstore.EventNestedTypes;
 import org.apache.james.jmap.InjectionKeys;
 import org.apache.james.jmap.JMAPListenerModule;
 import org.apache.james.jmap.JMAPModule;
+import org.apache.james.jmap.cassandra.upload.CassandraUploadRepository;
 import org.apache.james.jmap.oidc.JMAPOidcModule;
 import org.apache.james.jmap.rfc8621.RFC8621MethodsModule;
 import org.apache.james.json.DTO;
@@ -156,6 +157,7 @@ import com.linagora.tmail.OpenPaasModule;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.ScheduledReconnectionHandler;
 import com.linagora.tmail.UsersRepositoryModuleChooser;
+import com.linagora.tmail.blob.bucket.RequiredBuckets;
 import com.linagora.tmail.blob.guice.BlobStoreCacheModulesChooser;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.blob.guice.BlobStoreModulesChooser;
@@ -226,6 +228,7 @@ import com.linagora.tmail.rspamd.RspamdModule;
 import com.linagora.tmail.smtp.TMailSMTPModule;
 import com.linagora.tmail.team.TMailQuotaUsernameSupplier;
 import com.linagora.tmail.team.TeamMailboxModule;
+import com.linagora.tmail.vault.blob.TmailBlobStoreDeletedMessageVault;
 import com.linagora.tmail.webadmin.EmailAddressContactRoutesModule;
 import com.linagora.tmail.webadmin.RateLimitsRoutesModule;
 import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
@@ -457,6 +460,7 @@ public class DistributedServer {
             .combineWith(MailQueueViewChoice.ModuleChooser.choose(configuration.mailQueueViewChoice()))
             .combineWith(BlobStoreModulesChooser.chooseModules(blobStoreConfiguration,
                 BlobStoreModulesChooser.SingleSaveDeclarationModule.BackedStorage.CASSANDRA))
+            .combineWith(RequiredBuckets.module(CassandraUploadRepository.UPLOAD_BUCKET))
             .combineWith(BlobStoreCacheModulesChooser.chooseModules(blobStoreConfiguration))
             .combineWith(new UsersRepositoryModuleChooser(
                 DatabaseCombinedUserRequireModule.of(CassandraUsersDAO.class),
@@ -656,6 +660,7 @@ public class DistributedServer {
         if (vaultConfiguration.isEnabled()) {
             return Modules.combine(
                 new TMailCassandraDeletedMessageVaultModule(),
+                RequiredBuckets.module(TmailBlobStoreDeletedMessageVault.DEFAULT_SINGLE_BUCKET_NAME),
                 new DeletedMessageVaultRoutesModule(),
                 new EmailRecoveryActionMethodModule(),
                 new TeamMailboxVaultRoutesModule());

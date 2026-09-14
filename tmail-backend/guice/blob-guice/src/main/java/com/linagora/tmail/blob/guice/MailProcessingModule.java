@@ -27,10 +27,13 @@ import org.apache.james.utils.PropertiesProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Scopes;
 import com.google.inject.Singleton;
+import com.google.inject.multibindings.ProvidesIntoSet;
+import com.linagora.tmail.blob.bucket.RequiredBuckets;
 import com.linagora.tmail.blob.mail.DuplicatingMimeMessageStore;
 import com.linagora.tmail.blob.mail.MailProcessingConfiguration;
 
@@ -60,5 +63,14 @@ public class MailProcessingModule extends AbstractModule {
         } catch (ConfigurationException e) {
             throw new RuntimeException("Failed reading " + ConfigurationComponent.NAME + " configuration file", e);
         }
+    }
+
+    @ProvidesIntoSet
+    RequiredBuckets mailProcessingBucket(MailProcessingConfiguration configuration) {
+        if (configuration.deduplicationEnabled()) {
+            // Mails in transit are then stored within the default bucket
+            return ImmutableList::of;
+        }
+        return () -> ImmutableList.of(configuration.mailProcessingBucket());
     }
 }

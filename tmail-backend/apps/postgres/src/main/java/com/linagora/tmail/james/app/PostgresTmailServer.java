@@ -38,6 +38,7 @@ import org.apache.james.eventsourcing.eventstore.EventNestedTypes;
 import org.apache.james.jmap.JMAPListenerModule;
 import org.apache.james.jmap.JMAPModule;
 import org.apache.james.jmap.oidc.JMAPOidcModule;
+import org.apache.james.jmap.postgres.upload.PostgresUploadRepository;
 import org.apache.james.jmap.rfc8621.RFC8621MethodsModule;
 import org.apache.james.json.DTO;
 import org.apache.james.json.DTOModule;
@@ -122,6 +123,7 @@ import org.apache.james.quota.search.scanning.ScanningQuotaSearcher;
 import org.apache.james.rate.limiter.redis.RedisRateLimiterModule;
 import org.apache.james.user.postgres.PostgresUsersDAO;
 import org.apache.james.utils.GuiceLoader;
+import org.apache.james.vault.VaultConfiguration;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -132,6 +134,7 @@ import com.google.inject.Module;
 import com.google.inject.Scopes;
 import com.google.inject.TypeLiteral;
 import com.google.inject.multibindings.Multibinder;
+import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Names;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.DatabaseCombinedUserRequireModule;
@@ -142,6 +145,7 @@ import com.linagora.tmail.OpenPaasModule;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.ScheduledReconnectionHandler;
 import com.linagora.tmail.UsersRepositoryModuleChooser;
+import com.linagora.tmail.blob.bucket.RequiredBuckets;
 import com.linagora.tmail.blob.guice.BlobStoreModulesChooser;
 import com.linagora.tmail.disconnector.EventBusDisconnectorModule;
 import com.linagora.tmail.event.KeywordEmailQueryViewListenerModule;
@@ -206,6 +210,7 @@ import com.linagora.tmail.rspamd.RspamdModule;
 import com.linagora.tmail.smtp.TMailSMTPModule;
 import com.linagora.tmail.team.TMailQuotaUsernameSupplier;
 import com.linagora.tmail.team.TeamMailboxModule;
+import com.linagora.tmail.vault.blob.TmailBlobStoreDeletedMessageVault;
 import com.linagora.tmail.webadmin.EmailAddressContactRoutesModule;
 import com.linagora.tmail.webadmin.RateLimitsRoutesModule;
 import com.linagora.tmail.webadmin.TeamMailboxRoutesModule;
@@ -458,7 +463,22 @@ public class PostgresTmailServer {
     private static Module chooseBlobStoreModules(PostgresTmailConfiguration configuration) {
         return Modules.combine(Modules.combine(BlobStoreModulesChooser.chooseModules(configuration.blobStoreConfiguration(),
                 BlobStoreModulesChooser.SingleSaveDeclarationModule.BackedStorage.POSTGRES)),
-            new BlobStoreCacheModulesChooser.CacheDisabledModule());
+            new BlobStoreCacheModulesChooser.CacheDisabledModule(),
+            RequiredBuckets.module(PostgresUploadRepository.UPLOAD_BUCKET),
+            new DeletedMessageVaultRequiredBucketsModule());
+    }
+
+    /**
+     * The deleted message vault modules are always installed, the vault being enabled through its configuration.
+     */
+    private static class DeletedMessageVaultRequiredBucketsModule extends AbstractModule {
+        @ProvidesIntoSet
+        RequiredBuckets deletedMessageVaultBucket(VaultConfiguration vaultConfiguration) {
+            if (vaultConfiguration.isEnabled()) {
+                return () -> ImmutableList.of(TmailBlobStoreDeletedMessageVault.DEFAULT_SINGLE_BUCKET_NAME);
+            }
+            return ImmutableList::of;
+        }
     }
 
     private static final Module IN_MEMORY_EVENT_BUS_FEATURE_MODULE = Modules.combine(

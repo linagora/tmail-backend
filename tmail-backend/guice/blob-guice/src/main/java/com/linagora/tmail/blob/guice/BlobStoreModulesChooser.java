@@ -83,6 +83,12 @@ import com.linagora.tmail.blob.blobid.list.BlobIdList;
 import com.linagora.tmail.blob.blobid.list.CassandraSingleSaveBlobStoreModule;
 import com.linagora.tmail.blob.blobid.list.SingleSaveBlobStoreDAO;
 import com.linagora.tmail.blob.blobid.list.postgres.PostgresSingleSaveBlobStoreModule;
+import com.linagora.tmail.blob.bucket.BucketProvisioner;
+import com.linagora.tmail.blob.bucket.BucketsStartUpCheckConfiguration;
+import com.linagora.tmail.blob.bucket.RequiredBuckets;
+import com.linagora.tmail.blob.bucket.S3BucketProvisioner;
+import com.linagora.tmail.blob.bucket.SecondaryBucketProvisioner;
+import com.linagora.tmail.blob.bucket.ShardedBucketProvisioner;
 import com.linagora.tmail.blob.secondaryblobstore.FailedBlobOperationListener;
 import com.linagora.tmail.blob.secondaryblobstore.SecondaryBlobStoreDAO;
 import com.linagora.tmail.blob.sharding.ShardedBlobStoreDAO;
@@ -120,6 +126,15 @@ public class BlobStoreModulesChooser {
 
         @Provides
         @Singleton
+        @Named(INITIAL_BLOBSTORE_DAO)
+        BucketProvisioner provideInitialBucketProvisioner(S3ClientFactory s3ClientFactory,
+                                                          S3BlobStoreConfiguration configuration,
+                                                          TmailBlobStoreShardingConfiguration shardingConfiguration) {
+            return maybeShard(new S3BucketProvisioner(s3ClientFactory, configuration), shardingConfiguration);
+        }
+
+        @Provides
+        @Singleton
         S3RequestOption provideS3RequestOption(S3BlobStoreConfiguration configuration) throws InvalidKeySpecException, NoSuchAlgorithmException {
             if (!configuration.ssecEnabled()) {
                 return S3RequestOption.DEFAULT;
@@ -143,6 +158,9 @@ public class BlobStoreModulesChooser {
                 .annotatedWith(Names.named(INITIAL_BLOBSTORE_DAO))
                 .to(FileBlobStoreDAO.class)
                 .in(Scopes.SINGLETON);
+            bind(BucketProvisioner.class)
+                .annotatedWith(Names.named(INITIAL_BLOBSTORE_DAO))
+                .toInstance(BucketProvisioner.NOOP);
         }
     }
 
@@ -159,6 +177,9 @@ public class BlobStoreModulesChooser {
                 .annotatedWith(Names.named(INITIAL_BLOBSTORE_DAO))
                 .to(PostgresBlobStoreDAO.class)
                 .in(Scopes.SINGLETON);
+            bind(BucketProvisioner.class)
+                .annotatedWith(Names.named(INITIAL_BLOBSTORE_DAO))
+                .toInstance(BucketProvisioner.NOOP);
         }
     }
 
@@ -194,11 +215,60 @@ public class BlobStoreModulesChooser {
         return blobStoreDAO;
     }
 
+    private static BucketProvisioner maybeShard(BucketProvisioner bucketProvisioner, TmailBlobStoreShardingConfiguration shardingConfiguration) {
+        if (shardingConfiguration.enabled()) {
+            return new ShardedBucketProvisioner(bucketProvisioner, shardingConfiguration);
+        }
+        return bucketProvisioner;
+    }
+
     static class BaseObjectStorageModule extends AbstractModule {
         @Provides
         @Singleton
         BlobStoreDAO provideFinalBlobStoreDAO(@Named(MAYBE_SINGLE_SAVE_BLOBSTORE) BlobStoreDAO blobStoreDAO) {
             return blobStoreDAO;
+        }
+
+        /**
+         * Encryption, compression and single save layers do not alter bucket names: only the secondary blob store,
+         * sharding and the underlying blob store do.
+         */
+        @Provides
+        @Singleton
+        BucketProvisioner provideFinalBucketProvisioner(@Named(MAYBE_SECONDARY_BLOBSTORE) BucketProvisioner bucketProvisioner) {
+            return bucketProvisioner;
+        }
+    }
+
+    /**
+     * Provisions at startup the buckets Twake Mail writes to.
+     *
+     * @see RequiredBucketsStartUpCheck
+     */
+    static class RequiredBucketsModule extends AbstractModule {
+        @Override
+        protected void configure() {
+            Multibinder.newSetBinder(binder(), StartUpCheck.class)
+                .addBinding()
+                .to(RequiredBucketsStartUpCheck.class);
+        }
+
+        @Provides
+        @Singleton
+        BucketsStartUpCheckConfiguration bucketsStartUpCheckConfiguration(PropertiesProvider propertiesProvider) {
+            try {
+                return BucketsStartUpCheckConfiguration.from(propertiesProvider.getConfigurations(ConfigurationComponent.NAMES));
+            } catch (FileNotFoundException e) {
+                LOGGER.warn("Could not find {} configuration file, checking required buckets at startup", ConfigurationComponent.NAME);
+                return BucketsStartUpCheckConfiguration.ENABLED;
+            } catch (ConfigurationException e) {
+                throw new RuntimeException("Failed reading " + ConfigurationComponent.NAME + " configuration file", e);
+            }
+        }
+
+        @ProvidesIntoSet
+        RequiredBuckets defaultBucket(BucketName defaultBucketName) {
+            return () -> ImmutableList.of(defaultBucketName);
         }
     }
 
@@ -208,6 +278,13 @@ public class BlobStoreModulesChooser {
         @Named(MAYBE_SECONDARY_BLOBSTORE)
         BlobStoreDAO provideNoSecondaryBlobStoreDAO(@Named(INITIAL_BLOBSTORE_DAO) BlobStoreDAO blobStoreDAO) {
             return blobStoreDAO;
+        }
+
+        @Provides
+        @Singleton
+        @Named(MAYBE_SECONDARY_BLOBSTORE)
+        BucketProvisioner provideNoSecondaryBucketProvisioner(@Named(INITIAL_BLOBSTORE_DAO) BucketProvisioner bucketProvisioner) {
+            return bucketProvisioner;
         }
     }
 
@@ -221,17 +298,39 @@ public class BlobStoreModulesChooser {
         @Provides
         @Singleton
         @Named(SECOND_BLOB_STORE_DAO)
+        S3ClientFactory getSecondaryS3ClientFactory(MetricFactory metricFactory, GaugeRegistry gaugeRegistry) {
+            return new S3ClientFactory(secondaryS3BlobStoreConfiguration.s3BlobStoreConfiguration(),
+                () -> new JamesS3MetricPublisher(metricFactory, gaugeRegistry, "secondary_s3"));
+        }
+
+        @Provides
+        @Singleton
+        @Named(SECOND_BLOB_STORE_DAO)
         BlobStoreDAO getSecondaryS3BlobStoreDAO(BlobId.Factory blobIdFactory,
-                                                MetricFactory metricFactory,
-                                                GaugeRegistry gaugeRegistry,
+                                                @Named(SECOND_BLOB_STORE_DAO) S3ClientFactory s3SecondaryClientFactory,
                                                 S3RequestOption s3RequestOption,
                                                 TmailBlobStoreShardingConfiguration shardingConfiguration) {
-            S3ClientFactory s3SecondaryClientFactory = new S3ClientFactory(secondaryS3BlobStoreConfiguration.s3BlobStoreConfiguration(),
-                () -> new JamesS3MetricPublisher(metricFactory, gaugeRegistry, "secondary_s3"));
             // SecondaryBlobStoreDAO adds the suffix before calling this DAO. Mirror it in omitted bucket names so
             // the omission configuration remains expressed with the original logical names.
             return maybeShard(new S3BlobStoreDAO(s3SecondaryClientFactory, secondaryS3BlobStoreConfiguration.s3BlobStoreConfiguration(), blobIdFactory, s3RequestOption),
                 shardingConfiguration.forBucketSuffix(secondaryS3BlobStoreConfiguration.secondaryBucketSuffix()));
+        }
+
+        @Provides
+        @Singleton
+        @Named(SECOND_BLOB_STORE_DAO)
+        BucketProvisioner getSecondaryS3BucketProvisioner(@Named(SECOND_BLOB_STORE_DAO) S3ClientFactory s3SecondaryClientFactory,
+                                                          TmailBlobStoreShardingConfiguration shardingConfiguration) {
+            return maybeShard(new S3BucketProvisioner(s3SecondaryClientFactory, secondaryS3BlobStoreConfiguration.s3BlobStoreConfiguration()),
+                shardingConfiguration.forBucketSuffix(secondaryS3BlobStoreConfiguration.secondaryBucketSuffix()));
+        }
+
+        @Provides
+        @Singleton
+        @Named(MAYBE_SECONDARY_BLOBSTORE)
+        BucketProvisioner provideSecondaryBucketProvisioner(@Named(INITIAL_BLOBSTORE_DAO) BucketProvisioner firstBucketProvisioner,
+                                                            @Named(SECOND_BLOB_STORE_DAO) BucketProvisioner secondBucketProvisioner) {
+            return new SecondaryBucketProvisioner(firstBucketProvisioner, secondBucketProvisioner, secondaryS3BlobStoreConfiguration.secondaryBucketSuffix());
         }
 
         @ProvidesIntoSet
@@ -426,6 +525,7 @@ public class BlobStoreModulesChooser {
             .addAll(chooseStoragePolicyModule(blobStoreConfiguration.storageStrategy()))
             .add(new StoragePolicyConfigurationSanityEnforcementModule(blobStoreConfiguration))
             .add(new MailProcessingModule())
+            .add(new RequiredBucketsModule())
             .build();
     }
 

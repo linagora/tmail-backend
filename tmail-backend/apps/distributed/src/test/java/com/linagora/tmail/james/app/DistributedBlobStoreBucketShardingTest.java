@@ -22,6 +22,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
 
 import jakarta.inject.Inject;
 
@@ -136,14 +137,17 @@ class DistributedBlobStoreBucketShardingTest {
         }
 
         /**
-         * The docker S3 is shared by the whole test run, so what this server created is the difference between the
-         * two listings rather than the whole bucket list.
+         * The docker S3 is shared by the whole test run: only the buckets belonging to this server layout are
+         * returned. Some of them are provisioned at startup, the others upon filling.
          */
-        List<String> bucketsCreatedByFillingEveryLogicalBucket() {
-            List<String> before = physicalBuckets();
+        List<String> physicalBucketsAfterFillingEveryLogicalBucket(Predicate<String> belongsToLayout) {
             fillEveryLogicalBucket();
+            return physicalBuckets(belongsToLayout);
+        }
+
+        List<String> physicalBuckets(Predicate<String> belongsToLayout) {
             return physicalBuckets().stream()
-                .filter(bucket -> !before.contains(bucket))
+                .filter(belongsToLayout)
                 .collect(ImmutableList.toImmutableList());
         }
 
@@ -211,7 +215,7 @@ class DistributedBlobStoreBucketShardingTest {
 
         @Test
         void everyLogicalBucketShouldBeSplitInFourPhysicalBuckets(GuiceJamesServer server) {
-            assertThat(server.getProbe(BucketLayoutProbe.class).bucketsCreatedByFillingEveryLogicalBucket())
+            assertThat(server.getProbe(BucketLayoutProbe.class).physicalBucketsAfterFillingEveryLogicalBucket(bucket -> bucket.startsWith("allshards-")))
                 .containsExactlyInAnyOrder(
                     "allshards-blobs-0", "allshards-blobs-1", "allshards-blobs-2", "allshards-blobs-3",
                     "allshards-jmap-uploads-0", "allshards-jmap-uploads-1",
@@ -231,13 +235,33 @@ class DistributedBlobStoreBucketShardingTest {
 
         @Test
         void omittedBucketsShouldKeepTheirUnshardedPhysicalName(GuiceJamesServer server) {
-            assertThat(server.getProbe(BucketLayoutProbe.class).bucketsCreatedByFillingEveryLogicalBucket())
+            assertThat(server.getProbe(BucketLayoutProbe.class).physicalBucketsAfterFillingEveryLogicalBucket(bucket -> bucket.startsWith("tmail-")))
                 .containsExactlyInAnyOrder(
                     "tmail-blobs-0", "tmail-blobs-1", "tmail-blobs-2", "tmail-blobs-3",
                     "tmail-tmail-deleted-message-vault-0", "tmail-tmail-deleted-message-vault-1",
                     "tmail-tmail-deleted-message-vault-2", "tmail-tmail-deleted-message-vault-3",
                     "tmail-jmap-uploads",
                     "tmail-mail-processing");
+        }
+    }
+
+    /**
+     * The buckets the server writes to are provisioned at startup, without waiting for a first write. Mails in transit
+     * are deduplicated within the default bucket, so that the mail processing bucket is not required.
+     */
+    @Nested
+    class StartupProvisioning {
+        @RegisterExtension
+        static JamesServerExtension testExtension = serverExtension("startup-",
+            TmailBlobStoreShardingConfiguration.of(2));
+
+        @Test
+        void requiredBucketsShouldBeProvisionedAtStartup(GuiceJamesServer server) {
+            assertThat(server.getProbe(BucketLayoutProbe.class).physicalBuckets(bucket -> bucket.startsWith("startup-")))
+                .containsExactlyInAnyOrder(
+                    "startup-blobs-0", "startup-blobs-1",
+                    "startup-jmap-uploads-0", "startup-jmap-uploads-1",
+                    "startup-tmail-deleted-message-vault-0", "startup-tmail-deleted-message-vault-1");
         }
     }
 
@@ -249,7 +273,8 @@ class DistributedBlobStoreBucketShardingTest {
 
         @Test
         void everyLogicalBucketShouldKeepItsUnshardedPhysicalName(GuiceJamesServer server) {
-            assertThat(server.getProbe(BucketLayoutProbe.class).bucketsCreatedByFillingEveryLogicalBucket())
+            assertThat(server.getProbe(BucketLayoutProbe.class).physicalBucketsAfterFillingEveryLogicalBucket(
+                    bucket -> bucket.startsWith("noshards-") || bucket.equals(DEFAULT_BUCKET.asString())))
                 .containsExactlyInAnyOrder(
                     // the default bucket is the namespace, and as such is the one bucket left unprefixed
                     "blobs",

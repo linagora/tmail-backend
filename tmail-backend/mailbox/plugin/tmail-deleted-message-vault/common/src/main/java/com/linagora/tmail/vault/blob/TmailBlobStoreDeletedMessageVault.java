@@ -70,7 +70,7 @@ import reactor.util.function.Tuples;
 public class TmailBlobStoreDeletedMessageVault implements DeletedMessageVault {
     private static final Logger LOGGER = LoggerFactory.getLogger(TmailBlobStoreDeletedMessageVault.class);
 
-    private static final BucketName DEFAULT_SINGLE_BUCKET_NAME = BucketName.of("tmail-deleted-message-vault");
+    public static final BucketName DEFAULT_SINGLE_BUCKET_NAME = BucketName.of("tmail-deleted-message-vault");
     private static final String TMAIL_BLOBSTORE_DELETED_MESSAGE_VAULT_METRIC = "tmailDeletedMessageVault:blobStore:";
     static final String APPEND_METRIC_NAME = TMAIL_BLOBSTORE_DELETED_MESSAGE_VAULT_METRIC + "append";
     static final String LOAD_MIME_MESSAGE_METRIC_NAME = TMAIL_BLOBSTORE_DELETED_MESSAGE_VAULT_METRIC + "loadMimeMessage";

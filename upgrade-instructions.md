@@ -16,6 +16,22 @@ You can also find more detailed instructions for releases under the respective s
 
 Note: this section is in progress. It will be updated during all the development process until the release.
 
+### Required buckets are provisioned at startup
+
+Concerned product: Distributed TMail, Postgres TMail (S3 blob store)
+
+A new `required-buckets` startup check makes sure the buckets Twake Mail writes to exist, and creates the missing
+ones: the default bucket, `jmap-uploads`, `tmail-deleted-message-vault` (when the vault is enabled) and
+`mail-processing` (when `mailprocessing.deduplication.enabled=false`). Prefix, sharding and the secondary blob store
+are taken into account.
+
+The S3 credentials therefore need the right to run `HeadBucket` (`s3:ListBucket`) on those buckets, and to create
+them if they are not provisioned beforehand. Otherwise the server fails to start, the failing buckets being listed in
+the logs.
+
+This check can be turned off by setting `buckets.startup.check=false` in `blob.properties`, buckets then being created
+lazily upon the first write, as before.
+
 ## 1.0.16
 
 ### Adding read_only field to labels table
