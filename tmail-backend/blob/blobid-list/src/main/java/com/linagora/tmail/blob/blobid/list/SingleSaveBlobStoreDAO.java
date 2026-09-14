@@ -19,6 +19,7 @@
 package com.linagora.tmail.blob.blobid.list;
 
 import java.util.Collection;
+import java.util.function.Predicate;
 
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.BlobStoreDAO;
@@ -34,13 +35,16 @@ public class SingleSaveBlobStoreDAO implements BlobStoreDAO {
     private final BlobStoreDAO blobStoreDAO;
     private final BlobIdList blobIdList;
     private final BucketName defaultBucketName;
+    private final Predicate<BlobId> isHeaderBlob;
 
     public SingleSaveBlobStoreDAO(BlobStoreDAO blobStoreDAO,
                                   BlobIdList blobIdList,
-                                  BucketName defaultBucketName) {
+                                  BucketName defaultBucketName,
+                                  BlobId.Factory blobIdFactory) {
         this.blobStoreDAO = blobStoreDAO;
         this.blobIdList = blobIdList;
         this.defaultBucketName = defaultBucketName;
+        this.isHeaderBlob = new HeaderBlobIdPredicate(blobIdFactory);
     }
 
     @Override
@@ -60,7 +64,7 @@ public class SingleSaveBlobStoreDAO implements BlobStoreDAO {
 
     @Override
     public Mono<Void> save(BucketName bucketName, BlobId blobId, Blob blob) {
-        if (defaultBucketName.equals(bucketName)) {
+        if (isDeduplicated(bucketName, blobId)) {
             return Mono.from(blobIdList.isStored(blobId))
                 .flatMap(isStored -> {
                     if (isStored) {
@@ -73,6 +77,13 @@ public class SingleSaveBlobStoreDAO implements BlobStoreDAO {
         } else {
             return Mono.from(blobStoreDAO.save(bucketName, blobId, blob));
         }
+    }
+
+    /**
+     * Header blobs, unique by construction, are left out of the list: see {@link HeaderBlobIdPredicate}.
+     */
+    private boolean isDeduplicated(BucketName bucketName, BlobId blobId) {
+        return defaultBucketName.equals(bucketName) && !isHeaderBlob.test(blobId);
     }
 
     @Override

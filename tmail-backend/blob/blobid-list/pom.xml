@@ -51,6 +51,10 @@
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
+            <artifactId>apache-james-mailbox-cassandra</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
             <artifactId>apache-james-backends-postgres</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
