@@ -32,7 +32,7 @@ object CassandraBlobIdListModule {
     .options(options => options
       .withCompaction(SchemaBuilder.timeWindowCompactionStrategy.withCompactionWindow(1, TimeWindowCompactionStrategy.CompactionWindowUnit.HOURS))
       .withCaching(true, rows(DEFAULT_CACHED_ROW_PER_PARTITION))
-      .withLZ4Compression(8, 1.0))
+      .withLZ4Compression(8))
     .statement(statement => types => statement
       .withPartitionKey(BLOB_ID, DataTypes.TEXT))
     .build
