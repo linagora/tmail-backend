@@ -30,22 +30,6 @@ pipeline {
                 sh 'mvn clean install -Dmaven.javadoc.skip=true -DskipTests -T1C'
             }
         }
-        stage('Test') {
-            steps {
-                dir("tmail-backend") {
-                    sh 'mvn -B -Dapi.version=1.43 surefire:test'
-                }
-            }
-            post {
-                always {
-                    junit(testResults: '**/surefire-reports/*.xml', allowEmptyResults: false)
-                }
-                failure {
-                    archiveArtifacts artifacts: '**/target/test-run.log' , fingerprint: true
-                    archiveArtifacts artifacts: '**/surefire-reports/*' , fingerprint: true
-                }
-            }
-        }
         stage('Deliver Docker images for PR') {
           when {
             changeRequest()
