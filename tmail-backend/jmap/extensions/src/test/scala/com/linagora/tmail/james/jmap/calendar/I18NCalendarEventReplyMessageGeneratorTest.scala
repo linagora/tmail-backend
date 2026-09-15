@@ -47,7 +47,8 @@ object I18NCalendarEventReplyMessageGeneratorTest {
       Arguments.of(Locale.FRANCE, PartStat.ACCEPTED, "calendar_reply_accepted-fr.eml"),
       Arguments.of(Locale.ENGLISH, PartStat.TENTATIVE, "calendar_reply_tentative-en.eml"),
       Arguments.of(Locale.FRANCE, PartStat.DECLINED, "calendar_reply_declined-fr.eml"),
-      Arguments.of(Locale.ENGLISH, PartStat.ACCEPTED, "calendar_reply_accepted-en.eml"))
+      Arguments.of(Locale.ENGLISH, PartStat.ACCEPTED, "calendar_reply_accepted-en.eml"),
+      Arguments.of(Locale.forLanguageTag("mn"), PartStat.ACCEPTED, "calendar_reply_accepted-mn.eml"))
   }
 }
 
@@ -125,6 +126,18 @@ class I18NCalendarEventReplyMessageGeneratorTest {
       .isEqualTo("Accepted: Simple event @ Fri Feb 23, 2024 (bob@domain.com)")
     assertThat(decoratedMessage.getContent.asInstanceOf[String])
       .isEqualTo("bob@domain.com has accepted this invitation.\n")
+  }
+
+  @Test
+  def shouldDecorateMongolianTemplate(): Unit = {
+    val acceptedReply: AttendeeReply = AttendeeReply(new MailAddress("bob@domain.com"), PartStat.ACCEPTED)
+
+    val decoratedMessage: MimeMessage = testee.getBasedMimeMessage(Locale.forLanguageTag("mn"), acceptedReply, calendarEventRequestTemplate).block()
+
+    assertThat(decoratedMessage.getSubject)
+      .isEqualTo("ЗӨВШӨӨРСӨН: Simple event @ Fri Feb 23, 2024 (bob@domain.com)")
+    assertThat(decoratedMessage.getContent.asInstanceOf[String])
+      .isEqualTo("bob@domain.com энэ урилгыг хүлээн зөвшөөрлөө.\n")
   }
 
   @ParameterizedTest
