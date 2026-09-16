@@ -1177,6 +1177,29 @@ In multi-tenant deployments, a domain administrator may need to inspect or cance
 
 A task is considered to belong to a domain when its additional information references a user of that domain, or the domain itself. If the task exists but does not belong to the requested domain, a `404` is returned — this is intentional and avoids leaking information about tasks belonging to other domains.
 
+=== Listing the tasks of a domain
+
+....
+curl -XGET http://ip:port/domains/domain.tld/tasks
+....
+
+Will return the list of execution reports of the tasks belonging to the domain, in the same format as `GET /tasks`,
+sorted by reverse submitted date (recent tasks goes first). Tasks that do not belong to the domain are never returned.
+
+One can filter the above results by status. For example:
+
+....
+curl -XGET http://ip:port/domains/domain.tld/tasks?status=inProgress
+....
+
+`status` is one of `waiting`, `inProgress`, `canceledRequested`, `completed`, `canceled`, `failed`.
+
+Response codes:
+
+- `200` A list of the tasks belonging to the domain is returned (possibly empty)
+- `400` Invalid status value
+- `404` The domain does not exist
+
 === Getting a domain-scoped task details
 
 ....

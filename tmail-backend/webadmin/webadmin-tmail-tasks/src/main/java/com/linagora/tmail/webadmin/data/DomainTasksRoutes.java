@@ -22,6 +22,8 @@ import static org.apache.james.webadmin.Constants.SEPARATOR;
 
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.Comparator;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.function.Predicate;
@@ -87,9 +89,20 @@ public class DomainTasksRoutes implements Routes {
 
     @Override
     public void define(Service service) {
+        service.get(BASE_PATH, this::listTasks, jsonTransformer);
         service.get(TASK_PATH, this::getTask, jsonTransformer);
         service.get(AWAIT_PATH, this::awaitTask, jsonTransformer);
         service.delete(TASK_PATH, this::cancelTask, jsonTransformer);
+    }
+
+    private Object listTasks(Request request, Response response) {
+        Domain domain = extractAndValidateDomain(request);
+        List<TaskExecutionDetails> tasks = extractStatus(request)
+            .map(taskManager::list)
+            .orElseGet(taskManager::list);
+        return ExecutionDetailsDto.from(additionalInformationConverter, tasks.stream()
+            .filter(details -> belongsToDomain(domain, details))
+            .sorted(Comparator.comparing(TaskExecutionDetails::getSubmittedDate).reversed()));
     }
 
     private Object getTask(Request request, Response response) {
@@ -136,11 +149,14 @@ public class DomainTasksRoutes implements Routes {
     }
 
     private void checkBelongsToDomain(Domain domain, TaskExecutionDetails details, TaskId taskId) {
-        boolean belongs = predicates.stream()
-            .anyMatch(predicate -> predicate.belongsToDomain(domain, details));
-        if (!belongs) {
+        if (!belongsToDomain(domain, details)) {
             throw taskNotFound(taskId);
         }
+    }
+
+    private boolean belongsToDomain(Domain domain, TaskExecutionDetails details) {
+        return predicates.stream()
+            .anyMatch(predicate -> predicate.belongsToDomain(domain, details));
     }
 
     private Domain extractAndValidateDomain(Request request) {
@@ -162,6 +178,20 @@ public class DomainTasksRoutes implements Routes {
                 .haltError();
         }
         return domain;
+    }
+
+    private Optional<TaskManager.Status> extractStatus(Request request) {
+        try {
+            return Optional.ofNullable(request.queryParams("status"))
+                .map(TaskManager.Status::fromString);
+        } catch (IllegalArgumentException e) {
+            throw ErrorResponder.builder()
+                .statusCode(HttpStatus.BAD_REQUEST_400)
+                .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+                .message("Invalid status query parameter")
+                .cause(e)
+                .haltError();
+        }
     }
 
     private TaskId extractTaskId(Request request) {

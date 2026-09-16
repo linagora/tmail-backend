@@ -22,12 +22,15 @@ import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.when;
 import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.hamcrest.Matchers.contains;
+import static org.hamcrest.Matchers.empty;
 
 import java.time.Instant;
 import java.util.Optional;
 import java.util.Set;
 
 import org.apache.james.core.Domain;
+import org.apache.james.core.Username;
 import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.domainlist.lib.DomainListConfiguration;
 import org.apache.james.domainlist.memory.MemoryDomainList;
@@ -62,16 +65,29 @@ class DomainTasksRoutesTest {
         }
     }
 
+    record UserBoundAdditionalInformation(Username username) implements TaskExecutionDetails.AdditionalInformation {
+        @Override
+        public Instant timestamp() {
+            return Instant.now();
+        }
+    }
+
     static class DomainBoundTask implements Task {
-        private final Domain domain;
+        private final Optional<TaskExecutionDetails.AdditionalInformation> details;
+        private final Result result;
 
         DomainBoundTask(Domain domain) {
-            this.domain = domain;
+            this(Optional.of(new DomainBoundAdditionalInformation(domain)), Result.COMPLETED);
+        }
+
+        DomainBoundTask(Optional<TaskExecutionDetails.AdditionalInformation> details, Result result) {
+            this.details = details;
+            this.result = result;
         }
 
         @Override
         public Result run() {
-            return Result.COMPLETED;
+            return result;
         }
 
         @Override
@@ -81,7 +97,7 @@ class DomainTasksRoutesTest {
 
         @Override
         public Optional<TaskExecutionDetails.AdditionalInformation> details() {
-            return Optional.of(new DomainBoundAdditionalInformation(domain));
+            return details;
         }
     }
 
@@ -104,6 +120,11 @@ class DomainTasksRoutesTest {
             (domain, details) -> details.getAdditionalInformation()
                 .filter(info -> info instanceof DomainBoundAdditionalInformation)
                 .map(info -> ((DomainBoundAdditionalInformation) info).domain().equals(domain))
+                .orElse(false),
+            (domain, details) -> details.getAdditionalInformation()
+                .filter(info -> info instanceof UserBoundAdditionalInformation)
+                .flatMap(info -> ((UserBoundAdditionalInformation) info).username().getDomainPart())
+                .map(domain::equals)
                 .orElse(false));
 
         DomainTasksRoutes domainTasksRoutes = new DomainTasksRoutes(
@@ -130,8 +151,121 @@ class DomainTasksRoutesTest {
         return taskId;
     }
 
+    private TaskId submitAndAwait(Optional<TaskExecutionDetails.AdditionalInformation> details, Task.Result result) throws Exception {
+        TaskId taskId = taskManager.submit(new DomainBoundTask(details, result));
+        taskManager.await(taskId, java.time.Duration.ofSeconds(5));
+        return taskId;
+    }
+
     private TaskId submitRunning(Domain domain) {
         return taskManager.submit(new DomainBoundTask(domain));
+    }
+
+    @Test
+    void listTasksShouldReturnTaskReferencingAUserOfTheDomain() throws Exception {
+        TaskId taskId = submitAndAwait(Optional.of(new UserBoundAdditionalInformation(Username.of("bob@" + DOMAIN.asString()))), Task.Result.COMPLETED);
+
+        when()
+            .get("/domains/" + DOMAIN.asString() + "/tasks")
+        .then()
+            .statusCode(HttpStatus.OK_200)
+            .body("taskId", contains(taskId.getValue().toString()));
+    }
+
+    @Test
+    void listTasksShouldReturnTaskReferencingTheDomain() throws Exception {
+        TaskId taskId = submitAndAwait(DOMAIN);
+
+        String response = when()
+            .get("/domains/" + DOMAIN.asString() + "/tasks")
+        .then()
+            .statusCode(HttpStatus.OK_200)
+            .extract().body().asString();
+
+        assertThatJson(response)
+            .isEqualTo("[{" +
+                "  \"taskId\": \"" + taskId.getValue() + "\"," +
+                "  \"status\": \"completed\"," +
+                "  \"type\": \"${json-unit.ignore}\"," +
+                "  \"startedDate\": \"${json-unit.ignore}\"," +
+                "  \"completedDate\": \"${json-unit.ignore}\"," +
+                "  \"submitDate\": \"${json-unit.ignore}\"," +
+                "  \"submittedFrom\": \"${json-unit.ignore}\"," +
+                "  \"executedOn\": \"${json-unit.ignore}\"," +
+                "  \"additionalInformation\": \"${json-unit.ignore}\"," +
+                "  \"cancelledFrom\": \"${json-unit.ignore}\"" +
+                "}]");
+    }
+
+    @Test
+    void listTasksShouldNotReturnTasksOfOtherDomains() throws Exception {
+        TaskId taskId = submitAndAwait(DOMAIN);
+        submitAndAwait(OTHER_DOMAIN);
+        submitAndAwait(Optional.of(new UserBoundAdditionalInformation(Username.of("bob@" + OTHER_DOMAIN.asString()))), Task.Result.COMPLETED);
+
+        when()
+            .get("/domains/" + DOMAIN.asString() + "/tasks")
+        .then()
+            .statusCode(HttpStatus.OK_200)
+            .body("taskId", contains(taskId.getValue().toString()));
+    }
+
+    @Test
+    void listTasksShouldNotReturnTasksReferencingNoDomain() throws Exception {
+        TaskId taskId = submitAndAwait(DOMAIN);
+        submitAndAwait(Optional.empty(), Task.Result.COMPLETED);
+        submitAndAwait(Optional.of(new UserBoundAdditionalInformation(Username.of("bob"))), Task.Result.COMPLETED);
+
+        when()
+            .get("/domains/" + DOMAIN.asString() + "/tasks")
+        .then()
+            .statusCode(HttpStatus.OK_200)
+            .body("taskId", contains(taskId.getValue().toString()));
+    }
+
+    @Test
+    void listTasksShouldFilterByStatus() throws Exception {
+        submitAndAwait(DOMAIN);
+        TaskId failedTaskId = submitAndAwait(Optional.of(new DomainBoundAdditionalInformation(DOMAIN)), Task.Result.PARTIAL);
+        submitAndAwait(Optional.of(new DomainBoundAdditionalInformation(OTHER_DOMAIN)), Task.Result.PARTIAL);
+
+        given()
+            .queryParam("status", "failed")
+        .when()
+            .get("/domains/" + DOMAIN.asString() + "/tasks")
+        .then()
+            .statusCode(HttpStatus.OK_200)
+            .body("taskId", contains(failedTaskId.getValue().toString()))
+            .body("status", contains("failed"));
+    }
+
+    @Test
+    void listTasksShouldReturn400WhenStatusIsInvalid() {
+        given()
+            .queryParam("status", "invalid")
+        .when()
+            .get("/domains/" + DOMAIN.asString() + "/tasks")
+        .then()
+            .statusCode(HttpStatus.BAD_REQUEST_400);
+    }
+
+    @Test
+    void listTasksShouldReturn404WhenDomainDoesNotExist() throws Exception {
+        submitAndAwait(DOMAIN);
+
+        when()
+            .get("/domains/unknown.com/tasks")
+        .then()
+            .statusCode(HttpStatus.NOT_FOUND_404);
+    }
+
+    @Test
+    void listTasksShouldReturnEmptyWhenNoTask() {
+        when()
+            .get("/domains/" + DOMAIN.asString() + "/tasks")
+        .then()
+            .statusCode(HttpStatus.OK_200)
+            .body(".", empty());
     }
 
     @Test
