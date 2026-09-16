@@ -41,4 +41,12 @@ public class LocalDateFormatterTest {
         assertThat(zonedDateTime.format(I18NDSNBounce.localizedDateFormatter(Locale.FRENCH)))
             .isEqualTo("vendredi, 30 octobre 2015 14:12:00 Z");
     }
+
+    @Test
+    void mongolianLocalDateFormatTest() {
+        ZonedDateTime zonedDateTime = ZonedDateTime.parse("2015-10-30T14:12:00Z");
+
+        assertThat(zonedDateTime.format(I18NDSNBounce.localizedDateFormatter(Locale.forLanguageTag("mn"))))
+            .isEqualTo("баасан, 30 аравдугаар сар 2015 14:12:00 Z");
+    }
 }
