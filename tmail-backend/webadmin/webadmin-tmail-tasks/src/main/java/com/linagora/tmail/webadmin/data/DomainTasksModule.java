@@ -90,7 +90,8 @@ public class DomainTasksModule extends AbstractModule {
             (domain, details) -> details.getAdditionalInformation()
                 .filter(info -> info instanceof UsernameChangeTask.AdditionalInformation)
                 .map(info -> (UsernameChangeTask.AdditionalInformation) info)
-                .map(info -> userBelongsToDomain(domain, info.getOldUser()))
+                .map(info -> userBelongsToDomain(domain, info.getOldUser())
+                    || userBelongsToDomain(domain, info.getNewUser()))
                 .orElse(false));
 
         predicates.addBinding().toInstance(
