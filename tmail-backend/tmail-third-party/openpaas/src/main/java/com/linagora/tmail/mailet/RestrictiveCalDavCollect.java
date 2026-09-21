@@ -28,9 +28,12 @@ import java.util.Optional;
 
 import jakarta.inject.Inject;
 import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
+import org.apache.james.util.AuditTrail;
+import org.apache.james.util.ReactorUtils;
 import org.apache.mailet.AttributeName;
 import org.apache.mailet.AttributeUtils;
 import org.apache.mailet.AttributeValue;
@@ -41,6 +44,8 @@ import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.github.fge.lambdas.Throwing;
+import com.google.common.collect.ImmutableMap;
 import com.linagora.tmail.dav.DavClient;
 import com.linagora.tmail.dav.DavUid;
 import com.linagora.tmail.dav.DavUser;
@@ -54,6 +59,7 @@ import net.fortuna.ical4j.model.Property;
 import net.fortuna.ical4j.model.component.VEvent;
 import net.fortuna.ical4j.model.property.Attendee;
 import net.fortuna.ical4j.model.property.Organizer;
+import net.fortuna.ical4j.model.property.Uid;
 import reactor.core.publisher.Mono;
 
 /**
@@ -76,6 +82,8 @@ public class RestrictiveCalDavCollect extends GenericMailet {
     public static final String DEFAULT_SOURCE_ATTRIBUTE_NAME = "icalendarJson";
 
     private static final Logger LOGGER = LoggerFactory.getLogger(RestrictiveCalDavCollect.class);
+    private static final String AUDIT_TRAIL_PROTOCOL = "mailetcontainer";
+    private static final String AUDIT_TRAIL_ACTION = "RestrictiveCalDavCollect";
     private static final Class<Map<String, AttributeValue<byte[]>>> MAP_STRING_JSON_BYTES_CLASS =
         (Class<Map<String, AttributeValue<byte[]>>>) (Object) Map.class;
 
@@ -130,7 +138,7 @@ public class RestrictiveCalDavCollect extends GenericMailet {
                     return;
                 }
 
-                synchronizeIfEligible(mailAddress, calendar, json);
+                synchronizeIfEligible(mailAddress, calendar, json, senderAsString, mail);
             } catch (Exception e) {
                 LOGGER.error("Error while handling calendar in mail {} with recipient {}", mail.getName(), recipient, e);
             }
@@ -206,25 +214,60 @@ public class RestrictiveCalDavCollect extends GenericMailet {
         };
     }
 
-    private void synchronizeIfEligible(MailAddress mailAddress, Calendar calendar, byte[] json) {
+    private void synchronizeIfEligible(MailAddress mailAddress, Calendar calendar, byte[] json, String sender, Mail mail) {
         if (isReply(calendar)) {
             // For REPLY: skip if the recipient is explicitly listed as an attendee — it means they sent the reply themselves.
             if (!isExplicitAttendee(mailAddress, calendar)) {
                 davUserProvider.provide(Username.of(mailAddress.asString()))
-                    .flatMap(davUser -> synchronizeWithDavServer(json, davUser))
+                    .flatMap(davUser -> synchronizeWithDavServer(json, davUser)
+                        .then(auditCollectedEvent(mail, mailAddress, sender, calendar)))
                     .block();
             }
         } else {
             davUserProvider.provide(Username.of(mailAddress.asString()))
-                .flatMap(davUser -> syncIfEventExists(json, calendar, davUser))
+                .flatMap(davUser -> syncIfEventExists(json, calendar, davUser, mailAddress, sender, mail))
                 .block();
         }
     }
 
-    private Mono<Void> syncIfEventExists(byte[] json, Calendar calendar, DavUser davUser) {
+    private Mono<Void> syncIfEventExists(byte[] json, Calendar calendar, DavUser davUser, MailAddress recipient, String sender, Mail mail) {
         DavUid eventUid = DavUid.fromCalendarUidField(CalendarUidField.getEventUidFromCalendar(calendar));
         return davClient.caldav(davUser.username()).getCalendarObject(davUser, eventUid)
-            .flatMap(existing -> synchronizeWithDavServer(json, davUser));
+            .flatMap(existing -> synchronizeWithDavServer(json, davUser)
+                .then(auditCollectedEvent(mail, recipient, sender, calendar)));
+    }
+
+    private Mono<Void> auditCollectedEvent(Mail mail, MailAddress recipient, String sender, Calendar calendar) {
+        return ReactorUtils.logAsMono(() -> AuditTrail.entry()
+            .protocol(AUDIT_TRAIL_PROTOCOL)
+            .action(AUDIT_TRAIL_ACTION)
+            .username(recipient::asString)
+            .parameters(Throwing.supplier(() -> ImmutableMap.of(
+                "mailId", mail.getName(),
+                "mimeMessageId", Optional.ofNullable(mail.getMessage())
+                    .map(Throwing.function(MimeMessage::getMessageID))
+                    .orElse(""),
+                "sender", sender,
+                "recipient", recipient.asString(),
+                "eventUid", eventUid(calendar),
+                "method", method(calendar))))
+            .log("Collected a calendar event."));
+    }
+
+    private static String eventUid(Calendar calendar) {
+        return calendar.getComponents(Component.VEVENT).stream()
+            .filter(VEvent.class::isInstance)
+            .map(VEvent.class::cast)
+            .flatMap(event -> event.getUid().stream())
+            .map(Uid::getValue)
+            .findFirst()
+            .orElse("");
+    }
+
+    private static String method(Calendar calendar) {
+        return calendar.getProperty(Property.METHOD)
+            .map(Property::getValue)
+            .orElse("");
     }
 
     private Mono<Void> synchronizeWithDavServer(byte[] json, DavUser davUser) {

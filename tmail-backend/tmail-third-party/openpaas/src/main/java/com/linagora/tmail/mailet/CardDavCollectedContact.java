@@ -24,9 +24,11 @@ import java.util.OptionalLong;
 
 import jakarta.inject.Inject;
 import jakarta.mail.MessagingException;
+import jakarta.mail.internet.MimeMessage;
 
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
+import org.apache.james.util.AuditTrail;
 import org.apache.james.util.FunctionalUtils;
 import org.apache.james.util.ReactorUtils;
 import org.apache.mailet.AttributeUtils;
@@ -35,7 +37,9 @@ import org.apache.mailet.base.GenericMailet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.github.fge.lambdas.Throwing;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.dav.CardDavClient;
 import com.linagora.tmail.dav.CardDavUtils;
@@ -51,6 +55,8 @@ import reactor.core.publisher.Mono;
  */
 public class CardDavCollectedContact extends GenericMailet {
     private static final Logger LOGGER = LoggerFactory.getLogger(CardDavCollectedContact.class);
+    private static final String AUDIT_TRAIL_PROTOCOL = "mailetcontainer";
+    private static final String AUDIT_TRAIL_ACTION = "CardDavCollect";
     static final String CARDDAV_COLLECT_LIMIT_PROPERTY = "tmail.carddav.collect.limit";
     private static final OptionalLong COLLECT_LIMIT = Optional.ofNullable(System.getProperty(CARDDAV_COLLECT_LIMIT_PROPERTY))
         .stream()
@@ -71,7 +77,7 @@ public class CardDavCollectedContact extends GenericMailet {
     public void service(Mail mail) throws MessagingException {
         if (!mail.getRecipients().isEmpty()) {
             getSender(mail)
-                .ifPresent(sender -> collectedContactProcess(sender, ImmutableList.copyOf(mail.getRecipients()))
+                .ifPresent(sender -> collectedContactProcess(sender, ImmutableList.copyOf(mail.getRecipients()), mail)
                     .block());
         }
     }
@@ -97,11 +103,11 @@ public class CardDavCollectedContact extends GenericMailet {
             .map(Username::of);
     }
 
-    private Mono<Void> collectedContactProcess(Username senderUsername, List<MailAddress> recipients) {
+    private Mono<Void> collectedContactProcess(Username senderUsername, List<MailAddress> recipients, Mail mail) {
         return openPaasRestClient.searchOpenPaasUserId(senderUsername)
             .flatMapMany(openPassUserId -> applyCollectLimit(Flux.fromIterable(recipients))
                 .map(CardDavUtils::createObjectCreationRequest)
-                .flatMap(cardDavCreationObjectRequest -> createCollectedContactIfNotExists(senderUsername, openPassUserId, cardDavCreationObjectRequest), ReactorUtils.LOW_CONCURRENCY))
+                .flatMap(cardDavCreationObjectRequest -> createCollectedContactIfNotExists(senderUsername, openPassUserId, cardDavCreationObjectRequest, mail), ReactorUtils.LOW_CONCURRENCY))
             .then();
     }
 
@@ -110,14 +116,31 @@ public class CardDavCollectedContact extends GenericMailet {
     }
 
 
-    private Mono<Void> createCollectedContactIfNotExists(Username sender, OpenPaaSUserId openPassUserId, CardDavCreationObjectRequest cardDavCreationObjectRequest) {
+    private Mono<Void> createCollectedContactIfNotExists(Username sender, OpenPaaSUserId openPassUserId, CardDavCreationObjectRequest cardDavCreationObjectRequest, Mail mail) {
         CardDavClient cardDavClient = davClient.carddav(sender);
         return cardDavClient.existsCollectedContact(openPassUserId, cardDavCreationObjectRequest.uid())
             .filter(FunctionalUtils.identityPredicate().negate())
-            .flatMap(exists -> cardDavClient.createCollectedContact(openPassUserId, cardDavCreationObjectRequest))
+            .flatMap(exists -> cardDavClient.createCollectedContact(openPassUserId, cardDavCreationObjectRequest)
+                .then(auditCollectedContact(mail, sender, cardDavCreationObjectRequest)))
             .onErrorResume(error -> {
                 LOGGER.error("Error while creating collected contact if not exists.", error);
                 return Mono.empty();
             });
+    }
+
+    private Mono<Void> auditCollectedContact(Mail mail, Username sender, CardDavCreationObjectRequest cardDavCreationObjectRequest) {
+        return ReactorUtils.logAsMono(() -> AuditTrail.entry()
+            .protocol(AUDIT_TRAIL_PROTOCOL)
+            .action(AUDIT_TRAIL_ACTION)
+            .username(sender::asString)
+            .parameters(Throwing.supplier(() -> ImmutableMap.of(
+                "mailId", mail.getName(),
+                "mimeMessageId", Optional.ofNullable(mail.getMessage())
+                    .map(Throwing.function(MimeMessage::getMessageID))
+                    .orElse(""),
+                "sender", sender.asString(),
+                "contact", cardDavCreationObjectRequest.email().value().asString(),
+                "contactUid", cardDavCreationObjectRequest.uid().value())))
+            .log("Collected a contact."));
     }
 }
