@@ -20,6 +20,8 @@ package com.linagora.tmail.mailet;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.badRequest;
 import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.noContent;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.linagora.tmail.dav.DavServerExtension.ALICE;
 import static com.linagora.tmail.dav.DavServerExtension.ALICE_DAV_USER;
 import static com.linagora.tmail.dav.DavServerExtension.ALICE_ID;
@@ -47,6 +49,8 @@ import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.google.common.collect.ImmutableMap;
 import com.linagora.tmail.dav.DavClient;
 import com.linagora.tmail.dav.DavClientException;
+import com.github.tomakehurst.wiremock.http.RequestMethod;
+import com.github.tomakehurst.wiremock.matching.RequestPatternBuilder;
 import com.linagora.tmail.dav.DavServerExtension;
 
 import ch.qos.logback.classic.Level;
@@ -57,6 +61,8 @@ import reactor.core.publisher.Mono;
 
 class CalDavCollectTest {
     private static final String ORGANIZER = "bob@james.org";
+    private static final String DELEGATE = "assistant@james.org";
+    private static final String STRANGER = "eve@james.org";
     private static final String ICS = """
         BEGIN:VCALENDAR
         VERSION:2.0
@@ -73,6 +79,38 @@ class CalDavCollectTest {
         END:VEVENT
         END:VCALENDAR
         """.formatted(ORGANIZER, ALICE);
+    private static final String ICS_SENT_BY_ORGANIZER_DELEGATE = """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        PRODID:-//Twake Mail//EN
+        METHOD:REQUEST
+        BEGIN:VEVENT
+        UID:ab3db856-a866-4a91-99a3-c84372eaee87
+        DTSTAMP:20250101T100000Z
+        DTSTART:20250101T110000Z
+        DTEND:20250101T120000Z
+        SUMMARY:Sprint planning
+        ORGANIZER;CN=Bob;SENT-BY="MAILTO:%s":MAILTO:%s
+        ATTENDEE:mailto:%s
+        END:VEVENT
+        END:VCALENDAR
+        """.formatted(DELEGATE, ORGANIZER, ALICE);
+    private static final String ICS_REPLY_SENT_BY_ATTENDEE_DELEGATE = """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        PRODID:-//Twake Mail//EN
+        METHOD:REPLY
+        BEGIN:VEVENT
+        UID:ab3db856-a866-4a91-99a3-c84372eaee87
+        DTSTAMP:20250101T100000Z
+        DTSTART:20250101T110000Z
+        DTEND:20250101T120000Z
+        SUMMARY:Sprint planning
+        ORGANIZER:mailto:%s
+        ATTENDEE;PARTSTAT=ACCEPTED;SENT-BY="MAILTO:%s":MAILTO:%s
+        END:VEVENT
+        END:VCALENDAR
+        """.formatted(ALICE, DELEGATE, ORGANIZER);
     private static final String SABRE_ERROR_BODY = """
         <?xml version="1.0" encoding="utf-8"?>
         <d:error xmlns:d="DAV:" xmlns:s="http://sabredav.org/ns">
@@ -133,6 +171,37 @@ class CalDavCollectTest {
         assertThat(org.slf4j.MDC.get(DavClientException.SABRE_RESPONSE_MDC_KEY)).isNull();
     }
 
+    @Test
+    void serviceShouldSendItipRequestWhenSenderIsTheOrganizerDelegate() throws Exception {
+        davServerExtension.stubFor(itip("/calendars/" + ALICE_ID).willReturn(noContent()));
+
+        mailet.service(mailWithCalendar(ICS_SENT_BY_ORGANIZER_DELEGATE, DELEGATE));
+
+        davServerExtension.verify(1, itipRequestPattern());
+    }
+
+    @Test
+    void serviceShouldSendItipRequestWhenReplySenderIsTheAttendeeDelegate() throws Exception {
+        davServerExtension.stubFor(itip("/calendars/" + ALICE_ID).willReturn(noContent()));
+
+        mailet.service(mailWithCalendar(ICS_REPLY_SENT_BY_ATTENDEE_DELEGATE, DELEGATE));
+
+        davServerExtension.verify(1, itipRequestPattern());
+    }
+
+    @Test
+    void serviceShouldNotSendItipRequestWhenSenderIsNeitherTheOrganizerNorItsDelegate() throws Exception {
+        davServerExtension.stubFor(itip("/calendars/" + ALICE_ID).willReturn(noContent()));
+
+        mailet.service(mailWithCalendar(ICS_SENT_BY_ORGANIZER_DELEGATE, STRANGER));
+
+        davServerExtension.verify(0, itipRequestPattern());
+    }
+
+    private static RequestPatternBuilder itipRequestPattern() {
+        return RequestPatternBuilder.newRequestPattern(RequestMethod.fromString("ITIP"), urlEqualTo("/calendars/" + ALICE_ID));
+    }
+
     private List<ILoggingEvent> errorLogs() {
         return logAppender.list.stream()
             .filter(event -> event.getLevel() == Level.ERROR)
@@ -140,10 +209,14 @@ class CalDavCollectTest {
     }
 
     private Mail mailWithCalendar() throws Exception {
+        return mailWithCalendar(ICS, ORGANIZER);
+    }
+
+    private Mail mailWithCalendar(String ics, String sender) throws Exception {
         ObjectNode json = new ObjectMapper().createObjectNode();
-        json.put("ical", ICS);
+        json.put("ical", ics);
         json.put("recipient", ALICE);
-        json.put("sender", ORGANIZER);
+        json.put("sender", sender);
         byte[] jsonBytes = json.toString().getBytes(StandardCharsets.UTF_8);
 
         return FakeMail.builder()

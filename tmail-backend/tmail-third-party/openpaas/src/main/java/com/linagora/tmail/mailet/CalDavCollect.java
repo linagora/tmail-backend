@@ -25,6 +25,7 @@ import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import jakarta.inject.Inject;
 import jakarta.mail.MessagingException;
@@ -56,10 +57,10 @@ import net.fortuna.ical4j.data.CalendarBuilder;
 import net.fortuna.ical4j.data.ParserException;
 import net.fortuna.ical4j.model.Calendar;
 import net.fortuna.ical4j.model.Component;
+import net.fortuna.ical4j.model.Parameter;
 import net.fortuna.ical4j.model.Property;
 import net.fortuna.ical4j.model.component.VEvent;
 import net.fortuna.ical4j.model.property.Attendee;
-import net.fortuna.ical4j.model.property.Organizer;
 import net.fortuna.ical4j.model.property.Uid;
 import reactor.core.publisher.Mono;
 
@@ -173,11 +174,9 @@ public class CalDavCollect extends GenericMailet {
             .filter(VEvent.class::isInstance)
             .map(VEvent.class::cast)
             .anyMatch(event -> Optional.ofNullable(event.getOrganizer())
-                .map(Organizer::getCalAddress)
-                .map(URI::getSchemeSpecificPart)
-                .flatMap(CalDavCollect::toMailAddressSilently)
-                .map(organizer -> isSenderAlignedWith(sender, organizer))
-                .orElse(false));
+                .stream()
+                .flatMap(organizer -> actingAddresses(organizer, organizer.getCalAddress()))
+                .anyMatch(organizerAddress -> isSenderAlignedWith(sender, organizerAddress)));
     }
 
     private boolean isSenderAlignedWithAnyAttendee(MailAddress sender, Calendar calendar) {
@@ -186,10 +185,35 @@ public class CalDavCollect extends GenericMailet {
             .map(VEvent.class::cast)
             .anyMatch(event -> event.getProperties(Property.ATTENDEE).stream()
                 .map(attendee -> (Attendee) attendee)
-                .map(Attendee::getCalAddress)
-                .map(URI::getSchemeSpecificPart)
-                .flatMap(addr -> toMailAddressSilently(addr).stream())
-                .anyMatch(attendeeAddr -> isSenderAlignedWith(sender, attendeeAddr)));
+                .flatMap(attendee -> actingAddresses(attendee, attendee.getCalAddress()))
+                .anyMatch(attendeeAddress -> isSenderAlignedWith(sender, attendeeAddress)));
+    }
+
+    /**
+     * The addresses allowed to send an ITIP message on behalf of a calendar user: its own address, and the
+     * delegate designated by the SENT-BY parameter (RFC 5545 section 3.2.18), used when an assistant sends
+     * the invitation for the organizer, or a reply for an attendee.
+     */
+    private static Stream<MailAddress> actingAddresses(Property calendarUser, URI calAddress) {
+        return Stream.concat(
+            toMailAddressSilently(calAddress.getSchemeSpecificPart()).stream(),
+            sentBy(calendarUser).stream());
+    }
+
+    private static Optional<MailAddress> sentBy(Property calendarUser) {
+        return calendarUser.getParameter(Parameter.SENT_BY)
+            .map(Parameter::getValue)
+            .flatMap(CalDavCollect::toCalendarUserMailAddress);
+    }
+
+    private static Optional<MailAddress> toCalendarUserMailAddress(String calAddress) {
+        try {
+            return toMailAddressSilently(Optional.ofNullable(URI.create(calAddress).getSchemeSpecificPart())
+                .orElse(calAddress));
+        } catch (Exception e) {
+            LOGGER.info("Skipping invalid calendar user address in iCal payload: {}", calAddress);
+            return Optional.empty();
+        }
     }
 
     private static Optional<MailAddress> toMailAddressSilently(String address) {
