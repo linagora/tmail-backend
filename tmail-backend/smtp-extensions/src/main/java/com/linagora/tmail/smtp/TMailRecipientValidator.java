@@ -22,31 +22,40 @@ import jakarta.inject.Inject;
 
 import org.apache.james.core.MailAddress;
 import org.apache.james.domainlist.api.DomainList;
-import org.apache.james.protocols.smtp.SMTPSession;
 import org.apache.james.rrt.api.RecipientRewriteTable;
-import org.apache.james.rrt.api.RecipientRewriteTableException;
-import org.apache.james.smtpserver.fastfail.ValidRcptHandler;
+import org.apache.james.rrt.api.RecipientValidator;
 import org.apache.james.user.api.UsersRepository;
 import org.apache.james.user.api.UsersRepositoryException;
 
+import com.linagora.tmail.team.TeamMailbox;
 import com.linagora.tmail.team.TeamMailboxRepository;
 
-public class TMailValidRcptHandler extends ValidRcptHandler {
+import reactor.core.publisher.Mono;
+
+/**
+ * A {@link RecipientValidator} that additionally considers team mailboxes as valid local resources.
+ */
+public class TMailRecipientValidator extends RecipientValidator {
+    private final TeamMailboxRepository teamMailboxRepository;
+
     @Inject
-    public TMailValidRcptHandler(UsersRepository users,
-                                 RecipientRewriteTable recipientRewriteTable,
-                                 DomainList domains,
-                                 TeamMailboxRepository teamMailboxRepository) {
-        this(new TMailRecipientValidator(users, recipientRewriteTable, domains, teamMailboxRepository));
+    public TMailRecipientValidator(UsersRepository users,
+                                   RecipientRewriteTable recipientRewriteTable,
+                                   DomainList domains,
+                                   TeamMailboxRepository teamMailboxRepository) {
+        super(users, recipientRewriteTable, domains);
+        this.teamMailboxRepository = teamMailboxRepository;
     }
 
-    public TMailValidRcptHandler(TMailRecipientValidator recipientValidator) {
-        super(recipientValidator);
-    }
-
-    // This is only needed to make James' behavior visible for tests here.
     @Override
-    protected boolean isValidRecipient(SMTPSession session, MailAddress recipient) throws UsersRepositoryException, RecipientRewriteTableException {
-        return super.isValidRecipient(session, recipient);
+    public boolean mailboxExists(MailAddress recipient) throws UsersRepositoryException {
+        return super.mailboxExists(recipient) || isATeamMailbox(recipient);
+    }
+
+    private boolean isATeamMailbox(MailAddress recipient) {
+        MailAddress strippedRecipient = recipient.stripDetails(UsersRepository.LOCALPART_DETAIL_DELIMITER);
+        return TeamMailbox.asTeamMailbox(strippedRecipient)
+            .map(tm -> Mono.from(teamMailboxRepository.exists(tm)).block())
+            .getOrElse(() -> false);
     }
 }

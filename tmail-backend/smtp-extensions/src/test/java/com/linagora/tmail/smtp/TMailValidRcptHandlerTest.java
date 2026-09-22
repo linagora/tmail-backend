@@ -57,6 +57,7 @@ class TMailValidRcptHandlerTest {
     public static final Username GROUP = Username.fromLocalPartWithDomain("group", DOMAIN);
 
     private TMailValidRcptHandler testee;
+    private TMailRecipientValidator recipientValidator;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -85,22 +86,23 @@ class TMailValidRcptHandlerTest {
         Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox)).block();
         Mono.from(teamMailboxRepository.addMember(teamMailbox, TeamMailboxMember.asMember(BOB))).block();
 
-        testee = new TMailValidRcptHandler(usersRepository, rrt, domainList, teamMailboxRepository);
+        recipientValidator = new TMailRecipientValidator(usersRepository, rrt, domainList, teamMailboxRepository);
+        testee = new TMailValidRcptHandler(recipientValidator);
     }
 
     @Test
     void shouldHandleUsers() throws Exception {
-        assertThat(testee.mailboxExists(new MailAddress(BOB.asString()))).isTrue();
+        assertThat(recipientValidator.mailboxExists(new MailAddress(BOB.asString()))).isTrue();
     }
 
     @Test
     void shouldHandleTeams() throws Exception {
-        assertThat(testee.mailboxExists(new MailAddress(SALES.asString()))).isTrue();
+        assertThat(recipientValidator.mailboxExists(new MailAddress(SALES.asString()))).isTrue();
     }
 
     @Test
     void shouldNotHandleNonExistentRecipients() throws Exception {
-        assertThat(testee.mailboxExists(new MailAddress(NON_EXISTENT.asString()))).isFalse();
+        assertThat(recipientValidator.mailboxExists(new MailAddress(NON_EXISTENT.asString()))).isFalse();
     }
 
     @ParameterizedTest
