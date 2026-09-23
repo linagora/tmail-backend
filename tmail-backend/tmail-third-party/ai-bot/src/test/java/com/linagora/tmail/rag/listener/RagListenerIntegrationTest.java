@@ -29,6 +29,7 @@ import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.util.Date;
@@ -58,6 +59,7 @@ import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 
 public class RagListenerIntegrationTest {
     private static final String RAG_INDEXER_ENDPOINT = "/indexer/partition/.*/file/.*";
+    private static final Date INTERNAL_DATE = Date.from(Instant.parse("2024-01-15T09:30:00Z"));
 
     @RegisterExtension
     static WireMockAiServerExtension wireMockRagServerExtension = new WireMockAiServerExtension();
@@ -121,7 +123,7 @@ public class RagListenerIntegrationTest {
     void reactiveEventShouldProcessAddedEventAndExtractContent(GuiceJamesServer server) throws Exception {
         MessageManager.AppendResult message1 = server.getProbe(MailboxProbeImpl.class)
             .appendMessageAndGetAppendResult(bob, pathBob,
-                MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)));
+                MessageManager.AppendCommand.builder().withInternalDate(INTERNAL_DATE).build(new SharedByteArrayInputStream(CONTENT)));
 
         verify(1, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
 
@@ -131,12 +133,12 @@ public class RagListenerIntegrationTest {
             .withRequestBodyPart(aMultipart()
                 .withName("metadata")
                 .withBody(equalToJson("{"
-                    + "\"email.subject\":\"Test Subject\","
+                    + "\"email\":{\"subject\":\"Test Subject\",\"preview\":\"Body of the email On Tue, 10 Oct 2023 at 09:00, previous@example.com wrote: > Hello, > This is the previous reply\"},"
                     + "\"datetime\":\"2023-10-10T10:00:00Z\","
+                    + "\"created_at\":\"2024-01-15T09:30:00Z\","
                     + "\"parent_id\":\"\","
                     + "\"relationship_id\":\"1\","
-                    + "\"doctype\":\"com.linagora.email\","
-                    + "\"email.preview\":\"Body of the email On Tue, 10 Oct 2023 at 09:00, previous@example.com wrote: > Hello, > This is the previous reply\""
+                    + "\"doctype\":\"com.linagora.email\""
                     + "}"))
                 .build())
             .withRequestBodyPart(aMultipart()
@@ -161,7 +163,7 @@ public class RagListenerIntegrationTest {
     void listenerShouldAddInReplyToMetadataWhenEmailHaveInReplyToHeader(GuiceJamesServer server) throws Exception {
         MessageManager.AppendResult originalMessage = server.getProbe(MailboxProbeImpl.class)
             .appendMessageAndGetAppendResult(bob, pathBob,
-                MessageManager.AppendCommand.from(
+                MessageManager.AppendCommand.builder().withInternalDate(INTERNAL_DATE).build(
                     Message.Builder.of()
                         .setSubject("Sujet Test")
                         .setMessageId("Message-ID-1")
@@ -173,7 +175,7 @@ public class RagListenerIntegrationTest {
 
         MessageManager.AppendResult messageResponse = server.getProbe(MailboxProbeImpl.class)
             .appendMessageAndGetAppendResult(bob, pathBob,
-                MessageManager.AppendCommand.from(
+                MessageManager.AppendCommand.builder().withInternalDate(INTERNAL_DATE).build(
                     Message.Builder.of()
                         .setSubject("Re: Sujet Test")
                         .setMessageId("Message-ID-2")
@@ -192,12 +194,12 @@ public class RagListenerIntegrationTest {
             .withRequestBodyPart(aMultipart()
                 .withName("metadata")
                 .withBody(equalToJson("{"
-                    + "\"email.subject\":\"Re: Sujet Test\","
+                    + "\"email\":{\"subject\":\"Re: Sujet Test\",\"preview\":\"Contenu mail 1\"},"
                     + "\"datetime\":\"2023-10-10T10:00:00Z\","
+                    + "\"created_at\":\"2024-01-15T09:30:00Z\","
                     + "\"parent_id\":\""+ originalMessage.getId().getMessageId().serialize() + "\","
                     + "\"relationship_id\":\"1\","
-                    + "\"doctype\":\"com.linagora.email\","
-                    + "\"email.preview\":\"Contenu mail 1\""
+                    + "\"doctype\":\"com.linagora.email\""
                     + "}"))
                 .build())
             .withRequestBodyPart(aMultipart()
@@ -217,7 +219,7 @@ public class RagListenerIntegrationTest {
 
         MessageManager.AppendResult message1 = server.getProbe(MailboxProbeImpl.class)
             .appendMessageAndGetAppendResult(bob, pathBob,
-                MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)));
+                MessageManager.AppendCommand.builder().withInternalDate(INTERNAL_DATE).build(new SharedByteArrayInputStream(CONTENT)));
 
         verify(1, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
         verify(1, putRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
@@ -228,12 +230,12 @@ public class RagListenerIntegrationTest {
             .withRequestBodyPart(aMultipart()
                 .withName("metadata")
                 .withBody(equalToJson("{"
-                    + "\"email.subject\":\"Test Subject\","
+                    + "\"email\":{\"subject\":\"Test Subject\",\"preview\":\"Body of the email On Tue, 10 Oct 2023 at 09:00, previous@example.com wrote: > Hello, > This is the previous reply\"},"
                     + "\"datetime\":\"2023-10-10T10:00:00Z\","
+                    + "\"created_at\":\"2024-01-15T09:30:00Z\","
                     + "\"parent_id\":\"\","
                     + "\"relationship_id\":\"1\","
-                    + "\"doctype\":\"com.linagora.email\","
-                    + "\"email.preview\":\"Body of the email On Tue, 10 Oct 2023 at 09:00, previous@example.com wrote: > Hello, > This is the previous reply\""
+                    + "\"doctype\":\"com.linagora.email\""
                     + "}"))
                 .build())
             .withRequestBodyPart(aMultipart()

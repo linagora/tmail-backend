@@ -24,6 +24,7 @@ import java.io.InputStream;
 import java.time.ZoneId;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
+import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -185,7 +186,7 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
                     metaData)));
     }
 
-    private Mono<Map<String, String>> computeMetaData(MessageResult messageResult, MailboxSession session) {
+    private Mono<Map<String, Object>> computeMetaData(MessageResult messageResult, MailboxSession session) {
         try {
             Message mimeMessage = parseMessage(messageResult.getFullContent().getInputStream());
             String text = new MessageContentExtractor()
@@ -194,24 +195,33 @@ public class RagListener implements EventListener.ReactiveGroupEventListener {
                 .orElse("");
 
             String subject = Optional.ofNullable(mimeMessage.getSubject()).orElse("");
-            String datetime = mimeMessage.getDate() == null
-                ? ""
-                : DateTimeFormatter.ISO_INSTANT.format(mimeMessage.getDate().toInstant());
+            String datetime = formatInstant(mimeMessage.getDate());
+            // The internal date is when the message entered the mailbox, the closest thing an email has to a creation date
+            String createdAt = formatInstant(messageResult.getInternalDate());
+            Map<String, String> email = Map.of(
+                "subject", subject,
+                "preview", Preview.compute(text).getValue());
 
             return mimeMessageIdToMailboxMessageId(messageResult.getThreadId(), getInReplyTo(mimeMessage), session)
                 .map(MessageId::serialize)
                 .defaultIfEmpty("")
                 .publishOn(Schedulers.parallel())
-                .map(parentId -> Map.of(
-                    "email.subject", subject,
+                .map(parentId -> Map.<String, Object>of(
+                    "email", email,
                     "datetime", datetime,
+                    "created_at", createdAt,
                     "parent_id", parentId,
                     "relationship_id", messageResult.getThreadId().serialize(),
-                    "doctype", "com.linagora.email",
-                    "email.preview", Preview.compute(text).getValue()));
+                    "doctype", "com.linagora.email"));
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
+    }
+
+    private String formatInstant(Date date) {
+        return date == null
+            ? ""
+            : DateTimeFormatter.ISO_INSTANT.format(date.toInstant());
     }
 
     private Mono<MessageId> mimeMessageIdToMailboxMessageId(ThreadId threadId, String mimeMessageID, MailboxSession session) {

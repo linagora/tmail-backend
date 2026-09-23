@@ -57,7 +57,7 @@ public class OpenRagClient {
         this.httpClient = AiHttpClientFactory.create(AiHttpClientConfiguration.from(configuration));
     }
 
-    public Mono<String> addDocument(Partition partition, DocumentId documentId, String textualContent, Map<String, String> metadata) {
+    public Mono<String> addDocument(Partition partition, DocumentId documentId, String textualContent, Map<String, Object> metadata) {
         String url = String.format(RAG_DOCUMENT_ENDPOINT, partition.partitionName(), documentId.asString());
         return Mono.fromCallable(() -> objectMapper.writeValueAsString(metadata))
             .flatMap(metadataJson ->
