@@ -5,6 +5,66 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+## [1.0.21.1] - 2026-09-17
+
+Changes since 1.0.20, including the 1.0.21 tag.
+
+### James
+
+#### Added
+
+- JAMES-4225 Cassandra schema version 16: backfill message metadata in `messageIdTable` and `imapUidTable`. Distributed deployments with an older schema version must run the migration through WebAdmin.
+- JAMES-4227 Optionally configure the JMAP preview length with `james.jmap.preview.length` (default: 256 characters).
+- JAMES-4215 Optional Kerberos realm-to-mail-domain mapping for GSSAPI authentication.
+- JAMES-4219 Optional customization of selected SMTP replies.
+- [ENHANCEMENT] Disable JMAP WebPush with `webpush.enabled=false` (enabled by default).
+- JAMES-4222 Optional unordered S3 listings for Ceph RADOS Gateway with `james.s3.rados.allow.unorder=true`.
+- [ENHANCEMENT] WebAdmin: find a dead-lettered event by `eventId` across groups.
+- [ENHANCEMENT] SMTP accounts declared in `ConfigurationAuthHook` can opt into sending on behalf of users with `allowUseOtherIdentity` (defaults to `false`).
+
+#### Fixes
+
+- [FIX] PostgreSQL: initialize the HSTORE extension correctly.
+- [FIX] Reject OIDC tokens that introspection reports as inactive.
+- [FIX] Cassandra 5 compatibility for timestamps and LZ4 compression options.
+- [FIX] IMAP: preserve a pipelined command following a literal and improve resource handling.
+- [FIX] JMAP downloads: sanitize an empty content type.
+- [FIX] SMTP: accept MAC addresses in HELO arguments.
+- [FIX] Ignore malformed ICS property values and prevent `IsSMIMESigned` from treating PGP/MIME signatures as S/MIME.
+
+#### Enhancements
+
+- JAMES-4224 New blob IDs default to 128 bits of entropy when `james.blobid.entropy` is unset; existing blobs remain readable. Set it to `256` to retain the former format.
+- [ENHANCEMENT] Cassandra no longer writes the unused `messagev3.bodyOctets`, `messageIdTable.flagUser` and `imapUidTable.flagUser` columns. Dropping them is optional after all nodes are upgraded.
+- [PERF] Parse Tika content on a parallel scheduler and optionally use native TLS with the Cassandra driver.
+
+#### Upgrades
+
+- [UPGRADE] ActiveMQ Artemis 2.55.0 → 2.56.0.
+- [UPGRADE] Netty 4.1.132 → 4.1.135, MIME4J 0.8.14 → 0.8.15 and Cassandra Java driver 4.19.1 → 4.19.3.
+
+### TMail
+
+#### Added
+
+- ISSUE-2608 Optional S3 bucket sharding for Ceph/RADOS deployments, configured with `tmail.blobstore.shards` in `blob.properties`. Sharding is disabled by default and requires a stable bucket layout from the start.
+- Migration proxy: IMAP `AUTHENTICATE PLAIN` support.
+- ISSUE-2576 Migration proxy: optional Kerberos/GSSAPI mode uses backend administrator delegation and requires verified backend TLS by default; password authentication remains the default mode.
+- ISSUE-2585 Migration proxy: when configured with RabbitMQ, consume migration switch events to mark users migrated and disconnect their IMAP sessions, honoring configured queue arguments.
+- WebAdmin: list a domain's tasks with `GET /domains/{domain}/tasks`, optionally filtered by status.
+- ISSUE-2605 Optional `EnrichACLListener` qualifies local-part-only ACL entries with the mailbox owner's domain.
+- [ENHANCEMENT] Bundled Mongolian (`mn`) templates for delivery status notifications and calendar replies; mounted configurations can opt in by adding `mn` to their supported languages.
+
+#### Fixes
+
+- [FIX] Avoid OpenSearch version conflicts when migrating contacts during a username change.
+
+#### Enhancements
+
+- [FIX] Limit DAV error response text in logs and expose it in the `sabreResponse` MDC field.
+- ISSUE-2619 Avoid caching duplicated header blobs in the BlobId list DAO.
+- [ENHANCEMENT] `UnauthenticatedBlobAccess/set` now returns `validUntil` alongside each created token.
+
 ## [1.0.20] - 2026-08-23
 
 ### James
