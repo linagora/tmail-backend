@@ -20,11 +20,20 @@ package com.linagora.tmail.blob.guice;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.net.URI;
+
 import org.apache.james.blob.aes.CryptoConfig;
+import org.apache.james.blob.objectstorage.aws.AwsS3AuthConfiguration;
+import org.apache.james.blob.objectstorage.aws.S3BlobStoreConfiguration;
+import org.apache.james.blob.objectstorage.aws.S3RequestOption;
+import org.apache.james.blob.objectstorage.aws.Region;
+import org.apache.james.blob.objectstorage.aws.sse.S3SSECConfiguration;
 import org.apache.james.blob.zstd.CompressionConfiguration;
 import org.junit.jupiter.api.Test;
 
 public class BlobStoreModulesChooserTest {
+    private static final URI S3_ENDPOINT = URI.create("http://127.0.0.1:9000");
+    private static final Region REGION = Region.of("us-east-1");
 
     @Test
     void provideBlobStoreShouldReturnNoEncryptionWhenNoneConfigured() {
@@ -111,5 +120,40 @@ public class BlobStoreModulesChooserTest {
             .disableSingleSave()))
             .filteredOn(module -> module instanceof BlobStoreModulesChooser.MultiSaveDeclarationModule)
             .hasSize(1);
+    }
+
+    @Test
+    void provideS3RequestOptionShouldTakeIntoAccountIfNoneMatchConfigurationWhenSSECDisabled() throws Exception {
+        BlobStoreModulesChooser.ObjectStorageBlobStoreDAODeclarationModule module = new BlobStoreModulesChooser.ObjectStorageBlobStoreDAODeclarationModule();
+
+        assertThat(module.provideS3RequestOption(s3BlobStoreConfiguration(false, false)).ifNoneMatch()).isFalse();
+        assertThat(module.provideS3RequestOption(s3BlobStoreConfiguration(false, true)).ifNoneMatch()).isTrue();
+    }
+
+    @Test
+    void provideS3RequestOptionShouldTakeIntoAccountIfNoneMatchConfigurationWhenSSECEnabled() throws Exception {
+        BlobStoreModulesChooser.ObjectStorageBlobStoreDAODeclarationModule module = new BlobStoreModulesChooser.ObjectStorageBlobStoreDAODeclarationModule();
+
+        S3RequestOption s3RequestOption = module.provideS3RequestOption(s3BlobStoreConfiguration(true, true));
+
+        assertThat(s3RequestOption.ifNoneMatch()).isTrue();
+        assertThat(s3RequestOption.ssec().enable()).isTrue();
+    }
+
+    private S3BlobStoreConfiguration s3BlobStoreConfiguration(boolean ssecEnabled, boolean ifNoneMatchEnabled) {
+        S3BlobStoreConfiguration.Builder.ReadyToBuild builder = S3BlobStoreConfiguration.builder()
+            .authConfiguration(AwsS3AuthConfiguration.builder()
+                .endpoint(S3_ENDPOINT)
+                .accessKeyId("accessKeyId")
+                .secretKey("secretKey")
+                .build())
+            .region(REGION)
+            .ifNoneMatchEnabled(ifNoneMatchEnabled);
+        if (ssecEnabled) {
+            return builder.ssecEnabled()
+                .ssecConfiguration(new S3SSECConfiguration.Basic(S3SSECConfiguration.ENCRYPTION_S3_SSEC_ALGORITHM_DEFAULT, "myPass", "salt"))
+                .build();
+        }
+        return builder.build();
     }
 }
