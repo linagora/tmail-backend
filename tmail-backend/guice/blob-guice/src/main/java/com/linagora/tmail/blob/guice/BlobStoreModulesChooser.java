@@ -122,13 +122,13 @@ public class BlobStoreModulesChooser {
         @Singleton
         S3RequestOption provideS3RequestOption(S3BlobStoreConfiguration configuration) throws InvalidKeySpecException, NoSuchAlgorithmException {
             if (!configuration.ssecEnabled()) {
-                return S3RequestOption.DEFAULT;
+                return new S3RequestOption(S3RequestOption.DEFAULT.ssec(), configuration.ifNoneMatchEnabled());
             }
             S3SSECConfiguration ssecConfiguration = configuration.getSSECConfiguration()
                 .orElseThrow(() -> new MissingArgumentException("SSEC is enabled but no configuration is provided"));
 
             S3SSECustomerKeyFactory sseCustomerKeyFactory = new S3SSECustomerKeyFactory.SingleCustomerKeyFactory((S3SSECConfiguration.Basic) ssecConfiguration);
-            return new S3RequestOption(new S3RequestOption.SSEC(true, Optional.of(sseCustomerKeyFactory)));
+            return new S3RequestOption(new S3RequestOption.SSEC(true, Optional.of(sseCustomerKeyFactory)), configuration.ifNoneMatchEnabled());
         }
     }
 
