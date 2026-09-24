@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### TMail
+
+#### Fixes
+
+- [FIX] RAG: send the email metadata to OpenRAG as an `email` object (`subject`, `preview`) instead of dotted `email.*` keys, and add `created_at` (the internal date of the message)
+
 ## [1.0.21.1] - 2026-09-17
 
 Changes since 1.0.20, including the 1.0.21 tag.

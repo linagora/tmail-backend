@@ -30,6 +30,7 @@ import static org.mockito.Mockito.spy;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.time.Instant;
+import java.util.Date;
 
 import com.linagora.tmail.rag.configuration.RagConfig;
 import jakarta.mail.util.SharedByteArrayInputStream;
@@ -73,6 +74,7 @@ import com.linagora.tmail.rag.utils.Partition;
 class RagListenerTest {
 
     private static final String RAG_INDEXER_ENDPOINT = "/indexer/partition/.*/file/.*";
+    private static final Date INTERNAL_DATE = Date.from(Instant.parse("2024-01-15T09:30:00Z"));
     private static final Username BOB = Username.of("bob@test.com");
     private static final Username ALICE = Username.of("alice@test.com");
     private static final Username USER_WITH_NO_DOMAIN = Username.of("user");
@@ -194,7 +196,7 @@ class RagListenerTest {
     void reactiveEventShouldProcessAddedEventAndExtractContent() throws Exception {
         mailboxManager.getEventBus().register(ragListener);
         MessageManager.AppendResult appendResult = bobInboxMessageManager.appendMessage(
-            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
+            MessageManager.AppendCommand.builder().withInternalDate(INTERNAL_DATE).build(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
 
         verify(1, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
@@ -205,12 +207,12 @@ class RagListenerTest {
             .withRequestBodyPart(aMultipart()
                 .withName("metadata")
                 .withBody(equalToJson("{"
-                    + "\"email.subject\":\"Test Subject\","
+                    + "\"email\":{\"subject\":\"Test Subject\",\"preview\":\"Body of the email\"},"
                     + "\"datetime\":\"2023-10-10T10:00:00Z\","
+                    + "\"created_at\":\"2024-01-15T09:30:00Z\","
                     + "\"parent_id\":\"\","
                     + "\"relationship_id\":\"1\","
-                    + "\"doctype\":\"com.linagora.email\","
-                    + "\"email.preview\":\"Body of the email\""
+                    + "\"doctype\":\"com.linagora.email\""
                     + "}"))
                 .build())
             .withRequestBodyPart(aMultipart()
@@ -240,7 +242,7 @@ class RagListenerTest {
 
         mailboxManager.getEventBus().register(ragListener);
         bobInboxMessageManager.appendMessage(
-            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(Content2)),
+            MessageManager.AppendCommand.builder().withInternalDate(INTERNAL_DATE).build(new SharedByteArrayInputStream(Content2)),
             bobMailboxSession);
 
         verify(1, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
@@ -251,12 +253,12 @@ class RagListenerTest {
             .withRequestBodyPart(aMultipart()
                 .withName("metadata")
                 .withBody(equalToJson("{"
-                    + "\"email.subject\":\"\","
+                    + "\"email\":{\"subject\":\"\",\"preview\":\"Body of the email\"},"
                     + "\"datetime\":\"\","
+                    + "\"created_at\":\"2024-01-15T09:30:00Z\","
                     + "\"parent_id\":\"\","
                     + "\"relationship_id\":\"1\","
-                    + "\"doctype\":\"com.linagora.email\","
-                    + "\"email.preview\":\"Body of the email\""
+                    + "\"doctype\":\"com.linagora.email\""
                     + "}"))
                 .build())
             .withRequestBodyPart(aMultipart()
@@ -286,7 +288,7 @@ class RagListenerTest {
 
         mailboxManager.getEventBus().register(ragListener);
         bobInboxMessageManager.appendMessage(
-            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
+            MessageManager.AppendCommand.builder().withInternalDate(INTERNAL_DATE).build(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
 
         verify(1, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
@@ -298,12 +300,12 @@ class RagListenerTest {
             .withRequestBodyPart(aMultipart()
                 .withName("metadata")
                 .withBody(equalToJson("{"
-                    + "\"email.subject\":\"Test Subject\","
+                    + "\"email\":{\"subject\":\"Test Subject\",\"preview\":\"Body of the email\"},"
                     + "\"datetime\":\"2023-10-10T10:00:00Z\","
+                    + "\"created_at\":\"2024-01-15T09:30:00Z\","
                     + "\"parent_id\":\"\","
                     + "\"relationship_id\":\"1\","
-                    + "\"doctype\":\"com.linagora.email\","
-                    + "\"email.preview\":\"Body of the email\""
+                    + "\"doctype\":\"com.linagora.email\""
                     + "}"))
                 .build())
             .withRequestBodyPart(aMultipart()
@@ -327,7 +329,7 @@ class RagListenerTest {
     void reactiveEventShouldLogNothingWhenEventIsNotAppended() throws Exception {
 
         MessageManager.AppendResult appendResult = bobInboxMessageManager.appendMessage(
-            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
+            MessageManager.AppendCommand.builder().withInternalDate(INTERNAL_DATE).build(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
         mailboxManager.getEventBus().register(ragListener);
 
@@ -348,7 +350,7 @@ class RagListenerTest {
 
         mailboxManager.getEventBus().register(ragListener);
         MessageManager.AppendResult appendResult = spamMessageManager.appendMessage(
-            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
+            MessageManager.AppendCommand.builder().withInternalDate(INTERNAL_DATE).build(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
 
         verify(0, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
@@ -359,7 +361,7 @@ class RagListenerTest {
         mailboxManager.getEventBus().register(ragListener);
 
         MessageManager.AppendResult appendResult = trashMessageManager.appendMessage(
-            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
+            MessageManager.AppendCommand.builder().withInternalDate(INTERNAL_DATE).build(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
 
         verify(0, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
@@ -372,10 +374,10 @@ class RagListenerTest {
         jmapSettingsRepositoryUtils.reset(ALICE, ImmutableMap.of("ai.rag.enabled", "true"));
 
         MessageManager.AppendResult appendResult = aliceInboxMessageManager.appendMessage(
-            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
+            MessageManager.AppendCommand.builder().withInternalDate(INTERNAL_DATE).build(new SharedByteArrayInputStream(CONTENT)),
             aliceMailboxSession);
         MessageManager.AppendResult appendResult2 = bobInboxMessageManager.appendMessage(
-            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
+            MessageManager.AppendCommand.builder().withInternalDate(INTERNAL_DATE).build(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
 
         verify(2, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
@@ -386,12 +388,12 @@ class RagListenerTest {
             .withRequestBodyPart(aMultipart()
                 .withName("metadata")
                 .withBody(equalToJson("{"
-                    + "\"email.subject\":\"Test Subject\","
+                    + "\"email\":{\"subject\":\"Test Subject\",\"preview\":\"Body of the email\"},"
                     + "\"datetime\":\"2023-10-10T10:00:00Z\","
+                    + "\"created_at\":\"2024-01-15T09:30:00Z\","
                     + "\"parent_id\":\"\","
                     + "\"relationship_id\":\"1\","
-                    + "\"doctype\":\"com.linagora.email\","
-                    + "\"email.preview\":\"Body of the email\""
+                    + "\"doctype\":\"com.linagora.email\""
                     + "}"))
                 .build())
             .withRequestBodyPart(aMultipart()
@@ -416,12 +418,12 @@ class RagListenerTest {
             .withRequestBodyPart(aMultipart()
                 .withName("metadata")
                 .withBody(equalToJson("{"
-                    + "\"email.subject\":\"Test Subject\","
+                    + "\"email\":{\"subject\":\"Test Subject\",\"preview\":\"Body of the email\"},"
                     + "\"datetime\":\"2023-10-10T10:00:00Z\","
+                    + "\"created_at\":\"2024-01-15T09:30:00Z\","
                     + "\"parent_id\":\"\","
                     + "\"relationship_id\":\"2\","
-                    + "\"doctype\":\"com.linagora.email\","
-                    + "\"email.preview\":\"Body of the email\""
+                    + "\"doctype\":\"com.linagora.email\""
                     + "}"))
                 .build())
             .withRequestBodyPart(aMultipart()
@@ -465,7 +467,7 @@ class RagListenerTest {
                 "--boundary--").getBytes(StandardCharsets.UTF_8);
 
         MessageManager.AppendResult appendResult = bobInboxMessageManager.appendMessage(
-            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(emailWithAttachment)),
+            MessageManager.AppendCommand.builder().withInternalDate(INTERNAL_DATE).build(new SharedByteArrayInputStream(emailWithAttachment)),
             bobMailboxSession);
 
         verify(1, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
@@ -476,12 +478,12 @@ class RagListenerTest {
             .withRequestBodyPart(aMultipart()
                 .withName("metadata")
                 .withBody(equalToJson("{"
-                    + "\"email.subject\":\"Test Email with Attachment\","
+                    + "\"email\":{\"subject\":\"Test Email with Attachment\",\"preview\":\"This is the body of the email.\"},"
                     + "\"datetime\":\"2023-10-10T10:00:00Z\","
+                    + "\"created_at\":\"2024-01-15T09:30:00Z\","
                     + "\"parent_id\":\"\","
                     + "\"relationship_id\":\"1\","
-                    + "\"doctype\":\"com.linagora.email\","
-                    + "\"email.preview\":\"This is the body of the email.\""
+                    + "\"doctype\":\"com.linagora.email\""
                     + "}"))
                 .build())
             .withRequestBodyPart(aMultipart()
@@ -507,7 +509,7 @@ class RagListenerTest {
         mailboxManager.getEventBus().register(ragListener);
 
         bobInboxMessageManager.appendMessage(
-            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
+            MessageManager.AppendCommand.builder().withInternalDate(INTERNAL_DATE).build(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
 
         verify(0, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
@@ -519,7 +521,7 @@ class RagListenerTest {
         mailboxManager.getEventBus().register(ragListener);
 
         bobInboxMessageManager.appendMessage(
-            MessageManager.AppendCommand.from(new SharedByteArrayInputStream(CONTENT)),
+            MessageManager.AppendCommand.builder().withInternalDate(INTERNAL_DATE).build(new SharedByteArrayInputStream(CONTENT)),
             bobMailboxSession);
 
         verify(0, postRequestedFor(urlMatching(RAG_INDEXER_ENDPOINT)));
