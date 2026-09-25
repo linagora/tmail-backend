@@ -43,7 +43,7 @@ import org.opensearch.client.opensearch._types.query_dsl.MatchNoneQuery;
 import org.opensearch.client.opensearch._types.query_dsl.MatchQuery;
 import org.opensearch.client.opensearch._types.query_dsl.Operator;
 import org.opensearch.client.opensearch._types.query_dsl.Query;
-import org.opensearch.client.opensearch._types.query_dsl.QueryStringQuery;
+import org.opensearch.client.opensearch._types.query_dsl.SimpleQueryStringQuery;
 import org.opensearch.client.opensearch._types.query_dsl.TermQuery;
 
 import com.google.common.collect.ImmutableList;
@@ -95,10 +95,11 @@ public class TmailCriterionConverter extends DefaultCriterionConverter {
     private Query convertRawSubject(SearchQuery.SubjectCriterion headerCriterion) {
         String normalizedValue = SearchUtil.getBaseSubject(headerCriterion.getSubject());
         if (useQueryStringQuery && matchesQueryStringHeuristic(headerCriterion.getSubject())) {
-            return new QueryStringQuery.Builder()
+            return new SimpleQueryStringQuery.Builder()
                 .fields(ImmutableList.of(JsonMessageConstants.SUBJECT))
                 .query(normalizedValue)
-                .fuzziness(textFuzzinessSearchValue)
+                .defaultOperator(Operator.And)
+                .lenient(true)
                 .build().toQuery();
         } else {
             return new MatchQuery.Builder()
