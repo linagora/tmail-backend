@@ -31,6 +31,7 @@
 package com.linagora.tmail.mailbox.opensearch;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.SoftAssertions.assertSoftly;
 import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
 
@@ -246,6 +247,30 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
 
         assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.subject("Re: Vieux téléphone?")), session)).toStream())
             .containsOnly(messageId1.getUid());
+    }
+
+    @Test
+    void subjectSearchWithUnbalancedDoubleQuoteShouldNotFailWhenQueryStringEnabled() throws Exception {
+        MailboxPath mailboxPath = MailboxPath.forUser(USERNAME, INBOX);
+        MailboxSession session = MailboxSessionUtil.create(USERNAME);
+        MessageManager messageManager = storeMailboxManager.getMailbox(mailboxPath, session);
+
+        messageManager.appendMessage(messageWithSubject("abc def"), session);
+        awaitMessageCount(ImmutableList.of(), SearchQuery.matchAll(), 14);
+
+        QueryConverter queryStringConverter = new QueryConverter(new TmailCriterionConverter(
+            OpenSearchMailboxConfiguration.builder()
+                .useQueryStringQuery(true)
+                .build(),
+            tmailOpenSearchMailboxConfiguration()));
+
+        assertThatCode(() -> client.search(
+                new SearchRequest.Builder()
+                    .index(indexName.getValue())
+                    .query(queryStringConverter.from(ImmutableList.of(), SearchQuery.of(SearchQuery.subject("abc\""))))
+                    .build())
+                .block())
+            .doesNotThrowAnyException();
     }
 
     @Test

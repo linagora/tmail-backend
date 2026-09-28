@@ -30,6 +30,8 @@
 
 package com.linagora.tmail.mailbox.opensearch;
 
+import java.util.regex.Pattern;
+
 import jakarta.inject.Inject;
 
 import org.apache.james.mailbox.model.SearchQuery;
@@ -44,6 +46,7 @@ import org.opensearch.client.opensearch._types.query_dsl.MatchQuery;
 import org.opensearch.client.opensearch._types.query_dsl.Operator;
 import org.opensearch.client.opensearch._types.query_dsl.Query;
 import org.opensearch.client.opensearch._types.query_dsl.QueryStringQuery;
+import org.opensearch.client.opensearch._types.query_dsl.SimpleQueryStringQuery;
 import org.opensearch.client.opensearch._types.query_dsl.TermQuery;
 
 import com.google.common.collect.ImmutableList;
@@ -52,6 +55,7 @@ public class TmailCriterionConverter extends DefaultCriterionConverter {
     private static final String NGRAM = "ngram";
     private static final String NGRAM_MIN_SHOULD_MATCH = "80%";
     private static final int NGRAM_MAX_INPUT_LENGTH = 6;
+    private static final Pattern UNESCAPED_DOUBLE_QUOTE = Pattern.compile("(?<!\\\\)\"");
 
     private final TmailOpenSearchMailboxConfiguration tmailOpenSearchMailboxConfiguration;
 
@@ -95,11 +99,7 @@ public class TmailCriterionConverter extends DefaultCriterionConverter {
     private Query convertRawSubject(SearchQuery.SubjectCriterion headerCriterion) {
         String normalizedValue = SearchUtil.getBaseSubject(headerCriterion.getSubject());
         if (useQueryStringQuery && matchesQueryStringHeuristic(headerCriterion.getSubject())) {
-            return new QueryStringQuery.Builder()
-                .fields(ImmutableList.of(JsonMessageConstants.SUBJECT))
-                .query(normalizedValue)
-                .fuzziness(textFuzzinessSearchValue)
-                .build().toQuery();
+            return subjectQueryString(normalizedValue);
         } else {
             return new MatchQuery.Builder()
                 .field(JsonMessageConstants.SUBJECT)
@@ -111,6 +111,27 @@ public class TmailCriterionConverter extends DefaultCriterionConverter {
                 .build()
                 .toQuery();
         }
+    }
+
+    private Query subjectQueryString(String normalizedValue) {
+        if (hasUnbalancedDoubleQuotes(normalizedValue)) {
+            // Best effort: strict query string parsing would fail, fallback to a lenient (non fuzzy) query
+            return new SimpleQueryStringQuery.Builder()
+                .fields(ImmutableList.of(JsonMessageConstants.SUBJECT))
+                .query(normalizedValue)
+                .defaultOperator(Operator.And)
+                .lenient(true)
+                .build().toQuery();
+        }
+        return new QueryStringQuery.Builder()
+            .fields(ImmutableList.of(JsonMessageConstants.SUBJECT))
+            .query(normalizedValue)
+            .fuzziness(textFuzzinessSearchValue)
+            .build().toQuery();
+    }
+
+    private boolean hasUnbalancedDoubleQuotes(String value) {
+        return UNESCAPED_DOUBLE_QUOTE.matcher(value).results().count() % 2 != 0;
     }
 
     @Override
