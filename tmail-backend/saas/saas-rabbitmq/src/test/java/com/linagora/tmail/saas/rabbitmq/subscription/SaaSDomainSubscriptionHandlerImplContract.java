@@ -29,6 +29,7 @@ import org.apache.james.mailbox.quota.MaxQuotaManager;
 import org.junit.jupiter.api.Test;
 
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
+import com.linagora.tmail.rate.limiter.api.model.LimitUpdate;
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition;
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
 
@@ -131,5 +132,61 @@ public interface SaaSDomainSubscriptionHandlerImplContract {
         handler().handleMessage(message).block();
 
         assertThat(domainList().containsDomain(domain)).isFalse();
+    }
+
+    @Test
+    default void shouldApplyRecipientsSentRateLimiting() throws Exception {
+        Domain domain = Domain.of("example.com");
+        SaasFeatures.MailLimitation mail = new SaasFeatures.MailLimitation(
+            123L, 10L, 100L, 1000L, 20L, 200L, 2000L,
+            LimitUpdate.replace(30L), LimitUpdate.replace(300L), LimitUpdate.replace(3000L));
+        SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage message =
+            new SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage(domain.asString(), Optional.empty(), Optional.of(MAIL_DNS_CONFIGURATION_VALIDATED),
+                Optional.of(new SaasFeatures(Optional.of(mail))), Optional.empty(), Optional.empty());
+
+        handler().handleMessage(message).block();
+
+        assertThat(Mono.from(rateLimitingRepository().getRateLimiting(domain)).block())
+            .isEqualTo(RateLimitingDefinition.builder()
+                .mailsSentPerMinute(10L)
+                .mailsSentPerHours(100L)
+                .mailsSentPerDays(1000L)
+                .mailsReceivedPerMinute(20L)
+                .mailsReceivedPerHours(200L)
+                .mailsReceivedPerDays(2000L)
+                .recipientsSentPerMinute(30L)
+                .recipientsSentPerHours(300L)
+                .recipientsSentPerDays(3000L)
+                .build());
+    }
+
+    @Test
+    default void absentRecipientsSentRateLimitingShouldPreserveStoredValues() throws Exception {
+        Domain domain = Domain.of("example.com");
+        Mono.from(rateLimitingRepository().setRateLimiting(domain, RateLimitingDefinition.builder()
+            .recipientsSentPerMinute(30L)
+            .recipientsSentPerHours(300L)
+            .recipientsSentPerDays(3000L)
+            .build())).block();
+        SaasFeatures.MailLimitation mail = new SaasFeatures.MailLimitation(
+            123L, 10L, 100L, 1000L, 20L, 200L, 2000L,
+            LimitUpdate.KEEP, LimitUpdate.clear(), LimitUpdate.replace(4000L));
+        SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage message =
+            new SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage(domain.asString(), Optional.empty(), Optional.of(MAIL_DNS_CONFIGURATION_VALIDATED),
+                Optional.of(new SaasFeatures(Optional.of(mail))), Optional.empty(), Optional.empty());
+
+        handler().handleMessage(message).block();
+
+        assertThat(Mono.from(rateLimitingRepository().getRateLimiting(domain)).block())
+            .isEqualTo(RateLimitingDefinition.builder()
+                .mailsSentPerMinute(10L)
+                .mailsSentPerHours(100L)
+                .mailsSentPerDays(1000L)
+                .mailsReceivedPerMinute(20L)
+                .mailsReceivedPerHours(200L)
+                .mailsReceivedPerDays(2000L)
+                .recipientsSentPerMinute(30L)
+                .recipientsSentPerDays(4000L)
+                .build());
     }
 }

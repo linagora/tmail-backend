@@ -811,11 +811,19 @@ curl -XPUT http://ip:port/users/{username}/ratelimits
     "mailsSentPerDays": 1000,
     "mailsReceivedPerMinute": 20,
     "mailsReceivedPerHours": 200,
-    "mailsReceivedPerDays": 2000
+    "mailsReceivedPerDays": 2000,
+    "recipientsSentPerMinute": 30,
+    "recipientsSentPerHours": 300,
+    "recipientsSentPerDays": 3000
 }'
 ....
 
-Note: null values are allowed (means no limit set)
+`recipientsSent*` limits count each recipient of a sent email, where `mailsSent*` limits count the email once.
+
+Note: null values are allowed (means no limit set). `-1` means unlimited.
+
+Omitted `mails*` values are unset. Omitted `recipientsSent*` values are left unchanged, so that clients unaware of
+them do not erase them: set them explicitly to `null` to unset them.
 
 Return codes:
 
@@ -837,7 +845,10 @@ Returns the limits of a user:
     "mailsSentPerDays": 1000,
     "mailsReceivedPerMinute": 20,
     "mailsReceivedPerHours": 200,
-    "mailsReceivedPerDays": 2000
+    "mailsReceivedPerDays": 2000,
+    "recipientsSentPerMinute": 30,
+    "recipientsSentPerHours": 300,
+    "recipientsSentPerDays": 3000
 }
 ....
 
@@ -862,11 +873,19 @@ curl -XPUT http://ip:port/domains/{domain}/ratelimits
     "mailsSentPerDays": 1000,
     "mailsReceivedPerMinute": 20,
     "mailsReceivedPerHours": 200,
-    "mailsReceivedPerDays": 2000
+    "mailsReceivedPerDays": 2000,
+    "recipientsSentPerMinute": 30,
+    "recipientsSentPerHours": 300,
+    "recipientsSentPerDays": 3000
 }'
 ....
 
-Note: null values are allowed (means no limit set)
+`recipientsSent*` limits count each recipient of a sent email, where `mailsSent*` limits count the email once.
+
+Note: null values are allowed (means no limit set). `-1` means unlimited.
+
+Omitted `mails*` values are unset. Omitted `recipientsSent*` values are left unchanged, so that clients unaware of
+them do not erase them: set them explicitly to `null` to unset them.
 
 Return codes:
 
@@ -888,7 +907,10 @@ Returns the limits of the domain:
     "mailsSentPerDays": 1000,
     "mailsReceivedPerMinute": 20,
     "mailsReceivedPerHours": 200,
-    "mailsReceivedPerDays": 2000
+    "mailsReceivedPerDays": 2000,
+    "recipientsSentPerMinute": 30,
+    "recipientsSentPerHours": 300,
+    "recipientsSentPerDays": 3000
 }
 ....
 

@@ -25,15 +25,22 @@ public record RateLimitingDefinition(Optional<Long> mailsSentPerMinute,
                                      Optional<Long> mailsSentPerDays,
                                      Optional<Long> mailsReceivedPerMinute,
                                      Optional<Long> mailsReceivedPerHours,
-                                     Optional<Long> mailsReceivedPerDays) {
+                                     Optional<Long> mailsReceivedPerDays,
+                                     Optional<Long> recipientsSentPerMinute,
+                                     Optional<Long> recipientsSentPerHours,
+                                     Optional<Long> recipientsSentPerDays) {
     public static Long MAILS_SENT_PER_MINUTE_UNLIMITED = -1L;
     public static Long MAILS_SENT_PER_HOURS_UNLIMITED = -1L;
     public static Long MAILS_SENT_PER_DAYS_UNLIMITED = -1L;
     public static Long MAILS_RECEIVED_PER_MINUTE_UNLIMITED = -1L;
     public static Long MAILS_RECEIVED_PER_HOURS_UNLIMITED = -1L;
     public static Long MAILS_RECEIVED_PER_DAYS_UNLIMITED = -1L;
+    public static Long RECIPIENTS_SENT_PER_MINUTE_UNLIMITED = -1L;
+    public static Long RECIPIENTS_SENT_PER_HOURS_UNLIMITED = -1L;
+    public static Long RECIPIENTS_SENT_PER_DAYS_UNLIMITED = -1L;
     public static RateLimitingDefinition EMPTY_RATE_LIMIT = new RateLimitingDefinition(
-        Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
+        Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(),
+        Optional.empty(), Optional.empty(), Optional.empty());
 
     public static Builder builder() {
         return new Builder();
@@ -46,6 +53,9 @@ public record RateLimitingDefinition(Optional<Long> mailsSentPerMinute,
         private Optional<Long> mailsReceivedPerMinute = Optional.empty();
         private Optional<Long> mailsReceivedPerHours = Optional.empty();
         private Optional<Long> mailsReceivedPerDays = Optional.empty();
+        private Optional<Long> recipientsSentPerMinute = Optional.empty();
+        private Optional<Long> recipientsSentPerHours = Optional.empty();
+        private Optional<Long> recipientsSentPerDays = Optional.empty();
 
         public Builder mailsSentPerMinute(Long value) {
             this.mailsSentPerMinute = Optional.ofNullable(value);
@@ -77,6 +87,21 @@ public record RateLimitingDefinition(Optional<Long> mailsSentPerMinute,
             return this;
         }
 
+        public Builder recipientsSentPerMinute(Long value) {
+            this.recipientsSentPerMinute = Optional.ofNullable(value);
+            return this;
+        }
+
+        public Builder recipientsSentPerHours(Long value) {
+            this.recipientsSentPerHours = Optional.ofNullable(value);
+            return this;
+        }
+
+        public Builder recipientsSentPerDays(Long value) {
+            this.recipientsSentPerDays = Optional.ofNullable(value);
+            return this;
+        }
+
         public RateLimitingDefinition build() {
             return new RateLimitingDefinition(
                 mailsSentPerMinute,
@@ -84,7 +109,10 @@ public record RateLimitingDefinition(Optional<Long> mailsSentPerMinute,
                 mailsSentPerDays,
                 mailsReceivedPerMinute,
                 mailsReceivedPerHours,
-                mailsReceivedPerDays);
+                mailsReceivedPerDays,
+                recipientsSentPerMinute,
+                recipientsSentPerHours,
+                recipientsSentPerDays);
         }
     }
 }

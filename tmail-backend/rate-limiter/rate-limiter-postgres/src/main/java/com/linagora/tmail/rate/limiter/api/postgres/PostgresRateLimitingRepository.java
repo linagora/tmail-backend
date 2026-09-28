@@ -25,6 +25,9 @@ import static com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.P
 import static com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.PostgresUserTable.MAILS_SENT_PER_DAYS;
 import static com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.PostgresUserTable.MAILS_SENT_PER_HOURS;
 import static com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.PostgresUserTable.MAILS_SENT_PER_MINUTE;
+import static com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.PostgresUserTable.RECIPIENTS_SENT_PER_DAYS;
+import static com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.PostgresUserTable.RECIPIENTS_SENT_PER_HOURS;
+import static com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.PostgresUserTable.RECIPIENTS_SENT_PER_MINUTE;
 import static com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.PostgresUserTable.TABLE_NAME;
 import static com.linagora.tmail.user.postgres.TMailPostgresUserDataDefinition.PostgresUserTable.USERNAME;
 
@@ -60,6 +63,9 @@ public class PostgresRateLimitingRepository implements RateLimitingRepository {
             .set(MAILS_RECEIVED_PER_MINUTE, rateLimiting.mailsReceivedPerMinute().orElse(null))
             .set(MAILS_RECEIVED_PER_HOURS, rateLimiting.mailsReceivedPerHours().orElse(null))
             .set(MAILS_RECEIVED_PER_DAYS, rateLimiting.mailsReceivedPerDays().orElse(null))
+            .set(RECIPIENTS_SENT_PER_MINUTE, rateLimiting.recipientsSentPerMinute().orElse(null))
+            .set(RECIPIENTS_SENT_PER_HOURS, rateLimiting.recipientsSentPerHours().orElse(null))
+            .set(RECIPIENTS_SENT_PER_DAYS, rateLimiting.recipientsSentPerDays().orElse(null))
             .onConflict(USERNAME)
             .doUpdate()
             .set(MAILS_SENT_PER_MINUTE, rateLimiting.mailsSentPerMinute().orElse(null))
@@ -67,7 +73,10 @@ public class PostgresRateLimitingRepository implements RateLimitingRepository {
             .set(MAILS_SENT_PER_DAYS, rateLimiting.mailsSentPerDays().orElse(null))
             .set(MAILS_RECEIVED_PER_MINUTE, rateLimiting.mailsReceivedPerMinute().orElse(null))
             .set(MAILS_RECEIVED_PER_HOURS, rateLimiting.mailsReceivedPerHours().orElse(null))
-            .set(MAILS_RECEIVED_PER_DAYS, rateLimiting.mailsReceivedPerDays().orElse(null))));
+            .set(MAILS_RECEIVED_PER_DAYS, rateLimiting.mailsReceivedPerDays().orElse(null))
+            .set(RECIPIENTS_SENT_PER_MINUTE, rateLimiting.recipientsSentPerMinute().orElse(null))
+            .set(RECIPIENTS_SENT_PER_HOURS, rateLimiting.recipientsSentPerHours().orElse(null))
+            .set(RECIPIENTS_SENT_PER_DAYS, rateLimiting.recipientsSentPerDays().orElse(null))));
     }
 
     @Override
@@ -80,6 +89,9 @@ public class PostgresRateLimitingRepository implements RateLimitingRepository {
             .set(MAILS_RECEIVED_PER_MINUTE, rateLimiting.mailsReceivedPerMinute().orElse(null))
             .set(MAILS_RECEIVED_PER_HOURS, rateLimiting.mailsReceivedPerHours().orElse(null))
             .set(MAILS_RECEIVED_PER_DAYS, rateLimiting.mailsReceivedPerDays().orElse(null))
+            .set(RECIPIENTS_SENT_PER_MINUTE, rateLimiting.recipientsSentPerMinute().orElse(null))
+            .set(RECIPIENTS_SENT_PER_HOURS, rateLimiting.recipientsSentPerHours().orElse(null))
+            .set(RECIPIENTS_SENT_PER_DAYS, rateLimiting.recipientsSentPerDays().orElse(null))
             .onConflict(DOMAIN)
             .doUpdate()
             .set(MAILS_SENT_PER_MINUTE, rateLimiting.mailsSentPerMinute().orElse(null))
@@ -87,14 +99,18 @@ public class PostgresRateLimitingRepository implements RateLimitingRepository {
             .set(MAILS_SENT_PER_DAYS, rateLimiting.mailsSentPerDays().orElse(null))
             .set(MAILS_RECEIVED_PER_MINUTE, rateLimiting.mailsReceivedPerMinute().orElse(null))
             .set(MAILS_RECEIVED_PER_HOURS, rateLimiting.mailsReceivedPerHours().orElse(null))
-            .set(MAILS_RECEIVED_PER_DAYS, rateLimiting.mailsReceivedPerDays().orElse(null))));
+            .set(MAILS_RECEIVED_PER_DAYS, rateLimiting.mailsReceivedPerDays().orElse(null))
+            .set(RECIPIENTS_SENT_PER_MINUTE, rateLimiting.recipientsSentPerMinute().orElse(null))
+            .set(RECIPIENTS_SENT_PER_HOURS, rateLimiting.recipientsSentPerHours().orElse(null))
+            .set(RECIPIENTS_SENT_PER_DAYS, rateLimiting.recipientsSentPerDays().orElse(null))));
     }
 
     @Override
     public Publisher<RateLimitingDefinition> getRateLimiting(Username username) {
         return Mono.from(executor.executeRow(dsl -> Mono.from(
                 dsl.select(MAILS_SENT_PER_MINUTE, MAILS_SENT_PER_HOURS, MAILS_SENT_PER_DAYS,
-                        MAILS_RECEIVED_PER_MINUTE, MAILS_RECEIVED_PER_HOURS, MAILS_RECEIVED_PER_DAYS)
+                        MAILS_RECEIVED_PER_MINUTE, MAILS_RECEIVED_PER_HOURS, MAILS_RECEIVED_PER_DAYS,
+                        RECIPIENTS_SENT_PER_MINUTE, RECIPIENTS_SENT_PER_HOURS, RECIPIENTS_SENT_PER_DAYS)
                     .from(TABLE_NAME)
                     .where(USERNAME.eq(username.asString())))))
             .map(this::toRateLimitingDefinition)
@@ -105,7 +121,8 @@ public class PostgresRateLimitingRepository implements RateLimitingRepository {
     public Publisher<RateLimitingDefinition> getRateLimiting(Domain domain) {
         return Mono.from(executor.executeRow(dsl -> Mono.from(
                 dsl.select(MAILS_SENT_PER_MINUTE, MAILS_SENT_PER_HOURS, MAILS_SENT_PER_DAYS,
-                        MAILS_RECEIVED_PER_MINUTE, MAILS_RECEIVED_PER_HOURS, MAILS_RECEIVED_PER_DAYS)
+                        MAILS_RECEIVED_PER_MINUTE, MAILS_RECEIVED_PER_HOURS, MAILS_RECEIVED_PER_DAYS,
+                        RECIPIENTS_SENT_PER_MINUTE, RECIPIENTS_SENT_PER_HOURS, RECIPIENTS_SENT_PER_DAYS)
                     .from(TMailPostgresDomainDataDefinition.PostgresDomainTable.TABLE_NAME)
                     .where(DOMAIN.eq(domain.asString())))))
             .map(this::toRateLimitingDefinition)
@@ -121,6 +138,9 @@ public class PostgresRateLimitingRepository implements RateLimitingRepository {
             .set(MAILS_RECEIVED_PER_MINUTE, (Long) null)
             .set(MAILS_RECEIVED_PER_HOURS, (Long) null)
             .set(MAILS_RECEIVED_PER_DAYS, (Long) null)
+            .set(RECIPIENTS_SENT_PER_MINUTE, (Long) null)
+            .set(RECIPIENTS_SENT_PER_HOURS, (Long) null)
+            .set(RECIPIENTS_SENT_PER_DAYS, (Long) null)
             .where(USERNAME.eq(username.asString()))));
     }
 
@@ -132,6 +152,9 @@ public class PostgresRateLimitingRepository implements RateLimitingRepository {
             .mailsReceivedPerMinute(row.get(MAILS_RECEIVED_PER_MINUTE, Long.class))
             .mailsReceivedPerHours(row.get(MAILS_RECEIVED_PER_HOURS, Long.class))
             .mailsReceivedPerDays(row.get(MAILS_RECEIVED_PER_DAYS, Long.class))
+            .recipientsSentPerMinute(row.get(RECIPIENTS_SENT_PER_MINUTE, Long.class))
+            .recipientsSentPerHours(row.get(RECIPIENTS_SENT_PER_HOURS, Long.class))
+            .recipientsSentPerDays(row.get(RECIPIENTS_SENT_PER_DAYS, Long.class))
             .build();
     }
 }

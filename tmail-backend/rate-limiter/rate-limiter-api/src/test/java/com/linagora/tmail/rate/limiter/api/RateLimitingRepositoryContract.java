@@ -20,6 +20,7 @@ package com.linagora.tmail.rate.limiter.api;
 
 import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.EMPTY_RATE_LIMIT;
 import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.MAILS_RECEIVED_PER_DAYS_UNLIMITED;
+import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.RECIPIENTS_SENT_PER_HOURS_UNLIMITED;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import org.apache.james.core.Domain;
@@ -41,10 +42,14 @@ public interface RateLimitingRepositoryContract {
         .mailsReceivedPerMinute(20L)
         .mailsReceivedPerHours(200L)
         .mailsReceivedPerDays(2000L)
+        .recipientsSentPerMinute(30L)
+        .recipientsSentPerHours(300L)
+        .recipientsSentPerDays(3000L)
         .build();
     RateLimitingDefinition RATE_LIMITING_2 = RateLimitingDefinition.builder()
         .mailsSentPerMinute(10L)
         .mailsReceivedPerDays(MAILS_RECEIVED_PER_DAYS_UNLIMITED)
+        .recipientsSentPerHours(RECIPIENTS_SENT_PER_HOURS_UNLIMITED)
         .build();
 
     RateLimitingRepository testee();

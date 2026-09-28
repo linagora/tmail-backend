@@ -12,7 +12,43 @@ TMail Rate Limiting enable the administrator to manage rate limiting of users:
 
 The administrator can manage rate limiting using xref:tmail-backend/webadmin.adoc#_rate_limiting[Rate Limiting Plan Management Routes]:
 
-- Updating/getting rate limiting for users.
+- Updating/getting rate limiting for users and domains.
+
+== Limits
+
+- `mailsSentPerMinute`, `mailsSentPerHours`, `mailsSentPerDays`: number of emails a user can send. An email counts once
+whatever its number of recipients.
+- `recipientsSentPerMinute`, `recipientsSentPerHours`, `recipientsSentPerDays`: number of recipients a user can send
+emails to. An email counts for its number of recipients, as seen by the `SentRateLimiting` mailet. An email with more
+recipients than such a limit is always rejected.
+- `mailsReceivedPerMinute`, `mailsReceivedPerHours`, `mailsReceivedPerDays`: number of emails a user can receive.
+
+Each limit is resolved independently: the user limit, if not set the domain limit, if not set the mailet default. `-1`
+means unlimited.
+
+== Manage rate limiting via SaaS subscription
+
+When the SaaS subscription consumer is enabled, the `features.mail` section of user and domain subscription messages
+sets the rate limits:
+
+```
+"features": {
+    "mail": {
+        "storageQuota": 1000000000,
+        "mailsSentPerMinute": 10,
+        "mailsSentPerHour": 100,
+        "mailsSentPerDay": 1000,
+        "mailsReceivedPerMinute": 20,
+        "mailsReceivedPerHour": 200,
+        "mailsReceivedPerDay": 2000,
+        "recipientsSentPerMinute": 30,
+        "recipientsSentPerHour": 300,
+        "recipientsSentPerDay": 3000
+    }
+}
+```
+
+The `recipientsSent*` fields are optional: when absent, the stored value is left unchanged. `null` unsets it.
 
 == Apply rate limiting via mailets
 
@@ -30,6 +66,9 @@ Example configurations:
         <mailsPerMinuteDefault>10</mailsPerMinuteDefault/>
         <mailsPerHourDefault>100</mailsPerHourDefault/>
         <mailsPerDayDefault>1000</mailsPerDayDefault/>
+        <recipientsPerMinuteDefault>30</recipientsPerMinuteDefault/>
+        <recipientsPerHourDefault>300</recipientsPerHourDefault/>
+        <recipientsPerDayDefault>3000</recipientsPerDayDefault/>
     </mailet>
     <mailet match="RecipientIsLocal" class="com.linagora.tmail.mailets.ReceivedRateLimiting">
         <keyPrefix>some-prefix</keyPrefix>

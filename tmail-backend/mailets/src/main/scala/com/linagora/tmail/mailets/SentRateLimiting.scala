@@ -20,14 +20,17 @@ package com.linagora.tmail.mailets
 
 import java.time.Duration
 import java.time.temporal.ChronoUnit
+import java.util.Optional
 
 import com.linagora.tmail.mailets.TmailMailRateLimiter.createRateLimiter
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.EMPTY_RATE_LIMIT
+import eu.timepit.refined.auto._
 import jakarta.inject.Inject
 import org.apache.james.core.Username
-import org.apache.james.rate.limiter.api.{AcceptableRate, RateExceeded, RateLimiterFactory, RateLimitingResult}
+import org.apache.james.rate.limiter.api.Increment.Increment
+import org.apache.james.rate.limiter.api.{AcceptableRate, Increment, RateExceeded, RateLimiterFactory, RateLimitingResult}
 import org.apache.james.transport.mailets.ConfigurationOps.OptionOps
 import org.apache.james.transport.mailets.KeyPrefix
 import org.apache.james.util.DurationParser
@@ -45,6 +48,7 @@ import scala.jdk.OptionConverters._
  * <li>A sender can send at most 10 emails per minute</li>
  * <li>A sender can send at most 100 emails per hour</li>
  * <li>A sender can send at most 1000 emails per day</li>
+ * <li>A sender can address at most 500 recipients per hour (each email counts for its number of recipients)</li>
  * </ul>
  *
  * <p>The rate limiting values are primarily determined by the {@code RateLimitingRepository}, which stores
@@ -64,7 +68,17 @@ import scala.jdk.OptionConverters._
  * If omitted, the value is treated as unlimited. A configured value of <code>-1</code> also means unlimited.</li>
  * <li><b>mailsPerDayDefault</b>: [Optional, long]. Default number of emails a sender is allowed to send per day if no user-specific rate limit exists.
  * If omitted, the value is treated as unlimited. A configured value of <code>-1</code> also means unlimited.</li>
+ * <li><b>recipientsPerMinuteDefault</b>: [Optional, long]. Default number of recipients a sender is allowed to address per minute if no user-specific rate limit exists.
+ * If omitted, the value is treated as unlimited. A configured value of <code>-1</code> also means unlimited.</li>
+ * <li><b>recipientsPerHourDefault</b>: [Optional, long]. Default number of recipients a sender is allowed to address per hour if no user-specific rate limit exists.
+ * If omitted, the value is treated as unlimited. A configured value of <code>-1</code> also means unlimited.</li>
+ * <li><b>recipientsPerDayDefault</b>: [Optional, long]. Default number of recipients a sender is allowed to address per day if no user-specific rate limit exists.
+ * If omitted, the value is treated as unlimited. A configured value of <code>-1</code> also means unlimited.</li>
  * </ul>
+ *
+ * <p>Recipients are the ones of the email when it reaches this mailet: place it after recipient rewriting and in the
+ * relay processor in order to only account remote recipients. An email with more recipients than a recipient limit is
+ * always rejected.</p>
  *
  * <p>For instance:</p>
  *
@@ -75,6 +89,7 @@ import scala.jdk.OptionConverters._
  *     &lt;mailsPerMinuteDefault&gt;10&lt;/mailsPerMinuteDefault&gt;
  *     &lt;mailsPerHourDefault&gt;100&lt;/mailsPerHourDefault&gt;
  *     &lt;mailsPerDayDefault&gt;1000&lt;/mailsPerDayDefault&gt;
+ *     &lt;recipientsPerHourDefault&gt;500&lt;/recipientsPerHourDefault&gt;
  *     &lt;rateLimiterTimeout&gt;5s&lt;/rateLimiterTimeout&gt;
  *     &lt;exceededProcessor&gt;tooMuchMails&lt;/exceededProcessor&gt;
  * &lt;/mailet&gt;
@@ -91,6 +106,9 @@ class SentRateLimiting @Inject()(rateLimitingRepository: RateLimitingRepository,
   private var mailsPerMinuteDefault: Option[Long] = None
   private var mailsPerHourDefault: Option[Long]  = None
   private var mailsPerDayDefault: Option[Long] = None
+  private var recipientsPerMinuteDefault: Option[Long] = None
+  private var recipientsPerHourDefault: Option[Long] = None
+  private var recipientsPerDayDefault: Option[Long] = None
 
   override def init(): Unit = {
     exceededProcessor = getInitParameter("exceededProcessor", Mail.ERROR)
@@ -103,6 +121,9 @@ class SentRateLimiting @Inject()(rateLimitingRepository: RateLimitingRepository,
     mailsPerMinuteDefault = getMailetConfig.getOptionalLong("mailsPerMinuteDefault")
     mailsPerHourDefault = getMailetConfig.getOptionalLong("mailsPerHourDefault")
     mailsPerDayDefault = getMailetConfig.getOptionalLong("mailsPerDayDefault")
+    recipientsPerMinuteDefault = getMailetConfig.getOptionalLong("recipientsPerMinuteDefault")
+    recipientsPerHourDefault = getMailetConfig.getOptionalLong("recipientsPerHourDefault")
+    recipientsPerDayDefault = getMailetConfig.getOptionalLong("recipientsPerDayDefault")
   }
 
   override def service(mail: Mail): Unit =
@@ -110,19 +131,19 @@ class SentRateLimiting @Inject()(rateLimitingRepository: RateLimitingRepository,
       .ifPresent(sender => applySenderRateLimit(Username.fromMailAddress(sender), mail))
 
   private def applySenderRateLimit(sender: Username, mail: Mail): Unit = {
-    val rateLimitingResult: RateLimitingResult = applySenderRateLimit(sender).block(rateLimiterTimeout.toScala)
+    val rateLimitingResult: RateLimitingResult = applySenderRateLimit(sender, mail.getRecipients.size()).block(rateLimiterTimeout.toScala)
 
     if (rateLimitingResult.equals(RateExceeded)) {
       mail.setState(exceededProcessor)
     }
   }
 
-  private def applySenderRateLimit(sender: Username): SMono[RateLimitingResult] =
+  private def applySenderRateLimit(sender: Username, recipientCount: Int): SMono[RateLimitingResult] =
     SMono.fromPublisher(rateLimitingRepository.getRateLimiting(sender))
       .flatMap(userRateLimitingDefinition => getDomainRateLimiting(sender)
-        .map(domainRateLimitingDefinition => createSenderRateLimiters(userRateLimitingDefinition, domainRateLimitingDefinition))
+        .map(domainRateLimitingDefinition => createSenderRateLimiters(userRateLimitingDefinition, domainRateLimitingDefinition, recipientCount))
         .flatMapMany(SFlux.fromIterable)
-        .flatMap(rateLimiter => SMono.fromPublisher(rateLimiter.rateLimit(sender)))
+        .flatMap { case (rateLimiter, increment) => SMono.fromPublisher(rateLimiter.rateLimit(sender, increment)) }
         .fold[RateLimitingResult](AcceptableRate)((a, b) => a.merge(b)))
 
   private def getDomainRateLimiting(recipient: Username): SMono[RateLimitingDefinition] =
@@ -131,27 +152,29 @@ class SentRateLimiting @Inject()(rateLimitingRepository: RateLimitingRepository,
       case Some(domain) => SMono.fromPublisher(rateLimitingRepository.getRateLimiting(domain))
     }
 
-  private def createSenderRateLimiters(userRateLimitingDefinition: RateLimitingDefinition, domainRateLimitingDefinition: RateLimitingDefinition): Seq[TmailMailRateLimiter] = {
-    val mailsSentPerMinuteLimit: Option[Long] = userRateLimitingDefinition.mailsSentPerMinute().toScala
-      .map(Long2long)
-      .orElse(domainRateLimitingDefinition.mailsSentPerMinute().toScala
-        .map(Long2long)
-        .orElse(mailsPerMinuteDefault))
-    val mailsSentPerHourLimit: Option[Long] = userRateLimitingDefinition.mailsSentPerHours().toScala
-      .map(Long2long)
-      .orElse(domainRateLimitingDefinition.mailsSentPerHours().toScala
-        .map(Long2long)
-        .orElse(mailsPerHourDefault))
-    val mailsSentPerDayLimit: Option[Long] = userRateLimitingDefinition.mailsSentPerDays().toScala
-      .map(Long2long)
-      .orElse(domainRateLimitingDefinition.mailsSentPerDays().toScala
-        .map(Long2long)
-        .orElse(mailsPerDayDefault))
-
-    Seq(
-      createRateLimiter(rateLimiterFactory, MailsSentPerMinuteType, mailsSentPerMinuteLimit, precision, keyPrefix),
-      createRateLimiter(rateLimiterFactory, MailsSentPerHourType, mailsSentPerHourLimit, precision, keyPrefix),
-      createRateLimiter(rateLimiterFactory, MailsSentPerDayType, mailsSentPerDayLimit, precision, keyPrefix))
+  private def createSenderRateLimiters(user: RateLimitingDefinition, domain: RateLimitingDefinition, recipientCount: Int): Seq[(TmailMailRateLimiter, Increment)] = {
+    val mailLimiters: Seq[TmailMailRateLimiter] = Seq(
+      createRateLimiter(rateLimiterFactory, MailsSentPerMinuteType, resolveLimit(user.mailsSentPerMinute(), domain.mailsSentPerMinute(), mailsPerMinuteDefault), precision, keyPrefix),
+      createRateLimiter(rateLimiterFactory, MailsSentPerHourType, resolveLimit(user.mailsSentPerHours(), domain.mailsSentPerHours(), mailsPerHourDefault), precision, keyPrefix),
+      createRateLimiter(rateLimiterFactory, MailsSentPerDayType, resolveLimit(user.mailsSentPerDays(), domain.mailsSentPerDays(), mailsPerDayDefault), precision, keyPrefix))
       .flatten
+
+    mailLimiters.map(limiter => (limiter, 1: Increment)) ++ createRecipientsRateLimiters(user, domain, recipientCount)
   }
+
+  private def createRecipientsRateLimiters(user: RateLimitingDefinition, domain: RateLimitingDefinition, recipientCount: Int): Seq[(TmailMailRateLimiter, Increment)] =
+    Increment.validate(recipientCount).toOption match {
+      case None => Seq()
+      case Some(increment) => Seq(
+          createRateLimiter(rateLimiterFactory, RecipientsSentPerMinuteType, resolveLimit(user.recipientsSentPerMinute(), domain.recipientsSentPerMinute(), recipientsPerMinuteDefault), precision, keyPrefix),
+          createRateLimiter(rateLimiterFactory, RecipientsSentPerHourType, resolveLimit(user.recipientsSentPerHours(), domain.recipientsSentPerHours(), recipientsPerHourDefault), precision, keyPrefix),
+          createRateLimiter(rateLimiterFactory, RecipientsSentPerDayType, resolveLimit(user.recipientsSentPerDays(), domain.recipientsSentPerDays(), recipientsPerDayDefault), precision, keyPrefix))
+        .flatten
+        .map(limiter => (limiter, increment))
+    }
+
+  private def resolveLimit(userLimit: Optional[java.lang.Long], domainLimit: Optional[java.lang.Long], defaultLimit: Option[Long]): Option[Long] =
+    userLimit.toScala.map(Long2long)
+      .orElse(domainLimit.toScala.map(Long2long))
+      .orElse(defaultLimit)
 }

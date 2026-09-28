@@ -261,4 +261,111 @@ class SaaSSubscriptionDeserializerTest {
 
         assertThat(parsed.features().mail().get().storageQuota()).isEqualTo(-1L);
     }
+
+    @Test
+    void parseRecipientsSentLimitsShouldSucceed() {
+        String message = """
+            {
+                "internalEmail": "alice@twake.app",
+                "isPaying": true,
+                "canUpgrade": true,
+                "features": {
+                    "mail": {
+                        "storageQuota": 12334534,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000,
+                        "recipientsSentPerMinute": 30,
+                        "recipientsSentPerHour": 300,
+                        "recipientsSentPerDay": -1
+                    }
+                }
+            }
+            """;
+
+        SaaSSubscriptionMessage parsed = SaaSSubscriptionDeserializer.parseAMQPUserMessage(message);
+
+        assertThat(parsed.features().mail().get().rateLimitingDefinition()).isEqualTo(RateLimitingDefinition.builder()
+            .mailsSentPerMinute(10L)
+            .mailsSentPerHours(100L)
+            .mailsSentPerDays(1000L)
+            .mailsReceivedPerMinute(20L)
+            .mailsReceivedPerHours(200L)
+            .mailsReceivedPerDays(2000L)
+            .recipientsSentPerMinute(30L)
+            .recipientsSentPerHours(300L)
+            .recipientsSentPerDays(-1L)
+            .build());
+    }
+
+    @Test
+    void absentRecipientsSentLimitsShouldKeepCurrentValues() {
+        String message = """
+            {
+                "internalEmail": "alice@twake.app",
+                "isPaying": true,
+                "canUpgrade": true,
+                "features": {
+                    "mail": {
+                        "storageQuota": 12334534,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000,
+                        "recipientsSentPerDay": null
+                    }
+                }
+            }
+            """;
+        RateLimitingDefinition current = RateLimitingDefinition.builder()
+            .mailsSentPerMinute(1L)
+            .recipientsSentPerMinute(3L)
+            .recipientsSentPerHours(30L)
+            .recipientsSentPerDays(300L)
+            .build();
+
+        SaaSSubscriptionMessage parsed = SaaSSubscriptionDeserializer.parseAMQPUserMessage(message);
+
+        assertThat(parsed.features().mail().get().rateLimitingDefinition(current)).isEqualTo(RateLimitingDefinition.builder()
+            .mailsSentPerMinute(10L)
+            .mailsSentPerHours(100L)
+            .mailsSentPerDays(1000L)
+            .mailsReceivedPerMinute(20L)
+            .mailsReceivedPerHours(200L)
+            .mailsReceivedPerDays(2000L)
+            .recipientsSentPerMinute(3L)
+            .recipientsSentPerHours(30L)
+            .build());
+    }
+
+    @Test
+    void parseInvalidRecipientsSentLimitShouldThrow() {
+        String message = """
+            {
+                "internalEmail": "alice@twake.app",
+                "isPaying": true,
+                "canUpgrade": true,
+                "features": {
+                    "mail": {
+                        "storageQuota": 12334534,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000,
+                        "recipientsSentPerDay": "abc"
+                    }
+                }
+            }
+            """;
+
+        assertThatThrownBy(() -> SaaSSubscriptionDeserializer.parseAMQPUserMessage(message))
+            .isInstanceOf(SaaSSubscriptionDeserializer.SaaSSubscriptionMessageParseException.class);
+    }
 }

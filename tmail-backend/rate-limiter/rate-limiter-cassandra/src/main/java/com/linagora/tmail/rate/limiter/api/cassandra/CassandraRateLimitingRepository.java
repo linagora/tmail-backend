@@ -30,6 +30,9 @@ import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDat
 import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.MAILS_SENT_PER_DAYS;
 import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.MAILS_SENT_PER_HOURS;
 import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.MAILS_SENT_PER_MINUTE;
+import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.RECIPIENTS_SENT_PER_DAYS;
+import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.RECIPIENTS_SENT_PER_HOURS;
+import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.RECIPIENTS_SENT_PER_MINUTE;
 import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.TABLE_NAME;
 import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.USER;
 
@@ -73,6 +76,9 @@ public class CassandraRateLimitingRepository implements RateLimitingRepository {
             .value(MAILS_RECEIVED_PER_MINUTE, bindMarker(MAILS_RECEIVED_PER_MINUTE))
             .value(MAILS_RECEIVED_PER_HOURS, bindMarker(MAILS_RECEIVED_PER_HOURS))
             .value(MAILS_RECEIVED_PER_DAYS, bindMarker(MAILS_RECEIVED_PER_DAYS))
+            .value(RECIPIENTS_SENT_PER_MINUTE, bindMarker(RECIPIENTS_SENT_PER_MINUTE))
+            .value(RECIPIENTS_SENT_PER_HOURS, bindMarker(RECIPIENTS_SENT_PER_HOURS))
+            .value(RECIPIENTS_SENT_PER_DAYS, bindMarker(RECIPIENTS_SENT_PER_DAYS))
             .build());
         this.insertDomainRateLimitingStatement = session.prepare(insertInto(TMailCassandraDomainListDataDefinition.TABLE_NAME)
             .value(DOMAIN, bindMarker(DOMAIN))
@@ -82,15 +88,20 @@ public class CassandraRateLimitingRepository implements RateLimitingRepository {
             .value(MAILS_RECEIVED_PER_MINUTE, bindMarker(MAILS_RECEIVED_PER_MINUTE))
             .value(MAILS_RECEIVED_PER_HOURS, bindMarker(MAILS_RECEIVED_PER_HOURS))
             .value(MAILS_RECEIVED_PER_DAYS, bindMarker(MAILS_RECEIVED_PER_DAYS))
+            .value(RECIPIENTS_SENT_PER_MINUTE, bindMarker(RECIPIENTS_SENT_PER_MINUTE))
+            .value(RECIPIENTS_SENT_PER_HOURS, bindMarker(RECIPIENTS_SENT_PER_HOURS))
+            .value(RECIPIENTS_SENT_PER_DAYS, bindMarker(RECIPIENTS_SENT_PER_DAYS))
             .build());
         this.selectRateLimitingStatement = session.prepare(selectFrom(TABLE_NAME)
             .columns(MAILS_SENT_PER_MINUTE, MAILS_SENT_PER_HOURS, MAILS_SENT_PER_DAYS,
-                MAILS_RECEIVED_PER_MINUTE, MAILS_RECEIVED_PER_HOURS, MAILS_RECEIVED_PER_DAYS)
+                MAILS_RECEIVED_PER_MINUTE, MAILS_RECEIVED_PER_HOURS, MAILS_RECEIVED_PER_DAYS,
+                RECIPIENTS_SENT_PER_MINUTE, RECIPIENTS_SENT_PER_HOURS, RECIPIENTS_SENT_PER_DAYS)
             .whereColumn(USER).isEqualTo(bindMarker(USER))
             .build());
         this.selectDomainRateLimitingStatement = session.prepare(selectFrom(TMailCassandraDomainListDataDefinition.TABLE_NAME)
             .columns(MAILS_SENT_PER_MINUTE, MAILS_SENT_PER_HOURS, MAILS_SENT_PER_DAYS,
-                MAILS_RECEIVED_PER_MINUTE, MAILS_RECEIVED_PER_HOURS, MAILS_RECEIVED_PER_DAYS)
+                MAILS_RECEIVED_PER_MINUTE, MAILS_RECEIVED_PER_HOURS, MAILS_RECEIVED_PER_DAYS,
+                RECIPIENTS_SENT_PER_MINUTE, RECIPIENTS_SENT_PER_HOURS, RECIPIENTS_SENT_PER_DAYS)
             .whereColumn(DOMAIN).isEqualTo(bindMarker(DOMAIN))
             .build());
         this.clearRateLimitingStatement = session.prepare(update(TABLE_NAME)
@@ -100,6 +111,9 @@ public class CassandraRateLimitingRepository implements RateLimitingRepository {
             .setColumn(MAILS_RECEIVED_PER_MINUTE, bindMarker(MAILS_RECEIVED_PER_MINUTE))
             .setColumn(MAILS_RECEIVED_PER_HOURS, bindMarker(MAILS_RECEIVED_PER_HOURS))
             .setColumn(MAILS_RECEIVED_PER_DAYS, bindMarker(MAILS_RECEIVED_PER_DAYS))
+            .setColumn(RECIPIENTS_SENT_PER_MINUTE, bindMarker(RECIPIENTS_SENT_PER_MINUTE))
+            .setColumn(RECIPIENTS_SENT_PER_HOURS, bindMarker(RECIPIENTS_SENT_PER_HOURS))
+            .setColumn(RECIPIENTS_SENT_PER_DAYS, bindMarker(RECIPIENTS_SENT_PER_DAYS))
             .whereColumn(USER).isEqualTo(bindMarker(USER))
             .build());
         this.readProfile = ProfileLocator.READ.locateProfile(session, "USER");
@@ -116,6 +130,9 @@ public class CassandraRateLimitingRepository implements RateLimitingRepository {
             .set(MAILS_RECEIVED_PER_MINUTE, rateLimiting.mailsReceivedPerMinute().orElse(null), TypeCodecs.BIGINT)
             .set(MAILS_RECEIVED_PER_HOURS, rateLimiting.mailsReceivedPerHours().orElse(null), TypeCodecs.BIGINT)
             .set(MAILS_RECEIVED_PER_DAYS, rateLimiting.mailsReceivedPerDays().orElse(null), TypeCodecs.BIGINT)
+            .set(RECIPIENTS_SENT_PER_MINUTE, rateLimiting.recipientsSentPerMinute().orElse(null), TypeCodecs.BIGINT)
+            .set(RECIPIENTS_SENT_PER_HOURS, rateLimiting.recipientsSentPerHours().orElse(null), TypeCodecs.BIGINT)
+            .set(RECIPIENTS_SENT_PER_DAYS, rateLimiting.recipientsSentPerDays().orElse(null), TypeCodecs.BIGINT)
             .setExecutionProfile(writeProfile)));
     }
 
@@ -129,6 +146,9 @@ public class CassandraRateLimitingRepository implements RateLimitingRepository {
             .set(MAILS_RECEIVED_PER_MINUTE, rateLimiting.mailsReceivedPerMinute().orElse(null), TypeCodecs.BIGINT)
             .set(MAILS_RECEIVED_PER_HOURS, rateLimiting.mailsReceivedPerHours().orElse(null), TypeCodecs.BIGINT)
             .set(MAILS_RECEIVED_PER_DAYS, rateLimiting.mailsReceivedPerDays().orElse(null), TypeCodecs.BIGINT)
+            .set(RECIPIENTS_SENT_PER_MINUTE, rateLimiting.recipientsSentPerMinute().orElse(null), TypeCodecs.BIGINT)
+            .set(RECIPIENTS_SENT_PER_HOURS, rateLimiting.recipientsSentPerHours().orElse(null), TypeCodecs.BIGINT)
+            .set(RECIPIENTS_SENT_PER_DAYS, rateLimiting.recipientsSentPerDays().orElse(null), TypeCodecs.BIGINT)
             .setExecutionProfile(writeProfile)));
     }
 
@@ -160,6 +180,9 @@ public class CassandraRateLimitingRepository implements RateLimitingRepository {
             .setToNull(MAILS_RECEIVED_PER_MINUTE)
             .setToNull(MAILS_RECEIVED_PER_HOURS)
             .setToNull(MAILS_RECEIVED_PER_DAYS)
+            .setToNull(RECIPIENTS_SENT_PER_MINUTE)
+            .setToNull(RECIPIENTS_SENT_PER_HOURS)
+            .setToNull(RECIPIENTS_SENT_PER_DAYS)
             .setExecutionProfile(writeProfile)));
     }
 
@@ -171,6 +194,9 @@ public class CassandraRateLimitingRepository implements RateLimitingRepository {
             .mailsReceivedPerMinute(row.get(MAILS_RECEIVED_PER_MINUTE, Long.class))
             .mailsReceivedPerHours(row.get(MAILS_RECEIVED_PER_HOURS, Long.class))
             .mailsReceivedPerDays(row.get(MAILS_RECEIVED_PER_DAYS, Long.class))
+            .recipientsSentPerMinute(row.get(RECIPIENTS_SENT_PER_MINUTE, Long.class))
+            .recipientsSentPerHours(row.get(RECIPIENTS_SENT_PER_HOURS, Long.class))
+            .recipientsSentPerDays(row.get(RECIPIENTS_SENT_PER_DAYS, Long.class))
             .build();
     }
 }

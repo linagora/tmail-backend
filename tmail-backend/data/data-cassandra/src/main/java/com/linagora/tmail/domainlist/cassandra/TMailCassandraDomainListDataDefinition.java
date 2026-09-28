@@ -25,6 +25,9 @@ import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDat
 import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.MAILS_SENT_PER_DAYS;
 import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.MAILS_SENT_PER_HOURS;
 import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.MAILS_SENT_PER_MINUTE;
+import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.RECIPIENTS_SENT_PER_DAYS;
+import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.RECIPIENTS_SENT_PER_HOURS;
+import static com.linagora.tmail.user.cassandra.TMailCassandraUsersRepositoryDataDefinition.RECIPIENTS_SENT_PER_MINUTE;
 
 import org.apache.james.backends.cassandra.components.CassandraDataDefinition;
 import org.apache.james.backends.cassandra.utils.CassandraConstants;
@@ -54,6 +57,9 @@ public interface TMailCassandraDomainListDataDefinition {
             .withColumn(MAILS_RECEIVED_PER_MINUTE, DataTypes.BIGINT)
             .withColumn(MAILS_RECEIVED_PER_HOURS, DataTypes.BIGINT)
             .withColumn(MAILS_RECEIVED_PER_DAYS, DataTypes.BIGINT)
+            .withColumn(RECIPIENTS_SENT_PER_MINUTE, DataTypes.BIGINT)
+            .withColumn(RECIPIENTS_SENT_PER_HOURS, DataTypes.BIGINT)
+            .withColumn(RECIPIENTS_SENT_PER_DAYS, DataTypes.BIGINT)
             .withColumn(ACTIVATED, DataTypes.BOOLEAN)
             .withColumn(CAN_UPGRADE, DataTypes.BOOLEAN)
             .withColumn(IS_PAYING, DataTypes.BOOLEAN)

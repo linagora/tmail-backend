@@ -487,4 +487,84 @@ public interface SaaSSubscriptionConsumerContract {
                 message.getBytes(UTF_8))))
             .block();
     }
+
+    @Test
+    default void shouldSetRecipientsSentRateLimiting() {
+        publishAmqpSaaSSubscriptionMessage(String.format("""
+            {
+                "internalEmail": "%s",
+                "isPaying": true,
+                "canUpgrade": false,
+                "features": {
+                    "mail": {
+                        "storageQuota": 12334534,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000,
+                        "recipientsSentPerMinute": 30,
+                        "recipientsSentPerHour": 300,
+                        "recipientsSentPerDay": 3000
+                    }
+                }
+            }
+            """, ALICE.asString()));
+
+        await.untilAsserted(() -> assertThat(Mono.from(rateLimitingRepository().getRateLimiting(ALICE)).block())
+            .isEqualTo(RateLimitingDefinition.builder()
+                .mailsSentPerMinute(10L)
+                .mailsSentPerHours(100L)
+                .mailsSentPerDays(1000L)
+                .mailsReceivedPerMinute(20L)
+                .mailsReceivedPerHours(200L)
+                .mailsReceivedPerDays(2000L)
+                .recipientsSentPerMinute(30L)
+                .recipientsSentPerHours(300L)
+                .recipientsSentPerDays(3000L)
+                .build()));
+    }
+
+    @Test
+    default void subscriptionUpdateWithoutRecipientsSentRateLimitingShouldPreserveThem() {
+        Mono.from(rateLimitingRepository().setRateLimiting(ALICE, RateLimitingDefinition.builder()
+            .mailsSentPerMinute(1L)
+            .recipientsSentPerMinute(30L)
+            .recipientsSentPerHours(300L)
+            .recipientsSentPerDays(3000L)
+            .build())).block();
+
+        publishAmqpSaaSSubscriptionMessage(String.format("""
+            {
+                "internalEmail": "%s",
+                "isPaying": true,
+                "canUpgrade": false,
+                "features": {
+                    "mail": {
+                        "storageQuota": 12334534,
+                        "mailsSentPerMinute": 10,
+                        "mailsSentPerHour": 100,
+                        "mailsSentPerDay": 1000,
+                        "mailsReceivedPerMinute": 20,
+                        "mailsReceivedPerHour": 200,
+                        "mailsReceivedPerDay": 2000
+                    }
+                }
+            }
+            """, ALICE.asString()));
+
+        await.untilAsserted(() -> assertThat(Mono.from(rateLimitingRepository().getRateLimiting(ALICE)).block())
+            .isEqualTo(RateLimitingDefinition.builder()
+                .mailsSentPerMinute(10L)
+                .mailsSentPerHours(100L)
+                .mailsSentPerDays(1000L)
+                .mailsReceivedPerMinute(20L)
+                .mailsReceivedPerHours(200L)
+                .mailsReceivedPerDays(2000L)
+                .recipientsSentPerMinute(30L)
+                .recipientsSentPerHours(300L)
+                .recipientsSentPerDays(3000L)
+                .build()));
+    }
 }

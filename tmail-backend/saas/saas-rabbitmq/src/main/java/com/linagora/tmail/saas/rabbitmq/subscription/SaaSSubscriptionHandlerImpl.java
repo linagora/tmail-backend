@@ -79,9 +79,9 @@ public class SaaSSubscriptionHandlerImpl implements SaaSMessageHandler {
 
     private Mono<Void> updateRateLimiting(Username username, SaasFeatures saasFeatures) {
         return saasFeatures.mail()
-            .map(SaasFeatures.MailLimitation::rateLimitingDefinition)
-            .map(rateLimiting -> rateLimitingRepository.setRateLimiting(username, rateLimiting))
-            .map(Mono::from)
+            .map(mailLimitation -> Mono.from(rateLimitingRepository.getRateLimiting(username))
+                .map(mailLimitation::rateLimitingDefinition)
+                .flatMap(rateLimiting -> Mono.from(rateLimitingRepository.setRateLimiting(username, rateLimiting))))
             .orElse(Mono.empty());
     }
 

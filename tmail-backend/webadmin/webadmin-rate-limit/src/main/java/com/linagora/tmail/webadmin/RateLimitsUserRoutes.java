@@ -37,8 +37,8 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
-import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition;
 import com.linagora.tmail.webadmin.model.RateLimitsDTO;
+import com.linagora.tmail.webadmin.model.RateLimitsUpdateDTO;
 
 import reactor.core.publisher.Mono;
 import spark.Request;
@@ -56,14 +56,14 @@ public class RateLimitsUserRoutes implements Routes {
     private final RateLimitingRepository rateLimitingRepository;
     private final UsersRepository usersRepository;
     private final JsonTransformer jsonTransformer;
-    private final JsonExtractor<RateLimitsDTO> jsonExtractor;
+    private final JsonExtractor<RateLimitsUpdateDTO> jsonExtractor;
 
     @Inject
     public RateLimitsUserRoutes(RateLimitingRepository rateLimitingRepository, UsersRepository usersRepository, JsonTransformer jsonTransformer) {
         this.rateLimitingRepository = rateLimitingRepository;
         this.usersRepository = usersRepository;
         this.jsonTransformer = jsonTransformer;
-        this.jsonExtractor = new JsonExtractor<>(RateLimitsDTO.class);
+        this.jsonExtractor = new JsonExtractor<>(RateLimitsUpdateDTO.class);
     }
 
     @Override
@@ -82,8 +82,11 @@ public class RateLimitsUserRoutes implements Routes {
             Username username = extractUsername(request);
             userPreconditions(username);
             try {
-                RateLimitsDTO rateLimitsDTO = jsonExtractor.parse(request.body());
-                Mono.from(rateLimitingRepository.setRateLimiting(username, rateLimitsDTO.toRateLimitingDefinition())).block();
+                RateLimitsUpdateDTO rateLimitsUpdateDTO = jsonExtractor.parse(request.body());
+                Mono.from(rateLimitingRepository.getRateLimiting(username))
+                    .map(rateLimitsUpdateDTO::toRateLimitingDefinition)
+                    .flatMap(rateLimiting -> Mono.from(rateLimitingRepository.setRateLimiting(username, rateLimiting)))
+                    .block();
                 return halt(HttpStatus.NO_CONTENT_204);
             } catch (JsonExtractException e) {
                 LOGGER.info("Error while deserializing applyRateLimitsToUser request", e);
@@ -102,7 +105,7 @@ public class RateLimitsUserRoutes implements Routes {
             Username username = extractUsername(request);
             userPreconditions(username);
             return Mono.from(rateLimitingRepository.getRateLimiting(username))
-                .map(this::toRateLimitsDTO)
+                .map(RateLimitsDTO::from)
                 .block();
         };
     }
@@ -119,14 +122,5 @@ public class RateLimitsUserRoutes implements Routes {
                 .message(String.format("User %s does not exist", username.asString()))
                 .haltError();
         }
-    }
-
-    private RateLimitsDTO toRateLimitsDTO(RateLimitingDefinition rateLimitingDefinition) {
-        return new RateLimitsDTO(rateLimitingDefinition.mailsSentPerMinute(),
-            rateLimitingDefinition.mailsSentPerHours(),
-            rateLimitingDefinition.mailsSentPerDays(),
-            rateLimitingDefinition.mailsReceivedPerMinute(),
-            rateLimitingDefinition.mailsReceivedPerHours(),
-            rateLimitingDefinition.mailsReceivedPerDays());
     }
 }
