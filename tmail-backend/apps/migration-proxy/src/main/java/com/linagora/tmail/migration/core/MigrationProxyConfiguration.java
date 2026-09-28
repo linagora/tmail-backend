@@ -56,6 +56,7 @@ public record MigrationProxyConfiguration(Backend imapOld, Backend imapNew, Dura
                                           Optional<KerberosConfiguration> kerberos,
                                           boolean enforceVerifiedBackendTLS) {
     public static final Duration DEFAULT_HANDSHAKE_TIMEOUT = Duration.ofSeconds(30);
+    private static final int IMAP_DEFAULT_PORT = 143;
     public static final boolean ENFORCE_VERIFIED_BACKEND_TLS_DEFAULT = true;
 
     private static void requireAdminDelegation(Backend backend) {
@@ -101,16 +102,30 @@ public record MigrationProxyConfiguration(Backend imapOld, Backend imapNew, Dura
     }
 
     private static Duration readHandshakeTimeout(Configuration configuration) {
-        return Optional.ofNullable(configuration.getString("imap.handshakeTimeout", null))
+        return readHandshakeTimeout(configuration, "imap");
+    }
+
+    /**
+     * Reads the optional {@code <protocol>.handshakeTimeout}, defaulting to {@link #DEFAULT_HANDSHAKE_TIMEOUT}.
+     */
+    public static Duration readHandshakeTimeout(Configuration configuration, String protocol) {
+        return Optional.ofNullable(configuration.getString(protocol + ".handshakeTimeout", null))
             .map(value -> DurationParser.parse(value, ChronoUnit.SECONDS))
             .orElse(DEFAULT_HANDSHAKE_TIMEOUT);
     }
 
     private static Backend readBackend(Configuration configuration, Target target) {
-        String prefix = "imap." + target.asString();
+        return readBackend(configuration, "imap", target, IMAP_DEFAULT_PORT);
+    }
+
+    /**
+     * Reads the {@code <protocol>.<target>.*} keys describing one backend, shared by every proxied protocol.
+     */
+    public static Backend readBackend(Configuration configuration, String protocol, Target target, int defaultPort) {
+        String prefix = protocol + "." + target.asString();
         String host = configuration.getString(prefix + ".host", null);
         Preconditions.checkArgument(host != null, "Missing required '%s.host' property", prefix);
-        int port = configuration.getInt(prefix + ".port", 143);
+        int port = configuration.getInt(prefix + ".port", defaultPort);
         boolean ssl = configuration.getBoolean(prefix + ".ssl", false);
         boolean ignoreCertificates = configuration.getBoolean(prefix + ".ssl.ignoreCertificates", false);
         boolean forwardProxyInfo = configuration.getBoolean(prefix + ".forwardProxyInfo", false);

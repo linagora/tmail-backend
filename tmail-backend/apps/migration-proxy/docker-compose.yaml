@@ -27,6 +27,7 @@ services:
       - "2525:25"    # SMTP public (inbound, no relay)
       - "2526:26"    # SMTP relay (reachable by old/new only)
       - "1430:143"   # IMAP byte-proxy
+      - "5870:587"   # SMTP submission proxy (only with submission.enabled=true)
       - "8000:8000"  # webadmin (/migratedUsers, /domains)
 
 

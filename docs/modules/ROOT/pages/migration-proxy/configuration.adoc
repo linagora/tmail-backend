@@ -102,6 +102,51 @@ is the only authority on the password* -- it rejecting the credentials is what t
 With Kerberos enabled both are disabled in favour of `AUTHENTICATE GSSAPI` -- see the Kerberos section
 above.
 
+== SMTP submission proxy (optional) -- `migrationproxy.properties`, `submissionproxy.xml`
+
+Disabled by default. When enabled, the listeners of `submissionproxy.xml` authenticate each client
+against the *submission* port of its backend, then relay the connection raw, as the IMAP proxy does:
+the backend is the only authority on the password, so the proxy needs no users repository for SMTP.
+`AUTH PLAIN` and `AUTH LOGIN` are offered; the backend is always authenticated against with
+`AUTH PLAIN` and an initial response.
+
+[options="header"]
+|===
+| Key | Description
+| `submission.enabled` | start the submission proxy (default `false`)
+| `submission.<target>.host` | backend submission host (`<target>` is `old` or `new`)
+| `submission.<target>.port` | backend submission port (default `587`)
+| `submission.<target>.ssl` | open an implicit TLS connection to the backend (default `false`). The proxy does not negotiate `STARTTLS` with backends: use their implicit TLS port, or a network where they accept `AUTH` in clear text
+| `submission.<target>.ssl.ignoreCertificates` | do not validate the backend certificate and hostname (default `false`)
+| `submission.<target>.forwardProxyInfo` | forward the inbound PROXY protocol information to the backend (default `false`)
+| `submission.handshakeTimeout` | how long the proxy waits while connecting to and authenticating against a backend before failing an `AUTH` with `454` (default `30s`)
+| `submission.auth.requireSSL` | only announce and accept `AUTH` over an encrypted client connection (default `false`)
+| `submission.ehlo.extensions` | comma separated extra ESMTP keywords to announce, e.g. `SIZE 52428800, SMTPUTF8`. The client never sees the backend EHLO reply, so list only what *both* backends support. `AUTH` and `STARTTLS` are managed by the proxy and cannot be listed
+|===
+
+`submissionproxy.xml` follows the `smtpserver.xml` syntax (`bind`, `tls`, `proxyRequired`,
+`helloName`, `smtpGreeting`, connection limits...). The command set is fixed by the application: the
+`handlerchain` element may be omitted, and setting its `coreHandlersPackage` attribute is refused at
+startup. Besides `PIPELINING`, `ENHANCEDSTATUSCODES` and `8BITMIME`, only the keywords of
+`submission.ehlo.extensions` are announced. The `helloName` is the name the proxy uses in its own
+`EHLO` to the backends.
+
+[source,xml]
+----
+<smtpservers>
+    <smtpserver enabled="true">
+        <jmxName>submission</jmxName>
+        <bind>0.0.0.0:587</bind>
+        <tls socketTLS="false" startTLS="true">...</tls>
+    </smtpserver>
+    <smtpserver enabled="true">
+        <jmxName>submissions</jmxName>
+        <bind>0.0.0.0:465</bind>
+        <tls socketTLS="true" startTLS="false">...</tls>
+    </smtpserver>
+</smtpservers>
+----
+
 == SMTP servers -- `smtpserver.xml`
 
 Two servers enforce the relay policy by port:

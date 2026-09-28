@@ -21,6 +21,7 @@ package com.linagora.tmail.migration;
 import java.net.InetSocketAddress;
 import java.nio.charset.StandardCharsets;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
 
@@ -28,6 +29,8 @@ import io.netty.bootstrap.ServerBootstrap;
 import io.netty.buffer.ByteBuf;
 import io.netty.buffer.Unpooled;
 import io.netty.channel.Channel;
+import io.netty.channel.ChannelFuture;
+import io.netty.channel.ChannelFutureListener;
 import io.netty.channel.ChannelHandlerContext;
 import io.netty.channel.ChannelInboundHandlerAdapter;
 import io.netty.channel.ChannelInitializer;
@@ -49,6 +52,7 @@ public class StubBackendServer implements AutoCloseable {
     private final String greeting;
     private final SslContext sslContext;
     private final Map<String, String> scriptedReplies = new ConcurrentHashMap<>();
+    private final Set<String> closingPrefixes = ConcurrentHashMap.newKeySet();
     private final CopyOnWriteArrayList<String> receivedLines = new CopyOnWriteArrayList<>();
     private volatile Channel serverChannel;
     private volatile Channel lastClientChannel;
@@ -65,6 +69,14 @@ public class StubBackendServer implements AutoCloseable {
     public StubBackendServer reply(String linePrefix, String response) {
         scriptedReplies.put(linePrefix, response);
         return this;
+    }
+
+    /**
+     * Like {@link #reply}, then closes the connection, as a server does after {@code QUIT} or {@code LOGOUT}.
+     */
+    public StubBackendServer replyThenClose(String linePrefix, String response) {
+        closingPrefixes.add(linePrefix);
+        return reply(linePrefix, response);
     }
 
     public int start() throws InterruptedException {
@@ -90,6 +102,13 @@ public class StubBackendServer implements AutoCloseable {
 
     public CopyOnWriteArrayList<String> receivedLines() {
         return receivedLines;
+    }
+
+    /**
+     * Whether the last connection the proxy opened towards this backend is still open.
+     */
+    public boolean lastConnectionOpen() {
+        return lastClientChannel != null && lastClientChannel.isActive();
     }
 
     public void pushToClient(String payload) {
@@ -120,8 +139,13 @@ public class StubBackendServer implements AutoCloseable {
                 scriptedReplies.entrySet().stream()
                     .filter(entry -> line.startsWith(entry.getKey()))
                     .findFirst()
-                    .ifPresent(entry -> ctx.writeAndFlush(
-                        Unpooled.copiedBuffer(entry.getValue() + "\r\n", StandardCharsets.UTF_8)));
+                    .ifPresent(entry -> {
+                        ChannelFuture written = ctx.writeAndFlush(
+                            Unpooled.copiedBuffer(entry.getValue() + "\r\n", StandardCharsets.UTF_8));
+                        if (closingPrefixes.contains(entry.getKey())) {
+                            written.addListener(ChannelFutureListener.CLOSE);
+                        }
+                    });
             } finally {
                 buffer.release();
             }
