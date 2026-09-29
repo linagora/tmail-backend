@@ -62,6 +62,9 @@ public interface TMailPostgresUserDataDefinition {
         Field<Long> MAILS_RECEIVED_PER_MINUTE = DSL.field("mails_received_per_minute", SQLDataType.BIGINT);
         Field<Long> MAILS_RECEIVED_PER_HOURS = DSL.field("mails_received_per_hour", SQLDataType.BIGINT);
         Field<Long> MAILS_RECEIVED_PER_DAYS = DSL.field("mails_received_per_day", SQLDataType.BIGINT);
+        Field<Long> RECIPIENTS_SENT_PER_MINUTE = DSL.field("recipients_sent_per_minute", SQLDataType.BIGINT);
+        Field<Long> RECIPIENTS_SENT_PER_HOURS = DSL.field("recipients_sent_per_hour", SQLDataType.BIGINT);
+        Field<Long> RECIPIENTS_SENT_PER_DAYS = DSL.field("recipients_sent_per_day", SQLDataType.BIGINT);
 
         static PostgresTable userTable(PostgresTable.CreateTableFunction createUserTableFunction) {
             return PostgresTable.name(TABLE_NAME.getName())
@@ -90,6 +93,9 @@ public interface TMailPostgresUserDataDefinition {
                 .column(MAILS_RECEIVED_PER_MINUTE)
                 .column(MAILS_RECEIVED_PER_HOURS)
                 .column(MAILS_RECEIVED_PER_DAYS)
+                .column(RECIPIENTS_SENT_PER_MINUTE)
+                .column(RECIPIENTS_SENT_PER_HOURS)
+                .column(RECIPIENTS_SENT_PER_DAYS)
                 .constraint(DSL.constraint(PostgresUserDataDefinition.PostgresUserTable.USERNAME_PRIMARY_KEY).primaryKey(USERNAME));
         }
 

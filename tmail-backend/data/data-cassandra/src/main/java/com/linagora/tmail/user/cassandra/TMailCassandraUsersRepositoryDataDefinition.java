@@ -49,6 +49,9 @@ public interface TMailCassandraUsersRepositoryDataDefinition {
     CqlIdentifier MAILS_RECEIVED_PER_MINUTE = CqlIdentifier.fromCql("mails_received_per_minute");
     CqlIdentifier MAILS_RECEIVED_PER_HOURS = CqlIdentifier.fromCql("mails_received_per_hour");
     CqlIdentifier MAILS_RECEIVED_PER_DAYS = CqlIdentifier.fromCql("mails_received_per_day");
+    CqlIdentifier RECIPIENTS_SENT_PER_MINUTE = CqlIdentifier.fromCql("recipients_sent_per_minute");
+    CqlIdentifier RECIPIENTS_SENT_PER_HOURS = CqlIdentifier.fromCql("recipients_sent_per_hour");
+    CqlIdentifier RECIPIENTS_SENT_PER_DAYS = CqlIdentifier.fromCql("recipients_sent_per_day");
 
     @VisibleForTesting
     CassandraDataDefinition MODULE = createUserTableDefinition(defaultCreateUserTableFunction());
@@ -80,7 +83,10 @@ public interface TMailCassandraUsersRepositoryDataDefinition {
             .withColumn(MAILS_SENT_PER_DAYS, DataTypes.BIGINT)
             .withColumn(MAILS_RECEIVED_PER_MINUTE, DataTypes.BIGINT)
             .withColumn(MAILS_RECEIVED_PER_HOURS, DataTypes.BIGINT)
-            .withColumn(MAILS_RECEIVED_PER_DAYS, DataTypes.BIGINT);
+            .withColumn(MAILS_RECEIVED_PER_DAYS, DataTypes.BIGINT)
+            .withColumn(RECIPIENTS_SENT_PER_MINUTE, DataTypes.BIGINT)
+            .withColumn(RECIPIENTS_SENT_PER_HOURS, DataTypes.BIGINT)
+            .withColumn(RECIPIENTS_SENT_PER_DAYS, DataTypes.BIGINT);
     }
 
 }

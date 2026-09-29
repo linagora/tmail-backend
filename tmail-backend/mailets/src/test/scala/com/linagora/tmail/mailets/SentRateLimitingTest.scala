@@ -22,13 +22,14 @@ import com.linagora.tmail.mailets.SentRateLimitingTest.{ALICE, BOB, DOMAIN}
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository
 import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingRepository
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition
-import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.{MAILS_SENT_PER_DAYS_UNLIMITED, MAILS_SENT_PER_HOURS_UNLIMITED, MAILS_SENT_PER_MINUTE_UNLIMITED}
+import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.{MAILS_SENT_PER_DAYS_UNLIMITED, MAILS_SENT_PER_HOURS_UNLIMITED, MAILS_SENT_PER_MINUTE_UNLIMITED, RECIPIENTS_SENT_PER_DAYS_UNLIMITED}
 import org.apache.james.backends.redis.{DockerRedis, RedisClientFactory, RedisExtension, StandaloneRedisConfiguration}
 import org.apache.james.core.{Domain, Username}
 import org.apache.james.rate.limiter.redis.RedisRateLimiterFactory
 import org.apache.james.server.core.filesystem.FileSystemImpl
 import org.apache.mailet.Mail
 import org.apache.mailet.base.test.{FakeMail, FakeMailetConfig}
+import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.junit.jupiter.api.extension.ExtendWith
 import org.junit.jupiter.api.{BeforeEach, Test}
@@ -642,5 +643,131 @@ class SentRateLimitingTest {
       // Bob rate limited should not impact Alice
       softly.assertThat(aliceSentMail1.getState).isEqualTo("transport")
     })
+  }
+
+  private def mailWithRecipients(name: String, recipients: String*): Mail = FakeMail.builder()
+    .name(name)
+    .sender(BOB.asString())
+    .recipients(recipients: _*)
+    .state("transport")
+    .build()
+
+  @Test
+  def shouldCountEachRecipientAgainstDefaultRecipientLimit(): Unit = {
+    sentRateLimiting.init(FakeMailetConfig.builder()
+      .setProperty("precision", "1s")
+      .setProperty("recipientsPerMinuteDefault", "3")
+      .build())
+
+    val mail1: Mail = mailWithRecipients("mail1", "rcpt1@linagora.com", "rcpt2@linagora.com")
+    val shouldExceedRecipientLimit: Mail = mailWithRecipients("mail2", "rcpt3@linagora.com", "rcpt4@linagora.com")
+
+    sentRateLimiting.service(mail1)
+    sentRateLimiting.service(shouldExceedRecipientLimit)
+
+    assertSoftly(softly => {
+      softly.assertThat(mail1.getState).isEqualTo("transport")
+      softly.assertThat(shouldExceedRecipientLimit.getState).isEqualTo("error")
+    })
+  }
+
+  @Test
+  def shouldRejectMailWithMoreRecipientsThanTheLimit(): Unit = {
+    sentRateLimiting.init(FakeMailetConfig.builder()
+      .setProperty("precision", "1s")
+      .setProperty("recipientsPerHourDefault", "2")
+      .build())
+
+    val mail: Mail = mailWithRecipients("mail1", "rcpt1@linagora.com", "rcpt2@linagora.com", "rcpt3@linagora.com")
+
+    sentRateLimiting.service(mail)
+
+    assertThat(mail.getState).isEqualTo("error")
+  }
+
+  @Test
+  def recipientLimitShouldNotApplyToMailCount(): Unit = {
+    sentRateLimiting.init(FakeMailetConfig.builder()
+      .setProperty("precision", "1s")
+      .setProperty("mailsPerMinuteDefault", "2")
+      .build())
+
+    val mail1: Mail = mailWithRecipients("mail1", "rcpt1@linagora.com", "rcpt2@linagora.com", "rcpt3@linagora.com")
+    val mail2: Mail = mailWithRecipients("mail2", "rcpt4@linagora.com", "rcpt5@linagora.com", "rcpt6@linagora.com")
+
+    sentRateLimiting.service(mail1)
+    sentRateLimiting.service(mail2)
+
+    assertSoftly(softly => {
+      softly.assertThat(mail1.getState).isEqualTo("transport")
+      softly.assertThat(mail2.getState).isEqualTo("transport")
+    })
+  }
+
+  @Test
+  def shouldApplyUserRecipientLimitOverDomainAndDefault(): Unit = {
+    sentRateLimiting.init(FakeMailetConfig.builder()
+      .setProperty("precision", "1s")
+      .setProperty("recipientsPerDayDefault", "1000")
+      .build())
+
+    SMono(rateLimitingRepository.setRateLimiting(DOMAIN, new RateLimitingDefinition.Builder()
+      .recipientsSentPerDays(100)
+      .build())).block()
+    SMono(rateLimitingRepository.setRateLimiting(BOB, new RateLimitingDefinition.Builder()
+      .recipientsSentPerDays(2)
+      .build())).block()
+
+    val mail1: Mail = mailWithRecipients("mail1", "rcpt1@linagora.com", "rcpt2@linagora.com")
+    val shouldExceedUserLimit: Mail = mailWithRecipients("mail2", "rcpt3@linagora.com")
+
+    sentRateLimiting.service(mail1)
+    sentRateLimiting.service(shouldExceedUserLimit)
+
+    assertSoftly(softly => {
+      softly.assertThat(mail1.getState).isEqualTo("transport")
+      softly.assertThat(shouldExceedUserLimit.getState).isEqualTo("error")
+    })
+  }
+
+  @Test
+  def shouldApplyDomainRecipientLimitWhenSenderHasNoLimit(): Unit = {
+    sentRateLimiting.init(FakeMailetConfig.builder()
+      .setProperty("precision", "1s")
+      .setProperty("recipientsPerDayDefault", "1000")
+      .build())
+
+    SMono(rateLimitingRepository.setRateLimiting(DOMAIN, new RateLimitingDefinition.Builder()
+      .recipientsSentPerDays(2)
+      .build())).block()
+
+    val mail1: Mail = mailWithRecipients("mail1", "rcpt1@linagora.com", "rcpt2@linagora.com")
+    val shouldExceedDomainLimit: Mail = mailWithRecipients("mail2", "rcpt3@linagora.com")
+
+    sentRateLimiting.service(mail1)
+    sentRateLimiting.service(shouldExceedDomainLimit)
+
+    assertSoftly(softly => {
+      softly.assertThat(mail1.getState).isEqualTo("transport")
+      softly.assertThat(shouldExceedDomainLimit.getState).isEqualTo("error")
+    })
+  }
+
+  @Test
+  def unlimitedUserRecipientLimitShouldOverrideDefault(): Unit = {
+    sentRateLimiting.init(FakeMailetConfig.builder()
+      .setProperty("precision", "1s")
+      .setProperty("recipientsPerDayDefault", "1")
+      .build())
+
+    SMono(rateLimitingRepository.setRateLimiting(BOB, new RateLimitingDefinition.Builder()
+      .recipientsSentPerDays(RECIPIENTS_SENT_PER_DAYS_UNLIMITED)
+      .build())).block()
+
+    val mail: Mail = mailWithRecipients("mail1", "rcpt1@linagora.com", "rcpt2@linagora.com")
+
+    sentRateLimiting.service(mail)
+
+    assertThat(mail.getState).isEqualTo("transport")
   }
 }

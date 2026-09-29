@@ -25,6 +25,9 @@ import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.M
 import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.MAILS_SENT_PER_DAYS_UNLIMITED;
 import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.MAILS_SENT_PER_HOURS_UNLIMITED;
 import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.MAILS_SENT_PER_MINUTE_UNLIMITED;
+import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.RECIPIENTS_SENT_PER_DAYS_UNLIMITED;
+import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.RECIPIENTS_SENT_PER_HOURS_UNLIMITED;
+import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.RECIPIENTS_SENT_PER_MINUTE_UNLIMITED;
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
 import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
@@ -72,6 +75,9 @@ public class RateLimitsUserRoutesTest {
         .mailsReceivedPerMinute(MAILS_RECEIVED_PER_MINUTE_UNLIMITED)
         .mailsReceivedPerHours(MAILS_RECEIVED_PER_HOURS_UNLIMITED)
         .mailsReceivedPerDays(MAILS_RECEIVED_PER_DAYS_UNLIMITED)
+        .recipientsSentPerMinute(RECIPIENTS_SENT_PER_MINUTE_UNLIMITED)
+        .recipientsSentPerHours(RECIPIENTS_SENT_PER_HOURS_UNLIMITED)
+        .recipientsSentPerDays(RECIPIENTS_SENT_PER_DAYS_UNLIMITED)
         .build();
     private static final RateLimitingDefinition BOB_RATE_LIMITS = RateLimitingDefinition.builder()
         .mailsSentPerMinute(10L)
@@ -88,7 +94,10 @@ public class RateLimitsUserRoutesTest {
             "mailsSentPerDays": -1,
             "mailsReceivedPerMinute": -1,
             "mailsReceivedPerHours": -1,
-            "mailsReceivedPerDays": -1
+            "mailsReceivedPerDays": -1,
+            "recipientsSentPerMinute": -1,
+            "recipientsSentPerHours": -1,
+            "recipientsSentPerDays": -1
         }""";
     private static final String PAYLOAD = """
         {
@@ -97,7 +106,10 @@ public class RateLimitsUserRoutesTest {
             "mailsSentPerDays": 1000,
             "mailsReceivedPerMinute": 20,
             "mailsReceivedPerHours": 200,
-            "mailsReceivedPerDays": 2000
+            "mailsReceivedPerDays": 2000,
+            "recipientsSentPerMinute": null,
+            "recipientsSentPerHours": null,
+            "recipientsSentPerDays": null
         }""";
 
     private static Stream<Arguments> usernameInvalidSource() {
@@ -353,6 +365,72 @@ public class RateLimitsUserRoutesTest {
             assertThat(Mono.from(rateLimitingRepository.getRateLimiting(BOB)).block())
                 .isEqualTo(EMPTY_RATE_LIMIT);
         }
+
+        @Test
+        void recipientsSentLimitsShouldBeSet() {
+            given()
+                .body("""
+                {
+                    "mailsSentPerMinute": 10,
+                    "recipientsSentPerMinute": 30,
+                    "recipientsSentPerHours": 300,
+                    "recipientsSentPerDays": -1
+                }""")
+                .put(String.format(PUT_RATE_LIMITS_TO_USER_PATH, BOB.asString()))
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(Mono.from(rateLimitingRepository.getRateLimiting(BOB)).block())
+                .isEqualTo(RateLimitingDefinition.builder()
+                    .mailsSentPerMinute(10L)
+                    .recipientsSentPerMinute(30L)
+                    .recipientsSentPerHours(300L)
+                    .recipientsSentPerDays(-1L)
+                    .build());
+        }
+
+        @Test
+        void omittedRecipientsSentLimitsShouldBePreserved() {
+            Mono.from(rateLimitingRepository.setRateLimiting(BOB, RateLimitingDefinition.builder()
+                .mailsSentPerMinute(1L)
+                .recipientsSentPerMinute(30L)
+                .recipientsSentPerHours(300L)
+                .recipientsSentPerDays(3000L)
+                .build())).block();
+
+            given()
+                .body("""
+                {
+                    "mailsSentPerMinute": 10,
+                    "recipientsSentPerHours": null,
+                    "recipientsSentPerDays": 4000
+                }""")
+                .put(String.format(PUT_RATE_LIMITS_TO_USER_PATH, BOB.asString()))
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(Mono.from(rateLimitingRepository.getRateLimiting(BOB)).block())
+                .isEqualTo(RateLimitingDefinition.builder()
+                    .mailsSentPerMinute(10L)
+                    .recipientsSentPerMinute(30L)
+                    .recipientsSentPerDays(4000L)
+                    .build());
+        }
+
+        @Test
+        void invalidRecipientsSentLimitShouldBeRejected() {
+            given()
+                .body("""
+                {
+                    "recipientsSentPerDays": "abc"
+                }""")
+                .put(String.format(PUT_RATE_LIMITS_TO_USER_PATH, BOB.asString()))
+            .then()
+                .statusCode(BAD_REQUEST_400);
+
+            assertThat(Mono.from(rateLimitingRepository.getRateLimiting(BOB)).block())
+                .isEqualTo(EMPTY_RATE_LIMIT);
+        }
     }
 
     @Nested
@@ -447,7 +525,10 @@ public class RateLimitsUserRoutesTest {
                     "mailsSentPerDays": null,
                     "mailsReceivedPerMinute": null,
                     "mailsReceivedPerHours": null,
-                    "mailsReceivedPerDays": null
+                    "mailsReceivedPerDays": null,
+                    "recipientsSentPerMinute": null,
+                    "recipientsSentPerHours": null,
+                    "recipientsSentPerDays": null
                 }""");
         }
 
@@ -479,7 +560,42 @@ public class RateLimitsUserRoutesTest {
                     "mailsSentPerDays": null,
                     "mailsReceivedPerMinute": 20,
                     "mailsReceivedPerHours": null,
-                    "mailsReceivedPerDays": -1
+                    "mailsReceivedPerDays": -1,
+                    "recipientsSentPerMinute": null,
+                    "recipientsSentPerHours": null,
+                    "recipientsSentPerDays": null
+                }""");
+        }
+
+        @Test
+        void shouldReturnRecipientsSentLimits() {
+            Mono.from(rateLimitingRepository.setRateLimiting(BOB, RateLimitingDefinition.builder()
+                .recipientsSentPerMinute(30L)
+                .recipientsSentPerHours(300L)
+                .recipientsSentPerDays(-1L)
+                .build())).block();
+
+            String response = given()
+                .get(String.format(GET_RATE_LIMITS_OF_USER_PATH, BOB.asString()))
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .asString();
+
+            assertThatJson(response)
+                .isEqualTo("""
+                {
+                    "mailsSentPerMinute": null,
+                    "mailsSentPerHours": null,
+                    "mailsSentPerDays": null,
+                    "mailsReceivedPerMinute": null,
+                    "mailsReceivedPerHours": null,
+                    "mailsReceivedPerDays": null,
+                    "recipientsSentPerMinute": 30,
+                    "recipientsSentPerHours": 300,
+                    "recipientsSentPerDays": -1
                 }""");
         }
     }

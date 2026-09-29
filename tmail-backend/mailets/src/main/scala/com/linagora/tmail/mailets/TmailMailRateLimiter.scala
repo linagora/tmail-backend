@@ -24,6 +24,7 @@ import com.linagora.tmail.mailets.MailLimit.UNLIMITED
 import eu.timepit.refined.auto._
 import org.apache.james.core.Username
 import org.apache.james.rate.limiter.api.AllowedQuantity.AllowedQuantity
+import org.apache.james.rate.limiter.api.Increment.Increment
 import org.apache.james.rate.limiter.api.{AllowedQuantity, RateLimiter, RateLimiterFactory, RateLimitingKey, RateLimitingResult, Rule, Rules}
 import org.apache.james.transport.mailets.KeyPrefix
 import org.reactivestreams.Publisher
@@ -52,13 +53,13 @@ case class TmailMailRateLimiter(rateLimiter: RateLimiter,
                                 keyPrefix: Option[KeyPrefix] = None,
                                 mailLimitType: MailLimitType) {
 
-  def rateLimit(username: Username): Publisher[RateLimitingResult] =
+  def rateLimit(username: Username, increaseQuantity: Increment = 1): Publisher[RateLimitingResult] =
     rateLimiter.rateLimit(
       key = MailRateLimitingKey(
         keyPrefix = keyPrefix,
         mailLimitType = mailLimitType,
         username = username),
-      increaseQuantity = 1)
+      increaseQuantity = increaseQuantity)
 }
 
 case class MailRateLimitingKey(keyPrefix: Option[KeyPrefix],
@@ -90,6 +91,24 @@ case object MailsSentPerHourType extends MailLimitType {
 
 case object MailsSentPerDayType extends MailLimitType {
   override val asString: String = "mailsSentPerDay"
+
+  override val duration: Duration = Duration.ofDays(1)
+}
+
+case object RecipientsSentPerMinuteType extends MailLimitType {
+  override val asString: String = "recipientsSentPerMinute"
+
+  override val duration: Duration = Duration.ofMinutes(1)
+}
+
+case object RecipientsSentPerHourType extends MailLimitType {
+  override val asString: String = "recipientsSentPerHour"
+
+  override val duration: Duration = Duration.ofHours(1)
+}
+
+case object RecipientsSentPerDayType extends MailLimitType {
+  override val asString: String = "recipientsSentPerDay"
 
   override val duration: Duration = Duration.ofDays(1)
 }

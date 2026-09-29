@@ -30,7 +30,6 @@ import org.slf4j.LoggerFactory;
 
 import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
-import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition;
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
 import com.linagora.tmail.saas.model.SaaSAccount;
 
@@ -139,10 +138,10 @@ public class SaaSDomainSubscriptionHandlerImpl implements SaaSMessageHandler {
 
         return message.features()
             .flatMap(SaasFeatures::mail)
-            .map(mailSettings -> ReactorUtils.logAsMono(() -> LOGGER.info("Applying domain settings for domain: {}, storageQuota: {}, rateLimiting: {}",
-                    domain, mailSettings.storageQuota(), mailSettings.rateLimitingDefinition()))
+            .map(mailSettings -> ReactorUtils.logAsMono(() -> LOGGER.info("Applying domain settings for domain: {}, mail settings: {}",
+                    domain, mailSettings))
                 .then(updateStorageDomainQuota(domain, mailSettings.storageQuota()))
-                .then(updateRateLimiting(domain, mailSettings.rateLimitingDefinition()))
+                .then(updateRateLimiting(domain, mailSettings))
                 .then(ReactorUtils.logAsMono(() -> LOGGER.info("Successfully updated SaaS subscription for domain: {}", domain))))
             .orElseGet(() -> ReactorUtils.logAsMono(() ->  LOGGER.info("Skipping domain settings for domain: {} because features.mail is missing", domain)));
     }
@@ -164,7 +163,9 @@ public class SaaSDomainSubscriptionHandlerImpl implements SaaSMessageHandler {
         return Mono.from(maxQuotaManager.setDomainMaxStorageReactive(domain, SaaSSubscriptionUtils.asQuotaSizeLimit(storageQuota)));
     }
 
-    private Mono<Void> updateRateLimiting(Domain domain, RateLimitingDefinition rateLimiting) {
-        return Mono.from(rateLimitingRepository.setRateLimiting(domain, rateLimiting));
+    private Mono<Void> updateRateLimiting(Domain domain, SaasFeatures.MailLimitation mailSettings) {
+        return Mono.from(rateLimitingRepository.getRateLimiting(domain))
+            .map(mailSettings::rateLimitingDefinition)
+            .flatMap(rateLimiting -> Mono.from(rateLimitingRepository.setRateLimiting(domain, rateLimiting)));
     }
 }
