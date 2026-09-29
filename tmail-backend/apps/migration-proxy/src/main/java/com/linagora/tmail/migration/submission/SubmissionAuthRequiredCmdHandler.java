@@ -16,40 +16,33 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.migration.core;
 
-import jakarta.inject.Inject;
+package com.linagora.tmail.migration.submission;
 
-import org.apache.james.core.Username;
+import java.util.Collection;
 
-import com.linagora.tmail.migration.core.MigrationProxyConfiguration.Target;
+import org.apache.james.protocols.api.Request;
+import org.apache.james.protocols.api.Response;
+import org.apache.james.protocols.api.handler.CommandHandler;
+import org.apache.james.protocols.smtp.SMTPResponse;
+import org.apache.james.protocols.smtp.SMTPSession;
 
-import reactor.core.publisher.Mono;
+import com.google.common.collect.ImmutableSet;
 
 /**
- * Picks the {@link Backend} a given user should be routed to: the new backend when the user has been
- * migrated, the old backend otherwise.
+ * The mail transaction commands only ever reach the proxy before {@code AUTH}: once authenticated, the
+ * connection is relayed to the backend. The proxy itself never accepts mail.
  */
-public class BackendResolver {
-    private final MigratedUsersRepository migratedUsersRepository;
-    private final MigrationProxyConfiguration configuration;
+public class SubmissionAuthRequiredCmdHandler implements CommandHandler<SMTPSession> {
+    static final Response AUTHENTICATION_REQUIRED = new SMTPResponse("530", "5.7.0 Authentication required").immutable();
 
-    @Inject
-    public BackendResolver(MigratedUsersRepository migratedUsersRepository, MigrationProxyConfiguration configuration) {
-        this.migratedUsersRepository = migratedUsersRepository;
-        this.configuration = configuration;
+    @Override
+    public Collection<String> getImplCommands() {
+        return ImmutableSet.of("MAIL", "RCPT", "DATA", "BDAT");
     }
 
-    public Mono<Backend> resolve(Username username) {
-        return resolveTarget(username)
-            .map(configuration::backend);
-    }
-
-    /**
-     * The side a user belongs to, for protocols that keep their own old/new {@link Backend} pair.
-     */
-    public Mono<Target> resolveTarget(Username username) {
-        return migratedUsersRepository.isMigrated(username)
-            .map(migrated -> migrated ? Target.NEW : Target.OLD);
+    @Override
+    public Response onCommand(SMTPSession session, Request request) {
+        return AUTHENTICATION_REQUIRED;
     }
 }

@@ -29,13 +29,25 @@ import org.apache.james.metrics.api.TimeMetric;
  * response times, broken down per backend (old/new).
  */
 public class MigrationProxyMetrics {
-    private static final String PREFIX = "migrationProxy.imap";
+    private static final String PREFIX = "migrationProxy.";
+    private static final String IMAP = "imap";
+    public static final String SUBMISSION = "submission";
 
     private final MetricFactory metricFactory;
+    private final String protocol;
 
     @Inject
     public MigrationProxyMetrics(MetricFactory metricFactory) {
+        this(metricFactory, IMAP);
+    }
+
+    /**
+     * @param protocol the proxied protocol, which scopes the metric names so that the IMAP and the SMTP
+     *                 submission relays towards the same old/new backends are accounted separately
+     */
+    public MigrationProxyMetrics(MetricFactory metricFactory, String protocol) {
         this.metricFactory = metricFactory;
+        this.protocol = protocol;
     }
 
     public void recordConnection(Backend backend) {
@@ -59,6 +71,6 @@ public class MigrationProxyMetrics {
     }
 
     private String name(Backend backend, String suffix) {
-        return PREFIX + "." + backend.name() + "." + suffix;
+        return PREFIX + protocol + "." + backend.name() + "." + suffix;
     }
 }

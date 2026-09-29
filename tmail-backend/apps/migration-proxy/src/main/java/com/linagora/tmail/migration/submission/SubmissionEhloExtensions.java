@@ -16,40 +16,31 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.migration.core;
+
+package com.linagora.tmail.migration.submission;
+
+import java.util.List;
 
 import jakarta.inject.Inject;
 
-import org.apache.james.core.Username;
-
-import com.linagora.tmail.migration.core.MigrationProxyConfiguration.Target;
-
-import reactor.core.publisher.Mono;
+import org.apache.james.protocols.api.handler.ProtocolHandler;
+import org.apache.james.protocols.smtp.SMTPSession;
+import org.apache.james.protocols.smtp.core.esmtp.EhloExtension;
 
 /**
- * Picks the {@link Backend} a given user should be routed to: the new backend when the user has been
- * migrated, the old backend otherwise.
+ * Announces the ESMTP extensions listed in {@code submission.ehlo.extensions}. The client never sees
+ * the EHLO reply of the backend it ends up relayed to, so the proxy announces on its behalf.
  */
-public class BackendResolver {
-    private final MigratedUsersRepository migratedUsersRepository;
-    private final MigrationProxyConfiguration configuration;
+public class SubmissionEhloExtensions implements EhloExtension, ProtocolHandler {
+    private final SubmissionProxyConfiguration configuration;
 
     @Inject
-    public BackendResolver(MigratedUsersRepository migratedUsersRepository, MigrationProxyConfiguration configuration) {
-        this.migratedUsersRepository = migratedUsersRepository;
+    public SubmissionEhloExtensions(SubmissionProxyConfiguration configuration) {
         this.configuration = configuration;
     }
 
-    public Mono<Backend> resolve(Username username) {
-        return resolveTarget(username)
-            .map(configuration::backend);
-    }
-
-    /**
-     * The side a user belongs to, for protocols that keep their own old/new {@link Backend} pair.
-     */
-    public Mono<Target> resolveTarget(Username username) {
-        return migratedUsersRepository.isMigrated(username)
-            .map(migrated -> migrated ? Target.NEW : Target.OLD);
+    @Override
+    public List<String> getImplementedEsmtpFeatures(SMTPSession session) {
+        return configuration.ehloExtensions();
     }
 }

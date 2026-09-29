@@ -61,14 +61,17 @@ import com.linagora.tmail.migration.modules.MigrationProxyImapModule;
 import com.linagora.tmail.migration.modules.MigrationProxyMemoryEventBusModule;
 import com.linagora.tmail.migration.modules.MigrationProxyMigrationSwitchModule;
 import com.linagora.tmail.migration.modules.MigrationProxyRabbitMQEventBusModule;
+import com.linagora.tmail.migration.modules.SubmissionProxyModule;
+import com.linagora.tmail.migration.submission.SubmissionProxyConfiguration;
 
 /**
  * Migration proxy server: a mailbox-less Twake Mail MTA assembled from our own Guice module set.
  *
  * <p>SMTP behaves as a standard relaying MTA whose {@code mailetcontainer.xml} routes mail per
  * recipient to the old / new / external backends; IMAP is a byte-proxy ({@link MigrationProxyImapModule})
- * relaying each authenticated connection to old/new. The migrated-users list (Postgres + webadmin)
- * drives both the SMTP recipient routing and the IMAP user routing.
+ * relaying each authenticated connection to old/new. The optional SMTP submission proxy
+ * ({@link SubmissionProxyModule}) does the same for authenticated submission. The migrated-users list
+ * (Postgres + webadmin) drives the SMTP recipient routing as well as the IMAP and submission user routing.
  */
 public class MigrationProxyServer {
     private static final Logger LOGGER = LoggerFactory.getLogger(MigrationProxyServer.class);
@@ -110,6 +113,36 @@ public class MigrationProxyServer {
                 case RABBITMQ -> Modules.combine(new MigrationProxyRabbitMQEventBusModule(),
                     Modules.override(new ScheduledReconnectionHandler.Module())
                         .with(new MigrationProxyMigrationSwitchModule()));
+            };
+        }
+    }
+
+    /**
+     * The SMTP submission proxy is opt-in ({@code submission.enabled} in {@code migrationproxy.properties}):
+     * disabled, no submission listener is started and {@code submissionproxy.xml} is not needed.
+     */
+    public enum SubmissionProxyChoice {
+        DISABLED,
+        ENABLED;
+
+        public static SubmissionProxyChoice parse(PropertiesProvider propertiesProvider) {
+            try {
+                if (SubmissionProxyConfiguration.isEnabled(propertiesProvider.getConfiguration("migrationproxy"))) {
+                    LOGGER.info("SMTP submission proxy enabled");
+                    return ENABLED;
+                }
+                return DISABLED;
+            } catch (FileNotFoundException e) {
+                return DISABLED;
+            } catch (ConfigurationException e) {
+                throw new RuntimeException("migrationproxy.properties could not be read", e);
+            }
+        }
+
+        Module module() {
+            return switch (this) {
+                case DISABLED -> Modules.EMPTY_MODULE;
+                case ENABLED -> new SubmissionProxyModule();
             };
         }
     }
@@ -164,9 +197,12 @@ public class MigrationProxyServer {
         UsersRepositoryModuleChooser.Implementation usersRepositoryImplementation =
             UsersRepositoryModuleChooser.Implementation.parse(new FileConfigurationProvider(fileSystem, configuration));
 
+        SubmissionProxyChoice submissionProxyChoice =
+            SubmissionProxyChoice.parse(new PropertiesProvider(fileSystem, configuration.configurationPath()));
+
         return GuiceJamesServer.forConfiguration(configuration)
             .combineWith(Modules.override(PROTOCOLS, DATA, chooseSslModule(), eventBusModuleChoice.module())
-                .with(MIGRATION_PROXY, WebAdminServerModule.defaultPasswordGenerationModule(false)))
+                .with(MIGRATION_PROXY, submissionProxyChoice.module(), WebAdminServerModule.defaultPasswordGenerationModule(false)))
             .combineWith(new UsersRepositoryModuleChooser(new PostgresUsersRepositoryModule())
                 .chooseModules(usersRepositoryImplementation));
     }

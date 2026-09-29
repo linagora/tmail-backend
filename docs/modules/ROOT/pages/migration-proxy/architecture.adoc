@@ -47,6 +47,32 @@ Kerberos delegation requires implicit TLS with certificate and hostname validati
 the proxy refuses to start with plaintext or ignored certificates because the delegated administrator
 password is sent with SASL PLAIN.
 
+== SMTP submission proxy (optional)
+
+Opt-in (`submission.enabled=true`): authenticated submission (`:587` STARTTLS / `:465` implicit TLS)
+gets the same treatment as IMAP, so the proxy needs no user database -- hence no LDAP -- for SMTP
+either. The mail itself still goes through the backend of the user, which relays it back to the proxy
+`:26` as with direct submission, so recipient routing is unchanged.
+
+* The listeners are James `SMTPServer` instances (TLS, STARTTLS, PROXY protocol, connection limits)
+whose command set is pinned to `SubmissionProxyHandlersLoader`: `EHLO`/`HELO`, `STARTTLS`, `AUTH`,
+`NOOP`, `RSET`, `QUIT`. The mail transaction commands are answered `530` -- the proxy never accepts
+mail on these ports.
+
+* `SubmissionAuthCmdHandler` runs `AUTH PLAIN` / `AUTH LOGIN` only to capture the credentials
+(delegation refused). `SubmissionBackendHandover` resolves the backend, and `BackendRelay` replays
+them with `SmtpBackendDialog` (greeting, `EHLO`, `AUTH PLAIN`) before piping raw bytes. A backend
+`535` is a `535 5.7.8` for the client; anything else (unreachable, timeout, `454`, unexpected reply)
+is a `454 4.7.0` temporary failure, and the client may retry `AUTH` on the same session.
+
+* Commands the client pipelined behind a single round-trip `AUTH PLAIN` (RFC 4954) are relayed in
+order: the `235` is written first, a forwarder placed in front of the SMTP core handler relays the
+lines the framer still dispatches, and the framer's partially received line is handed to that
+forwarder before the connection becomes a bare byte pipe.
+
+* Relayed sessions are registered like IMAP ones, so migrating a user cuts its submission sessions
+too. Metrics are reported under `migrationProxy.submission.<backend>.*`.
+
 == SMTP routing MTA
 
 * Two SMTP servers enforce the relay policy *by port*: `:25` is public (no relay — non-local
