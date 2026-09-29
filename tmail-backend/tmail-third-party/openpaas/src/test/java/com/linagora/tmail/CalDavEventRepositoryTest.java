@@ -28,10 +28,12 @@ import static org.mockito.Mockito.when;
 import java.io.ByteArrayInputStream;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
@@ -43,12 +45,17 @@ import org.apache.james.jmap.mail.BlobId;
 import org.apache.james.jmap.mail.PartId;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
 import org.assertj.core.api.SoftAssertions;
+import org.awaitility.Awaitility;
+import org.awaitility.core.ConditionFactory;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.dav.CalDavEventRepository;
 import com.linagora.tmail.dav.DavCalendarObject;
@@ -69,6 +76,11 @@ import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults;
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
 import com.linagora.tmail.james.jmap.model.CalendarUidField;
 import com.linagora.tmail.james.jmap.model.EventAttendanceStatusEntry;
+import com.rabbitmq.client.BuiltinExchangeType;
+import com.rabbitmq.client.Channel;
+import com.rabbitmq.client.Connection;
+import com.rabbitmq.client.ConnectionFactory;
+import com.rabbitmq.client.GetResponse;
 
 import net.fortuna.ical4j.model.Calendar;
 import net.fortuna.ical4j.model.parameter.PartStat;
@@ -88,6 +100,15 @@ class CalDavEventRepositoryTest {
     private DavClient davClient;
     private CalDavEventRepository testee;
     private InMemoryIntegrationResources resources;
+    private static final ConditionFactory CALMLY_AWAIT = Awaitility.with()
+        .pollInterval(Duration.ofMillis(200))
+        .and()
+        .with()
+        .pollDelay(Duration.ofMillis(200))
+        .await()
+        .atMost(Duration.ofSeconds(30));
+
+    private final List<AutoCloseable> closeables = new ArrayList<>();
     private Username testUser;
     private CalendarResolver calendarResolver;
 
@@ -105,6 +126,14 @@ class CalDavEventRepositoryTest {
             calendarResolver);
 
         setupNewTestUser();
+    }
+
+    @AfterEach
+    void tearDown() throws Exception {
+        for (AutoCloseable closeable : closeables) {
+            closeable.close();
+        }
+        closeables.clear();
     }
 
     private void setupNewTestUser() {
@@ -459,7 +488,7 @@ class CalDavEventRepositoryTest {
     }
 
     @Test
-    void updateEventOnOrganizerCalendarShouldImplicitlyUpdateAttendeeCalendar() {
+    void updateEventOnOrganizerCalendarShouldScheduleAttendeeUpdate() throws Exception {
         String eventUidA = UUID.randomUUID().toString();
         String calendarAsString = "BEGIN:VCALENDAR\n" +
             "VERSION:2.0\n" +
@@ -491,6 +520,8 @@ class CalDavEventRepositoryTest {
             "END:VCALENDAR\n";
 
         Calendar calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(calendarAsString.getBytes(StandardCharsets.UTF_8)));
+        LocalDeliveryListener localDeliveries = new LocalDeliveryListener(dockerOpenPaasExtension.dockerOpenPaasSetup().rabbitMqUri());
+        closeables.add(localDeliveries);
 
         // Create the event on organizer (OpenPaas user) calendar
         davClient.caldav(openPaasUser.email()).createCalendar(
@@ -530,12 +561,17 @@ class CalDavEventRepositoryTest {
             .doesNotThrowAnyException();
 
         DavCalendarObject openPaasUserCalendar = davClient.caldav(openPaasUser.email()).getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(eventUidA)).block();
-        DavCalendarObject aliceDavCalendarObject = davClient.caldav(aliceOpenPaasUser.email()).getCalendarObject(new DavUser(aliceOpenPaasUser.id(), aliceOpenPaasUser.email()), new DavUid(eventUidA)).block();
-
-        // the event should be updated in both organizer (OpenPaas user) calendar and attendee (Alice) calendar
-        assertThat(openPaasUserCalendar.uri()).isNotEqualTo(aliceDavCalendarObject.uri());
         assertThat(openPaasUserCalendar.calendarData().toString()).contains(newStartTime);
-        assertThat(aliceDavCalendarObject.calendarData().toString()).contains(newStartTime);
+
+        // Sabre no longer writes attendee calendars synchronously: it publishes an iTIP REQUEST on AMQP that
+        // Twake Calendar Side Service fans out to attendees. Check that the organizer update triggers it for Alice.
+        CALMLY_AWAIT.untilAsserted(() -> assertThat(localDeliveries.poll())
+            .anySatisfy(delivery -> {
+                assertThat(delivery.get("uid").asText()).isEqualTo(eventUidA);
+                assertThat(delivery.get("method").asText()).isEqualTo("REQUEST");
+                assertThat(delivery.get("recipients").toString()).contains("mailto:" + aliceOpenPaasUser.email().asString());
+                assertThat(delivery.get("message").asText()).contains(newStartTime);
+            }));
     }
 
     @Test
@@ -547,7 +583,7 @@ class CalDavEventRepositoryTest {
             "UID:" + eventUidA + "\n" +
             "DTSTART;TZID=Europe/Paris:20250314T150000\n" +
             "DTEND;TZID=Europe/Paris:20250314T170000\n" +
-            "ORGANIZER;CN=John1 Doe1:" + openPaasUser.email().asString() +"\n" +
+            "ORGANIZER;CN=John1 Doe1:mailto:" + openPaasUser.email().asString() +"\n" +
             "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email().asString() +"\n" +
             "DTSTAMP:20250313T113032\n" +
             "END:VEVENT\n" +
@@ -581,7 +617,7 @@ class CalDavEventRepositoryTest {
             "UID:" + eventUidA + "\n" +
             "DTSTART;TZID=Europe/Paris:20250314T150000\n" +
             "DTEND;TZID=Europe/Paris:20250314T170000\n" +
-            "ORGANIZER;CN=John1 Doe1:" + openPaasUser.email().asString() +"\n" +
+            "ORGANIZER;CN=John1 Doe1:mailto:" + openPaasUser.email().asString() +"\n" +
             "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email().asString() +"\n" +
             "DTSTAMP:20250313T113032\n" +
             "END:VEVENT\n" +
@@ -692,28 +728,68 @@ class CalDavEventRepositoryTest {
         DavCalendarObject davCalendarObject = davClient.caldav(openPaasUser.email()).getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(eventUidA)).block();
 
         String updatedCalendar = davCalendarObject.calendarData().toString();
-        assertThat(updatedCalendar.replaceAll("(?m)^DTSTAMP:.*\\R?", "").trim())
+        assertThat(withoutServerManagedFields(updatedCalendar))
             .isEqualToNormalizingNewlines("BEGIN:VCALENDAR\n" +
                 "VERSION:2.0\n" +
-                "PRODID:-//Sabre//Sabre VObject 4.5.7//EN\n" +
                 "BEGIN:VEVENT\n" +
                 "UID:" + eventUidA + "\n" +
                 "DTSTART;TZID=Europe/Paris:20250328T090000\n" +
                 "DTEND;TZID=Europe/Paris:20250328T100000\n" +
                 "RRULE:FREQ=WEEKLY;COUNT=4;BYDAY=WE\n" +
-                "ORGANIZER;CN=John1 Doe1;SCHEDULE-STATUS=3.7:" + openPaasUser.email().asString() +"\n" +
-                "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email().asString() +"\n" +
+                "ORGANIZER;CN=John1 Doe1:" + openPaasUser.email().asString() +"\n" +
+                "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2:mailto:" + openPaasUser.email().asString() +"\n" +
                 "END:VEVENT\n" +
                 "BEGIN:VEVENT\n" +
                 "UID:" + eventUidA + "\n" +
                 "DTSTART;TZID=Europe/Paris:20250409T110000\n" +
                 "DTEND;TZID=Europe/Paris:20250409T120000\n" +
                 "ORGANIZER;CN=John1 Doe1:" + openPaasUser.email().asString() +"\n" +
-                "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email().asString() +"\n" +
+                "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2:mailto:" + openPaasUser.email().asString() +"\n" +
                 "RECURRENCE-ID;TZID=Europe/Paris:20250409T090000\n" +
                 "SEQUENCE:1\n" +
                 "END:VEVENT\n" +
                 "END:VCALENDAR\n".trim());
+    }
+
+    // Records the iTIP messages Sabre publishes for Twake Calendar Side Service to deliver to attendees
+    private static class LocalDeliveryListener implements AutoCloseable {
+        private static final String LOCAL_DELIVERY_EXCHANGE = "calendar:itip:localDelivery";
+        private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
+        private final Connection connection;
+        private final Channel channel;
+        private final String queue;
+        private final List<JsonNode> received = new ArrayList<>();
+
+        LocalDeliveryListener(URI amqpUri) throws Exception {
+            ConnectionFactory connectionFactory = new ConnectionFactory();
+            connectionFactory.setUri(amqpUri);
+            connection = connectionFactory.newConnection();
+            channel = connection.createChannel();
+            channel.exchangeDeclare(LOCAL_DELIVERY_EXCHANGE, BuiltinExchangeType.FANOUT, true);
+            queue = channel.queueDeclare().getQueue();
+            channel.queueBind(queue, LOCAL_DELIVERY_EXCHANGE, "");
+        }
+
+        List<JsonNode> poll() throws Exception {
+            GetResponse response;
+            while ((response = channel.basicGet(queue, true)) != null) {
+                received.add(OBJECT_MAPPER.readTree(response.getBody()));
+            }
+            return received;
+        }
+
+        @Override
+        public void close() throws Exception {
+            connection.close();
+        }
+    }
+
+    // DTSTAMP, PRODID and SCHEDULE-STATUS are generated by Sabre and vary across versions
+    private static String withoutServerManagedFields(String calendar) {
+        return calendar.replaceAll("(?m)^(DTSTAMP|PRODID):.*\\R?", "")
+            .replaceAll(";SCHEDULE-STATUS=[0-9.]+", "")
+            .trim();
     }
 
     private CalendarEventModifier createRescheduledTimingModifier(ZonedDateTime proposedStartDate, ZonedDateTime proposedEndDate) {
@@ -801,17 +877,16 @@ class CalDavEventRepositoryTest {
 
         DavCalendarObject davCalendarObject = davClient.caldav(openPaasUser.email()).getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(eventUidA)).block();
         String updatedCalendar = davCalendarObject.calendarData().toString();
-        assertThat(updatedCalendar.replaceAll("(?m)^DTSTAMP:.*\\R?", "").trim())
+        assertThat(withoutServerManagedFields(updatedCalendar))
             .isEqualToNormalizingNewlines("BEGIN:VCALENDAR\n" +
                 "VERSION:2.0\n" +
-                "PRODID:-//Sabre//Sabre VObject 4.5.7//EN\n" +
                 "BEGIN:VEVENT\n" +
                 "UID:" + eventUidA + "\n" +
                 "DTSTART;TZID=Europe/Paris:20250328T090000\n" +
                 "DTEND;TZID=Europe/Paris:20250328T100000\n" +
                 "RRULE:FREQ=WEEKLY;COUNT=4;BYDAY=WE\n" +
-                "ORGANIZER;CN=John1 Doe1;SCHEDULE-STATUS=3.7:user_8f960db2-199e-42d2-97ac-65ddc344b96e@open-paas.org\n" +
-                "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email().asString() +"\n" +
+                "ORGANIZER;CN=John1 Doe1:user_8f960db2-199e-42d2-97ac-65ddc344b96e@open-paas.org\n" +
+                "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2:mailto:" + openPaasUser.email().asString() +"\n" +
                 "END:VEVENT\n" +
                 "BEGIN:VEVENT\n" +
                 "UID:" + eventUidA + "\n" +
@@ -820,7 +895,7 @@ class CalDavEventRepositoryTest {
                 "ORGANIZER;CN=John1 Doe1:user_8f960db2-199e-42d2-97ac-65ddc344b96e@open-paas.org\n" +
                 "RECURRENCE-ID;TZID=Europe/Paris:20250409T090000\n" +
                 "SEQUENCE:2\n" +
-                "ATTENDEE;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2;PARTSTAT=ACCEPTED:mailto:" + openPaasUser.email().asString() +"\n" +
+                "ATTENDEE;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;PARTSTAT=ACCEPTED:mailto:" + openPaasUser.email().asString() +"\n" +
                 "END:VEVENT\n" +
                 "END:VCALENDAR\n".trim());
     }

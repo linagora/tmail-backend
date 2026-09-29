@@ -77,7 +77,7 @@ services:
 
   sabre_dav:
     container_name: esn_sabre
-    image: linagora/esn-sabre:sabre-4_7_0-09-03-2026
+    image: linagora/esn-sabre:2.4.6.6
     ports:
       - "8001:80"
     environment:
