@@ -25,6 +25,9 @@ import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.M
 import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.MAILS_SENT_PER_DAYS_UNLIMITED;
 import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.MAILS_SENT_PER_HOURS_UNLIMITED;
 import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.MAILS_SENT_PER_MINUTE_UNLIMITED;
+import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.RECIPIENTS_SENT_PER_DAYS_UNLIMITED;
+import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.RECIPIENTS_SENT_PER_HOURS_UNLIMITED;
+import static com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.RECIPIENTS_SENT_PER_MINUTE_UNLIMITED;
 import static io.restassured.RestAssured.given;
 import static io.restassured.http.ContentType.JSON;
 import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
@@ -72,6 +75,9 @@ public class RateLimitsUserRoutesTest {
         .mailsReceivedPerMinute(MAILS_RECEIVED_PER_MINUTE_UNLIMITED)
         .mailsReceivedPerHours(MAILS_RECEIVED_PER_HOURS_UNLIMITED)
         .mailsReceivedPerDays(MAILS_RECEIVED_PER_DAYS_UNLIMITED)
+        .recipientsSentPerMinute(RECIPIENTS_SENT_PER_MINUTE_UNLIMITED)
+        .recipientsSentPerHours(RECIPIENTS_SENT_PER_HOURS_UNLIMITED)
+        .recipientsSentPerDays(RECIPIENTS_SENT_PER_DAYS_UNLIMITED)
         .build();
     private static final RateLimitingDefinition BOB_RATE_LIMITS = RateLimitingDefinition.builder()
         .mailsSentPerMinute(10L)
@@ -89,9 +95,9 @@ public class RateLimitsUserRoutesTest {
             "mailsReceivedPerMinute": -1,
             "mailsReceivedPerHours": -1,
             "mailsReceivedPerDays": -1,
-            "recipientsSentPerMinute": null,
-            "recipientsSentPerHours": null,
-            "recipientsSentPerDays": null
+            "recipientsSentPerMinute": -1,
+            "recipientsSentPerHours": -1,
+            "recipientsSentPerDays": -1
         }""";
     private static final String PAYLOAD = """
         {
