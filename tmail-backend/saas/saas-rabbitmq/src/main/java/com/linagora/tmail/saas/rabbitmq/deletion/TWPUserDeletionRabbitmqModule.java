@@ -38,9 +38,11 @@ import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
+import com.linagora.tmail.rabbitmq.ManagedRabbitMQConsumer;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
 
 public class TWPUserDeletionRabbitmqModule extends AbstractModule {
+    private static final String TWP_USER_DELETION_CONSUMER = "twp-user-deletion";
 
     @Override
     protected void configure() {
@@ -52,19 +54,20 @@ public class TWPUserDeletionRabbitmqModule extends AbstractModule {
 
     @Provides
     @Singleton
-    TWPUserDeletionConsumer provideTWPUserDeletionConsumer(@Named(TWP_INJECTION_KEY) ReactorRabbitMQChannelPool channelPool,
+    @Named(TWP_USER_DELETION_CONSUMER)
+    ManagedRabbitMQConsumer provideTWPUserDeletionConsumer(@Named(TWP_INJECTION_KEY) ReactorRabbitMQChannelPool channelPool,
                                                            @Named(TWP_INJECTION_KEY) RabbitMQConfiguration rabbitMQConfiguration,
                                                            TWPCommonRabbitMQConfiguration twpCommonRabbitMQConfiguration,
                                                            TWPUserDeletionRabbitMQConfiguration twpUserDeletionRabbitMQConfiguration,
                                                            DeleteUserDataService deleteUserDataService) {
-        return new TWPUserDeletionConsumer(channelPool, rabbitMQConfiguration, twpCommonRabbitMQConfiguration,
+        return TWPUserDeletionConsumer.create(channelPool, rabbitMQConfiguration, twpCommonRabbitMQConfiguration,
             twpUserDeletionRabbitMQConfiguration, TWPUserDeletionConsumer.UserDeletionConsumerConfig.DEFAULT, deleteUserDataService);
     }
 
     @Provides
     @Singleton
     TWPUserDeletionQueueConsumerHealthCheck provideTWPUserDeletionQueueConsumerHealthCheck(@Named(TWP_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration,
-                                                                                           TWPUserDeletionConsumer twpUserDeletionConsumer) {
+                                                                                           @Named(TWP_USER_DELETION_CONSUMER) ManagedRabbitMQConsumer twpUserDeletionConsumer) {
         return new TWPUserDeletionQueueConsumerHealthCheck(twpRabbitMQConfiguration, twpUserDeletionConsumer, TWPUserDeletionConsumer.UserDeletionConsumerConfig.DEFAULT.queue());
     }
 
@@ -75,9 +78,9 @@ public class TWPUserDeletionRabbitmqModule extends AbstractModule {
     }
 
     @ProvidesIntoSet
-    public InitializationOperation initializeTWPUserDeletionConsumer(TWPUserDeletionConsumer instance) {
+    public InitializationOperation initializeTWPUserDeletionConsumer(@Named(TWP_USER_DELETION_CONSUMER) ManagedRabbitMQConsumer instance) {
         return InitilizationOperationBuilder
-            .forClass(TWPUserDeletionConsumer.class)
+            .forClass(ManagedRabbitMQConsumer.class)
             .init(instance::init);
     }
 

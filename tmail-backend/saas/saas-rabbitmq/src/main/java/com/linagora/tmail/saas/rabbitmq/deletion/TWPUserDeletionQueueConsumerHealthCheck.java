@@ -26,6 +26,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.linagora.tmail.RabbitMQManagementAPI;
+import com.linagora.tmail.rabbitmq.ManagedRabbitMQConsumer;
 
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -36,12 +37,12 @@ public class TWPUserDeletionQueueConsumerHealthCheck implements HealthCheck {
     private static final String DEFAULT_VHOST = "/";
 
     private final RabbitMQConfiguration twpRabbitMQConfiguration;
-    private final TWPUserDeletionConsumer twpUserDeletionConsumer;
+    private final ManagedRabbitMQConsumer twpUserDeletionConsumer;
     private final RabbitMQManagementAPI managementAPI;
     private final String queueName;
 
     public TWPUserDeletionQueueConsumerHealthCheck(RabbitMQConfiguration twpRabbitMQConfiguration,
-                                                   TWPUserDeletionConsumer twpUserDeletionConsumer,
+                                                   ManagedRabbitMQConsumer twpUserDeletionConsumer,
                                                    String queueName) {
         this.twpRabbitMQConfiguration = twpRabbitMQConfiguration;
         this.managementAPI = RabbitMQManagementAPI.from(twpRabbitMQConfiguration);
@@ -71,7 +72,7 @@ public class TWPUserDeletionQueueConsumerHealthCheck implements HealthCheck {
     private Mono<Result> restartTWPUserDeletionConsumer() {
         LOGGER.warn("TWPUserDeletionQueueConsumerHealthCheck found no consumers, restarting the consumer");
 
-        return Mono.fromRunnable(twpUserDeletionConsumer::restartConsumer)
+        return Mono.fromRunnable(twpUserDeletionConsumer::restart)
             .thenReturn(Result.degraded(COMPONENT_NAME, "The TWP user deletion queue has no consumers"))
             .onErrorResume(error -> {
                 LOGGER.error("Error while restarting TWP user deletion consumer", error);
