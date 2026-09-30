@@ -50,6 +50,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 import org.reactivestreams.Publisher;
 
+import com.linagora.tmail.rabbitmq.ManagedRabbitMQConsumer;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
@@ -96,7 +97,7 @@ public class TWPUserDeletionConsumerTest {
     private InMemoryMailboxManager mailboxManager;
     private DeleteUserDataService deleteUserDataService;
     private TWPUserDeletionConsumer.UserDeletionConsumerConfig consumerConfig;
-    private TWPUserDeletionConsumer testee;
+    private ManagedRabbitMQConsumer testee;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -113,14 +114,14 @@ public class TWPUserDeletionConsumerTest {
         testee = startConsumer(DEFAULT_CONFIGURATION);
     }
 
-    private TWPUserDeletionConsumer startConsumer(TWPUserDeletionRabbitMQConfiguration userDeletionRabbitMQConfiguration) throws Exception {
+    private ManagedRabbitMQConsumer startConsumer(TWPUserDeletionRabbitMQConfiguration userDeletionRabbitMQConfiguration) throws Exception {
         RabbitMQConfiguration rabbitMQConfiguration = RabbitMQConfiguration.builder()
             .amqpUri(rabbitMQExtension.getRabbitMQ().amqpUri())
             .managementUri(rabbitMQExtension.getRabbitMQ().managementUri())
             .managementCredentials(DEFAULT_MANAGEMENT_CREDENTIAL)
             .build();
 
-        TWPUserDeletionConsumer consumer = new TWPUserDeletionConsumer(
+        ManagedRabbitMQConsumer consumer = TWPUserDeletionConsumer.create(
             rabbitMQExtension.getRabbitChannelPool(),
             rabbitMQConfiguration,
             new TWPCommonRabbitMQConfiguration(Optional.empty(), Optional.empty(), false),
