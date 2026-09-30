@@ -41,6 +41,14 @@ settings.readonly.properties.providers=com.linagora.tmail.james.jmap.settings.TW
 
 The TWP Settings module may require RabbitMQ configuration to function properly. See the xref:tmail-backend/configure/rabbitmq.adoc#_twp_settings_configuration[RabbitMQ TWP Settings Configuration] section for details on configuring the RabbitMQ properties.
 
+=== User data deletion
+
+When the TWP Settings module is enabled, TMail also consumes the user deletion events published by Twake Workplace on the B2C (`auth` / `user.deleted`) and B2B (`b2b` / `domain.user.deleted`) bindings.
+
+For each event, TMail deletes the data of the user whose address is in the `internalEmail` field, with the same steps as the `deleteData` webadmin task. An event that cannot be processed goes to the `tmail-user-deletion-dead-letter` queue.
+
+See the xref:tmail-backend/configure/rabbitmq.adoc#_twake_workplace_settings_configuration[RabbitMQ TWP Settings Configuration] section to change the exchanges and routing keys.
+
 == Configuring Software as a Service Integration
 
 SaaS (Software as a Service) integration allows TMail to manage user plans and associated capabilities based on their SaaS subscriptions, (e.g., free, standard, premium). This integration is optional, disabled by default, and can be enabled by loading the corresponding Guice module.
