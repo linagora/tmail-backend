@@ -20,6 +20,7 @@ package com.linagora.tmail.james.jmap.settings;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Scopes;
+import com.linagora.tmail.saas.rabbitmq.deletion.TWPUserDeletionRabbitmqModule;
 import com.linagora.tmail.saas.rabbitmq.settings.TWPSettingsRabbitmqModule;
 
 public class TWPSettingsModule extends AbstractModule {
@@ -27,6 +28,7 @@ public class TWPSettingsModule extends AbstractModule {
     @Override
     protected void configure() {
         install(new TWPSettingsRabbitmqModule());
+        install(new TWPUserDeletionRabbitmqModule());
         bind(TWPReadOnlyPropertyProvider.class).in(Scopes.SINGLETON);
     }
 }
