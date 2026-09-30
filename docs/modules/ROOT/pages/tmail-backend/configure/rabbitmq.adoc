@@ -70,6 +70,10 @@ The Twake Workplace settings module may require RabbitMQ configuration to functi
 - `twp.saas.domain.subscription.routingKey`: Optional. The routing key for SaaS domain subscriptions. Default to `domain.subscription.changed`.
 - `twp.saas.configuration.exchange`: Optional. The exchange name for SaaS domain configuration. Default to `configuration`.
 - `twp.saas.configuration.routingKey`: Optional. The routing key for SaaS domain configuration. Default to `domain.dns.configuration.status`.
+- `twp.user.deletion.b2c.exchange`: Optional. The exchange name for B2C user deletion events. Default to `auth`.
+- `twp.user.deletion.b2c.routingKey`: Optional. The routing key for B2C user deletion events. Default to `user.deleted`.
+- `twp.user.deletion.b2b.exchange`: Optional. The exchange name for B2B user deletion events. Default to `b2b`.
+- `twp.user.deletion.b2b.routingKey`: Optional. The routing key for B2B user deletion events. Default to `domain.user.deleted`.
 
 Example configuration:
 
@@ -84,4 +88,8 @@ twp.saas.subscription.routingKey=saas.subscription.routingKey
 twp.saas.domain.subscription.routingKey=domain.subscription.changed
 twp.saas.configuration.exchange=configuration
 twp.saas.configuration.routingKey=domain.dns.configuration.status
+twp.user.deletion.b2c.exchange=auth
+twp.user.deletion.b2c.routingKey=user.deleted
+twp.user.deletion.b2b.exchange=b2b
+twp.user.deletion.b2b.routingKey=domain.user.deleted
 ....
