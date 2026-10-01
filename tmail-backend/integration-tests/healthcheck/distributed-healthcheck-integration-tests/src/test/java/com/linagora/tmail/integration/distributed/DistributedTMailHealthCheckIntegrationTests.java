@@ -137,6 +137,23 @@ public class DistributedTMailHealthCheckIntegrationTests extends TMailHealthChec
     }
 
     @Test
+    void twpUserDeletionHealthchecksShouldBeHealthyWhenTWPSettingEnabled(GuiceJamesServer jamesServer) {
+        WebAdminGuiceProbe probe = jamesServer.getProbe(WebAdminGuiceProbe.class);
+        RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(probe.getWebAdminPort()).build();
+
+        await().atMost(30, SECONDS)
+            .untilAsserted(() ->
+                given()
+                    .queryParam("check", "TWPUserDeletionDeadLetterQueueHealthCheck", "TWPUserDeletionQueueConsumerHealthCheck")
+                .when()
+                    .get("/healthcheck")
+                .then()
+                    .statusCode(HttpStatus.OK_200)
+                    .body("status", equalTo(ResultStatus.HEALTHY.getValue()))
+                    .body("checks.componentName", hasItems("TWPUserDeletionDeadLetterQueueHealthCheck", "TWPUserDeletionQueueConsumerHealthCheck")));
+    }
+
+    @Test
     void saasSubscriptionQueueShouldBeHealthyWhenSaaSModuleEnabled(GuiceJamesServer jamesServer) {
         WebAdminGuiceProbe probe = jamesServer.getProbe(WebAdminGuiceProbe.class);
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(probe.getWebAdminPort()).build();
