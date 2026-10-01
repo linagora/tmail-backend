@@ -48,6 +48,8 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.reactivestreams.Publisher;
 
 import com.linagora.tmail.rabbitmq.ManagedRabbitMQConsumer;
@@ -200,9 +202,16 @@ public class TWPUserDeletionConsumerTest {
         awaitAtMost.untilAsserted(() -> assertThat(messageCount(consumerConfig.deadLetterQueue())).isEqualTo(1));
     }
 
-    @Test
-    void eventWithoutInternalEmailShouldBeDeadLettered() throws Exception {
-        publish("auth", "user.deleted", "{\"userId\": \"alice\", \"type\": \"user.deleted\"}");
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "{\"userId\": \"alice\", \"type\": \"user.deleted\"}",
+        "{\"userId\": \"alice\", \"internalEmail\": null}",
+        "{\"userId\": \"alice\", \"internalEmail\": \"\"}",
+        "{\"userId\": \"alice\", \"internalEmail\": \"  \"}",
+        "{\"userId\": \"alice\", \"internalEmail\": 42}",
+        "{\"userId\": \"alice\", \"internalEmail\": {\"value\": \"alice@twake.app\"}}"})
+    void eventWithoutValidInternalEmailShouldBeDeadLettered(String event) throws Exception {
+        publish("auth", "user.deleted", event);
 
         awaitAtMost.untilAsserted(() -> assertThat(messageCount(consumerConfig.deadLetterQueue())).isEqualTo(1));
     }
