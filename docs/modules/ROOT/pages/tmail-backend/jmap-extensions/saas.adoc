@@ -12,3 +12,12 @@ The associated object has the following field:
 
 - `canUpgrade`: *Boolean*. True if the user can upgrade to a higher plan.
 - `isPaying`: *Boolean*. True if the user is currently on a paying plan.
+
+== Domain DNS status
+
+SaaS domain DNS events supply `mailDnsConfigurationValidated`, which is persisted in the
+domain table. Ownership verification allows domains to be provisioned for migration before
+mail DNS configuration is complete. Subscription-only events do not overwrite DNS status.
+
+See xref:tmail-backend/configure/mail-dns-sending-controls.adoc[Mail DNS sending controls]
+for the required JMAP and SMTP guards and their configuration.

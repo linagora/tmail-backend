@@ -1,0 +1,42 @@
+= Mail DNS sending controls
+:navtitle: Mail DNS sending controls
+
+The JMAP validator and SMTP hook restrict outgoing email according to the domain's stored
+`mail_dns_configuration_validated` status. Both check the authenticated account's domain
+and the envelope sender's domain.
+
+A status of `false` blocks sending; `true` permits sending through these controls.
+Domains without a stored status retain their previous sending behavior. These controls
+read the stored status; they do not perform DNS lookups. The current status source is the
+xref:tmail-backend/jmap-extensions/saas.adoc#_domain_dns_status[SaaS domain DNS integration].
+
+== JMAP
+
+In `jmap.properties`, append the validator to `send.extra.validations`, preserving any
+existing validators:
+
+[source,properties]
+----
+send.extra.validations=com.linagora.tmail.james.jmap.method.MailDnsConfigurationValidation
+----
+
+Pending domains receive `forbiddenToSend` from `EmailSubmission/set` before the message
+is queued.
+
+== SMTP
+
+Add the hook to the handler chain for every submission/relay listener in `smtpserver.xml`:
+
+[source,xml]
+----
+<handler class="com.linagora.tmail.smtp.MailDnsConfigurationMailHook"/>
+----
+
+Pending domains receive `550 5.7.1`. If the status lookup fails, SMTP returns `451`.
+Unauthenticated incoming SMTP delivery without relay permission is unaffected.
+
+== Deployment order
+
+Apply the domain table schema migration described in the repository's
+`upgrade-instructions.md`, then configure both guards before enabling early domain
+provisioning in TMail and Calendar. Merely adding the classes does not enable the guards.
