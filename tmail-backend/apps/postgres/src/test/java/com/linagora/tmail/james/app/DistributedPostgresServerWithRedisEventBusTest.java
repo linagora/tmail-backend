@@ -92,8 +92,7 @@ class DistributedPostgresServerWithRedisEventBusTest implements JamesServerConcr
         .then()
             .statusCode(HttpStatus.OK_200)
             .body("status", equalTo(ResultStatus.HEALTHY.getValue()))
-            .body("checks.componentName", hasItems("EventbusConsumers-mailboxEvent", "EventbusConsumers-jmapEvent",
-                "EventbusConsumers-contentDeletionEvent"));
+            .body("checks.componentName", hasItems("RabbitMQConsumers", "RabbitMQDeadLetterQueues"));
     }
 
 }

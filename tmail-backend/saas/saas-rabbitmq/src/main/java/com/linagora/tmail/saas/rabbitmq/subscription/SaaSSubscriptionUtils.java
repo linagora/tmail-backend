@@ -18,17 +18,9 @@
 
 package com.linagora.tmail.saas.rabbitmq.subscription;
 
-import org.apache.james.core.healthcheck.Result;
 import org.apache.james.core.quota.QuotaSizeLimit;
 
 public class SaaSSubscriptionUtils {
-    public static Result combine(Result result1, Result result2) {
-        if (result1.getStatus().ordinal() >= result2.getStatus().ordinal()) {
-            return result1;
-        }
-        return result2;
-    }
-
     public static QuotaSizeLimit asQuotaSizeLimit(Long storageQuota) {
         if (storageQuota == -1) {
             return QuotaSizeLimit.unlimited();

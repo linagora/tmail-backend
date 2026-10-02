@@ -26,31 +26,27 @@ import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 
 import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.james.backends.rabbitmq.MonitoredDeadLetterQueue;
+import org.apache.james.backends.rabbitmq.MonitoredRabbitMQConsumers;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
-import org.apache.james.core.healthcheck.HealthCheck;
+import org.apache.james.backends.rabbitmq.SimpleConnectionPool;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
 import org.apache.james.utils.PropertiesProvider;
 import org.apache.james.webadmin.service.DeleteUserDataService;
 
+import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
-import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.linagora.tmail.rabbitmq.ManagedRabbitMQConsumer;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
 
+import reactor.core.publisher.Mono;
+
 public class TWPUserDeletionRabbitmqModule extends AbstractModule {
     private static final String TWP_USER_DELETION_CONSUMER = "twp-user-deletion";
-
-    @Override
-    protected void configure() {
-        Multibinder.newSetBinder(binder(), HealthCheck.class).addBinding()
-            .to(TWPUserDeletionDeadLetterQueueHealthCheck.class);
-        Multibinder.newSetBinder(binder(), HealthCheck.class).addBinding()
-            .to(TWPUserDeletionQueueConsumerHealthCheck.class);
-    }
 
     @Provides
     @Singleton
@@ -64,17 +60,17 @@ public class TWPUserDeletionRabbitmqModule extends AbstractModule {
             twpUserDeletionRabbitMQConfiguration, TWPUserDeletionConsumer.UserDeletionConsumerConfig.DEFAULT, deleteUserDataService);
     }
 
-    @Provides
-    @Singleton
-    TWPUserDeletionQueueConsumerHealthCheck provideTWPUserDeletionQueueConsumerHealthCheck(@Named(TWP_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration,
-                                                                                           @Named(TWP_USER_DELETION_CONSUMER) ManagedRabbitMQConsumer twpUserDeletionConsumer) {
-        return new TWPUserDeletionQueueConsumerHealthCheck(twpRabbitMQConfiguration, twpUserDeletionConsumer, TWPUserDeletionConsumer.UserDeletionConsumerConfig.DEFAULT.queue());
+    @ProvidesIntoSet
+    MonitoredRabbitMQConsumers twpUserDeletionConsumers(@Named(TWP_INJECTION_KEY) SimpleConnectionPool twpConnectionPool,
+                                                        @Named(TWP_USER_DELETION_CONSUMER) ManagedRabbitMQConsumer twpUserDeletionConsumer) {
+        return MonitoredRabbitMQConsumers.of("TWP user deletion", twpConnectionPool,
+            () -> ImmutableList.of(TWPUserDeletionConsumer.UserDeletionConsumerConfig.DEFAULT.queue()),
+            connection -> Mono.fromRunnable(twpUserDeletionConsumer::restart));
     }
 
-    @Provides
-    @Singleton
-    TWPUserDeletionDeadLetterQueueHealthCheck provideTWPUserDeletionDeadLetterQueueHealthCheck(@Named(TWP_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration) {
-        return new TWPUserDeletionDeadLetterQueueHealthCheck(twpRabbitMQConfiguration, TWPUserDeletionConsumer.UserDeletionConsumerConfig.DEFAULT.deadLetterQueue());
+    @ProvidesIntoSet
+    MonitoredDeadLetterQueue twpUserDeletionDeadLetterQueue(@Named(TWP_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration) {
+        return new MonitoredDeadLetterQueue(twpRabbitMQConfiguration, TWPUserDeletionConsumer.UserDeletionConsumerConfig.DEFAULT.deadLetterQueue());
     }
 
     @ProvidesIntoSet
