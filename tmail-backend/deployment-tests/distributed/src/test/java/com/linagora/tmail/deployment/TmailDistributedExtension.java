@@ -35,6 +35,7 @@ import java.util.UUID;
 import org.apache.james.mpt.imapmailbox.external.james.host.external.ExternalJamesConfiguration;
 import org.apache.james.util.Port;
 import org.apache.james.util.Runnables;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -80,6 +81,9 @@ public class TmailDistributedExtension implements BeforeAllCallback, AfterAllCal
 
     @Override
     public void beforeAll(ExtensionContext extensionContext) throws IOException {
+        if (isNestedClass(extensionContext)) {
+            return;
+        }
         String dockerSaveFileUrl = new File("").getAbsolutePath().replace(Paths.get("tmail-backend", "deployment-tests", "distributed").toString(),
             Paths.get("tmail-backend", "apps", "distributed", "target", "jib-image.tar").toString());
         james.getDockerClient().loadImageCmd(Files.newInputStream(Paths.get(dockerSaveFileUrl))).exec();
@@ -88,6 +92,9 @@ public class TmailDistributedExtension implements BeforeAllCallback, AfterAllCal
 
     @Override
     public void afterAll(ExtensionContext extensionContext) {
+        if (isNestedClass(extensionContext)) {
+            return;
+        }
         james.stop();
         Runnables.runParallel(
             cassandra::stop,
@@ -95,6 +102,10 @@ public class TmailDistributedExtension implements BeforeAllCallback, AfterAllCal
             rabbitmq::stop,
             s3::stop,
             redis::stop);
+    }
+
+    private boolean isNestedClass(ExtensionContext extensionContext) {
+        return extensionContext.getRequiredTestClass().isAnnotationPresent(Nested.class);
     }
 
     public GenericContainer<?> getContainer() {
