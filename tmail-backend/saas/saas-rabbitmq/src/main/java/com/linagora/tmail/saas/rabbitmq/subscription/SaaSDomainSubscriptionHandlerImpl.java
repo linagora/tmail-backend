@@ -130,11 +130,14 @@ public class SaaSDomainSubscriptionHandlerImpl implements SaaSMessageHandler {
         // Persist the sending restriction before making a domain available for migration.
         if (message.mailDnsConfigurationValidated().isPresent()) {
             return Mono.from(saasAccountRepository.setMailDnsConfigurationValidated(domain,
-                message.mailDnsConfigurationValidated().get()));
+                message.mailDnsConfigurationValidated().get()))
+                .then(ReactorUtils.logAsMono(() -> LOGGER.info("Updated mail DNS status for domain: {}, mailDnsConfigurationValidated: {}",
+                    domain, message.mailDnsConfigurationValidated().get())));
         }
         if (message.dnsOwnershipValidated().orElse(false)) {
             return Mono.from(saasAccountRepository.getMailDnsConfigurationValidated(domain))
                 .switchIfEmpty(Mono.defer(() -> Mono.from(saasAccountRepository.setMailDnsConfigurationValidated(domain, false))
+                    .then(ReactorUtils.logAsMono(() -> LOGGER.info("Initialized mail DNS status to false for domain: {} because ownership is verified but mail DNS status is missing", domain)))
                     .thenReturn(false)))
                 .then();
         }
@@ -146,7 +149,8 @@ public class SaaSDomainSubscriptionHandlerImpl implements SaaSMessageHandler {
         if (message.dnsOwnershipValidated().orElse(message.mailDnsConfigurationValidated().orElse(false))) {
             return addDomainIfNotExist(Domain.of(message.domain()));
         }
-        return Mono.empty();
+        return ReactorUtils.logAsMono(() -> LOGGER.debug("Skipping domain creation for domain: {} because ownership is not validated; dnsOwnershipValidated: {}, mailDnsConfigurationValidated: {}",
+            message.domain(), message.dnsOwnershipValidated().orElse(null), message.mailDnsConfigurationValidated().orElse(null)));
     }
 
     private Mono<Void> applyDomainSettings(SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage message) {
