@@ -9,6 +9,7 @@
 *** xref:tmail-backend/configure/encrypted-mailbox.adoc[]
 *** xref:tmail-backend/configure/fcm.adoc[]
 *** xref:tmail-backend/configure/ldap-mailing-list.adoc[]
+*** xref:tmail-backend/configure/mail-dns-sending-controls.adoc[]
 *** xref:tmail-backend/configure/ecosystem-discovery.adoc[]
 *** xref:tmail-backend/configure/openpaas.adoc[]
 *** xref:tmail-backend/configure/opensearch.adoc[]
