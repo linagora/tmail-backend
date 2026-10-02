@@ -413,7 +413,7 @@ public class SecondaryBlobStoreDAOWithEmptySuffixTest implements BlobStoreDAOCon
     private void unpauseS3AfterAwhile(DockerAwsS3Container s3) {
         new Thread(() -> {
             try {
-                Thread.sleep(5000);
+                Thread.sleep(2000);
             } catch (InterruptedException e) {
                 throw new RuntimeException(e);
             }
