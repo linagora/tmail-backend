@@ -70,6 +70,11 @@ public abstract class UserQuotaReporterRoutesIntegrationContract {
         server.getProbe(DataProbeImpl.class).removeUser(bob.asString());
     }
 
+    @AfterEach
+    void resetRestAssured() {
+        RestAssured.reset();
+    }
+
     @Test
     void shouldCountUsersHavingSpecificQuota(GuiceJamesServer server) throws MailboxException {
         server.getProbe(MaxQuotaManagerProbe.class)

@@ -77,6 +77,11 @@ public abstract class RspamdFeedMessageRouteIntegrationContract {
         server.getProbe(DataProbeImpl.class).removeUser(bob.asString());
     }
 
+    @AfterEach
+    void resetRestAssured() {
+        RestAssured.reset();
+    }
+
 
     private void appendMessage(Username username, MailboxPath mailboxPath, GuiceJamesServer server) throws MailboxException {
         server.getProbe(MailboxProbeImpl.class)
