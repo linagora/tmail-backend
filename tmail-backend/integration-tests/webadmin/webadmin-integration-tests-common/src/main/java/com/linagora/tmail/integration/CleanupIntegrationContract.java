@@ -45,6 +45,7 @@ import org.apache.james.webadmin.WebAdminUtils;
 import org.apache.james.webadmin.routes.TasksRoutes;
 import org.apache.james.webadmin.utils.ErrorResponder;
 import org.eclipse.jetty.http.HttpStatus;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -75,6 +76,11 @@ public abstract class CleanupIntegrationContract {
             .setBasePath(BASE_PATH)
             .build();
         RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
+    }
+
+    @AfterEach
+    void resetRestAssured() {
+        RestAssured.reset();
     }
 
     @Test

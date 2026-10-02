@@ -25,6 +25,7 @@ import org.apache.james.GuiceJamesServer;
 import org.apache.james.utils.WebAdminGuiceProbe;
 import org.apache.james.webadmin.Constants;
 import org.apache.james.webadmin.WebAdminUtils;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -40,6 +41,11 @@ public abstract class JmapUploadCleanRouteIntegrationContract {
             .setBasePath(BASE_PATH)
             .build();
         RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
+    }
+
+    @AfterEach
+    void resetRestAssured() {
+        RestAssured.reset();
     }
 
     @Test

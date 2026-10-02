@@ -42,6 +42,7 @@ import org.apache.james.utils.WebAdminGuiceProbe;
 import org.apache.james.webadmin.WebAdminUtils;
 import org.apache.james.webadmin.routes.TasksRoutes;
 import org.eclipse.jetty.http.HttpStatus;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -68,6 +69,11 @@ public abstract class InboxArchivalIntegrationContract {
             .setBasePath("/mailboxes")
             .build();
         RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
+    }
+
+    @AfterEach
+    void resetRestAssured() {
+        RestAssured.reset();
     }
 
     private void appendMessage(Username username, MailboxPath mailboxPath, GuiceJamesServer server) throws MailboxException {
