@@ -25,6 +25,11 @@ import org.reactivestreams.Publisher;
 import com.linagora.tmail.saas.model.SaaSAccount;
 
 public interface SaaSAccountRepository {
+    /** Empty for domains not managed by SaaS DNS provisioning (including existing domains). */
+    Publisher<Boolean> getMailDnsConfigurationValidated(Domain domain);
+
+    Publisher<Void> setMailDnsConfigurationValidated(Domain domain, boolean validated);
+
     Publisher<SaaSAccount> getSaaSAccount(Username username);
 
     Publisher<Void> upsertSaasAccount(Username username, SaaSAccount saaSAccount);

@@ -24,6 +24,7 @@ import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.bindMarker;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.insertInto;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.selectFrom;
 import static com.datastax.oss.driver.api.querybuilder.QueryBuilder.update;
+import static com.linagora.tmail.domainlist.cassandra.TMailCassandraDomainListDataDefinition.MAIL_DNS_CONFIGURATION_VALIDATED;
 import static com.linagora.tmail.saas.api.cassandra.CassandraSaaSDataDefinition.CAN_UPGRADE;
 import static com.linagora.tmail.saas.api.cassandra.CassandraSaaSDataDefinition.IS_PAYING;
 import static com.linagora.tmail.saas.api.cassandra.CassandraSaaSDataDefinition.TABLE_NAME;
@@ -50,6 +51,8 @@ import reactor.core.publisher.Mono;
 
 public class CassandraSaaSAccountRepository implements SaaSAccountRepository {
     private final CassandraAsyncExecutor executor;
+    private final PreparedStatement selectMailDnsStatement;
+    private final PreparedStatement updateMailDnsStatement;
     private final PreparedStatement insertPlanStatement;
     private final PreparedStatement selectPlanStatement;
     private final PreparedStatement clearSaaSAccountStatement;
@@ -65,6 +68,14 @@ public class CassandraSaaSAccountRepository implements SaaSAccountRepository {
     @Inject
     public CassandraSaaSAccountRepository(CqlSession session) {
         this.executor = new CassandraAsyncExecutor(session);
+        this.selectMailDnsStatement = session.prepare(selectFrom(DOMAIN_TABLE)
+            .column(MAIL_DNS_CONFIGURATION_VALIDATED)
+            .whereColumn(DOMAIN_ID).isEqualTo(bindMarker(DOMAIN_ID))
+            .build());
+        this.updateMailDnsStatement = session.prepare(update(DOMAIN_TABLE)
+            .setColumn(MAIL_DNS_CONFIGURATION_VALIDATED, bindMarker(MAIL_DNS_CONFIGURATION_VALIDATED))
+            .whereColumn(DOMAIN_ID).isEqualTo(bindMarker(DOMAIN_ID))
+            .build());
         this.insertPlanStatement = session.prepare(insertInto(TABLE_NAME)
             .value(USER, bindMarker(USER))
             .value(CAN_UPGRADE, bindMarker(CAN_UPGRADE))
@@ -89,10 +100,25 @@ public class CassandraSaaSAccountRepository implements SaaSAccountRepository {
             .whereColumn(DOMAIN_ID).isEqualTo(bindMarker(DOMAIN_ID))
             .build());
         this.clearDomainSaaSAccountStatement = session.prepare(update(DOMAIN_TABLE)
+            .setColumn(MAIL_DNS_CONFIGURATION_VALIDATED, bindMarker(MAIL_DNS_CONFIGURATION_VALIDATED))
             .setColumn(DOMAIN_CAN_UPGRADE, bindMarker(DOMAIN_CAN_UPGRADE))
             .setColumn(DOMAIN_IS_PAYING, bindMarker(DOMAIN_IS_PAYING))
             .whereColumn(DOMAIN_ID).isEqualTo(bindMarker(DOMAIN_ID))
             .build());
+    }
+
+    @Override
+    public Publisher<Boolean> getMailDnsConfigurationValidated(Domain domain) {
+        return Mono.from(executor.executeSingleRow(selectMailDnsStatement.bind()
+                .setString(DOMAIN_ID, domain.asString())))
+            .flatMap(row -> Mono.justOrEmpty(row.get(MAIL_DNS_CONFIGURATION_VALIDATED, Boolean.class)));
+    }
+
+    @Override
+    public Publisher<Void> setMailDnsConfigurationValidated(Domain domain, boolean validated) {
+        return executor.executeVoid(updateMailDnsStatement.bind()
+            .setString(DOMAIN_ID, domain.asString())
+            .setBoolean(MAIL_DNS_CONFIGURATION_VALIDATED, validated));
     }
 
     @Override
@@ -163,6 +189,7 @@ public class CassandraSaaSAccountRepository implements SaaSAccountRepository {
     public Publisher<Void> deleteSaaSAccount(Domain domain) {
         return Mono.from(executor.executeVoid(clearDomainSaaSAccountStatement.bind()
             .set(DOMAIN_ID, domain.asString(), TypeCodecs.TEXT)
+            .setToNull(MAIL_DNS_CONFIGURATION_VALIDATED)
             .setToNull(DOMAIN_CAN_UPGRADE)
             .setToNull(DOMAIN_IS_PAYING)));
     }

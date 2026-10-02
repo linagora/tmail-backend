@@ -39,6 +39,7 @@ import com.datastax.oss.driver.api.core.type.DataTypes;
 public interface TMailCassandraDomainListDataDefinition {
     String TABLE_NAME = CassandraDomainsTable.TABLE_NAME;
     CqlIdentifier DOMAIN = CassandraDomainsTable.DOMAIN;
+    CqlIdentifier MAIL_DNS_CONFIGURATION_VALIDATED = CqlIdentifier.fromCql("mail_dns_configuration_validated");
     CqlIdentifier ACTIVATED = CqlIdentifier.fromCql("activated");
     CqlIdentifier CAN_UPGRADE = CqlIdentifier.fromCql("can_upgrade");
     CqlIdentifier IS_PAYING = CqlIdentifier.fromCql("is_paying");
@@ -61,6 +62,7 @@ public interface TMailCassandraDomainListDataDefinition {
             .withColumn(RECIPIENTS_SENT_PER_HOURS, DataTypes.BIGINT)
             .withColumn(RECIPIENTS_SENT_PER_DAYS, DataTypes.BIGINT)
             .withColumn(ACTIVATED, DataTypes.BOOLEAN)
+            .withColumn(MAIL_DNS_CONFIGURATION_VALIDATED, DataTypes.BOOLEAN)
             .withColumn(CAN_UPGRADE, DataTypes.BOOLEAN)
             .withColumn(IS_PAYING, DataTypes.BOOLEAN)
             .withColumn(SIGNATURE_TEXT_PER_LANGUAGE, DataTypes.frozenMapOf(DataTypes.TEXT, DataTypes.TEXT))
