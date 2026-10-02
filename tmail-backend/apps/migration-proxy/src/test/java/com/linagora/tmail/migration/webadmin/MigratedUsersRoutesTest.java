@@ -65,6 +65,7 @@ class MigratedUsersRoutesTest {
     @AfterEach
     void tearDown() {
         webAdminServer.destroy();
+        RestAssured.reset();
     }
 
     @Test
