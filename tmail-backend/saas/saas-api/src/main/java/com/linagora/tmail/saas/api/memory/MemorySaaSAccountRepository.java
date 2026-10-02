@@ -34,6 +34,18 @@ public class MemorySaaSAccountRepository implements SaaSAccountRepository {
     private final ConcurrentMap<Username, SaaSAccount> userTable = new ConcurrentHashMap<>();
     private final ConcurrentMap<Domain, SaaSAccount> domainTable = new ConcurrentHashMap<>();
 
+    private final ConcurrentMap<Domain, Boolean> mailDnsStatus = new ConcurrentHashMap<>();
+
+    @Override
+    public Publisher<Boolean> getMailDnsConfigurationValidated(Domain domain) {
+        return Mono.defer(() -> Mono.justOrEmpty(mailDnsStatus.get(domain)));
+    }
+
+    @Override
+    public Publisher<Void> setMailDnsConfigurationValidated(Domain domain, boolean validated) {
+        return Mono.fromRunnable(() -> mailDnsStatus.put(domain, validated));
+    }
+
     @Override
     public Publisher<SaaSAccount> getSaaSAccount(Username username) {
         return Mono.justOrEmpty(userTable.get(username))
@@ -65,6 +77,9 @@ public class MemorySaaSAccountRepository implements SaaSAccountRepository {
 
     @Override
     public Publisher<Void> deleteSaaSAccount(Domain domain) {
-        return Mono.fromRunnable(() -> domainTable.remove(domain));
+        return Mono.fromRunnable(() -> {
+            domainTable.remove(domain);
+            mailDnsStatus.remove(domain);
+        });
     }
 }

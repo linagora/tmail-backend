@@ -40,6 +40,23 @@ public interface SaaSAccountRepositoryContract {
     Domain DOMAIN_TLD = Domain.of("domain.tld");
 
     @Test
+    default void unknownDomainShouldHaveNoMailDnsStatus() {
+        assertThat(Mono.from(testee().getMailDnsConfigurationValidated(DOMAIN_TLD)).blockOptional()).isEmpty();
+    }
+
+    @Test
+    default void mailDnsStatusShouldBeUpdatedIndependentlyOfSubscription() {
+        Mono.from(testee().setMailDnsConfigurationValidated(DOMAIN_TLD, false)).block();
+        Mono.from(testee().upsertSaasAccount(DOMAIN_TLD, SAAS_ACCOUNT)).block();
+        assertThat(Mono.from(testee().getMailDnsConfigurationValidated(DOMAIN_TLD)).block()).isFalse();
+        Mono.from(testee().setMailDnsConfigurationValidated(DOMAIN_TLD, true)).block();
+        assertThat(Mono.from(testee().getMailDnsConfigurationValidated(DOMAIN_TLD)).block()).isTrue();
+        assertThat(Mono.from(testee().getSaaSAccount(DOMAIN_TLD)).block()).isEqualTo(SAAS_ACCOUNT);
+        Mono.from(testee().setMailDnsConfigurationValidated(DOMAIN_TLD, false)).block();
+        assertThat(Mono.from(testee().getMailDnsConfigurationValidated(DOMAIN_TLD)).block()).isFalse();
+    }
+
+    @Test
     default void upsertSaasAccountShouldSucceed() {
         Mono.from(testee().upsertSaasAccount(BOB, SAAS_ACCOUNT)).block();
 
