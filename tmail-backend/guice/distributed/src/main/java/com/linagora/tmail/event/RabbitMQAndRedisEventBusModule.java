@@ -35,12 +35,12 @@ import jakarta.inject.Singleton;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.james.backends.rabbitmq.MonitoredDeadLetterQueue;
+import org.apache.james.backends.rabbitmq.MonitoredRabbitMQConsumers;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.SimpleConnectionPool;
 import org.apache.james.backends.redis.RedisConfiguration;
-import org.apache.james.core.healthcheck.HealthCheck;
 import org.apache.james.event.json.MailboxEventSerializer;
-import org.apache.james.events.AggregatedRabbitEventBusConsumerHealthCheck;
 import org.apache.james.events.CleanRedisEventBusService;
 import org.apache.james.events.EventBus;
 import org.apache.james.events.EventBusId;
@@ -50,11 +50,9 @@ import org.apache.james.events.EventListener;
 import org.apache.james.events.EventSerializer;
 import org.apache.james.events.EventSerializersAggregator;
 import org.apache.james.events.NamingStrategy;
+import org.apache.james.events.PartitionedEventBusConsumers;
 import org.apache.james.events.RabbitMQAndRedisEventBus;
-import org.apache.james.events.RabbitMQContentDeletionEventBusDeadLetterQueueHealthCheck;
 import org.apache.james.events.RabbitMQEventBus;
-import org.apache.james.events.RabbitMQJmapEventBusDeadLetterQueueHealthCheck;
-import org.apache.james.events.RabbitMQMailboxEventBusDeadLetterQueueHealthCheck;
 import org.apache.james.events.RedisEventBusClientFactory;
 import org.apache.james.events.RedisEventBusConfiguration;
 import org.apache.james.events.RegistrationKey;
@@ -108,9 +106,6 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
         bind(RetryBackoffConfiguration.class).toInstance(RetryBackoffConfiguration.DEFAULT);
         bind(EventBusId.class).toInstance(EventBusId.random());
 
-        Multibinder.newSetBinder(binder(), HealthCheck.class)
-            .addBinding().to(RabbitMQMailboxEventBusDeadLetterQueueHealthCheck.class);
-
         bind(EventBusId.class).annotatedWith(Names.named(InjectionKeys.JMAP)).toInstance(EventBusId.random());
 
         bind(EventBusId.class).annotatedWith(Names.named(CONTENT_DELETION)).toInstance(EventBusId.random());
@@ -159,10 +154,14 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     }
 
     @ProvidesIntoSet
-    HealthCheck mailboxConsumerHealthCheck(RabbitMQAndRedisEventBus eventBus, List<NamingStrategy> namingStrategies,
-                                           SimpleConnectionPool connectionPool) {
-        return new AggregatedRabbitEventBusConsumerHealthCheck(eventBus, namingStrategies, connectionPool,
-            TmailGroupRegistrationHandler.GROUP);
+    MonitoredRabbitMQConsumers mailboxEventBusConsumers(RabbitMQAndRedisEventBus eventBus, List<NamingStrategy> namingStrategies,
+                                                        SimpleConnectionPool connectionPool) {
+        return new PartitionedEventBusConsumers(eventBus, namingStrategies, connectionPool, TmailGroupRegistrationHandler.GROUP);
+    }
+
+    @ProvidesIntoSet
+    MonitoredDeadLetterQueue mailboxEventBusDeadLetterQueue(RabbitMQConfiguration rabbitMQConfiguration) {
+        return new MonitoredDeadLetterQueue(rabbitMQConfiguration, MAILBOX_EVENT_NAMING_STRATEGY.deadLetterQueue().getName());
     }
 
     @ProvidesIntoSet
@@ -261,16 +260,15 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     }
 
     @ProvidesIntoSet
-    HealthCheck jmapConsumerHealthCheck(@Named(InjectionKeys.JMAP) RabbitMQAndRedisEventBus eventBus,
-                                        @Named(InjectionKeys.JMAP) List<NamingStrategy> namingStrategies,
-                                        SimpleConnectionPool connectionPool) {
-        return new AggregatedRabbitEventBusConsumerHealthCheck(eventBus, namingStrategies, connectionPool,
-            TmailGroupRegistrationHandler.GROUP);
+    MonitoredRabbitMQConsumers jmapEventBusConsumers(@Named(InjectionKeys.JMAP) RabbitMQAndRedisEventBus eventBus,
+                                                     @Named(InjectionKeys.JMAP) List<NamingStrategy> namingStrategies,
+                                                     SimpleConnectionPool connectionPool) {
+        return new PartitionedEventBusConsumers(eventBus, namingStrategies, connectionPool, TmailGroupRegistrationHandler.GROUP);
     }
 
     @ProvidesIntoSet
-    HealthCheck jmapEventBusDeadLetterQueueHealthCheck(RabbitMQConfiguration rabbitMQConfiguration) {
-        return new RabbitMQJmapEventBusDeadLetterQueueHealthCheck(rabbitMQConfiguration);
+    MonitoredDeadLetterQueue jmapEventBusDeadLetterQueue(RabbitMQConfiguration rabbitMQConfiguration) {
+        return new MonitoredDeadLetterQueue(rabbitMQConfiguration, JMAP_NAMING_STRATEGY.deadLetterQueue().getName());
     }
 
     @ProvidesIntoSet
@@ -355,16 +353,15 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
     }
 
     @ProvidesIntoSet
-    HealthCheck provideContentDeletionConsumerHealthCheck(@Named(CONTENT_DELETION) RabbitMQAndRedisEventBus eventBus,
-                                                          @Named(CONTENT_DELETION) List<NamingStrategy> namingStrategies,
-                                                          SimpleConnectionPool connectionPool) {
-        return new AggregatedRabbitEventBusConsumerHealthCheck(eventBus, namingStrategies, connectionPool,
-            TmailGroupRegistrationHandler.GROUP);
+    MonitoredRabbitMQConsumers contentDeletionEventBusConsumers(@Named(CONTENT_DELETION) RabbitMQAndRedisEventBus eventBus,
+                                                                @Named(CONTENT_DELETION) List<NamingStrategy> namingStrategies,
+                                                                SimpleConnectionPool connectionPool) {
+        return new PartitionedEventBusConsumers(eventBus, namingStrategies, connectionPool, TmailGroupRegistrationHandler.GROUP);
     }
 
     @ProvidesIntoSet
-    HealthCheck provideContentDeletionEventBusDeadLetterQueueHealthCheck(RabbitMQConfiguration rabbitMQConfiguration) {
-        return new RabbitMQContentDeletionEventBusDeadLetterQueueHealthCheck(rabbitMQConfiguration);
+    MonitoredDeadLetterQueue contentDeletionEventBusDeadLetterQueue(RabbitMQConfiguration rabbitMQConfiguration) {
+        return new MonitoredDeadLetterQueue(rabbitMQConfiguration, CONTENT_DELETION_NAMING_STRATEGY.deadLetterQueue().getName());
     }
 
     @ProvidesIntoSet
