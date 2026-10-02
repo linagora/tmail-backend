@@ -45,7 +45,6 @@ Before enabling the new SaaS consumer or Calendar provisioning, configure **both
 
 JMAP returns `forbiddenToSend`; SMTP rejects with `550 5.7.1`. Unauthenticated incoming
 SMTP delivery is unaffected. Repository failures do not permit sending.
-Deploy and enable the TMail guards before deploying the Calendar change.
 
 ## 1.0.16
 
