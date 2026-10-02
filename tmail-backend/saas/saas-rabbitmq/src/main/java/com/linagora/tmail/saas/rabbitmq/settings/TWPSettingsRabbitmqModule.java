@@ -30,11 +30,12 @@ import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 
 import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.james.backends.rabbitmq.MonitoredDeadLetterQueue;
+import org.apache.james.backends.rabbitmq.MonitoredRabbitMQConsumers;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.RabbitMQConnectionFactory;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.james.backends.rabbitmq.SimpleConnectionPool;
-import org.apache.james.core.healthcheck.HealthCheck;
 import org.apache.james.metrics.api.GaugeRegistry;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.user.api.UsersRepository;
@@ -46,21 +47,14 @@ import org.apache.james.utils.PropertiesProvider;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
-import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.linagora.tmail.AmqpUri;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
 
-public class TWPSettingsRabbitmqModule extends AbstractModule {
+import reactor.core.publisher.Mono;
 
-    @Override
-    protected void configure() {
-        Multibinder.newSetBinder(binder(), HealthCheck.class).addBinding()
-            .to(TWPSettingsDeadLetterQueueHealthCheck.class);
-        Multibinder.newSetBinder(binder(), HealthCheck.class).addBinding()
-            .to(TWPSettingsQueueConsumerHealthCheck.class);
-    }
+public class TWPSettingsRabbitmqModule extends AbstractModule {
 
     @Provides
     @Singleton
@@ -81,17 +75,17 @@ public class TWPSettingsRabbitmqModule extends AbstractModule {
             twpSettingsRabbitMQConfiguration, TWPSettingsConsumer.SettingsConsumerConfig.DEFAULT, twpSettingsUpdater);
     }
 
-    @Provides
-    @Singleton
-    TWPSettingsQueueConsumerHealthCheck provideTWPSettingsQueueConsumerHealthCheck(@Named(TWP_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration,
-                                                                                   TWPSettingsConsumer twpSettingsConsumer) {
-        return new TWPSettingsQueueConsumerHealthCheck(twpRabbitMQConfiguration, twpSettingsConsumer, TWPSettingsConsumer.SettingsConsumerConfig.DEFAULT.queue());
+    @ProvidesIntoSet
+    MonitoredRabbitMQConsumers twpSettingsConsumers(@Named(TWP_INJECTION_KEY) SimpleConnectionPool twpConnectionPool,
+                                                    TWPSettingsConsumer twpSettingsConsumer) {
+        return MonitoredRabbitMQConsumers.of("TWP settings", twpConnectionPool,
+            () -> ImmutableList.of(TWPSettingsConsumer.SettingsConsumerConfig.DEFAULT.queue()),
+            connection -> Mono.fromRunnable(twpSettingsConsumer::restartConsumer));
     }
 
-    @Provides
-    @Singleton
-    TWPSettingsDeadLetterQueueHealthCheck provideTWPSettingsDeadLetterQueueHealthCheck(@Named(TWP_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration) {
-        return new TWPSettingsDeadLetterQueueHealthCheck(twpRabbitMQConfiguration, TWPSettingsConsumer.SettingsConsumerConfig.DEFAULT.deadLetterQueue());
+    @ProvidesIntoSet
+    MonitoredDeadLetterQueue twpSettingsDeadLetterQueue(@Named(TWP_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration) {
+        return new MonitoredDeadLetterQueue(twpRabbitMQConfiguration, TWPSettingsConsumer.SettingsConsumerConfig.DEFAULT.deadLetterQueue());
     }
 
     @ProvidesIntoSet
