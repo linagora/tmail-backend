@@ -26,6 +26,7 @@ import java.util.UUID;
 
 import org.apache.james.mpt.imapmailbox.external.james.host.external.ExternalJamesConfiguration;
 import org.apache.james.util.Port;
+import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.extension.AfterAllCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.ExtensionContext;
@@ -45,6 +46,9 @@ public class TmailMemoryExtension implements BeforeAllCallback, AfterAllCallback
 
     @Override
     public void beforeAll(ExtensionContext extensionContext) throws IOException {
+        if (isNestedClass(extensionContext)) {
+            return;
+        }
         String dockerSaveFileUrl = new File("").getAbsolutePath().replace(Paths.get("tmail-backend", "deployment-tests", "memory").toString(),
             Paths.get("tmail-backend", "apps", "memory", "target", "jib-image.tar").toString());
         container.getDockerClient().loadImageCmd(Files.newInputStream(Paths.get(dockerSaveFileUrl))).exec();
@@ -53,7 +57,14 @@ public class TmailMemoryExtension implements BeforeAllCallback, AfterAllCallback
 
     @Override
     public void afterAll(ExtensionContext extensionContext) {
+        if (isNestedClass(extensionContext)) {
+            return;
+        }
         container.stop();
+    }
+
+    private boolean isNestedClass(ExtensionContext extensionContext) {
+        return extensionContext.getRequiredTestClass().isAnnotationPresent(Nested.class);
     }
 
     public GenericContainer<?> getContainer() {
