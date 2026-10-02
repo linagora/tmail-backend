@@ -52,6 +52,7 @@ public interface TMailPostgresDomainDataDefinition {
         Table<Record> TABLE_NAME = PostgresDomainDataDefinition.PostgresDomainTable.TABLE_NAME;
 
         Field<String> DOMAIN = PostgresDomainDataDefinition.PostgresDomainTable.DOMAIN;
+        Field<Boolean> MAIL_DNS_CONFIGURATION_VALIDATED = DSL.field("mail_dns_configuration_validated", SQLDataType.BOOLEAN);
         Field<Boolean> ACTIVATED = DSL.field("activated", SQLDataType.BOOLEAN);
         Field<Boolean> CAN_UPGRADE = DSL.field("can_upgrade", SQLDataType.BOOLEAN);
         Field<Boolean> IS_PAYING = DSL.field("is_paying", SQLDataType.BOOLEAN);
@@ -70,6 +71,7 @@ public interface TMailPostgresDomainDataDefinition {
                 .column(RECIPIENTS_SENT_PER_HOURS)
                 .column(RECIPIENTS_SENT_PER_DAYS)
                 .column(ACTIVATED)
+                .column(MAIL_DNS_CONFIGURATION_VALIDATED)
                 .column(CAN_UPGRADE)
                 .column(IS_PAYING)
                 .column(SIGNATURE_TEMPLATES)

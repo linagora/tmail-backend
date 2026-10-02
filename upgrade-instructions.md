@@ -16,6 +16,36 @@ You can also find more detailed instructions for releases under the respective s
 
 Note: this section is in progress. It will be updated during all the development process until the release.
 
+### SaaS domain provisioning before mail DNS activation
+
+Before deploying, add the nullable DNS state column to the domain table:
+
+Postgres:
+```sql
+ALTER TABLE domains ADD COLUMN IF NOT EXISTS mail_dns_configuration_validated BOOLEAN;
+```
+
+Cassandra:
+```cql
+ALTER TABLE domains ADD mail_dns_configuration_validated boolean;
+```
+
+Existing domains retain their sending behavior when the column is null. SaaS DNS events
+persist their explicit status before activating the domain. Ownership-verified domains
+without a mail DNS status start with sending disabled; subscription-only events do not
+change DNS status.
+
+Before enabling the new SaaS consumer or Calendar provisioning, configure **both** guards:
+
+* In `jmap.properties`, append
+  `com.linagora.tmail.james.jmap.method.MailDnsConfigurationValidation` to
+  `send.extra.validations` (preserve any existing validators).
+* In the `smtpserver.xml` handler chain for every submission/relay listener, add
+  `<handler class="com.linagora.tmail.smtp.MailDnsConfigurationMailHook"/>`.
+
+JMAP returns `forbiddenToSend`; SMTP rejects with `550 5.7.1`. Unauthenticated incoming
+SMTP delivery is unaffected. Repository failures do not permit sending.
+
 ## 1.0.16
 
 ### Adding read_only field to labels table

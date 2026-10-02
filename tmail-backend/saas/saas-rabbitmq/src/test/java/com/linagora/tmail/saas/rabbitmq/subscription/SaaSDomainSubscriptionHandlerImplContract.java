@@ -47,6 +47,75 @@ public interface SaaSDomainSubscriptionHandlerImplContract {
     SaaSDomainSubscriptionHandlerImpl handler();
 
     @Test
+    default void ownershipVerifiedDomainShouldExistBeforeMailDnsValidation() throws Exception {
+        // Given a domain whose ownership is verified but mail DNS is not yet validated
+        Domain domain = Domain.of("migration.example");
+
+        // When the initial DNS status message is processed
+        handler().handleMessage(SaaSSubscriptionDeserializer.parseAMQPDomainMessage("""
+            {
+                "domain": "migration.example",
+                "dnsOwnershipValidated": true,
+                "mailDnsConfigurationValidated": false
+            }
+            """)).block();
+
+        // Then the domain exists for migration, with mail DNS status still false
+        assertThat(domainList().containsDomain(domain)).isTrue();
+        assertThat(Mono.from(saasAccountRepository().getMailDnsConfigurationValidated(domain)).block()).isFalse();
+
+        // When a later message validates mail DNS
+        handler().handleMessage(SaaSSubscriptionDeserializer.parseAMQPDomainMessage("""
+            {
+                "domain": "migration.example",
+                "mailDnsConfigurationValidated": true
+            }
+            """)).block();
+
+        // And subsequent subscription and ownership messages omit mail DNS status
+        handler().handleMessage(SaaSSubscriptionDeserializer.parseAMQPDomainMessage("""
+            {
+                "domain": "migration.example",
+                "isPaying": true
+            }
+            """)).block();
+        handler().handleMessage(SaaSSubscriptionDeserializer.parseAMQPDomainMessage("""
+            {
+                "domain": "migration.example",
+                "dnsOwnershipValidated": true
+            }
+            """)).block();
+
+        // Then the stored status remains true instead of being reset by those messages
+        assertThat(Mono.from(saasAccountRepository().getMailDnsConfigurationValidated(domain)).block()).isTrue();
+    }
+
+    @Test
+    default void ownershipOnlyShouldInitializeSendingAsDisabled() throws Exception {
+        Domain domain = Domain.of("migration.example");
+        handler().handleMessage(SaaSSubscriptionDeserializer.parseAMQPDomainMessage("""
+            {
+                "domain": "migration.example",
+                "dnsOwnershipValidated": true
+            }
+            """)).block();
+        assertThat(domainList().containsDomain(domain)).isTrue();
+        assertThat(Mono.from(saasAccountRepository().getMailDnsConfigurationValidated(domain)).block()).isFalse();
+    }
+
+    @Test
+    default void unverifiedOwnershipShouldNotCreateDomain() throws Exception {
+        handler().handleMessage(SaaSSubscriptionDeserializer.parseAMQPDomainMessage("""
+            {
+                "domain": "migration.example",
+                "dnsOwnershipValidated": false,
+                "mailDnsConfigurationValidated": true
+            }
+            """)).block();
+        assertThat(domainList().containsDomain(Domain.of("migration.example"))).isFalse();
+    }
+
+    @Test
     default void shouldAddDomainAndApplySettingsWhenDnsValidatedAndFeaturesPresent() throws Exception {
         String domainName = "example.com";
         Domain domain = Domain.of(domainName);

@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.saas.api.postgres;
 
+import static com.linagora.tmail.domainlist.postgres.TMailPostgresDomainDataDefinition.PostgresDomainTable.MAIL_DNS_CONFIGURATION_VALIDATED;
 import static com.linagora.tmail.saas.api.postgres.PostgresSaaSDataDefinition.CAN_UPGRADE;
 import static com.linagora.tmail.saas.api.postgres.PostgresSaaSDataDefinition.IS_PAYING;
 import static com.linagora.tmail.saas.api.postgres.PostgresSaaSDataDefinition.TABLE_NAME;
@@ -45,6 +46,24 @@ public class PostgresSaaSAccountRepository implements SaaSAccountRepository {
     @Inject
     public PostgresSaaSAccountRepository(PostgresExecutor executor) {
         this.executor = executor;
+    }
+
+    @Override
+    public Publisher<Boolean> getMailDnsConfigurationValidated(Domain domain) {
+        return executor.executeRow(dsl -> Mono.from(dsl.select(MAIL_DNS_CONFIGURATION_VALIDATED)
+                .from(TMailPostgresDomainDataDefinition.PostgresDomainTable.TABLE_NAME)
+                .where(TMailPostgresDomainDataDefinition.PostgresDomainTable.DOMAIN.eq(domain.asString()))))
+            .flatMap(row -> Mono.justOrEmpty(row.get(MAIL_DNS_CONFIGURATION_VALIDATED)));
+    }
+
+    @Override
+    public Publisher<Void> setMailDnsConfigurationValidated(Domain domain, boolean validated) {
+        return executor.executeVoid(dsl -> Mono.from(dsl.insertInto(TMailPostgresDomainDataDefinition.PostgresDomainTable.TABLE_NAME)
+            .set(TMailPostgresDomainDataDefinition.PostgresDomainTable.DOMAIN, domain.asString())
+            .set(MAIL_DNS_CONFIGURATION_VALIDATED, validated)
+            .onConflict(TMailPostgresDomainDataDefinition.PostgresDomainTable.DOMAIN)
+            .doUpdate()
+            .set(MAIL_DNS_CONFIGURATION_VALIDATED, validated)));
     }
 
     @Override
@@ -128,6 +147,7 @@ public class PostgresSaaSAccountRepository implements SaaSAccountRepository {
     public Publisher<Void> deleteSaaSAccount(Domain domain) {
         return executor.executeVoid(dsl -> Mono.from(dsl
             .update(TMailPostgresDomainDataDefinition.PostgresDomainTable.TABLE_NAME)
+            .set(MAIL_DNS_CONFIGURATION_VALIDATED, (Boolean) null)
             .set(TMailPostgresDomainDataDefinition.PostgresDomainTable.CAN_UPGRADE, (Boolean) null)
             .set(TMailPostgresDomainDataDefinition.PostgresDomainTable.IS_PAYING, (Boolean) null)
             .where(TMailPostgresDomainDataDefinition.PostgresDomainTable.DOMAIN.eq(domain.asString()))));

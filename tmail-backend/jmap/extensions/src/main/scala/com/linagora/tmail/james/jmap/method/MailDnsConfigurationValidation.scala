@@ -16,29 +16,26 @@
  *  more details.                                                   *
  *******************************************************************/
 
-package com.linagora.tmail.saas.api;
+package com.linagora.tmail.james.jmap.method
 
-import org.apache.james.core.Domain;
-import org.apache.james.core.Username;
-import org.reactivestreams.Publisher;
+import com.linagora.tmail.saas.api.DomainSendingValidator
+import eu.timepit.refined.auto._
+import jakarta.inject.Inject
+import org.apache.james.core.Username
+import org.apache.james.jmap.core.SetError
+import org.apache.james.jmap.core.SetError.{SetErrorDescription, SetErrorType}
+import org.apache.james.jmap.method.EmailSubmissionSetValidation
+import org.apache.mailet.Mail
+import reactor.core.scala.publisher.SMono
 
-import com.linagora.tmail.saas.model.SaaSAccount;
+class MailDnsConfigurationValidation @Inject()(domainSendingValidator: DomainSendingValidator) extends EmailSubmissionSetValidation {
+  private val forbiddenToSend: SetErrorType = "forbiddenToSend"
 
-public interface SaaSAccountRepository {
-    /** Empty for domains not managed by SaaS DNS provisioning (including existing domains). */
-    Publisher<Boolean> getMailDnsConfigurationValidated(Domain domain);
-
-    Publisher<Void> setMailDnsConfigurationValidated(Domain domain, boolean validated);
-
-    Publisher<SaaSAccount> getSaaSAccount(Username username);
-
-    Publisher<Void> upsertSaasAccount(Username username, SaaSAccount saaSAccount);
-
-    Publisher<Void> deleteSaaSAccount(Username username);
-
-    Publisher<SaaSAccount> getSaaSAccount(Domain domain);
-
-    Publisher<Void> upsertSaasAccount(Domain domain, SaaSAccount saaSAccount);
-
-    Publisher<Void> deleteSaaSAccount(Domain domain);
+  override def validate(mail: Mail): SMono[Option[SetError]] = {
+    val authenticatedUser = mail.getAttribute(Mail.JMAP_AUTH_USER)
+      .map(attribute => Username.of(attribute.getValue.getValue.toString))
+    SMono(domainSendingValidator.canSend(authenticatedUser, mail.getMaybeSender))
+      .map(allowed => if (allowed) None else Some(SetError(forbiddenToSend,
+        SetErrorDescription(DomainSendingValidator.PENDING_ACTIVATION), None)))
+  }
 }

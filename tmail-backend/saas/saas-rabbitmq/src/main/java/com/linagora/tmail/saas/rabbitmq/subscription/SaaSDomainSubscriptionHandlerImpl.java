@@ -106,7 +106,8 @@ public class SaaSDomainSubscriptionHandlerImpl implements SaaSMessageHandler {
     }
 
     private Mono<Void> handleDomainValidSubscriptionMessage(SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage message) {
-        return createDomainIfValidated(message)
+        return updateMailDnsStatus(message)
+            .then(createDomainIfValidated(message))
             .then(applyDomainSettings(message))
             .then(upsertDomainSaaSAccount(message));
     }
@@ -124,13 +125,32 @@ public class SaaSDomainSubscriptionHandlerImpl implements SaaSMessageHandler {
                 domain, saaSAccount.canUpgrade(), saaSAccount.isPaying())));
     }
 
-    private Mono<Void> createDomainIfValidated(SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage message) {
+    private Mono<Void> updateMailDnsStatus(SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage message) {
         Domain domain = Domain.of(message.domain());
-        if (message.mailDnsConfigurationValidated().orElse(false)) {
-            return ReactorUtils.logAsMono(() -> LOGGER.info("mailDnsConfigurationValidated is true for domain: {}, attempting to create domain", domain))
-                .then(addDomainIfNotExist(domain));
+        // Persist the sending restriction before making a domain available for migration.
+        if (message.mailDnsConfigurationValidated().isPresent()) {
+            return Mono.from(saasAccountRepository.setMailDnsConfigurationValidated(domain,
+                message.mailDnsConfigurationValidated().get()))
+                .then(ReactorUtils.logAsMono(() -> LOGGER.info("Updated mail DNS status for domain: {}, mailDnsConfigurationValidated: {}",
+                    domain, message.mailDnsConfigurationValidated().get())));
         }
-        return ReactorUtils.logAsMono(() -> LOGGER.info("Skipping domain creation for domain: {} because mailDnsConfigurationValidated is false or missing", domain));
+        if (message.dnsOwnershipValidated().orElse(false)) {
+            return Mono.from(saasAccountRepository.getMailDnsConfigurationValidated(domain))
+                .switchIfEmpty(Mono.defer(() -> Mono.from(saasAccountRepository.setMailDnsConfigurationValidated(domain, false))
+                    .then(ReactorUtils.logAsMono(() -> LOGGER.info("Initialized mail DNS status to false for domain: {} because ownership is verified but mail DNS status is missing", domain)))
+                    .thenReturn(false)))
+                .then();
+        }
+        return Mono.empty();
+    }
+
+    private Mono<Void> createDomainIfValidated(SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage message) {
+        // Legacy DNS events only carried mailDnsConfigurationValidated.
+        if (message.dnsOwnershipValidated().orElse(message.mailDnsConfigurationValidated().orElse(false))) {
+            return addDomainIfNotExist(Domain.of(message.domain()));
+        }
+        return ReactorUtils.logAsMono(() -> LOGGER.debug("Skipping domain creation for domain: {} because ownership is not validated; dnsOwnershipValidated: {}, mailDnsConfigurationValidated: {}",
+            message.domain(), message.dnsOwnershipValidated().orElse(null), message.mailDnsConfigurationValidated().orElse(null)));
     }
 
     private Mono<Void> applyDomainSettings(SaaSDomainSubscriptionMessage.SaaSDomainValidSubscriptionMessage message) {
