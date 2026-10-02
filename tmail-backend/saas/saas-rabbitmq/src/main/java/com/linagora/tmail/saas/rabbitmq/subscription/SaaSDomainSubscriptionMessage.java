@@ -25,7 +25,13 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.google.common.base.Preconditions;
 
 public interface SaaSDomainSubscriptionMessage {
-    record SaaSDomainValidSubscriptionMessage(String domain, Optional<String> organizationId, Optional<Boolean> mailDnsConfigurationValidated, Optional<SaasFeatures> features, Optional<Boolean> canUpgrade, Optional<Boolean> isPaying) implements SaaSDomainSubscriptionMessage {
+    record SaaSDomainValidSubscriptionMessage(String domain, Optional<String> organizationId, Optional<Boolean> mailDnsConfigurationValidated, Optional<SaasFeatures> features, Optional<Boolean> canUpgrade, Optional<Boolean> isPaying, Optional<Boolean> dnsOwnershipValidated) implements SaaSDomainSubscriptionMessage {
+
+        public SaaSDomainValidSubscriptionMessage(String domain, Optional<String> organizationId,
+                                                  Optional<Boolean> mailDnsConfigurationValidated, Optional<SaasFeatures> features,
+                                                  Optional<Boolean> canUpgrade, Optional<Boolean> isPaying) {
+            this(domain, organizationId, mailDnsConfigurationValidated, features, canUpgrade, isPaying, Optional.empty());
+        }
 
         @JsonCreator
         public SaaSDomainValidSubscriptionMessage(@JsonProperty("domain") String domain,
@@ -33,7 +39,8 @@ public interface SaaSDomainSubscriptionMessage {
                                                   @JsonProperty("mailDnsConfigurationValidated") Optional<Boolean> mailDnsConfigurationValidated,
                                                   @JsonProperty("features") Optional<SaasFeatures> features,
                                                   @JsonProperty("canUpgrade") Optional<Boolean> canUpgrade,
-                                                  @JsonProperty("isPaying") Optional<Boolean> isPaying) {
+                                                  @JsonProperty("isPaying") Optional<Boolean> isPaying,
+                                                  @JsonProperty("dnsOwnershipValidated") Optional<Boolean> dnsOwnershipValidated) {
             Preconditions.checkNotNull(domain, "domain cannot be null");
 
             this.domain = domain;
@@ -42,6 +49,7 @@ public interface SaaSDomainSubscriptionMessage {
             this.organizationId = organizationId;
             this.canUpgrade = canUpgrade;
             this.isPaying = isPaying;
+            this.dnsOwnershipValidated = dnsOwnershipValidated;
         }
     }
 
