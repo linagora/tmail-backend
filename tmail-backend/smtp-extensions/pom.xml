@@ -34,6 +34,10 @@
     <dependencies>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>tmail-saas-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>tmail-mailets</artifactId>
         </dependency>
         <dependency>
