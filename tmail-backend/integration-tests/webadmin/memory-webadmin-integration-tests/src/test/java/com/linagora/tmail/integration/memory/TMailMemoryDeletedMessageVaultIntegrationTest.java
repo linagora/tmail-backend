@@ -50,6 +50,7 @@ public class TMailMemoryDeletedMessageVaultIntegrationTest extends DeletedMessag
             .overrideWith(new TestDeleteMessageVaultPreDeletionHookModule())
             .overrideWith(new DeletedMessageVaultProbeModule()))
         .extension(new ClockExtension())
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @Override
