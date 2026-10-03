@@ -61,6 +61,7 @@ import org.apache.james.modules.MailboxModule;
 import org.apache.james.modules.MailetProcessingModule;
 import org.apache.james.modules.RunArgumentsModule;
 import org.apache.james.modules.TCNativeEncryptionModule;
+import org.apache.james.modules.TasksCleanupTaskSerializationModule;
 import org.apache.james.modules.blobstore.BlobStoreCacheModulesChooser;
 import org.apache.james.modules.data.PostgresDLPConfigurationStoreModule;
 import org.apache.james.modules.data.PostgresDataJmapModule;
@@ -116,6 +117,7 @@ import org.apache.james.modules.server.WebAdminServerModule;
 import org.apache.james.modules.task.DistributedTaskManagerModule;
 import org.apache.james.modules.task.PostgresTaskExecutionDetailsProjectionGuiceModule;
 import org.apache.james.modules.vault.DeletedMessageVaultRoutesModule;
+import org.apache.james.modules.webadmin.TasksCleanupRoutesModule;
 import org.apache.james.oidc.redis.OidcTokenCacheModuleChooser;
 import org.apache.james.quota.search.QuotaSearcher;
 import org.apache.james.quota.search.scanning.ScanningQuotaSearcher;
@@ -338,7 +340,9 @@ public class PostgresTmailServer {
         new AllUsersReindexingRoutesModule(),
         new WebAdminMailOverWebModule(),
         new WebAdminReIndexingTaskSerializationModule(),
-        new WebAdminServerModule());
+        new WebAdminServerModule(),
+        new TasksCleanupRoutesModule(),
+        new TasksCleanupTaskSerializationModule());
 
     public static final Module JMAP_LINAGORA = Modules.override(
         new PostgresJmapModule(),
