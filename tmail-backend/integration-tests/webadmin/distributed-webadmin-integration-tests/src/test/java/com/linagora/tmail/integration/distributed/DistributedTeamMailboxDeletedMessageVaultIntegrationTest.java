@@ -61,6 +61,7 @@ import org.apache.james.webadmin.routes.TasksRoutes;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionFactory;
 import org.eclipse.jetty.http.HttpStatus;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -191,6 +192,11 @@ class DistributedTeamMailboxDeletedMessageVaultIntegrationTest {
             .buildRequestSpecification(server.getProbe(WebAdminGuiceProbe.class).getWebAdminPort())
             .setBasePath(TeamMailboxDeletedMessagesVaultRoutes.ROOT_PATH)
             .build();
+    }
+
+    @AfterEach
+    void resetRestAssured() {
+        RestAssured.reset();
     }
 
     @Test

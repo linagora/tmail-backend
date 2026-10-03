@@ -60,6 +60,7 @@ import org.apache.james.webadmin.routes.TasksRoutes;
 import org.assertj.core.api.SoftAssertions;
 import org.awaitility.Awaitility;
 import org.eclipse.jetty.http.HttpStatus;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -154,6 +155,11 @@ public class DistributedPopulateKeywordEmailQueryViewTaskIntegrationTest {
             .setUrlEncodingEnabled(false)
             .build();
         RestAssured.enableLoggingOfRequestAndResponseIfValidationFails();
+    }
+
+    @AfterEach
+    void resetRestAssured() {
+        RestAssured.reset();
     }
 
     @Test
