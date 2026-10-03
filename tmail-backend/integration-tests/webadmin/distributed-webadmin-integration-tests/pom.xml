@@ -154,6 +154,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <argLine>-Xms512m -Xmx2048m</argLine>
+                    <forkCount>2</forkCount>
                 </configuration>
             </plugin>
         </plugins>
