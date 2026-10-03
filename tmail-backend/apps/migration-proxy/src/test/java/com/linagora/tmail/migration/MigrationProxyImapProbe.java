@@ -20,7 +20,6 @@ package com.linagora.tmail.migration;
 
 import java.net.InetSocketAddress;
 
-import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
 
 import org.apache.james.imapserver.netty.IMAPServerFactory;
@@ -39,11 +38,6 @@ class MigrationProxyImapProbe implements GuiceProbe {
     @Inject
     MigrationProxyImapProbe(IMAPServerFactory imapServerFactory) {
         this.imapServerFactory = imapServerFactory;
-    }
-
-    @PreDestroy
-    void destroy() {
-        imapServerFactory.destroy();
     }
 
     int getImapPort() {
