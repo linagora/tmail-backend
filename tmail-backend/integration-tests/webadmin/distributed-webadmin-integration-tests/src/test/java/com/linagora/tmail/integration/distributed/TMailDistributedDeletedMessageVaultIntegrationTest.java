@@ -27,6 +27,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.time.ZonedDateTime;
 import java.util.List;
+import java.util.UUID;
 
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
@@ -44,6 +45,7 @@ import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.util.Port;
+import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.GuiceProbe;
 import org.apache.james.utils.UpdatableTickingClock;
 import org.apache.james.utils.WebAdminGuiceProbe;
@@ -78,7 +80,6 @@ import reactor.core.publisher.Mono;
 @Tag(Unstable.TAG)
 public class TMailDistributedDeletedMessageVaultIntegrationTest extends DeletedMessageVaultIntegrationTest {
     private static final DockerOpenSearchExtension OPENSEARCH_EXTENSION = new DockerOpenSearchExtension();
-    private static final Username HOMER = Username.of("homer@" + DOMAIN);
     private static final byte[] CONTENT = "header: value\r\n\r\ncontent".getBytes(StandardCharsets.UTF_8);
     private static final ZonedDateTime DELIVERY_DATE = ZonedDateTime.parse("2007-12-03T10:15:30Z");
     private static final ZonedDateTime DELETION_DATE = ZonedDateTime.parse("2007-12-03T10:16:30Z");
@@ -112,6 +113,7 @@ public class TMailDistributedDeletedMessageVaultIntegrationTest extends DeletedM
                 .addBinding()
                 .to(TmailBlobStoreDeletedMessageVaultProbe.class))
             .overrideWith(new DeletedMessageVaultProbeModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @Override
@@ -137,6 +139,9 @@ public class TMailDistributedDeletedMessageVaultIntegrationTest extends DeletedM
     @Test
     void vaultPurgeShouldCleanupMessagesFromBothLegacyBucketsAndSingleBucket(GuiceJamesServer server, UpdatableTickingClock clock) throws Exception {
         TmailBlobStoreDeletedMessageVaultProbe vaultProbe = server.getProbe(TmailBlobStoreDeletedMessageVaultProbe.class);
+        // The purge only cleans the single bucket for registered users
+        Username homer = Username.of("homer-" + UUID.randomUUID() + "@" + DOMAIN);
+        server.getProbe(DataProbeImpl.class).addUser(homer.asString(), "password");
 
         MessageId legacyMessageId = new CassandraMessageId.Factory().generate();
         MessageId singleBucketMessageId = new CassandraMessageId.Factory().generate();
@@ -144,17 +149,17 @@ public class TMailDistributedDeletedMessageVaultIntegrationTest extends DeletedM
 
         // Append message in the old bucket(s)
         clock.setInstant(Instant.parse("2007-12-03T10:15:30.00Z"));
-        Mono.from(vaultProbe.getVault().appendV1(createDeletedMessage(legacyMessageId, mailboxId), new ByteArrayInputStream(CONTENT))).block();
+        Mono.from(vaultProbe.getVault().appendV1(createDeletedMessage(legacyMessageId, mailboxId, homer), new ByteArrayInputStream(CONTENT))).block();
 
         // Append message in the single bucket
         clock.setInstant(Instant.parse("2008-01-03T10:15:30.00Z"));
-        Mono.from(vaultProbe.getVault().append(createDeletedMessage(singleBucketMessageId, mailboxId), new ByteArrayInputStream(CONTENT))).block();
+        Mono.from(vaultProbe.getVault().append(createDeletedMessage(singleBucketMessageId, mailboxId, homer), new ByteArrayInputStream(CONTENT))).block();
 
         // Purge the expired messages
         clock.setInstant(Instant.parse("2026-01-03T10:15:30.00Z"));
         purgeVault(webAdminApi(server));
 
-        List<DeletedMessage> remainingMessages = Flux.from(vaultProbe.getVault().search(HOMER, Query.ALL))
+        List<DeletedMessage> remainingMessages = Flux.from(vaultProbe.getVault().search(homer, Query.ALL))
             .collectList()
             .block();
         assertThat(remainingMessages).isEmpty();
@@ -167,11 +172,11 @@ public class TMailDistributedDeletedMessageVaultIntegrationTest extends DeletedM
                 .paramConfig(new ParamConfig().replaceAllParameters()));
     }
 
-    private static DeletedMessage createDeletedMessage(MessageId messageId, MailboxId mailboxId) throws Exception {
+    private static DeletedMessage createDeletedMessage(MessageId messageId, MailboxId mailboxId, Username user) throws Exception {
         return DeletedMessage.builder()
             .messageId(messageId)
             .originMailboxes(mailboxId)
-            .user(HOMER)
+            .user(user)
             .deliveryDate(DELIVERY_DATE)
             .deletionDate(DELETION_DATE)
             .sender(MaybeSender.of(new MailAddress("sender@" + DOMAIN)))
