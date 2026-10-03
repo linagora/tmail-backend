@@ -160,6 +160,7 @@ public class DistributedProtocolServerIntegrationTest {
 
     @AfterEach
     void tearDown() {
+        RestAssured.reset();
         if (channelPool != null) {
             channelPool.close();
         }
