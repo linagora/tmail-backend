@@ -67,6 +67,7 @@ public class DistributedCleanupIntegrationTest extends CleanupIntegrationContrac
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding()
                 .to(JmapSettingsProbe.class)))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
 }
