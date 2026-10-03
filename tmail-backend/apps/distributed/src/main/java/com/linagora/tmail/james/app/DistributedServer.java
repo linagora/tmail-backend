@@ -68,6 +68,7 @@ import org.apache.james.modules.LegacyEncryptionModule;
 import org.apache.james.modules.MailboxModule;
 import org.apache.james.modules.MailetProcessingModule;
 import org.apache.james.modules.TCNativeEncryptionModule;
+import org.apache.james.modules.TasksCleanupTaskSerializationModule;
 import org.apache.james.modules.data.CassandraDLPConfigurationStoreModule;
 import org.apache.james.modules.data.CassandraDropListsModule;
 import org.apache.james.modules.data.CassandraJmapModule;
@@ -126,6 +127,7 @@ import org.apache.james.modules.server.WebAdminServerModule;
 import org.apache.james.modules.vault.DeletedMessageVaultRoutesModule;
 import org.apache.james.modules.webadmin.CassandraRoutesModule;
 import org.apache.james.modules.webadmin.InconsistencySolvingRoutesModule;
+import org.apache.james.modules.webadmin.TasksCleanupRoutesModule;
 import org.apache.james.oidc.redis.OidcTokenCacheModuleChooser;
 import org.apache.james.quota.search.QuotaSearcher;
 import org.apache.james.quota.search.scanning.ScanningQuotaSearcher;
@@ -314,7 +316,9 @@ public class DistributedServer {
         new PopulateKeywordEmailQueryViewTaskModule(),
         new UserDataTieringRoutesModule(),
         new UserDataTieringTaskModule(),
-        new AllUsersReindexingRoutesModule());
+        new AllUsersReindexingRoutesModule(),
+        new TasksCleanupRoutesModule(),
+        new TasksCleanupTaskSerializationModule());
 
     public static final Module JMAP = Modules.override(
         new TMailJMAPModule(),
