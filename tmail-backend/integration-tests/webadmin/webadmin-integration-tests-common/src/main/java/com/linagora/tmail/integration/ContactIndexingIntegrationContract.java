@@ -52,6 +52,7 @@ import org.junit.jupiter.api.Test;
 import com.github.fge.lambdas.Throwing;
 
 import io.restassured.RestAssured;
+import io.restassured.builder.RequestSpecBuilder;
 import io.restassured.http.ContentType;
 import io.restassured.specification.RequestSpecification;
 import net.javacrumbs.jsonunit.core.Option;
@@ -96,7 +97,9 @@ public abstract class ContactIndexingIntegrationContract {
             .setBasePath("/mailboxes")
             .build();
 
-        jmapSpec = jmapRequestSpecBuilder
+        // Copy the JVM-wide shared builder: setting the base path on it would leak into later test classes
+        jmapSpec = new RequestSpecBuilder()
+            .addRequestSpecification(jmapRequestSpecBuilder.build())
             .setPort(server.getProbe(JmapGuiceProbe.class).getJmapPort().getValue())
             .addHeader(ACCEPT_JMAP_RFC_HEADER.getName(), ACCEPT_JMAP_RFC_HEADER.getValue())
             .setBasePath("/jmap")
