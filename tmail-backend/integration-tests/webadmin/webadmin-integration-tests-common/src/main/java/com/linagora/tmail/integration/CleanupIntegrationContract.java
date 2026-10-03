@@ -27,6 +27,7 @@ import java.io.ByteArrayInputStream;
 import java.time.Instant;
 import java.util.Date;
 import java.util.Map;
+import java.util.UUID;
 
 import jakarta.mail.Flags;
 
@@ -57,19 +58,23 @@ import io.restassured.RestAssured;
 public abstract class CleanupIntegrationContract {
 
     private static final String BASE_PATH = Constants.SEPARATOR + "mailboxes";
-    protected static final Domain DOMAIN = Domain.of("domain.tld");
-    protected static final Username BOB = Username.fromLocalPartWithDomain("bob", DOMAIN);
     protected static final Instant VERY_OLD_INSTANT = Instant.parse("1999-12-07T01:15:30.00Z");
+
+    protected Domain domain;
+    protected Username bob;
 
     @BeforeEach
     void setUp(GuiceJamesServer server) throws Exception {
+        domain = Domain.of("cleanup-" + UUID.randomUUID() + ".tld");
+        bob = Username.fromLocalPartWithDomain("bob", domain);
+
         DataProbeImpl dataProbe = server.getProbe(DataProbeImpl.class);
-        dataProbe.addDomain(DOMAIN.asString());
-        dataProbe.addUser(BOB.asString(), "password");
+        dataProbe.addDomain(domain.asString());
+        dataProbe.addUser(bob.asString(), "password");
 
         MailboxProbeImpl mailboxProbe = server.getProbe(MailboxProbeImpl.class);
-        mailboxProbe.createMailbox(MailboxPath.forUser(BOB, DefaultMailboxes.TRASH));
-        mailboxProbe.createMailbox(MailboxPath.forUser(BOB, DefaultMailboxes.SPAM));
+        mailboxProbe.createMailbox(MailboxPath.forUser(bob, DefaultMailboxes.TRASH));
+        mailboxProbe.createMailbox(MailboxPath.forUser(bob, DefaultMailboxes.SPAM));
 
         WebAdminGuiceProbe webAdminGuiceProbe = server.getProbe(WebAdminGuiceProbe.class);
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminGuiceProbe.getWebAdminPort())
@@ -79,30 +84,41 @@ public abstract class CleanupIntegrationContract {
     }
 
     @AfterEach
-    void resetRestAssured() {
+    void tearDown(GuiceJamesServer server) throws Exception {
         RestAssured.reset();
+
+        DataProbeImpl dataProbe = server.getProbe(DataProbeImpl.class);
+        dataProbe.removeUser(bob.asString());
+        dataProbe.removeDomain(domain.asString());
     }
 
     @Test
     void cleanupTrashShouldBeExposed() {
-        given()
+        String taskId = given()
             .queryParam("task", "CleanupTrash")
             .post()
         .then()
             .statusCode(201)
-            .body("taskId", notNullValue());
+            .body("taskId", notNullValue())
+            .extract()
+            .path("taskId");
+
+        // Cleanup tasks run over all users: let it finish before the next test adds its own
+        given()
+            .basePath(TasksRoutes.BASE)
+            .get(taskId + "/await");
     }
 
     @Test
     void cleanupTrashTaskShouldWork(GuiceJamesServer server, UpdatableTickingClock clock) throws Exception {
         server.getProbe(JmapSettingsProbe.class)
-            .reset(BOB, Map.of(JmapSettings.trashCleanupEnabledSetting().asString(),
+            .reset(bob, Map.of(JmapSettings.trashCleanupEnabledSetting().asString(),
                 "true",
                 JmapSettings.trashCleanupPeriodSetting().asString(),
                 JmapSettings.weeklyPeriod()));
 
         clock.setInstant(VERY_OLD_INSTANT);
-        appendMessage(BOB, MailboxPath.forUser(BOB, DefaultMailboxes.TRASH), server);
+        appendMessage(bob, MailboxPath.forUser(bob, DefaultMailboxes.TRASH), server);
 
         clock.setInstant(Instant.now());
 
@@ -146,24 +162,31 @@ public abstract class CleanupIntegrationContract {
 
     @Test
     void cleanupSpamShouldBeExposed() {
-        given()
+        String taskId = given()
             .queryParam("task", "CleanupSpam")
             .post()
         .then()
             .statusCode(201)
-            .body("taskId", notNullValue());
+            .body("taskId", notNullValue())
+            .extract()
+            .path("taskId");
+
+        // Cleanup tasks run over all users: let it finish before the next test adds its own
+        given()
+            .basePath(TasksRoutes.BASE)
+            .get(taskId + "/await");
     }
 
     @Test
     void cleanupSpamTaskShouldWork(GuiceJamesServer server, UpdatableTickingClock clock) throws Exception {
         server.getProbe(JmapSettingsProbe.class)
-            .reset(BOB, Map.of(JmapSettings.spamCleanupEnabledSetting().asString(),
+            .reset(bob, Map.of(JmapSettings.spamCleanupEnabledSetting().asString(),
                 "true",
                 JmapSettings.spamCleanupPeriodSetting().asString(),
                 JmapSettings.weeklyPeriod()));
 
         clock.setInstant(VERY_OLD_INSTANT);
-        appendMessage(BOB, MailboxPath.forUser(BOB, DefaultMailboxes.SPAM), server);
+        appendMessage(bob, MailboxPath.forUser(bob, DefaultMailboxes.SPAM), server);
 
         clock.setInstant(Instant.now());
 
