@@ -18,6 +18,10 @@
 
 <listeners>
     <listener>
+        <class>org.apache.james.jmap.event.PopulateEmailQueryViewListener</class>
+        <async>true</async>
+    </listener>
+    <listener>
         <class>com.linagora.tmail.james.jmap.event.IdentityProvisionListener</class>
         <configuration>
             <firstnameAttribute>givenName</firstnameAttribute>
