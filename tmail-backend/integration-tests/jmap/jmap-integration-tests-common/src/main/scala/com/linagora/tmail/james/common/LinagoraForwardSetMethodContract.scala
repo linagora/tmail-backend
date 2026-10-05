@@ -475,7 +475,40 @@ trait LinagoraForwardSetMethodContract {
   }
 
   @Test
-  def updateShouldFailWhenMissingForwards(): Unit = {
+  def updateShouldKeepLocalCopyWhenOnlyForwardsIsPatched(): Unit = {
+    val response: String = patchAfterInitialForward(
+      s"""{ "forwards": [ "${CEDRIC.asMailAddress().asString()}" ] }""")
+
+    assertThatJson(response).isEqualTo(
+      expectedPatchResponse(localCopy = true, forwards = s""""${CEDRIC.asMailAddress().asString()}""""))
+  }
+
+  @Test
+  def updateShouldKeepForwardsWhenOnlyLocalCopyIsPatched(): Unit = {
+    val response: String = patchAfterInitialForward("""{ "localCopy": false }""")
+
+    assertThatJson(response).isEqualTo(
+      expectedPatchResponse(localCopy = false, forwards = s""""${ANDRE.asMailAddress().asString()}""""))
+  }
+
+  @Test
+  def updateShouldNoopWhenEmptyPatch(): Unit = {
+    val response: String = patchAfterInitialForward("{}")
+
+    assertThatJson(response).isEqualTo(
+      expectedPatchResponse(localCopy = true, forwards = s""""${ANDRE.asMailAddress().asString()}""""))
+  }
+
+  @Test
+  def updateShouldAcceptSingletonId(): Unit = {
+    val response: String = patchAfterInitialForward("""{ "id": "singleton", "localCopy": false }""")
+
+    assertThatJson(response).isEqualTo(
+      expectedPatchResponse(localCopy = false, forwards = s""""${ANDRE.asMailAddress().asString()}""""))
+  }
+
+  @Test
+  def updateShouldNoopWhenEmptyPatchAndNoForward(): Unit = {
     val request: String =
       s"""{
          |    "using": [ "urn:ietf:params:jmap:core",
@@ -484,11 +517,13 @@ trait LinagoraForwardSetMethodContract {
          |      ["Forward/set", {
          |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
          |        "update": {
-         |            "singleton": {
-         |                "localCopy": true
-         |            }
+         |            "singleton": {}
          |        }
-         |      }, "c1"]
+         |      }, "c1"],
+         |      ["Forward/get", {
+         |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |        "ids": ["singleton"]
+         |      }, "c2" ]
          |    ]
          |  }""".stripMargin
 
@@ -511,19 +546,40 @@ trait LinagoraForwardSetMethodContract {
          |    ["Forward/set", {
          |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
          |      "newState": "${INSTANCE.value}",
-         |      "notUpdated": {
-         |        "singleton": {
-         |          "type": "invalidArguments",
-         |          "description": "Missing '/forwards' property"
-         |        }
-         |      }
-         |    }, "c1"]
+         |      "updated": {"singleton":{}}
+         |    }, "c1"],
+         |    ["Forward/get", {
+         |       "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |       "notFound": [],
+         |       "state": "${INSTANCE.value}",
+         |       "list": [
+         |         { "id": "singleton",
+         |            "localCopy": true,
+         |            "forwards": []
+         |         }
+         |       ]
+         |    }, "c2" ]
          |  ]
          |}""".stripMargin)
   }
 
   @Test
-  def updateShouldFailWhenMissingLocalCopy(): Unit = {
+  def updateShouldFailWhenUnknownProperty(): Unit = {
+    val response: String = patchAfterInitialForward("""{ "localCopy": false, "unknown": "value" }""")
+
+    assertThatJson(response).isEqualTo(
+      expectedPatchFailureResponse("'/unknown' property is not valid: Unknown property"))
+  }
+
+  @Test
+  def updateShouldFailWhenIdIsNotSingleton(): Unit = {
+    val response: String = patchAfterInitialForward("""{ "id": "other", "localCopy": false }""")
+
+    assertThatJson(response).isEqualTo(
+      expectedPatchFailureResponse("'/id' property is not valid: id must be singleton"))
+  }
+
+  private def patchAfterInitialForward(patch: String): String = {
     val request: String =
       s"""{
          |    "using": [ "urn:ietf:params:jmap:core",
@@ -533,14 +589,25 @@ trait LinagoraForwardSetMethodContract {
          |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
          |        "update": {
          |            "singleton": {
-         |               "forwards": []
+         |                "localCopy": true,
+         |                "forwards": [ "${ANDRE.asMailAddress().asString()}" ]
          |            }
          |        }
-         |      }, "c1"]
+         |      }, "c1"],
+         |      ["Forward/set", {
+         |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |        "update": {
+         |            "singleton": $patch
+         |        }
+         |      }, "c2"],
+         |      ["Forward/get", {
+         |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |        "ids": ["singleton"]
+         |      }, "c3" ]
          |    ]
          |  }""".stripMargin
 
-    val response: String = `given`
+    `given`
       .body(request)
     .when
       .post
@@ -551,24 +618,53 @@ trait LinagoraForwardSetMethodContract {
       .extract
       .body
       .asString
-
-    assertThatJson(response).isEqualTo(
-      s"""{
-         |  "sessionState": "${SESSION_STATE.value}",
-         |  "methodResponses": [
-         |    ["Forward/set", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
-         |      "newState": "${INSTANCE.value}",
-         |      "notUpdated": {
-         |        "singleton": {
-         |          "type": "invalidArguments",
-         |          "description": "Missing '/localCopy' property"
-         |        }
-         |      }
-         |    }, "c1"]
-         |  ]
-         |}""".stripMargin)
   }
+
+  private def expectedPatchResponse(localCopy: Boolean, forwards: String): String =
+    expectedResponseAfterInitialForward(
+      patchResult = """"updated": {"singleton":{}}""",
+      localCopy = localCopy,
+      forwards = forwards)
+
+  private def expectedPatchFailureResponse(description: String): String =
+    expectedResponseAfterInitialForward(
+      patchResult =
+        s""""notUpdated": {
+           |  "singleton": {
+           |    "type": "invalidArguments",
+           |    "description": "$description"
+           |  }
+           |}""".stripMargin,
+      localCopy = true,
+      forwards = s""""${ANDRE.asMailAddress().asString()}"""")
+
+  private def expectedResponseAfterInitialForward(patchResult: String, localCopy: Boolean, forwards: String): String =
+    s"""{
+       |  "sessionState": "${SESSION_STATE.value}",
+       |  "methodResponses": [
+       |    ["Forward/set", {
+       |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+       |      "newState": "${INSTANCE.value}",
+       |      "updated": {"singleton":{}}
+       |    }, "c1"],
+       |    ["Forward/set", {
+       |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+       |      "newState": "${INSTANCE.value}",
+       |      $patchResult
+       |    }, "c2"],
+       |    ["Forward/get", {
+       |       "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+       |       "notFound": [],
+       |       "state": "${INSTANCE.value}",
+       |       "list": [
+       |         { "id": "singleton",
+       |            "localCopy": $localCopy,
+       |            "forwards": [ $forwards ]
+       |         }
+       |       ]
+       |    }, "c3" ]
+       |  ]
+       |}""".stripMargin
 
   @Test
   def updateShouldFailWhenInvalidKey(): Unit = {
