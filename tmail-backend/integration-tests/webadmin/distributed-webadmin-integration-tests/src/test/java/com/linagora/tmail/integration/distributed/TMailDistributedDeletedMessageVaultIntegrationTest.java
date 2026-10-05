@@ -37,6 +37,7 @@ import org.apache.james.core.MaybeSender;
 import org.apache.james.core.Username;
 import org.apache.james.events.TmailRabbitEventBusConfiguration;
 import org.apache.james.junit.categories.BasicFeature;
+import org.apache.james.junit.categories.Unstable;
 import org.apache.james.mailbox.cassandra.ids.CassandraId;
 import org.apache.james.mailbox.cassandra.ids.CassandraMessageId;
 import org.apache.james.mailbox.model.MailboxId;
@@ -73,6 +74,8 @@ import io.restassured.specification.RequestSpecification;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
+// Flaky: https://github.com/linagora/tmail-backend/issues/2655
+@Tag(Unstable.TAG)
 public class TMailDistributedDeletedMessageVaultIntegrationTest extends DeletedMessageVaultIntegrationTest {
     private static final DockerOpenSearchExtension OPENSEARCH_EXTENSION = new DockerOpenSearchExtension();
     private static final Username HOMER = Username.of("homer@" + DOMAIN);

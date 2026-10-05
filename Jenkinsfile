@@ -211,6 +211,28 @@ Please drop these changes from the pull request, or ask a linagora member to car
                 }
             }
         }
+        stage('Unstable Tests') {
+            steps {
+                echo 'Running unstable tests'
+                dir("tmail-backend") {
+                    // surefire:test does not clean: drop the reports already recorded by the Test stage
+                    sh 'find . -path "*/target/surefire-reports" -type d -prune -exec rm -rf {} +'
+                    catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
+                        sh 'mvn -B -e -fae -Dapi.version=1.43 surefire:test -Punstable-tests'
+                    }
+                }
+            }
+            post {
+                always {
+                    // The stage stays red on failing unstable tests, but the build result is not UNSTABLE: no failure comment on the pull request
+                    junit(testResults: '**/surefire-reports/*.xml', allowEmptyResults: true, skipMarkingBuildUnstable: true)
+                }
+                failure {
+                    archiveArtifacts artifacts: '**/target/test-run.log' , fingerprint: true
+                    archiveArtifacts artifacts: '**/surefire-reports/*' , fingerprint: true
+                }
+            }
+        }
         stage('Deliver Docker images for PR') {
           when {
             changeRequest()
