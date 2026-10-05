@@ -21,7 +21,7 @@ package com.linagora.tmail.james.jmap.label
 import java.util.concurrent.CopyOnWriteArrayList
 
 import com.linagora.tmail.james.jmap.label.LabelRepositoryContract.{ALICE, BLUE, BOB, RED}
-import com.linagora.tmail.james.jmap.model.{Color, DescriptionUpdate, DisplayName, Label, LabelCreationRequest, LabelId, LabelNotFoundException, LabelReadOnlyException}
+import com.linagora.tmail.james.jmap.model.{Color, ColorUpdate, DescriptionUpdate, DisplayName, Label, LabelCreationRequest, LabelId, LabelNotFoundException, LabelReadOnlyException}
 import org.apache.james.core.Username
 import org.apache.james.events.EventListener.ExecutionMode
 import org.apache.james.events.{Event, EventBus, EventListener, Group}
@@ -158,7 +158,7 @@ trait LabelRepositoryContract {
     val labelId = SMono.fromPublisher(testee.addLabel(ALICE, LabelCreationRequest(DisplayName("Important"), Some(RED), Some("This is an important label it should be dealt with quickly"))))
       .block().id
 
-    SMono.fromPublisher(testee.updateLabel(ALICE, labelId, newColor = Some(BLUE))).block()
+    SMono.fromPublisher(testee.updateLabel(ALICE, labelId, newColor = Some(ColorUpdate(Some(BLUE))))).block()
 
     assertThat(SFlux.fromPublisher(testee.listLabels(ALICE)).collectSeq().block().head.color)
       .isEqualTo(Some(BLUE))
@@ -169,7 +169,7 @@ trait LabelRepositoryContract {
     val labelId = SMono.fromPublisher(testee.addLabel(ALICE, LabelCreationRequest(DisplayName("Important"), Some(RED), Some("This is an important label it should be dealt with quickly"))))
       .block().id
 
-    SMono.fromPublisher(testee.updateLabel(ALICE, labelId, newColor = Some(BLUE))).block()
+    SMono.fromPublisher(testee.updateLabel(ALICE, labelId, newColor = Some(ColorUpdate(Some(BLUE))))).block()
 
     assertThat(SFlux.fromPublisher(testee.listLabels(ALICE)).collectSeq().block().head.displayName)
       .isEqualTo(DisplayName("Important"))
@@ -182,7 +182,7 @@ trait LabelRepositoryContract {
 
     SMono.fromPublisher(testee.updateLabel(ALICE, labelId,
       newDisplayName = Some(DisplayName("New Display Name")),
-      newColor = Some(BLUE),
+      newColor = Some(ColorUpdate(Some(BLUE))),
       newDescription = Some(DescriptionUpdate(Some("Trying new documentation"))))).block()
 
     val updatedLabel = SFlux.fromPublisher(testee.listLabels(ALICE)).collectSeq().block().head
@@ -394,6 +394,38 @@ trait LabelRepositoryContract {
 
     val updatedLabel = SFlux.fromPublisher(testee.listLabels(ALICE)).collectSeq().block().head
     assertThat(updatedLabel.description).isEqualTo(None)
+  }
+
+  @Test
+  def updateColorToNullShouldRemoveIt(): Unit = {
+    val labelId = SMono.fromPublisher(testee.addLabel(ALICE,
+        LabelCreationRequest(DisplayName("Important"), Some(RED), Some("Initial description"))))
+      .block().id
+
+    SMono.fromPublisher(testee.updateLabel(ALICE, labelId,
+      newColor = Some(ColorUpdate(None)))).block()
+
+    val updatedLabel = SFlux.fromPublisher(testee.listLabels(ALICE)).collectSeq().block().head
+    assertThat(updatedLabel.color).isEqualTo(None)
+    assertThat(updatedLabel.displayName).isEqualTo(DisplayName("Important"))
+    assertThat(updatedLabel.description).isEqualTo(Some("Initial description"))
+  }
+
+  @Test
+  def updateColorToNullShouldNotAffectOtherLabels(): Unit = {
+    val labelId = SMono.fromPublisher(testee.addLabel(ALICE,
+        LabelCreationRequest(DisplayName("Important"), Some(RED), None)))
+      .block().id
+    SMono.fromPublisher(testee.addLabel(ALICE,
+        LabelCreationRequest(DisplayName("Other"), Some(BLUE), None)))
+      .block()
+
+    SMono.fromPublisher(testee.updateLabel(ALICE, labelId,
+      newColor = Some(ColorUpdate(None)))).block()
+
+    assertThat(SFlux.fromPublisher(testee.listLabels(ALICE)).collectSeq().block()
+      .filter(_.displayName == DisplayName("Other")).head.color)
+      .isEqualTo(Some(BLUE))
   }
 
   @Test

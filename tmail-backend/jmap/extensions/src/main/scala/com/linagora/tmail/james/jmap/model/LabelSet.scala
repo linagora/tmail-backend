@@ -68,13 +68,14 @@ case class LabelPatchObject(value: Map[String, JsValue]) {
       .map(e => Left(LabelPatchUpdateValidationException("Some unknown properties were specified", Some(e._1))))
       .getOrElse(Right(this))
 
-  private def validateColor: Either[LabelPatchUpdateValidationException, Option[Color]] =
+  private def validateColor: Either[LabelPatchUpdateValidationException, Option[ColorUpdate]] =
     value.get(colorProperty) match {
       case Some(jsValue) => jsValue match {
         case JsString(aString) => Color.validate(aString) match {
-          case Right(color: Color) => Right(Some(color))
+          case Right(color: Color) => Right(Some(ColorUpdate(Some(color))))
           case Left(e: IllegalArgumentException) => Left(LabelPatchUpdateValidationException(e.getMessage, Some(colorProperty)))
         }
+        case JsNull => Right(Some(ColorUpdate(None)))
         case _ => Left(LabelPatchUpdateValidationException("Expecting a JSON string as an argument", Some(colorProperty)))
       }
       case None => Right(None)
@@ -101,7 +102,7 @@ case class LabelPatchObject(value: Map[String, JsValue]) {
 }
 
 case class ValidatedLabelPatchObject(displayNameUpdate: Option[DisplayName] = None,
-                                     colorUpdate: Option[Color] = None,
+                                     colorUpdate: Option[ColorUpdate] = None,
                                      descriptionUpdate: Option[DescriptionUpdate] = None)
 
 case class LabelUpdateResponse(json: JsObject = Json.obj())

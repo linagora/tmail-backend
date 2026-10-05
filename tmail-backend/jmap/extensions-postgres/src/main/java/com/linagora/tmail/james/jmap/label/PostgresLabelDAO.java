@@ -38,6 +38,7 @@ import org.jooq.UpdateSetFirstStep;
 import org.jooq.UpdateSetMoreStep;
 
 import com.linagora.tmail.james.jmap.model.Color;
+import com.linagora.tmail.james.jmap.model.ColorUpdate;
 import com.linagora.tmail.james.jmap.model.DescriptionUpdate;
 import com.linagora.tmail.james.jmap.model.DisplayName;
 import com.linagora.tmail.james.jmap.model.Label;
@@ -89,7 +90,7 @@ public class PostgresLabelDAO {
             .map(PostgresLabelDAOUtils::toLabel);
     }
 
-    public Mono<Void> updateLabel(Username username, LabelId labelId, Option<DisplayName> newDisplayName, Option<Color> newColor, Option<DescriptionUpdate> newDescription) {
+    public Mono<Void> updateLabel(Username username, LabelId labelId, Option<DisplayName> newDisplayName, Option<ColorUpdate> newColor, Option<DescriptionUpdate> newDescription) {
         return postgresExecutor.executeReturnAffectedRowsCount(dsl -> {
                 UpdateSetFirstStep<Record> originalUpdateStatement = dsl.update(TABLE_NAME);
                 Optional<UpdateSetMoreStep<Record>> updateOnlyDisplayNameStatement = addUpdateDisplayName(newDisplayName, originalUpdateStatement);
@@ -117,10 +118,16 @@ public class PostgresLabelDAO {
             .map(displayName -> originalUpdateStatement.set(DISPLAY_NAME, displayName.value()));
     }
 
-    private Optional<UpdateSetMoreStep<Record>> addUpdateColor(Option<Color> newColor, UpdateSetFirstStep<Record> originalUpdateStatement, Optional<UpdateSetMoreStep<Record>> updateDisplayNameStatement) {
+    private Optional<UpdateSetMoreStep<Record>> addUpdateColor(Option<ColorUpdate> newColor, UpdateSetFirstStep<Record> originalUpdateStatement, Optional<UpdateSetMoreStep<Record>> updateDisplayNameStatement) {
         return OptionConverters.toJava(newColor)
-            .map(color -> updateDisplayNameStatement.map(statement -> statement.set(COLOR, color.value()))
-                .orElseGet(() -> originalUpdateStatement.set(COLOR, color.value())));
+            .map(PostgresLabelDAO::colorValue)
+            .map(color -> updateDisplayNameStatement.map(statement -> statement.set(COLOR, color.orElse(null)))
+                .orElseGet(() -> originalUpdateStatement.set(COLOR, color.orElse(null))));
+    }
+
+    private static Optional<String> colorValue(ColorUpdate colorUpdate) {
+        return OptionConverters.toJava(colorUpdate.value())
+            .map(Color::value);
     }
 
     private Optional<UpdateSetMoreStep<Record>> addUpdateDescription(Option<DescriptionUpdate> newDescription, UpdateSetFirstStep<Record> originalUpdateStatement, Optional<UpdateSetMoreStep<Record>> updateDisplayNameStatement, Optional<UpdateSetMoreStep<Record>> updateColorStatement) {

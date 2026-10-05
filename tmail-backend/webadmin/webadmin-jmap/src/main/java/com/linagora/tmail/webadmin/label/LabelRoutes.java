@@ -37,6 +37,7 @@ import org.apache.james.webadmin.utils.JsonTransformer;
 import org.eclipse.jetty.http.HttpStatus;
 
 import com.linagora.tmail.james.jmap.label.LabelRepository;
+import com.linagora.tmail.james.jmap.model.ColorUpdate;
 import com.linagora.tmail.james.jmap.model.DescriptionUpdate;
 import com.linagora.tmail.james.jmap.model.Label;
 import com.linagora.tmail.james.jmap.model.LabelId;
@@ -127,7 +128,8 @@ public class LabelRoutes implements Routes {
             Mono.from(labelRepository.updateLabel(
                     username, labelId,
                     OptionConverters.toScala(Optional.of(body.displayName())),
-                    OptionConverters.toScala(body.color()),
+                    OptionConverters.toScala(body.color()
+                        .map(color -> new ColorUpdate(OptionConverters.toScala(Optional.of(color))))),
                     OptionConverters.toScala(Optional.of(new DescriptionUpdate(OptionConverters.toScala(body.description()))))))
                 .block();
             body.readOnly().ifPresent(readOnly ->
