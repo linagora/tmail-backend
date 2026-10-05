@@ -59,7 +59,7 @@ It is a public endpoint so no authentication is required.
 Clients should treat the public URI as opaque and use the `publicURI` value returned by the server as is.
 Note that it embeds the username (login) of the owner of the `PublicAsset`, regardless of the identity using it: an asset
 bound to an alias identity (eg `support@example.com` for user `alice@example.com`) is served under
-`/publicAsset/alice@example.com/...`, thus disclosing the login to recipients of the emails referencing it.
+`/publicAsset/alice@example.com/...`.
 
 Public assets are not moved upon username changes: they remain attached to the former username so that public URIs
 already embedded in sent emails keep pointing to them.
