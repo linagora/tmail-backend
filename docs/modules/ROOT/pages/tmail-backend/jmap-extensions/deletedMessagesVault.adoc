@@ -3,8 +3,8 @@
 
 Allows users to recover deleted messages in their vault.
 
-This is done by creating `EmailRecoveryAction` that restores deleted emails in the vault into users `Restored-messages`
-mailboxes.
+This is done by creating `EmailRecoveryAction` that restores deleted emails in the vault into users `Restored-Messages`
+mailboxes. This mailbox carries the `restored messages` role.
 
 == Additions to the capability object
 
@@ -15,8 +15,8 @@ com:linagora:params:jmap:messages:vault
 
 The associated object have the following fields:
 
-- `maxEmailRecoveryPerRequest`: *Number | null*, defaulting to `5`. Maximum number of emails a given `EmailRecoveryAction` would
-allow to recover.
+- `maxEmailRecoveryPerRequest`: *String*, defaulting to `"5"`. Maximum number of emails a given `EmailRecoveryAction` would
+allow to recover. Note that this number is serialized as a JSON String, e.g. `"5"`.
 - `restorationHorizon`: *String | null*, defaulting to `15 days`. Horizon past which users can no longer recover emails on their own, formatted into a plurialization correct String, like `1 day 12 hours`.
 
 == EmailRecoveryAction object
@@ -43,22 +43,31 @@ It has the following properties:
 
  - `waiting`: the task is planned and waits to be executed
  - `inProgress`: the task is currently being executed
- - `done`: the task is done. It's execution did succeed.
+ - `completed`: the task is done. Its execution did succeed.
  - `failed`: the task execution failed.
+ - `canceledRequested`: the cancellation of the task was requested but is not effective yet.
  - `canceled`: the task was canceled.
 
 == EmailRecoveryAction/get
 
 This method returns the underlying email recovery actions.
 
-Standard `/get` methods. The `ids` property cannot be null.
+Similar to a standard `/get` method, with the following differences:
+
+ - The `ids` property cannot be null.
+ - The `accountId` property of the request is not required and is ignored.
+ - The response carries neither `accountId` nor `state`: it only contains the `list` and `notFound` properties.
 
 This method only supports the following properties of the `EmailRecoveryAction` object: `id`, `successfulRestoreCount`,
 `errorRestoreCount`, `status`.
 
 == EmailRecoveryAction/set
 
-Standard `/set` methods.
+Similar to a standard `/set` method, with the following differences:
+
+ - The `accountId` property of the request is not required and is ignored. `ifInState` is not supported.
+ - The response carries neither `accountId` nor `oldState` / `newState`: it only contains the `created`, `notCreated`,
+`updated` and `notUpdated` properties.
 
 Note that `/set create` should fail when `status` property is specified.
 
@@ -75,7 +84,7 @@ The client makes a request to recover email in his vault:
 
 ....
 {
-	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:messages:vault"],
+	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:messages:vault"],
 	"methodCalls": [
         ["EmailRecoveryAction/set",
           {
@@ -85,8 +94,8 @@ The client makes a request to recover email in his vault:
                 "deletedAfter": "2023-02-09T09:00:00",
                 "receivedBefore": "2023-02-09T10:00:00",
                 "receivedAfter": "2023-02-09T09:00:00",
-                "hasAttachment": "true",
-                "suject": "Simple topic",
+                "hasAttachment": true,
+                "subject": "Simple topic",
                 "sender": "bob@domain.tld",
                 "recipients": ["alice@domain.tld"]
               }

@@ -46,6 +46,7 @@ public class TWPSettingsConsumer implements Closeable, Startable {
 
     private final ManagedRabbitMQConsumer consumer;
     private final TWPSettingsUpdater settingsUpdater;
+    private final SettingsConsumerConfig consumerConfig;
 
     public TWPSettingsConsumer(ReactorRabbitMQChannelPool channelPool,
                                RabbitMQConfiguration rabbitMQConfiguration,
@@ -54,6 +55,7 @@ public class TWPSettingsConsumer implements Closeable, Startable {
                                SettingsConsumerConfig consumerConfig,
                                TWPSettingsUpdater settingsUpdater) {
         this.settingsUpdater = settingsUpdater;
+        this.consumerConfig = consumerConfig;
         this.consumer = new ManagedRabbitMQConsumer.Factory(channelPool)
             .create(ManagedRabbitMQConsumer.Parameters.builder()
                 .queueDeclaration(QueueDeclaration.builder()
@@ -79,6 +81,10 @@ public class TWPSettingsConsumer implements Closeable, Startable {
 
     public void init() {
         consumer.init();
+    }
+
+    protected SettingsConsumerConfig getConsumerConfig() {
+        return consumerConfig;
     }
 
     public void restartConsumer() {

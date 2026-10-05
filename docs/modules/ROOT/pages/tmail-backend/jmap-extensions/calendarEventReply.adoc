@@ -156,7 +156,7 @@ The response object contains the following arguments:
 The `CalendarEventAttendance` object is defined as follows:
 
 - *blobId*: `Id` (required) The id of the blob of the calendar event.
-- *attendanceStatus*: `String` (required) The attendance status of the user for the calendar event. Possible values are: `accepted`, `rejected`, `tentativelyAccepted`, `needsAction`.
+- *eventAttendanceStatus*: `String` (required) The attendance status of the user for the calendar event. Possible values are: `accepted`, `rejected`, `tentativelyAccepted`, `needsAction`.
 - *isFree*: `Boolean` A boolean value indicating whether the user is free at the time of the event. `true` if the user is free, `false` otherwise.
 
 The associated `replySupportedLanguage` capability property is not needed for this method to function.
@@ -192,12 +192,12 @@ The server responds:
     "list" : [
       {
         "blobId": "1_3",
-        "attendanceStatus": "rejected",
+        "eventAttendanceStatus": "rejected",
         "isFree": true
       },
       {
         "blobId": "1_5",
-        "attendanceStatus": "accepted",
+        "eventAttendanceStatus": "accepted",
         "isFree":  true
       }
     ]
@@ -255,7 +255,7 @@ If the event query get a scheduling conflict, `isFree` property will be `false`
     "list" : [
       {
         "blobId": "1_5",
-        "attendanceStatus": "needsAction",
+        "eventAttendanceStatus": "needsAction",
         "isFree":  false
       }
     ]
