@@ -79,13 +79,14 @@ public class TWPSettingsRabbitmqModule extends AbstractModule {
     MonitoredRabbitMQConsumers twpSettingsConsumers(@Named(TWP_INJECTION_KEY) SimpleConnectionPool twpConnectionPool,
                                                     TWPSettingsConsumer twpSettingsConsumer) {
         return MonitoredRabbitMQConsumers.of("TWP settings", twpConnectionPool,
-            () -> ImmutableList.of(TWPSettingsConsumer.SettingsConsumerConfig.DEFAULT.queue()),
+            () -> ImmutableList.of(twpSettingsConsumer.getConsumerConfig().queue()),
             connection -> Mono.fromRunnable(twpSettingsConsumer::restartConsumer));
     }
 
     @ProvidesIntoSet
-    MonitoredDeadLetterQueue twpSettingsDeadLetterQueue(@Named(TWP_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration) {
-        return new MonitoredDeadLetterQueue(twpRabbitMQConfiguration, TWPSettingsConsumer.SettingsConsumerConfig.DEFAULT.deadLetterQueue());
+    MonitoredDeadLetterQueue twpSettingsDeadLetterQueue(@Named(TWP_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration,
+                                                       TWPSettingsConsumer twpSettingsConsumer) {
+        return new MonitoredDeadLetterQueue(twpRabbitMQConfiguration, twpSettingsConsumer.getConsumerConfig().deadLetterQueue());
     }
 
     @ProvidesIntoSet

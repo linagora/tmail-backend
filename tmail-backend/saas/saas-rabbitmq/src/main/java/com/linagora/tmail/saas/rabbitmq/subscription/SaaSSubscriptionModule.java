@@ -93,7 +93,7 @@ public class SaaSSubscriptionModule extends AbstractModule {
     MonitoredRabbitMQConsumers saaSSubscriptionConsumers(@Named(TWP_INJECTION_KEY) SimpleConnectionPool twpConnectionPool,
                                                          SaaSSubscriptionConsumer saaSSubscriptionConsumer) {
         return MonitoredRabbitMQConsumers.of("SaaS subscription", twpConnectionPool,
-            () -> ImmutableList.of(SubscriptionConsumerConfig.DEFAULT.queue()),
+            () -> ImmutableList.of(saaSSubscriptionConsumer.getConsumerConfig().queue()),
             connection -> Mono.fromRunnable(saaSSubscriptionConsumer::restartConsumer));
     }
 
@@ -101,18 +101,20 @@ public class SaaSSubscriptionModule extends AbstractModule {
     MonitoredRabbitMQConsumers saaSDomainSubscriptionConsumers(@Named(TWP_INJECTION_KEY) SimpleConnectionPool twpConnectionPool,
                                                                SaaSDomainSubscriptionConsumer saaSDomainSubscriptionConsumer) {
         return MonitoredRabbitMQConsumers.of("SaaS domain subscription", twpConnectionPool,
-            () -> ImmutableList.of(DomainSubscriptionConsumerConfig.DEFAULT.queue()),
+            () -> ImmutableList.of(saaSDomainSubscriptionConsumer.getConsumerConfig().queue()),
             connection -> Mono.fromRunnable(saaSDomainSubscriptionConsumer::restartConsumer));
     }
 
     @ProvidesIntoSet
-    MonitoredDeadLetterQueue saaSSubscriptionDeadLetterQueue(@Named(TWP_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration) {
-        return new MonitoredDeadLetterQueue(twpRabbitMQConfiguration, SubscriptionConsumerConfig.DEFAULT.deadLetterQueue());
+    MonitoredDeadLetterQueue saaSSubscriptionDeadLetterQueue(@Named(TWP_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration,
+                                                            SaaSSubscriptionConsumer saaSSubscriptionConsumer) {
+        return new MonitoredDeadLetterQueue(twpRabbitMQConfiguration, saaSSubscriptionConsumer.getConsumerConfig().deadLetterQueue());
     }
 
     @ProvidesIntoSet
-    MonitoredDeadLetterQueue saaSDomainSubscriptionDeadLetterQueue(@Named(TWP_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration) {
-        return new MonitoredDeadLetterQueue(twpRabbitMQConfiguration, DomainSubscriptionConsumerConfig.DEFAULT.deadLetterQueue());
+    MonitoredDeadLetterQueue saaSDomainSubscriptionDeadLetterQueue(@Named(TWP_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration,
+                                                                  SaaSDomainSubscriptionConsumer saaSDomainSubscriptionConsumer) {
+        return new MonitoredDeadLetterQueue(twpRabbitMQConfiguration, saaSDomainSubscriptionConsumer.getConsumerConfig().deadLetterQueue());
     }
 
     @ProvidesIntoSet
