@@ -23,23 +23,31 @@ import static java.util.concurrent.TimeUnit.SECONDS;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.awaitility.Awaitility.await;
 import static org.hamcrest.Matchers.equalTo;
-import static org.hamcrest.Matchers.hasItems;
 
 import java.util.List;
+import java.util.Set;
+
+import jakarta.inject.Inject;
 
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
+import org.apache.james.backends.rabbitmq.MonitoredDeadLetterQueue;
+import org.apache.james.backends.rabbitmq.MonitoredRabbitMQConsumers;
 import org.apache.james.backends.redis.RedisExtension;
 import org.apache.james.core.healthcheck.ResultStatus;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.apache.james.rate.limiter.redis.RedisRateLimiterModule;
+import org.apache.james.utils.GuiceProbe;
 import org.apache.james.utils.WebAdminGuiceProbe;
 import org.apache.james.webadmin.WebAdminUtils;
 import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
+import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
 import com.linagora.tmail.integration.TMailHealthCheckIntegrationTests;
 import com.linagora.tmail.james.app.CassandraExtension;
@@ -56,6 +64,29 @@ import com.linagora.tmail.rspamd.RspamdExtensionModule;
 import io.restassured.RestAssured;
 
 public class DistributedTMailHealthCheckIntegrationTests extends TMailHealthCheckIntegrationTests {
+    public static class MonitoredRabbitMQProbe implements GuiceProbe {
+        private final Set<MonitoredRabbitMQConsumers> consumers;
+        private final Set<MonitoredDeadLetterQueue> deadLetterQueues;
+
+        @Inject
+        public MonitoredRabbitMQProbe(Set<MonitoredRabbitMQConsumers> consumers, Set<MonitoredDeadLetterQueue> deadLetterQueues) {
+            this.consumers = consumers;
+            this.deadLetterQueues = deadLetterQueues;
+        }
+
+        List<String> consumerNames() {
+            return consumers.stream()
+                .map(MonitoredRabbitMQConsumers::name)
+                .toList();
+        }
+
+        List<String> deadLetterQueues() {
+            return deadLetterQueues.stream()
+                .map(MonitoredDeadLetterQueue::queue)
+                .toList();
+        }
+    }
+
     @RegisterExtension
     static JamesServerExtension testExtension = new JamesServerBuilder<DistributedJamesConfiguration>(tmpDir ->
         DistributedJamesConfiguration.builder()
@@ -80,7 +111,9 @@ public class DistributedTMailHealthCheckIntegrationTests extends TMailHealthChec
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new RedisRateLimiterModule())
             .overrideWith(new LinagoraTestJMAPServerModule())
-            .overrideWith(new DistributedSaaSModule()))
+            .overrideWith(new DistributedSaaSModule())
+            .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
+                .addBinding().to(MonitoredRabbitMQProbe.class)))
         .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
@@ -105,83 +138,35 @@ public class DistributedTMailHealthCheckIntegrationTests extends TMailHealthChec
     }
 
     @Test
-    void twpDeadLetterQueueShouldBeHealthyWhenTWPSettingEnabled(GuiceJamesServer jamesServer) {
-        WebAdminGuiceProbe probe = jamesServer.getProbe(WebAdminGuiceProbe.class);
-        RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(probe.getWebAdminPort()).build();
-
-        given()
-            .queryParam("check", "TWPSettingsDeadLetterQueueHealthCheck")
-        .when()
-            .get("/healthcheck")
-        .then()
-            .statusCode(HttpStatus.OK_200)
-            .body("status", equalTo(ResultStatus.HEALTHY.getValue()))
-            .body("checks.componentName", hasItems("TWPSettingsDeadLetterQueueHealthCheck"));
+    void everyRabbitMQConsumerShouldBeMonitored(GuiceJamesServer jamesServer) {
+        assertThat(jamesServer.getProbe(MonitoredRabbitMQProbe.class).consumerNames())
+            .containsExactlyInAnyOrder("mailboxEvent event bus", "jmapEvent event bus", "contentDeletionEvent event bus",
+                "task manager", "mail queues",
+                "TWP settings", "SaaS subscription", "SaaS domain subscription", "TWP user deletion");
     }
 
     @Test
-    void twpSettingsConsumerHealthcheckShouldBeHealthyWhenTWPSettingEnabled(GuiceJamesServer jamesServer) {
+    void everyRabbitMQDeadLetterQueueShouldBeMonitored(GuiceJamesServer jamesServer) {
+        assertThat(jamesServer.getProbe(MonitoredRabbitMQProbe.class).deadLetterQueues())
+            .containsExactlyInAnyOrder("mailboxEvent-dead-letter-queue", "jmapEvent-dead-letter-queue", "contentDeletionEvent-dead-letter-queue",
+                "JamesMailQueue-dead-letter-queue-spool",
+                "tmail-settings-dead-letter", "tmail-saas-subscription-dead-letter", "tmail-saas-domain-subscription-dead-letter",
+                "tmail-user-deletion-dead-letter");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"RabbitMQConsumers", "RabbitMQDeadLetterQueues"})
+    void rabbitMQHealthChecksShouldBeHealthy(String componentName, GuiceJamesServer jamesServer) {
         WebAdminGuiceProbe probe = jamesServer.getProbe(WebAdminGuiceProbe.class);
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(probe.getWebAdminPort()).build();
 
         await().atMost(30, SECONDS)
             .untilAsserted(() ->
                 given()
-                    .queryParam("check", "TWPSettingsQueueConsumerHealthCheck")
                 .when()
-                    .get("/healthcheck")
+                    .get("/healthcheck/checks/" + componentName)
                 .then()
                     .statusCode(HttpStatus.OK_200)
-                    .body("status", equalTo(ResultStatus.HEALTHY.getValue()))
-                    .body("checks.componentName", hasItems("TWPSettingsQueueConsumerHealthCheck")));
-    }
-
-    @Test
-    void twpUserDeletionHealthchecksShouldBeHealthyWhenTWPSettingEnabled(GuiceJamesServer jamesServer) {
-        WebAdminGuiceProbe probe = jamesServer.getProbe(WebAdminGuiceProbe.class);
-        RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(probe.getWebAdminPort()).build();
-
-        await().atMost(30, SECONDS)
-            .untilAsserted(() ->
-                given()
-                    .queryParam("check", "TWPUserDeletionDeadLetterQueueHealthCheck", "TWPUserDeletionQueueConsumerHealthCheck")
-                .when()
-                    .get("/healthcheck")
-                .then()
-                    .statusCode(HttpStatus.OK_200)
-                    .body("status", equalTo(ResultStatus.HEALTHY.getValue()))
-                    .body("checks.componentName", hasItems("TWPUserDeletionDeadLetterQueueHealthCheck", "TWPUserDeletionQueueConsumerHealthCheck")));
-    }
-
-    @Test
-    void saasSubscriptionQueueShouldBeHealthyWhenSaaSModuleEnabled(GuiceJamesServer jamesServer) {
-        WebAdminGuiceProbe probe = jamesServer.getProbe(WebAdminGuiceProbe.class);
-        RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(probe.getWebAdminPort()).build();
-
-        given()
-            .queryParam("check", "SaaSSubscriptionDeadLetterQueueHealthCheck")
-        .when()
-            .get("/healthcheck")
-        .then()
-            .statusCode(HttpStatus.OK_200)
-            .body("status", equalTo(ResultStatus.HEALTHY.getValue()))
-            .body("checks.componentName", hasItems("SaaSSubscriptionDeadLetterQueueHealthCheck"));
-    }
-
-    @Test
-    void saasSubscriptionConsumerHealthcheckShouldBeHealthyWhenSaaSModuleEnabled(GuiceJamesServer jamesServer) {
-        WebAdminGuiceProbe probe = jamesServer.getProbe(WebAdminGuiceProbe.class);
-        RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(probe.getWebAdminPort()).build();
-
-        await().atMost(30, SECONDS)
-            .untilAsserted(() ->
-                given()
-                    .queryParam("check", "SaaSSubscriptionQueueConsumerHealthCheck")
-                .when()
-                    .get("/healthcheck")
-                .then()
-                    .statusCode(HttpStatus.OK_200)
-                    .body("status", equalTo(ResultStatus.HEALTHY.getValue()))
-                    .body("checks.componentName", hasItems("SaaSSubscriptionQueueConsumerHealthCheck")));
+                    .body("status", equalTo(ResultStatus.HEALTHY.getValue())));
     }
 }

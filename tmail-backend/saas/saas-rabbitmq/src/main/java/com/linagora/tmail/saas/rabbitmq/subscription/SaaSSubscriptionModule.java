@@ -21,15 +21,16 @@ package com.linagora.tmail.saas.rabbitmq.subscription;
 import static com.linagora.tmail.saas.rabbitmq.TWPConstants.TWP_INJECTION_KEY;
 
 import java.io.FileNotFoundException;
-import java.util.List;
 
 import jakarta.inject.Named;
 import jakarta.inject.Singleton;
 
 import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.james.backends.rabbitmq.MonitoredDeadLetterQueue;
+import org.apache.james.backends.rabbitmq.MonitoredRabbitMQConsumers;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
-import org.apache.james.core.healthcheck.HealthCheck;
+import org.apache.james.backends.rabbitmq.SimpleConnectionPool;
 import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.mailbox.quota.MaxQuotaManager;
 import org.apache.james.mailbox.quota.UserQuotaRootResolver;
@@ -40,7 +41,6 @@ import org.apache.james.utils.PropertiesProvider;
 import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
-import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
@@ -48,18 +48,9 @@ import com.linagora.tmail.saas.rabbitmq.TWPCommonRabbitMQConfiguration;
 import com.linagora.tmail.saas.rabbitmq.subscription.SaaSDomainSubscriptionConsumer.DomainSubscriptionConsumerConfig;
 import com.linagora.tmail.saas.rabbitmq.subscription.SaaSSubscriptionConsumer.SubscriptionConsumerConfig;
 
+import reactor.core.publisher.Mono;
+
 public class SaaSSubscriptionModule extends AbstractModule {
-    private static final List<String> SUBSCRIPTION_QUEUES = ImmutableList.of(SubscriptionConsumerConfig.DEFAULT.queue(), DomainSubscriptionConsumerConfig.DEFAULT.queue());
-    private static final List<String> SUBSCRIPTION_DEAD_LETTER_QUEUES = ImmutableList.of(SubscriptionConsumerConfig.DEFAULT.deadLetterQueue(), DomainSubscriptionConsumerConfig.DEFAULT.deadLetterQueue());
-
-    @Override
-    protected void configure() {
-        Multibinder.newSetBinder(binder(), HealthCheck.class).addBinding()
-            .to(SaaSSubscriptionDeadLetterQueueHealthCheck.class);
-        Multibinder.newSetBinder(binder(), HealthCheck.class).addBinding()
-            .to(SaaSSubscriptionQueueConsumerHealthCheck.class);
-    }
-
     @Provides
     @Singleton
     SaaSSubscriptionConsumer provideSaaSSubscriptionConsumer(@Named(TWP_INJECTION_KEY) ReactorRabbitMQChannelPool channelPool,
@@ -98,18 +89,32 @@ public class SaaSSubscriptionModule extends AbstractModule {
             DomainSubscriptionConsumerConfig.DEFAULT);
     }
 
-    @Provides
-    @Singleton
-    SaaSSubscriptionQueueConsumerHealthCheck provideSaaSSubscriptionQueueConsumerHealthCheck(@Named(TWP_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration,
-                                                                                             SaaSSubscriptionConsumer saaSSubscriptionConsumer,
-                                                                                             SaaSDomainSubscriptionConsumer saaSDomainSubscriptionConsumer) {
-        return new SaaSSubscriptionQueueConsumerHealthCheck(twpRabbitMQConfiguration, saaSSubscriptionConsumer, saaSDomainSubscriptionConsumer, SUBSCRIPTION_QUEUES);
+    @ProvidesIntoSet
+    MonitoredRabbitMQConsumers saaSSubscriptionConsumers(@Named(TWP_INJECTION_KEY) SimpleConnectionPool twpConnectionPool,
+                                                         SaaSSubscriptionConsumer saaSSubscriptionConsumer) {
+        return MonitoredRabbitMQConsumers.of("SaaS subscription", twpConnectionPool,
+            () -> ImmutableList.of(saaSSubscriptionConsumer.getConsumerConfig().queue()),
+            connection -> Mono.fromRunnable(saaSSubscriptionConsumer::restartConsumer));
     }
 
-    @Provides
-    @Singleton
-    SaaSSubscriptionDeadLetterQueueHealthCheck provideSaaSSubscriptionDeadLetterQueueHealthCheck(@Named(TWP_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration) {
-        return new SaaSSubscriptionDeadLetterQueueHealthCheck(twpRabbitMQConfiguration, SUBSCRIPTION_DEAD_LETTER_QUEUES);
+    @ProvidesIntoSet
+    MonitoredRabbitMQConsumers saaSDomainSubscriptionConsumers(@Named(TWP_INJECTION_KEY) SimpleConnectionPool twpConnectionPool,
+                                                               SaaSDomainSubscriptionConsumer saaSDomainSubscriptionConsumer) {
+        return MonitoredRabbitMQConsumers.of("SaaS domain subscription", twpConnectionPool,
+            () -> ImmutableList.of(saaSDomainSubscriptionConsumer.getConsumerConfig().queue()),
+            connection -> Mono.fromRunnable(saaSDomainSubscriptionConsumer::restartConsumer));
+    }
+
+    @ProvidesIntoSet
+    MonitoredDeadLetterQueue saaSSubscriptionDeadLetterQueue(@Named(TWP_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration,
+                                                            SaaSSubscriptionConsumer saaSSubscriptionConsumer) {
+        return new MonitoredDeadLetterQueue(twpRabbitMQConfiguration, saaSSubscriptionConsumer.getConsumerConfig().deadLetterQueue());
+    }
+
+    @ProvidesIntoSet
+    MonitoredDeadLetterQueue saaSDomainSubscriptionDeadLetterQueue(@Named(TWP_INJECTION_KEY) RabbitMQConfiguration twpRabbitMQConfiguration,
+                                                                  SaaSDomainSubscriptionConsumer saaSDomainSubscriptionConsumer) {
+        return new MonitoredDeadLetterQueue(twpRabbitMQConfiguration, saaSDomainSubscriptionConsumer.getConsumerConfig().deadLetterQueue());
     }
 
     @ProvidesIntoSet

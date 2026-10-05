@@ -26,7 +26,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.Optional;
 import java.util.Set;
 
-import javax.annotation.PreDestroy;
+import jakarta.annotation.PreDestroy;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
