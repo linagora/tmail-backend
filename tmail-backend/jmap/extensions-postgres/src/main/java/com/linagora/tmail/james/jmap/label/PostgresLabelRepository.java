@@ -33,6 +33,7 @@ import org.reactivestreams.Publisher;
 
 import com.google.common.collect.ImmutableSet;
 import com.linagora.tmail.james.jmap.model.Color;
+import com.linagora.tmail.james.jmap.model.ColorUpdate;
 import com.linagora.tmail.james.jmap.model.DescriptionUpdate;
 import com.linagora.tmail.james.jmap.model.DisplayName;
 import com.linagora.tmail.james.jmap.model.Label;
@@ -82,7 +83,7 @@ public class PostgresLabelRepository implements LabelRepository {
     }
 
     @Override
-    public Publisher<Void> updateLabel(Username username, LabelId labelId, Option<DisplayName> newDisplayName, Option<Color> newColor, Option<DescriptionUpdate> newDescription) {
+    public Publisher<Void> updateLabel(Username username, LabelId labelId, Option<DisplayName> newDisplayName, Option<ColorUpdate> newColor, Option<DescriptionUpdate> newDescription) {
         PostgresLabelDAO dao = labelDAO(username);
 
         return Mono.from(dao.selectSome(username, List.of(labelId.toKeyword())))
@@ -142,9 +143,11 @@ public class PostgresLabelRepository implements LabelRepository {
         return new PostgresLabelDAO(executorFactory.create(username.getDomainPart()));
     }
 
-    private Label computeUpdatedLabel(Label oldLabel, Option<DisplayName> newDisplayName, Option<Color> newColor, Option<DescriptionUpdate> newDescription) {
+    private Label computeUpdatedLabel(Label oldLabel, Option<DisplayName> newDisplayName, Option<ColorUpdate> newColor, Option<DescriptionUpdate> newDescription) {
         DisplayName displayName = OptionConverters.toJava(newDisplayName).orElse(oldLabel.displayName());
-        Option<Color> color = newColor.isDefined() ? newColor : oldLabel.color();
+        Option<Color> color = OptionConverters.toJava(newColor)
+            .map(ColorUpdate::value)
+            .orElse(oldLabel.color());
         Option<String> description = OptionConverters.toJava(newDescription)
             .<Option<String>>map(du -> OptionConverters.toJava(du.value())
                 .<Option<String>>map(d -> scala.Option.apply(d))

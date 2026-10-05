@@ -1153,6 +1153,61 @@ trait LabelSetMethodContract {
   }
 
   @Test
+  def labelSetUpdateShouldRemoveColorWhenNull(server: GuiceJamesServer): Unit = {
+    val createdLabelId: String = createLabel(accountId = ACCOUNT_ID, displayName = LABEL_NAME, color = LABEL_COLOR, description = LABEL_DESCRIPTION)
+
+    val request =
+      s"""{
+         |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+         |	"methodCalls": [[
+         |			"Label/set", {
+         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"update": {
+         |					"$createdLabelId": {
+         |						"color": null
+         |					}
+         |				}
+         |			}, "0"]]
+         |}""".stripMargin
+
+    val response = `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState")
+      .isEqualTo(
+        s"""{
+           |	"sessionState": "${SESSION_STATE.value}",
+           |	"methodResponses": [[
+           |			"Label/set",
+           |			{
+           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"updated": {
+           |					"$createdLabelId": {}
+           |				}
+           |			},
+           |			"0"]]
+           |}""".stripMargin)
+
+    SoftAssertions.assertSoftly(softly => {
+      val updatedLabel: Label = server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(BOB).get(0)
+      softly.assertThat(updatedLabel.displayName.value).isEqualTo(LABEL_NAME)
+      softly.assertThat(updatedLabel.color.isEmpty).isTrue
+      softly.assertThat(updatedLabel.description.get).isEqualTo(LABEL_DESCRIPTION)
+    })
+  }
+
+  @Test
   def labelSetUpdateShouldSucceedWhenValidDescription(server: GuiceJamesServer): Unit = {
     val createdLabelId: String = createLabel(accountId = ACCOUNT_ID, displayName = LABEL_NAME, color = LABEL_COLOR, description = LABEL_DESCRIPTION)
 

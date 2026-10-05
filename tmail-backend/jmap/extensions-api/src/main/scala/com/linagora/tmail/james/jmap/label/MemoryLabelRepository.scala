@@ -22,7 +22,7 @@ import java.util
 
 import com.google.common.collect.{HashBasedTable, ImmutableList, ImmutableSet, Table, Tables}
 import com.google.inject.name.Named
-import com.linagora.tmail.james.jmap.model.{Color, DescriptionUpdate, DisplayName, Label, LabelCreationRequest, LabelId, LabelNotFoundException}
+import com.linagora.tmail.james.jmap.model.{ColorUpdate, DescriptionUpdate, DisplayName, Label, LabelCreationRequest, LabelId, LabelNotFoundException}
 import jakarta.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.events.{Event, EventBus, RegistrationKey}
@@ -55,13 +55,13 @@ class MemoryLabelRepository @Inject()(@Named("TMAIL_EVENT_BUS") eventBus: EventB
     SFlux.fromIterable(labelCreationRequests.asScala)
       .concatMap(creationRequest => addLabel(username, creationRequest))
 
-  override def updateLabel(username: Username, labelId: LabelId, newDisplayName: Option[DisplayName] = None, newColor: Option[Color] = None, newDescription: Option[DescriptionUpdate] = None): Publisher[Void] =
+  override def updateLabel(username: Username, labelId: LabelId, newDisplayName: Option[DisplayName] = None, newColor: Option[ColorUpdate] = None, newDescription: Option[DescriptionUpdate] = None): Publisher[Void] =
     SMono.justOrEmpty(labelsTable.get(username, labelId.toKeyword))
       .switchIfEmpty(SMono.error(LabelNotFoundException(labelId)))
       .flatMap(oldLabel => {
         val updatedLabel = oldLabel.copy(
           displayName = newDisplayName.getOrElse(oldLabel.displayName),
-          color = newColor.orElse(oldLabel.color),
+          color = newColor.map(_.value).getOrElse(oldLabel.color),
           description = newDescription match {
             case Some(DescriptionUpdate(Some(desc))) => Some(desc)
             case Some(DescriptionUpdate(None)) => None

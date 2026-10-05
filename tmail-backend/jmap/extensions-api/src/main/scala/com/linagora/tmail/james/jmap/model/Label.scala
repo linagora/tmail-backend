@@ -67,6 +67,8 @@ object Color {
 
 case class Color(value: String)
 
+case class ColorUpdate(value: Option[Color])
+
 case class DescriptionUpdate(value: Option[String])
 
 object LabelCreationRequest {

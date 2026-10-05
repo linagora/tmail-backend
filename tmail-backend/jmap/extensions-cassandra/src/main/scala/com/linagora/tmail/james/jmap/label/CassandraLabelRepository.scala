@@ -25,7 +25,7 @@ import com.google.common.collect.ImmutableSet
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.name.Named
 import com.google.inject.{AbstractModule, Provides, Scopes}
-import com.linagora.tmail.james.jmap.model.{Color, DescriptionUpdate, DisplayName, Label, LabelCreationRequest, LabelId, LabelNotFoundException}
+import com.linagora.tmail.james.jmap.model.{ColorUpdate, DescriptionUpdate, DisplayName, Label, LabelCreationRequest, LabelId, LabelNotFoundException}
 import jakarta.inject.Inject
 import org.apache.james.backends.cassandra.components.CassandraDataDefinition
 import org.apache.james.core.Username
@@ -56,13 +56,13 @@ class CassandraLabelRepository @Inject()(dao: CassandraLabelDAO, @Named("TMAIL_E
     SFlux.fromIterable(labelCreationRequests.asScala)
       .concatMap(addLabel(username, _))
 
-  override def updateLabel(username: Username, labelId: LabelId, newDisplayName: Option[DisplayName], newColor: Option[Color], newDescription: Option[DescriptionUpdate]): Publisher[Void] =
+  override def updateLabel(username: Username, labelId: LabelId, newDisplayName: Option[DisplayName], newColor: Option[ColorUpdate], newDescription: Option[DescriptionUpdate]): Publisher[Void] =
     dao.selectOne(username, labelId.toKeyword)
       .switchIfEmpty(SMono.error(LabelNotFoundException(labelId)))
       .flatMap(oldLabel => {
         val updatedLabel = oldLabel.copy(
           displayName = newDisplayName.getOrElse(oldLabel.displayName),
-          color = newColor.orElse(oldLabel.color),
+          color = newColor.map(_.value).getOrElse(oldLabel.color),
           description = newDescription match {
             case Some(DescriptionUpdate(Some(desc))) => Some(desc)
             case Some(DescriptionUpdate(None)) => None
