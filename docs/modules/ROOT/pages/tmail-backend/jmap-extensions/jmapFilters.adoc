@@ -38,10 +38,10 @@ A filter is associated with a list of `Rule`.
 
 A `Rule` object has the following properties:
 
- - **id**: Server-set, `Id`, immutable, the JMAP identifier.
+ - **id**: Client-set, `Id`, the JMAP identifier. Must be unique within the list of rules.
  - **name**: `String`, the name of the rule, which can be used to hold an explanation regarding the purpose of this rule.
  - **conditionGroup**: `ConditionGroup`, when this rule should be applied.
- - **condition**: `Condition`, when this rule should be applied. This is the old property replaced by the property conditionGroup. This property is still retained to keep backend compatible with frontend that has not been updated yet. In the future, this property should be removed.
+ - **condition**: `Condition`, when this rule should be applied. This is the old property replaced by the property conditionGroup. This property is still retained to keep backend compatible with frontend that has not been updated yet. In the future, this property should be removed. `Filter/get` returns it as the first condition of `conditionGroup`. `Filter/set` accepts a rule carrying both properties only if `condition` equals the first condition of `conditionGroup`, so that the rules returned by `Filter/get` can be sent back as is to `Filter/set`.
  - **action**: `Action`, what to do when the rule is applied.
 
 A `ConditionGroup` object has the following properties:
@@ -177,6 +177,7 @@ Will return:
 				"list": [{
 					"id": "singleton",
 					"rules": [{
+						"id": "1",
 						"name": "My first rule",
 						"conditionGroup": {
 							"conditionCombiner": "AND",
@@ -284,6 +285,7 @@ Will return:
 				"list": [{
 					"id": "singleton",
 					"rules": [{
+						"id": "1",
 						"name": "My first rule",
 						"conditionGroup": {
 							"conditionCombiner": "AND",

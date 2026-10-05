@@ -19,7 +19,7 @@
 package com.linagora.tmail.james.jmap.json
 
 import com.linagora.tmail.james.jmap.model.ConditionCombiner.ConditionCombiner
-import com.linagora.tmail.james.jmap.model.{Action, AppendIn, Comparator, Condition, ConditionCombiner, ConditionGroup, Field, Filter, FilterForward, FilterGetIds, FilterGetNotFound, FilterGetRequest, FilterGetResponse, FilterSetError, FilterSetRequest, FilterSetResponse, FilterSetUpdateResponse, FilterState, KeepACopy, MailAddress, MarkAsImportant, MarkAsSeen, MoveTo, Reject, Rule, RuleWithId, SerializedRule, Update, WithKeywords}
+import com.linagora.tmail.james.jmap.model.{Action, AppendIn, Comparator, Condition, ConditionCombiner, ConditionGroup, Field, Filter, FilterForward, FilterGetIds, FilterGetNotFound, FilterGetRequest, FilterGetResponse, FilterSetError, FilterSetRequest, FilterSetResponse, FilterSetUpdateResponse, FilterState, KeepACopy, MailAddress, MarkAsImportant, MarkAsSeen, MoveTo, Reject, Rule, RuleId, RuleWithId, SerializedRule, Update, WithKeywords}
 import jakarta.inject.Inject
 import org.apache.james.jmap.mail.{Keyword, Name}
 import org.apache.james.mailbox.model.MailboxId
@@ -63,6 +63,7 @@ case class FilterSerializer @Inject()(mailboxIdFactory: MailboxId.Factory) {
   implicit val forwardToFormat: Format[FilterForward] = Json.format[FilterForward]
   implicit val moveToFormat: Format[MoveTo] = Json.format[MoveTo]
   implicit val actionFormat: Format[Action] = Json.format[Action]
+  implicit val ruleIdWrites: Writes[RuleId] = Json.valueWrites[RuleId]
   implicit val ruleWrites: Writes[Rule] = Json.writes[Rule]
   implicit val filterWrites: Writes[Filter] = Json.writes[Filter]
   implicit val notFoundWrites: Writes[FilterGetNotFound] = Json.valueWrites[FilterGetNotFound]
@@ -72,7 +73,8 @@ case class FilterSerializer @Inject()(mailboxIdFactory: MailboxId.Factory) {
   implicit val ruleWithIdReads: Reads[RuleWithId] = jsValue => serializedRuleReads.reads(jsValue)
     .flatMap {
       case s if s.condition.isEmpty && s.conditionGroup.isEmpty => JsError("condition or conditionGroup needs to be specified")
-      case s if s.condition.isDefined && s.conditionGroup.isDefined => JsError("condition and conditionGroup cannot be specified at the same time")
+      case s if s.condition.isDefined && s.conditionGroup.exists(group => !s.condition.equals(group.conditions.headOption)) =>
+        JsError("condition must match the first condition of conditionGroup when both are specified")
       case s =>
         val conditionGroup: ConditionGroup = s.conditionGroup.getOrElse(ConditionGroup(ConditionCombiner.AND, s.condition.toList))
         JsSuccess(RuleWithId(s.id, s.name, conditionGroup, s.action))

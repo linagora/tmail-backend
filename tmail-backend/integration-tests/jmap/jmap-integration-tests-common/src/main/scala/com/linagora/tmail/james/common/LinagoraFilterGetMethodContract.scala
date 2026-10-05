@@ -119,6 +119,7 @@ trait LinagoraFilterGetMethodContract {
          |        "id": "singleton",
          |        "rules": [
          |          {
+         |            "id": "1",
          |            "name": "My first rule",
          |            "condition": {
          |              "field": "subject",
@@ -371,6 +372,7 @@ trait LinagoraFilterGetMethodContract {
          |        "id": "singleton",
          |        "rules": [
          |          {
+         |            "id": "1",
          |            "name": "My first rule",
          |            "condition": {
          |              "field": "subject",
@@ -453,6 +455,7 @@ trait LinagoraFilterGetMethodContract {
          |        "id": "singleton",
          |        "rules": [
          |          {
+         |            "id": "1",
          |            "name": "My first rule",
          |            "condition": {
          |              "field": "subject",
@@ -636,6 +639,7 @@ trait LinagoraFilterGetMethodContract {
          |        "id": "singleton",
          |        "rules": [
          |          {
+         |            "id": "1",
          |            "name": "My first rule",
          |            "conditionGroup": {
          |              "conditionCombiner": "OR",
@@ -727,6 +731,7 @@ trait LinagoraFilterGetMethodContract {
          |        "id": "singleton",
          |        "rules": [
          |          {
+         |            "id": "1",
          |            "name": "My first rule",
          |            "conditionGroup": {
          |              "conditionCombiner": "AND",
@@ -814,6 +819,7 @@ trait LinagoraFilterGetMethodContract {
          |        "id": "singleton",
          |        "rules": [
          |          {
+         |            "id": "1",
          |            "name": "My first rule",
          |            "condition": {
          |              "field": "subject",
@@ -895,6 +901,7 @@ trait LinagoraFilterGetMethodContract {
          |        "id": "singleton",
          |        "rules": [
          |          {
+         |            "id": "1",
          |            "name": "My first rule",
          |            "conditionGroup": {
          |              "conditionCombiner": "OR",
