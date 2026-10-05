@@ -40,7 +40,7 @@ Example:
 ....
 {
   "id": "02242f08",
-  "publicURI": "http://jmap.example.com/publicAsset/368ef913/02242f08"
+  "publicURI": "http://jmap.example.com/publicAsset/alice@example.com/02242f08"
   "size": 1234,
   "contentType": "image/png",
   "blobId": "1234-5678",
@@ -52,9 +52,17 @@ Example:
 ....
 
 Note: The JMAP server needs to expose an extra JMAP route to be able to serve the public URI of the `PublicAsset` object.
-The public URI is generated following this pattern: `{jmap_endpoint}/publicAsset/{account_id}/{asset_id}`.
+The public URI is generated following this pattern: `{jmap_endpoint}/publicAsset/{username}/{asset_id}`.
 The public URI has the role to fetch the `PublicAsset` in the blob store to serve the image it represents via a HTTP GET method.
 It is a public endpoint so no authentication is required.
+
+Clients should treat the public URI as opaque and use the `publicURI` value returned by the server as is.
+Note that it embeds the username (login) of the owner of the `PublicAsset`, regardless of the identity using it: an asset
+bound to an alias identity (eg `support@example.com` for user `alice@example.com`) is served under
+`/publicAsset/alice@example.com/...`, thus disclosing the login to recipients of the emails referencing it.
+
+Public assets are not moved upon username changes: they remain attached to the former username so that public URIs
+already embedded in sent emails keep pointing to them.
 
 == PublicAsset/get
 
@@ -111,7 +119,7 @@ Response:
               "list": [
                   {
                       "id": "297bf5a7-855d-459a-9853-02031169b704",
-                      "publicURI": "https://jmap.example.com/publicAsset/29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6/297bf5a7-855d-459a-9853-02031169b704",
+                      "publicURI": "https://jmap.example.com/publicAsset/alice@example.com/297bf5a7-855d-459a-9853-02031169b704",
                       "size": 11534336,
                       "content-type": "image/png",
                       "identityIds": {
