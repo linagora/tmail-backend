@@ -41,6 +41,7 @@ import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
 import org.mockito.Mockito.{mock, reset, times, verify, when}
+import play.api.libs.json.{JsValue, Json}
 import reactor.core.publisher.Mono
 
 object LinagoraFilterSetMethodContract {
@@ -145,6 +146,7 @@ trait LinagoraFilterSetMethodContract {
          |				"list": [{
          |					"id": "singleton",
          |					"rules": [{
+         |						"id": "1",
          |						"name": "My first rule",
          |						"conditionGroup": {
          |							"conditionCombiner": "AND",
@@ -252,6 +254,7 @@ trait LinagoraFilterSetMethodContract {
          |				"list": [{
          |					"id": "singleton",
          |					"rules": [{
+         |						"id": "1",
          |						"name": "My first rule",
          |						"conditionGroup": {
          |							"conditionCombiner": "AND",
@@ -360,6 +363,7 @@ trait LinagoraFilterSetMethodContract {
          |				"list": [{
          |					"id": "singleton",
          |					"rules": [{
+         |						"id": "1",
          |						"name": "My first rule",
          |						"conditionGroup": {
          |							"conditionCombiner": "AND",
@@ -473,6 +477,7 @@ trait LinagoraFilterSetMethodContract {
          |				"list": [{
          |					"id": "singleton",
          |					"rules": [{
+         |						"id": "1",
          |						"name": "My first rule",
          |						"conditionGroup": {
          |							"conditionCombiner": "AND",
@@ -658,6 +663,7 @@ trait LinagoraFilterSetMethodContract {
          |				"list": [{
          |					"id": "singleton",
          |					"rules": [{
+         |						"id": "1",
          |						"name": "My first rule",
          |						"conditionGroup": {
          |							"conditionCombiner": "AND",
@@ -769,6 +775,7 @@ trait LinagoraFilterSetMethodContract {
          |				"list": [{
          |					"id": "singleton",
          |					"rules": [{
+         |						"id": "1",
          |						"name": "My first rule",
          |						"conditionGroup": {
          |							"conditionCombiner": "AND",
@@ -877,6 +884,7 @@ trait LinagoraFilterSetMethodContract {
          |				"list": [{
          |					"id": "singleton",
          |					"rules": [{
+         |						"id": "1",
          |						"name": "My first rule",
          |						"conditionGroup": {
          |							"conditionCombiner": "AND",
@@ -985,6 +993,7 @@ trait LinagoraFilterSetMethodContract {
          |				"list": [{
          |					"id": "singleton",
          |					"rules": [{
+         |						"id": "1",
          |						"name": "My first rule",
          |						"conditionGroup": {
          |							"conditionCombiner": "AND",
@@ -1957,6 +1966,7 @@ trait LinagoraFilterSetMethodContract {
          |				"list": [{
          |					"id": "singleton",
          |					"rules": [{
+         |						"id": "2",
          |						"name": "My second rule",
          |						"conditionGroup": {
          |							"conditionCombiner": "AND",
@@ -2158,6 +2168,7 @@ trait LinagoraFilterSetMethodContract {
          |				"list": [{
          |					"id": "singleton",
          |					"rules": [{
+         |						"id": "1",
          |						"name": "My first rule",
          |						"conditionGroup": {
          |							"conditionCombiner": "AND",
@@ -2470,6 +2481,7 @@ trait LinagoraFilterSetMethodContract {
            |				"list": [{
            |					"id": "singleton",
            |					"rules": [{
+           |						"id": "1",
            |						"name": "My first rule",
            |						"conditionGroup": {
            |							"conditionCombiner": "OR",
@@ -2504,6 +2516,88 @@ trait LinagoraFilterSetMethodContract {
            |	]
            |}""".stripMargin)
   }
+
+  @Test
+  def filterGetRulesShouldBeAValidFilterSetInput(): Unit = {
+    postFilterSet(
+      s"""[{
+         |	"id": "rule-a",
+         |	"name": "A",
+         |	"conditionGroup": {
+         |		"conditionCombiner": "AND",
+         |		"conditions": [
+         |			{"field": "subject", "comparator": "contains", "value": "alpha"},
+         |			{"field": "from", "comparator": "contains", "value": "user2"}
+         |		]
+         |	},
+         |	"action": {"appendIn": {"mailboxIds": ["$generateMailboxIdForUser"]}}
+         |}]""".stripMargin)
+    val rules: JsValue = getRules
+
+    val response = postFilterSet(Json.stringify(rules))
+
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].updated")
+      .isEqualTo("""{"singleton": {}}""")
+    assertThatJson(Json.stringify(getRules)).isEqualTo(Json.stringify(rules))
+  }
+
+  @Test
+  def updateShouldFailWhenConditionDoesNotMatchConditionGroup(): Unit = {
+    val response = postFilterSet(
+      s"""[{
+         |	"id": "1",
+         |	"name": "My first rule",
+         |	"conditionGroup": {
+         |		"conditionCombiner": "AND",
+         |		"conditions": [{"field": "subject", "comparator": "contains", "value": "alpha"}]
+         |	},
+         |	"condition": {"field": "subject", "comparator": "contains", "value": "beta"},
+         |	"action": {"appendIn": {"mailboxIds": ["$generateMailboxIdForUser"]}}
+         |}]""".stripMargin)
+
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].notUpdated.singleton.type")
+      .isEqualTo("invalidArguments")
+  }
+
+  private def postFilterSet(rules: String): String =
+    postJmapRequest(
+      s"""{
+         |	"using": ["com:linagora:params:jmap:filter"],
+         |	"methodCalls": [
+         |		["Filter/set", {
+         |			"accountId": "$generateAccountIdAsString",
+         |			"update": {"singleton": $rules}
+         |		}, "c1"]
+         |	]
+         |}""".stripMargin)
+
+  private def getRules: JsValue =
+    (Json.parse(postJmapRequest(
+      s"""{
+         |	"using": ["com:linagora:params:jmap:filter"],
+         |	"methodCalls": [
+         |		["Filter/get", {
+         |			"accountId": "$generateAccountIdAsString",
+         |			"ids": ["singleton"]
+         |		}, "c1"]
+         |	]
+         |}""".stripMargin)) \ "methodResponses" \ 0 \ 1 \ "list" \ 0 \ "rules").get
+
+  private def postJmapRequest(request: String): String =
+    `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
 
   @Test
   def shouldNotPushToFCMWhenFailureFilterSet(): Unit = {

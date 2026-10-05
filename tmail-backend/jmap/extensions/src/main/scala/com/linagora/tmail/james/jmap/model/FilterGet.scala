@@ -70,7 +70,9 @@ case class Action(appendIn: AppendIn, markAsSeen: Option[MarkAsSeen], markAsImpo
                   reject: Option[Reject], withKeywords: Option[WithKeywords], forwardTo: Option[FilterForward],
                   moveTo: Option[MoveTo])
 
-case class Rule(name: Name, conditionGroup: ConditionGroup, condition: Condition,  action: Action)
+case class RuleId(value: String) extends AnyVal
+
+case class Rule(id: RuleId, name: Name, conditionGroup: ConditionGroup, condition: Condition,  action: Action)
 
 case class Filter(id: Id, rules: List[Rule])
 
@@ -96,7 +98,8 @@ case object FilterTypeName extends TypeName {
 }
 object Rule {
   def fromJava(rule: JavaRule, mailboxIdFactory: MailboxId.Factory): Rule =
-    Rule(Name(rule.getName),
+    Rule(RuleId(rule.getId.asString),
+      Name(rule.getName),
       ConditionGroup(ConditionCombiner.withName(rule.getConditionGroup.getConditionCombiner.toString()),
         rule.getConditionGroup.getConditions.asScala.toList.map(condition => convertFromJavaConditionToScalaCondition(condition))),
       convertFromJavaConditionToScalaCondition(rule.getConditionGroup.getConditions.get(0)),
