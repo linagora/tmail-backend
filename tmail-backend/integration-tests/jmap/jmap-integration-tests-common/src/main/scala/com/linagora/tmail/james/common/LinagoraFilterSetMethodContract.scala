@@ -2557,7 +2557,10 @@ trait LinagoraFilterSetMethodContract {
          |}]""".stripMargin)
 
     assertThatJson(response)
-      .inPath("methodResponses[0][1].notUpdated.singleton.type")
+      .inPath("methodResponses[0][0]")
+      .isEqualTo("error")
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].type")
       .isEqualTo("invalidArguments")
   }
 
