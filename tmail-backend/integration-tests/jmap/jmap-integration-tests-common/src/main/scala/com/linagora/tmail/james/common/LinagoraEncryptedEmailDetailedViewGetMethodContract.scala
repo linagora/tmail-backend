@@ -19,7 +19,10 @@
 package com.linagora.tmail.james.common
 
 import java.nio.charset.StandardCharsets
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
 
+import com.google.common.hash.Hashing
 import com.linagora.tmail.james.common.EncryptHelper.{decrypt, uploadPublicKey}
 import com.linagora.tmail.james.common.LinagoraEncryptedEmailDetailedViewGetMethodContract.{BOB_INBOX_PATH, MESSAGE, MESSAGE_HAS_ATTACHMENTS, MESSAGE_HTML, MESSAGE_PREVIEW}
 import com.linagora.tmail.james.common.probe.JmapGuiceEncryptedEmailContentStoreProbe
@@ -31,10 +34,11 @@ import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import net.javacrumbs.jsonunit.core.Option
 import org.apache.http.HttpStatus
 import org.apache.james.GuiceJamesServer
+import org.apache.james.core.Username
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.core.UuidState.INSTANCE
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_ACCOUNT_ID, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE_PASSWORD, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.{MailboxConstants, MailboxPath, MessageId}
@@ -47,11 +51,23 @@ import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import play.api.libs.json.{JsString, Json}
 
 object LinagoraEncryptedEmailDetailedViewGetMethodContract {
-  val MESSAGE: Message = Message.Builder.of
+  case class TestContext(bobUsername: Username, andreUsername: Username) {
+    val bobAccountId: String = accountId(bobUsername)
+    val andreAccountId: String = accountId(andreUsername)
+  }
+
+  private val currentContext: AtomicReference[TestContext] = new AtomicReference[TestContext]()
+
+  private def bobUsername: Username = currentContext.get().bobUsername
+
+  private def accountId(username: Username): String =
+    Hashing.sha256().hashString(username.asString(), StandardCharsets.UTF_8).toString
+
+  def MESSAGE: Message = Message.Builder.of
     .setSubject("test")
-    .setSender(BOB.asString)
-    .setFrom(BOB.asString)
-    .setTo(BOB.asString)
+    .setSender(bobUsername.asString)
+    .setFrom(bobUsername.asString)
+    .setTo(bobUsername.asString)
     .setBody("test mail", StandardCharsets.UTF_8)
     .build
 
@@ -69,27 +85,39 @@ object LinagoraEncryptedEmailDetailedViewGetMethodContract {
 
   val MESSAGE_PREVIEW: String = "test mail"
   val MESSAGE_HTML: String = "test mail"
-  val BOB_INBOX_PATH: MailboxPath = MailboxPath.inbox(BOB)
+  def BOB_INBOX_PATH: MailboxPath = MailboxPath.inbox(bobUsername)
 }
 
 trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
+  def bobUsername: Username = LinagoraEncryptedEmailDetailedViewGetMethodContract.currentContext.get().bobUsername
+
+  def bobAccountId: String = LinagoraEncryptedEmailDetailedViewGetMethodContract.currentContext.get().bobAccountId
+
+  def andreUsername: Username = LinagoraEncryptedEmailDetailedViewGetMethodContract.currentContext.get().andreUsername
+
+  def andreAccountId: String = LinagoraEncryptedEmailDetailedViewGetMethodContract.currentContext.get().andreAccountId
 
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    val bob = Username.fromLocalPartWithDomain(s"bob$uniqueSuffix", DOMAIN)
+    val andre = Username.fromLocalPartWithDomain(s"andre$uniqueSuffix", DOMAIN)
+    LinagoraEncryptedEmailDetailedViewGetMethodContract.currentContext.set(LinagoraEncryptedEmailDetailedViewGetMethodContract.TestContext(bob, andre))
+
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
       .addDomain(DOMAIN.asString)
-      .addUser(BOB.asString(), BOB_PASSWORD)
+      .addUser(bobUsername.asString(), BOB_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .setAuth(authScheme(UserCredential(bobUsername, BOB_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build()
 
     server.getProbe(classOf[MailboxProbeImpl])
       .createMailbox(BOB_INBOX_PATH)
 
-    uploadPublicKey(ACCOUNT_ID, requestSpecification)
+    uploadPublicKey(bobAccountId, requestSpecification)
   }
 
   def randomMessageId: MessageId
@@ -101,7 +129,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core"],
          |  "methodCalls": [
          |    ["EncryptedEmailDetailedView/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "ids": ["1"]
          |    }, "c1"]
          |  ]
@@ -137,7 +165,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
          |  "using": [],
          |  "methodCalls": [
          |    ["EncryptedEmailDetailedView/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "ids": ["1"]
          |    }, "c1"]
          |  ]
@@ -213,7 +241,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
          |    ["EncryptedEmailDetailedView/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "ids": $emailIdsJson
          |    }, "c1"]
          |  ]
@@ -252,7 +280,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
          |    ["EncryptedEmailDetailedView/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "ids": ["invalid"]
          |    }, "c1"]
          |  ]
@@ -277,7 +305,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
            |        [
            |            "EncryptedEmailDetailedView/get",
            |            {
-           |                "accountId": "$ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "state": "${INSTANCE.value}",
            |                "notFound": ["invalid"],
            |                "list": []
@@ -296,7 +324,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
          |    ["EncryptedEmailDetailedView/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "ids": ["${messageId.serialize}"]
          |    }, "c1"]
          |  ]
@@ -321,7 +349,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
            |        [
            |            "EncryptedEmailDetailedView/get",
            |            {
-           |                "accountId": "$ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "state": "${INSTANCE.value}",
            |                "list": [],
            |                "notFound": [
@@ -337,7 +365,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
   @Test
   def methodShouldReturnNotFoundWhenEncryptedEmailContentDoesNotExist(server: GuiceJamesServer): Unit = {
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(),
+      .appendMessage(bobUsername.asString(),
         BOB_INBOX_PATH,
         AppendCommand.from(MESSAGE))
       .getMessageId
@@ -350,7 +378,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
          |    ["EncryptedEmailDetailedView/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "ids": ["${messageId.serialize}"]
          |    }, "c1"]
          |  ]
@@ -375,7 +403,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
            |        [
            |            "EncryptedEmailDetailedView/get",
            |            {
-           |                "accountId": "$ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "state": "${INSTANCE.value}",
            |                "list": [],
            |                "notFound": [
@@ -392,7 +420,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
   @Tag(CategoryTags.BASIC_FEATURE)
   def methodShouldReturnDetailedViewWhenEmailIdExits(server: GuiceJamesServer): Unit = {
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(),
+      .appendMessage(bobUsername.asString(),
         BOB_INBOX_PATH,
         AppendCommand.from(MESSAGE))
       .getMessageId
@@ -401,7 +429,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
          |    ["EncryptedEmailDetailedView/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "ids": ["${messageId.serialize}"]
          |    }, "c1"]
          |  ]
@@ -422,7 +450,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
       .inPath("methodResponses[0][1]")
       .isEqualTo(
         s"""{
-           |    "accountId": "$ACCOUNT_ID",
+           |    "accountId": "$bobAccountId",
            |    "state": "${INSTANCE.value}",
            |    "notFound": [],
            |    "list": [
@@ -451,17 +479,17 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
   @Test
   def methodShouldAcceptSeveralIds(server: GuiceJamesServer): Unit = {
     val messageId1: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(),
+      .appendMessage(bobUsername.asString(),
         BOB_INBOX_PATH,
         AppendCommand.from(MESSAGE))
       .getMessageId
     val messageId2: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(),
+      .appendMessage(bobUsername.asString(),
         BOB_INBOX_PATH,
         AppendCommand.from(MESSAGE))
       .getMessageId
     val messageId3: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(),
+      .appendMessage(bobUsername.asString(),
         BOB_INBOX_PATH,
         AppendCommand.from(MESSAGE))
       .getMessageId
@@ -471,7 +499,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
          |    ["EncryptedEmailDetailedView/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "ids": ["${messageId1.serialize}", "${messageId2.serialize}", "${messageId3.serialize}"]
          |    }, "c1"]
          |  ]
@@ -493,7 +521,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
       .inPath("methodResponses[0][1]")
       .isEqualTo(
         s"""{
-           |    "accountId": "$ACCOUNT_ID",
+           |    "accountId": "$bobAccountId",
            |    "state": "${INSTANCE.value}",
            |    "notFound": [],
            |    "list": [
@@ -522,7 +550,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
   @Test
   def methodShouldSuccessWhenMixed(server: GuiceJamesServer): Unit = {
     val existMessageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(),
+      .appendMessage(bobUsername.asString(),
         BOB_INBOX_PATH,
         AppendCommand.from(MESSAGE))
       .getMessageId
@@ -533,7 +561,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
          |    ["EncryptedEmailDetailedView/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "ids": ["${existMessageId.serialize}", "${notFoundMessageId1.serialize}"]
          |    }, "c1"]
          |  ]
@@ -555,7 +583,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
       .inPath("methodResponses[0][1]")
       .isEqualTo(
         s"""{
-           |    "accountId": "$ACCOUNT_ID",
+           |    "accountId": "$bobAccountId",
            |    "state": "${INSTANCE.value}",
            |    "list": [
            |            {
@@ -581,19 +609,19 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
   @Test
   def methodShouldReturnNotFoundWhenAccountDoesNotHavePermission(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[DataProbeImpl])
-      .addUser(ANDRE.asString(), ANDRE_PASSWORD)
+      .addUser(andreUsername.asString(), ANDRE_PASSWORD)
 
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(ANDRE))
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(andreUsername))
 
-    uploadPublicKey(ANDRE_ACCOUNT_ID,
+    uploadPublicKey(andreAccountId,
       baseRequestSpecBuilder(server)
-        .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+        .setAuth(authScheme(UserCredential(andreUsername, ANDRE_PASSWORD)))
         .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
         .build)
 
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(ANDRE.asString(),
-        MailboxPath.inbox(ANDRE),
+      .appendMessage(andreUsername.asString(),
+        MailboxPath.inbox(andreUsername),
         AppendCommand.from(MESSAGE))
       .getMessageId
 
@@ -602,7 +630,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
          |    ["EncryptedEmailDetailedView/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "ids": ["${messageId.serialize}"]
          |    }, "c1"]
          |  ]
@@ -627,7 +655,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
            |        [
            |            "EncryptedEmailDetailedView/get",
            |            {
-           |                "accountId": "$ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "state": "${INSTANCE.value}",
            |                "list": [],
            |                "notFound": [
@@ -643,13 +671,13 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
   @Test
   def methodShouldReturnNotFoundWhenAccountDoesNotHaveAnyKeyStore(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[DataProbeImpl])
-      .addUser(ANDRE.asString(), ANDRE_PASSWORD)
+      .addUser(andreUsername.asString(), ANDRE_PASSWORD)
     val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
-    mailboxProbe.createMailbox(MailboxPath.inbox(ANDRE))
+    mailboxProbe.createMailbox(MailboxPath.inbox(andreUsername))
 
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(ANDRE.asString(),
-        MailboxPath.inbox(ANDRE),
+      .appendMessage(andreUsername.asString(),
+        MailboxPath.inbox(andreUsername),
         AppendCommand.from(MESSAGE))
       .getMessageId
 
@@ -658,7 +686,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
          |    ["EncryptedEmailDetailedView/get", {
-         |      "accountId": "$ANDRE_ACCOUNT_ID",
+         |      "accountId": "$andreAccountId",
          |      "ids": ["${messageId.serialize}"]
          |    }, "c1"]
          |  ]
@@ -666,7 +694,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
 
     val response: String =
       `given`(baseRequestSpecBuilder(server)
-        .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+        .setAuth(authScheme(UserCredential(andreUsername, ANDRE_PASSWORD)))
         .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
         .build)
         .body(request)
@@ -687,7 +715,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
            |        [
            |            "EncryptedEmailDetailedView/get",
            |            {
-           |                "accountId": "$ANDRE_ACCOUNT_ID",
+           |                "accountId": "$andreAccountId",
            |                "state": "${INSTANCE.value}",
            |                "list": [],
            |                "notFound": [
@@ -704,7 +732,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
   @Tag(CategoryTags.BASIC_FEATURE)
   def encryptedPreviewShouldEncrypt(server: GuiceJamesServer): Unit = {
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(),
+      .appendMessage(bobUsername.asString(),
         BOB_INBOX_PATH,
         AppendCommand.from(MESSAGE))
       .getMessageId
@@ -713,7 +741,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
          |    ["EncryptedEmailDetailedView/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "ids": ["${messageId.serialize}"]
          |    }, "c1"]
          |  ]
@@ -743,7 +771,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
   @Test
   def encryptedHtmlShouldEncrypt(server: GuiceJamesServer): Unit = {
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(),
+      .appendMessage(bobUsername.asString(),
         BOB_INBOX_PATH,
         AppendCommand.from(MESSAGE))
       .getMessageId
@@ -752,7 +780,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
          |    ["EncryptedEmailDetailedView/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "ids": ["${messageId.serialize}"]
          |    }, "c1"]
          |  ]
@@ -782,7 +810,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
   @Test
   def methodShouldSuccessWhenMessageHasAttachment(server: GuiceJamesServer): Unit = {
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(),
+      .appendMessage(bobUsername.asString(),
         BOB_INBOX_PATH,
         AppendCommand.from(MESSAGE_HAS_ATTACHMENTS))
       .getMessageId
@@ -791,7 +819,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
          |    ["EncryptedEmailDetailedView/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "ids": ["${messageId.serialize}"]
          |    }, "c1"]
          |  ]
@@ -812,7 +840,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
       .inPath("methodResponses[0][1]")
       .isEqualTo(
         s"""{
-           |    "accountId": "$ACCOUNT_ID",
+           |    "accountId": "$bobAccountId",
            |    "state": "${INSTANCE.value}",
            |    "notFound": [],
            |    "list": [
@@ -840,7 +868,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
   @Test
   def encryptedAttachmentMetadataShouldEncrypt(server: GuiceJamesServer): Unit = {
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(),
+      .appendMessage(bobUsername.asString(),
         BOB_INBOX_PATH,
         AppendCommand.from(MESSAGE_HAS_ATTACHMENTS))
       .getMessageId
@@ -849,7 +877,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
          |    ["EncryptedEmailDetailedView/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "ids": ["${messageId.serialize}"]
          |    }, "c1"]
          |  ]
@@ -887,7 +915,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
   @Test
   def methodShouldSupportBackReference(server: GuiceJamesServer): Unit = {
     val mailboxId = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(MailboxConstants.USER_NAMESPACE, BOB.asString, MailboxConstants.INBOX)
+      .getMailboxId(MailboxConstants.USER_NAMESPACE, bobUsername.asString, MailboxConstants.INBOX)
     val request: String =
       s"""{
          |    "using": [
@@ -899,7 +927,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
          |        [
          |            "Email/set",
          |            {
-         |                "accountId": "$ACCOUNT_ID",
+         |                "accountId": "$bobAccountId",
          |                "create": {
          |                    "K87": {
          |                        "mailboxIds": {
@@ -914,7 +942,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
          |        [
          |            "EncryptedEmailDetailedView/get",
          |            {
-         |                "accountId": "$ACCOUNT_ID",
+         |                "accountId": "$bobAccountId",
          |                "ids": [
          |                    "#K87"
          |                ]
@@ -943,7 +971,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
            |        [
            |            "Email/set",
            |            {
-           |                "accountId": "$ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "newState": "$${json-unit.ignore}",
            |                "oldState": "$${json-unit.ignore}",
            |                "created": {
@@ -955,7 +983,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
            |        [
            |            "EncryptedEmailDetailedView/get",
            |            {
-           |                "accountId": "$ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "state": "$${json-unit.ignore}",
            |                "notFound": [],
            |                "list": [
