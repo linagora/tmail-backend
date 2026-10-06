@@ -18,6 +18,11 @@
 
 package com.linagora.tmail.james.common
 
+import java.nio.charset.StandardCharsets
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
+
+import com.google.common.hash.Hashing
 import com.linagora.tmail.team.{TeamMailbox, TeamMailboxName, TeamMailboxProbe}
 import eu.timepit.refined.auto._
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
@@ -26,6 +31,7 @@ import io.restassured.http.ContentType.JSON
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
+import org.apache.james.core.{Domain, Username}
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture._
@@ -39,19 +45,38 @@ import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 
 import scala.jdk.CollectionConverters._
 
+object TeamMailboxRevokeAccessMethodContract {
+  case class TestContext(domain: Domain) {
+    val bobUsername: Username = Username.fromLocalPartWithDomain("bob", domain)
+    val andreUsername: Username = Username.fromLocalPartWithDomain("andre", domain)
+    val bobAccountId: String = Hashing.sha256().hashString(bobUsername.asString(), StandardCharsets.UTF_8).toString
+  }
+
+  private val currentContext: AtomicReference[TestContext] = new AtomicReference[TestContext]()
+}
+
 trait TeamMailboxRevokeAccessMethodContract {
-  private lazy val BOB_ACCOUNT_ID: String = "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6"
+  def domain: Domain = TeamMailboxRevokeAccessMethodContract.currentContext.get().domain
+
+  def bobUsername: Username = TeamMailboxRevokeAccessMethodContract.currentContext.get().bobUsername
+
+  def bobAccountId: String = TeamMailboxRevokeAccessMethodContract.currentContext.get().bobAccountId
+
+  def andreUsername: Username = TeamMailboxRevokeAccessMethodContract.currentContext.get().andreUsername
 
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    TeamMailboxRevokeAccessMethodContract.currentContext.set(TeamMailboxRevokeAccessMethodContract.TestContext(Domain.of(s"domain$uniqueSuffix.tld")))
+
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
-      .addDomain(DOMAIN.asString())
-      .addUser(BOB.asString(), BOB_PASSWORD)
-      .addUser(ANDRE.asString(), ANDRE_PASSWORD)
+      .addDomain(domain.asString())
+      .addUser(bobUsername.asString(), BOB_PASSWORD)
+      .addUser(andreUsername.asString(), ANDRE_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .setAuth(authScheme(UserCredential(bobUsername, BOB_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build()
   }
@@ -70,8 +95,8 @@ trait TeamMailboxRevokeAccessMethodContract {
            |	"using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail"],
            |	"methodCalls": [
            |		["TeamMailbox/revokeAccess", {
-           |			"accountId": "$BOB_ACCOUNT_ID",
-           |			"ids": ["mailboxA@domain.tld"]
+           |			"accountId": "$bobAccountId",
+           |			"ids": ["mailboxA@${domain.asString}"]
            |		}, "c0"]
            |	]
            |}""".stripMargin)
@@ -103,10 +128,10 @@ trait TeamMailboxRevokeAccessMethodContract {
 
   @Test
   def givenBobBelongsToTeamMailboxThenRevokeAccessSucceedCase(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("hiring"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("hiring"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val response = `given`
       .body(
@@ -114,8 +139,8 @@ trait TeamMailboxRevokeAccessMethodContract {
            |	"using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "com:linagora:params:jmap:team:mailboxes"],
            |	"methodCalls": [
            |		["TeamMailbox/revokeAccess", {
-           |			"accountId": "$BOB_ACCOUNT_ID",
-           |			"ids": ["hiring@domain.tld"]
+           |			"accountId": "$bobAccountId",
+           |			"ids": ["hiring@${domain.asString}"]
            |		}, "c0"]
            |	]
            |}""".stripMargin)
@@ -136,8 +161,8 @@ trait TeamMailboxRevokeAccessMethodContract {
          |		[
          |			"TeamMailbox/revokeAccess",
          |			{
-         |				"accountId": "$BOB_ACCOUNT_ID",
-         |				"revoked": ["hiring@domain.tld"]
+         |				"accountId": "$bobAccountId",
+         |				"revoked": ["hiring@${domain.asString}"]
          |			},
          |			"c0"
          |		]
@@ -150,10 +175,10 @@ trait TeamMailboxRevokeAccessMethodContract {
 
   @Test
   def revokeAccessShouldEnsureNoLongerMailboxGetAccess(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("hiring"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("hiring"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
     val teamMailboxInboxId = mailboxId(server, teamMailbox.inboxPath)
 
     `given`
@@ -162,8 +187,8 @@ trait TeamMailboxRevokeAccessMethodContract {
            |	"using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "com:linagora:params:jmap:team:mailboxes"],
            |	"methodCalls": [
            |		["TeamMailbox/revokeAccess", {
-           |			"accountId": "$BOB_ACCOUNT_ID",
-           |			"ids": ["hiring@domain.tld"]
+           |			"accountId": "$bobAccountId",
+           |			"ids": ["hiring@${domain.asString}"]
            |		}, "c0"]
            |	]
            |}""".stripMargin)
@@ -184,7 +209,7 @@ trait TeamMailboxRevokeAccessMethodContract {
            |		[
            |			"Mailbox/get",
            |			{
-           |				"accountId": "$BOB_ACCOUNT_ID",
+           |				"accountId": "$bobAccountId",
            |				"ids": ["$teamMailboxInboxId"]
            |			},
            |			"c1"
@@ -209,7 +234,7 @@ trait TeamMailboxRevokeAccessMethodContract {
          |        [
          |            "Mailbox/get",
          |            {
-         |                "accountId": "$BOB_ACCOUNT_ID",
+         |                "accountId": "$bobAccountId",
          |                "notFound": ["$teamMailboxInboxId"],
          |                "state": "$${json-unit.ignore}",
          |                "list": []
@@ -228,8 +253,8 @@ trait TeamMailboxRevokeAccessMethodContract {
            |	"using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "com:linagora:params:jmap:team:mailboxes"],
            |	"methodCalls": [
            |		["TeamMailbox/revokeAccess", {
-           |			"accountId": "$BOB_ACCOUNT_ID",
-           |			"ids": ["nonExistTeamMailbox@domain.tld"]
+           |			"accountId": "$bobAccountId",
+           |			"ids": ["nonExistTeamMailbox@${domain.asString}"]
            |		}, "c0"]
            |	]
            |}""".stripMargin)
@@ -250,11 +275,11 @@ trait TeamMailboxRevokeAccessMethodContract {
          |        [
          |            "TeamMailbox/revokeAccess",
          |            {
-         |                "accountId": "$BOB_ACCOUNT_ID",
+         |                "accountId": "$bobAccountId",
          |                "notRevoked": {
-         |                    "nonExistTeamMailbox@domain.tld": {
+         |                    "nonExistTeamMailbox@${domain.asString}": {
          |                        "type": "notFound",
-         |                        "description": "#TeamMailbox:team-mailbox@domain.tld:nonExistTeamMailbox can not be found"
+         |                        "description": "#TeamMailbox:team-mailbox@${domain.asString}:nonExistTeamMailbox can not be found"
          |                    }
          |                }
          |            },
@@ -272,7 +297,7 @@ trait TeamMailboxRevokeAccessMethodContract {
            |	"using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "com:linagora:params:jmap:team:mailboxes"],
            |	"methodCalls": [
            |		["TeamMailbox/revokeAccess", {
-           |			"accountId": "$BOB_ACCOUNT_ID",
+           |			"accountId": "$bobAccountId",
            |			"ids": ["hiring"]
            |		}, "c0"]
            |	]
@@ -294,7 +319,7 @@ trait TeamMailboxRevokeAccessMethodContract {
          |        [
          |            "TeamMailbox/revokeAccess",
          |            {
-         |                "accountId": "$BOB_ACCOUNT_ID",
+         |                "accountId": "$bobAccountId",
          |                "notRevoked": {
          |                    "hiring": {
          |                        "type": "invalidArguments",
@@ -316,8 +341,8 @@ trait TeamMailboxRevokeAccessMethodContract {
            |	"using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "com:linagora:params:jmap:team:mailboxes"],
            |	"methodCalls": [
            |		["TeamMailbox/revokeAccess", {
-           |			"accountId": "$BOB_ACCOUNT_ID",
-           |			"ids": ["/hiring@domain.tld"]
+           |			"accountId": "$bobAccountId",
+           |			"ids": ["/hiring@${domain.asString}"]
            |		}, "c0"]
            |	]
            |}""".stripMargin)
@@ -338,11 +363,11 @@ trait TeamMailboxRevokeAccessMethodContract {
          |		[
          |			"TeamMailbox/revokeAccess",
          |			{
-         |				"accountId": "$BOB_ACCOUNT_ID",
+         |				"accountId": "$bobAccountId",
          |				"notRevoked": {
-         |					"/hiring@domain.tld": {
+         |					"/hiring@${domain.asString}": {
          |						"type": "invalidArguments",
-         |						"description": "/hiring@domain.tld is not a Team Mailbox: Predicate failed: '/hiring@domain.tld' contains some invalid characters. Should be [#a-zA-Z0-9-_.@] and no longer than 320 chars."
+         |						"description": "/hiring@${domain.asString} is not a Team Mailbox: Predicate failed: '/hiring@${domain.asString}' contains some invalid characters. Should be [#a-zA-Z0-9-_.@] and no longer than 320 chars."
          |					}
          |				}
          |			},
@@ -360,7 +385,7 @@ trait TeamMailboxRevokeAccessMethodContract {
            |	"using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "com:linagora:params:jmap:team:mailboxes"],
            |	"methodCalls": [
            |		["TeamMailbox/revokeAccess", {
-           |			"accountId": "$BOB_ACCOUNT_ID",
+           |			"accountId": "$bobAccountId",
            |			"ids": [null]
            |		}, "c0"]
            |	]
@@ -393,7 +418,7 @@ trait TeamMailboxRevokeAccessMethodContract {
 
   @Test
   def givenBobDoesNotHaveAccessToTeamMailboxThenRevokeAccessShouldSucceed(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("hiring"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("hiring"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
 
@@ -403,8 +428,8 @@ trait TeamMailboxRevokeAccessMethodContract {
            |	"using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "com:linagora:params:jmap:team:mailboxes"],
            |	"methodCalls": [
            |		["TeamMailbox/revokeAccess", {
-           |			"accountId": "$BOB_ACCOUNT_ID",
-           |			"ids": ["hiring@domain.tld"]
+           |			"accountId": "$bobAccountId",
+           |			"ids": ["hiring@${domain.asString}"]
            |		}, "c0"]
            |	]
            |}""".stripMargin)
@@ -425,8 +450,8 @@ trait TeamMailboxRevokeAccessMethodContract {
          |		[
          |			"TeamMailbox/revokeAccess",
          |			{
-         |				"accountId": "$BOB_ACCOUNT_ID",
-         |				"revoked": ["hiring@domain.tld"]
+         |				"accountId": "$bobAccountId",
+         |				"revoked": ["hiring@${domain.asString}"]
          |			},
          |			"c0"
          |		]
@@ -439,10 +464,10 @@ trait TeamMailboxRevokeAccessMethodContract {
 
   @Test
   def revokeAccessShouldBeIdempotent(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("hiring"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("hiring"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val response1 = `given`
       .body(
@@ -450,8 +475,8 @@ trait TeamMailboxRevokeAccessMethodContract {
            |	"using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "com:linagora:params:jmap:team:mailboxes"],
            |	"methodCalls": [
            |		["TeamMailbox/revokeAccess", {
-           |			"accountId": "$BOB_ACCOUNT_ID",
-           |			"ids": ["hiring@domain.tld"]
+           |			"accountId": "$bobAccountId",
+           |			"ids": ["hiring@${domain.asString}"]
            |		}, "c0"]
            |	]
            |}""".stripMargin)
@@ -472,8 +497,8 @@ trait TeamMailboxRevokeAccessMethodContract {
          |		[
          |			"TeamMailbox/revokeAccess",
          |			{
-         |				"accountId": "$BOB_ACCOUNT_ID",
-         |				"revoked": ["hiring@domain.tld"]
+         |				"accountId": "$bobAccountId",
+         |				"revoked": ["hiring@${domain.asString}"]
          |			},
          |			"c0"
          |		]
@@ -486,8 +511,8 @@ trait TeamMailboxRevokeAccessMethodContract {
            |	"using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "com:linagora:params:jmap:team:mailboxes"],
            |	"methodCalls": [
            |		["TeamMailbox/revokeAccess", {
-           |			"accountId": "$BOB_ACCOUNT_ID",
-           |			"ids": ["hiring@domain.tld"]
+           |			"accountId": "$bobAccountId",
+           |			"ids": ["hiring@${domain.asString}"]
            |		}, "c0"]
            |	]
            |}""".stripMargin)
@@ -508,8 +533,8 @@ trait TeamMailboxRevokeAccessMethodContract {
          |		[
          |			"TeamMailbox/revokeAccess",
          |			{
-         |				"accountId": "$BOB_ACCOUNT_ID",
-         |				"revoked": ["hiring@domain.tld"]
+         |				"accountId": "$bobAccountId",
+         |				"revoked": ["hiring@${domain.asString}"]
          |			},
          |			"c0"
          |		]
@@ -520,10 +545,10 @@ trait TeamMailboxRevokeAccessMethodContract {
   @Test
   @Tag(CategoryTags.BASIC_FEATURE)
   def mixedCase(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("hiring"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("hiring"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val response = `given`
       .body(
@@ -531,8 +556,8 @@ trait TeamMailboxRevokeAccessMethodContract {
            |	"using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "com:linagora:params:jmap:team:mailboxes"],
            |	"methodCalls": [
            |		["TeamMailbox/revokeAccess", {
-           |			"accountId": "$BOB_ACCOUNT_ID",
-           |			"ids": ["hiring@domain.tld", "nonExistTeamMailbox@domain.tld", "invalid"]
+           |			"accountId": "$bobAccountId",
+           |			"ids": ["hiring@${domain.asString}", "nonExistTeamMailbox@${domain.asString}", "invalid"]
            |		}, "c0"]
            |	]
            |}""".stripMargin)
@@ -553,14 +578,14 @@ trait TeamMailboxRevokeAccessMethodContract {
          |		[
          |			"TeamMailbox/revokeAccess",
          |			{
-         |				"accountId": "$BOB_ACCOUNT_ID",
+         |				"accountId": "$bobAccountId",
          |				"revoked": [
-         |					"hiring@domain.tld"
+         |					"hiring@${domain.asString}"
          |				],
          |				"notRevoked": {
-         |					"nonExistTeamMailbox@domain.tld": {
+         |					"nonExistTeamMailbox@${domain.asString}": {
          |						"type": "notFound",
-         |						"description": "#TeamMailbox:team-mailbox@domain.tld:nonExistTeamMailbox can not be found"
+         |						"description": "#TeamMailbox:team-mailbox@${domain.asString}:nonExistTeamMailbox can not be found"
          |					},
          |					"invalid": {
          |						"type": "invalidArguments",
@@ -577,25 +602,25 @@ trait TeamMailboxRevokeAccessMethodContract {
   @Test
   def revokeTeamMailboxAccessShouldRejectDelegatee(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[DelegationProbe])
-      .addAuthorizedUser(BOB, ANDRE)
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("hiring"))
+      .addAuthorizedUser(bobUsername, andreUsername)
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("hiring"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val request: String =
       s"""{
          |	"using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "com:linagora:params:jmap:team:mailboxes"],
          |	"methodCalls": [
          |		["TeamMailbox/revokeAccess", {
-         |			"accountId": "$BOB_ACCOUNT_ID",
-         |			"ids": ["hiring@domain.tld"]
+         |			"accountId": "$bobAccountId",
+         |			"ids": ["hiring@${domain.asString}"]
          |		}, "c0"]
          |	]
          |}""".stripMargin
 
     val response = `given`(baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+      .setAuth(authScheme(UserCredential(andreUsername, ANDRE_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build)
       .body(request)
@@ -622,6 +647,6 @@ trait TeamMailboxRevokeAccessMethodContract {
            |]""".stripMargin)
 
     assertThat(server.getProbe(classOf[TeamMailboxProbe]).listMembers(teamMailbox).asJava)
-      .containsOnly(BOB)
+      .containsOnly(bobUsername)
   }
 }
