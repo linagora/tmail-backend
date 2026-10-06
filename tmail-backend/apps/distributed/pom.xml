@@ -175,6 +175,10 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>team-mailbox-events</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>tmail-guice-data-cassandra</artifactId>
         </dependency>
         <dependency>
