@@ -18,7 +18,12 @@
 
 package com.linagora.tmail.james.common
 
+import java.nio.charset.StandardCharsets
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
+
 import com.google.common.collect.ImmutableList
+import com.google.common.hash.Hashing
 import com.linagora.tmail.team.{TeamMailbox, TeamMailboxMember, TeamMailboxName, TeamMailboxProbe}
 import eu.timepit.refined.auto._
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
@@ -28,27 +33,52 @@ import net.javacrumbs.jsonunit.JsonMatchers.jsonEquals
 import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
+import org.apache.james.core.{Domain, Username}
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, CEDRIC, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE_PASSWORD, BOB_PASSWORD, authScheme, baseRequestSpecBuilder}
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Test}
 
 import scala.jdk.CollectionConverters._
 
+object TeamMailboxMemberSetMethodContract {
+  case class TestContext(domain: Domain) {
+    val bobUsername: Username = Username.fromLocalPartWithDomain("bob", domain)
+    val andreUsername: Username = Username.fromLocalPartWithDomain("andre", domain)
+    val cedricUsername: Username = Username.fromLocalPartWithDomain("cedric", domain)
+    val bobAccountId: String = Hashing.sha256().hashString(bobUsername.asString(), StandardCharsets.UTF_8).toString
+  }
+
+  private val currentContext: AtomicReference[TestContext] = new AtomicReference[TestContext]()
+}
+
 trait TeamMailboxMemberSetMethodContract {
+  def domain: Domain = TeamMailboxMemberSetMethodContract.currentContext.get().domain
+
+  def bobUsername: Username = TeamMailboxMemberSetMethodContract.currentContext.get().bobUsername
+
+  def bobAccountId: String = TeamMailboxMemberSetMethodContract.currentContext.get().bobAccountId
+
+  def andreUsername: Username = TeamMailboxMemberSetMethodContract.currentContext.get().andreUsername
+
+  def cedricUsername: Username = TeamMailboxMemberSetMethodContract.currentContext.get().cedricUsername
+
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    TeamMailboxMemberSetMethodContract.currentContext.set(TeamMailboxMemberSetMethodContract.TestContext(Domain.of(s"domain$uniqueSuffix.tld")))
+
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
-      .addDomain(DOMAIN.asString)
-      .addUser(BOB.asString(), BOB_PASSWORD)
-      .addUser(ANDRE.asString(), ANDRE_PASSWORD)
-      .addUser(CEDRIC.asString(), "1")
+      .addDomain(domain.asString)
+      .addUser(bobUsername.asString(), BOB_PASSWORD)
+      .addUser(andreUsername.asString(), ANDRE_PASSWORD)
+      .addUser(cedricUsername.asString(), "1")
 
     requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .setAuth(authScheme(UserCredential(bobUsername, BOB_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build()
   }
@@ -63,7 +93,7 @@ trait TeamMailboxMemberSetMethodContract {
            |    [
            |      "TeamMailboxMember/set",
            |      {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "ids": null
            |      },
            |      "c1"
@@ -104,7 +134,7 @@ trait TeamMailboxMemberSetMethodContract {
            |        "accountId": "unknownAccountId",
            |        "update": {
            |            "team-mailbox-name": {
-           |                "cedric@domain.tld": {"role":"member"}
+           |                "cedric@${domain.asString}": {"role":"member"}
            |            }
            |        }
            |      },
@@ -129,12 +159,12 @@ trait TeamMailboxMemberSetMethodContract {
 
   @Test
   def updateShouldAddNewMember(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("hiring"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("hiring"))
 
     val teamMailboxProbe = server.getProbe(classOf[TeamMailboxProbe])
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addManager(teamMailbox, BOB)
+      .addManager(teamMailbox, bobUsername)
 
     `given`
       .body(
@@ -144,10 +174,10 @@ trait TeamMailboxMemberSetMethodContract {
            |    [
            |      "TeamMailboxMember/set",
            |      {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "update": {
            |            "${teamMailbox.asString()}": {
-           |                "${ANDRE.asString()}": {"role": "member"}
+           |                "${andreUsername.asString()}": {"role": "member"}
            |            }
            |        }
            |      },
@@ -164,7 +194,7 @@ trait TeamMailboxMemberSetMethodContract {
         s"""[
            |    "TeamMailboxMember/set",
            |    {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "updated": {
            |            "${teamMailbox.asString()}": null
            |        },
@@ -173,18 +203,18 @@ trait TeamMailboxMemberSetMethodContract {
            |    "c1"
            |]""".stripMargin).withOptions(ImmutableList.of(IGNORING_ARRAY_ORDER)))
 
-    assertThat(teamMailboxProbe.getMembers(teamMailbox).asJava).contains(TeamMailboxMember.asMember(ANDRE))
+    assertThat(teamMailboxProbe.getMembers(teamMailbox).asJava).contains(TeamMailboxMember.asMember(andreUsername))
   }
 
   @Test
   def updateShouldPromoteExistedUserAsManager(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("hiring"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("hiring"))
 
     val teamMailboxProbe = server.getProbe(classOf[TeamMailboxProbe])
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addManager(teamMailbox, BOB)
-      .addMember(teamMailbox, ANDRE)
+      .addManager(teamMailbox, bobUsername)
+      .addMember(teamMailbox, andreUsername)
 
     `given`
       .body(
@@ -194,10 +224,10 @@ trait TeamMailboxMemberSetMethodContract {
            |    [
            |      "TeamMailboxMember/set",
            |      {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "update": {
            |            "${teamMailbox.asString()}": {
-           |                "${ANDRE.asString()}": {"role": "manager"}
+           |                "${andreUsername.asString()}": {"role": "manager"}
            |            }
            |        }
            |      },
@@ -214,7 +244,7 @@ trait TeamMailboxMemberSetMethodContract {
         s"""[
            |    "TeamMailboxMember/set",
            |    {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "updated": {
            |            "${teamMailbox.asString()}": null
            |        },
@@ -223,17 +253,17 @@ trait TeamMailboxMemberSetMethodContract {
            |    "c1"
            |]""".stripMargin).withOptions(ImmutableList.of(IGNORING_ARRAY_ORDER)))
 
-    assertThat(teamMailboxProbe.getMembers(teamMailbox).asJava).contains(TeamMailboxMember.asManager(ANDRE))
+    assertThat(teamMailboxProbe.getMembers(teamMailbox).asJava).contains(TeamMailboxMember.asManager(andreUsername))
   }
 
   @Test
   def updateShouldAddNewManager(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("hiring"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("hiring"))
 
     val teamMailboxProbe = server.getProbe(classOf[TeamMailboxProbe])
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addManager(teamMailbox, BOB)
+      .addManager(teamMailbox, bobUsername)
 
     `given`
       .body(
@@ -243,10 +273,10 @@ trait TeamMailboxMemberSetMethodContract {
            |    [
            |      "TeamMailboxMember/set",
            |      {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "update": {
            |            "${teamMailbox.asString()}": {
-           |                "${ANDRE.asString()}": {"role": "manager"}
+           |                "${andreUsername.asString()}": {"role": "manager"}
            |            }
            |        }
            |      },
@@ -263,7 +293,7 @@ trait TeamMailboxMemberSetMethodContract {
         s"""[
            |    "TeamMailboxMember/set",
            |    {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "updated": {
            |            "${teamMailbox.asString()}": null
            |        },
@@ -272,18 +302,18 @@ trait TeamMailboxMemberSetMethodContract {
            |    "c1"
            |]""".stripMargin).withOptions(ImmutableList.of(IGNORING_ARRAY_ORDER)))
 
-    assertThat(teamMailboxProbe.getMembers(teamMailbox).asJava).contains(TeamMailboxMember.asManager(ANDRE))
+    assertThat(teamMailboxProbe.getMembers(teamMailbox).asJava).contains(TeamMailboxMember.asManager(andreUsername))
   }
 
   @Test
   def updateShouldRemoveMember(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("hiring"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("hiring"))
 
     val teamMailboxProbe = server.getProbe(classOf[TeamMailboxProbe])
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addManager(teamMailbox, BOB)
-      .addMember(teamMailbox, ANDRE)
+      .addManager(teamMailbox, bobUsername)
+      .addMember(teamMailbox, andreUsername)
 
     `given`
       .body(
@@ -293,10 +323,10 @@ trait TeamMailboxMemberSetMethodContract {
            |    [
            |      "TeamMailboxMember/set",
            |      {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "update": {
            |            "${teamMailbox.asString()}": {
-           |                "${ANDRE.asString()}": null
+           |                "${andreUsername.asString()}": null
            |            }
            |        }
            |      },
@@ -313,7 +343,7 @@ trait TeamMailboxMemberSetMethodContract {
         s"""[
            |    "TeamMailboxMember/set",
            |    {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "updated": {
            |            "${teamMailbox.asString()}": null
            |        },
@@ -322,18 +352,18 @@ trait TeamMailboxMemberSetMethodContract {
            |    "c1"
            |]""".stripMargin).withOptions(ImmutableList.of(IGNORING_ARRAY_ORDER)))
 
-    assertThat(teamMailboxProbe.getMembers(teamMailbox).asJava).doesNotContain(TeamMailboxMember.asMember(ANDRE))
+    assertThat(teamMailboxProbe.getMembers(teamMailbox).asJava).doesNotContain(TeamMailboxMember.asMember(andreUsername))
   }
 
   @Test
   def updateShouldUpdateMultipleMembers(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("hiring"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("hiring"))
 
     val teamMailboxProbe = server.getProbe(classOf[TeamMailboxProbe])
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addManager(teamMailbox, BOB)
-      .addMember(teamMailbox, ANDRE)
+      .addManager(teamMailbox, bobUsername)
+      .addMember(teamMailbox, andreUsername)
 
     `given`
       .body(
@@ -343,11 +373,11 @@ trait TeamMailboxMemberSetMethodContract {
            |    [
            |      "TeamMailboxMember/set",
            |      {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "update": {
            |            "${teamMailbox.asString()}": {
-           |                "${ANDRE.asString()}": null,
-           |                "${CEDRIC.asString()}": {"role": "member"}
+           |                "${andreUsername.asString()}": null,
+           |                "${cedricUsername.asString()}": {"role": "member"}
            |            }
            |        }
            |      },
@@ -364,7 +394,7 @@ trait TeamMailboxMemberSetMethodContract {
         s"""[
            |    "TeamMailboxMember/set",
            |    {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "updated": {
            |            "${teamMailbox.asString()}": null
            |        },
@@ -374,17 +404,17 @@ trait TeamMailboxMemberSetMethodContract {
            |]""".stripMargin).withOptions(ImmutableList.of(IGNORING_ARRAY_ORDER)))
 
     val memberList = teamMailboxProbe.getMembers(teamMailbox).asJava
-    assertThat(memberList).doesNotContain(TeamMailboxMember.asMember(ANDRE))
-    assertThat(memberList).contains(TeamMailboxMember.asMember(CEDRIC))
+    assertThat(memberList).doesNotContain(TeamMailboxMember.asMember(andreUsername))
+    assertThat(memberList).contains(TeamMailboxMember.asMember(cedricUsername))
   }
 
   @Test
   def updateShouldReturnNotUpdatedWhenTeamMailboxNameIsInvalid(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("hiring"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("hiring"))
 
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addManager(teamMailbox, BOB)
+      .addManager(teamMailbox, bobUsername)
 
     `given`
       .body(
@@ -394,10 +424,10 @@ trait TeamMailboxMemberSetMethodContract {
            |    [
            |      "TeamMailboxMember/set",
            |      {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "update": {
            |            "%%%": {
-           |                "${ANDRE.asString()}": {"role": "member"}
+           |                "${andreUsername.asString()}": {"role": "member"}
            |            }
            |        }
            |      },
@@ -414,7 +444,7 @@ trait TeamMailboxMemberSetMethodContract {
         s"""[
            |    "TeamMailboxMember/set",
            |    {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "updated": {},
            |        "notUpdated": {
            |            "%%%": {
@@ -429,11 +459,11 @@ trait TeamMailboxMemberSetMethodContract {
 
   @Test
   def updateShouldReturnNotUpdatedWhenRoleIsInvalid(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("hiring"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("hiring"))
 
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addManager(teamMailbox, BOB)
+      .addManager(teamMailbox, bobUsername)
 
     `given`
       .body(
@@ -443,10 +473,10 @@ trait TeamMailboxMemberSetMethodContract {
            |    [
            |      "TeamMailboxMember/set",
            |      {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "update": {
            |            "${teamMailbox.asString()}": {
-           |                "${CEDRIC.asString()}": {"role": "invalid"}
+           |                "${cedricUsername.asString()}": {"role": "invalid"}
            |            }
            |        }
            |      },
@@ -463,7 +493,7 @@ trait TeamMailboxMemberSetMethodContract {
         s"""[
            |    "TeamMailboxMember/set",
            |    {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "updated": {},
            |        "notUpdated": {
            |            "${teamMailbox.asString()}": {
@@ -478,11 +508,11 @@ trait TeamMailboxMemberSetMethodContract {
 
   @Test
   def updateShouldReturnNotUpdatedWhenMemberNameIsInvalid(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("hiring"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("hiring"))
 
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addManager(teamMailbox, ANDRE)
+      .addManager(teamMailbox, andreUsername)
 
     `given`
       .body(
@@ -492,10 +522,10 @@ trait TeamMailboxMemberSetMethodContract {
            |    [
            |      "TeamMailboxMember/set",
            |      {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "update": {
            |            "${teamMailbox.asString()}": {
-           |                "@domain.tld": {"role": "member"}
+           |                "@${domain.asString}": {"role": "member"}
            |            }
            |        }
            |      },
@@ -512,12 +542,12 @@ trait TeamMailboxMemberSetMethodContract {
         s"""[
            |    "TeamMailboxMember/set",
            |    {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "updated": {},
            |        "notUpdated": {
            |            "${teamMailbox.asString()}": {
            |                "type": "invalidPatch",
-           |                "description": "Invalid team member name: @domain.tld"
+           |                "description": "Invalid team member name: @${domain.asString}"
            |            }
            |        }
            |    },
@@ -527,12 +557,12 @@ trait TeamMailboxMemberSetMethodContract {
 
   @Test
   def updateShouldReturnNotUpdatedWhenTheTeamMailboxDoesNotExist(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("hiring"))
-    val nonExistedTeamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("firing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("hiring"))
+    val nonExistedTeamMailbox = TeamMailbox(domain, TeamMailboxName("firing"))
 
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addManager(teamMailbox, ANDRE)
+      .addManager(teamMailbox, andreUsername)
 
     `given`
       .body(
@@ -542,10 +572,10 @@ trait TeamMailboxMemberSetMethodContract {
            |    [
            |      "TeamMailboxMember/set",
            |      {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "update": {
            |            "${nonExistedTeamMailbox.asString()}": {
-           |                "${CEDRIC.asString()}": {"role": "member"}
+           |                "${cedricUsername.asString()}": {"role": "member"}
            |            }
            |        }
            |      },
@@ -562,7 +592,7 @@ trait TeamMailboxMemberSetMethodContract {
         s"""[
            |    "TeamMailboxMember/set",
            |    {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "updated": {},
            |        "notUpdated": {
            |            "${nonExistedTeamMailbox.asString()}": {
@@ -577,11 +607,11 @@ trait TeamMailboxMemberSetMethodContract {
 
   @Test
   def updateShouldReturnNotUpdatedWhenMemberUserDoesNotExistInTheSystem(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("hiring"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("hiring"))
 
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addManager(teamMailbox, ANDRE)
+      .addManager(teamMailbox, andreUsername)
 
     `given`
       .body(
@@ -591,12 +621,12 @@ trait TeamMailboxMemberSetMethodContract {
            |    [
            |      "TeamMailboxMember/set",
            |      {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "update": {
            |            "${teamMailbox.asString()}": {
-           |                "${CEDRIC.asString()}": {"role": "member"},
-           |                "nonexisted1@domain.tld": {"role": "member"},
-           |                "nonexisted2@domain.tld": {"role": "member"}
+           |                "${cedricUsername.asString()}": {"role": "member"},
+           |                "nonexisted1@${domain.asString}": {"role": "member"},
+           |                "nonexisted2@${domain.asString}": {"role": "member"}
            |            }
            |        }
            |      },
@@ -613,12 +643,12 @@ trait TeamMailboxMemberSetMethodContract {
         s"""[
            |    "TeamMailboxMember/set",
            |    {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "updated": {},
            |        "notUpdated": {
            |            "${teamMailbox.asString()}": {
            |                "type": "invalidPatch",
-           |                "description": "Some users do not exist in the system: nonexisted1@domain.tld, nonexisted2@domain.tld"
+           |                "description": "Some users do not exist in the system: nonexisted1@${domain.asString}, nonexisted2@${domain.asString}"
            |            }
            |        }
            |    },
@@ -628,11 +658,11 @@ trait TeamMailboxMemberSetMethodContract {
 
   @Test
   def updateShouldReturnNotUpdatedWhenUserIsNotMemberOfTheTeamMailbox(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("hiring"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("hiring"))
 
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addManager(teamMailbox, ANDRE)
+      .addManager(teamMailbox, andreUsername)
 
     `given`
       .body(
@@ -642,10 +672,10 @@ trait TeamMailboxMemberSetMethodContract {
            |    [
            |      "TeamMailboxMember/set",
            |      {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "update": {
            |            "${teamMailbox.asString()}": {
-           |                "${CEDRIC.asString()}": {"role": "member"}
+           |                "${cedricUsername.asString()}": {"role": "member"}
            |            }
            |        }
            |      },
@@ -662,7 +692,7 @@ trait TeamMailboxMemberSetMethodContract {
         s"""[
            |    "TeamMailboxMember/set",
            |    {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "updated": {},
            |        "notUpdated": {
            |            "${teamMailbox.asString()}": {
@@ -677,11 +707,11 @@ trait TeamMailboxMemberSetMethodContract {
 
   @Test
   def updateShouldReturnNotUpdatedWhenUserIsNotManagerOfTheTeamMailbox(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("hiring"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("hiring"))
 
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     `given`
       .body(
@@ -691,10 +721,10 @@ trait TeamMailboxMemberSetMethodContract {
            |    [
            |      "TeamMailboxMember/set",
            |      {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "update": {
            |            "${teamMailbox.asString()}": {
-           |                "${CEDRIC.asString()}": {"role": "member"}
+           |                "${cedricUsername.asString()}": {"role": "member"}
            |            }
            |        }
            |      },
@@ -711,7 +741,7 @@ trait TeamMailboxMemberSetMethodContract {
         s"""[
            |    "TeamMailboxMember/set",
            |    {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "updated": {},
            |        "notUpdated": {
            |            "${teamMailbox.asString()}": {
@@ -726,12 +756,12 @@ trait TeamMailboxMemberSetMethodContract {
 
   @Test
   def updateShouldReturnNotUpdatedWhenUpdatingOtherManager(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("hiring"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("hiring"))
 
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addManager(teamMailbox, BOB)
-      .addManager(teamMailbox, ANDRE)
+      .addManager(teamMailbox, bobUsername)
+      .addManager(teamMailbox, andreUsername)
 
     `given`
       .body(
@@ -741,10 +771,10 @@ trait TeamMailboxMemberSetMethodContract {
            |    [
            |      "TeamMailboxMember/set",
            |      {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "update": {
            |            "${teamMailbox.asString()}": {
-           |                "${ANDRE.asString()}": {"role": "member"}
+           |                "${andreUsername.asString()}": {"role": "member"}
            |            }
            |        }
            |      },
@@ -761,12 +791,12 @@ trait TeamMailboxMemberSetMethodContract {
         s"""[
            |    "TeamMailboxMember/set",
            |    {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "updated": {},
            |        "notUpdated": {
            |            "${teamMailbox.asString()}": {
            |                "type": "invalidPatch",
-           |                "description": "Could not update or remove manager ${ANDRE.asString()}"
+           |                "description": "Could not update or remove manager ${andreUsername.asString()}"
            |            }
            |        }
            |    },
@@ -776,12 +806,12 @@ trait TeamMailboxMemberSetMethodContract {
 
   @Test
   def updateShouldReturnNotUpdatedWhenRemovingOtherManager(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("hiring"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("hiring"))
 
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addManager(teamMailbox, BOB)
-      .addManager(teamMailbox, ANDRE)
+      .addManager(teamMailbox, bobUsername)
+      .addManager(teamMailbox, andreUsername)
 
     `given`
       .body(
@@ -791,10 +821,10 @@ trait TeamMailboxMemberSetMethodContract {
            |    [
            |      "TeamMailboxMember/set",
            |      {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "update": {
            |            "${teamMailbox.asString()}": {
-           |                "${ANDRE.asString()}": null
+           |                "${andreUsername.asString()}": null
            |            }
            |        }
            |      },
@@ -811,12 +841,12 @@ trait TeamMailboxMemberSetMethodContract {
         s"""[
            |    "TeamMailboxMember/set",
            |    {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "updated": {},
            |        "notUpdated": {
            |            "${teamMailbox.asString()}": {
            |                "type": "invalidPatch",
-           |                "description": "Could not update or remove manager ${ANDRE.asString()}"
+           |                "description": "Could not update or remove manager ${andreUsername.asString()}"
            |            }
            |        }
            |    },
@@ -826,12 +856,12 @@ trait TeamMailboxMemberSetMethodContract {
 
   @Test
   def mixedUpdatedAndNotUpdatedCase(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("hiring"))
-    val teamMailbox2 = TeamMailbox(DOMAIN, TeamMailboxName("firing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("hiring"))
+    val teamMailbox2 = TeamMailbox(domain, TeamMailboxName("firing"))
 
     val teamMailboxProbe = server.getProbe(classOf[TeamMailboxProbe])
     teamMailboxProbe.create(teamMailbox)
-      .addManager(teamMailbox, BOB)
+      .addManager(teamMailbox, bobUsername)
 
     teamMailboxProbe.create(teamMailbox2)
 
@@ -843,13 +873,13 @@ trait TeamMailboxMemberSetMethodContract {
            |    [
            |      "TeamMailboxMember/set",
            |      {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "update": {
            |            "${teamMailbox.asString()}": {
-           |                "${ANDRE.asString()}": {"role": "member"}
+           |                "${andreUsername.asString()}": {"role": "member"}
            |            },
            |            "${teamMailbox2.asString()}": {
-           |                "${CEDRIC.asString()}": {"role": "member"}
+           |                "${cedricUsername.asString()}": {"role": "member"}
            |            }
            |        }
            |      },
@@ -866,7 +896,7 @@ trait TeamMailboxMemberSetMethodContract {
         s"""[
            |    "TeamMailboxMember/set",
            |    {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "updated": {
            |            "${teamMailbox.asString()}": null
            |        },
