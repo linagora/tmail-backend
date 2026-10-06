@@ -19,12 +19,14 @@
 package com.linagora.tmail.james.common
 
 import java.nio.charset.StandardCharsets
+import java.util.UUID
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
+import com.google.common.hash.Hashing
 import com.linagora.tmail.james.common.MailboxClearContract.{BIG_LIMIT, MESSAGE, andreBaseRequest, andreInboxId, andreTrashId, bobBaseRequest, bobInboxId, bobTrashId}
 import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
 import com.linagora.tmail.team.{TeamMailbox, TeamMailboxName, TeamMailboxProbe}
-import eu.timepit.refined.auto._
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.`given`
 import io.restassured.http.ContentType.JSON
@@ -35,7 +37,7 @@ import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
 import org.apache.james.core.Username
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCOUNT_ID => BOB_ACCOUNT_ID, _}
+import org.apache.james.jmap.rfc8621.contract.Fixture._
 import org.apache.james.mailbox.MessageManager.AppendCommand
 import org.apache.james.mailbox.model.{MailboxId, MailboxPath, MessageId, MultimailboxesSearchQuery, SearchQuery}
 import org.apache.james.mime4j.dom.Message
@@ -48,6 +50,14 @@ import org.hamcrest.Matchers
 import org.junit.jupiter.api.{BeforeEach, Test}
 
 object MailboxClearContract {
+  case class TestContext(bobUsername: Username, andreUsername: Username, teamMailboxName: String) {
+    val bobAccountId: String = Hashing.sha256().hashString(bobUsername.asString(), StandardCharsets.UTF_8).toString
+  }
+
+  private val currentContext: AtomicReference[TestContext] = new AtomicReference[TestContext]()
+
+  private def bobUsername: Username = currentContext.get().bobUsername
+
   var bobBaseRequest: RequestSpecification = _
   var andreBaseRequest: RequestSpecification = _
   var andreInboxId: MailboxId = _
@@ -55,11 +65,11 @@ object MailboxClearContract {
   var bobInboxId: MailboxId = _
   var bobTrashId: MailboxId = _
 
-  val MESSAGE: Message = Message.Builder.of
+  def MESSAGE: Message = Message.Builder.of
     .setSubject("test")
-    .setSender(BOB.asString)
-    .setFrom(BOB.asString)
-    .setTo(BOB.asString)
+    .setSender(bobUsername.asString)
+    .setFrom(bobUsername.asString)
+    .setTo(bobUsername.asString)
     .setBody("test mail", StandardCharsets.UTF_8)
     .build
 
@@ -67,37 +77,50 @@ object MailboxClearContract {
 }
 
 trait MailboxClearContract {
+  def bobUsername: Username = MailboxClearContract.currentContext.get().bobUsername
+
+  def bobAccountId: String = MailboxClearContract.currentContext.get().bobAccountId
+
+  def teamMailboxName: String = MailboxClearContract.currentContext.get().teamMailboxName
+
+  def andreUsername: Username = MailboxClearContract.currentContext.get().andreUsername
+
   private lazy val await: ConditionFactory = awaitility.atMost(60, TimeUnit.SECONDS)
 
   def errorInvalidMailboxIdMessage(value: String): String
 
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    val bob = Username.fromLocalPartWithDomain(s"bob$uniqueSuffix", DOMAIN)
+    val andre = Username.fromLocalPartWithDomain(s"andre$uniqueSuffix", DOMAIN)
+    MailboxClearContract.currentContext.set(MailboxClearContract.TestContext(bob, andre, teamMailboxName = s"marketing$uniqueSuffix"))
+
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
       .addDomain(DOMAIN.asString())
-      .addUser(BOB.asString(), BOB_PASSWORD)
-      .addUser(ANDRE.asString(), ANDRE_PASSWORD)
+      .addUser(bobUsername.asString(), BOB_PASSWORD)
+      .addUser(andreUsername.asString(), ANDRE_PASSWORD)
 
     andreInboxId = server.getProbe(classOf[MailboxProbeImpl])
-      .createMailbox(MailboxPath.inbox(ANDRE))
+      .createMailbox(MailboxPath.inbox(andreUsername))
 
     andreTrashId = server.getProbe(classOf[MailboxProbeImpl])
-      .createMailbox(MailboxPath.forUser(ANDRE, "Trash"))
+      .createMailbox(MailboxPath.forUser(andreUsername, "Trash"))
 
     bobInboxId = server.getProbe(classOf[MailboxProbeImpl])
-      .createMailbox(MailboxPath.inbox(BOB))
+      .createMailbox(MailboxPath.inbox(bobUsername))
 
     bobTrashId = server.getProbe(classOf[MailboxProbeImpl])
-      .createMailbox(MailboxPath.forUser(BOB, "Trash"))
+      .createMailbox(MailboxPath.forUser(bobUsername, "Trash"))
 
     bobBaseRequest = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .setAuth(authScheme(UserCredential(bobUsername, BOB_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build()
 
     andreBaseRequest = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+      .setAuth(authScheme(UserCredential(andreUsername, ANDRE_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build()
   }
@@ -160,7 +183,7 @@ trait MailboxClearContract {
            |        [
            |            "Mailbox/clear",
            |            {
-           |                "accountId": "$BOB_ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "mailboxId": "mailboxId123"
            |            },
            |            "c1"
@@ -193,8 +216,8 @@ trait MailboxClearContract {
   def shouldClearAllMessagesInTargetMailbox(server: GuiceJamesServer): Unit = {
     val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
 
-    mailboxProbe.appendMessage(BOB.asString(), MailboxPath.forUser(BOB, "Trash"), AppendCommand.from(MESSAGE))
-    mailboxProbe.appendMessage(BOB.asString(), MailboxPath.forUser(BOB, "Trash"), AppendCommand.from(MESSAGE))
+    mailboxProbe.appendMessage(bobUsername.asString(), MailboxPath.forUser(bobUsername, "Trash"), AppendCommand.from(MESSAGE))
+    mailboxProbe.appendMessage(bobUsername.asString(), MailboxPath.forUser(bobUsername, "Trash"), AppendCommand.from(MESSAGE))
 
     val response: String = `given`(bobBaseRequest)
       .body(
@@ -208,7 +231,7 @@ trait MailboxClearContract {
            |        [
            |            "Mailbox/clear",
            |            {
-           |                "accountId": "$BOB_ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "mailboxId": "${bobTrashId.serialize()}"
            |            },
            |            "c1"
@@ -230,7 +253,7 @@ trait MailboxClearContract {
         s"""[
            |    "Mailbox/clear",
            |    {
-           |        "accountId": "$BOB_ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "totalDeletedMessagesCount": 2
            |    },
            |    "c1"
@@ -239,7 +262,7 @@ trait MailboxClearContract {
     await.untilAsserted(() => {
       val bobTrashMessages = mailboxProbe.searchMessage(MultimailboxesSearchQuery.from(SearchQuery.matchAll)
         .inMailboxes(bobTrashId).build,
-        BOB.asString(),
+        bobUsername.asString(),
         BIG_LIMIT)
       assertThat(bobTrashMessages).isEmpty()
     })
@@ -259,7 +282,7 @@ trait MailboxClearContract {
            |        [
            |            "Mailbox/clear",
            |            {
-           |                "accountId": "$BOB_ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "mailboxId": "invalidMailboxId"
            |            },
            |            "c1"
@@ -291,7 +314,7 @@ trait MailboxClearContract {
            |        [
            |            "Mailbox/clear",
            |            {
-           |                "accountId": "$BOB_ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "mailboxId": "${bobTrashId.serialize()}"
            |            },
            |            "c1"
@@ -313,7 +336,7 @@ trait MailboxClearContract {
         s"""[
            |    "Mailbox/clear",
            |    {
-           |        "accountId": "$BOB_ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "totalDeletedMessagesCount": 0
            |    },
            |    "c1"
@@ -321,7 +344,7 @@ trait MailboxClearContract {
 
     val bobTrashMessages = mailboxProbe.searchMessage(MultimailboxesSearchQuery.from(SearchQuery.matchAll)
       .inMailboxes(bobTrashId).build,
-      BOB.asString(),
+      bobUsername.asString(),
       BIG_LIMIT)
 
     assertThat(bobTrashMessages).isEmpty()
@@ -332,10 +355,10 @@ trait MailboxClearContract {
     val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
 
     val bobInboxMessageId: MessageId = mailboxProbe
-      .appendMessage(BOB.asString(), MailboxPath.inbox(BOB), AppendCommand.from(MESSAGE))
+      .appendMessage(bobUsername.asString(), MailboxPath.inbox(bobUsername), AppendCommand.from(MESSAGE))
       .getMessageId
     mailboxProbe
-      .appendMessage(BOB.asString(), MailboxPath.forUser(BOB, "Trash"), AppendCommand.from(MESSAGE))
+      .appendMessage(bobUsername.asString(), MailboxPath.forUser(bobUsername, "Trash"), AppendCommand.from(MESSAGE))
       .getMessageId
 
     // clean Bob Trash
@@ -351,7 +374,7 @@ trait MailboxClearContract {
            |        [
            |            "Mailbox/clear",
            |            {
-           |                "accountId": "$BOB_ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "mailboxId": "${bobTrashId.serialize()}"
            |            },
            |            "c1"
@@ -373,7 +396,7 @@ trait MailboxClearContract {
         s"""[
            |    "Mailbox/clear",
            |    {
-           |        "accountId": "$BOB_ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "totalDeletedMessagesCount": 1
            |    },
            |    "c1"
@@ -383,11 +406,11 @@ trait MailboxClearContract {
     await.untilAsserted(() => {
       val bobInboxMessages = mailboxProbe.searchMessage(MultimailboxesSearchQuery.from(SearchQuery.matchAll)
         .inMailboxes(bobInboxId).build,
-        BOB.asString(),
+        bobUsername.asString(),
         BIG_LIMIT)
       val bobTrashMessages = mailboxProbe.searchMessage(MultimailboxesSearchQuery.from(SearchQuery.matchAll)
         .inMailboxes(bobTrashId).build,
-        BOB.asString(),
+        bobUsername.asString(),
         BIG_LIMIT)
 
       assertThat(bobTrashMessages).isEmpty()
@@ -400,10 +423,10 @@ trait MailboxClearContract {
     val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
 
     mailboxProbe
-      .appendMessage(BOB.asString(), MailboxPath.forUser(BOB, "Trash"), AppendCommand.from(MESSAGE))
+      .appendMessage(bobUsername.asString(), MailboxPath.forUser(bobUsername, "Trash"), AppendCommand.from(MESSAGE))
       .getMessageId
     val andreTrashMessageId: MessageId = mailboxProbe
-      .appendMessage(ANDRE.asString(), MailboxPath.forUser(ANDRE, "Trash"), AppendCommand.from(MESSAGE))
+      .appendMessage(andreUsername.asString(), MailboxPath.forUser(andreUsername, "Trash"), AppendCommand.from(MESSAGE))
       .getMessageId
 
     // clean Bob Trash
@@ -419,7 +442,7 @@ trait MailboxClearContract {
            |        [
            |            "Mailbox/clear",
            |            {
-           |                "accountId": "$BOB_ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "mailboxId": "${bobTrashId.serialize()}"
            |            },
            |            "c1"
@@ -441,7 +464,7 @@ trait MailboxClearContract {
         s"""[
            |    "Mailbox/clear",
            |    {
-           |        "accountId": "$BOB_ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "totalDeletedMessagesCount": 1
            |    },
            |    "c1"
@@ -451,11 +474,11 @@ trait MailboxClearContract {
     await.untilAsserted(() => {
       val bobTrashMessages = mailboxProbe.searchMessage(MultimailboxesSearchQuery.from(SearchQuery.matchAll)
         .inMailboxes(bobTrashId).build,
-        BOB.asString(),
+        bobUsername.asString(),
         BIG_LIMIT)
       val andreTrashMessages = mailboxProbe.searchMessage(MultimailboxesSearchQuery.from(SearchQuery.matchAll)
         .inMailboxes(andreTrashId).build,
-        ANDRE.asString(),
+        andreUsername.asString(),
         BIG_LIMIT)
       assertThat(bobTrashMessages).isEmpty()
       assertThat(andreTrashMessages).containsExactly(andreTrashMessageId)
@@ -467,7 +490,7 @@ trait MailboxClearContract {
     val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
 
     val andreTrashMessageId: MessageId = mailboxProbe
-      .appendMessage(ANDRE.asString(), MailboxPath.forUser(ANDRE, "Trash"), AppendCommand.from(MESSAGE))
+      .appendMessage(andreUsername.asString(), MailboxPath.forUser(andreUsername, "Trash"), AppendCommand.from(MESSAGE))
       .getMessageId
 
     // Bob tries to clean Andre Trash
@@ -483,7 +506,7 @@ trait MailboxClearContract {
            |        [
            |            "Mailbox/clear",
            |            {
-           |                "accountId": "$BOB_ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "mailboxId": "${andreTrashId.serialize()}"
            |            },
            |            "c1"
@@ -505,7 +528,7 @@ trait MailboxClearContract {
         s"""[
            |    "Mailbox/clear",
            |    {
-           |        "accountId": "$BOB_ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "notCleared": {
            |            "type": "notFound",
            |            "description": "${andreTrashId.serialize()} can not be found"
@@ -518,7 +541,7 @@ trait MailboxClearContract {
     await.untilAsserted(() => {
       val andreTrashMessages = mailboxProbe.searchMessage(MultimailboxesSearchQuery.from(SearchQuery.matchAll)
         .inMailboxes(andreTrashId).build,
-        ANDRE.asString(),
+        andreUsername.asString(),
         BIG_LIMIT)
       assertThat(andreTrashMessages).containsExactly(andreTrashMessageId)
     })
@@ -527,14 +550,14 @@ trait MailboxClearContract {
   @Test
   def shouldSucceedToClearTeamMailboxWhenRequestHasShareCapability(server: GuiceJamesServer): Unit = {
     val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName.fromString(teamMailboxName).toOption.get)
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
     val teamMailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", DOMAIN).asString(), "marketing")
+      .getMailboxId(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", DOMAIN).asString(), teamMailboxName)
     mailboxProbe
-      .appendMessage(BOB.asString(), teamMailbox.mailboxPath, AppendCommand.from(MESSAGE))
+      .appendMessage(bobUsername.asString(), teamMailbox.mailboxPath, AppendCommand.from(MESSAGE))
       .getMessageId
 
     val response: String = `given`(bobBaseRequest)
@@ -550,7 +573,7 @@ trait MailboxClearContract {
            |        [
            |            "Mailbox/clear",
            |            {
-           |                "accountId": "$BOB_ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "mailboxId": "${teamMailboxId.serialize()}"
            |            },
            |            "c1"
@@ -572,7 +595,7 @@ trait MailboxClearContract {
         s"""[
            |    "Mailbox/clear",
            |    {
-           |        "accountId": "$BOB_ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "totalDeletedMessagesCount": 1
            |    },
            |    "c1"
@@ -581,7 +604,7 @@ trait MailboxClearContract {
     await.untilAsserted(() => {
       val teamMailboxMessages = mailboxProbe.searchMessage(MultimailboxesSearchQuery.from(SearchQuery.matchAll)
         .inMailboxes(teamMailboxId).build,
-        BOB.asString(),
+        bobUsername.asString(),
         BIG_LIMIT)
       assertThat(teamMailboxMessages).isEmpty()
     })
@@ -590,14 +613,14 @@ trait MailboxClearContract {
   @Test
   def shouldFailToClearTeamMailboxWhenMissingShareCapability(server: GuiceJamesServer): Unit = {
     val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName.fromString(teamMailboxName).toOption.get)
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
     val teamMailboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", DOMAIN).asString(), "marketing")
+      .getMailboxId(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", DOMAIN).asString(), teamMailboxName)
     val messageId = mailboxProbe
-      .appendMessage(BOB.asString(), teamMailbox.mailboxPath, AppendCommand.from(MESSAGE))
+      .appendMessage(bobUsername.asString(), teamMailbox.mailboxPath, AppendCommand.from(MESSAGE))
       .getMessageId
 
     val response: String = `given`(bobBaseRequest)
@@ -612,7 +635,7 @@ trait MailboxClearContract {
            |        [
            |            "Mailbox/clear",
            |            {
-           |                "accountId": "$BOB_ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "mailboxId": "${teamMailboxId.serialize()}"
            |            },
            |            "c1"
@@ -634,7 +657,7 @@ trait MailboxClearContract {
         s"""[
            |    "Mailbox/clear",
            |    {
-           |        "accountId": "$BOB_ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "notCleared": {
            |            "type": "notFound",
            |            "description": "${teamMailboxId.serialize()} can not be found"
@@ -646,7 +669,7 @@ trait MailboxClearContract {
     await.untilAsserted(() => {
       val teamMailboxMessages = mailboxProbe.searchMessage(MultimailboxesSearchQuery.from(SearchQuery.matchAll)
         .inMailboxes(teamMailboxId).build,
-        BOB.asString(),
+        bobUsername.asString(),
         BIG_LIMIT)
       assertThat(teamMailboxMessages).containsExactly(messageId)
     })
