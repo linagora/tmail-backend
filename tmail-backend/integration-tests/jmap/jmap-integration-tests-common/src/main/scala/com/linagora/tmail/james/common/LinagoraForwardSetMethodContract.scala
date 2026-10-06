@@ -18,8 +18,12 @@
 
 package com.linagora.tmail.james.common
 
+import java.nio.charset.StandardCharsets
+import java.util.UUID
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
+import com.google.common.hash.Hashing
 import com.linagora.tmail.james.common.LinagoraForwardSetMethodContract.{CALMLY_AWAIT, CEDRIC_PASSWORD}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
@@ -34,7 +38,7 @@ import org.apache.james.jmap.MessageIdProbe
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.core.UuidState.INSTANCE
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, CEDRIC, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE_PASSWORD, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.mailbox.model.{MailboxPath, MessageResult, MultimailboxesSearchQuery, SearchQuery}
@@ -54,6 +58,15 @@ import org.junit.jupiter.params.provider.ValueSource
 import scala.jdk.CollectionConverters._
 
 object LinagoraForwardSetMethodContract {
+  case class TestContext(bobUsername: Username, andreUsername: Username, cedricUsername: Username) {
+    val bobAccountId: String = accountId(bobUsername)
+  }
+
+  private val currentContext: AtomicReference[TestContext] = new AtomicReference[TestContext]()
+
+  private def accountId(username: Username): String =
+    Hashing.sha256().hashString(username.asString(), StandardCharsets.UTF_8).toString
+
   private lazy val CALMLY_AWAIT: ConditionFactory = Awaitility.`with`
     .pollInterval(ONE_HUNDRED_MILLISECONDS)
     .and.`with`.pollDelay(ONE_HUNDRED_MILLISECONDS)
@@ -62,23 +75,36 @@ object LinagoraForwardSetMethodContract {
 }
 
 trait LinagoraForwardSetMethodContract {
+  def bobUsername: Username = LinagoraForwardSetMethodContract.currentContext.get().bobUsername
+
+  def bobAccountId: String = LinagoraForwardSetMethodContract.currentContext.get().bobAccountId
+
+  def andreUsername: Username = LinagoraForwardSetMethodContract.currentContext.get().andreUsername
+
+  def cedricUsername: Username = LinagoraForwardSetMethodContract.currentContext.get().cedricUsername
 
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    val bob = Username.fromLocalPartWithDomain(s"bob$uniqueSuffix", DOMAIN)
+    val andre = Username.fromLocalPartWithDomain(s"andre$uniqueSuffix", DOMAIN)
+    val cedric = Username.fromLocalPartWithDomain(s"cedric$uniqueSuffix", DOMAIN)
+    LinagoraForwardSetMethodContract.currentContext.set(LinagoraForwardSetMethodContract.TestContext(bob, andre, cedric))
+
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
       .addDomain(DOMAIN.asString)
-      .addUser(BOB.asString(), BOB_PASSWORD)
-      .addUser(ANDRE.asString(), ANDRE_PASSWORD)
-      .addUser(CEDRIC.asString(), CEDRIC_PASSWORD)
+      .addUser(bobUsername.asString(), BOB_PASSWORD)
+      .addUser(andreUsername.asString(), ANDRE_PASSWORD)
+      .addUser(cedricUsername.asString(), CEDRIC_PASSWORD)
 
     val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
-    mailboxProbe.createMailbox(MailboxPath.inbox(BOB))
-    mailboxProbe.createMailbox(MailboxPath.inbox(ANDRE))
-    mailboxProbe.createMailbox(MailboxPath.inbox(CEDRIC))
+    mailboxProbe.createMailbox(MailboxPath.inbox(bobUsername))
+    mailboxProbe.createMailbox(MailboxPath.inbox(andreUsername))
+    mailboxProbe.createMailbox(MailboxPath.inbox(cedricUsername))
 
     requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .setAuth(authScheme(UserCredential(bobUsername, BOB_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build()
   }
@@ -131,11 +157,11 @@ trait LinagoraForwardSetMethodContract {
   @Test
   def forwardSetShouldReturnUnknownMethodWhenMissingOneCapability(): Unit = {
     val request: String =
-      """{
+      s"""{
         |    "using": [ "urn:ietf:params:jmap:core"],
         |    "methodCalls": [
         |      ["Forward/set", {
-        |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        |        "accountId": "${bobAccountId}",
         |        "update": {
         |            "singleton": {
         |                "localCopy": true,
@@ -180,11 +206,11 @@ trait LinagoraForwardSetMethodContract {
   @Test
   def forwardSetShouldReturnUnknownMethodWhenMissingAllCapabilities(): Unit = {
     val request: String =
-      """{
+      s"""{
         |    "using": [],
         |    "methodCalls": [
         |      ["Forward/set", {
-        |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        |        "accountId": "${bobAccountId}",
         |        "update": {
         |            "singleton": {
         |                "localCopy": true,
@@ -228,12 +254,12 @@ trait LinagoraForwardSetMethodContract {
   @Tag(CategoryTags.BASIC_FEATURE)
   def updateShouldReturnSuccess(): Unit = {
     val request: String =
-      """{
+      s"""{
         |    "using": [ "urn:ietf:params:jmap:core",
         |               "com:linagora:params:jmap:forward" ],
         |    "methodCalls": [
         |      ["Forward/set", {
-        |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        |        "accountId": "${bobAccountId}",
         |        "update": {
         |            "singleton": {
         |                "localCopy": true,
@@ -264,7 +290,7 @@ trait LinagoraForwardSetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
          |    ["Forward/set", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "newState": "${INSTANCE.value}",
          |      "updated": {"singleton":{}}
          |    }, "c1"]
@@ -281,18 +307,18 @@ trait LinagoraForwardSetMethodContract {
          |               "com:linagora:params:jmap:forward" ],
          |    "methodCalls": [
          |      ["Forward/set", {
-         |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |        "accountId": "${bobAccountId}",
          |        "update": {
          |            "singleton": {
          |                "localCopy": $localCopy,
          |                "forwards": [
-         |                    "${ANDRE.asMailAddress().asString()}"
+         |                    "${andreUsername.asMailAddress().asString()}"
          |                ]
          |            }
          |        }
          |      }, "c1"],
          |      ["Forward/get", {
-         |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |        "accountId": "${bobAccountId}",
          |        "ids": ["singleton"]
          |      }, "c2" ]
          |    ]
@@ -315,18 +341,18 @@ trait LinagoraForwardSetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
          |    ["Forward/set", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "newState": "${INSTANCE.value}",
          |      "updated": {"singleton":{}}
          |    }, "c1"],
          |    ["Forward/get", {
-         |       "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |       "accountId": "${bobAccountId}",
          |       "notFound": [],
          |       "state": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
          |       "list": [
          |         { "id": "singleton",
          |            "localCopy": $localCopy,
-         |            "forwards": [ "${ANDRE.asMailAddress().asString()}"]
+         |            "forwards": [ "${andreUsername.asMailAddress().asString()}"]
          |         }
          |       ]
          |    }, "c2" ]
@@ -338,7 +364,7 @@ trait LinagoraForwardSetMethodContract {
   def updateForwardLoopShouldFail(guiceJamesServer: GuiceJamesServer): Unit = {
     // GIVEN Andre forwards mails to Bob
     guiceJamesServer.getProbe(classOf[DataProbeImpl])
-      .addMapping(MappingSource.fromUser(ANDRE), Mapping.forward(BOB.asString()))
+      .addMapping(MappingSource.fromUser(andreUsername), Mapping.forward(bobUsername.asString()))
 
     // WHEN Bob Forward/set to forward mails to Andre
     val request: String =
@@ -347,18 +373,18 @@ trait LinagoraForwardSetMethodContract {
          |               "com:linagora:params:jmap:forward" ],
          |    "methodCalls": [
          |      ["Forward/set", {
-         |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |        "accountId": "${bobAccountId}",
          |        "update": {
          |            "singleton": {
          |                "localCopy": false,
          |                "forwards": [
-         |                    "${ANDRE.asMailAddress().asString()}"
+         |                    "${andreUsername.asMailAddress().asString()}"
          |                ]
          |            }
          |        }
          |      }, "c1"],
          |      ["Forward/get", {
-         |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |        "accountId": "${bobAccountId}",
          |        "ids": ["singleton"]
          |      }, "c2" ]
          |    ]
@@ -384,12 +410,12 @@ trait LinagoraForwardSetMethodContract {
          |        [
          |            "Forward/set",
          |            {
-         |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |                "accountId": "${bobAccountId}",
          |                "newState": "${INSTANCE.value}",
          |                "notUpdated": {
          |                    "singleton": {
          |                        "type": "invalidPatch",
-         |                        "description": "Creation of redirection of ${BOB.asString()} to forward:${ANDRE.asString()} would lead to a loop, operation not performed"
+         |                        "description": "Creation of redirection of ${bobUsername.asString()} to forward:${andreUsername.asString()} would lead to a loop, operation not performed"
          |                    }
          |                }
          |            },
@@ -398,7 +424,7 @@ trait LinagoraForwardSetMethodContract {
          |        [
          |            "Forward/get",
          |            {
-         |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |                "accountId": "${bobAccountId}",
          |                "notFound": [],
          |                "state": "${INSTANCE.value}",
          |                "list": [
@@ -423,7 +449,7 @@ trait LinagoraForwardSetMethodContract {
          |               "com:linagora:params:jmap:forward" ],
          |    "methodCalls": [
          |      ["Forward/set", {
-         |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |        "accountId": "${bobAccountId}",
          |        "update": {
          |            "singleton": {
          |                "localCopy": true,
@@ -432,7 +458,7 @@ trait LinagoraForwardSetMethodContract {
          |        }
          |      }, "c1"],
          |      ["Forward/get", {
-         |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |        "accountId": "${bobAccountId}",
          |        "ids": ["singleton"]
          |      }, "c2" ]
          |    ]
@@ -455,12 +481,12 @@ trait LinagoraForwardSetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
          |    ["Forward/set", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "newState": "${INSTANCE.value}",
          |      "updated": {"singleton":{}}
          |    }, "c1"],
          |    ["Forward/get", {
-         |       "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |       "accountId": "${bobAccountId}",
          |       "notFound": [],
          |       "state": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
          |       "list": [
@@ -477,10 +503,10 @@ trait LinagoraForwardSetMethodContract {
   @Test
   def updateShouldKeepLocalCopyWhenOnlyForwardsIsPatched(): Unit = {
     val response: String = patchAfterInitialForward(
-      s"""{ "forwards": [ "${CEDRIC.asMailAddress().asString()}" ] }""")
+      s"""{ "forwards": [ "${cedricUsername.asMailAddress().asString()}" ] }""")
 
     assertThatJson(response).isEqualTo(
-      expectedPatchResponse(localCopy = true, forwards = s""""${CEDRIC.asMailAddress().asString()}""""))
+      expectedPatchResponse(localCopy = true, forwards = s""""${cedricUsername.asMailAddress().asString()}""""))
   }
 
   @Test
@@ -488,7 +514,7 @@ trait LinagoraForwardSetMethodContract {
     val response: String = patchAfterInitialForward("""{ "localCopy": false }""")
 
     assertThatJson(response).isEqualTo(
-      expectedPatchResponse(localCopy = false, forwards = s""""${ANDRE.asMailAddress().asString()}""""))
+      expectedPatchResponse(localCopy = false, forwards = s""""${andreUsername.asMailAddress().asString()}""""))
   }
 
   @Test
@@ -496,7 +522,7 @@ trait LinagoraForwardSetMethodContract {
     val response: String = patchAfterInitialForward("{}")
 
     assertThatJson(response).isEqualTo(
-      expectedPatchResponse(localCopy = true, forwards = s""""${ANDRE.asMailAddress().asString()}""""))
+      expectedPatchResponse(localCopy = true, forwards = s""""${andreUsername.asMailAddress().asString()}""""))
   }
 
   @Test
@@ -504,7 +530,7 @@ trait LinagoraForwardSetMethodContract {
     val response: String = patchAfterInitialForward("""{ "id": "singleton", "localCopy": false }""")
 
     assertThatJson(response).isEqualTo(
-      expectedPatchResponse(localCopy = false, forwards = s""""${ANDRE.asMailAddress().asString()}""""))
+      expectedPatchResponse(localCopy = false, forwards = s""""${andreUsername.asMailAddress().asString()}""""))
   }
 
   @Test
@@ -515,13 +541,13 @@ trait LinagoraForwardSetMethodContract {
          |               "com:linagora:params:jmap:forward" ],
          |    "methodCalls": [
          |      ["Forward/set", {
-         |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |        "accountId": "${bobAccountId}",
          |        "update": {
          |            "singleton": {}
          |        }
          |      }, "c1"],
          |      ["Forward/get", {
-         |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |        "accountId": "${bobAccountId}",
          |        "ids": ["singleton"]
          |      }, "c2" ]
          |    ]
@@ -544,12 +570,12 @@ trait LinagoraForwardSetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
          |    ["Forward/set", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "newState": "${INSTANCE.value}",
          |      "updated": {"singleton":{}}
          |    }, "c1"],
          |    ["Forward/get", {
-         |       "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |       "accountId": "${bobAccountId}",
          |       "notFound": [],
          |       "state": "${INSTANCE.value}",
          |       "list": [
@@ -602,22 +628,22 @@ trait LinagoraForwardSetMethodContract {
          |               "com:linagora:params:jmap:forward" ],
          |    "methodCalls": [
          |      ["Forward/set", {
-         |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |        "accountId": "${bobAccountId}",
          |        "update": {
          |            "singleton": {
          |                "localCopy": true,
-         |                "forwards": [ "${ANDRE.asMailAddress().asString()}" ]
+         |                "forwards": [ "${andreUsername.asMailAddress().asString()}" ]
          |            }
          |        }
          |      }, "c1"],
          |      ["Forward/set", {
-         |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |        "accountId": "${bobAccountId}",
          |        "update": {
          |            "singleton": $patch
          |        }
          |      }, "c2"],
          |      ["Forward/get", {
-         |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |        "accountId": "${bobAccountId}",
          |        "ids": ["singleton"]
          |      }, "c3" ]
          |    ]
@@ -652,24 +678,24 @@ trait LinagoraForwardSetMethodContract {
            |  }
            |}""".stripMargin,
       localCopy = true,
-      forwards = s""""${ANDRE.asMailAddress().asString()}"""")
+      forwards = s""""${andreUsername.asMailAddress().asString()}"""")
 
   private def expectedResponseAfterInitialForward(patchResult: String, localCopy: Boolean, forwards: String): String =
     s"""{
        |  "sessionState": "${SESSION_STATE.value}",
        |  "methodResponses": [
        |    ["Forward/set", {
-       |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+       |      "accountId": "${bobAccountId}",
        |      "newState": "${INSTANCE.value}",
        |      "updated": {"singleton":{}}
        |    }, "c1"],
        |    ["Forward/set", {
-       |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+       |      "accountId": "${bobAccountId}",
        |      "newState": "${INSTANCE.value}",
        |      $patchResult
        |    }, "c2"],
        |    ["Forward/get", {
-       |       "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+       |       "accountId": "${bobAccountId}",
        |       "notFound": [],
        |       "state": "${INSTANCE.value}",
        |       "list": [
@@ -685,12 +711,12 @@ trait LinagoraForwardSetMethodContract {
   @Test
   def updateShouldFailWhenInvalidKey(): Unit = {
     val request: String =
-      """{
+      s"""{
         |    "using": [ "urn:ietf:params:jmap:core",
         |               "com:linagora:params:jmap:forward" ],
         |    "methodCalls": [
         |      ["Forward/set", {
-        |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        |        "accountId": "${bobAccountId}",
         |        "update": {
         |            "invalidKey": {
         |                "localCopy": true,
@@ -721,7 +747,7 @@ trait LinagoraForwardSetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
          |    ["Forward/set", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "newState": "${INSTANCE.value}",
          |      "notUpdated": {
          |        "invalidKey": {
@@ -737,12 +763,12 @@ trait LinagoraForwardSetMethodContract {
   @Test
   def updateShouldFailWhenInvalidLocalCopy(): Unit = {
     val request: String =
-      """{
+      s"""{
         |    "using": [ "urn:ietf:params:jmap:core",
         |               "com:linagora:params:jmap:forward" ],
         |    "methodCalls": [
         |      ["Forward/set", {
-        |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        |        "accountId": "${bobAccountId}",
         |        "update": {
         |            "singleton": {
         |                "localCopy": "invalid",
@@ -773,7 +799,7 @@ trait LinagoraForwardSetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
          |    ["Forward/set", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "newState": "${INSTANCE.value}",
          |      "notUpdated": {
          |        "singleton": {
@@ -789,17 +815,17 @@ trait LinagoraForwardSetMethodContract {
   @Test
   def updateShouldFailWhenInvalidForwards(): Unit = {
     val request: String =
-      """{
+      s"""{
         |    "using": [ "urn:ietf:params:jmap:core",
         |               "com:linagora:params:jmap:forward" ],
         |    "methodCalls": [
         |      ["Forward/set", {
-        |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        |        "accountId": "${bobAccountId}",
         |        "update": {
         |            "singleton": {
         |                "localCopy": true,
         |                "forwards": [
-        |                    "123$#%$#invalid"
+        |                    "123$$#%$$#invalid"
         |                ]
         |            }
         |        }
@@ -824,7 +850,7 @@ trait LinagoraForwardSetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
          |    ["Forward/set", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "newState": "${INSTANCE.value}",
          |      "notUpdated": {
          |        "singleton": {
@@ -840,12 +866,12 @@ trait LinagoraForwardSetMethodContract {
   @Test
   def updateShouldNoopWhenEmptyMap(): Unit = {
     val request: String =
-      """{
+      s"""{
         |    "using": [ "urn:ietf:params:jmap:core",
         |               "com:linagora:params:jmap:forward" ],
         |    "methodCalls": [
         |      ["Forward/set", {
-        |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        |        "accountId": "${bobAccountId}",
         |        "update": {}
         |      }, "c1"]
         |    ]
@@ -868,7 +894,7 @@ trait LinagoraForwardSetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
          |    ["Forward/set", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "newState": "${INSTANCE.value}"
          |    }, "c1"]
          |  ]
@@ -878,12 +904,12 @@ trait LinagoraForwardSetMethodContract {
   @Test
   def updateShouldFailWhenMultiplePatchObjects(): Unit = {
     val request: String =
-      """{
+      s"""{
         |    "using": [ "urn:ietf:params:jmap:core",
         |               "com:linagora:params:jmap:forward" ],
         |    "methodCalls": [
         |      ["Forward/set", {
-        |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        |        "accountId": "${bobAccountId}",
         |        "update": {
         |            "singleton": {
         |                "localCopy": true,
@@ -921,7 +947,7 @@ trait LinagoraForwardSetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
          |    ["Forward/set", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "newState": "${INSTANCE.value}",
          |      "updated": {"singleton": {} },
          |      "notUpdated": {
@@ -938,12 +964,12 @@ trait LinagoraForwardSetMethodContract {
   @Test
   def createShouldFail(): Unit = {
     val request: String =
-      """{
+      s"""{
         |    "using": [ "urn:ietf:params:jmap:core",
         |               "com:linagora:params:jmap:forward" ],
         |    "methodCalls": [
         |      ["Forward/set", {
-        |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        |        "accountId": "${bobAccountId}",
         |        "create": {
         |            "singleton": {
         |                "localCopy": true,
@@ -974,7 +1000,7 @@ trait LinagoraForwardSetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
          |    ["Forward/set", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "newState": "${INSTANCE.value}",
          |      "notCreated": {
          |        "singleton": {
@@ -990,12 +1016,12 @@ trait LinagoraForwardSetMethodContract {
   @Test
   def destroyShouldFail(): Unit = {
     val request: String =
-      """{
+      s"""{
         |    "using": [ "urn:ietf:params:jmap:core",
         |               "com:linagora:params:jmap:forward" ],
         |    "methodCalls": [
         |      ["Forward/set", {
-        |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        |        "accountId": "${bobAccountId}",
         |        "destroy": ["singleton"]
         |      }, "c1"]
         |    ]
@@ -1018,7 +1044,7 @@ trait LinagoraForwardSetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
          |    ["Forward/set", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "newState": "${INSTANCE.value}",
          |      "notDestroyed": {
          |        "singleton": {
@@ -1040,11 +1066,11 @@ trait LinagoraForwardSetMethodContract {
          |               "com:linagora:params:jmap:forward" ],
          |    "methodCalls": [
          |      ["Forward/set", {
-         |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |        "accountId": "${bobAccountId}",
          |        "update": {
          |            "singleton": {
          |                "localCopy": true,
-         |                "forwards": [ "${ANDRE.asMailAddress().asString()}"]
+         |                "forwards": [ "${andreUsername.asMailAddress().asString()}"]
          |            }
          |        }
          |      }, "c1"]
@@ -1062,34 +1088,34 @@ trait LinagoraForwardSetMethodContract {
     val mail: FakeMail = FakeMail.builder()
       .name("mail1")
       .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
-        .setSender(BOB.asString())
-        .addToRecipient(BOB.asString())
+        .setSender(bobUsername.asString())
+        .addToRecipient(bobUsername.asString())
         .setSubject("Subject 01")
         .setText("Content mail 123"))
-      .sender(BOB.asString())
-      .recipient(BOB.asString())
+      .sender(bobUsername.asString())
+      .recipient(bobUsername.asString())
       .build()
 
     new SMTPMessageSender(DOMAIN.asString())
       .connect("127.0.0.1", server.getProbe(classOf[SmtpGuiceProbe]).getSmtpPort)
-      .authenticate(BOB.asString(), BOB_PASSWORD)
+      .authenticate(bobUsername.asString(), BOB_PASSWORD)
       .sendMessage(mail)
 
     CALMLY_AWAIT.atMost(30, TimeUnit.SECONDS).untilAsserted { () =>
-      assertThat(listAllMessageResult(server, ANDRE)).hasSize(1)
+      assertThat(listAllMessageResult(server, andreUsername)).hasSize(1)
     }
   }
 
   @Test
   def messageShouldBeForwardedToOwnerWhenLocalCopyIsTrue(server: GuiceJamesServer): Unit = {
-    assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+    assertThat(listAllMessageResult(server, bobUsername)).hasSize(0)
     val request: String =
       s"""{
          |    "using": [ "urn:ietf:params:jmap:core",
          |               "com:linagora:params:jmap:forward" ],
          |    "methodCalls": [
          |      ["Forward/set", {
-         |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |        "accountId": "${bobAccountId}",
          |        "update": {
          |            "singleton": {
          |                "localCopy": true,
@@ -1111,39 +1137,39 @@ trait LinagoraForwardSetMethodContract {
     val mail: FakeMail = FakeMail.builder()
       .name("mail1")
       .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
-        .setSender(ANDRE.asString())
-        .addToRecipient(BOB.asString())
+        .setSender(andreUsername.asString())
+        .addToRecipient(bobUsername.asString())
         .setSubject("Subject 01")
         .setText("Content mail 123"))
-      .sender(ANDRE.asString())
-      .recipient(BOB.asString())
+      .sender(andreUsername.asString())
+      .recipient(bobUsername.asString())
       .build()
 
     new SMTPMessageSender(DOMAIN.asString())
       .connect("127.0.0.1", server.getProbe(classOf[SmtpGuiceProbe]).getSmtpPort)
-      .authenticate(ANDRE.asString(), ANDRE_PASSWORD)
+      .authenticate(andreUsername.asString(), ANDRE_PASSWORD)
       .sendMessage(mail)
 
     CALMLY_AWAIT.atMost(30, TimeUnit.SECONDS).untilAsserted { () =>
-      assertThat(listAllMessageResult(server, BOB)).hasSize(1)
+      assertThat(listAllMessageResult(server, bobUsername)).hasSize(1)
     }
   }
 
   @Test
   def messageShouldNOTBeForwardedToOwnerWhenLocalCopyIsFalse(server: GuiceJamesServer): Unit = {
-    assertThat(listAllMessageResult(server, BOB)).hasSize(0)
-    assertThat(listAllMessageResult(server, ANDRE)).hasSize(0)
+    assertThat(listAllMessageResult(server, bobUsername)).hasSize(0)
+    assertThat(listAllMessageResult(server, andreUsername)).hasSize(0)
     val request: String =
       s"""{
          |    "using": [ "urn:ietf:params:jmap:core",
          |               "com:linagora:params:jmap:forward" ],
          |    "methodCalls": [
          |      ["Forward/set", {
-         |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |        "accountId": "${bobAccountId}",
          |        "update": {
          |            "singleton": {
          |                "localCopy": false,
-         |                "forwards": [ "${ANDRE.asMailAddress().asString()}"]
+         |                "forwards": [ "${andreUsername.asMailAddress().asString()}"]
          |            }
          |        }
          |      }, "c1"]
@@ -1161,36 +1187,36 @@ trait LinagoraForwardSetMethodContract {
     val mail: FakeMail = FakeMail.builder()
       .name("mail1")
       .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
-        .setSender(CEDRIC.asString())
-        .addToRecipient(BOB.asString())
+        .setSender(cedricUsername.asString())
+        .addToRecipient(bobUsername.asString())
         .setSubject("Subject 01")
         .setText("Content mail 123"))
-      .sender(CEDRIC.asString())
-      .recipient(BOB.asString())
+      .sender(cedricUsername.asString())
+      .recipient(bobUsername.asString())
       .build()
 
     new SMTPMessageSender(DOMAIN.asString())
       .connect("127.0.0.1", server.getProbe(classOf[SmtpGuiceProbe]).getSmtpPort)
-      .authenticate(CEDRIC.asString(), CEDRIC_PASSWORD)
+      .authenticate(cedricUsername.asString(), CEDRIC_PASSWORD)
       .sendMessage(mail)
 
     CALMLY_AWAIT.atMost(30, TimeUnit.SECONDS).untilAsserted { () =>
-      assertThat(listAllMessageResult(server, ANDRE)).hasSize(1)
-      assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+      assertThat(listAllMessageResult(server, andreUsername)).hasSize(1)
+      assertThat(listAllMessageResult(server, bobUsername)).hasSize(0)
     }
   }
 
   @Test
   def messageShouldNOTBeForwardedToOtherNotInDestinationForwards(server: GuiceJamesServer): Unit = {
-    assertThat(listAllMessageResult(server, BOB)).hasSize(0)
-    assertThat(listAllMessageResult(server, ANDRE)).hasSize(0)
+    assertThat(listAllMessageResult(server, bobUsername)).hasSize(0)
+    assertThat(listAllMessageResult(server, andreUsername)).hasSize(0)
     val request: String =
       s"""{
          |    "using": [ "urn:ietf:params:jmap:core",
          |               "com:linagora:params:jmap:forward" ],
          |    "methodCalls": [
          |      ["Forward/set", {
-         |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |        "accountId": "${bobAccountId}",
          |        "update": {
          |            "singleton": {
          |                "localCopy": true,
@@ -1212,29 +1238,29 @@ trait LinagoraForwardSetMethodContract {
     val mail: FakeMail = FakeMail.builder()
       .name("mail1")
       .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
-        .setSender(CEDRIC.asString())
-        .addToRecipient(BOB.asString())
+        .setSender(cedricUsername.asString())
+        .addToRecipient(bobUsername.asString())
         .setSubject("Subject 01")
         .setText("Content mail 123"))
-      .sender(CEDRIC.asString())
-      .recipient(BOB.asString())
+      .sender(cedricUsername.asString())
+      .recipient(bobUsername.asString())
       .build()
 
     new SMTPMessageSender(DOMAIN.asString())
       .connect("127.0.0.1", server.getProbe(classOf[SmtpGuiceProbe]).getSmtpPort)
-      .authenticate(CEDRIC.asString(), CEDRIC_PASSWORD)
+      .authenticate(cedricUsername.asString(), CEDRIC_PASSWORD)
       .sendMessage(mail)
 
     CALMLY_AWAIT.atMost(30, TimeUnit.SECONDS).untilAsserted { () =>
-      assertThat(listAllMessageResult(server, ANDRE)).hasSize(0)
-      assertThat(listAllMessageResult(server, BOB)).hasSize(1)
+      assertThat(listAllMessageResult(server, andreUsername)).hasSize(0)
+      assertThat(listAllMessageResult(server, bobUsername)).hasSize(1)
     }
   }
 
   @Test
   def messageShouldBeForwardedToDestinationForwardsAndOwner(server: GuiceJamesServer): Unit = {
-    assertThat(listAllMessageResult(server, ANDRE)).hasSize(0)
-    assertThat(listAllMessageResult(server, BOB)).hasSize(0)
+    assertThat(listAllMessageResult(server, andreUsername)).hasSize(0)
+    assertThat(listAllMessageResult(server, bobUsername)).hasSize(0)
 
     val request: String =
       s"""{
@@ -1242,11 +1268,11 @@ trait LinagoraForwardSetMethodContract {
          |               "com:linagora:params:jmap:forward" ],
          |    "methodCalls": [
          |      ["Forward/set", {
-         |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |        "accountId": "${bobAccountId}",
          |        "update": {
          |            "singleton": {
          |                "localCopy": true,
-         |                "forwards": [ "${ANDRE.asMailAddress().asString()}"]
+         |                "forwards": [ "${andreUsername.asMailAddress().asString()}"]
          |            }
          |        }
          |      }, "c1"]
@@ -1264,30 +1290,29 @@ trait LinagoraForwardSetMethodContract {
     val mail: FakeMail = FakeMail.builder()
       .name("mail1")
       .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
-        .setSender(CEDRIC.asString())
-        .addToRecipient(BOB.asString())
+        .setSender(cedricUsername.asString())
+        .addToRecipient(bobUsername.asString())
         .setSubject("Subject 01")
         .setText("Content mail 123"))
-      .sender(CEDRIC.asString())
-      .recipient(BOB.asString())
+      .sender(cedricUsername.asString())
+      .recipient(bobUsername.asString())
       .build()
 
     new SMTPMessageSender(DOMAIN.asString())
       .connect("127.0.0.1", server.getProbe(classOf[SmtpGuiceProbe]).getSmtpPort)
-      .authenticate(CEDRIC.asString(), CEDRIC_PASSWORD)
+      .authenticate(cedricUsername.asString(), CEDRIC_PASSWORD)
       .sendMessage(mail)
 
     CALMLY_AWAIT.atMost(30, TimeUnit.SECONDS).untilAsserted { () =>
-      assertThat(listAllMessageResult(server, ANDRE)).hasSize(1)
-      assertThat(listAllMessageResult(server, BOB)).hasSize(1)
+      assertThat(listAllMessageResult(server, andreUsername)).hasSize(1)
+      assertThat(listAllMessageResult(server, bobUsername)).hasSize(1)
     }
   }
   @Test
   def setShouldRejectFromDelegatedAccount(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[DelegationProbe])
-      .addAuthorizedUser(BOB, ANDRE)
+      .addAuthorizedUser(bobUsername, andreUsername)
 
-    val bobAccountId = ACCOUNT_ID
 
     val request: String =
       s"""{
@@ -1310,7 +1335,7 @@ trait LinagoraForwardSetMethodContract {
         |  }""".stripMargin
 
     val response = `given`(baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+      .setAuth(authScheme(UserCredential(andreUsername, ANDRE_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build)
       .body(request)
