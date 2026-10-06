@@ -23,8 +23,11 @@ import java.net.URI
 import java.nio.charset.StandardCharsets
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
+import java.util.UUID
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
+import com.google.common.hash.Hashing
 import com.linagora.tmail.james.common.TeamMailboxesContract.webAdminApi
 import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
 import com.linagora.tmail.team.{TeamMailbox, TeamMailboxName, TeamMailboxProbe}
@@ -40,16 +43,15 @@ import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
 import org.apache.http.HttpStatus
 import org.apache.http.HttpStatus.{SC_CREATED, SC_OK}
 import org.apache.james.GuiceJamesServer
-import org.apache.james.core.Username
 import org.apache.james.core.quota.{QuotaCountLimit, QuotaSizeLimit}
+import org.apache.james.core.{Domain, Username}
 import org.apache.james.jmap.JmapGuiceProbe
 import org.apache.james.jmap.api.change.State
 import org.apache.james.jmap.api.model.AccountId
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.core.{PushState, UTCDate, UuidState}
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.DownloadContract.accountId
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, BOB, BOB_PASSWORD, CEDRIC, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, BOB_PASSWORD, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.receiveMessageInTimespan
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.mailbox.DefaultMailboxes
@@ -79,11 +81,26 @@ import sttp.ws.WebSocketFrame
 import scala.concurrent.duration.MILLISECONDS
 
 object TeamMailboxesContract {
+  case class TestContext(domain: Domain) {
+    val bobUsername: Username = Username.fromLocalPartWithDomain("bob", domain)
+    val cedricUsername: Username = Username.fromLocalPartWithDomain("cedric", domain)
+    val bobAccountId: String = Hashing.sha256().hashString(bobUsername.asString(), StandardCharsets.UTF_8).toString
+  }
+
+  private val currentContext: AtomicReference[TestContext] = new AtomicReference[TestContext]()
+
   private var webAdminApi: RequestSpecification = _
 }
 
 trait TeamMailboxesContract {
-  private lazy val BOB_ACCOUNT_ID: String = "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6"
+  def domain: Domain = TeamMailboxesContract.currentContext.get().domain
+
+  def bobUsername: Username = TeamMailboxesContract.currentContext.get().bobUsername
+
+  def bobAccountId: String = TeamMailboxesContract.currentContext.get().bobAccountId
+
+  def cedricUsername: Username = TeamMailboxesContract.currentContext.get().cedricUsername
+
   private lazy val UTC_DATE_FORMAT = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX")
   private lazy val slowPacedPollInterval = ONE_HUNDRED_MILLISECONDS
   private lazy val calmlyAwait = Awaitility.`with`
@@ -96,14 +113,17 @@ trait TeamMailboxesContract {
 
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    TeamMailboxesContract.currentContext.set(TeamMailboxesContract.TestContext(Domain.of(s"domain$uniqueSuffix.tld")))
+
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
-      .addDomain(DOMAIN.asString())
-      .addUser(BOB.asString(), BOB_PASSWORD)
-      .addUser(CEDRIC.asString(), "CEDRIC_pass")
+      .addDomain(domain.asString())
+      .addUser(bobUsername.asString(), BOB_PASSWORD)
+      .addUser(cedricUsername.asString(), "CEDRIC_pass")
 
     requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .setAuth(authScheme(UserCredential(bobUsername, BOB_PASSWORD)))
       .build
 
     webAdminApi = WebAdminUtils.buildRequestSpecification(server.getProbe(classOf[WebAdminGuiceProbe]).getWebAdminPort)
@@ -113,11 +133,11 @@ trait TeamMailboxesContract {
   @Test
   @Tag(CategoryTags.BASIC_FEATURE)
   def givenTeamMailboxHasManyMembersThenIdentitySetShouldSucceed(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("hiring"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("hiring"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, CEDRIC)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, cedricUsername)
+      .addMember(teamMailbox, bobUsername)
 
     val request =
       s"""{
@@ -129,11 +149,11 @@ trait TeamMailboxesContract {
          |		[
          |			"Identity/set",
          |			{
-         |				"accountId": "$BOB_ACCOUNT_ID",
+         |				"accountId": "$bobAccountId",
          |				"create": {
          |					"4f29": {
          |						"name": "test",
-         |						"email": "hiring@domain.tld",
+         |						"email": "hiring@${domain.asString}",
          |						"textSignature": "Some text signature",
          |						"htmlSignature": "<p>Some html signature</p>"
          |					}
@@ -164,7 +184,7 @@ trait TeamMailboxesContract {
            |		[
            |			"Identity/set",
            |			{
-           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"accountId": "${bobAccountId}",
            |				"newState": "${SESSION_STATE.value}",
            |				"created": {
            |					"4f29": {
@@ -191,11 +211,11 @@ trait TeamMailboxesContract {
          |		[
          |			"Identity/set",
          |			{
-         |				"accountId": "$BOB_ACCOUNT_ID",
+         |				"accountId": "$bobAccountId",
          |				"create": {
          |					"4f29": {
          |						"name": "test",
-         |						"email": "hiring@domain.tld"
+         |						"email": "hiring@${domain.asString}"
          |					}
          |				}
          |			},
@@ -224,12 +244,12 @@ trait TeamMailboxesContract {
            |		[
            |			"Identity/set",
            |			{
-           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"accountId": "${bobAccountId}",
            |				"newState": "${SESSION_STATE.value}",
            |				"notCreated": {
            |					"4f29": {
            |						"type": "forbiddenFrom",
-           |						"description": "Can not send from hiring@domain.tld"
+           |						"description": "Can not send from hiring@${domain.asString}"
            |					}
            |				}
            |			},
@@ -241,17 +261,17 @@ trait TeamMailboxesContract {
 
   @Test
   def identityGetShouldListTeamMailbox(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val request =s"""{
                     |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:submission"],
                     |  "methodCalls": [[
                     |    "Identity/get",
                     |    {
-                    |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                    |      "accountId": "${bobAccountId}",
                     |      "ids": null
                     |    },
                     |    "c1"]]
@@ -279,20 +299,20 @@ trait TeamMailboxesContract {
            |        [
            |            "Identity/get",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "list": [
            |                    {
            |                        "id": "$${json-unit.ignore}",
-           |                        "name": "bob@domain.tld",
-           |                        "email": "bob@domain.tld",
+           |                        "name": "bob@${domain.asString}",
+           |                        "email": "bob@${domain.asString}",
            |                        "htmlSignature": "",
            |                        "textSignature": "",
            |                        "mayDelete": false
            |                    },
            |                    {
            |                        "id": "$${json-unit.ignore}",
-           |                        "name": "marketing@domain.tld",
-           |                        "email": "marketing@domain.tld",
+           |                        "name": "marketing@${domain.asString}",
+           |                        "email": "marketing@${domain.asString}",
            |                        "htmlSignature": "",
            |                        "textSignature": "",
            |                        "mayDelete": false
@@ -307,23 +327,23 @@ trait TeamMailboxesContract {
 
   @Test
   def EmailSubmissionSetGetShouldAcceptTeamMailbox(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val message: Message = Message.Builder
       .of
       .setSubject("test")
-      .setSender(s"marketing@${DOMAIN.asString()}")
-      .setFrom(s"marketing@${DOMAIN.asString()}")
-      .setTo(BOB.asString)
+      .setSender(s"marketing@${domain.asString()}")
+      .setFrom(s"marketing@${domain.asString()}")
+      .setTo(bobUsername.asString)
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
 
-    val bobDraftsPath = MailboxPath.forUser(BOB, DefaultMailboxes.DRAFTS)
+    val bobDraftsPath = MailboxPath.forUser(bobUsername, DefaultMailboxes.DRAFTS)
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(bobDraftsPath)
-    val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl]).appendMessage(BOB.asString(), bobDraftsPath, AppendCommand.builder()
+    val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl]).appendMessage(bobUsername.asString(), bobDraftsPath, AppendCommand.builder()
       .build(message))
       .getMessageId
 
@@ -331,13 +351,13 @@ trait TeamMailboxesContract {
                     |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:ietf:params:jmap:submission"],
                     |  "methodCalls": [
                     |     ["EmailSubmission/set", {
-                    |       "accountId": "$ACCOUNT_ID",
+                    |       "accountId": "$bobAccountId",
                     |       "create": {
                     |         "k1490": {
                     |           "emailId": "${messageId.serialize}",
                     |           "envelope": {
-                    |             "mailFrom": {"email": "marketing@${DOMAIN.asString()}"},
-                    |             "rcptTo": [{"email": "${BOB.asString}"}]
+                    |             "mailFrom": {"email": "marketing@${domain.asString()}"},
+                    |             "rcptTo": [{"email": "${bobUsername.asString}"}]
                     |           }
                     |         }
                     |    }
@@ -365,7 +385,7 @@ trait TeamMailboxesContract {
            |        [
            |            "EmailSubmission/set",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "newState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
            |                "created": {
            |                    "k1490": "$${json-unit.ignore}"
@@ -379,10 +399,10 @@ trait TeamMailboxesContract {
 
   @Test
   def mailboxGetShouldListBaseMailbox(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val id1 = mailboxId(server, teamMailbox.mailboxPath)
 
@@ -394,7 +414,7 @@ trait TeamMailboxesContract {
                     |  "methodCalls": [[
                     |    "Mailbox/get",
                     |    {
-                    |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                    |      "accountId": "${bobAccountId}",
                     |      "ids": ["$id1"]
                     |    },
                     |    "c1"]]
@@ -421,7 +441,7 @@ trait TeamMailboxesContract {
            |  "methodResponses": [[
            |    "Mailbox/get",
            |    {
-           |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |      "accountId": "${bobAccountId}",
            |      "list": [
            |        {
            |          "id": "$id1",
@@ -443,8 +463,8 @@ trait TeamMailboxesContract {
            |            "maySubmit": true
            |          },
            |          "isSubscribed": true,
-           |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["e", "i", "k", "l", "p", "r", "s", "t", "w"]}
+           |          "namespace": "TeamMailbox[marketing@${domain.asString}]",
+           |          "rights": {"bob@${domain.asString}":["e", "i", "k", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -455,10 +475,10 @@ trait TeamMailboxesContract {
 
   @Test
   def mailboxGetShouldListInboxMailbox(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val id1 = mailboxId(server, teamMailbox.inboxPath)
 
@@ -472,7 +492,7 @@ trait TeamMailboxesContract {
                     |  "methodCalls": [[
                     |    "Mailbox/get",
                     |    {
-                    |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                    |      "accountId": "${bobAccountId}",
                     |      "ids": ["$id1"]
                     |    },
                     |    "c1"]]
@@ -499,7 +519,7 @@ trait TeamMailboxesContract {
            |  "methodResponses": [[
            |    "Mailbox/get",
            |    {
-           |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |      "accountId": "${bobAccountId}",
            |      "list": [
            |        {
            |          "id": "$id1",
@@ -522,8 +542,8 @@ trait TeamMailboxesContract {
            |            "maySubmit": true
            |          },
            |          "isSubscribed": true,
-           |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["e", "i", "k", "l", "p", "r", "s", "t", "w"]}
+           |          "namespace": "TeamMailbox[marketing@${domain.asString}]",
+           |          "rights": {"bob@${domain.asString}":["e", "i", "k", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -534,10 +554,10 @@ trait TeamMailboxesContract {
 
   @Test
   def mailboxGetShouldListSentMailbox(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val id1 = mailboxId(server, teamMailbox.sentPath)
 
@@ -551,7 +571,7 @@ trait TeamMailboxesContract {
                     |  "methodCalls": [[
                     |    "Mailbox/get",
                     |    {
-                    |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                    |      "accountId": "${bobAccountId}",
                     |      "ids": ["$id1"]
                     |    },
                     |    "c1"]]
@@ -578,7 +598,7 @@ trait TeamMailboxesContract {
            |  "methodResponses": [[
            |    "Mailbox/get",
            |    {
-           |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |      "accountId": "${bobAccountId}",
            |      "list": [
            |        {
            |          "id": "$id1",
@@ -601,8 +621,8 @@ trait TeamMailboxesContract {
            |            "maySubmit": true
            |          },
            |          "isSubscribed": true,
-           |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["e", "i", "k", "l", "p", "r", "s", "t", "w"]}
+           |          "namespace": "TeamMailbox[marketing@${domain.asString}]",
+           |          "rights": {"bob@${domain.asString}":["e", "i", "k", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -613,10 +633,10 @@ trait TeamMailboxesContract {
 
   @Test
   def mailboxGetShouldListOutboxMailbox(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val id1 = mailboxId(server, teamMailbox.mailboxPath("Outbox"))
 
@@ -630,7 +650,7 @@ trait TeamMailboxesContract {
                     |  "methodCalls": [[
                     |    "Mailbox/get",
                     |    {
-                    |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                    |      "accountId": "${bobAccountId}",
                     |      "ids": ["$id1"]
                     |    },
                     |    "c1"]]
@@ -657,7 +677,7 @@ trait TeamMailboxesContract {
            |  "methodResponses": [[
            |    "Mailbox/get",
            |    {
-           |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |      "accountId": "${bobAccountId}",
            |      "list": [
            |        {
            |          "id": "$id1",
@@ -680,8 +700,8 @@ trait TeamMailboxesContract {
            |            "maySubmit": true
            |          },
            |          "isSubscribed": true,
-           |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["e", "i", "k", "l", "p", "r", "s", "t", "w"]}
+           |          "namespace": "TeamMailbox[marketing@${domain.asString}]",
+           |          "rights": {"bob@${domain.asString}":["e", "i", "k", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -692,10 +712,10 @@ trait TeamMailboxesContract {
 
   @Test
   def mailboxGetShouldListDraftsMailbox(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val id1 = mailboxId(server, teamMailbox.mailboxPath("Drafts"))
 
@@ -709,7 +729,7 @@ trait TeamMailboxesContract {
                     |  "methodCalls": [[
                     |    "Mailbox/get",
                     |    {
-                    |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                    |      "accountId": "${bobAccountId}",
                     |      "ids": ["$id1"]
                     |    },
                     |    "c1"]]
@@ -736,7 +756,7 @@ trait TeamMailboxesContract {
            |  "methodResponses": [[
            |    "Mailbox/get",
            |    {
-           |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |      "accountId": "${bobAccountId}",
            |      "list": [
            |        {
            |          "id": "$id1",
@@ -759,8 +779,8 @@ trait TeamMailboxesContract {
            |            "maySubmit": true
            |          },
            |          "isSubscribed": true,
-           |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["e", "i", "k", "l", "p", "r", "s", "t", "w"]}
+           |          "namespace": "TeamMailbox[marketing@${domain.asString}]",
+           |          "rights": {"bob@${domain.asString}":["e", "i", "k", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -771,10 +791,10 @@ trait TeamMailboxesContract {
 
   @Test
   def mailboxGetShouldListTrashMailbox(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val id1 = mailboxId(server, teamMailbox.mailboxPath("Trash"))
 
@@ -788,7 +808,7 @@ trait TeamMailboxesContract {
                     |  "methodCalls": [[
                     |    "Mailbox/get",
                     |    {
-                    |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                    |      "accountId": "${bobAccountId}",
                     |      "ids": ["$id1"]
                     |    },
                     |    "c1"]]
@@ -815,7 +835,7 @@ trait TeamMailboxesContract {
            |  "methodResponses": [[
            |    "Mailbox/get",
            |    {
-           |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |      "accountId": "${bobAccountId}",
            |      "list": [
            |        {
            |          "id": "$id1",
@@ -838,8 +858,8 @@ trait TeamMailboxesContract {
            |            "maySubmit": true
            |          },
            |          "isSubscribed": true,
-           |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["e", "i", "k", "l", "p", "r", "s", "t", "w"]}
+           |          "namespace": "TeamMailbox[marketing@${domain.asString}]",
+           |          "rights": {"bob@${domain.asString}":["e", "i", "k", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -850,10 +870,10 @@ trait TeamMailboxesContract {
 
   @Test
   def mailboxGetShouldNotReturnTeamMailboxesWhenNoShareExtension(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val id1 = mailboxId(server, teamMailbox.sentPath)
 
@@ -868,7 +888,7 @@ trait TeamMailboxesContract {
                     |  "methodCalls": [[
                     |    "Mailbox/get",
                     |    {
-                    |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                    |      "accountId": "${bobAccountId}",
                     |      "ids": ["$id1", "$id2", "$id3"]
                     |    },
                     |    "c1"]]
@@ -895,7 +915,7 @@ trait TeamMailboxesContract {
            |  "methodResponses": [[
            |    "Mailbox/get",
            |    {
-           |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |      "accountId": "${bobAccountId}",
            |      "list": [],
            |      "notFound": ["$id1", "$id2", "$id3"]
            |    },
@@ -905,7 +925,7 @@ trait TeamMailboxesContract {
 
   @Test
   def mailboxGetShouldNotReturnTeamMailboxesWhenNotAMember(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
 
@@ -923,7 +943,7 @@ trait TeamMailboxesContract {
                     |  "methodCalls": [[
                     |    "Mailbox/get",
                     |    {
-                    |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                    |      "accountId": "${bobAccountId}",
                     |      "ids": ["$id1", "$id2", "$id3"]
                     |    },
                     |    "c1"]]
@@ -950,7 +970,7 @@ trait TeamMailboxesContract {
            |  "methodResponses": [[
            |    "Mailbox/get",
            |    {
-           |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |      "accountId": "${bobAccountId}",
            |      "list": [],
            |      "notFound": ["$id1", "$id2", "$id3"]
            |    },
@@ -966,11 +986,11 @@ trait TeamMailboxesContract {
 
   @Test
   def mailboxGetShouldNotListRightsOfOthers(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
-      .addMember(teamMailbox, CEDRIC)
+      .addMember(teamMailbox, bobUsername)
+      .addMember(teamMailbox, cedricUsername)
 
     val id1 = mailboxId(server, teamMailbox.mailboxPath)
 
@@ -982,7 +1002,7 @@ trait TeamMailboxesContract {
                     |  "methodCalls": [[
                     |    "Mailbox/get",
                     |    {
-                    |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                    |      "accountId": "${bobAccountId}",
                     |      "ids": ["$id1"]
                     |    },
                     |    "c1"]]
@@ -1009,7 +1029,7 @@ trait TeamMailboxesContract {
            |  "methodResponses": [[
            |    "Mailbox/get",
            |    {
-           |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |      "accountId": "${bobAccountId}",
            |      "list": [
            |        {
            |          "id": "$id1",
@@ -1031,8 +1051,8 @@ trait TeamMailboxesContract {
            |            "maySubmit": true
            |          },
            |          "isSubscribed": true,
-           |          "namespace": "TeamMailbox[marketing@domain.tld]",
-           |          "rights": {"bob@domain.tld":["e", "i", "k", "l", "p", "r", "s", "t", "w"]}
+           |          "namespace": "TeamMailbox[marketing@${domain.asString}]",
+           |          "rights": {"bob@${domain.asString}":["e", "i", "k", "l", "p", "r", "s", "t", "w"]}
            |        }
            |      ],
            |      "notFound": []
@@ -1043,10 +1063,10 @@ trait TeamMailboxesContract {
 
   @Test
   def renamingATeamMailboxShouldFail(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val id1 = mailboxId(server, teamMailbox.mailboxPath)
 
@@ -1059,7 +1079,7 @@ trait TeamMailboxesContract {
          |  "methodCalls": [[
          |           "Mailbox/set",
          |           {
-         |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |                "accountId": "${bobAccountId}",
          |                "update": {
          |                    "$id1": {
          |                      "name": "otherName"
@@ -1090,7 +1110,7 @@ trait TeamMailboxesContract {
            |  "methodResponses":[[
            |    "Mailbox/set",
            |    {
-           |      "accountId":"29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |      "accountId":"${bobAccountId}",
            |      "notUpdated":{
            |        "$id1":{
            |          "type":"forbidden",
@@ -1105,10 +1125,10 @@ trait TeamMailboxesContract {
 
   @Test
   def deletingATeamMailboxShouldFail(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val id1 = mailboxId(server, teamMailbox.inboxPath)
 
@@ -1121,7 +1141,7 @@ trait TeamMailboxesContract {
          |  "methodCalls": [[
          |           "Mailbox/set",
          |           {
-         |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |                "accountId": "${bobAccountId}",
          |                "destroy": ["$id1"]
          |           },
          |    "c1"
@@ -1149,11 +1169,11 @@ trait TeamMailboxesContract {
            |        [
            |            "Mailbox/set",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "notDestroyed": {
            |                    "$id1": {
            |                        "type": "invalidArguments",
-           |                        "description": "user 'bob@domain.tld' is not allowed to delete the mailbox '#TeamMailbox:team-mailbox@domain.tld:marketing.INBOX'"
+           |                        "description": "user 'bob@${domain.asString}' is not allowed to delete the mailbox '#TeamMailbox:team-mailbox@${domain.asString}:marketing.INBOX'"
            |                    }
            |                }
            |            },
@@ -1165,10 +1185,10 @@ trait TeamMailboxesContract {
 
   @Test
   def creatingATeamMailboxChildShouldSuccess(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val id1 = mailboxId(server, teamMailbox.inboxPath)
 
@@ -1181,7 +1201,7 @@ trait TeamMailboxesContract {
          |  "methodCalls": [[
          |           "Mailbox/set",
          |           {
-         |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |                "accountId": "${bobAccountId}",
          |                "create": {
          |                  "K39" : {
          |                    "name": "aname",
@@ -1214,7 +1234,7 @@ trait TeamMailboxesContract {
            |    [
            |      "Mailbox/set",
            |      {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "oldState": "f318cfb6-5413-4d72-a007-f24652c1ca30",
            |        "newState": "974e75a7-0e24-4490-8eea-e583c77ddec8",
            |        "created": {
@@ -1248,10 +1268,10 @@ trait TeamMailboxesContract {
 
   @Test
   def creatingATopChildMailboxOfTeamMailboxShouldSuccess(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
     val marketingTeamMailboxId = mailboxId(server, teamMailbox.mailboxPath)
 
     val request =
@@ -1263,7 +1283,7 @@ trait TeamMailboxesContract {
          |  "methodCalls": [[
          |           "Mailbox/set",
          |           {
-         |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |                "accountId": "${bobAccountId}",
          |                "create": {
          |                  "K39" : {
          |                    "name": "ChildOfTopMailbox",
@@ -1297,7 +1317,7 @@ trait TeamMailboxesContract {
                  |    "methodCalls": [
                  |             ["Mailbox/get",
                  |           {
-                 |             "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                 |             "accountId": "${bobAccountId}",
                  |             "ids": ["$childMailboxId"]
                  |            },
                  |         "c2"]
@@ -1321,7 +1341,7 @@ trait TeamMailboxesContract {
              |      [
              |        "Mailbox/get",
              |        {
-             |          "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+             |          "accountId": "${bobAccountId}",
              |          "state": "$${json-unit.ignore}",
              |          "list": [
              |            {
@@ -1345,9 +1365,9 @@ trait TeamMailboxesContract {
              |                "maySubmit": true
              |              },
              |              "isSubscribed": true,
-             |              "namespace": "TeamMailbox[marketing@domain.tld]",
+             |              "namespace": "TeamMailbox[marketing@${domain.asString}]",
              |              "rights": {
-             |                "bob@domain.tld": [ "e", "i", "k", "l", "p", "r", "s", "t", "w", "x" ]
+             |                "bob@${domain.asString}": [ "e", "i", "k", "l", "p", "r", "s", "t", "w", "x" ]
              |              }
              |            }
              |          ],
@@ -1362,10 +1382,10 @@ trait TeamMailboxesContract {
 
   @Test
   def deleteCustomMailboxShouldSuccess(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
     val marketingTeamMailboxId = mailboxId(server, teamMailbox.mailboxPath)
 
     val mailboxId1: String = `given`()
@@ -1378,7 +1398,7 @@ trait TeamMailboxesContract {
                |  "methodCalls": [[
                |           "Mailbox/set",
                |           {
-               |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |                "accountId": "${bobAccountId}",
                |                "create": {
                |                  "K39" : {
                |                    "name": "ChildOfTopMailbox",
@@ -1408,7 +1428,7 @@ trait TeamMailboxesContract {
                  |    "methodCalls": [
                  |             ["Mailbox/get",
                  |           {
-                 |             "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                 |             "accountId": "${bobAccountId}",
                  |             "ids": ["$mailboxId1"]
                  |            },
                  |         "c2"]
@@ -1432,7 +1452,7 @@ trait TeamMailboxesContract {
                |  "methodCalls": [[
                |           "Mailbox/set",
                |           {
-               |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |                "accountId": "${bobAccountId}",
                |                "destroy": ["$mailboxId1"]
                |           },
                |    "c1"
@@ -1449,10 +1469,10 @@ trait TeamMailboxesContract {
   @Test
   def deleteCustomMailboxShouldFailWhenNotAMember(server: GuiceJamesServer): Unit = {
     // Given a team mailbox & bob as a member
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val marketingTeamMailboxId = mailboxId(server, teamMailbox.mailboxPath)
 
@@ -1466,7 +1486,7 @@ trait TeamMailboxesContract {
                |  "methodCalls": [[
                |           "Mailbox/set",
                |           {
-               |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |                "accountId": "${bobAccountId}",
                |                "create": {
                |                  "K39" : {
                |                    "name": "ChildOfTopMailbox",
@@ -1477,7 +1497,7 @@ trait TeamMailboxesContract {
                |       "c1"],
                |           ["Mailbox/get",
                |         {
-               |           "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |           "accountId": "${bobAccountId}",
                |           "ids": ["#K39"]
                |          },
                |       "c2"]
@@ -1494,7 +1514,7 @@ trait TeamMailboxesContract {
     Thread.sleep(500)
     // Removing bob from the team mailbox
     server.getProbe(classOf[TeamMailboxProbe])
-      .removeMember(teamMailbox, BOB)
+      .removeMember(teamMailbox, bobUsername)
 
     `given`()
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
@@ -1506,7 +1526,7 @@ trait TeamMailboxesContract {
                 |  "methodCalls": [[
                 |           "Mailbox/set",
                 |           {
-                |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                |                "accountId": "${bobAccountId}",
                 |                "destroy": ["$mailboxId1"]
                 |           },
                 |    "c1"
@@ -1522,16 +1542,16 @@ trait TeamMailboxesContract {
   @Test
   def deleteSystemDefaultTeamMailboxShouldFail(server: GuiceJamesServer): Unit = {
     // Given a team mailbox & bob as a member
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val mailboxProbe = server.getProbe(classOf[MailboxProbeImpl])
     val mailboxSystemIdMap: Map[String, String] = teamMailbox.defaultMailboxPaths
       .map(mb => mb.getName)
       .filter(name => !name.equals("marketing"))
-      .map(name => (name, mailboxProbe.getMailboxId(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", DOMAIN).asString(), name).serialize()))
+      .map(name => (name, mailboxProbe.getMailboxId(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", domain).asString(), name).serialize()))
       .toMap
 
     val response = `given`().log().all()
@@ -1544,7 +1564,7 @@ trait TeamMailboxesContract {
                 |  "methodCalls": [[
                 |           "Mailbox/set",
                 |           {
-                |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                |                "accountId": "${bobAccountId}",
                 |                "destroy": ["${mailboxSystemIdMap.values.toList.mkString("\",\"")}"]
                 |           },
                 |    "c1"
@@ -1566,33 +1586,33 @@ trait TeamMailboxesContract {
            |        [
            |            "Mailbox/set",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "oldState": "$${json-unit.ignore}",
            |                "newState": "$${json-unit.ignore}",
            |                "notDestroyed": {
            |                    "${mailboxSystemIdMap("marketing.Drafts")}": {
            |                        "type": "invalidArguments",
-           |                        "description": "user 'bob@domain.tld' is not allowed to delete the mailbox '#TeamMailbox:team-mailbox@domain.tld:marketing.Drafts'"
+           |                        "description": "user 'bob@${domain.asString}' is not allowed to delete the mailbox '#TeamMailbox:team-mailbox@${domain.asString}:marketing.Drafts'"
            |                    },
            |                    "${mailboxSystemIdMap("marketing.Sent")}": {
            |                        "type": "invalidArguments",
-           |                        "description": "user 'bob@domain.tld' is not allowed to delete the mailbox '#TeamMailbox:team-mailbox@domain.tld:marketing.Sent'"
+           |                        "description": "user 'bob@${domain.asString}' is not allowed to delete the mailbox '#TeamMailbox:team-mailbox@${domain.asString}:marketing.Sent'"
            |                    },
            |                    "${mailboxSystemIdMap("marketing.INBOX")}": {
            |                        "type": "invalidArguments",
-           |                        "description": "user 'bob@domain.tld' is not allowed to delete the mailbox '#TeamMailbox:team-mailbox@domain.tld:marketing.INBOX'"
+           |                        "description": "user 'bob@${domain.asString}' is not allowed to delete the mailbox '#TeamMailbox:team-mailbox@${domain.asString}:marketing.INBOX'"
            |                    },
            |                    "${mailboxSystemIdMap("marketing.Trash")}": {
            |                        "type": "invalidArguments",
-           |                        "description": "user 'bob@domain.tld' is not allowed to delete the mailbox '#TeamMailbox:team-mailbox@domain.tld:marketing.Trash'"
+           |                        "description": "user 'bob@${domain.asString}' is not allowed to delete the mailbox '#TeamMailbox:team-mailbox@${domain.asString}:marketing.Trash'"
            |                    },
            |                    "${mailboxSystemIdMap("marketing.Templates")}": {
            |                        "type": "invalidArguments",
-           |                        "description": "user 'bob@domain.tld' is not allowed to delete the mailbox '#TeamMailbox:team-mailbox@domain.tld:marketing.Templates'"
+           |                        "description": "user 'bob@${domain.asString}' is not allowed to delete the mailbox '#TeamMailbox:team-mailbox@${domain.asString}:marketing.Templates'"
            |                    },
            |                    "${mailboxSystemIdMap("marketing.Outbox")}": {
            |                        "type": "invalidArguments",
-           |                        "description": "user 'bob@domain.tld' is not allowed to delete the mailbox '#TeamMailbox:team-mailbox@domain.tld:marketing.Outbox'"
+           |                        "description": "user 'bob@${domain.asString}' is not allowed to delete the mailbox '#TeamMailbox:team-mailbox@${domain.asString}:marketing.Outbox'"
            |                    }
            |                }
            |            },
@@ -1604,10 +1624,10 @@ trait TeamMailboxesContract {
 
   @Test
   def movingASystemMailboxOfTeamMailboxShouldFail(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val id1 = mailboxId(server, teamMailbox.inboxPath)
 
@@ -1622,7 +1642,7 @@ trait TeamMailboxesContract {
          |  "methodCalls": [[
          |           "Mailbox/set",
          |           {
-         |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |                "accountId": "${bobAccountId}",
          |                "update": {
          |                    "$id1": {
          |                      "parentId": "$id2"
@@ -1653,7 +1673,7 @@ trait TeamMailboxesContract {
            |  "methodResponses":[[
            |    "Mailbox/set",
            |    {
-           |      "accountId":"29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |      "accountId":"${bobAccountId}",
            |      "notUpdated":{
            |        "$id1":{
            |          "type":"forbidden",
@@ -1668,10 +1688,10 @@ trait TeamMailboxesContract {
 
   @Test
   def delegatingATeamMailboxShouldFail(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val id1 = mailboxId(server, teamMailbox.inboxPath)
 
@@ -1682,11 +1702,11 @@ trait TeamMailboxesContract {
          |       [
          |           "Mailbox/set",
          |           {
-         |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |                "accountId": "${bobAccountId}",
          |                "update": {
          |                    "$id1": {
          |                      "sharedWith": {
-         |                        "${CEDRIC.asString()}":["r", "l"]
+         |                        "${cedricUsername.asString()}":["r", "l"]
          |                      }
          |                    }
          |                }
@@ -1695,7 +1715,7 @@ trait TeamMailboxesContract {
          |       ],
          |       ["Mailbox/get",
          |         {
-         |           "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |           "accountId": "${bobAccountId}",
          |           "properties": ["id", "rights"],
          |           "ids": ["$id1"]
          |          },
@@ -1725,7 +1745,7 @@ trait TeamMailboxesContract {
            |        [
            |            "Mailbox/set",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "notUpdated": {
            |                    "$id1": {
            |                        "type": "forbidden",
@@ -1738,13 +1758,13 @@ trait TeamMailboxesContract {
            |        [
            |            "Mailbox/get",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "notFound": [],
            |                "list": [
            |                    {
            |                        "id": "$id1",
            |                        "rights": {
-           |                            "bob@domain.tld": ["e", "i", "k", "l", "p", "r", "s", "t", "w"]
+           |                            "bob@${domain.asString}": ["e", "i", "k", "l", "p", "r", "s", "t", "w"]
            |                        }
            |                    }
            |                ]
@@ -1757,10 +1777,10 @@ trait TeamMailboxesContract {
 
   @Test
   def subscribingATeamMailboxShouldSucceed(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val id1 = mailboxId(server, teamMailbox.mailboxPath)
 
@@ -1773,7 +1793,7 @@ trait TeamMailboxesContract {
          |  "methodCalls": [[
          |           "Mailbox/set",
          |           {
-         |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |                "accountId": "${bobAccountId}",
          |                "update": {
          |                    "$id1": {
          |                      "isSubscribed": true
@@ -1783,7 +1803,7 @@ trait TeamMailboxesContract {
          |    "c1"], [
          |    "Mailbox/get",
          |    {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "ids": ["$id1"]
          |    },
          |    "c2"]]
@@ -1811,7 +1831,7 @@ trait TeamMailboxesContract {
            |        [
            |            "Mailbox/set",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "updated": {
            |                    "$id1": {}
            |                }
@@ -1821,7 +1841,7 @@ trait TeamMailboxesContract {
            |        [
            |            "Mailbox/get",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "notFound": [],
            |                "list": [
            |                    {
@@ -1844,9 +1864,9 @@ trait TeamMailboxesContract {
            |                            "maySubmit": true
            |                        },
            |                        "isSubscribed": true,
-           |                        "namespace": "TeamMailbox[marketing@domain.tld]",
+           |                        "namespace": "TeamMailbox[marketing@${domain.asString}]",
            |                        "rights": {
-           |                            "bob@domain.tld": ["e", "i", "k", "l", "p", "r", "s", "t", "w"]
+           |                            "bob@${domain.asString}": ["e", "i", "k", "l", "p", "r", "s", "t", "w"]
            |                        }
            |                    }
            |                ]
@@ -1858,7 +1878,7 @@ trait TeamMailboxesContract {
   }
 
   private def provisionSystemMailboxes(server: GuiceJamesServer): State = {
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(bobUsername))
     val jmapGuiceProbe: JmapGuiceProbe = server.getProbe(classOf[JmapGuiceProbe])
 
     val request =
@@ -1867,7 +1887,7 @@ trait TeamMailboxesContract {
          |  "methodCalls": [[
          |    "Mailbox/get",
          |    {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6"
+         |      "accountId": "${bobAccountId}"
          |    },
          |    "c1"]]
          |}""".stripMargin
@@ -1888,7 +1908,7 @@ trait TeamMailboxesContract {
          |  "methodCalls": [[
          |    "Mailbox/changes",
          |    {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "sinceState": "${State.INITIAL.getValue.toString}"
          |    },
          |    "c1"]]
@@ -1917,17 +1937,17 @@ trait TeamMailboxesContract {
       assertThat(createdSize).isEqualTo(systemMailboxCount)
     }
 
-    jmapGuiceProbe.getLatestMailboxState(AccountId.fromUsername(BOB))
+    jmapGuiceProbe.getLatestMailboxState(AccountId.fromUsername(bobUsername))
   }
 
   @Test
   def addMemberTriggersAMailboxChange(server: GuiceJamesServer): Unit = {
     val oldState = provisionSystemMailboxes(server)
 
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val id1 = mailboxId(server, teamMailbox.mailboxPath)
     val id2 = mailboxId(server, teamMailbox.inboxPath)
@@ -1944,7 +1964,7 @@ trait TeamMailboxesContract {
          |    "urn:ietf:params:jmap:mail",
          |    "urn:apache:james:params:jmap:mail:shares"],
          |  "methodCalls": [["Mailbox/changes", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "sinceState": "${oldState.getValue}"
          |    }, "c1"]]
          |}""".stripMargin
@@ -1971,7 +1991,7 @@ trait TeamMailboxesContract {
            |        [
            |            "Mailbox/changes",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "hasMoreChanges": false,
            |                "updatedProperties": null,
            |                "created": [],
@@ -2007,10 +2027,10 @@ trait TeamMailboxesContract {
   def receivingAMailShouldTriggerAStateChange(server: GuiceJamesServer): Unit = {
     val originalState = provisionSystemMailboxes(server)
 
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val id1 = mailboxId(server, teamMailbox.mailboxPath)
 
@@ -2018,7 +2038,7 @@ trait TeamMailboxesContract {
 
     val id3 = mailboxId(server, teamMailbox.sentPath)
 
-    val oldState = waitForNextState(server, AccountId.fromUsername(BOB), originalState)
+    val oldState = waitForNextState(server, AccountId.fromUsername(bobUsername), originalState)
 
     val message: Message = Message.Builder
       .of
@@ -2026,9 +2046,9 @@ trait TeamMailboxesContract {
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
     server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+      .appendMessage(bobUsername.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
 
-    waitForNextState(server, AccountId.fromUsername(BOB), oldState)
+    waitForNextState(server, AccountId.fromUsername(bobUsername), oldState)
 
     val request =
       s"""{
@@ -2037,7 +2057,7 @@ trait TeamMailboxesContract {
          |    "urn:ietf:params:jmap:mail",
          |    "urn:apache:james:params:jmap:mail:shares"],
          |  "methodCalls": [["Mailbox/changes", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "sinceState": "${oldState.getValue}"
          |    }, "c1"]]
          |}""".stripMargin
@@ -2064,7 +2084,7 @@ trait TeamMailboxesContract {
            |        [
            |            "Mailbox/changes",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "hasMoreChanges": false,
            |                "updatedProperties": ["totalEmails","unreadEmails","totalThreads","unreadThreads"],
            |                "created": [],
@@ -2081,10 +2101,10 @@ trait TeamMailboxesContract {
   @Test
   @Tag(CategoryTags.BASIC_FEATURE)
   def emailQueryShouldReturnTeamMailboxEmail(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val message: Message = Message.Builder
       .of
@@ -2092,7 +2112,7 @@ trait TeamMailboxesContract {
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
     val messageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+      .appendMessage(bobUsername.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
       .getMessageId.serialize()
 
     val request =
@@ -2102,7 +2122,7 @@ trait TeamMailboxesContract {
          |    "urn:ietf:params:jmap:mail",
          |    "urn:apache:james:params:jmap:mail:shares"],
          |  "methodCalls": [["Email/query", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "filter": {}
          |    }, "c1"]]
          |}""".stripMargin
@@ -2129,7 +2149,7 @@ trait TeamMailboxesContract {
              |        [
              |            "Email/query",
              |            {
-             |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+             |                "accountId": "${bobAccountId}",
              |                "canCalculateChanges": false,
              |                "ids": ["$messageId"],
              |                "position": 0,
@@ -2144,10 +2164,10 @@ trait TeamMailboxesContract {
 
   @Test
   def emailQueryShouldNotReturnTeamMailboxEmailWhenNoShare(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val message: Message = Message.Builder
       .of
@@ -2155,7 +2175,7 @@ trait TeamMailboxesContract {
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
     val messageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+      .appendMessage(bobUsername.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
       .getMessageId.serialize()
 
     val request =
@@ -2164,7 +2184,7 @@ trait TeamMailboxesContract {
          |    "urn:ietf:params:jmap:core",
          |    "urn:ietf:params:jmap:mail"],
          |  "methodCalls": [["Email/query", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "filter": {}
          |    }, "c1"]]
          |}""".stripMargin
@@ -2190,7 +2210,7 @@ trait TeamMailboxesContract {
            |        [
            |            "Email/query",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "canCalculateChanges": false,
            |                "ids": [],
            |                "position": 0,
@@ -2204,10 +2224,10 @@ trait TeamMailboxesContract {
 
   @Test
   def emailQueryWithInMailboxFilterAndSortShouldNotReturnTeamMailboxEmailWhenNoShareExtension(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val message: Message = Message.Builder
       .of
@@ -2215,10 +2235,10 @@ trait TeamMailboxesContract {
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
     val messageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+      .appendMessage(bobUsername.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
       .getMessageId.serialize()
     val teamMailboxInboxId = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", DOMAIN).asString(), s"marketing.${MailboxConstants.INBOX}")
+      .getMailboxId(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", domain).asString(), s"marketing.${MailboxConstants.INBOX}")
 
     val request =
       s"""{
@@ -2228,7 +2248,7 @@ trait TeamMailboxesContract {
          |	],
          |	"methodCalls": [
          |		["Email/query", {
-         |			"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |			"accountId": "${bobAccountId}",
          |			"filter": {
          |				"inMailbox": "${teamMailboxInboxId.serialize()}"
          |			},
@@ -2261,7 +2281,7 @@ trait TeamMailboxesContract {
            |        [
            |            "Email/query",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "canCalculateChanges": false,
            |                "ids": [],
            |                "position": 0,
@@ -2275,10 +2295,10 @@ trait TeamMailboxesContract {
 
   @Test
   def emailQueryWithInMailboxFilterAndSortShouldReturnTeamMailboxEmailWhenShareExtension(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val message: Message = Message.Builder
       .of
@@ -2286,10 +2306,10 @@ trait TeamMailboxesContract {
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
     val messageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+      .appendMessage(bobUsername.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
       .getMessageId.serialize()
     val teamMailboxInboxId = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", DOMAIN).asString(), s"marketing.${MailboxConstants.INBOX}")
+      .getMailboxId(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", domain).asString(), s"marketing.${MailboxConstants.INBOX}")
 
     val request =
       s"""{
@@ -2300,7 +2320,7 @@ trait TeamMailboxesContract {
          |	],
          |	"methodCalls": [
          |		["Email/query", {
-         |			"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |			"accountId": "${bobAccountId}",
          |			"filter": {
          |				"inMailbox": "${teamMailboxInboxId.serialize()}"
          |			},
@@ -2333,7 +2353,7 @@ trait TeamMailboxesContract {
            |        [
            |            "Email/query",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "canCalculateChanges": false,
            |                "ids": ["$messageId"],
            |                "position": 0,
@@ -2347,10 +2367,10 @@ trait TeamMailboxesContract {
 
   @Test
   def emailGetShouldReturnTeamMailboxEmail(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val message: Message = Message.Builder
       .of
@@ -2358,7 +2378,7 @@ trait TeamMailboxesContract {
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
     val messageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+      .appendMessage(bobUsername.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
       .getMessageId.serialize()
 
     val request =
@@ -2368,7 +2388,7 @@ trait TeamMailboxesContract {
          |    "urn:ietf:params:jmap:mail",
          |    "urn:apache:james:params:jmap:mail:shares"],
          |  "methodCalls": [["Email/get", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "ids": ["$messageId"],
          |      "properties":["subject"]
          |    }, "c1"]]
@@ -2395,7 +2415,7 @@ trait TeamMailboxesContract {
            |        [
            |            "Email/get",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "notFound": [],
            |                "list": [
            |                    {
@@ -2412,10 +2432,10 @@ trait TeamMailboxesContract {
 
   @Test
   def downloadShouldReturnTeamMailboxEmail(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val message: Message = Message.Builder
       .of
@@ -2423,14 +2443,14 @@ trait TeamMailboxesContract {
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
     val messageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+      .appendMessage(bobUsername.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
       .getMessageId.serialize()
 
     val response = `given`
       .basePath("")
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
     .when
-      .get(s"/download/$accountId/$messageId")
+      .get(s"/download/$bobAccountId/$messageId")
     .`then`
       .statusCode(SC_OK)
       .contentType("message/rfc822")
@@ -2447,10 +2467,10 @@ trait TeamMailboxesContract {
 
   @Test
   def uploadAndImportShouldReturnTeamMailboxEmail(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val id1 = mailboxId(server, teamMailbox.mailboxPath)
 
@@ -2468,7 +2488,7 @@ trait TeamMailboxesContract {
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(content)
     .when
-      .post(s"/upload/$ACCOUNT_ID")
+      .post(s"/upload/$bobAccountId")
     .`then`
       .statusCode(SC_CREATED)
       .extract
@@ -2483,7 +2503,7 @@ trait TeamMailboxesContract {
                      |  "methodCalls": [
                      |    ["Email/import",
                      |      {
-                     |        "accountId": "$ACCOUNT_ID",
+                     |        "accountId": "$bobAccountId",
                      |        "emails": {
                      |           "K39": {
                      |             "blobId": "$blobId",
@@ -2500,7 +2520,7 @@ trait TeamMailboxesContract {
                      |      "c1"],
                      |    ["Email/get",
                      |     {
-                     |       "accountId": "$ACCOUNT_ID",
+                     |       "accountId": "$bobAccountId",
                      |       "ids": ["#K39"],
                      |       "properties": ["mailboxIds", "keywords", "receivedAt"]
                      |     },
@@ -2531,7 +2551,7 @@ trait TeamMailboxesContract {
            |        [
            |            "Email/import",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "created": {
            |                    "K39": {}
            |                }
@@ -2541,7 +2561,7 @@ trait TeamMailboxesContract {
            |        [
            |            "Email/get",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "notFound": [],
            |                "list": [
            |                    {
@@ -2559,10 +2579,10 @@ trait TeamMailboxesContract {
 
   @Test
   def emailSetShouldDestroyTeamMailboxEmail(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val message: Message = Message.Builder
       .of
@@ -2570,7 +2590,7 @@ trait TeamMailboxesContract {
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
     val messageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+      .appendMessage(bobUsername.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
       .getMessageId.serialize()
 
     val request =
@@ -2580,10 +2600,10 @@ trait TeamMailboxesContract {
          |    "urn:ietf:params:jmap:mail",
          |    "urn:apache:james:params:jmap:mail:shares"],
          |  "methodCalls": [["Email/set", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "destroy": ["$messageId"]
          |    }, "c1"], ["Email/get", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "ids": ["$messageId"],
          |      "properties":["subject"]
          |    }, "c2"]]
@@ -2610,7 +2630,7 @@ trait TeamMailboxesContract {
            |        [
            |            "Email/set",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "destroyed": ["$messageId"]
            |            },
            |            "c1"
@@ -2618,7 +2638,7 @@ trait TeamMailboxesContract {
            |        [
            |            "Email/get",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "notFound": ["$messageId"],
            |                "state": "14ee6150-95ea-44dc-bf1b-e50953f43404",
            |                "list": []
@@ -2631,10 +2651,10 @@ trait TeamMailboxesContract {
 
   @Test
   def emailSetShouldUpdateFlagsForTeamMailboxEmail(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val message: Message = Message.Builder
       .of
@@ -2642,21 +2662,21 @@ trait TeamMailboxesContract {
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
     val messageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+      .appendMessage(bobUsername.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
       .getMessageId.serialize()
 
     val request =
       s"""{
          |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:apache:james:params:jmap:mail:shares"],
          |  "methodCalls": [["Email/set", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "update": {
          |        "$messageId": {
          |          "keywords": { "Custom": true }
          |        }
          |      }
          |    }, "c1"], ["Email/get", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "ids": ["$messageId"],
          |      "properties":["keywords"]
          |    }, "c2"]]
@@ -2683,7 +2703,7 @@ trait TeamMailboxesContract {
            |        [
            |            "Email/set",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "updated": {"$messageId": null}
            |            },
            |            "c1"
@@ -2691,7 +2711,7 @@ trait TeamMailboxesContract {
            |        [
            |            "Email/get",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "notFound": [],
            |                "list": [
            |                    {
@@ -2708,13 +2728,13 @@ trait TeamMailboxesContract {
 
   @Test
   def emailSetShouldMoveTeamMailboxEmailOut(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val id = server.getProbe(classOf[MailboxProbeImpl])
-      .createMailbox(MailboxPath.inbox(BOB))
+      .createMailbox(MailboxPath.inbox(bobUsername))
       .serialize()
 
     val message: Message = Message.Builder
@@ -2723,21 +2743,21 @@ trait TeamMailboxesContract {
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
     val messageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+      .appendMessage(bobUsername.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
       .getMessageId.serialize()
 
     val request =
       s"""{
          |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:apache:james:params:jmap:mail:shares"],
          |  "methodCalls": [["Email/set", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "update": {
          |        "$messageId": {
          |          "mailboxIds": { "$id": true }
          |        }
          |      }
          |    }, "c1"], ["Email/get", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "ids": ["$messageId"],
          |      "properties":["mailboxIds"]
          |    }, "c2"]]
@@ -2764,7 +2784,7 @@ trait TeamMailboxesContract {
            |        [
            |            "Email/set",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "updated": {"$messageId": null}
            |            },
            |            "c1"
@@ -2772,7 +2792,7 @@ trait TeamMailboxesContract {
            |        [
            |            "Email/get",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "notFound": [],
            |                "list": [
            |                    {
@@ -2789,35 +2809,35 @@ trait TeamMailboxesContract {
 
   @Test
   def emailSetShouldMoveTeamMailboxEmailIn(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val id = mailboxId(server, teamMailbox.mailboxPath)
 
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(BOB))
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(bobUsername))
     val message: Message = Message.Builder
       .of
       .setSubject("test")
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
     val messageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(), MailboxPath.inbox(BOB), AppendCommand.from(message))
+      .appendMessage(bobUsername.asString(), MailboxPath.inbox(bobUsername), AppendCommand.from(message))
       .getMessageId.serialize()
 
     val request =
       s"""{
          |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:apache:james:params:jmap:mail:shares"],
          |  "methodCalls": [["Email/set", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "update": {
          |        "$messageId": {
          |          "mailboxIds": { "$id": true }
          |        }
          |      }
          |    }, "c1"], ["Email/get", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "ids": ["$messageId"],
          |      "properties":["mailboxIds"]
          |    }, "c2"]]
@@ -2844,7 +2864,7 @@ trait TeamMailboxesContract {
            |        [
            |            "Email/set",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "updated": {"$messageId": null}
            |            },
            |            "c1"
@@ -2852,7 +2872,7 @@ trait TeamMailboxesContract {
            |        [
            |            "Email/get",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "notFound": [],
            |                "list": [
            |                    {
@@ -2869,10 +2889,10 @@ trait TeamMailboxesContract {
 
   @Test
   def emailSetShouldCreateTeamMailboxEmail(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val id1 = mailboxId(server, teamMailbox.mailboxPath)
 
@@ -2883,14 +2903,14 @@ trait TeamMailboxesContract {
          |    "urn:ietf:params:jmap:mail",
          |    "urn:apache:james:params:jmap:mail:shares"],
          |  "methodCalls": [["Email/set", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "create": {
          |        "K39": {
          |          "mailboxIds": {"$id1":true}
          |        }
          |      }
          |    }, "c1"], ["Email/get", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "ids": ["#K39"],
          |      "properties":["mailboxIds"]
          |    }, "c2"]]
@@ -2919,7 +2939,7 @@ trait TeamMailboxesContract {
            |        [
            |            "Email/set",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "created": {
            |                    "K39": {
            |                    }
@@ -2930,7 +2950,7 @@ trait TeamMailboxesContract {
            |        [
            |            "Email/get",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "notFound": [],
            |                "list": [
            |                    {
@@ -2946,12 +2966,12 @@ trait TeamMailboxesContract {
 
   @Test
   def emailChangesShouldReturnTeamMailboxEmail(server: GuiceJamesServer): Unit = {
-    val oldState = server.getProbe(classOf[JmapGuiceProbe]).getLatestMailboxStateWithDelegation(AccountId.fromUsername(BOB))
+    val oldState = server.getProbe(classOf[JmapGuiceProbe]).getLatestMailboxStateWithDelegation(AccountId.fromUsername(bobUsername))
 
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val message: Message = Message.Builder
       .of
@@ -2959,15 +2979,15 @@ trait TeamMailboxesContract {
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
     val messageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+      .appendMessage(bobUsername.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
       .getMessageId.serialize()
-    waitForNextEmailState(server, AccountId.fromUsername(BOB), oldState)
+    waitForNextEmailState(server, AccountId.fromUsername(bobUsername), oldState)
 
     val request =
       s"""{
          |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:apache:james:params:jmap:mail:shares"],
          |  "methodCalls": [["Email/changes", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "sinceState": "${oldState.getValue.toString}"
          |    }, "c1"]]
          |}""".stripMargin
@@ -2993,7 +3013,7 @@ trait TeamMailboxesContract {
            |        [
            |            "Email/changes",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "hasMoreChanges": false,
            |                "created": ["$messageId"],
            |                "updated": [],
@@ -3007,10 +3027,10 @@ trait TeamMailboxesContract {
 
   @Test
   def threadGetShouldHandleTeamMailboxEmail(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val message1: Message = Message.Builder
       .of
@@ -3019,7 +3039,7 @@ trait TeamMailboxesContract {
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
     val result = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessageAndGetAppendResult(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message1))
+      .appendMessageAndGetAppendResult(bobUsername.asString(), teamMailbox.inboxPath, AppendCommand.from(message1))
     val messageId1 = result.getId.getMessageId.serialize()
     val threadId = result
       .getThreadId
@@ -3033,7 +3053,7 @@ trait TeamMailboxesContract {
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
     val messageId2 = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message2))
+      .appendMessage(bobUsername.asString(), teamMailbox.inboxPath, AppendCommand.from(message2))
       .getMessageId
       .serialize()
 
@@ -3043,7 +3063,7 @@ trait TeamMailboxesContract {
         .body(s"""{
                  |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:apache:james:params:jmap:mail:shares"],
                  |  "methodCalls": [["Thread/get", {
-                 |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                 |      "accountId": "${bobAccountId}",
                  |      "ids": ["$threadId"]
                  |    }, "c1"]]
                  |}""".stripMargin)
@@ -3067,7 +3087,7 @@ trait TeamMailboxesContract {
              |        [
              |            "Thread/get",
              |            {
-             |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+             |                "accountId": "${bobAccountId}",
              |                "list": [
              |                    {
              |                        "id": "$threadId",
@@ -3086,14 +3106,14 @@ trait TeamMailboxesContract {
 
   @Test
   def webSocketShouldPushTeamMailboxStateChanges(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
-    val bobPath = MailboxPath.inbox(BOB)
+    val bobPath = MailboxPath.inbox(bobUsername)
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(bobPath)
-    val accountId: AccountId = AccountId.fromUsername(BOB)
+    val accountId: AccountId = AccountId.fromUsername(bobUsername)
     Thread.sleep(100)
 
     val message: Message = Message.Builder
@@ -3115,7 +3135,7 @@ trait TeamMailboxesContract {
             Thread.sleep(100)
 
             server.getProbe(classOf[MailboxProbeImpl])
-              .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+              .appendMessage(bobUsername.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
               .getMessageId.serialize()
 
             Thread.sleep(100)
@@ -3136,7 +3156,7 @@ trait TeamMailboxesContract {
         s"""{
            |  "@type":"StateChange",
            |  "changed":{
-           |    "$ACCOUNT_ID":{
+           |    "$bobAccountId":{
            |      "Email": "${emailState.getValue}",
            |      "Mailbox":"${mailboxState.getValue}"}
            |    },
@@ -3147,14 +3167,14 @@ trait TeamMailboxesContract {
 
   @Test
   def teamMailboxesShouldComputeQuotas(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val id = mailboxId(server, teamMailbox.inboxPath)
 
-    val bobPath = MailboxPath.inbox(BOB)
+    val bobPath = MailboxPath.inbox(bobUsername)
     val bobInboxId = server.getProbe(classOf[MailboxProbeImpl])
       .createMailbox(bobPath)
       .serialize()
@@ -3167,14 +3187,14 @@ trait TeamMailboxesContract {
 
     // 2 messages on the team mailbox
     server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+      .appendMessage(bobUsername.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
       .getMessageId.serialize()
     server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+      .appendMessage(bobUsername.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
       .getMessageId.serialize()
-    // 1 message in BOB inbox
+    // 1 message in bobUsername inbox
     server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(), bobPath, AppendCommand.from(message))
+      .appendMessage(bobUsername.asString(), bobPath, AppendCommand.from(message))
       .getMessageId.serialize()
 
     val quotaProbe = server.getProbe(classOf[QuotaProbesImpl])
@@ -3188,7 +3208,7 @@ trait TeamMailboxesContract {
                     |  "methodCalls": [[
                     |    "Mailbox/get",
                     |    {
-                    |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                    |      "accountId": "${bobAccountId}",
                     |      "ids": ["$id", "$bobInboxId"],
                     |      "properties": ["quotas"]
                     |    },
@@ -3215,12 +3235,12 @@ trait TeamMailboxesContract {
            |	"sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
            |	"methodResponses": [
            |		["Mailbox/get", {
-           |			"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |			"accountId": "${bobAccountId}",
            |			"notFound": [],
            |			"list": [{
            |				"id": "$bobInboxId",
            |				"quotas": {
-           |					"#private&bob@domain.tld": {
+           |					"#private&bob@${domain.asString}": {
            |						"Storage": {
            |							"used": 85,
            |							"max": 104857600
@@ -3234,7 +3254,7 @@ trait TeamMailboxesContract {
            |			}, {
            |				"id": "$id",
            |				"quotas": {
-           |					"#TeamMailbox&marketing@domain.tld": {
+           |					"#TeamMailbox&marketing@${domain.asString}": {
            |						"Storage": {
            |							"used": 170,
            |							"max": 104857600
@@ -3253,10 +3273,10 @@ trait TeamMailboxesContract {
 
   @Test
   def teamMailboxesShouldEnforceQuotasUponCreate(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
     val id1 = mailboxId(server, teamMailbox.mailboxPath)
 
     val message: Message = Message.Builder
@@ -3269,10 +3289,10 @@ trait TeamMailboxesContract {
     quotaProbe.setMaxMessageCount(teamMailbox.quotaRoot, QuotaCountLimit.count(2L))
 
     server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+      .appendMessage(bobUsername.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
       .getMessageId.serialize()
     server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+      .appendMessage(bobUsername.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
       .getMessageId.serialize()
 
     val request =
@@ -3282,7 +3302,7 @@ trait TeamMailboxesContract {
          |    "urn:ietf:params:jmap:mail",
          |    "urn:apache:james:params:jmap:mail:shares"],
          |  "methodCalls": [["Email/set", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "create": {
          |        "K39": {
          |          "mailboxIds": {"$id1":true}
@@ -3312,11 +3332,11 @@ trait TeamMailboxesContract {
            |	"sessionState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
            |	"methodResponses": [
            |		["Email/set", {
-           |			"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |			"accountId": "${bobAccountId}",
            |			"notCreated": {
            |				"K39": {
            |					"type": "overQuota",
-           |					"description": "You have too many messages in #TeamMailbox&marketing@domain.tld"
+           |					"description": "You have too many messages in #TeamMailbox&marketing@${domain.asString}"
            |				}
            |			}
            |		}, "c1"]
@@ -3326,10 +3346,10 @@ trait TeamMailboxesContract {
 
   @Test
   def teamMailboxesShouldEnforceQuotasUponCopy(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
     val id1 = mailboxId(server, teamMailbox.mailboxPath)
     val id2 = mailboxId(server, teamMailbox.inboxPath)
 
@@ -3343,10 +3363,10 @@ trait TeamMailboxesContract {
     quotaProbe.setMaxMessageCount(teamMailbox.quotaRoot, QuotaCountLimit.count(2L))
 
     server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+      .appendMessage(bobUsername.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
       .getMessageId.serialize()
     val messageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
+      .appendMessage(bobUsername.asString(), teamMailbox.inboxPath, AppendCommand.from(message))
       .getMessageId.serialize()
 
     val request =
@@ -3356,7 +3376,7 @@ trait TeamMailboxesContract {
          |    "urn:ietf:params:jmap:mail",
          |    "urn:apache:james:params:jmap:mail:shares"],
          |  "methodCalls": [["Email/set", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "update": {
          |        "$messageId": {
          |          "mailboxIds": {"$id1":true, "$id2":true}
@@ -3386,11 +3406,11 @@ trait TeamMailboxesContract {
            |        [
            |            "Email/set",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "notUpdated": {
            |                    "$messageId": {
            |                        "type": "overQuota",
-           |                        "description": "You have too many messages in #TeamMailbox&marketing@domain.tld"
+           |                        "description": "You have too many messages in #TeamMailbox&marketing@${domain.asString}"
            |                    }
            |                }
            |            },
@@ -3405,7 +3425,7 @@ trait TeamMailboxesContract {
   def teamMailboxShouldBeIndexedAsDomainContactUponCreation(): Unit = {
     `given`
       .spec(webAdminApi)
-      .basePath(s"/domains/${DOMAIN.asString()}/team-mailboxes")
+      .basePath(s"/domains/${domain.asString()}/team-mailboxes")
     .when()
       .put("/hiring")
     .`then`()
@@ -3417,7 +3437,7 @@ trait TeamMailboxesContract {
          |  "methodCalls": [[
          |    "TMailContact/autocomplete",
          |    {
-         |      "accountId": "$BOB_ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "filter": {"text":"hiring"}
          |    },
          |    "c1"]]
@@ -3443,12 +3463,12 @@ trait TeamMailboxesContract {
              |	"methodResponses": [[
              |			"TMailContact/autocomplete",
              |			{
-             |				"accountId": "$BOB_ACCOUNT_ID",
+             |				"accountId": "$bobAccountId",
              |				"list": [{
              |					"id": "$${json-unit.ignore}",
              |					"firstname": "hiring",
              |					"surname": "",
-             |					"emailAddress": "hiring@domain.tld"
+             |					"emailAddress": "hiring@${domain.asString}"
              |				}],
              |				"limit": 256
              |			},
@@ -3459,67 +3479,85 @@ trait TeamMailboxesContract {
 
   @Test
   def teamMailboxDeletionShouldRemoveAssociatedDomainContact(): Unit = {
-    `given`
-      .spec(webAdminApi)
-      .basePath(s"/domains/${DOMAIN.asString()}/team-mailboxes")
-    .when()
-      .put("/hiring")
-    .`then`()
-      .statusCode(HttpStatus.SC_NO_CONTENT)
-
-    `given`
-      .spec(webAdminApi)
-      .basePath(s"/domains/${DOMAIN.asString()}/team-mailboxes")
-    .when()
-      .delete("/hiring")
-    .`then`()
-      .statusCode(HttpStatus.SC_NO_CONTENT)
-
     val bobRequest =
       s"""{
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:contact:autocomplete"],
          |  "methodCalls": [[
          |    "TMailContact/autocomplete",
          |    {
-         |      "accountId": "$BOB_ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "filter": {"text":"hiring"}
          |    },
          |    "c1"]]
          |}""".stripMargin
 
-    val response =  `given`
-      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .body(bobRequest)
-    .when
-      .post
-    .`then`
-      .statusCode(SC_OK)
-      .contentType(JSON)
-      .extract
-      .body
-      .asString
+    `given`
+      .spec(webAdminApi)
+      .basePath(s"/domains/${domain.asString()}/team-mailboxes")
+    .when()
+      .put("/hiring")
+    .`then`()
+      .statusCode(HttpStatus.SC_NO_CONTENT)
 
-    assertThatJson(response)
-      .isEqualTo(
-        s"""{
-           |	"sessionState": "${SESSION_STATE.value}",
-           |	"methodResponses": [[
-           |			"TMailContact/autocomplete",
-           |			{
-           |				"accountId": "$BOB_ACCOUNT_ID",
-           |				"list": [],
-           |				"limit": 256
-           |			},
-           |			"c1"]]
-           |}""".stripMargin)
+    // The domain contact is provisioned asynchronously: wait for it so that its removal does not race with it
+    awaitAtMostTenSeconds.untilAsserted(() =>
+      assertThatJson(`given`
+          .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+          .body(bobRequest)
+        .when
+          .post
+        .`then`
+          .statusCode(SC_OK)
+          .extract
+          .body
+          .asString)
+        .inPath("methodResponses[0][1].list")
+        .isArray
+        .hasSize(1))
+
+    `given`
+      .spec(webAdminApi)
+      .basePath(s"/domains/${domain.asString()}/team-mailboxes")
+    .when()
+      .delete("/hiring")
+    .`then`()
+      .statusCode(HttpStatus.SC_NO_CONTENT)
+
+    awaitAtMostTenSeconds.untilAsserted(() => {
+      val response =  `given`
+        .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+        .body(bobRequest)
+      .when
+        .post
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .extract
+        .body
+        .asString
+
+      assertThatJson(response)
+        .isEqualTo(
+          s"""{
+             |	"sessionState": "${SESSION_STATE.value}",
+             |	"methodResponses": [[
+             |			"TMailContact/autocomplete",
+             |			{
+             |				"accountId": "$bobAccountId",
+             |				"list": [],
+             |				"limit": 256
+             |			},
+             |			"c1"]]
+             |}""".stripMargin)
+    })
   }
 
   @Test
   def shouldRenameCustomMailboxSuccessByMember(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val teamMailboxId: String = mailboxId(server, teamMailbox.mailboxPath)
 
@@ -3535,7 +3573,7 @@ trait TeamMailboxesContract {
                |  "methodCalls": [[
                |           "Mailbox/set",
                |           {
-               |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |                "accountId": "${bobAccountId}",
                |                "update": {
                |                    "$childMailboxId": {
                |                      "name": "newChild1"
@@ -3561,7 +3599,7 @@ trait TeamMailboxesContract {
                |  "methodCalls": [[
                |           "Mailbox/get",
                |           {
-               |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |                "accountId": "${bobAccountId}",
                |                "ids": ["$childMailboxId"]
                |           },
                |    "c1"
@@ -3590,7 +3628,7 @@ trait TeamMailboxesContract {
           |        [
           |            "Mailbox/get",
           |            {
-          |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+          |                "accountId": "${bobAccountId}",
           |                "state": "2eb3e9ee-45d7-429d-b8d8-9a9a0c44d577",
           |                "list": [
           |                    {
@@ -3614,9 +3652,9 @@ trait TeamMailboxesContract {
           |                            "maySubmit": true
           |                        },
           |                        "isSubscribed": true,
-          |                        "namespace": "TeamMailbox[marketing@domain.tld]",
+          |                        "namespace": "TeamMailbox[marketing@${domain.asString}]",
           |                        "rights": {
-          |                            "bob@domain.tld": [ "e", "i", "k", "l", "p", "r", "s", "t", "w", "x" ]
+          |                            "bob@${domain.asString}": [ "e", "i", "k", "l", "p", "r", "s", "t", "w", "x" ]
           |                       }
           |                    }
           |                ],
@@ -3632,17 +3670,17 @@ trait TeamMailboxesContract {
 
   @Test
   def shouldNotRenameMailboxWhenUserIsNotMember(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val teamMailboxId: String = mailboxId(server, teamMailbox.mailboxPath)
 
     val childMailboxId: String = createTeamMailbox(teamMailboxId,"ChildOfTopMailbox" )
 
     server.getProbe(classOf[TeamMailboxProbe])
-      .removeMember(teamMailbox, BOB)
+      .removeMember(teamMailbox, bobUsername)
 
     `given`()
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
@@ -3654,7 +3692,7 @@ trait TeamMailboxesContract {
                |  "methodCalls": [[
                |           "Mailbox/set",
                |           {
-               |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |                "accountId": "${bobAccountId}",
                |                "update": {
                |                    "$childMailboxId": {
                |                      "name": "newChild1"
@@ -3678,10 +3716,10 @@ trait TeamMailboxesContract {
 
   @Test
   def shouldNotRenameToExistMailboxPath(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     val teamMailboxId: String = mailboxId(server, teamMailbox.mailboxPath)
     val childMailboxId1: String = createTeamMailbox(teamMailboxId, "ChildOfTopMailbox")
@@ -3699,7 +3737,7 @@ trait TeamMailboxesContract {
            |  "methodCalls": [[
            |           "Mailbox/set",
            |           {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "update": {
            |                    "$childMailboxId1": {
            |                      "name": "$existMailboxName"
@@ -3718,13 +3756,13 @@ trait TeamMailboxesContract {
 
   @Test
   def shouldMoveMailboxToAnotherTeamMailboxSuccessByMember(server: GuiceJamesServer): Unit = {
-    val marketingMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
-    val saleMailbox = TeamMailbox(DOMAIN, TeamMailboxName("sale"))
+    val marketingMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
+    val saleMailbox = TeamMailbox(domain, TeamMailboxName("sale"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(marketingMailbox)
       .create(saleMailbox)
-      .addMember(marketingMailbox, BOB)
-      .addMember(saleMailbox, BOB)
+      .addMember(marketingMailbox, bobUsername)
+      .addMember(saleMailbox, bobUsername)
 
     val marketingMailboxId: String = mailboxId(server, marketingMailbox.mailboxPath)
     val saleMailboxId: String = mailboxId(server, saleMailbox.mailboxPath)
@@ -3741,7 +3779,7 @@ trait TeamMailboxesContract {
                |  "methodCalls": [[
                |           "Mailbox/set",
                |           {
-               |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |                "accountId": "${bobAccountId}",
                |                "update": {
                |                  "$childMarketingMailboxId": {
                |                      "parentId": "$saleMailboxId"
@@ -3760,16 +3798,16 @@ trait TeamMailboxesContract {
 
   @Test
   def shouldMoveCustomFolderFromTeamMailboxToOwnerMailbox(server: GuiceJamesServer): Unit = {
-    val marketingMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val marketingMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(marketingMailbox)
-      .addMember(marketingMailbox, BOB)
+      .addMember(marketingMailbox, bobUsername)
 
     val marketingMailboxId: String = mailboxId(server, marketingMailbox.mailboxPath)
     val childMarketingMailboxId: String = createTeamMailbox(marketingMailboxId, "child1")
 
     val inboxId = server.getProbe(classOf[MailboxProbeImpl])
-      .createMailbox(MailboxPath.inbox(BOB)).serialize()
+      .createMailbox(MailboxPath.inbox(bobUsername)).serialize()
 
     `given`()
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
@@ -3781,7 +3819,7 @@ trait TeamMailboxesContract {
                |  "methodCalls": [[
                |           "Mailbox/set",
                |           {
-               |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |                "accountId": "${bobAccountId}",
                |                "update": {
                |                  "$childMarketingMailboxId": {
                |                      "parentId": "$inboxId",
@@ -3808,7 +3846,7 @@ trait TeamMailboxesContract {
                |  "methodCalls": [[
                |           "Mailbox/get",
                |           {
-               |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |                "accountId": "${bobAccountId}",
                |                "ids": ["$childMarketingMailboxId"]
                |           },
                |    "c1"
@@ -3826,14 +3864,14 @@ trait TeamMailboxesContract {
 
   @Test
   def shouldMoveOwnerMailboxToCustomFolderInTeamMailbox(server: GuiceJamesServer): Unit = {
-    val marketingMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val marketingMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(marketingMailbox)
-      .addMember(marketingMailbox, BOB)
+      .addMember(marketingMailbox, bobUsername)
 
     val marketingMailboxId: String = mailboxId(server, marketingMailbox.mailboxPath)
     val ownerMailboxId = server.getProbe(classOf[MailboxProbeImpl])
-      .createMailbox(MailboxPath.inbox(BOB).child("childOfOwner", '.')).serialize()
+      .createMailbox(MailboxPath.inbox(bobUsername).child("childOfOwner", '.')).serialize()
 
     `given`()
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
@@ -3845,13 +3883,13 @@ trait TeamMailboxesContract {
                |  "methodCalls": [[
                |           "Mailbox/set",
                |           {
-               |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |                "accountId": "${bobAccountId}",
                |                "update": {
                |                  "$ownerMailboxId": {
                |                      "parentId": "$marketingMailboxId",
                |                      "name": "newName1",
                |                      "sharedWith": {
-               |                        "${BOB.asString()}": ["l", "r"]
+               |                        "${bobUsername.asString()}": ["l", "r"]
                |                      }
                |                   }
                |                }
@@ -3877,7 +3915,7 @@ trait TeamMailboxesContract {
                |  "methodCalls": [[
                |           "Mailbox/get",
                |           {
-               |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |                "accountId": "${bobAccountId}",
                |                "ids": ["$ownerMailboxId"]
                |           },
                |    "c1"
@@ -3889,21 +3927,21 @@ trait TeamMailboxesContract {
       .statusCode(SC_OK)
       .contentType(JSON)
       .body("methodResponses[0][1].list[0].name", equalTo("newName1"))
-      .body("methodResponses[0][1].list[0].namespace", equalTo("TeamMailbox[marketing@domain.tld]"))
+      .body("methodResponses[0][1].list[0].namespace", equalTo(s"TeamMailbox[marketing@${domain.asString}]"))
       .body("methodResponses[0][1].list[0].parentId", equalTo(marketingMailboxId))
   }
 
   @Test
   def extraSenderCanSetIdentityForTeamMailbox(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("hiring"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("hiring"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
 
     `given`
       .spec(webAdminApi)
-      .basePath(s"/domains/${DOMAIN.asString()}/team-mailboxes/hiring/extraSenders")
+      .basePath(s"/domains/${domain.asString()}/team-mailboxes/hiring/extraSenders")
     .when()
-      .put(s"/${BOB.asString()}")
+      .put(s"/${bobUsername.asString()}")
     .`then`()
       .statusCode(HttpStatus.SC_NO_CONTENT)
 
@@ -3917,11 +3955,11 @@ trait TeamMailboxesContract {
          |    [
          |      "Identity/set",
          |      {
-         |        "accountId": "$BOB_ACCOUNT_ID",
+         |        "accountId": "$bobAccountId",
          |        "create": {
          |          "4f29": {
          |            "name": "test",
-         |            "email": "hiring@domain.tld",
+         |            "email": "hiring@${domain.asString}",
          |            "textSignature": "Some text signature",
          |            "htmlSignature": "<p>Some html signature</p>"
          |          }
@@ -3952,7 +3990,7 @@ trait TeamMailboxesContract {
            |    [
            |      "Identity/set",
            |      {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "newState": "${SESSION_STATE.value}",
            |        "created": {
            |          "4f29": {
@@ -3969,30 +4007,30 @@ trait TeamMailboxesContract {
 
   @Test
   def extraSenderCanSubmitEmailAsTeamMailbox(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
 
     `given`
       .spec(webAdminApi)
-      .basePath(s"/domains/${DOMAIN.asString()}/team-mailboxes/marketing/extraSenders")
+      .basePath(s"/domains/${domain.asString()}/team-mailboxes/marketing/extraSenders")
     .when()
-      .put(s"/${BOB.asString()}")
+      .put(s"/${bobUsername.asString()}")
     .`then`()
       .statusCode(HttpStatus.SC_NO_CONTENT)
 
     val message: Message = Message.Builder
       .of
       .setSubject("test")
-      .setSender(s"marketing@${DOMAIN.asString()}")
-      .setFrom(s"marketing@${DOMAIN.asString()}")
-      .setTo(BOB.asString)
+      .setSender(s"marketing@${domain.asString()}")
+      .setFrom(s"marketing@${domain.asString()}")
+      .setTo(bobUsername.asString)
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
 
-    val bobDraftsPath = MailboxPath.forUser(BOB, DefaultMailboxes.DRAFTS)
+    val bobDraftsPath = MailboxPath.forUser(bobUsername, DefaultMailboxes.DRAFTS)
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(bobDraftsPath)
-    val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl]).appendMessage(BOB.asString(), bobDraftsPath, AppendCommand.builder()
+    val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl]).appendMessage(bobUsername.asString(), bobDraftsPath, AppendCommand.builder()
       .build(message))
       .getMessageId
 
@@ -4000,13 +4038,13 @@ trait TeamMailboxesContract {
                      |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:ietf:params:jmap:submission"],
                      |  "methodCalls": [
                      |     ["EmailSubmission/set", {
-                     |       "accountId": "$ACCOUNT_ID",
+                     |       "accountId": "$bobAccountId",
                      |       "create": {
                      |         "k1490": {
                      |           "emailId": "${messageId.serialize}",
                      |           "envelope": {
-                     |             "mailFrom": {"email": "marketing@${DOMAIN.asString()}"},
-                     |             "rcptTo": [{"email": "${BOB.asString}"}]
+                     |             "mailFrom": {"email": "marketing@${domain.asString()}"},
+                     |             "rcptTo": [{"email": "${bobUsername.asString}"}]
                      |           }
                      |         }
                      |    }
@@ -4034,7 +4072,7 @@ trait TeamMailboxesContract {
            |        [
            |            "EmailSubmission/set",
            |            {
-           |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |                "accountId": "${bobAccountId}",
            |                "newState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
            |                "created": {
            |                    "k1490": "$${json-unit.ignore}"
@@ -4048,23 +4086,23 @@ trait TeamMailboxesContract {
 
   @Test
   def extraSenderRemovedCanNoLongerSetIdentity(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("hiring"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("hiring"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
 
     `given`
       .spec(webAdminApi)
-      .basePath(s"/domains/${DOMAIN.asString()}/team-mailboxes/hiring/extraSenders")
+      .basePath(s"/domains/${domain.asString()}/team-mailboxes/hiring/extraSenders")
     .when()
-      .put(s"/${BOB.asString()}")
+      .put(s"/${bobUsername.asString()}")
     .`then`()
       .statusCode(HttpStatus.SC_NO_CONTENT)
 
     `given`
       .spec(webAdminApi)
-      .basePath(s"/domains/${DOMAIN.asString()}/team-mailboxes/hiring/extraSenders")
+      .basePath(s"/domains/${domain.asString()}/team-mailboxes/hiring/extraSenders")
     .when()
-      .delete(s"/${BOB.asString()}")
+      .delete(s"/${bobUsername.asString()}")
     .`then`()
       .statusCode(HttpStatus.SC_NO_CONTENT)
 
@@ -4078,11 +4116,11 @@ trait TeamMailboxesContract {
          |    [
          |      "Identity/set",
          |      {
-         |        "accountId": "$BOB_ACCOUNT_ID",
+         |        "accountId": "$bobAccountId",
          |        "create": {
          |          "4f29": {
          |            "name": "test",
-         |            "email": "hiring@domain.tld"
+         |            "email": "hiring@${domain.asString}"
          |          }
          |        }
          |      },
@@ -4111,12 +4149,12 @@ trait TeamMailboxesContract {
            |    [
            |      "Identity/set",
            |      {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "newState": "${SESSION_STATE.value}",
            |        "notCreated": {
            |          "4f29": {
            |            "type": "forbiddenFrom",
-           |            "description": "Can not send from hiring@domain.tld"
+           |            "description": "Can not send from hiring@${domain.asString}"
            |          }
            |        }
            |      },
@@ -4134,7 +4172,7 @@ trait TeamMailboxesContract {
                |  "methodCalls": [[
                |    "Mailbox/set",
                |    {
-               |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |      "accountId": "${bobAccountId}",
                |      "create": { "K39": { "name": "$name", "parentId": "$parentId" } }
                |    },
                |    "c1"
@@ -4165,7 +4203,7 @@ trait TeamMailboxesContract {
              |    "methodCalls": [
              |             ["Mailbox/get",
              |           {
-             |             "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+             |             "accountId": "${bobAccountId}",
              |             "ids": ["$mailboxId"]
              |            },
              |         "c2"]
@@ -4182,15 +4220,15 @@ trait TeamMailboxesContract {
 
   @Test
   def subAddressedEmailToTeamMailboxShouldBeDeliveredToTeamMailboxInbox(server: GuiceJamesServer): Unit = {
-    val teamMailbox = TeamMailbox(DOMAIN, TeamMailboxName("marketing"))
+    val teamMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(teamMailbox)
-      .addMember(teamMailbox, BOB)
+      .addMember(teamMailbox, bobUsername)
 
     `given`
       .spec(webAdminApi)
     .when()
-      .put(s"/domains/${DOMAIN.asString()}/team-mailboxes/marketing/mailboxes/abc")
+      .put(s"/domains/${domain.asString()}/team-mailboxes/marketing/mailboxes/abc")
     .`then`()
       .statusCode(HttpStatus.SC_NO_CONTENT)
 
@@ -4198,23 +4236,23 @@ trait TeamMailboxesContract {
       .spec(webAdminApi)
       .body("""{"enabled": true}""")
     .when()
-      .put(s"/domains/${DOMAIN.asString()}/team-mailboxes/marketing/mailboxes/abc/subaddressing")
+      .put(s"/domains/${domain.asString()}/team-mailboxes/marketing/mailboxes/abc/subaddressing")
     .`then`()
       .statusCode(HttpStatus.SC_NO_CONTENT)
 
     val message: Message = Message.Builder
       .of
       .setSubject("test subaddressing")
-      .setSender(BOB.asString())
-      .setFrom(BOB.asString())
-      .setTo(s"marketing+abc@${DOMAIN.asString()}")
+      .setSender(bobUsername.asString())
+      .setFrom(bobUsername.asString())
+      .setTo(s"marketing+abc@${domain.asString()}")
       .setBody("testmail", StandardCharsets.UTF_8)
       .build
 
-    val bobDraftsPath = MailboxPath.forUser(BOB, DefaultMailboxes.DRAFTS)
+    val bobDraftsPath = MailboxPath.forUser(bobUsername, DefaultMailboxes.DRAFTS)
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(bobDraftsPath)
     val messageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(), bobDraftsPath, AppendCommand.builder().build(message))
+      .appendMessage(bobUsername.asString(), bobDraftsPath, AppendCommand.builder().build(message))
       .getMessageId
 
     val submissionRequest =
@@ -4222,13 +4260,13 @@ trait TeamMailboxesContract {
          |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:ietf:params:jmap:submission"],
          |  "methodCalls": [
          |    ["EmailSubmission/set", {
-         |      "accountId": "$BOB_ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "create": {
          |        "k1": {
          |          "emailId": "${messageId.serialize}",
          |          "envelope": {
-         |            "mailFrom": {"email": "${BOB.asString()}"},
-         |            "rcptTo": [{"email": "marketing+abc@${DOMAIN.asString()}"}]
+         |            "mailFrom": {"email": "${bobUsername.asString()}"},
+         |            "rcptTo": [{"email": "marketing+abc@${domain.asString()}"}]
          |          }
          |        }
          |      }
@@ -4245,7 +4283,7 @@ trait TeamMailboxesContract {
       .statusCode(SC_OK)
 
     val teamMailboxInboxId = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", DOMAIN).asString(), s"marketing.abc")
+      .getMailboxId(TEAM_MAILBOX_NAMESPACE, Username.fromLocalPartWithDomain("team-mailbox", domain).asString(), s"marketing.abc")
 
     val queryRequest =
       s"""{
@@ -4255,7 +4293,7 @@ trait TeamMailboxesContract {
          |    "urn:apache:james:params:jmap:mail:shares"
          |  ],
          |  "methodCalls": [["Email/query", {
-         |    "accountId": "$BOB_ACCOUNT_ID",
+         |    "accountId": "$bobAccountId",
          |    "filter": {"inMailbox": "${teamMailboxInboxId.serialize()}"}
          |  }, "c1"]]
          |}""".stripMargin
@@ -4285,7 +4323,7 @@ trait TeamMailboxesContract {
       .getValue
 
     basicRequest.get(Uri.apply(new URI(s"ws://127.0.0.1:$port/jmap/ws")))
-      .auth.basic(BOB.asString(), BOB_PASSWORD)
+      .auth.basic(bobUsername.asString(), BOB_PASSWORD)
       .header("Accept", ACCEPT_RFC8621_VERSION_HEADER)
   }
 }
