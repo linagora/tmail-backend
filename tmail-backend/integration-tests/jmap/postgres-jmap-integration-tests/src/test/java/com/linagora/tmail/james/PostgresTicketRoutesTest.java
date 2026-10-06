@@ -32,5 +32,6 @@ public class PostgresTicketRoutesTest implements LinagoraTicketAuthenticationCon
     static JamesServerExtension testExtension = JAMES_SERVER_EXTENSION_FUNCTION
         .apply(binder -> binder.bind(JmapRfc8621Configuration.class)
             .toInstance(LinagoraTicketAuthenticationContract.jmapConfiguration()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }
