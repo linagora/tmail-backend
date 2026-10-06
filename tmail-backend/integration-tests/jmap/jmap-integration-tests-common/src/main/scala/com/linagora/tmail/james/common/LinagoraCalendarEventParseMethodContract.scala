@@ -20,8 +20,11 @@ package com.linagora.tmail.james.common
 
 import java.io.{ByteArrayInputStream, InputStream}
 import java.nio.charset.StandardCharsets
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
 
 import com.google.common.collect.ImmutableList
+import com.google.common.hash.Hashing
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
@@ -31,9 +34,10 @@ import net.javacrumbs.jsonunit.core.Option
 import net.javacrumbs.jsonunit.core.Option.{IGNORING_ARRAY_ORDER, IGNORING_EXTRA_FIELDS}
 import org.apache.http.HttpStatus.{SC_CREATED, SC_OK}
 import org.apache.james.GuiceJamesServer
+import org.apache.james.core.Username
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_ACCOUNT_ID, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE_PASSWORD, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.mailbox.MessageManager.AppendCommand
@@ -48,18 +52,42 @@ import org.hamcrest.Matchers.{equalTo, hasKey}
 import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import play.api.libs.json.Json
 
+object LinagoraCalendarEventParseMethodContract {
+  case class TestContext(bobUsername: Username, andreUsername: Username) {
+    val bobAccountId: String = accountId(bobUsername)
+    val andreAccountId: String = accountId(andreUsername)
+  }
+
+  private val currentContext: AtomicReference[TestContext] = new AtomicReference[TestContext]()
+
+  private def accountId(username: Username): String =
+    Hashing.sha256().hashString(username.asString(), StandardCharsets.UTF_8).toString
+}
+
 trait LinagoraCalendarEventParseMethodContract {
+  def bobUsername: Username = LinagoraCalendarEventParseMethodContract.currentContext.get().bobUsername
+
+  def bobAccountId: String = LinagoraCalendarEventParseMethodContract.currentContext.get().bobAccountId
+
+  def andreUsername: Username = LinagoraCalendarEventParseMethodContract.currentContext.get().andreUsername
+
+  def andreAccountId: String = LinagoraCalendarEventParseMethodContract.currentContext.get().andreAccountId
 
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    val bob = Username.fromLocalPartWithDomain(s"bob$uniqueSuffix", DOMAIN)
+    val andre = Username.fromLocalPartWithDomain(s"andre$uniqueSuffix", DOMAIN)
+    LinagoraCalendarEventParseMethodContract.currentContext.set(LinagoraCalendarEventParseMethodContract.TestContext(bob, andre))
+
     server.getProbe(classOf[DataProbeImpl])
       .fluent
       .addDomain(DOMAIN.asString)
-      .addUser(BOB.asString, BOB_PASSWORD)
-      .addUser(ANDRE.asString, ANDRE_PASSWORD)
+      .addUser(bobUsername.asString, BOB_PASSWORD)
+      .addUser(andreUsername.asString, ANDRE_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .setAuth(authScheme(UserCredential(bobUsername, BOB_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build
   }
@@ -91,7 +119,7 @@ trait LinagoraCalendarEventParseMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/parse",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "$blobId" ]
          |    },
          |    "c1"]]
@@ -115,7 +143,7 @@ trait LinagoraCalendarEventParseMethodContract {
         s"""[
            |    "CalendarEvent/parse",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "parsed": {
            |            "$blobId": [{
            |                "uid": "ea127690-0440-404b-af98-9823c855a283",
@@ -191,7 +219,7 @@ trait LinagoraCalendarEventParseMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/parse",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "$blobId" ]
          |    },
          |    "c1"]]
@@ -215,7 +243,7 @@ trait LinagoraCalendarEventParseMethodContract {
         s"""[
            |    "CalendarEvent/parse",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "parsed": {
            |            "$blobId": [
            |                {
@@ -281,7 +309,7 @@ trait LinagoraCalendarEventParseMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/parse",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "$blobId" ]
          |    },
          |    "c1"]]
@@ -305,7 +333,7 @@ trait LinagoraCalendarEventParseMethodContract {
         s"""[
            |	"CalendarEvent/parse",
            |	{
-           |		"accountId": "$ACCOUNT_ID",
+           |		"accountId": "$bobAccountId",
            |		"parsed": {
            |			"$blobId": [{
            |					"method": "PUBLISH",
@@ -378,7 +406,7 @@ trait LinagoraCalendarEventParseMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/parse",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "$blobId1", "$blobId2" ]
          |    },
          |    "c1"]]
@@ -402,7 +430,7 @@ trait LinagoraCalendarEventParseMethodContract {
         s"""[
            |    "CalendarEvent/parse",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "parsed": {
            |            "$blobId1": [{
            |                "uid": "ea127690-0440-404b-af98-9823c855a283",
@@ -527,7 +555,7 @@ trait LinagoraCalendarEventParseMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/parse",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "$notFoundBlobId" ]
          |    },
          |    "c1"]]
@@ -550,7 +578,7 @@ trait LinagoraCalendarEventParseMethodContract {
         s"""[
            |    "CalendarEvent/parse",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "notFound": [ "$notFoundBlobId" ]
            |    }, "c1"
            |]""".stripMargin)
@@ -568,7 +596,7 @@ trait LinagoraCalendarEventParseMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/parse",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "$notParsableBlobId" ]
          |    },
          |    "c1"]]
@@ -591,7 +619,7 @@ trait LinagoraCalendarEventParseMethodContract {
         s"""[
            |    "CalendarEvent/parse",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "notParsable": [ "$notParsableBlobId" ]
            |    }, "c1"
            |]""".stripMargin)
@@ -610,7 +638,7 @@ trait LinagoraCalendarEventParseMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/parse",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "$notParsableBlobId", "$blobId", "$notFoundBlobId" ]
          |    },
          |    "c1"]]
@@ -634,7 +662,7 @@ trait LinagoraCalendarEventParseMethodContract {
         s"""[
            |    "CalendarEvent/parse",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "notParsable": [ "$notParsableBlobId" ],
            |        "notFound": [ "$notFoundBlobId" ],
            |        "parsed": {
@@ -708,7 +736,7 @@ trait LinagoraCalendarEventParseMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/parse",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "123" ]
          |    },
          |    "c1"]]
@@ -745,7 +773,7 @@ trait LinagoraCalendarEventParseMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/parse",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "123" ]
          |    },
          |    "c1"]]
@@ -825,14 +853,14 @@ trait LinagoraCalendarEventParseMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/parse",
          |    {
-         |      "accountId": "$ANDRE_ACCOUNT_ID",
+         |      "accountId": "$andreAccountId",
          |      "blobIds": [ "$blobId" ]
          |    },
          |    "c1"]]
          |}""".stripMargin
 
     val response = `given`(baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+      .setAuth(authScheme(UserCredential(andreUsername, ANDRE_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build)
       .body(request)
@@ -851,7 +879,7 @@ trait LinagoraCalendarEventParseMethodContract {
         s"""[
            |    "CalendarEvent/parse",
            |    {
-           |        "accountId": "$ANDRE_ACCOUNT_ID",
+           |        "accountId": "$andreAccountId",
            |        "notFound": [ "$blobId" ]
            |    },
            |    "c1"
@@ -861,9 +889,8 @@ trait LinagoraCalendarEventParseMethodContract {
   @Test
   def parseShouldSucceedWhenDelegated(server: GuiceJamesServer): Unit = {
     val blobId: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/meeting.ics"))
-    server.getProbe(classOf[DelegationProbe]).addAuthorizedUser(BOB, ANDRE)
+    server.getProbe(classOf[DelegationProbe]).addAuthorizedUser(bobUsername, andreUsername)
 
-    val bobAccountId = ACCOUNT_ID
     val request: String =
       s"""{
          |  "using": [
@@ -879,7 +906,7 @@ trait LinagoraCalendarEventParseMethodContract {
          |}""".stripMargin
 
     val response = `given`(baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+      .setAuth(authScheme(UserCredential(andreUsername, ANDRE_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build)
       .body(request)
@@ -966,10 +993,10 @@ trait LinagoraCalendarEventParseMethodContract {
   @Test
   def parseShouldSucceedWhenShared(server: GuiceJamesServer): Unit = {
     // Bob share rights mailbox to Andre
-    val bobMailboxPath: MailboxPath = MailboxPath.inbox(BOB)
+    val bobMailboxPath: MailboxPath = MailboxPath.inbox(bobUsername)
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(bobMailboxPath)
     server.getProbe(classOf[ACLProbeImpl])
-      .replaceRights(bobMailboxPath, ANDRE.asString(), new MailboxACL.Rfc4314Rights(Right.Read, Right.Lookup))
+      .replaceRights(bobMailboxPath, andreUsername.asString(), new MailboxACL.Rfc4314Rights(Right.Read, Right.Lookup))
 
     val messageHasIcsAttachment: Message = Message.Builder.of()
       .setBody(MultipartBuilder.create("mixed")
@@ -984,7 +1011,7 @@ trait LinagoraCalendarEventParseMethodContract {
       .build
 
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString, bobMailboxPath, AppendCommand.from(messageHasIcsAttachment))
+      .appendMessage(bobUsername.asString, bobMailboxPath, AppendCommand.from(messageHasIcsAttachment))
       .getMessageId
 
     val icsBlobId: String = `given`
@@ -997,7 +1024,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |  "methodCalls": [[
            |    "Email/get",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "ids": ["${messageId.serialize}"]
            |    },
            |    "c1"]]
@@ -1012,7 +1039,7 @@ trait LinagoraCalendarEventParseMethodContract {
       .get("methodResponses[0][1].list[0].attachments[0].blobId")
 
     val responseOfAndreRequest: String = `given`(baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+      .setAuth(authScheme(UserCredential(andreUsername, ANDRE_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build)
       .body(
@@ -1023,7 +1050,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |  "methodCalls": [[
            |    "CalendarEvent/parse",
            |    {
-           |      "accountId": "$ANDRE_ACCOUNT_ID",
+           |      "accountId": "$andreAccountId",
            |      "blobIds": [ "$icsBlobId" ]
            |    },
            |    "c1"]]
@@ -1044,7 +1071,7 @@ trait LinagoraCalendarEventParseMethodContract {
         s"""[
            |    "CalendarEvent/parse",
            |    {
-           |        "accountId": "$ANDRE_ACCOUNT_ID",
+           |        "accountId": "$andreAccountId",
            |        "parsed": {
            |            "$icsBlobId": [{
            |                "uid": "ea127690-0440-404b-af98-9823c855a283",
@@ -1122,7 +1149,7 @@ trait LinagoraCalendarEventParseMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/parse",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds":  $blogIdsJson
          |    },
          |    "c1"]]
@@ -1164,7 +1191,7 @@ trait LinagoraCalendarEventParseMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/parse",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "$blobId" ]
          |    },
          |    "c1"]]
@@ -1188,7 +1215,7 @@ trait LinagoraCalendarEventParseMethodContract {
         s"""[
            |    "CalendarEvent/parse",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "parsed": {
            |            "$blobId": [{
            |                "uid": "037aaad3-17c9-47c8-bd6b-f2cbfe925ef7",
@@ -1241,7 +1268,7 @@ trait LinagoraCalendarEventParseMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/parse",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "$blobId1", "$blobId2" ]
          |    },
          |    "c1"]]
@@ -1265,7 +1292,7 @@ trait LinagoraCalendarEventParseMethodContract {
         s"""[
            |	"CalendarEvent/parse",
            |	{
-           |		"accountId": "$ACCOUNT_ID",
+           |		"accountId": "$bobAccountId",
            |		"notParsable": [
            |			"$blobId1",
            |			"$blobId2"
@@ -1287,7 +1314,7 @@ trait LinagoraCalendarEventParseMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/parse",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "$blobId" ],
          |      "properties": ["invalid"]
          |    },
@@ -1331,7 +1358,7 @@ trait LinagoraCalendarEventParseMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/parse",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "$blobId" ]
          |    },
          |    "c1"]]
@@ -1355,7 +1382,7 @@ trait LinagoraCalendarEventParseMethodContract {
         s"""[
            |    "CalendarEvent/parse",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "parsed": {
            |            "$blobId": [{
            |                "uid": "ea127690-0440-404b-af98-9823c855a283",
@@ -1431,7 +1458,7 @@ trait LinagoraCalendarEventParseMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/parse",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "$blobId" ],
          |      "properties": []
          |    },
@@ -1456,7 +1483,7 @@ trait LinagoraCalendarEventParseMethodContract {
         s"""[
            |    "CalendarEvent/parse",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "parsed": {
            |            "$blobId": [{
            |                "uid": "ea127690-0440-404b-af98-9823c855a283",
@@ -1532,7 +1559,7 @@ trait LinagoraCalendarEventParseMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/parse",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "$blobId" ],
          |      "properties": ["uid", "title", "description"]
          |    },
@@ -1556,7 +1583,7 @@ trait LinagoraCalendarEventParseMethodContract {
         s"""[
            |	"CalendarEvent/parse",
            |	{
-           |		"accountId": "$ACCOUNT_ID",
+           |		"accountId": "$bobAccountId",
            |		"parsed": {
            |			"$blobId": [{
            |				"uid": "ea127690-0440-404b-af98-9823c855a283",
@@ -1581,7 +1608,7 @@ trait LinagoraCalendarEventParseMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/parse",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "$blobId" ],
          |      "properties": ["uid", "title", "description"]
          |    },
@@ -1606,7 +1633,7 @@ trait LinagoraCalendarEventParseMethodContract {
         s"""[
            |	"CalendarEvent/parse",
            |	{
-           |		"accountId": "$ACCOUNT_ID",
+           |		"accountId": "$bobAccountId",
            |		"parsed": {
            |			"$blobId": [{
            |					"description": "Example event 1",
@@ -1637,7 +1664,7 @@ trait LinagoraCalendarEventParseMethodContract {
          |  "methodCalls": [[
          |    "CalendarEvent/parse",
          |    {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "blobIds": [ "$blobId" ]
          |    },
          |    "c1"]]
@@ -1681,7 +1708,7 @@ trait LinagoraCalendarEventParseMethodContract {
       .basePath("")
       .body(payload)
     .when
-      .post(s"/upload/$ACCOUNT_ID")
+      .post(s"/upload/$bobAccountId")
       .`then`
       .statusCode(SC_CREATED)
       .extract
