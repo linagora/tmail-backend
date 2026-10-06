@@ -1,0 +1,14 @@
+# Notifica sullo stato di consegna (errore) per il messaggio a {{RECIPIENTS}}: errore imprevisto
+
+Questa è una notifica sullo stato di consegna generata automaticamente.
+
+Siamo spiacenti di informarti che non è stato possibile recapitare il tuo messaggio a causa di un errore imprevisto.
+
+Dettagli:
+- Da: {{SENDER}}
+- A: {{RECIPIENTS}}
+- Oggetto originale: {{SUBJECT}}
+- Data: {{DATE}}
+- Messaggio di errore: {{ERROR_MESSAGE}}
+
+Per maggiori informazioni, contatta l'amministratore.

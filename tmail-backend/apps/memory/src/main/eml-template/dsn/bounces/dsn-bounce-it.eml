@@ -1,0 +1,13 @@
+# Notifica sullo stato di consegna (errore) per il messaggio a {{RECIPIENTS}}
+
+Questa è una notifica sullo stato di consegna generata automaticamente.
+Siamo spiacenti di informarti che non è stato possibile recapitare il tuo messaggio.
+
+Dettagli:
+- Da: {{SENDER}}
+- A: {{RECIPIENTS}}
+- Oggetto originale: {{SUBJECT}}
+- Data: {{DATE}}
+- Messaggio di errore: {{ERROR_MESSAGE}}
+
+Per maggiori informazioni, contatta l'amministratore.

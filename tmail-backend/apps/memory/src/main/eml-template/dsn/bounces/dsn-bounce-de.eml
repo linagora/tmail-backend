@@ -1,0 +1,13 @@
+# Benachrichtigung zum Zustellstatus (fehlgeschlagen) für die Nachricht an {{RECIPIENTS}}
+
+Dies ist eine automatisch erstellte Benachrichtigung zum Zustellstatus.
+Leider konnte Ihre Nachricht nicht zugestellt werden.
+
+Details:
+- Von: {{SENDER}}
+- An: {{RECIPIENTS}}
+- Ursprünglicher Betreff: {{SUBJECT}}
+- Datum: {{DATE}}
+- Fehlermeldung: {{ERROR_MESSAGE}}
+
+Bitte wenden Sie sich für weitere Informationen an den Administrator.

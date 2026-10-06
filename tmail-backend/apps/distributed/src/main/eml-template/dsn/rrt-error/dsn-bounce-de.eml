@@ -1,0 +1,13 @@
+# Benachrichtigung zum Zustellstatus (fehlgeschlagen) für die Nachricht an {{RECIPIENTS}}: Fehler beim Umschreiben des Empfängers
+
+Dies ist eine automatisch erstellte Benachrichtigung zum Zustellstatus.
+
+Leider konnte Ihre Nachricht aufgrund eines Problems beim Umschreiben des Empfängers nicht zugestellt werden.
+
+Details:
+- Von: {{SENDER}}
+- An: {{RECIPIENTS}}
+- Ursprünglicher Betreff: {{SUBJECT}}
+- Datum: {{DATE}}
+
+Bitte wenden Sie sich für weitere Informationen an den Administrator.
