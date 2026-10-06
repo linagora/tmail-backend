@@ -43,5 +43,6 @@ public class MemoryPublicAssetGetMethodTest implements PublicAssetGetMethodContr
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new PublicAssetProbeModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }
