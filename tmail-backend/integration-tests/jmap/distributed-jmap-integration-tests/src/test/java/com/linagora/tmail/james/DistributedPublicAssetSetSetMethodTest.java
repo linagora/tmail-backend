@@ -65,5 +65,6 @@ public class DistributedPublicAssetSetSetMethodTest implements PublicAssetSetMet
             .overrideWith(new PublicAssetProbeModule())
             .overrideWith(binder -> binder.bind(JMAPExtensionConfiguration.class)
                 .toInstance(PublicAssetSetMethodContract.CONFIGURATION())))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }
