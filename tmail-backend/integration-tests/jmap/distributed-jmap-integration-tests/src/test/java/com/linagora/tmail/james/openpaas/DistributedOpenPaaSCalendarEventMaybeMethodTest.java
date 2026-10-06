@@ -80,6 +80,7 @@ public class DistributedOpenPaaSCalendarEventMaybeMethodTest extends LinagoraCal
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule(), new DelegationProbeModule())
             .overrideWith(openPaasExtension.openpaasModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @Override
