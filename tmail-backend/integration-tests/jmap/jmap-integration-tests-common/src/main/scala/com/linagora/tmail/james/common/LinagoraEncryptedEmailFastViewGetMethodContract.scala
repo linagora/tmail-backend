@@ -19,7 +19,10 @@
 package com.linagora.tmail.james.common
 
 import java.nio.charset.StandardCharsets
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
 
+import com.google.common.hash.Hashing
 import com.linagora.tmail.james.common.EncryptHelper.uploadPublicKey
 import com.linagora.tmail.james.common.probe.JmapGuiceEncryptedEmailContentStoreProbe
 import com.linagora.tmail.james.jmap.model.EncryptedEmailGetRequest
@@ -30,10 +33,11 @@ import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import net.javacrumbs.jsonunit.core.Option
 import org.apache.http.HttpStatus
 import org.apache.james.GuiceJamesServer
+import org.apache.james.core.Username
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.core.UuidState.INSTANCE
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_ACCOUNT_ID, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE_PASSWORD, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.mailbox.MessageManager.AppendCommand
@@ -47,41 +51,65 @@ import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import play.api.libs.json.{JsString, Json}
 
 object LinagoraEncryptedEmailFastViewGetMethodContract {
-  val MESSAGE: Message = Message.Builder.of
+  case class TestContext(bobUsername: Username, andreUsername: Username) {
+    val bobAccountId: String = accountId(bobUsername)
+    val andreAccountId: String = accountId(andreUsername)
+  }
+
+  private val currentContext: AtomicReference[TestContext] = new AtomicReference[TestContext]()
+
+  private def bobUsername: Username = currentContext.get().bobUsername
+
+  private def accountId(username: Username): String =
+    Hashing.sha256().hashString(username.asString(), StandardCharsets.UTF_8).toString
+
+  def MESSAGE: Message = Message.Builder.of
     .setSubject("test")
-    .setSender(BOB.asString)
-    .setFrom(BOB.asString)
-    .setTo(BOB.asString)
+    .setSender(bobUsername.asString)
+    .setFrom(bobUsername.asString)
+    .setTo(bobUsername.asString)
     .setBody("test mail", StandardCharsets.UTF_8)
     .build
 
   val MESSAGE_PREVIEW: String = "test mail"
 
-  val BOB_INBOX_PATH: MailboxPath = MailboxPath.inbox(BOB)
+  def BOB_INBOX_PATH: MailboxPath = MailboxPath.inbox(bobUsername)
 }
 
 trait LinagoraEncryptedEmailFastViewGetMethodContract {
+  def bobUsername: Username = LinagoraEncryptedEmailFastViewGetMethodContract.currentContext.get().bobUsername
+
+  def bobAccountId: String = LinagoraEncryptedEmailFastViewGetMethodContract.currentContext.get().bobAccountId
+
+  def andreUsername: Username = LinagoraEncryptedEmailFastViewGetMethodContract.currentContext.get().andreUsername
+
+  def andreAccountId: String = LinagoraEncryptedEmailFastViewGetMethodContract.currentContext.get().andreAccountId
 
   import EncryptHelper.decrypt
   import LinagoraEncryptedEmailFastViewGetMethodContract._
 
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    val bob = Username.fromLocalPartWithDomain(s"bob$uniqueSuffix", DOMAIN)
+    val andre = Username.fromLocalPartWithDomain(s"andre$uniqueSuffix", DOMAIN)
+    LinagoraEncryptedEmailFastViewGetMethodContract.currentContext.set(LinagoraEncryptedEmailFastViewGetMethodContract.TestContext(bob, andre))
+
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
       .addDomain(DOMAIN.asString)
-      .addUser(BOB.asString(), BOB_PASSWORD)
-      .addUser(ANDRE.asString(), ANDRE_PASSWORD)
+      .addUser(bobUsername.asString(), BOB_PASSWORD)
+      .addUser(andreUsername.asString(), ANDRE_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .setAuth(authScheme(UserCredential(bobUsername, BOB_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build()
 
     val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
     mailboxProbe.createMailbox(BOB_INBOX_PATH)
 
-    uploadPublicKey(ACCOUNT_ID, requestSpecification)
+    uploadPublicKey(bobAccountId, requestSpecification)
   }
 
   def randomMessageId: MessageId
@@ -93,7 +121,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core"],
          |  "methodCalls": [
          |    ["EncryptedEmailFastView/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "ids": ["1"]
          |    }, "c1"]
          |  ]
@@ -129,7 +157,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
          |  "using": [],
          |  "methodCalls": [
          |    ["EncryptedEmailFastView/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "ids": ["1"]
          |    }, "c1"]
          |  ]
@@ -205,7 +233,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
          |    ["EncryptedEmailFastView/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "ids": $emailIdsJson
          |    }, "c1"]
          |  ]
@@ -244,7 +272,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
          |    ["EncryptedEmailFastView/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "ids": ["invalid"]
          |    }, "c1"]
          |  ]
@@ -269,7 +297,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
            |        [
            |            "EncryptedEmailFastView/get",
            |            {
-           |                "accountId": "$ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "state": "${INSTANCE.value}",
            |                "notFound": ["invalid"],
            |                "list": []
@@ -288,7 +316,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
          |    ["EncryptedEmailFastView/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "ids": ["${messageId.serialize}"]
          |    }, "c1"]
          |  ]
@@ -313,7 +341,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
            |        [
            |            "EncryptedEmailFastView/get",
            |            {
-           |                "accountId": "$ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "state": "${INSTANCE.value}",
            |                "notFound": [
            |                    "${messageId.serialize}"
@@ -329,7 +357,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
   @Test
   def methodShouldReturnNotFoundWhenEncryptedEmailContentDoesNotExist(server: GuiceJamesServer): Unit = {
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(),
+      .appendMessage(bobUsername.asString(),
         BOB_INBOX_PATH,
         AppendCommand.from(MESSAGE))
       .getMessageId
@@ -342,7 +370,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
          |    ["EncryptedEmailFastView/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "ids": ["${messageId.serialize}"]
          |    }, "c1"]
          |  ]
@@ -367,7 +395,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
            |        [
            |            "EncryptedEmailFastView/get",
            |            {
-           |                "accountId": "$ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "state": "${INSTANCE.value}",
            |                "notFound": [
            |                    "${messageId.serialize}"
@@ -383,7 +411,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
   @Tag(CategoryTags.BASIC_FEATURE)
   def methodShouldReturnFastViewWhenEmailIdExits(server: GuiceJamesServer): Unit = {
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(),
+      .appendMessage(bobUsername.asString(),
         BOB_INBOX_PATH,
         AppendCommand.from(MESSAGE))
       .getMessageId
@@ -392,7 +420,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
          |    ["EncryptedEmailFastView/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "ids": ["${messageId.serialize}"]
          |    }, "c1"]
          |  ]
@@ -413,7 +441,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
       .inPath("methodResponses[0][1]")
       .isEqualTo(
         s"""{
-           |    "accountId": "$ACCOUNT_ID",
+           |    "accountId": "$bobAccountId",
            |    "state": "${INSTANCE.value}",
            |    "notFound": [],
            |    "list": [
@@ -434,7 +462,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
   @Tag(CategoryTags.BASIC_FEATURE)
   def encryptedPreviewShouldEncrypt(server: GuiceJamesServer): Unit = {
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(),
+      .appendMessage(bobUsername.asString(),
         BOB_INBOX_PATH,
         AppendCommand.from(MESSAGE))
       .getMessageId
@@ -443,7 +471,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
          |    ["EncryptedEmailFastView/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "ids": ["${messageId.serialize}"]
          |    }, "c1"]
          |  ]
@@ -473,7 +501,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
   @Test
   def encryptedAttachmentsShouldBeDownloadable(server: GuiceJamesServer): Unit = {
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(),
+      .appendMessage(bobUsername.asString(),
         BOB_INBOX_PATH,
         AppendCommand.from(ClassLoaderUtils.getSystemResourceAsSharedStream("emailWithTextAttachment.eml")))
       .getMessageId
@@ -481,7 +509,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
     val attachment = `given`
       .basePath("/download")
     .when()
-      .get(s"$ACCOUNT_ID/encryptedAttachment_${messageId.serialize()}_0")
+      .get(s"$bobAccountId/encryptedAttachment_${messageId.serialize()}_0")
     .`then`()
       .extract()
       .body()
@@ -496,17 +524,17 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
   @Test
   def methodShouldAcceptSeveralIds(server: GuiceJamesServer): Unit = {
     val messageId1: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(),
+      .appendMessage(bobUsername.asString(),
         BOB_INBOX_PATH,
         AppendCommand.from(MESSAGE))
       .getMessageId
     val messageId2: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(),
+      .appendMessage(bobUsername.asString(),
         BOB_INBOX_PATH,
         AppendCommand.from(MESSAGE))
       .getMessageId
     val messageId3: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(),
+      .appendMessage(bobUsername.asString(),
         BOB_INBOX_PATH,
         AppendCommand.from(MESSAGE))
       .getMessageId
@@ -516,7 +544,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
          |    ["EncryptedEmailFastView/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "ids": ["${messageId1.serialize}", "${messageId2.serialize}", "${messageId3.serialize}"]
          |    }, "c1"]
          |  ]
@@ -538,7 +566,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
       .inPath("methodResponses[0][1]")
       .isEqualTo(
         s"""{
-           |    "accountId": "$ACCOUNT_ID",
+           |    "accountId": "$bobAccountId",
            |    "state": "${INSTANCE.value}",
            |    "notFound": [],
            |    "list": [
@@ -564,7 +592,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
   @Test
   def methodShouldSuccessWhenMixed(server: GuiceJamesServer): Unit = {
     val existMessageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(),
+      .appendMessage(bobUsername.asString(),
         BOB_INBOX_PATH,
         AppendCommand.from(MESSAGE))
       .getMessageId
@@ -575,7 +603,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
          |    ["EncryptedEmailFastView/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "ids": ["${existMessageId.serialize}", "${notFoundMessageId1.serialize}"]
          |    }, "c1"]
          |  ]
@@ -597,7 +625,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
       .inPath("methodResponses[0][1]")
       .isEqualTo(
         s"""{
-           |    "accountId": "$ACCOUNT_ID",
+           |    "accountId": "$bobAccountId",
            |    "state": "${INSTANCE.value}",
            |    "list": [
            |            {
@@ -618,17 +646,17 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
 
   @Test
   def methodShouldReturnNotFoundWhenAccountDoesNotHavePermission(server: GuiceJamesServer): Unit = {
-    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(ANDRE))
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(MailboxPath.inbox(andreUsername))
 
-    uploadPublicKey(ANDRE_ACCOUNT_ID,
+    uploadPublicKey(andreAccountId,
       baseRequestSpecBuilder(server)
-        .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+        .setAuth(authScheme(UserCredential(andreUsername, ANDRE_PASSWORD)))
         .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
         .build)
 
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(ANDRE.asString(),
-        MailboxPath.inbox(ANDRE),
+      .appendMessage(andreUsername.asString(),
+        MailboxPath.inbox(andreUsername),
         AppendCommand.from(MESSAGE))
       .getMessageId
 
@@ -637,7 +665,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
          |    ["EncryptedEmailFastView/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "ids": ["${messageId.serialize}"]
          |    }, "c1"]
          |  ]
@@ -662,7 +690,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
            |        [
            |            "EncryptedEmailFastView/get",
            |            {
-           |                "accountId": "$ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "state": "${INSTANCE.value}",
            |                "notFound": [
            |                    "${messageId.serialize}"
@@ -677,11 +705,11 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
   @Test
   def methodShouldReturnNotFoundWhenAccountDoesNotHaveAnyKeyStore(server: GuiceJamesServer) : Unit = {
     val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
-    mailboxProbe.createMailbox(MailboxPath.inbox(ANDRE))
+    mailboxProbe.createMailbox(MailboxPath.inbox(andreUsername))
 
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(ANDRE.asString(),
-        MailboxPath.inbox(ANDRE),
+      .appendMessage(andreUsername.asString(),
+        MailboxPath.inbox(andreUsername),
         AppendCommand.from(MESSAGE))
       .getMessageId
 
@@ -690,7 +718,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
          |    ["EncryptedEmailFastView/get", {
-         |      "accountId": "$ANDRE_ACCOUNT_ID",
+         |      "accountId": "$andreAccountId",
          |      "ids": ["${messageId.serialize}"]
          |    }, "c1"]
          |  ]
@@ -698,7 +726,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
 
     val response: String =
       `given`(baseRequestSpecBuilder(server)
-        .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+        .setAuth(authScheme(UserCredential(andreUsername, ANDRE_PASSWORD)))
         .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
         .build)
         .body(request)
@@ -719,7 +747,7 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
            |        [
            |            "EncryptedEmailFastView/get",
            |            {
-           |                "accountId": "$ANDRE_ACCOUNT_ID",
+           |                "accountId": "$andreAccountId",
            |                "state": "${INSTANCE.value}",
            |                "notFound": [
            |                    "${messageId.serialize}"
@@ -733,21 +761,21 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
 
   @Test
   def authorizedUserCanDownloadEncryptedAttachmentOfDelegatedUser(server: GuiceJamesServer): Unit = {
-    server.getProbe(classOf[DelegationProbe]).addAuthorizedUser(BOB, ANDRE)
+    server.getProbe(classOf[DelegationProbe]).addAuthorizedUser(bobUsername, andreUsername)
 
     val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
-      .appendMessage(BOB.asString(),
+      .appendMessage(bobUsername.asString(),
         BOB_INBOX_PATH,
         AppendCommand.from(ClassLoaderUtils.getSystemResourceAsSharedStream("emailWithTextAttachment.eml")))
       .getMessageId
 
     val attachment = `given`(baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+      .setAuth(authScheme(UserCredential(andreUsername, ANDRE_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build)
       .basePath("/download")
     .when()
-      .get(s"$ACCOUNT_ID/encryptedAttachment_${messageId.serialize()}_0")
+      .get(s"$bobAccountId/encryptedAttachment_${messageId.serialize()}_0")
     .`then`()
       .extract()
       .body()

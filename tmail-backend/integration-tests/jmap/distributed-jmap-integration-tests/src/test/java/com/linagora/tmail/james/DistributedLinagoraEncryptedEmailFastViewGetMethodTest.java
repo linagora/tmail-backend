@@ -76,6 +76,7 @@ public class DistributedLinagoraEncryptedEmailFastViewGetMethodTest implements L
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding()
                 .to(JmapGuiceEncryptedEmailContentStoreProbe.class)))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @Override
