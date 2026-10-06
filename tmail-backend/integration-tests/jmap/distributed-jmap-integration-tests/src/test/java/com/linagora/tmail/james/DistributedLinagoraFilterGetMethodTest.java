@@ -18,13 +18,10 @@
 
 package com.linagora.tmail.james;
 
-import static org.apache.james.jmap.JMAPTestingConstants.BOB;
-
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.redis.RedisExtension;
-import org.apache.james.core.Username;
 import org.apache.james.mailbox.cassandra.ids.CassandraId;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -67,21 +64,12 @@ public class DistributedLinagoraFilterGetMethodTest implements LinagoraFilterGet
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new JmapGuiceCustomModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @Override
     public String generateMailboxIdForUser() {
         return CassandraId.of("123e4567-e89b-12d3-a456-426614174000").asUuid().toString();
-    }
-
-    @Override
-    public Username generateUsername() {
-        return BOB;
-    }
-
-    @Override
-    public String generateAccountIdAsString() {
-        return "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6";
     }
 
 }

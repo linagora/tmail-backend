@@ -18,9 +18,13 @@
 
 package com.linagora.tmail.james.common
 
+import java.nio.charset.StandardCharsets
 import java.util.Optional
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
 
 import com.google.common.collect.ImmutableList
+import com.google.common.hash.Hashing
 import com.linagora.tmail.james.common.probe.JmapGuiceCustomProbe
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
@@ -34,26 +38,42 @@ import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.jmap.api.filtering.Rule
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.DataProbeImpl
 import org.hamcrest.Matchers.{equalTo, hasKey}
 import org.junit.jupiter.api.{BeforeEach, Tag, Test}
+object LinagoraFilterGetMethodContract {
+  case class TestContext(bobUsername: Username) {
+    val bobAccountId: String = accountId(bobUsername)
+  }
+
+  private val currentContext: AtomicReference[TestContext] = new AtomicReference[TestContext]()
+
+  private def accountId(username: Username): String =
+    Hashing.sha256().hashString(username.asString(), StandardCharsets.UTF_8).toString
+}
+
 trait LinagoraFilterGetMethodContract {
+  def bobUsername: Username = LinagoraFilterGetMethodContract.currentContext.get().bobUsername
+
+  def bobAccountId: String = LinagoraFilterGetMethodContract.currentContext.get().bobAccountId
 
   def generateMailboxIdForUser(): String
-  def generateUsername(): Username
-  def generateAccountIdAsString(): String
 
   @BeforeEach
   def setUp(server : GuiceJamesServer): Unit = {
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    val bob = Username.fromLocalPartWithDomain(s"bob$uniqueSuffix", DOMAIN)
+    LinagoraFilterGetMethodContract.currentContext.set(LinagoraFilterGetMethodContract.TestContext(bob))
+
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
       .addDomain(DOMAIN.asString)
-      .addUser(BOB.asString(), BOB_PASSWORD)
+      .addUser(bobUsername.asString(), BOB_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .setAuth(authScheme(UserCredential(bobUsername, BOB_PASSWORD)))
       .build()
   }
 
@@ -73,7 +93,7 @@ trait LinagoraFilterGetMethodContract {
   @Test
   def filterGetWithUserHaveExistingRulesShouldShowThoseRules(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[JmapGuiceCustomProbe])
-      .setRulesForUser(generateUsername(),
+      .setRulesForUser(bobUsername,
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
@@ -87,7 +107,7 @@ trait LinagoraFilterGetMethodContract {
                      |    [
                      |      "Filter/get",
                      |        {
-                     |          "accountId": "$generateAccountIdAsString",
+                     |          "accountId": "$bobAccountId",
                      |          "ids": ["singleton"]
                      |        },
                      |          "c1"]
@@ -112,7 +132,7 @@ trait LinagoraFilterGetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [[
          |    "Filter/get", {
-         |      "accountId": "$generateAccountIdAsString",
+         |      "accountId": "$bobAccountId",
          |      "state": "0",
          |      "list": [
          |      {
@@ -158,7 +178,7 @@ trait LinagoraFilterGetMethodContract {
                      |    [
                      |      "Filter/get",
                      |        {
-                     |          "accountId": "$generateAccountIdAsString",
+                     |          "accountId": "$bobAccountId",
                      |          "ids": ["singleton"]
                      |        },
                      |          "c1"]
@@ -183,7 +203,7 @@ trait LinagoraFilterGetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [[
          |    "Filter/get", {
-         |      "accountId": "$generateAccountIdAsString",
+         |      "accountId": "$bobAccountId",
          |      "state": "-1",
          |      "list": [
          |      {
@@ -247,7 +267,7 @@ trait LinagoraFilterGetMethodContract {
                      |    [
                      |      "Filter/get",
                      |        {
-                     |          "accountId": "$generateAccountIdAsString",
+                     |          "accountId": "$bobAccountId",
                      |          "ids": ["singleton"]
                      |        },
                      |          "c1"]
@@ -326,7 +346,7 @@ trait LinagoraFilterGetMethodContract {
   @Test
   def filterGetWithIdsNullShouldReturnStoredFilter(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[JmapGuiceCustomProbe])
-      .setRulesForUser(generateUsername(),
+      .setRulesForUser(bobUsername,
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
@@ -340,7 +360,7 @@ trait LinagoraFilterGetMethodContract {
                      |    [
                      |      "Filter/get",
                      |        {
-                     |          "accountId": "$generateAccountIdAsString",
+                     |          "accountId": "$bobAccountId",
                      |          "ids": null
                      |        },
                      |          "c1"]
@@ -365,7 +385,7 @@ trait LinagoraFilterGetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [[
          |    "Filter/get", {
-         |      "accountId": "$generateAccountIdAsString",
+         |      "accountId": "$bobAccountId",
          |      "state": "0",
          |      "list": [
          |      {
@@ -407,7 +427,7 @@ trait LinagoraFilterGetMethodContract {
   @Tag(CategoryTags.BASIC_FEATURE)
   def filterGetWithIdsContainSingletonShouldReturnStoredFilter(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[JmapGuiceCustomProbe])
-      .setRulesForUser(generateUsername(),
+      .setRulesForUser(bobUsername,
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
@@ -421,7 +441,7 @@ trait LinagoraFilterGetMethodContract {
                      |    [
                      |      "Filter/get",
                      |        {
-                     |          "accountId": "$generateAccountIdAsString",
+                     |          "accountId": "$bobAccountId",
                      |          "ids": ["singleton", "random"]
                      |        },
                      |          "c1"]
@@ -448,7 +468,7 @@ trait LinagoraFilterGetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [[
          |    "Filter/get", {
-         |      "accountId": "$generateAccountIdAsString",
+         |      "accountId": "$bobAccountId",
          |      "state": "0",
          |      "list": [
          |      {
@@ -489,7 +509,7 @@ trait LinagoraFilterGetMethodContract {
   @Test
   def filterGetWithIdsNotContainSingletonShouldReturnEmptyFilter(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[JmapGuiceCustomProbe])
-      .setRulesForUser(generateUsername(),
+      .setRulesForUser(bobUsername,
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
@@ -503,7 +523,7 @@ trait LinagoraFilterGetMethodContract {
                      |    [
                      |      "Filter/get",
                      |        {
-                     |          "accountId": "$generateAccountIdAsString",
+                     |          "accountId": "$bobAccountId",
                      |          "ids": ["random"]
                      |        },
                      |          "c1"]
@@ -528,7 +548,7 @@ trait LinagoraFilterGetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [[
          |    "Filter/get", {
-         |      "accountId": "$generateAccountIdAsString",
+         |      "accountId": "$bobAccountId",
          |      "state": "0",
          |      "list": [
          |
@@ -541,7 +561,7 @@ trait LinagoraFilterGetMethodContract {
   @Test
   def filterGetWithEmptyIdsShouldReturnEmptyFilter(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[JmapGuiceCustomProbe])
-      .setRulesForUser(generateUsername(),
+      .setRulesForUser(bobUsername,
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
@@ -555,7 +575,7 @@ trait LinagoraFilterGetMethodContract {
                      |    [
                      |      "Filter/get",
                      |        {
-                     |          "accountId": "$generateAccountIdAsString",
+                     |          "accountId": "$bobAccountId",
                      |          "ids": []
                      |        },
                      |          "c1"]
@@ -580,7 +600,7 @@ trait LinagoraFilterGetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [[
          |    "Filter/get", {
-         |      "accountId": "$generateAccountIdAsString",
+         |      "accountId": "$bobAccountId",
          |      "state": "0",
          |      "list": [],
          |      "notFound": []
@@ -591,7 +611,7 @@ trait LinagoraFilterGetMethodContract {
   @Test
   def filterGetShouldReturnRuleOfSomeConditionsWhenUserHaveRuleOfSomeConditions(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[JmapGuiceCustomProbe])
-      .setRulesForUser(generateUsername(),
+      .setRulesForUser(bobUsername,
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
@@ -607,7 +627,7 @@ trait LinagoraFilterGetMethodContract {
          |    [
          |      "Filter/get",
          |        {
-         |          "accountId": "$generateAccountIdAsString",
+         |          "accountId": "$bobAccountId",
          |          "ids": ["singleton"]
          |        },
          |          "c1"]
@@ -632,7 +652,7 @@ trait LinagoraFilterGetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [[
          |    "Filter/get", {
-         |      "accountId": "$generateAccountIdAsString",
+         |      "accountId": "$bobAccountId",
          |      "state": "0",
          |      "list": [
          |      {
@@ -680,7 +700,7 @@ trait LinagoraFilterGetMethodContract {
     val usernameString = "alice@james.org"
     val forwardedMailAddresses = ImmutableList.of(new MailAddress(usernameString))
     server.getProbe(classOf[JmapGuiceCustomProbe])
-      .setRulesForUser(generateUsername(),
+      .setRulesForUser(bobUsername,
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
@@ -699,7 +719,7 @@ trait LinagoraFilterGetMethodContract {
          |    [
          |      "Filter/get",
          |        {
-         |          "accountId": "$generateAccountIdAsString",
+         |          "accountId": "$bobAccountId",
          |          "ids": ["singleton"]
          |        },
          |          "c1"]
@@ -724,7 +744,7 @@ trait LinagoraFilterGetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [[
          |    "Filter/get", {
-         |      "accountId": "$generateAccountIdAsString",
+         |      "accountId": "$bobAccountId",
          |      "state": "0",
          |      "list": [
          |      {
@@ -773,7 +793,7 @@ trait LinagoraFilterGetMethodContract {
   @Test
   def filterGetShouldReturnStartwithRule(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[JmapGuiceCustomProbe])
-      .setRulesForUser(generateUsername(),
+      .setRulesForUser(bobUsername,
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
@@ -787,7 +807,7 @@ trait LinagoraFilterGetMethodContract {
                      |    [
                      |      "Filter/get",
                      |        {
-                     |          "accountId": "$generateAccountIdAsString",
+                     |          "accountId": "$bobAccountId",
                      |          "ids": ["singleton"]
                      |        },
                      |          "c1"]
@@ -812,7 +832,7 @@ trait LinagoraFilterGetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [[
          |    "Filter/get", {
-         |      "accountId": "$generateAccountIdAsString",
+         |      "accountId": "$bobAccountId",
          |      "state": "0",
          |      "list": [
          |      {
@@ -853,7 +873,7 @@ trait LinagoraFilterGetMethodContract {
   @Test
   def filterGetShouldReturnCombinationOfStartWithAndOthersRules(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[JmapGuiceCustomProbe])
-      .setRulesForUser(generateUsername(),
+      .setRulesForUser(bobUsername,
         Rule.builder
           .id(Rule.Id.of("1"))
           .name("My first rule")
@@ -869,7 +889,7 @@ trait LinagoraFilterGetMethodContract {
          |    [
          |      "Filter/get",
          |        {
-         |          "accountId": "$generateAccountIdAsString",
+         |          "accountId": "$bobAccountId",
          |          "ids": ["singleton"]
          |        },
          |          "c1"]
@@ -894,7 +914,7 @@ trait LinagoraFilterGetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [[
          |    "Filter/get", {
-         |      "accountId": "$generateAccountIdAsString",
+         |      "accountId": "$bobAccountId",
          |      "state": "0",
          |      "list": [
          |      {
