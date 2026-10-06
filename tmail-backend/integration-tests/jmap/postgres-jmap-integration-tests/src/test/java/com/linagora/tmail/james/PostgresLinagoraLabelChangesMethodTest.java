@@ -33,6 +33,7 @@ public class PostgresLinagoraLabelChangesMethodTest implements LabelChangesMetho
     @RegisterExtension
     static JamesServerExtension testExtension = JAMES_SERVER_EXTENSION_FUNCTION
         .apply(new JmapGuiceLabelModule())
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @Override
