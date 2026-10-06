@@ -47,5 +47,6 @@ class MemoryLinagoraKeystoreSetMethodTest implements LinagoraKeystoreSetMethodCo
             .overrideWith(new DelegationProbeModule())
             .overrideWith(new JmapGuiceKeystoreManagerModule())
             .overrideWith(new MemoryEncryptedMailboxModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }

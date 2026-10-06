@@ -64,5 +64,6 @@ class DistributedLinagoraKeystoreSetMethodTest implements LinagoraKeystoreSetMet
             .overrideWith(new DelegationProbeModule())
             .overrideWith(new JmapGuiceKeystoreManagerModule())
             .overrideWith(new DistributedEncryptedMailboxModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }

@@ -32,5 +32,6 @@ class PostgresLinagoraKeystoreSetMethodTest implements LinagoraKeystoreSetMethod
     @RegisterExtension
     static JamesServerExtension testExtension = JAMES_SERVER_EXTENSION_FUNCTION
         .apply(Modules.combine(new JmapGuiceKeystoreManagerModule(), new PostgresEncryptedMailboxModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }
