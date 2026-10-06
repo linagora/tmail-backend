@@ -18,6 +18,11 @@
 
 package com.linagora.tmail.james.common
 
+import java.nio.charset.StandardCharsets
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
+
+import com.google.common.hash.Hashing
 import com.linagora.tmail.james.common.LabelGetMethodContract.{BLUE, RED}
 import com.linagora.tmail.james.common.probe.JmapGuiceLabelProbe
 import com.linagora.tmail.james.jmap.model.{Color, DisplayName, Label, LabelCreationRequest, LabelId}
@@ -28,10 +33,11 @@ import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import net.javacrumbs.jsonunit.core.Option
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
+import org.apache.james.core.Username
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.core.UuidState.INSTANCE
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE_PASSWORD, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.DataProbeImpl
@@ -39,21 +45,41 @@ import org.hamcrest.Matchers.hasKey
 import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 
 object LabelGetMethodContract {
+  case class TestContext(bobUsername: Username, andreUsername: Username) {
+    val bobAccountId: String = accountId(bobUsername)
+  }
+
+  private val currentContext: AtomicReference[TestContext] = new AtomicReference[TestContext]()
+
+  private def accountId(username: Username): String =
+    Hashing.sha256().hashString(username.asString(), StandardCharsets.UTF_8).toString
+
   val RED: Color = Color("#FF0000")
   val BLUE: Color = Color("#0000FF")
 }
 
 trait LabelGetMethodContract {
+  def bobUsername: Username = LabelGetMethodContract.currentContext.get().bobUsername
+
+  def bobAccountId: String = LabelGetMethodContract.currentContext.get().bobAccountId
+
+  def andreUsername: Username = LabelGetMethodContract.currentContext.get().andreUsername
+
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    val bob = Username.fromLocalPartWithDomain(s"bob$uniqueSuffix", DOMAIN)
+    val andre = Username.fromLocalPartWithDomain(s"andre$uniqueSuffix", DOMAIN)
+    LabelGetMethodContract.currentContext.set(LabelGetMethodContract.TestContext(bob, andre))
+
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
       .addDomain(DOMAIN.asString)
-      .addUser(BOB.asString(), BOB_PASSWORD)
-      .addUser(ANDRE.asString(), ANDRE_PASSWORD)
+      .addUser(bobUsername.asString(), BOB_PASSWORD)
+      .addUser(andreUsername.asString(), ANDRE_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .setAuth(authScheme(UserCredential(bobUsername, BOB_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build()
   }
@@ -85,7 +111,7 @@ trait LabelGetMethodContract {
                |		[
                |			"Label/get",
                |			{
-               |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |				"accountId": "${bobAccountId}",
                |				"ids": null
                |			},
                |			"c1"
@@ -126,7 +152,7 @@ trait LabelGetMethodContract {
                |		[
                |			"Label/get",
                |			{
-               |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |				"accountId": "${bobAccountId}",
                |				"ids": null
                |			},
                |			"c1"
@@ -149,7 +175,7 @@ trait LabelGetMethodContract {
          |		[
          |			"Label/get",
          |			{
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"state": "${INSTANCE.value}",
          |				"list": [],
          |				"notFound": []
@@ -163,9 +189,9 @@ trait LabelGetMethodContract {
   @Test
   def fetchNullIdsShouldReturnAllLabels(server: GuiceJamesServer): Unit = {
     val label1: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
-      .addLabel(BOB, LabelCreationRequest(DisplayName("Label 1"), Some(RED), Some("Description for label 1")))
+      .addLabel(bobUsername, LabelCreationRequest(DisplayName("Label 1"), Some(RED), Some("Description for label 1")))
     val label2: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
-      .addLabel(BOB, LabelCreationRequest(DisplayName("Label 2"), Some(BLUE), Some("Description for label 2")))
+      .addLabel(bobUsername, LabelCreationRequest(DisplayName("Label 2"), Some(BLUE), Some("Description for label 2")))
 
     val response = `given`
       .body(s"""{
@@ -174,7 +200,7 @@ trait LabelGetMethodContract {
                |		[
                |			"Label/get",
                |			{
-               |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |				"accountId": "${bobAccountId}",
                |				"ids": null
                |			},
                |			"c1"
@@ -199,7 +225,7 @@ trait LabelGetMethodContract {
          |		[
          |			"Label/get",
          |			{
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"notFound": [],
          |				"state": "${INSTANCE.value}",
          |				"list": [{
@@ -237,7 +263,7 @@ trait LabelGetMethodContract {
                |		[
                |			"Label/get",
                |			{
-               |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |				"accountId": "${bobAccountId}",
                |				"ids": ["$randomLabelId", "notFound"]
                |			},
                |			"c1"
@@ -262,7 +288,7 @@ trait LabelGetMethodContract {
          |		[
          |			"Label/get",
          |			{
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"notFound": ["$randomLabelId", "notFound"],
          |				"state": "${INSTANCE.value}",
          |				"list": []
@@ -276,7 +302,7 @@ trait LabelGetMethodContract {
   @Test
   def mixedFoundAndNotFoundCase(server: GuiceJamesServer): Unit = {
     val createdLabelId: String = server.getProbe(classOf[JmapGuiceLabelProbe])
-      .addLabel(BOB, LabelCreationRequest(DisplayName("Label 1"), Some(RED), Some("Description for label 1")))
+      .addLabel(bobUsername, LabelCreationRequest(DisplayName("Label 1"), Some(RED), Some("Description for label 1")))
       .id.id.value
     val randomLabelId: String = LabelId.generate().id.value
 
@@ -287,7 +313,7 @@ trait LabelGetMethodContract {
                |		[
                |			"Label/get",
                |			{
-               |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |				"accountId": "${bobAccountId}",
                |				"ids": ["$randomLabelId", "$createdLabelId"]
                |			},
                |			"c1"
@@ -311,7 +337,7 @@ trait LabelGetMethodContract {
          |		[
          |			"Label/get",
          |			{
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"notFound": ["$randomLabelId"],
          |				"state": "${INSTANCE.value}",
          |				"list": [{
@@ -333,7 +359,7 @@ trait LabelGetMethodContract {
   @Tag(CategoryTags.BASIC_FEATURE)
   def shouldReturnAllPropertiesByDefault(server: GuiceJamesServer): Unit = {
     val label1: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
-      .addLabel(BOB, LabelCreationRequest(DisplayName("Label 1"), Some(RED), Some("Description for label 1")))
+      .addLabel(bobUsername, LabelCreationRequest(DisplayName("Label 1"), Some(RED), Some("Description for label 1")))
 
     val response = `given`
       .body(s"""{
@@ -342,7 +368,7 @@ trait LabelGetMethodContract {
                |		[
                |			"Label/get",
                |			{
-               |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |				"accountId": "${bobAccountId}",
                |				"ids": null
                |			},
                |			"c1"
@@ -366,7 +392,7 @@ trait LabelGetMethodContract {
          |		[
          |			"Label/get",
          |			{
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"notFound": [],
          |				"state": "${INSTANCE.value}",
          |				"list": [{
@@ -393,7 +419,7 @@ trait LabelGetMethodContract {
                |		[
                |			"Label/get",
                |			{
-               |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |				"accountId": "${bobAccountId}",
                |				"ids": null,
                |				"properties": ["invalid"]
                |			},
@@ -430,7 +456,7 @@ trait LabelGetMethodContract {
   @Test
   def shouldSupportFilteringByProperties(server: GuiceJamesServer): Unit = {
     val label1: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
-      .addLabel(BOB, LabelCreationRequest(DisplayName("Label 1"), Some(RED), Some("Description for label 1")))
+      .addLabel(bobUsername, LabelCreationRequest(DisplayName("Label 1"), Some(RED), Some("Description for label 1")))
 
     val response = `given`
       .body(s"""{
@@ -439,7 +465,7 @@ trait LabelGetMethodContract {
                |		[
                |			"Label/get",
                |			{
-               |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |				"accountId": "${bobAccountId}",
                |				"ids": null,
                |				"properties": ["keyword"]
                |			},
@@ -464,7 +490,7 @@ trait LabelGetMethodContract {
          |		[
          |			"Label/get",
          |			{
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"notFound": [],
          |				"state": "${INSTANCE.value}",
          |				"list": [{
@@ -480,15 +506,14 @@ trait LabelGetMethodContract {
 
   @Test
   def shouldSupportDelegation(server: GuiceJamesServer): Unit = {
-    val bobAccountId: String = ACCOUNT_ID
     val label1: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
-      .addLabel(BOB, LabelCreationRequest(DisplayName("Label 1"), Some(RED), Some("Description for label 1")))
+      .addLabel(bobUsername, LabelCreationRequest(DisplayName("Label 1"), Some(RED), Some("Description for label 1")))
 
     server.getProbe(classOf[DelegationProbe])
-      .addAuthorizedUser(BOB, ANDRE)
+      .addAuthorizedUser(bobUsername, andreUsername)
 
     val response = `given`
-      .auth().basic(ANDRE.asString(), ANDRE_PASSWORD)
+      .auth().basic(andreUsername.asString(), ANDRE_PASSWORD)
       .body(s"""{
                |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
                |	"methodCalls": [
@@ -519,7 +544,7 @@ trait LabelGetMethodContract {
          |		[
          |			"Label/get",
          |			{
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"notFound": [],
          |				"state": "${INSTANCE.value}",
          |				"list": [{
@@ -539,10 +564,8 @@ trait LabelGetMethodContract {
 
   @Test
   def shouldFailWhenNotDelegated(): Unit = {
-    val bobAccountId: String = ACCOUNT_ID
-
     val response = `given`
-      .auth().basic(ANDRE.asString(), ANDRE_PASSWORD)
+      .auth().basic(andreUsername.asString(), ANDRE_PASSWORD)
       .body(s"""{
                |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
                |	"methodCalls": [
@@ -575,7 +598,7 @@ trait LabelGetMethodContract {
 
   @Test
   def labelGetShouldReturnLatestState(): Unit = {
-    createLabel(accountId = ACCOUNT_ID, displayName = "LABEL_NAME", color = RED.value, description = "LABEL_DESCRIPTION")
+    createLabel(accountId = bobAccountId, displayName = "LABEL_NAME", color = RED.value, description = "LABEL_DESCRIPTION")
 
     val response = `given`
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
@@ -586,7 +609,7 @@ trait LabelGetMethodContract {
            |		[
            |			"Label/get",
            |			{
-           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"accountId": "${bobAccountId}",
            |				"ids": null
            |			},
            |			"c1"
@@ -594,7 +617,7 @@ trait LabelGetMethodContract {
            |		[
            |			"Label/changes",
            |			{
-           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"accountId": "${bobAccountId}",
            |				"#sinceState": {
            |					"resultOf": "c1",
            |					"name": "Label/get",
@@ -617,7 +640,7 @@ trait LabelGetMethodContract {
       .inPath("methodResponses[1][1]")
       .isEqualTo(
         s"""{
-           |  "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |  "accountId": "${bobAccountId}",
            |  "hasMoreChanges": false,
            |  "created": [],
            |  "updated": [],
