@@ -27,5 +27,6 @@ public class PostgresLinagoraForwardGetMethodTest implements LinagoraForwardGetM
 
     @RegisterExtension
     static JamesServerExtension testExtension = TmailJmapBase.JAMES_SERVER_EXTENSION_SUPPLIER.get()
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }

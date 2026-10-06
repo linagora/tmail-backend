@@ -18,6 +18,11 @@
 
 package com.linagora.tmail.james.common
 
+import java.nio.charset.StandardCharsets
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
+
+import com.google.common.hash.Hashing
 import com.linagora.tmail.james.common.LinagoraForwardGetMethodContract.{basePath, webAdminApi}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
@@ -28,30 +33,56 @@ import net.javacrumbs.jsonunit.core.Option
 import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
 import org.apache.http.HttpStatus.{SC_NO_CONTENT, SC_OK}
 import org.apache.james.GuiceJamesServer
+import org.apache.james.core.Username
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.core.UuidState.INSTANCE
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE, BOB, BOB_PASSWORD, CEDRIC, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.{DataProbeImpl, WebAdminGuiceProbe}
 import org.apache.james.webadmin.WebAdminUtils
 import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 
 object LinagoraForwardGetMethodContract {
+  case class TestContext(bobUsername: Username, andreUsername: Username, cedricUsername: Username) {
+    val bobAccountId: String = accountId(bobUsername)
+  }
+
+  private val currentContext: AtomicReference[TestContext] = new AtomicReference[TestContext]()
+
+  private def bobUsername: Username = currentContext.get().bobUsername
+
+  private def accountId(username: Username): String =
+    Hashing.sha256().hashString(username.asString(), StandardCharsets.UTF_8).toString
+
   private var webAdminApi: RequestSpecification = _
-  private val basePath: String = s"/address/forwards/${BOB.asString}/targets"
+  private def basePath: String = s"/address/forwards/${bobUsername.asString}/targets"
 }
 
 trait LinagoraForwardGetMethodContract {
+  def bobUsername: Username = LinagoraForwardGetMethodContract.currentContext.get().bobUsername
+
+  def bobAccountId: String = LinagoraForwardGetMethodContract.currentContext.get().bobAccountId
+
+  def andreUsername: Username = LinagoraForwardGetMethodContract.currentContext.get().andreUsername
+
+  def cedricUsername: Username = LinagoraForwardGetMethodContract.currentContext.get().cedricUsername
+
   @BeforeEach
   def setUp(server : GuiceJamesServer): Unit = {
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    val bob = Username.fromLocalPartWithDomain(s"bob$uniqueSuffix", DOMAIN)
+    val andre = Username.fromLocalPartWithDomain(s"andre$uniqueSuffix", DOMAIN)
+    val cedric = Username.fromLocalPartWithDomain(s"cedric$uniqueSuffix", DOMAIN)
+    LinagoraForwardGetMethodContract.currentContext.set(LinagoraForwardGetMethodContract.TestContext(bob, andre, cedric))
+
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
       .addDomain(DOMAIN.asString)
-      .addUser(BOB.asString(), BOB_PASSWORD)
+      .addUser(bobUsername.asString(), BOB_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .setAuth(authScheme(UserCredential(bobUsername, BOB_PASSWORD)))
       .build()
 
     webAdminApi = WebAdminUtils.buildRequestSpecification(server.getProbe(classOf[WebAdminGuiceProbe]).getWebAdminPort)
@@ -70,7 +101,7 @@ trait LinagoraForwardGetMethodContract {
                |  "methodCalls": [[
                |    "Forward/get",
                |    {
-               |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |      "accountId": "${bobAccountId}",
                |      "ids": null
                |    },
                |    "c1"]]
@@ -90,7 +121,7 @@ trait LinagoraForwardGetMethodContract {
          |  "methodResponses": [[
          |    "Forward/get",
          |    {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "state": "${INSTANCE.value}",
          |      "list": [
          |        {
@@ -111,7 +142,7 @@ trait LinagoraForwardGetMethodContract {
     `given`
       .spec(webAdminApi)
     .when()
-      .put(ANDRE.asString)
+      .put(andreUsername.asString)
     .`then`()
       .statusCode(SC_NO_CONTENT)
 
@@ -124,7 +155,7 @@ trait LinagoraForwardGetMethodContract {
                |  "methodCalls": [[
                |    "Forward/get",
                |    {
-               |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |      "accountId": "${bobAccountId}",
                |      "ids": null
                |    },
                |    "c1"]]
@@ -144,13 +175,13 @@ trait LinagoraForwardGetMethodContract {
          |  "methodResponses": [[
          |    "Forward/get",
          |    {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "state": "${INSTANCE.value}",
          |      "list": [
          |        {
          |          "id":"singleton",
          |          "localCopy": false,
-         |          "forwards": ["${ANDRE.asString}"]
+         |          "forwards": ["${andreUsername.asString}"]
          |        }
          |      ],
          |      "notFound": []
@@ -164,14 +195,14 @@ trait LinagoraForwardGetMethodContract {
     `given`
       .spec(webAdminApi)
     .when()
-      .put(ANDRE.asString)
+      .put(andreUsername.asString)
     .`then`()
       .statusCode(SC_NO_CONTENT)
 
     `given`
       .spec(webAdminApi)
     .when()
-      .put(CEDRIC.asString)
+      .put(cedricUsername.asString)
     .`then`()
       .statusCode(SC_NO_CONTENT)
 
@@ -184,7 +215,7 @@ trait LinagoraForwardGetMethodContract {
                |  "methodCalls": [[
                |    "Forward/get",
                |    {
-               |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |      "accountId": "${bobAccountId}",
                |      "ids": null
                |    },
                |    "c1"]]
@@ -206,13 +237,13 @@ trait LinagoraForwardGetMethodContract {
          |  "methodResponses": [[
          |    "Forward/get",
          |    {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "state": "${INSTANCE.value}",
          |      "list": [
          |        {
          |          "id":"singleton",
          |          "localCopy": false,
-         |          "forwards": ["${ANDRE.asString}", "${CEDRIC.asString}"]
+         |          "forwards": ["${andreUsername.asString}", "${cedricUsername.asString}"]
          |        }
          |      ],
          |      "notFound": []
@@ -226,7 +257,7 @@ trait LinagoraForwardGetMethodContract {
     `given`
       .spec(webAdminApi)
     .when()
-      .put(BOB.asString)
+      .put(bobUsername.asString)
     .`then`()
       .statusCode(SC_NO_CONTENT)
 
@@ -239,7 +270,7 @@ trait LinagoraForwardGetMethodContract {
                |  "methodCalls": [[
                |    "Forward/get",
                |    {
-               |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |      "accountId": "${bobAccountId}",
                |      "ids": null
                |    },
                |    "c1"]]
@@ -259,7 +290,7 @@ trait LinagoraForwardGetMethodContract {
          |  "methodResponses": [[
          |    "Forward/get",
          |    {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "state": "${INSTANCE.value}",
          |      "list": [
          |        {
@@ -279,14 +310,14 @@ trait LinagoraForwardGetMethodContract {
     `given`
       .spec(webAdminApi)
     .when()
-      .put(BOB.asString)
+      .put(bobUsername.asString)
     .`then`()
       .statusCode(SC_NO_CONTENT)
 
     `given`
       .spec(webAdminApi)
     .when()
-      .put(ANDRE.asString)
+      .put(andreUsername.asString)
     .`then`()
       .statusCode(SC_NO_CONTENT)
 
@@ -299,7 +330,7 @@ trait LinagoraForwardGetMethodContract {
                |  "methodCalls": [[
                |    "Forward/get",
                |    {
-               |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |      "accountId": "${bobAccountId}",
                |      "ids": null
                |    },
                |    "c1"]]
@@ -319,13 +350,13 @@ trait LinagoraForwardGetMethodContract {
          |  "methodResponses": [[
          |    "Forward/get",
          |    {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "state": "${INSTANCE.value}",
          |      "list": [
          |        {
          |          "id":"singleton",
          |          "localCopy": true,
-         |          "forwards": ["${ANDRE.asString}"]
+         |          "forwards": ["${andreUsername.asString}"]
          |        }
          |      ],
          |      "notFound": []
@@ -380,7 +411,7 @@ trait LinagoraForwardGetMethodContract {
                |  "methodCalls": [[
                |    "Forward/get",
                |    {
-               |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |      "accountId": "${bobAccountId}",
                |      "ids": null
                |    },
                |    "c1"]]
@@ -416,7 +447,7 @@ trait LinagoraForwardGetMethodContract {
                |  "methodCalls": [[
                |    "Forward/get",
                |    {
-               |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |      "accountId": "${bobAccountId}",
                |      "ids": null
                |    },
                |    "c1"]]
@@ -454,7 +485,7 @@ trait LinagoraForwardGetMethodContract {
                |  "methodCalls": [[
                |    "Forward/get",
                |    {
-               |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |      "accountId": "${bobAccountId}",
                |      "ids": ["singleton"]
                |    },
                |    "c1"]]
@@ -474,7 +505,7 @@ trait LinagoraForwardGetMethodContract {
          |  "methodResponses": [[
          |    "Forward/get",
          |    {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "state": "${INSTANCE.value}",
          |      "list": [
          |        {
@@ -500,7 +531,7 @@ trait LinagoraForwardGetMethodContract {
                |  "methodCalls": [[
                |    "Forward/get",
                |    {
-               |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |      "accountId": "${bobAccountId}",
                |      "ids": ["random"]
                |    },
                |    "c1"]]
@@ -520,7 +551,7 @@ trait LinagoraForwardGetMethodContract {
          |  "methodResponses": [[
          |    "Forward/get",
          |    {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "state": "${INSTANCE.value}",
          |      "list": [],
          |      "notFound": ["random"]
@@ -540,7 +571,7 @@ trait LinagoraForwardGetMethodContract {
                |  "methodCalls": [[
                |    "Forward/get",
                |    {
-               |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |      "accountId": "${bobAccountId}",
                |      "ids": ["random1", "singleton", "random2"]
                |    },
                |    "c1"]]
@@ -562,7 +593,7 @@ trait LinagoraForwardGetMethodContract {
          |  "methodResponses": [[
          |    "Forward/get",
          |    {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "state": "${INSTANCE.value}",
          |      "list": [
          |        {
@@ -588,7 +619,7 @@ trait LinagoraForwardGetMethodContract {
                |  "methodCalls": [[
                |    "Forward/get",
                |    {
-               |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |      "accountId": "${bobAccountId}",
                |      "ids": []
                |    },
                |    "c1"]]
@@ -608,7 +639,7 @@ trait LinagoraForwardGetMethodContract {
          |  "methodResponses": [[
          |    "Forward/get",
          |    {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "state": "${INSTANCE.value}",
          |      "list": [],
          |      "notFound": []
@@ -628,7 +659,7 @@ trait LinagoraForwardGetMethodContract {
                |  "methodCalls": [[
                |    "Forward/get",
                |    {
-               |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |      "accountId": "${bobAccountId}",
                |      "ids": [""]
                |    },
                |    "c1"]]
@@ -667,7 +698,7 @@ trait LinagoraForwardGetMethodContract {
                |  "methodCalls": [[
                |    "Forward/get",
                |    {
-               |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |      "accountId": "${bobAccountId}",
                |      "ids": null,
                |      "properties": null
                |    },
@@ -688,7 +719,7 @@ trait LinagoraForwardGetMethodContract {
          |  "methodResponses": [[
          |    "Forward/get",
          |    {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "state": "${INSTANCE.value}",
          |      "list": [
          |        {
@@ -714,7 +745,7 @@ trait LinagoraForwardGetMethodContract {
                |  "methodCalls": [[
                |    "Forward/get",
                |    {
-               |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |      "accountId": "${bobAccountId}",
                |      "ids": null,
                |      "properties": []
                |    },
@@ -735,7 +766,7 @@ trait LinagoraForwardGetMethodContract {
          |  "methodResponses": [[
          |    "Forward/get",
          |    {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "state": "${INSTANCE.value}",
          |      "list": [
          |        {
@@ -759,7 +790,7 @@ trait LinagoraForwardGetMethodContract {
                |  "methodCalls": [[
                |    "Forward/get",
                |    {
-               |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |      "accountId": "${bobAccountId}",
                |      "ids": null,
                |      "properties": ["id", "localCopy"]
                |    },
@@ -780,7 +811,7 @@ trait LinagoraForwardGetMethodContract {
          |  "methodResponses": [[
          |    "Forward/get",
          |    {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "state": "${INSTANCE.value}",
          |      "list": [
          |        {
@@ -805,7 +836,7 @@ trait LinagoraForwardGetMethodContract {
                |  "methodCalls": [[
                |    "Forward/get",
                |    {
-               |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |      "accountId": "${bobAccountId}",
                |      "ids": null,
                |      "properties": ["localCopy"]
                |    },
@@ -826,7 +857,7 @@ trait LinagoraForwardGetMethodContract {
          |  "methodResponses": [[
          |    "Forward/get",
          |    {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "state": "${INSTANCE.value}",
          |      "list": [
          |        {
@@ -851,7 +882,7 @@ trait LinagoraForwardGetMethodContract {
                |  "methodCalls": [[
                |    "Forward/get",
                |    {
-               |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+               |      "accountId": "${bobAccountId}",
                |      "ids": null,
                |      "properties": ["invalidProperty"]
                |    },
