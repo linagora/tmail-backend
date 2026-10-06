@@ -65,5 +65,6 @@ public class DistributedTeamMailboxMemberGetMethodTest implements TeamMailboxMem
             .overrideWith(new DelegationProbeModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding().to(TeamMailboxProbe.class)))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }
