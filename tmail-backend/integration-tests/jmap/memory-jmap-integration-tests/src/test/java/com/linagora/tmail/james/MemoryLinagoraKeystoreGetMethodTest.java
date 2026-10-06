@@ -46,5 +46,6 @@ public class MemoryLinagoraKeystoreGetMethodTest implements LinagoraKeystoreGetM
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new JmapGuiceKeystoreManagerModule())
             .overrideWith(new MemoryEncryptedMailboxModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }
