@@ -44,5 +44,6 @@ public class MemoryLinagoraForwardSetMethodTest implements LinagoraForwardSetMet
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new DelegationProbeModule())
             .overrideWith(new LinagoraTestJMAPServerModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }

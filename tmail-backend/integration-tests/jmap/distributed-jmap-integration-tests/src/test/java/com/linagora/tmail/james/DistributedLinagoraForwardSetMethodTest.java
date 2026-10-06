@@ -62,5 +62,6 @@ public class DistributedLinagoraForwardSetMethodTest implements LinagoraForwardS
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new DelegationProbeModule())
             .overrideWith(new LinagoraTestJMAPServerModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }
