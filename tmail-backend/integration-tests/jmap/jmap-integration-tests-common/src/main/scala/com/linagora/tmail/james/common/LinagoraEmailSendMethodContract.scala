@@ -20,8 +20,11 @@ package com.linagora.tmail.james.common
 
 import java.nio.charset.StandardCharsets
 import java.time.Duration
+import java.util.UUID
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicReference
 
+import com.google.common.hash.Hashing
 import com.linagora.tmail.james.common.EncryptHelper.uploadPublicKey
 import com.linagora.tmail.james.common.LinagoraEmailSendMethodContract.{BOB_INBOX_PATH, HTML_BODY, bobSendsAMailToAndre, getBobInboxId}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
@@ -37,7 +40,7 @@ import org.apache.james.core.Username
 import org.apache.james.jmap.MessageIdProbe
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_ACCOUNT_ID, ANDRE_PASSWORD, BOB, BOB_PASSWORD, CEDRIC, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE_PASSWORD, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.mailbox.DefaultMailboxes
 import org.apache.james.mailbox.model.{MailboxConstants, MailboxId, MailboxPath, MessageId, MessageResult, MultimailboxesSearchQuery, SearchQuery}
@@ -55,20 +58,37 @@ import play.api.libs.json.{JsString, JsValue, Json}
 import scala.jdk.CollectionConverters._
 
 object LinagoraEmailSendMethodContract {
-  val MESSAGE: Message = Message.Builder.of
+  case class TestContext(bobUsername: Username, andreUsername: Username, cedricUsername: Username) {
+    val bobAccountId: String = accountId(bobUsername)
+    val andreAccountId: String = accountId(andreUsername)
+  }
+
+  private val currentContext: AtomicReference[TestContext] = new AtomicReference[TestContext]()
+
+  private def bobUsername: Username = currentContext.get().bobUsername
+
+  private def andreUsername: Username = currentContext.get().andreUsername
+
+  private def accountId(username: Username): String =
+    Hashing.sha256().hashString(username.asString(), StandardCharsets.UTF_8).toString
+
+  def MESSAGE: Message = Message.Builder.of
     .setSubject("test")
-    .setSender(BOB.asString)
-    .setFrom(BOB.asString)
-    .setTo(BOB.asString)
+    .setSender(bobUsername.asString)
+    .setFrom(bobUsername.asString)
+    .setTo(bobUsername.asString)
     .setBody("test mail", StandardCharsets.UTF_8)
     .build
 
   val MESSAGE_PREVIEW: String = "test mail"
 
-  val BOB_INBOX_PATH: MailboxPath = MailboxPath.inbox(BOB)
+  def BOB_INBOX_PATH: MailboxPath = MailboxPath.inbox(bobUsername)
   val HTML_BODY: String = "<!DOCTYPE html><html><head><title></title></head><body><div>I have the most <b>brilliant</b> plan. Let me tell you all about it. What we do is, we</div></body></html>"
 
   def bobSendsAMailToAndre(server: GuiceJamesServer): String =
+    bobSendsAMailToAndre(server, bobUsername, andreUsername)
+
+  def bobSendsAMailToAndre(server: GuiceJamesServer, bob: Username, andre: Username): String =
     s"""
        |{
        |  "using": [
@@ -81,12 +101,12 @@ object LinagoraEmailSendMethodContract {
        |    [
        |      "Email/send",
        |      {
-       |        "accountId": "$ACCOUNT_ID",
+       |        "accountId": "${accountId(bob)}",
        |        "create": {
        |          "K87": {
        |            "email/create": {
        |              "mailboxIds": {
-       |                "${getBobInboxId(server).serialize}": true
+       |                "${getInboxId(server, bob).serialize}": true
        |              },
        |              "subject": "World domination",
        |              "htmlBody": [
@@ -106,11 +126,11 @@ object LinagoraEmailSendMethodContract {
        |            "emailSubmission/set": {
        |              "envelope": {
        |                "mailFrom": {
-       |                  "email": "${BOB.asString}"
+       |                  "email": "${bob.asString}"
        |                },
        |                "rcptTo": [
        |                  {
-       |                    "email": "${ANDRE.asString}"
+       |                    "email": "${andre.asString}"
        |                  }
        |                ]
        |              }
@@ -124,11 +144,24 @@ object LinagoraEmailSendMethodContract {
        |}""".stripMargin
 
   def getBobInboxId(server: GuiceJamesServer): MailboxId =
+    getInboxId(server, bobUsername)
+
+  private def getInboxId(server: GuiceJamesServer, username: Username): MailboxId =
     server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(MailboxConstants.USER_NAMESPACE, BOB.asString, MailboxConstants.INBOX)
+      .getMailboxId(MailboxConstants.USER_NAMESPACE, username.asString, MailboxConstants.INBOX)
 }
 
 trait LinagoraEmailSendMethodContract {
+  def bobUsername: Username = LinagoraEmailSendMethodContract.currentContext.get().bobUsername
+
+  def bobAccountId: String = LinagoraEmailSendMethodContract.currentContext.get().bobAccountId
+
+  def andreUsername: Username = LinagoraEmailSendMethodContract.currentContext.get().andreUsername
+
+  def andreAccountId: String = LinagoraEmailSendMethodContract.currentContext.get().andreAccountId
+
+  def cedricUsername: Username = LinagoraEmailSendMethodContract.currentContext.get().cedricUsername
+
   private lazy val slowPacedPollInterval: Duration = ONE_HUNDRED_MILLISECONDS
   private lazy val calmlyAwait: ConditionFactory = Awaitility.`with`
     .pollInterval(slowPacedPollInterval)
@@ -138,29 +171,35 @@ trait LinagoraEmailSendMethodContract {
 
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    val bob = Username.fromLocalPartWithDomain(s"bob$uniqueSuffix", DOMAIN)
+    val andre = Username.fromLocalPartWithDomain(s"andre$uniqueSuffix", DOMAIN)
+    val cedric = Username.fromLocalPartWithDomain(s"cedric$uniqueSuffix", DOMAIN)
+    LinagoraEmailSendMethodContract.currentContext.set(LinagoraEmailSendMethodContract.TestContext(bob, andre, cedric))
+
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
       .addDomain(DOMAIN.asString)
-      .addUser(BOB.asString(), BOB_PASSWORD)
-      .addUser(ANDRE.asString, ANDRE_PASSWORD)
+      .addUser(bobUsername.asString(), BOB_PASSWORD)
+      .addUser(andreUsername.asString, ANDRE_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .setAuth(authScheme(UserCredential(bobUsername, BOB_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build()
 
     val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
     mailboxProbe.createMailbox(BOB_INBOX_PATH)
-    mailboxProbe.createMailbox(MailboxPath.inbox(ANDRE))
+    mailboxProbe.createMailbox(MailboxPath.inbox(andreUsername))
 
-    uploadPublicKey(ACCOUNT_ID, requestSpecification)
+    uploadPublicKey(bobAccountId, requestSpecification)
   }
 
   def randomMessageId: MessageId
 
   private def buildAndreRequestSpecification(server: GuiceJamesServer): RequestSpecification =
     baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+      .setAuth(authScheme(UserCredential(andreUsername, ANDRE_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build
 
@@ -193,7 +232,7 @@ trait LinagoraEmailSendMethodContract {
            |        [
            |            "Email/send",
            |            {
-           |                "accountId": "$ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "newState": "$${json-unit.ignore}",
            |                "created": {
            |                    "K87": {
@@ -225,7 +264,7 @@ trait LinagoraEmailSendMethodContract {
       .asString()
 
     awaitAtMostTenSeconds.untilAsserted { () =>
-      val listBobMessageResult: List[MessageResult] = listAllMessageResult(server, BOB )
+      val listBobMessageResult: List[MessageResult] = listAllMessageResult(server, bobUsername )
       assertThat(listBobMessageResult.size).
         isEqualTo(1)
       assertThat(listBobMessageResult.head.getMailboxId)
@@ -236,7 +275,7 @@ trait LinagoraEmailSendMethodContract {
   @Test
   def emailSendShouldSendMailSuccessfully(server: GuiceJamesServer): Unit = {
     val andreInboxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
-      .getMailboxId(MailboxConstants.USER_NAMESPACE, ANDRE.asString(), MailboxConstants.INBOX)
+      .getMailboxId(MailboxConstants.USER_NAMESPACE, andreUsername.asString(), MailboxConstants.INBOX)
 
     `given`
       .body(bobSendsAMailToAndre(server))
@@ -250,7 +289,7 @@ trait LinagoraEmailSendMethodContract {
       .asString()
 
     awaitAtMostTenSeconds.untilAsserted { () =>
-      val listAndreMessageResult: List[MessageResult] = listAllMessageResult(server, ANDRE )
+      val listAndreMessageResult: List[MessageResult] = listAllMessageResult(server, andreUsername )
 
       assertThat(listAndreMessageResult.size)
         .isEqualTo(1)
@@ -274,7 +313,7 @@ trait LinagoraEmailSendMethodContract {
       .asString()
 
     awaitAtMostTenSeconds.untilAsserted { () =>
-      val listAndreMessageResult: List[MessageResult] = listAllMessageResult(server, ANDRE )
+      val listAndreMessageResult: List[MessageResult] = listAllMessageResult(server, andreUsername )
 
       assertThat(listAndreMessageResult.nonEmpty)
         .isEqualTo(true)
@@ -287,7 +326,7 @@ trait LinagoraEmailSendMethodContract {
            |  "methodCalls": [[
            |    "Email/get",
            |    {
-           |      "accountId": "$ANDRE_ACCOUNT_ID",
+           |      "accountId": "$andreAccountId",
            |      "ids": ["${listAndreMessageResult.head.getMessageId.serialize()}"],
            |      "fetchAllBodyValues": true
            |    },
@@ -339,7 +378,7 @@ trait LinagoraEmailSendMethodContract {
          |        [
          |            "Email/send",
          |            {
-         |                "accountId": "$ACCOUNT_ID",
+         |                "accountId": "$bobAccountId",
          |                "create": {
          |                    "K87": {
          |                        "email/create": {
@@ -364,11 +403,11 @@ trait LinagoraEmailSendMethodContract {
          |                        "emailSubmission/set": {
          |                            "envelope": {
          |                                "mailFrom": {
-         |                                    "email": "${BOB.asString}"
+         |                                    "email": "${bobUsername.asString}"
          |                                },
          |                                "rcptTo": [
          |                                    {
-         |                                        "email": "${ANDRE.asString}"
+         |                                        "email": "${andreUsername.asString}"
          |                                    }
          |                                ]
          |                            }
@@ -384,11 +423,11 @@ trait LinagoraEmailSendMethodContract {
          |                        "emailSubmission/set": {
          |                            "envelope": {
          |                                "mailFrom": {
-         |                                    "email": "${BOB.asString}"
+         |                                    "email": "${bobUsername.asString}"
          |                                },
          |                                "rcptTo": [
          |                                    {
-         |                                        "email": "${ANDRE.asString}"
+         |                                        "email": "${andreUsername.asString}"
          |                                    }
          |                                ]
          |                            }
@@ -404,11 +443,11 @@ trait LinagoraEmailSendMethodContract {
          |                        "emailSubmission/set": {
          |                            "envelope": {
          |                                "mailFrom": {
-         |                                    "email": "${BOB.asString}"
+         |                                    "email": "${bobUsername.asString}"
          |                                },
          |                                "rcptTo": [
          |                                    {
-         |                                        "email": "${ANDRE.asString}"
+         |                                        "email": "${andreUsername.asString}"
          |                                    }
          |                                ]
          |                            }
@@ -457,7 +496,7 @@ trait LinagoraEmailSendMethodContract {
            |        [
            |            "Email/send",
            |            {
-           |                "accountId": "$ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "newState": "$${json-unit.ignore}",
            |                "created": {
            |                    "K87": {
@@ -488,7 +527,7 @@ trait LinagoraEmailSendMethodContract {
            |        [
            |            "Email/set",
            |            {
-           |                "accountId": "$ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "oldState": "$${json-unit.ignore}",
            |                "newState": "$${json-unit.ignore}",
            |                "updated": {
@@ -508,7 +547,7 @@ trait LinagoraEmailSendMethodContract {
   @Test
   def emailSendShouldSendMailSuccessfullyToSelf(server: GuiceJamesServer): Unit = {
     val bobDraftMailBoxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
-      .createMailbox( MailboxPath.forUser(BOB, DefaultMailboxes.DRAFTS))
+      .createMailbox( MailboxPath.forUser(bobUsername, DefaultMailboxes.DRAFTS))
 
     val request: String =
       s"""
@@ -523,7 +562,7 @@ trait LinagoraEmailSendMethodContract {
          |    [
          |      "Email/send",
          |      {
-         |        "accountId": "$ACCOUNT_ID",
+         |        "accountId": "$bobAccountId",
          |        "create": {
          |          "K87": {
          |            "email/create": {
@@ -548,11 +587,11 @@ trait LinagoraEmailSendMethodContract {
          |            "emailSubmission/set": {
          |              "envelope": {
          |                "mailFrom": {
-         |                  "email": "${BOB.asString}"
+         |                  "email": "${bobUsername.asString}"
          |                },
          |                "rcptTo": [
          |                  {
-         |                    "email": "${BOB.asString}"
+         |                    "email": "${bobUsername.asString}"
          |                  }
          |                ]
          |              }
@@ -578,7 +617,7 @@ trait LinagoraEmailSendMethodContract {
 
     val bobInboxId: MailboxId = getBobInboxId(server)
     awaitAtMostTenSeconds.untilAsserted { () =>
-      assertThat(listAllMessageResult(server, BOB)
+      assertThat(listAllMessageResult(server, bobUsername)
         .map(result => result.getMailboxId)
         .asJava)
         .containsExactlyInAnyOrder(bobDraftMailBoxId, bobInboxId)
@@ -588,10 +627,10 @@ trait LinagoraEmailSendMethodContract {
   @Test
   def emailSendShouldSendMailSuccessfullyToBothRecipients(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[DataProbeImpl])
-      .addUser(CEDRIC.asString(), "cedricPassword")
+      .addUser(cedricUsername.asString(), "cedricPassword")
 
     val cedricInBoxId: MailboxId = server.getProbe(classOf[MailboxProbeImpl])
-    .createMailbox(MailboxPath.inbox(CEDRIC))
+    .createMailbox(MailboxPath.inbox(cedricUsername))
     val request: String =
       s"""
          |{
@@ -605,7 +644,7 @@ trait LinagoraEmailSendMethodContract {
          |    [
          |      "Email/send",
          |      {
-         |        "accountId": "$ACCOUNT_ID",
+         |        "accountId": "$bobAccountId",
          |        "create": {
          |          "K87": {
          |            "email/create": {
@@ -630,14 +669,14 @@ trait LinagoraEmailSendMethodContract {
          |            "emailSubmission/set": {
          |              "envelope": {
          |                "mailFrom": {
-         |                  "email": "${BOB.asString}"
+         |                  "email": "${bobUsername.asString}"
          |                },
          |                "rcptTo": [
          |                  {
-         |                    "email": "${ANDRE.asString}"
+         |                    "email": "${andreUsername.asString}"
          |                  },
          |                  {
-         |                    "email": "${CEDRIC.asString}"
+         |                    "email": "${cedricUsername.asString}"
          |                  }
          |                ]
          |              }
@@ -662,8 +701,8 @@ trait LinagoraEmailSendMethodContract {
       .asString()
 
     awaitAtMostTenSeconds.untilAsserted { () =>
-      val listCedricMessageResult: List[MessageResult] = listAllMessageResult(server, CEDRIC )
-      val listAndreMessageResult: List[MessageResult] = listAllMessageResult(server, ANDRE )
+      val listCedricMessageResult: List[MessageResult] = listAllMessageResult(server, cedricUsername )
+      val listAndreMessageResult: List[MessageResult] = listAllMessageResult(server, andreUsername )
 
       assertSoftly(softly => {
         softly.assertThat(listCedricMessageResult.size)
@@ -689,7 +728,7 @@ trait LinagoraEmailSendMethodContract {
          |    [
          |      "Email/send",
          |      {
-         |        "accountId": "$ACCOUNT_ID",
+         |        "accountId": "$bobAccountId",
          |        "create": {
          |          "K87": {
          |            "email/create": {
@@ -714,11 +753,11 @@ trait LinagoraEmailSendMethodContract {
          |            "emailSubmission/set": {
          |              "envelope": {
          |                "mailFrom": {
-         |                  "email": "${BOB.asString}"
+         |                  "email": "${bobUsername.asString}"
          |                },
          |                "rcptTo": [
          |                  {
-         |                    "email": "${ANDRE.asString}"
+         |                    "email": "${andreUsername.asString}"
          |                  }
          |                ]
          |              }
@@ -751,7 +790,7 @@ trait LinagoraEmailSendMethodContract {
            |        [
            |            "Email/send",
            |            {
-           |                "accountId": "$ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "newState": "$${json-unit.ignore}",
            |                "notCreated": {
            |                    "K87": {
@@ -789,7 +828,7 @@ trait LinagoraEmailSendMethodContract {
          |    [
          |      "Email/send",
          |      {
-         |        "accountId": "$ACCOUNT_ID",
+         |        "accountId": "$bobAccountId",
          |        "create": {
          |          "K87": {
          |            "email/create": {
@@ -801,11 +840,11 @@ trait LinagoraEmailSendMethodContract {
          |            "emailSubmission/set": {
          |              "envelope": {
          |                "mailFrom": {
-         |                  "email": "${BOB.asString}"
+         |                  "email": "${bobUsername.asString}"
          |                },
          |                "rcptTo": [
          |                  {
-         |                    "email": "${ANDRE.asString}"
+         |                    "email": "${andreUsername.asString}"
          |                  }
          |                ]
          |              }
@@ -837,7 +876,7 @@ trait LinagoraEmailSendMethodContract {
            |        [
            |            "Email/send",
            |            {
-           |                "accountId": "$ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "newState": "$${json-unit.ignore}",
            |                "notCreated": {
            |                    "K87": {
@@ -870,7 +909,7 @@ trait LinagoraEmailSendMethodContract {
          |    [
          |      "Email/send",
          |      {
-         |        "accountId": "$ACCOUNT_ID",
+         |        "accountId": "$bobAccountId",
          |        "create": {
          |          "K87": {
          |            "email/create": {
@@ -883,11 +922,11 @@ trait LinagoraEmailSendMethodContract {
          |              "unknownProperty": "unknown",
          |              "envelope": {
          |                "mailFrom": {
-         |                  "email": "${BOB.asString}"
+         |                  "email": "${bobUsername.asString}"
          |                },
          |                "rcptTo": [
          |                  {
-         |                    "email": "${ANDRE.asString}"
+         |                    "email": "${andreUsername.asString}"
          |                  }
          |                ]
          |              }
@@ -919,7 +958,7 @@ trait LinagoraEmailSendMethodContract {
            |        [
            |            "Email/send",
            |            {
-           |                "accountId": "$ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "newState": "$${json-unit.ignore}",
            |                "notCreated": {
            |                    "K87": {
@@ -952,7 +991,7 @@ trait LinagoraEmailSendMethodContract {
        |    [
        |      "Email/send",
        |      {
-       |        "accountId": "$ACCOUNT_ID",
+       |        "accountId": "$bobAccountId",
        |        "create": {
        |          "K87": {
        |            "email/create": {
@@ -960,9 +999,9 @@ trait LinagoraEmailSendMethodContract {
        |                "${getBobInboxId(server).serialize}": true
        |              },
        |              "subject": "World domination",
-       |              "to": [{"email": "${ANDRE.asString()}"}],
-       |              "from": [{"email": "${BOB.asString()}"}],
-       |              "sender": [{"email": "${BOB.asString()}"}],
+       |              "to": [{"email": "${andreUsername.asString()}"}],
+       |              "from": [{"email": "${bobUsername.asString()}"}],
+       |              "sender": [{"email": "${bobUsername.asString()}"}],
        |              "htmlBody": [
        |                {
        |                  "partId": "a49d",
@@ -1006,7 +1045,7 @@ trait LinagoraEmailSendMethodContract {
            |        [
            |            "Email/send",
            |            {
-           |                "accountId": "$ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "newState": "$${json-unit.ignore}",
            |                "created": {
            |                    "K87": {
@@ -1039,7 +1078,7 @@ trait LinagoraEmailSendMethodContract {
          |    [
          |      "Email/send",
          |      {
-         |        "accountId": "$ACCOUNT_ID",
+         |        "accountId": "$bobAccountId",
          |        "create": {
          |          "K87": {
          |            "email/create": {
@@ -1090,7 +1129,7 @@ trait LinagoraEmailSendMethodContract {
            |        [
            |            "Email/send",
            |            {
-           |                "accountId": "$ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "newState": "$${json-unit.ignore}",
            |                "notCreated": {
            |                    "K87": {
@@ -1117,7 +1156,7 @@ trait LinagoraEmailSendMethodContract {
       .contentType("text/plain")
       .body(payload)
     .when
-      .post(s"/upload/$ACCOUNT_ID")
+      .post(s"/upload/$bobAccountId")
     .`then`
       .statusCode(SC_CREATED)
       .extract
@@ -1139,7 +1178,7 @@ trait LinagoraEmailSendMethodContract {
          |    [
          |      "Email/send",
          |      {
-         |        "accountId": "$ACCOUNT_ID",
+         |        "accountId": "$bobAccountId",
          |        "create": {
          |          "K87": {
          |            "email/create": {
@@ -1172,11 +1211,11 @@ trait LinagoraEmailSendMethodContract {
          |            "emailSubmission/set": {
          |              "envelope": {
          |                "mailFrom": {
-         |                  "email": "${BOB.asString}"
+         |                  "email": "${bobUsername.asString}"
          |                },
          |                "rcptTo": [
          |                  {
-         |                    "email": "${ANDRE.asString}"
+         |                    "email": "${andreUsername.asString}"
          |                  }
          |                ]
          |              }
@@ -1208,7 +1247,7 @@ trait LinagoraEmailSendMethodContract {
            |        [
            |            "Email/send",
            |            {
-           |                "accountId": "$ACCOUNT_ID",
+           |                "accountId": "$bobAccountId",
            |                "newState": "$${json-unit.ignore}",
            |                "created": {
            |                    "K87": {
@@ -1241,7 +1280,7 @@ trait LinagoraEmailSendMethodContract {
          |        [
          |            "Email/send",
          |            {
-         |                "accountId": "$ACCOUNT_ID",
+         |                "accountId": "$bobAccountId",
          |                "create": {
          |                    "K87": {
          |                        "email/create": {
@@ -1266,11 +1305,11 @@ trait LinagoraEmailSendMethodContract {
          |                        "emailSubmission/set": {
          |                            "envelope": {
          |                                "mailFrom": {
-         |                                    "email": "${BOB.asString}"
+         |                                    "email": "${bobUsername.asString}"
          |                                },
          |                                "rcptTo": [
          |                                    {
-         |                                        "email": "${ANDRE.asString}"
+         |                                        "email": "${andreUsername.asString}"
          |                                    }
          |                                ]
          |                            }
@@ -1313,7 +1352,7 @@ trait LinagoraEmailSendMethodContract {
            |[
            |    "Email/set",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "oldState": "$${json-unit.ignore}",
            |        "newState": "$${json-unit.ignore}",
            |        "updated": {
@@ -1335,7 +1374,7 @@ trait LinagoraEmailSendMethodContract {
          |            "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
          |    ["Email/send", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "create": {
          |        "K87": {
          |            "email/create": {
@@ -1394,7 +1433,7 @@ trait LinagoraEmailSendMethodContract {
          |            "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
          |    ["Email/send", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "create": {
          |        "K87": {
          |            "email/create": {
@@ -1456,7 +1495,7 @@ trait LinagoraEmailSendMethodContract {
          |        [
          |            "Email/send",
          |            {
-         |                "accountId": "$ACCOUNT_ID",
+         |                "accountId": "$bobAccountId",
          |                "create": {
          |                    "K87": {
          |                        "email/create": {
@@ -1481,11 +1520,11 @@ trait LinagoraEmailSendMethodContract {
          |                        "emailSubmission/set": {
          |                            "envelope": {
          |                                "mailFrom": {
-         |                                    "email": "${BOB.asString}"
+         |                                    "email": "${bobUsername.asString}"
          |                                },
          |                                "rcptTo": [
          |                                    {
-         |                                        "email": "${ANDRE.asString}"
+         |                                        "email": "${andreUsername.asString}"
          |                                    }
          |                                ]
          |                            }
@@ -1522,7 +1561,7 @@ trait LinagoraEmailSendMethodContract {
            |[
            |    "Email/set",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "oldState": "$${json-unit.ignore}",
            |        "newState": "$${json-unit.ignore}",
            |        "destroyed": ["$messageIdResult"]
@@ -1542,7 +1581,7 @@ trait LinagoraEmailSendMethodContract {
          |            "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
          |    ["Email/send", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "create": {
          |        "K87": {
          |            "email/create": {
@@ -1595,7 +1634,7 @@ trait LinagoraEmailSendMethodContract {
          |            "com:linagora:params:jmap:pgp"],
          |  "methodCalls": [
          |    ["Email/send", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "create": {
          |        "K87": {
          |            "email/create": {
@@ -1652,7 +1691,7 @@ trait LinagoraEmailSendMethodContract {
          |    [
          |      "Email/send",
          |      {
-         |        "accountId": "$ACCOUNT_ID",
+         |        "accountId": "$bobAccountId",
          |        "create": {
          |          "K87": {
          |            "email/create": {
@@ -1677,11 +1716,11 @@ trait LinagoraEmailSendMethodContract {
          |            "emailSubmission/set": {
          |              "envelope": {
          |                "mailFrom": {
-         |                  "email": "${BOB.asString}"
+         |                  "email": "${bobUsername.asString}"
          |                },
          |                "rcptTo": [
          |                  {
-         |                    "email": "${ANDRE.asString}"
+         |                    "email": "${andreUsername.asString}"
          |                  }
          |                ]
          |              }
@@ -1725,7 +1764,7 @@ trait LinagoraEmailSendMethodContract {
          |    [
          |      "Email/send",
          |      {
-         |        "accountId": "$ACCOUNT_ID",
+         |        "accountId": "$bobAccountId",
          |        "create": {
          |          "K87": {
          |            "email/create": {
@@ -1750,11 +1789,11 @@ trait LinagoraEmailSendMethodContract {
          |            "emailSubmission/set": {
          |              "envelope": {
          |                "mailFrom": {
-         |                  "email": "${BOB.asString}"
+         |                  "email": "${bobUsername.asString}"
          |                },
          |                "rcptTo": [
          |                  {
-         |                    "email": "${BOB.asString}"
+         |                    "email": "${bobUsername.asString}"
          |                  }
          |                ]
          |              }
@@ -1804,7 +1843,7 @@ trait LinagoraEmailSendMethodContract {
          |  "using": ["urn:ietf:params:jmap:core"],
          |  "methodCalls": [
          |    ["Email/send", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "create": {
          |        "K87": {
          |            "email/create": {
@@ -1847,7 +1886,7 @@ trait LinagoraEmailSendMethodContract {
          |  "using": [],
          |  "methodCalls": [
          |    ["Email/send", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "create": {
          |        "K87": {
          |            "email/create": {

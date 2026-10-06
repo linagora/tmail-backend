@@ -33,6 +33,7 @@ public class PostgresLinagoraEmailSendMethodTest implements LinagoraEmailSendMet
     @RegisterExtension
     static JamesServerExtension testExtension = JAMES_SERVER_EXTENSION_FUNCTION
         .apply(Modules.combine(new PostgresEncryptedMailboxModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @Override

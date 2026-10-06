@@ -49,6 +49,7 @@ public class MemoryLinagoraEmailSendMethodTest implements LinagoraEmailSendMetho
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new MemoryEncryptedMailboxModule())
             .overrideWith(new LinagoraTestJMAPServerModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @Override
