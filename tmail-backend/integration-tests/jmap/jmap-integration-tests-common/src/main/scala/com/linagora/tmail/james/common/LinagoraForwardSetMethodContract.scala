@@ -579,6 +579,22 @@ trait LinagoraForwardSetMethodContract {
       expectedPatchFailureResponse("'/id' property is not valid: id must be singleton"))
   }
 
+  @Test
+  def updateShouldFailWhenNullForwards(): Unit = {
+    val response: String = patchAfterInitialForward("""{ "forwards": null }""")
+
+    assertThatJson(response).isEqualTo(
+      expectedPatchFailureResponse("'/forwards' property is not valid: null is not allowed"))
+  }
+
+  @Test
+  def updateShouldFailWhenNullLocalCopy(): Unit = {
+    val response: String = patchAfterInitialForward("""{ "localCopy": null }""")
+
+    assertThatJson(response).isEqualTo(
+      expectedPatchFailureResponse("'/localCopy' property is not valid: null is not allowed"))
+  }
+
   private def patchAfterInitialForward(patch: String): String = {
     val request: String =
       s"""{

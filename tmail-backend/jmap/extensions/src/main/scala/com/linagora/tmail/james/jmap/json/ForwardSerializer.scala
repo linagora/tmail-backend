@@ -65,6 +65,7 @@ object ForwardSerializer {
   private def validatePatchProperty(property: (String, JsValue)): JsResult[Unit] = property match {
     case ("id", JsString(id)) if id.equals(ForwardId.asString) => JsSuccess(())
     case ("id", _) => JsError(JsPath \ "id", s"id must be ${ForwardId.asString}")
+    case (name, JsNull) if ForwardUpdateRequest.updatableProperties.contains(name) => JsError(JsPath \ name, "null is not allowed")
     case (name, _) if ForwardUpdateRequest.updatableProperties.contains(name) => JsSuccess(())
     case (name, _) => JsError(JsPath \ name, "Unknown property")
   }

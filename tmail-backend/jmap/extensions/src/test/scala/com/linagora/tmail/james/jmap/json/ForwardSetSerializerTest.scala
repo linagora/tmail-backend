@@ -74,6 +74,24 @@ class ForwardSetSerializerTest {
   }
 
   @Test
+  def deserializeForwardSetUpdateRequestShouldRejectNullForwards(): Unit = {
+    val deserializeResult: JsResult[ForwardUpdateRequest] = ForwardSerializer.deserializeForwardSetUpdateRequest(
+      Json.parse("""{"forwards": null}"""))
+
+    assertThat(deserializeResult.isError)
+      .isTrue
+  }
+
+  @Test
+  def deserializeForwardSetUpdateRequestShouldRejectNullLocalCopy(): Unit = {
+    val deserializeResult: JsResult[ForwardUpdateRequest] = ForwardSerializer.deserializeForwardSetUpdateRequest(
+      Json.parse("""{"localCopy": null}"""))
+
+    assertThat(deserializeResult.isError)
+      .isTrue
+  }
+
+  @Test
   def deserializeForwardSetUpdateRequestShouldRejectIdOtherThanSingleton(): Unit = {
     val deserializeResult: JsResult[ForwardUpdateRequest] = ForwardSerializer.deserializeForwardSetUpdateRequest(
       Json.parse("""{"id": "other"}"""))

@@ -51,6 +51,7 @@ This is a standard `/set` method for the Forward object:
 
 - As this is a singleton object, `create` and `destroy` are not supported.
 - `update` takes a PatchObject: `localCopy` and `forwards` are optional, omitted properties keep their current value.
+Neither property can be removed, so a `null` value is rejected with `invalidArguments`.
 
 === Example
 
