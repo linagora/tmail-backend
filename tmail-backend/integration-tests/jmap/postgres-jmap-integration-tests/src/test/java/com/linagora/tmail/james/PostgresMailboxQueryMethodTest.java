@@ -27,6 +27,8 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 public class PostgresMailboxQueryMethodTest implements MailboxQueryMethodContract {
 
     @RegisterExtension
-    static JamesServerExtension testExtension = JAMES_SERVER_EXTENSION_SUPPLIER.get().build();
+    static JamesServerExtension testExtension = JAMES_SERVER_EXTENSION_SUPPLIER.get()
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
+        .build();
 
 }

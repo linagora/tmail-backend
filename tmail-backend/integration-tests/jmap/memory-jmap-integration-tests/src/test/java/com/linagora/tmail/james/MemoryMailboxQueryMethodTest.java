@@ -49,5 +49,6 @@ public class MemoryMailboxQueryMethodTest implements MailboxQueryMethodContract 
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }
