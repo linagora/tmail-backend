@@ -41,9 +41,63 @@ class ForwardSetSerializerTest {
     assertThat(deserializeResult.isSuccess)
       .isTrue
     assertThat(deserializeResult.get)
-      .isEqualTo(ForwardUpdateRequest(localCopy = LocalCopy(true),
-        forwards = Seq(Forward(new MailAddress("targetA@domain.org")), Forward(new MailAddress("targetB@domain.org")))
+      .isEqualTo(ForwardUpdateRequest(localCopy = Some(LocalCopy(true)),
+        forwards = Some(Seq(Forward(new MailAddress("targetA@domain.org")), Forward(new MailAddress("targetB@domain.org"))))
       ))
+  }
+
+  @Test
+  def deserializeForwardSetUpdateRequestShouldAcceptPartialPatch(): Unit = {
+    val deserializeResult: JsResult[ForwardUpdateRequest] = ForwardSerializer.deserializeForwardSetUpdateRequest(
+      Json.parse("""{"localCopy": false}"""))
+
+    assertThat(deserializeResult.get)
+      .isEqualTo(ForwardUpdateRequest(localCopy = Some(LocalCopy(false)), forwards = None))
+  }
+
+  @Test
+  def deserializeForwardSetUpdateRequestShouldAcceptEmptyPatch(): Unit = {
+    val deserializeResult: JsResult[ForwardUpdateRequest] = ForwardSerializer.deserializeForwardSetUpdateRequest(
+      Json.parse("{}"))
+
+    assertThat(deserializeResult.get)
+      .isEqualTo(ForwardUpdateRequest(localCopy = None, forwards = None))
+  }
+
+  @Test
+  def deserializeForwardSetUpdateRequestShouldRejectUnknownProperty(): Unit = {
+    val deserializeResult: JsResult[ForwardUpdateRequest] = ForwardSerializer.deserializeForwardSetUpdateRequest(
+      Json.parse("""{"localCopy": false, "unknown": "value"}"""))
+
+    assertThat(deserializeResult.isError)
+      .isTrue
+  }
+
+  @Test
+  def deserializeForwardSetUpdateRequestShouldRejectNullForwards(): Unit = {
+    val deserializeResult: JsResult[ForwardUpdateRequest] = ForwardSerializer.deserializeForwardSetUpdateRequest(
+      Json.parse("""{"forwards": null}"""))
+
+    assertThat(deserializeResult.isError)
+      .isTrue
+  }
+
+  @Test
+  def deserializeForwardSetUpdateRequestShouldRejectNullLocalCopy(): Unit = {
+    val deserializeResult: JsResult[ForwardUpdateRequest] = ForwardSerializer.deserializeForwardSetUpdateRequest(
+      Json.parse("""{"localCopy": null}"""))
+
+    assertThat(deserializeResult.isError)
+      .isTrue
+  }
+
+  @Test
+  def deserializeForwardSetUpdateRequestShouldRejectIdOtherThanSingleton(): Unit = {
+    val deserializeResult: JsResult[ForwardUpdateRequest] = ForwardSerializer.deserializeForwardSetUpdateRequest(
+      Json.parse("""{"id": "other"}"""))
+
+    assertThat(deserializeResult.isError)
+      .isTrue
   }
 
   @Test

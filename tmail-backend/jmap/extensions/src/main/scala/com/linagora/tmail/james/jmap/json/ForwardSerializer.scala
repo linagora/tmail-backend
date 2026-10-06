@@ -18,7 +18,7 @@
 
 package com.linagora.tmail.james.jmap.json
 
-import com.linagora.tmail.james.jmap.model.{Forward, ForwardGetRequest, ForwardGetResponse, ForwardIds, ForwardNotFound, ForwardSetError, ForwardSetPatchObject, ForwardSetRequest, ForwardSetResponse, ForwardSetUpdateResponse, ForwardUpdateRequest, Forwards, LocalCopy, UnparsedForwardId}
+import com.linagora.tmail.james.jmap.model.{Forward, ForwardGetRequest, ForwardId, ForwardGetResponse, ForwardIds, ForwardNotFound, ForwardSetError, ForwardSetPatchObject, ForwardSetRequest, ForwardSetResponse, ForwardSetUpdateResponse, ForwardUpdateRequest, Forwards, LocalCopy, UnparsedForwardId}
 import org.apache.james.jmap.core.{Properties, UuidState}
 import play.api.libs.json._
 
@@ -46,10 +46,29 @@ object ForwardSerializer {
     case _ => JsError("ForwardSetPatchObject needs to be represented by a JsObject")
   }
   private implicit val forwardSetRequestReads: Reads[ForwardSetRequest] = Json.reads[ForwardSetRequest]
-  private implicit val forwardUpdateRequestReads: Reads[ForwardUpdateRequest] = Json.reads[ForwardUpdateRequest]
+  private val forwardUpdateRequestPropertiesReads: Reads[ForwardUpdateRequest] = Json.reads[ForwardUpdateRequest]
+  private implicit val forwardUpdateRequestReads: Reads[ForwardUpdateRequest] = {
+    case jsObject: JsObject => validatePatchProperties(jsObject)
+      .flatMap(forwardUpdateRequestPropertiesReads.reads)
+    case _ => JsError("ForwardUpdateRequest needs to be represented by a JsObject")
+  }
   private implicit val forwardSetUpdateResponseWrites: Writes[ForwardSetUpdateResponse] = Json.valueWrites[ForwardSetUpdateResponse]
   private implicit val forwardSetErrorWrites: Writes[ForwardSetError] = Json.writes[ForwardSetError]
   private implicit val forwardSetResponseWrites: Writes[ForwardSetResponse] = Json.writes[ForwardSetResponse]
+
+  private def validatePatchProperties(jsObject: JsObject): JsResult[JsObject] =
+    jsObject.fields
+      .map(validatePatchProperty)
+      .collectFirst { case error: JsError => error }
+      .getOrElse(JsSuccess(jsObject))
+
+  private def validatePatchProperty(property: (String, JsValue)): JsResult[Unit] = property match {
+    case ("id", JsString(id)) if id.equals(ForwardId.asString) => JsSuccess(())
+    case ("id", _) => JsError(JsPath \ "id", s"id must be ${ForwardId.asString}")
+    case (name, JsNull) if ForwardUpdateRequest.updatableProperties.contains(name) => JsError(JsPath \ name, "null is not allowed")
+    case (name, _) if ForwardUpdateRequest.updatableProperties.contains(name) => JsSuccess(())
+    case (name, _) => JsError(JsPath \ name, "Unknown property")
+  }
 
   def serializeForwardGetResponse(forwardGetResponse: ForwardGetResponse)(implicit forwardsWrites: Writes[Forwards]): JsValue =
     serializeForwardGetResponse(forwardGetResponse, Forwards.allProperties)

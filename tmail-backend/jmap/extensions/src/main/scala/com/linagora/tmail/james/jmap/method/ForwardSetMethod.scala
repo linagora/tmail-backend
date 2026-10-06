@@ -23,7 +23,7 @@ import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
 import com.linagora.tmail.james.jmap.json.ForwardSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FORWARD
-import com.linagora.tmail.james.jmap.model.{ForwardId, ForwardSetError, ForwardSetRequest, ForwardSetResponse, ForwardSetUpdateFailure, ForwardSetUpdateResult, ForwardSetUpdateResults, ForwardSetUpdateSuccess, ForwardUpdateRequest}
+import com.linagora.tmail.james.jmap.model.{ForwardId, ForwardSetError, Forwards, ForwardSetRequest, ForwardSetResponse, ForwardSetUpdateFailure, ForwardSetUpdateResult, ForwardSetUpdateResults, ForwardSetUpdateSuccess, ForwardUpdateRequest}
 import eu.timepit.refined.auto._
 import jakarta.inject.Inject
 import org.apache.james.core.{MailAddress, Username}
@@ -79,17 +79,28 @@ class ForwardSetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
       .flatMap {
         case (id, Right(patch)) => patch.asForwardUpdateRequest
           .fold(error => SMono.just(ForwardSetUpdateFailure(id, error)),
-            validPath => update(MappingSource.fromUser(mailboxSession.getUser), getForwards(validPath, mailboxSession.getUser)))
+            validPatch => update(mailboxSession.getUser, validPatch))
         case (id, Left(error)) => SMono.just(ForwardSetUpdateFailure(id, error))
       }
       .map(_.asForwardSetUpdateResult)
       .foldWith[ForwardSetUpdateResults](ForwardSetUpdateResults.empty())(ForwardSetUpdateResults.merge)
 
-  private def getForwards(updateRequest: ForwardUpdateRequest, currentUser: Username): Seq[MailAddress] = {
-    if (updateRequest.localCopy.value.booleanValue()) {
-      updateRequest.forwards.map(_.value) :+ currentUser.asMailAddress()
+  private def update(username: Username, updateRequest: ForwardUpdateRequest): SMono[ForwardSetUpdateResult] = {
+    val mappingSource: MappingSource = MappingSource.fromUser(username)
+    retrieveMappings(mappingSource)
+      .flatMap(currentForwards => {
+        val currentState: Forwards = Forwards.asRfc8621(currentForwards.toList, username.asMailAddress())
+        update(mappingSource, currentForwards, getForwardDestinations(updateRequest.applyTo(currentState), username))
+      })
+      .onErrorResume(error => SMono.just[ForwardSetUpdateResult](ForwardSetUpdateFailure(ForwardId.asString, error)))
+  }
+
+  private def getForwardDestinations(forwards: Forwards, currentUser: Username): Seq[MailAddress] = {
+    val destinations: Seq[MailAddress] = forwards.forwards.map(_.value)
+    if (forwards.localCopy.value && destinations.nonEmpty) {
+      destinations :+ currentUser.asMailAddress()
     } else {
-      updateRequest.forwards.map(_.value)
+      destinations
     }
   }
 
@@ -109,13 +120,10 @@ class ForwardSetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
       invocation.methodCallId)
   }
 
-  private def update(mappingSource: MappingSource, forwardDestinations: Seq[MailAddress]): SMono[ForwardSetUpdateResult] =
-    retrieveMappings(mappingSource)
-      .map(currentForwards => (currentForwards.diff(forwardDestinations), forwardDestinations.diff(currentForwards)))
-      .flatMapMany {
-        case (deletedForwards, addedForwards) => deleteMappings(mappingSource, deletedForwards)
-          .thenMany(addMappings(mappingSource, addedForwards))
-      }.`then`()
+  private def update(mappingSource: MappingSource, currentForwards: Seq[MailAddress], forwardDestinations: Seq[MailAddress]): SMono[ForwardSetUpdateResult] =
+    deleteMappings(mappingSource, currentForwards.diff(forwardDestinations))
+      .thenMany(addMappings(mappingSource, forwardDestinations.diff(currentForwards)))
+      .`then`()
       .doOnSuccess(_ -> AuditTrail.entry()
         .username(() => mappingSource.asUsername().toScala.map(_.asString()).getOrElse(""))
         .protocol("JMAP")

@@ -90,7 +90,16 @@ case class ForwardSetUpdateFailure(id: String, exception: Throwable) extends For
   }
 }
 
-case class ForwardUpdateRequest(localCopy: LocalCopy,
-                                forwards: Seq[Forward])
+object ForwardUpdateRequest {
+  val updatableProperties: Set[String] = Set("localCopy", "forwards")
+}
+
+case class ForwardUpdateRequest(localCopy: Option[LocalCopy],
+                                forwards: Option[Seq[Forward]]) {
+  def applyTo(current: Forwards): Forwards =
+    current.copy(
+      localCopy = localCopy.getOrElse(current.localCopy),
+      forwards = forwards.map(_.toList).getOrElse(current.forwards))
+}
 
 
