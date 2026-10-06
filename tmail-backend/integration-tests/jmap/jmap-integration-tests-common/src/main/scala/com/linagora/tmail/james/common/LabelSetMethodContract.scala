@@ -18,6 +18,11 @@
 
 package com.linagora.tmail.james.common
 
+import java.nio.charset.StandardCharsets
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
+
+import com.google.common.hash.Hashing
 import com.linagora.tmail.james.common.LabelSetMethodContract.{LABEL_COLOR, LABEL_NAME, LABEL_NEW_COLOR, LABEL_NEW_NAME, LABEL_DESCRIPTION, LABEL_NEW_DESCRIPTION}
 import com.linagora.tmail.james.common.probe.JmapGuiceLabelProbe
 import com.linagora.tmail.james.jmap.model.{Color, DisplayName, Label, LabelCreationRequest, LabelId}
@@ -29,6 +34,7 @@ import net.javacrumbs.jsonunit.core.Option
 import org.apache.http.HttpStatus
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
+import org.apache.james.core.Username
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture._
@@ -41,6 +47,15 @@ import org.hamcrest.Matchers
 import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 
 object LabelSetMethodContract {
+  case class TestContext(bobUsername: Username, andreUsername: Username) {
+    val bobAccountId: String = accountId(bobUsername)
+  }
+
+  private val currentContext: AtomicReference[TestContext] = new AtomicReference[TestContext]()
+
+  private def accountId(username: Username): String =
+    Hashing.sha256().hashString(username.asString(), StandardCharsets.UTF_8).toString
+
   private val LABEL_NAME = "Important"
   private val LABEL_NEW_NAME = "New Important"
   private val LABEL_COLOR = "#00ccdd"
@@ -50,16 +65,27 @@ object LabelSetMethodContract {
 }
 
 trait LabelSetMethodContract {
+  def bobUsername: Username = LabelSetMethodContract.currentContext.get().bobUsername
+
+  def bobAccountId: String = LabelSetMethodContract.currentContext.get().bobAccountId
+
+  def andreUsername: Username = LabelSetMethodContract.currentContext.get().andreUsername
+
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    val bob = Username.fromLocalPartWithDomain(s"bob$uniqueSuffix", DOMAIN)
+    val andre = Username.fromLocalPartWithDomain(s"andre$uniqueSuffix", DOMAIN)
+    LabelSetMethodContract.currentContext.set(LabelSetMethodContract.TestContext(bob, andre))
+
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
       .addDomain(DOMAIN.asString)
-      .addUser(BOB.asString(), BOB_PASSWORD)
-      .addUser(ANDRE.asString(), ANDRE_PASSWORD)
+      .addUser(bobUsername.asString(), BOB_PASSWORD)
+      .addUser(andreUsername.asString(), ANDRE_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .setAuth(authScheme(UserCredential(bobUsername, BOB_PASSWORD)))
       .build()
   }
 
@@ -71,7 +97,7 @@ trait LabelSetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |  "methodCalls": [
          |    ["Label/set", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "create": {
          |        "L13": {
          |          "displayName": "$LABEL_NAME",
@@ -97,7 +123,7 @@ trait LabelSetMethodContract {
       .asString()
 
     val label: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
-      .listLabels(BOB)
+      .listLabels(bobUsername)
       .get(0)
 
     assertThatJson(response)
@@ -107,7 +133,7 @@ trait LabelSetMethodContract {
            |  "sessionState": "${SESSION_STATE.value}",
            |  "methodResponses": [
            |    ["Label/set", {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "created": {
            |        "L13": {
            |          "id": "${label.id.id.value}",
@@ -126,7 +152,7 @@ trait LabelSetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |  "methodCalls": [
          |    ["Label/set", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "create": {
          |        "L13": {
          |          "displayName": "$LABEL_NAME",
@@ -152,7 +178,7 @@ trait LabelSetMethodContract {
       .asString()
 
     val label: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
-      .listLabels(BOB)
+      .listLabels(bobUsername)
       .get(0)
 
     SoftAssertions.assertSoftly(softly => {
@@ -169,7 +195,7 @@ trait LabelSetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |  "methodCalls": [
          |    ["Label/set", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "create": {
          |        "L13": {
          |          "displayName": "$LABEL_NAME",
@@ -194,7 +220,7 @@ trait LabelSetMethodContract {
       .asString()
 
     val label: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
-      .listLabels(BOB)
+      .listLabels(bobUsername)
       .get(0)
 
     SoftAssertions.assertSoftly(softly => {
@@ -211,7 +237,7 @@ trait LabelSetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |  "methodCalls": [
          |    ["Label/set", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "create": {
          |        "L13": {
          |          "displayName": "$LABEL_NAME",
@@ -236,7 +262,7 @@ trait LabelSetMethodContract {
       .asString()
 
     val label: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
-      .listLabels(BOB)
+      .listLabels(bobUsername)
       .get(0)
 
     SoftAssertions.assertSoftly(softly => {
@@ -253,7 +279,7 @@ trait LabelSetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core"],
          |  "methodCalls": [
          |    ["Label/set", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "create": {
          |        "L13": {
          |          "displayName": "$LABEL_NAME",
@@ -298,7 +324,7 @@ trait LabelSetMethodContract {
          |  "using": [],
          |  "methodCalls": [
          |    ["Label/set", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "create": {
          |        "L13": {
          |          "displayName": "$LABEL_NAME",
@@ -387,7 +413,7 @@ trait LabelSetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |  "methodCalls": [
          |    ["Label/set", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "create": {
          |        "L13": {
          |          "color": "$LABEL_COLOR",
@@ -418,7 +444,7 @@ trait LabelSetMethodContract {
            |  "sessionState": "${SESSION_STATE.value}",
            |  "methodResponses": [
            |    ["Label/set", {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "notCreated": {
            |        "L13": {
            |          "type": "invalidArguments",
@@ -437,7 +463,7 @@ trait LabelSetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |  "methodCalls": [
          |    ["Label/set", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "create": {
          |        "L13": {
          |          "displayName": "$LABEL_NAME",
@@ -470,7 +496,7 @@ trait LabelSetMethodContract {
            |  "sessionState": "${SESSION_STATE.value}",
            |  "methodResponses": [
            |    ["Label/set", {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "notCreated": {
            |        "L13": {
            |          "type": "invalidArguments",
@@ -490,7 +516,7 @@ trait LabelSetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |  "methodCalls": [
          |    ["Label/set", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "create": {
          |        "L13": {
          |          "displayName": "$LABEL_NAME",
@@ -524,7 +550,7 @@ trait LabelSetMethodContract {
            |  "sessionState": "${SESSION_STATE.value}",
            |  "methodResponses": [
            |    ["Label/set", {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "notCreated": {
            |        "L13": {
            |          "type": "invalidArguments",
@@ -540,14 +566,14 @@ trait LabelSetMethodContract {
   @Test
   def labelSetCreateShouldSucceedWithDelegatedAccount(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[DelegationProbe])
-      .addAuthorizedUser(BOB, ANDRE)
+      .addAuthorizedUser(bobUsername, andreUsername)
 
     val request =
       s"""{
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |  "methodCalls": [
          |    ["Label/set", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "create": {
          |        "L13": {
          |          "displayName": "$LABEL_NAME",
@@ -560,7 +586,7 @@ trait LabelSetMethodContract {
          |}""".stripMargin
 
     val response = `given`(baseRequestSpecBuilder(server)
-        .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+        .setAuth(authScheme(UserCredential(andreUsername, ANDRE_PASSWORD)))
         .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
         .build)
       .body(request)
@@ -575,7 +601,7 @@ trait LabelSetMethodContract {
       .asString()
 
     val label: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
-      .listLabels(BOB)
+      .listLabels(bobUsername)
       .get(0)
 
     assertThatJson(response)
@@ -585,7 +611,7 @@ trait LabelSetMethodContract {
            |  "sessionState": "${SESSION_STATE.value}",
            |  "methodResponses": [
            |    ["Label/set", {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "created": {
            |        "L13": {
            |          "id": "${label.id.id.value}",
@@ -604,7 +630,7 @@ trait LabelSetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |  "methodCalls": [
          |    ["Label/set", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "create": {
          |        "L13": {
          |          "displayName": "$LABEL_NAME",
@@ -614,7 +640,7 @@ trait LabelSetMethodContract {
          |      }
          |    }, "c1"],
          |    ["Label/get", {
-         |			"accountId": "$ACCOUNT_ID",
+         |			"accountId": "$bobAccountId",
          |			"ids": ["#L13"]
          |		}, "c2"]
          |  ]
@@ -634,7 +660,7 @@ trait LabelSetMethodContract {
       .asString()
 
     val label: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
-      .listLabels(BOB)
+      .listLabels(bobUsername)
       .get(0)
 
     assertThatJson(response)
@@ -644,7 +670,7 @@ trait LabelSetMethodContract {
            |  "sessionState": "${SESSION_STATE.value}",
            |  "methodResponses": [
            |    ["Label/set", {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "created": {
            |        "L13": {
            |          "id": "${label.id.id.value}",
@@ -655,7 +681,7 @@ trait LabelSetMethodContract {
            |    [
            |			"Label/get",
            |			{
-           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"accountId": "${bobAccountId}",
            |				"notFound": [],
            |				"list": [{
            |						"id": "${label.id.id.value}",
@@ -680,7 +706,7 @@ trait LabelSetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |  "methodCalls": [
          |    ["Label/set", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "create": {
          |        "L13": {
          |          "displayName": "$LABEL_NAME",
@@ -712,7 +738,7 @@ trait LabelSetMethodContract {
            |  "sessionState": "${SESSION_STATE.value}",
            |  "methodResponses": [
            |    ["Label/set", {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "notCreated": {
            |        "L13": {
            |          "type": "invalidArguments",
@@ -726,14 +752,14 @@ trait LabelSetMethodContract {
 
   @Test
   def labelSetDestroyShouldSucceed(server: GuiceJamesServer): Unit = {
-    val createdLabelId: String = createLabel(accountId = ACCOUNT_ID, displayName = "Label1", color = LABEL_COLOR, description = LABEL_DESCRIPTION)
+    val createdLabelId: String = createLabel(accountId = bobAccountId, displayName = "Label1", color = LABEL_COLOR, description = LABEL_DESCRIPTION)
 
     val request =
       s"""{
          |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |	"methodCalls": [
          |		["Label/set", {
-         |			"accountId": "$ACCOUNT_ID",
+         |			"accountId": "$bobAccountId",
          |			"destroy": ["$createdLabelId"]
          |		}, "c1"]
          |	]
@@ -761,7 +787,7 @@ trait LabelSetMethodContract {
            |		[
            |			"Label/set",
            |			{
-           |				"accountId": "$ACCOUNT_ID",
+           |				"accountId": "$bobAccountId",
            |				"destroyed": ["$createdLabelId"]
            |			},
            |			"c1"
@@ -769,7 +795,7 @@ trait LabelSetMethodContract {
            |	]
            |}""".stripMargin)
 
-    assertThat(server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(BOB))
+    assertThat(server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(bobUsername))
       .isEmpty()
   }
 
@@ -780,7 +806,7 @@ trait LabelSetMethodContract {
          |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |	"methodCalls": [
          |		["Label/set", {
-         |			"accountId": "$ACCOUNT_ID",
+         |			"accountId": "$bobAccountId",
          |			"destroy": ["@invalidId"]
          |		}, "c1"]
          |	]
@@ -807,7 +833,7 @@ trait LabelSetMethodContract {
          |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |	"methodCalls": [
          |		["Label/set", {
-         |			"accountId": "$ACCOUNT_ID",
+         |			"accountId": "$bobAccountId",
          |			"destroy": ["$randomLabelId"]
          |		}, "c1"]
          |	]
@@ -835,7 +861,7 @@ trait LabelSetMethodContract {
            |		[
            |			"Label/set",
            |			{
-           |				"accountId": "$ACCOUNT_ID",
+           |				"accountId": "$bobAccountId",
            |				"destroyed": ["$randomLabelId"]
            |			},
            |			"c1"
@@ -846,25 +872,24 @@ trait LabelSetMethodContract {
 
   @Test
   def labelSetDestroyShouldSupportDelegationWhenDelegatedUser(server: GuiceJamesServer): Unit = {
-    val bobAccountId = ACCOUNT_ID
     val bobLabelId: String = createLabel(accountId = bobAccountId, displayName = "Label1", color = LABEL_COLOR, description = LABEL_DESCRIPTION)
 
     server.getProbe(classOf[DelegationProbe])
-      .addAuthorizedUser(BOB, ANDRE)
+      .addAuthorizedUser(bobUsername, andreUsername)
 
     val request =
       s"""{
          |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |	"methodCalls": [
          |		["Label/set", {
-         |			"accountId": "$ACCOUNT_ID",
+         |			"accountId": "$bobAccountId",
          |			"destroy": ["$bobLabelId"]
          |		}, "c1"]
          |	]
          |}""".stripMargin
 
     val response = `given`()
-      .auth().basic(ANDRE.asString(), ANDRE_PASSWORD)
+      .auth().basic(andreUsername.asString(), ANDRE_PASSWORD)
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(request)
     .when()
@@ -894,13 +919,12 @@ trait LabelSetMethodContract {
            |	]
            |}""".stripMargin)
 
-    assertThat(server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(BOB))
+    assertThat(server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(bobUsername))
       .isEmpty()
   }
 
   @Test
   def labelSetDestroyShouldNotSupportDelegationWhenNotDelegatedUser(server: GuiceJamesServer): Unit = {
-    val bobAccountId = ACCOUNT_ID
     val bobLabelId: String = createLabel(accountId = bobAccountId, displayName = "Label1", color = LABEL_COLOR, description = LABEL_DESCRIPTION)
 
     val request =
@@ -908,14 +932,14 @@ trait LabelSetMethodContract {
          |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |	"methodCalls": [
          |		["Label/set", {
-         |			"accountId": "$ACCOUNT_ID",
+         |			"accountId": "$bobAccountId",
          |			"destroy": ["$bobLabelId"]
          |		}, "c1"]
          |	]
          |}""".stripMargin
 
     val response = `given`()
-      .auth().basic(ANDRE.asString(), ANDRE_PASSWORD)
+      .auth().basic(andreUsername.asString(), ANDRE_PASSWORD)
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(request)
     .when()
@@ -938,7 +962,7 @@ trait LabelSetMethodContract {
          |  ]
          |}""".stripMargin)
 
-    assertThat(server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(BOB))
+    assertThat(server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(bobUsername))
       .hasSize(1)
   }
 
@@ -949,7 +973,7 @@ trait LabelSetMethodContract {
          |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |	"methodCalls": [[
          |			"Label/set", {
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"update": {
          |					"4f29": {
          |						"wrongProperties": "Warning"
@@ -979,7 +1003,7 @@ trait LabelSetMethodContract {
            |	"methodResponses": [[
            |			"Label/set",
            |			{
-           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"accountId": "${bobAccountId}",
            |				"notUpdated": {
            |					"4f29": {
            |						"type": "invalidArguments",
@@ -994,14 +1018,14 @@ trait LabelSetMethodContract {
 
   @Test
   def labelSetUpdateShouldSucceedWhenValidDisplayName(server: GuiceJamesServer): Unit = {
-    val createdLabelId: String = createLabel(accountId = ACCOUNT_ID, displayName = LABEL_NAME, color = LABEL_COLOR, description = LABEL_DESCRIPTION)
+    val createdLabelId: String = createLabel(accountId = bobAccountId, displayName = LABEL_NAME, color = LABEL_COLOR, description = LABEL_DESCRIPTION)
 
     val request =
       s"""{
          |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |	"methodCalls": [[
          |			"Label/set", {
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"update": {
          |					"$createdLabelId": {
          |						"displayName": "$LABEL_NEW_NAME"
@@ -1031,7 +1055,7 @@ trait LabelSetMethodContract {
            |	"methodResponses": [[
            |			"Label/set",
            |			{
-           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"accountId": "${bobAccountId}",
            |				"updated": {
            |					"$createdLabelId": {}
            |				}
@@ -1040,7 +1064,7 @@ trait LabelSetMethodContract {
            |}""".stripMargin)
 
     SoftAssertions.assertSoftly(softly => {
-      val updatedLabel: Label = server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(BOB).get(0)
+      val updatedLabel: Label = server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(bobUsername).get(0)
       softly.assertThat(updatedLabel.displayName.value).isEqualTo(LABEL_NEW_NAME)
       softly.assertThat(updatedLabel.color.get.value).isEqualTo(LABEL_COLOR)
       softly.assertThat(updatedLabel.description.get).isEqualTo(LABEL_DESCRIPTION)
@@ -1054,7 +1078,7 @@ trait LabelSetMethodContract {
          |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |	"methodCalls": [[
          |			"Label/set", {
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"update": {
          |					"4c29": {
          |						"displayName": 100
@@ -1084,7 +1108,7 @@ trait LabelSetMethodContract {
            |	"methodResponses": [[
            |			"Label/set",
            |			{
-           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"accountId": "${bobAccountId}",
            |				"notUpdated": {
            |					"4c29": {
            |						"type": "invalidArguments",
@@ -1099,14 +1123,14 @@ trait LabelSetMethodContract {
 
   @Test
   def labelSetUpdateShouldSucceedWhenValidColor(server: GuiceJamesServer): Unit = {
-    val createdLabelId: String = createLabel(accountId = ACCOUNT_ID, displayName = LABEL_NAME, color = LABEL_COLOR, description = LABEL_DESCRIPTION)
+    val createdLabelId: String = createLabel(accountId = bobAccountId, displayName = LABEL_NAME, color = LABEL_COLOR, description = LABEL_DESCRIPTION)
 
     val request =
       s"""{
          |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |	"methodCalls": [[
          |			"Label/set", {
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"update": {
          |					"$createdLabelId": {
          |						"color": "$LABEL_NEW_COLOR"
@@ -1136,7 +1160,7 @@ trait LabelSetMethodContract {
            |	"methodResponses": [[
            |			"Label/set",
            |			{
-           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"accountId": "${bobAccountId}",
            |				"updated": {
            |					"$createdLabelId": {}
            |				}
@@ -1145,7 +1169,7 @@ trait LabelSetMethodContract {
            |}""".stripMargin)
 
     SoftAssertions.assertSoftly(softly => {
-      val updatedLabel: Label = server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(BOB).get(0)
+      val updatedLabel: Label = server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(bobUsername).get(0)
       softly.assertThat(updatedLabel.displayName.value).isEqualTo(LABEL_NAME)
       softly.assertThat(updatedLabel.color.get.value).isEqualTo(LABEL_NEW_COLOR)
       softly.assertThat(updatedLabel.description.get).isEqualTo(LABEL_DESCRIPTION)
@@ -1154,14 +1178,14 @@ trait LabelSetMethodContract {
 
   @Test
   def labelSetUpdateShouldRemoveColorWhenNull(server: GuiceJamesServer): Unit = {
-    val createdLabelId: String = createLabel(accountId = ACCOUNT_ID, displayName = LABEL_NAME, color = LABEL_COLOR, description = LABEL_DESCRIPTION)
+    val createdLabelId: String = createLabel(accountId = bobAccountId, displayName = LABEL_NAME, color = LABEL_COLOR, description = LABEL_DESCRIPTION)
 
     val request =
       s"""{
          |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |	"methodCalls": [[
          |			"Label/set", {
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"update": {
          |					"$createdLabelId": {
          |						"color": null
@@ -1191,7 +1215,7 @@ trait LabelSetMethodContract {
            |	"methodResponses": [[
            |			"Label/set",
            |			{
-           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"accountId": "${bobAccountId}",
            |				"updated": {
            |					"$createdLabelId": {}
            |				}
@@ -1200,7 +1224,7 @@ trait LabelSetMethodContract {
            |}""".stripMargin)
 
     SoftAssertions.assertSoftly(softly => {
-      val updatedLabel: Label = server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(BOB).get(0)
+      val updatedLabel: Label = server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(bobUsername).get(0)
       softly.assertThat(updatedLabel.displayName.value).isEqualTo(LABEL_NAME)
       softly.assertThat(updatedLabel.color.isEmpty).isTrue
       softly.assertThat(updatedLabel.description.get).isEqualTo(LABEL_DESCRIPTION)
@@ -1209,14 +1233,14 @@ trait LabelSetMethodContract {
 
   @Test
   def labelSetUpdateShouldSucceedWhenValidDescription(server: GuiceJamesServer): Unit = {
-    val createdLabelId: String = createLabel(accountId = ACCOUNT_ID, displayName = LABEL_NAME, color = LABEL_COLOR, description = LABEL_DESCRIPTION)
+    val createdLabelId: String = createLabel(accountId = bobAccountId, displayName = LABEL_NAME, color = LABEL_COLOR, description = LABEL_DESCRIPTION)
 
     val request =
       s"""{
          |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |	"methodCalls": [[
          |			"Label/set", {
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"update": {
          |					"$createdLabelId": {
          |						"description": "$LABEL_NEW_DESCRIPTION"
@@ -1246,7 +1270,7 @@ trait LabelSetMethodContract {
            |	"methodResponses": [[
            |			"Label/set",
            |			{
-           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"accountId": "${bobAccountId}",
            |				"updated": {
            |					"$createdLabelId": {}
            |				}
@@ -1255,7 +1279,7 @@ trait LabelSetMethodContract {
            |}""".stripMargin)
 
     SoftAssertions.assertSoftly(softly => {
-      val updatedLabel: Label = server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(BOB).get(0)
+      val updatedLabel: Label = server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(bobUsername).get(0)
       softly.assertThat(updatedLabel.displayName.value).isEqualTo(LABEL_NAME)
       softly.assertThat(updatedLabel.color.get.value).isEqualTo(LABEL_COLOR)
       softly.assertThat(updatedLabel.description.get).isEqualTo(LABEL_NEW_DESCRIPTION)
@@ -1264,14 +1288,14 @@ trait LabelSetMethodContract {
 
   @Test
   def labelSetUpdateShouldSucceedWhenValidEmptyDescription(server: GuiceJamesServer): Unit = {
-    val createdLabelId: String = createLabel(accountId = ACCOUNT_ID, displayName = LABEL_NAME, color = LABEL_COLOR, description = LABEL_DESCRIPTION)
+    val createdLabelId: String = createLabel(accountId = bobAccountId, displayName = LABEL_NAME, color = LABEL_COLOR, description = LABEL_DESCRIPTION)
 
     val request =
       s"""{
          |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |	"methodCalls": [[
          |			"Label/set", {
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"update": {
          |					"$createdLabelId": {
          |						"description": null
@@ -1301,7 +1325,7 @@ trait LabelSetMethodContract {
            |	"methodResponses": [[
            |			"Label/set",
            |			{
-           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"accountId": "${bobAccountId}",
            |				"updated": {
            |					"$createdLabelId": {}
            |				}
@@ -1310,7 +1334,7 @@ trait LabelSetMethodContract {
            |}""".stripMargin)
 
     SoftAssertions.assertSoftly(softly => {
-      val updatedLabel: Label = server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(BOB).get(0)
+      val updatedLabel: Label = server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(bobUsername).get(0)
       softly.assertThat(updatedLabel.displayName.value).isEqualTo(LABEL_NAME)
       softly.assertThat(updatedLabel.color.get.value).isEqualTo(LABEL_COLOR)
       softly.assertThat(updatedLabel.description.isEmpty).isTrue
@@ -1324,7 +1348,7 @@ trait LabelSetMethodContract {
          |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |	"methodCalls": [[
          |			"Label/set", {
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"update": {
          |					"4c29": {
          |						"color": 100
@@ -1354,7 +1378,7 @@ trait LabelSetMethodContract {
            |	"methodResponses": [[
            |			"Label/set",
            |			{
-           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"accountId": "${bobAccountId}",
            |				"notUpdated": {
            |					"4c29": {
            |						"type": "invalidArguments",
@@ -1374,7 +1398,7 @@ trait LabelSetMethodContract {
          |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |	"methodCalls": [[
          |			"Label/set", {
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"update": {
          |					"4c29": {
          |						"color": "#not_a_color"
@@ -1404,7 +1428,7 @@ trait LabelSetMethodContract {
            |	"methodResponses": [[
            |			"Label/set",
            |			{
-           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"accountId": "${bobAccountId}",
            |				"notUpdated": {
            |					"4c29": {
            |						"type": "invalidArguments",
@@ -1419,14 +1443,14 @@ trait LabelSetMethodContract {
 
   @Test
   def labelSetUpdateShouldSucceedWhenUpdateBothDisplayNameAndColor(server: GuiceJamesServer): Unit = {
-    val createdLabelId: String = createLabel(accountId = ACCOUNT_ID, displayName = LABEL_NAME, color = LABEL_COLOR, description = LABEL_DESCRIPTION)
+    val createdLabelId: String = createLabel(accountId = bobAccountId, displayName = LABEL_NAME, color = LABEL_COLOR, description = LABEL_DESCRIPTION)
 
     val request =
       s"""{
          |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |	"methodCalls": [[
          |			"Label/set", {
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"update": {
          |					"$createdLabelId": {
          |						"displayName": "$LABEL_NEW_NAME",
@@ -1457,7 +1481,7 @@ trait LabelSetMethodContract {
            |	"methodResponses": [[
            |			"Label/set",
            |			{
-           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"accountId": "${bobAccountId}",
            |				"updated": {
            |					"$createdLabelId": {}
            |				}
@@ -1466,7 +1490,7 @@ trait LabelSetMethodContract {
            |}""".stripMargin)
 
     SoftAssertions.assertSoftly(softly => {
-      val updatedLabel: Label = server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(BOB).get(0)
+      val updatedLabel: Label = server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(bobUsername).get(0)
       softly.assertThat(updatedLabel.displayName.value).isEqualTo(LABEL_NEW_NAME)
       softly.assertThat(updatedLabel.color.get.value).isEqualTo(LABEL_NEW_COLOR)
       softly.assertThat(updatedLabel.description.get).isEqualTo(LABEL_DESCRIPTION)
@@ -1475,14 +1499,14 @@ trait LabelSetMethodContract {
 
   @Test
   def labelSetUpdateShouldSucceedWhenUpdateDisplayNameAndColorAndDescription(server: GuiceJamesServer): Unit = {
-    val createdLabelId: String = createLabel(accountId = ACCOUNT_ID, displayName = LABEL_NAME, color = LABEL_COLOR, description = LABEL_DESCRIPTION)
+    val createdLabelId: String = createLabel(accountId = bobAccountId, displayName = LABEL_NAME, color = LABEL_COLOR, description = LABEL_DESCRIPTION)
 
     val request =
       s"""{
          |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |	"methodCalls": [[
          |			"Label/set", {
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"update": {
          |					"$createdLabelId": {
          |						"displayName": "$LABEL_NEW_NAME",
@@ -1514,7 +1538,7 @@ trait LabelSetMethodContract {
            |	"methodResponses": [[
            |			"Label/set",
            |			{
-           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"accountId": "${bobAccountId}",
            |				"updated": {
            |					"$createdLabelId": {}
            |				}
@@ -1523,7 +1547,7 @@ trait LabelSetMethodContract {
            |}""".stripMargin)
 
     SoftAssertions.assertSoftly(softly => {
-      val updatedLabel: Label = server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(BOB).get(0)
+      val updatedLabel: Label = server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(bobUsername).get(0)
       softly.assertThat(updatedLabel.displayName.value).isEqualTo(LABEL_NEW_NAME)
       softly.assertThat(updatedLabel.color.get.value).isEqualTo(LABEL_NEW_COLOR)
       softly.assertThat(updatedLabel.description.get).isEqualTo(LABEL_NEW_DESCRIPTION)
@@ -1539,7 +1563,7 @@ trait LabelSetMethodContract {
          |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |	"methodCalls": [[
          |			"Label/set", {
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"update": {
          |					"$randomLabelId": {
          |						"displayName": "$LABEL_NEW_NAME",
@@ -1570,7 +1594,7 @@ trait LabelSetMethodContract {
            |	"methodResponses": [[
            |			"Label/set",
            |			{
-           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"accountId": "${bobAccountId}",
            |				"notUpdated": {
            |					"$randomLabelId": {
            |						"type": "notFound",
@@ -1585,14 +1609,14 @@ trait LabelSetMethodContract {
   @Test
   def labelSetUpdateShouldSucceedWhenMixedFoundAndNotFoundCase(server: GuiceJamesServer): Unit = {
     val randomLabelId: String = LabelId.generate().id.value
-    val createdLabelId: String = createLabel(accountId = ACCOUNT_ID, displayName = LABEL_NAME, color = LABEL_COLOR, description = LABEL_DESCRIPTION)
+    val createdLabelId: String = createLabel(accountId = bobAccountId, displayName = LABEL_NAME, color = LABEL_COLOR, description = LABEL_DESCRIPTION)
 
     val request =
       s"""{
          |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |	"methodCalls": [[
          |			"Label/set", {
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"update": {
          |					"$createdLabelId": {
          |						"displayName": "$LABEL_NEW_NAME",
@@ -1629,7 +1653,7 @@ trait LabelSetMethodContract {
            |	"methodResponses": [[
            |			"Label/set",
            |			{
-           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"accountId": "${bobAccountId}",
            |				"updated": {
            |					"$createdLabelId": {}
            |				},
@@ -1644,7 +1668,7 @@ trait LabelSetMethodContract {
            |}""".stripMargin)
 
     SoftAssertions.assertSoftly(softly => {
-      val updatedLabel: Label = server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(BOB).get(0)
+      val updatedLabel: Label = server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(bobUsername).get(0)
       softly.assertThat(updatedLabel.displayName.value).isEqualTo(LABEL_NEW_NAME)
       softly.assertThat(updatedLabel.color.get.value).isEqualTo(LABEL_NEW_COLOR)
       softly.assertThat(updatedLabel.description.get).isEqualTo(LABEL_NEW_DESCRIPTION)
@@ -1653,14 +1677,14 @@ trait LabelSetMethodContract {
 
   @Test
   def labelSetUpdateShouldNoopWhenEmptyPatchObject(server: GuiceJamesServer): Unit = {
-    val createdLabelId: String = createLabel(accountId = ACCOUNT_ID, displayName = LABEL_NAME, color = LABEL_COLOR, description = LABEL_DESCRIPTION)
+    val createdLabelId: String = createLabel(accountId = bobAccountId, displayName = LABEL_NAME, color = LABEL_COLOR, description = LABEL_DESCRIPTION)
 
     val request =
       s"""{
          |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |	"methodCalls": [[
          |			"Label/set", {
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"update": {
          |					"$createdLabelId": {}
          |				}
@@ -1688,7 +1712,7 @@ trait LabelSetMethodContract {
            |	"methodResponses": [[
            |			"Label/set",
            |			{
-           |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |				"accountId": "${bobAccountId}",
            |				"updated": {
            |					"$createdLabelId": {}
            |				}
@@ -1697,7 +1721,7 @@ trait LabelSetMethodContract {
            |}""".stripMargin)
 
     SoftAssertions.assertSoftly(softly => {
-      val updatedLabel: Label = server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(BOB).get(0)
+      val updatedLabel: Label = server.getProbe(classOf[JmapGuiceLabelProbe]).listLabels(bobUsername).get(0)
       softly.assertThat(updatedLabel.displayName.value).isEqualTo(LABEL_NAME)
       softly.assertThat(updatedLabel.color.get.value).isEqualTo(LABEL_COLOR)
       softly.assertThat(updatedLabel.description.get).isEqualTo(LABEL_DESCRIPTION)
@@ -1706,7 +1730,7 @@ trait LabelSetMethodContract {
 
   @Test
   def newStateShouldBeUpToDate(): Unit = {
-    val createdLabelId: String = createLabel(accountId = ACCOUNT_ID, displayName = LABEL_NAME, color = LABEL_COLOR, description = LABEL_DESCRIPTION)
+    val createdLabelId: String = createLabel(accountId = bobAccountId, displayName = LABEL_NAME, color = LABEL_COLOR, description = LABEL_DESCRIPTION)
 
     val request =
       s"""
@@ -1716,7 +1740,7 @@ trait LabelSetMethodContract {
          |       [
          |           "Label/set",
          |           {
-         |                "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |                "accountId": "${bobAccountId}",
          |                "update": {
          |                    "$createdLabelId": {
          |                      "displayName": "newName"
@@ -1725,7 +1749,7 @@ trait LabelSetMethodContract {
          |           }, "c1"],
          |       [ "Label/changes",
          |       {
-         |         "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |         "accountId": "${bobAccountId}",
          |         "#sinceState": {
          |            "resultOf":"c1",
          |            "name":"Label/set",
@@ -1756,7 +1780,7 @@ trait LabelSetMethodContract {
       .inPath("methodResponses[1][1]")
       .isEqualTo(
         s"""{
-           |  "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |  "accountId": "${bobAccountId}",
            |  "hasMoreChanges": false,
            |  "created": [],
            |  "updated": [],
@@ -1771,7 +1795,7 @@ trait LabelSetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |  "methodCalls": [
          |    ["Label/set", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "create": {
          |        "L13": {
          |          "displayName": "$LABEL_NAME",
@@ -1803,7 +1827,7 @@ trait LabelSetMethodContract {
            |  "sessionState": "${SESSION_STATE.value}",
            |  "methodResponses": [
            |    ["Label/set", {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "notCreated": {
            |        "L13": {
            |          "type": "invalidArguments",
@@ -1819,7 +1843,7 @@ trait LabelSetMethodContract {
   @Test
   def labelSetUpdateShouldReturnForbiddenWhenLabelIsReadOnly(server: GuiceJamesServer): Unit = {
     val label: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
-      .addLabel(BOB, LabelCreationRequest(
+      .addLabel(bobUsername, LabelCreationRequest(
         DisplayName(LABEL_NAME),
         Some(Color(LABEL_COLOR)),
         Some(LABEL_DESCRIPTION),
@@ -1830,7 +1854,7 @@ trait LabelSetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |  "methodCalls": [
          |    ["Label/set", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "update": {
          |        "${label.id.id.value}": {
          |          "displayName": "$LABEL_NEW_NAME"
@@ -1860,7 +1884,7 @@ trait LabelSetMethodContract {
            |  "sessionState": "${SESSION_STATE.value}",
            |  "methodResponses": [
            |    ["Label/set", {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "notUpdated": {
            |        "${label.id.id.value}": {
            |          "type": "forbidden",
@@ -1875,7 +1899,7 @@ trait LabelSetMethodContract {
   @Test
   def labelSetDestroyShouldReturnForbiddenWhenLabelIsReadOnly(server: GuiceJamesServer): Unit = {
     val label: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
-      .addLabel(BOB, LabelCreationRequest(
+      .addLabel(bobUsername, LabelCreationRequest(
         DisplayName(LABEL_NAME),
         Some(Color(LABEL_COLOR)),
         Some(LABEL_DESCRIPTION),
@@ -1886,7 +1910,7 @@ trait LabelSetMethodContract {
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
          |  "methodCalls": [
          |    ["Label/set", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "destroy": ["${label.id.id.value}"]
          |    }, "c1"]
          |  ]
@@ -1912,7 +1936,7 @@ trait LabelSetMethodContract {
            |  "sessionState": "${SESSION_STATE.value}",
            |  "methodResponses": [
            |    ["Label/set", {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "notDestroyed": {
            |        "${label.id.id.value}": {
            |          "type": "forbidden",

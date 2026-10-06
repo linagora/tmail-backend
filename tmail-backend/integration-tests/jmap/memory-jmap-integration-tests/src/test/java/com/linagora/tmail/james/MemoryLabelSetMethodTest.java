@@ -44,5 +44,6 @@ public class MemoryLabelSetMethodTest implements LabelSetMethodContract {
                     .overrideWith(new LinagoraTestJMAPServerModule())
                     .overrideWith(new DelegationProbeModule())
                     .overrideWith(new JmapGuiceLabelModule()))
+            .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
             .build();
 }

@@ -64,5 +64,6 @@ public class DistributedLinagoraLabelSetMethodTest implements LabelSetMethodCont
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new JmapGuiceLabelModule())
             .overrideWith(new DelegationProbeModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }
