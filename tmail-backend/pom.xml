@@ -66,6 +66,7 @@
         <module>mailbox/encrypted/pgp-utils</module>
         <module>mailbox/listeners</module>
         <module>mailbox/opensearch</module>
+        <module>mailbox/plugin/team-mailbox-events</module>
         <module>mailbox/plugin/welcome-listener</module>
         <module>mailbox/plugin/tmail-deleted-message-vault</module>
         <module>mailbox/team-mailboxes</module>
@@ -551,6 +552,11 @@
             <dependency>
                 <groupId>${project.groupId}</groupId>
                 <artifactId>welcome-listener</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>${project.groupId}</groupId>
+                <artifactId>team-mailbox-events</artifactId>
                 <version>${project.version}</version>
             </dependency>
             <dependency>
