@@ -19,21 +19,26 @@
 package com.linagora.tmail.james.common
 
 import java.nio.charset.StandardCharsets
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
 
+import com.google.common.hash.Hashing
 import com.linagora.tmail.encrypted.KeyId
 import com.linagora.tmail.james.common.LinagoraKeystoreSetMethodContract.{PGP_KEY, PGP_KEY_ARMORED, PGP_KEY_ID}
 import com.linagora.tmail.james.common.probe.JmapGuiceKeystoreManagerProbe
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
+import io.restassured.http.Header
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
 import org.apache.http.HttpStatus
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
+import org.apache.james.core.Username
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ALICE_ACCOUNT_ID, ANDRE, ANDRE_PASSWORD, BOB, BOB_BASIC_AUTH_HEADER, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder, getHeadersWith}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ALICE_ACCOUNT_ID, ANDRE_PASSWORD, AUTHORIZATION_HEADER, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder, getHeadersWith, toBase64}
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.DataProbeImpl
@@ -41,6 +46,15 @@ import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 
 object LinagoraKeystoreSetMethodContract {
+  case class TestContext(bobUsername: Username, andreUsername: Username) {
+    val bobAccountId: String = accountId(bobUsername)
+  }
+
+  private val currentContext: AtomicReference[TestContext] = new AtomicReference[TestContext]()
+
+  private def accountId(username: Username): String =
+    Hashing.sha256().hashString(username.asString(), StandardCharsets.UTF_8).toString
+
   private val PGP_KEY: Array[Byte] = ClassLoader.getSystemClassLoader
     .getResourceAsStream("gpg.pub")
     .readAllBytes()
@@ -52,17 +66,29 @@ object LinagoraKeystoreSetMethodContract {
 }
 
 trait LinagoraKeystoreSetMethodContract {
+  def bobUsername: Username = LinagoraKeystoreSetMethodContract.currentContext.get().bobUsername
+
+  def bobBasicAuthHeader: Header = new Header(AUTHORIZATION_HEADER, s"Basic ${toBase64(s"${bobUsername.asString}:$BOB_PASSWORD")}")
+
+  def bobAccountId: String = LinagoraKeystoreSetMethodContract.currentContext.get().bobAccountId
+
+  def andreUsername: Username = LinagoraKeystoreSetMethodContract.currentContext.get().andreUsername
 
   @BeforeEach
   def setUp(server : GuiceJamesServer): Unit = {
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    val bob = Username.fromLocalPartWithDomain(s"bob$uniqueSuffix", DOMAIN)
+    val andre = Username.fromLocalPartWithDomain(s"andre$uniqueSuffix", DOMAIN)
+    LinagoraKeystoreSetMethodContract.currentContext.set(LinagoraKeystoreSetMethodContract.TestContext(bob, andre))
+
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
       .addDomain(DOMAIN.asString)
-      .addUser(BOB.asString(), BOB_PASSWORD)
-      .addUser(ANDRE.asString(), ANDRE_PASSWORD)
+      .addUser(bobUsername.asString(), BOB_PASSWORD)
+      .addUser(andreUsername.asString(), ANDRE_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .setAuth(authScheme(UserCredential(bobUsername, BOB_PASSWORD)))
       .build()
   }
 
@@ -73,7 +99,7 @@ trait LinagoraKeystoreSetMethodContract {
                      |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
                      |  "methodCalls": [
                      |    ["Keystore/set", {
-                     |      "accountId": "$ACCOUNT_ID",
+                     |      "accountId": "$bobAccountId",
                      |      "create": {
                      |        "K87": {
                      |          "key": "$PGP_KEY_ARMORED"
@@ -101,7 +127,7 @@ trait LinagoraKeystoreSetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
          |    ["Keystore/set", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "created": {
          |        "K87": {
          |          "id": "$PGP_KEY_ID"
@@ -118,7 +144,7 @@ trait LinagoraKeystoreSetMethodContract {
                      |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
                      |  "methodCalls": [
                      |    ["Keystore/set", {
-                     |      "accountId": "$ACCOUNT_ID",
+                     |      "accountId": "$bobAccountId",
                      |      "create": {
                      |        "K87": {
                      |          "key": "$PGP_KEY_ARMORED"
@@ -138,7 +164,7 @@ trait LinagoraKeystoreSetMethodContract {
       .statusCode(HttpStatus.SC_OK)
 
     assertThat(server.getProbe(classOf[JmapGuiceKeystoreManagerProbe])
-      .retrieveKey(BOB, KeyId(PGP_KEY_ID))
+      .retrieveKey(bobUsername, KeyId(PGP_KEY_ID))
       .get()
       .key)
       .isEqualTo(PGP_KEY)
@@ -150,7 +176,7 @@ trait LinagoraKeystoreSetMethodContract {
                      |  "using": ["urn:ietf:params:jmap:core"],
                      |  "methodCalls": [
                      |    ["Keystore/set", {
-                     |      "accountId": "$ACCOUNT_ID",
+                     |      "accountId": "$bobAccountId",
                      |      "create": {
                      |        "K87": {
                      |          "key": "$PGP_KEY_ARMORED"
@@ -231,7 +257,7 @@ trait LinagoraKeystoreSetMethodContract {
                      |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
                      |  "methodCalls": [
                      |    ["Keystore/set", {
-                     |      "accountId": "$ACCOUNT_ID",
+                     |      "accountId": "$bobAccountId",
                      |      "create": {
                      |        "K87": {}
                      |      }
@@ -257,7 +283,7 @@ trait LinagoraKeystoreSetMethodContract {
            |  "sessionState": "${SESSION_STATE.value}",
            |  "methodResponses": [[
            |    "Keystore/set", {
-           |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |      "accountId": "${bobAccountId}",
            |      "notCreated": {
            |        "K87": {
            |          "type": "invalidArguments",
@@ -275,7 +301,7 @@ trait LinagoraKeystoreSetMethodContract {
                      |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
                      |  "methodCalls": [
                      |    ["Keystore/set", {
-                     |      "accountId": "$ACCOUNT_ID",
+                     |      "accountId": "$bobAccountId",
                      |      "create": {
                      |        "K87": {
                      |          "key": ""
@@ -303,7 +329,7 @@ trait LinagoraKeystoreSetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
          |    ["Keystore/set", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "notCreated": {
          |        "K87": {
          |          "type": "invalidArguments",
@@ -321,7 +347,7 @@ trait LinagoraKeystoreSetMethodContract {
                      |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
                      |  "methodCalls": [
                      |    ["Keystore/set", {
-                     |      "accountId": "$ACCOUNT_ID",
+                     |      "accountId": "$bobAccountId",
                      |      "create": {
                      |        "K87": {
                      |          "key": "wrong_key"
@@ -349,7 +375,7 @@ trait LinagoraKeystoreSetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
          |    ["Keystore/set", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "notCreated": {
          |        "K87": {
          |          "type": "invalidArguments",
@@ -367,7 +393,7 @@ trait LinagoraKeystoreSetMethodContract {
                      |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
                      |  "methodCalls": [
                      |    ["Keystore/set", {
-                     |      "accountId": "$ACCOUNT_ID",
+                     |      "accountId": "$bobAccountId",
                      |      "create": {
                      |        "K87": {
                      |          "key": "$PGP_KEY_ARMORED",
@@ -396,7 +422,7 @@ trait LinagoraKeystoreSetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
          |    ["Keystore/set", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "notCreated": {
          |        "K87": {
          |          "type": "invalidArguments",
@@ -415,7 +441,7 @@ trait LinagoraKeystoreSetMethodContract {
                      |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
                      |  "methodCalls": [
                      |    ["Keystore/set", {
-                     |      "accountId": "$ACCOUNT_ID",
+                     |      "accountId": "$bobAccountId",
                      |      "create": {
                      |        "K87": {
                      |          "key": "$PGP_KEY_ARMORED",
@@ -444,7 +470,7 @@ trait LinagoraKeystoreSetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
          |    ["Keystore/set", {
-         |      "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |      "accountId": "${bobAccountId}",
          |      "notCreated": {
          |        "K87": {
          |          "type": "invalidArguments",
@@ -463,7 +489,7 @@ trait LinagoraKeystoreSetMethodContract {
                      |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
                      |  "methodCalls": [
                      |    ["Keystore/set", {
-                     |      "accountId": "$ACCOUNT_ID",
+                     |      "accountId": "$bobAccountId",
                      |      "create": {
                      |        "K87": {
                      |          "key": "$PGP_KEY_ARMORED"
@@ -496,7 +522,7 @@ trait LinagoraKeystoreSetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
          |    ["Keystore/set", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "created": {
          |        "K87": {
          |          "id": "$PGP_KEY_ID"
@@ -516,7 +542,7 @@ trait LinagoraKeystoreSetMethodContract {
                      |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
                      |  "methodCalls": [
                      |    ["Keystore/set", {
-                     |      "accountId": "$ACCOUNT_ID",
+                     |      "accountId": "$bobAccountId",
                      |      "create": {
                      |        "K87": {
                      |          "key": "$PGP_KEY_ARMORED"
@@ -524,7 +550,7 @@ trait LinagoraKeystoreSetMethodContract {
                      |      }
                      |    }, "c1"],
                      |    ["Keystore/set", {
-                     |      "accountId": "$ACCOUNT_ID",
+                     |      "accountId": "$bobAccountId",
                      |      "destroy": [
                      |        "$PGP_KEY_ID"
                      |      ]
@@ -550,7 +576,7 @@ trait LinagoraKeystoreSetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
          |    ["Keystore/set", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |        "created": {
          |          "K87": {
          |            "id": "$PGP_KEY_ID"
@@ -558,7 +584,7 @@ trait LinagoraKeystoreSetMethodContract {
          |        }
          |    }, "c1"],
          |    ["Keystore/set", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "destroyed": [
          |        "$PGP_KEY_ID"
          |      ]
@@ -567,7 +593,7 @@ trait LinagoraKeystoreSetMethodContract {
          |}""".stripMargin)
 
     assertThat(server.getProbe(classOf[JmapGuiceKeystoreManagerProbe])
-      .retrieveKey(BOB, KeyId(PGP_KEY_ID)))
+      .retrieveKey(bobUsername, KeyId(PGP_KEY_ID)))
       .isEmpty
 
   }
@@ -578,7 +604,7 @@ trait LinagoraKeystoreSetMethodContract {
                      |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
                      |  "methodCalls": [
                      |    ["Keystore/set", {
-                     |      "accountId": "$ACCOUNT_ID",
+                     |      "accountId": "$bobAccountId",
                      |      "create": {
                      |        "K87": {
                      |          "key": "$PGP_KEY_ARMORED"
@@ -586,7 +612,7 @@ trait LinagoraKeystoreSetMethodContract {
                      |      }
                      |    }, "c1"],
                      |    ["Keystore/set", {
-                     |      "accountId": "$ACCOUNT_ID",
+                     |      "accountId": "$bobAccountId",
                      |      "destroy": [
                      |        "#K87"
                      |      ]
@@ -612,7 +638,7 @@ trait LinagoraKeystoreSetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
          |    ["Keystore/set", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "created": {
          |        "K87": {
          |          "id": "$PGP_KEY_ID"
@@ -620,7 +646,7 @@ trait LinagoraKeystoreSetMethodContract {
          |      }
          |    }, "c1"],
          |    ["Keystore/set", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "destroyed": [
          |        "$PGP_KEY_ID"
          |      ]
@@ -629,7 +655,7 @@ trait LinagoraKeystoreSetMethodContract {
          |}""".stripMargin)
 
     assertThat(server.getProbe(classOf[JmapGuiceKeystoreManagerProbe])
-      .retrieveKey(BOB, KeyId(PGP_KEY_ID)))
+      .retrieveKey(bobUsername, KeyId(PGP_KEY_ID)))
       .isEmpty
   }
 
@@ -639,7 +665,7 @@ trait LinagoraKeystoreSetMethodContract {
                      |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
                      |  "methodCalls": [
                      |    ["Keystore/set", {
-                     |      "accountId": "$ACCOUNT_ID",
+                     |      "accountId": "$bobAccountId",
                      |      "destroy": [
                      |        "unknown"
                      |      ]
@@ -665,7 +691,7 @@ trait LinagoraKeystoreSetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
          |    ["Keystore/set", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "destroyed": [
          |        "unknown"
          |      ]
@@ -796,7 +822,7 @@ trait LinagoraKeystoreSetMethodContract {
     val sessionJson: String = `given`()
     .when()
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .headers(getHeadersWith(BOB_BASIC_AUTH_HEADER))
+      .headers(getHeadersWith(bobBasicAuthHeader))
       .get("/session")
     .`then`
       .statusCode(SC_OK)
@@ -813,9 +839,8 @@ trait LinagoraKeystoreSetMethodContract {
   @Test
   def keystoreSetShouldRejectFromDelegatedAccount(server: GuiceJamesServer): Unit = {
     server.getProbe(classOf[DelegationProbe])
-      .addAuthorizedUser(BOB, ANDRE)
+      .addAuthorizedUser(bobUsername, andreUsername)
 
-    val bobAccountId = ACCOUNT_ID
     val request =
       s"""{
          |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
@@ -832,7 +857,7 @@ trait LinagoraKeystoreSetMethodContract {
          |}""".stripMargin
 
     val response = `given`(baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(ANDRE, ANDRE_PASSWORD)))
+      .setAuth(authScheme(UserCredential(andreUsername, ANDRE_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build)
       .body(request)
