@@ -45,6 +45,7 @@ public class MemoryLinagoraCalendarEventRejectMethodTest extends LinagoraCalenda
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule(), new DelegationProbeModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @Override
