@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.common
 
+import java.util.UUID
 import java.util.concurrent.TimeUnit
 
 import com.google.common.collect.ImmutableList
@@ -50,25 +51,33 @@ object LinagoraCalendarEventMaybeMethodContract {
 }
 
 abstract class LinagoraCalendarEventMaybeMethodContract {
-  var sender: User = User("ALICE", ALICE.asString(), ALICE_PASSWORD)
-  var senderTwo: User = User("CEDRIC", CEDRIC.asString(), PASSWORD)
-  var receiver: User =  User("BOB", BOB.asString(), BOB_PASSWORD)
-  var extraUser: User = User("ANDRE", ANDRE.asString(), ANDRE_PASSWORD)
+  var sender: User = _
+  var senderTwo: User = _
+  var receiver: User = _
+  var extraUser: User = _
 
   def randomBlobId: String
 
-  def createUsers: java.util.List[User] =
-    ImmutableList.of()
+  // The reply ICS embeds the organizer and attendee addresses: its size grows with the generated usernames
+  private def replyIcsSize(sizeForFixtureUsers: Int): Int =
+    sizeForFixtureUsers + sender.email.length - ALICE.asString.length + receiver.email.length - BOB.asString.length
+
+  def createUsers: java.util.List[User] = {
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    ImmutableList.of(
+      User.unique("ALICE", ALICE, ALICE_PASSWORD, uniqueSuffix),
+      User.unique("CEDRIC", CEDRIC, PASSWORD, uniqueSuffix),
+      User.unique("BOB", BOB, BOB_PASSWORD, uniqueSuffix),
+      User.unique("ANDRE", ANDRE, ANDRE_PASSWORD, uniqueSuffix))
+  }
 
   @BeforeEach
   def setup(server: GuiceJamesServer): Unit = {
     val users = createUsers
-    if (!users.isEmpty) {
-      sender = users.get(0)
-      senderTwo = users.get(1)
-      receiver = users.get(2)
-      extraUser = users.get(3)
-    }
+    sender = users.get(0)
+    senderTwo = users.get(1)
+    receiver = users.get(2)
+    extraUser = users.get(3)
 
     server.getProbe(classOf[DataProbeImpl])
       .fluent
@@ -784,14 +793,14 @@ abstract class LinagoraCalendarEventMaybeMethodContract {
         .inPath("methodResponses[1][1].list[0]")
         .isEqualTo(
           s"""{
-             |    "subject": "Tentatively Accepted: Sprint planning #23 @ Wed Jan 11, 2017 (BOB <bob@domain.tld>)",
-             |    "preview": "BOB <bob@domain.tld> has replied Maybe to this invitation.",
+             |    "subject": "Tentatively Accepted: Sprint planning #23 @ Wed Jan 11, 2017 (${receiver.name} <${receiver.email}>)",
+             |    "preview": "${receiver.name} <${receiver.email}> has replied Maybe to this invitation.",
              |    "id": "$${json-unit.ignore}",
              |    "hasAttachment": true,
              |    "attachments": [
              |        {
              |            "charset": "UTF-8",
-             |            "size": 875,
+             |            "size": ${replyIcsSize(875)},
              |            "partId": "3",
              |            "blobId": "$${json-unit.ignore}",
              |            "type": "text/calendar"
@@ -799,7 +808,7 @@ abstract class LinagoraCalendarEventMaybeMethodContract {
              |        {
              |            "charset": "US-ASCII",
              |            "disposition": "attachment",
-             |            "size": 875,
+             |            "size": ${replyIcsSize(875)},
              |            "partId": "4",
              |            "blobId": "$${json-unit.ignore}",
              |            "name": "invite.ics",
@@ -895,14 +904,14 @@ abstract class LinagoraCalendarEventMaybeMethodContract {
         .inPath("methodResponses[1][1].list[0]")
         .isEqualTo(
           s"""{
-             |    "subject": "Accepté provisoirement: Sprint planning #23 @ Wed Jan 11, 2017 (BOB <bob@domain.tld>)",
-             |    "preview": "BOB <bob@domain.tld> a répondu Peut-être à cette invitation.",
+             |    "subject": "Accepté provisoirement: Sprint planning #23 @ Wed Jan 11, 2017 (${receiver.name} <${receiver.email}>)",
+             |    "preview": "${receiver.name} <${receiver.email}> a répondu Peut-être à cette invitation.",
              |    "id": "$${json-unit.ignore}",
              |    "hasAttachment": true,
              |    "attachments": [
              |        {
              |            "charset": "UTF-8",
-             |            "size": 875,
+             |            "size": ${replyIcsSize(875)},
              |            "partId": "3",
              |            "blobId": "$${json-unit.ignore}",
              |            "type": "text/calendar"
@@ -910,7 +919,7 @@ abstract class LinagoraCalendarEventMaybeMethodContract {
              |        {
              |            "charset": "US-ASCII",
              |            "disposition": "attachment",
-             |            "size": 875,
+             |            "size": ${replyIcsSize(875)},
              |            "partId": "4",
              |            "blobId": "$${json-unit.ignore}",
              |            "name": "invite.ics",
