@@ -71,6 +71,7 @@ public class PostgresLinagoraEncryptedEmailFastViewGetMethodTest implements Lina
             .overrideWith(new PostgresEncryptedMailboxModule()))
         .extension(PostgresExtension.empty())
         .extension(new ClockExtension())
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @RegisterExtension
