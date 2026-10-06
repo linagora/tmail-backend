@@ -45,5 +45,6 @@ public class MemoryTicketAuthenticationTest implements LinagoraTicketAuthenticat
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(binder -> binder.bind(JmapRfc8621Configuration.class)
                 .toInstance(LinagoraTicketAuthenticationContract.jmapConfiguration())))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }

@@ -19,19 +19,23 @@
 package com.linagora.tmail.james.common
 
 import java.net.URI
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
 
 import com.linagora.tmail.james.common.LinagoraTicketAuthenticationContract.{WEB_SOCKET_ECHO_REQUEST, WEB_SOCKET_ECHO_RESPONSE}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, `with`, requestSpecification}
 import io.restassured.authentication.NoAuthScheme
 import io.restassured.http.ContentType.JSON
+import io.restassured.http.Header
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
+import org.apache.james.core.Username
 import org.apache.james.jmap.JmapGuiceProbe
 import org.apache.james.jmap.core.JmapRfc8621Configuration
 import org.apache.james.jmap.core.JmapRfc8621Configuration.{UPLOAD_LIMIT_DEFAULT, URL_PREFIX_DEFAULT, WEBSOCKET_URL_PREFIX_DEFAULT}
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, BOB, BOB_BASIC_AUTH_HEADER, BOB_PASSWORD, DOMAIN, baseRequestSpecBuilder, getHeadersWith}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, AUTHORIZATION_HEADER, BOB_PASSWORD, DOMAIN, baseRequestSpecBuilder, getHeadersWith, toBase64}
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThatThrownBy
@@ -49,6 +53,10 @@ import sttp.ws.WebSocketFrame.Text
 import scala.jdk.CollectionConverters._
 
 object LinagoraTicketAuthenticationContract {
+  case class TestContext(bobUsername: Username)
+
+  private val currentContext: AtomicReference[TestContext] = new AtomicReference[TestContext]()
+
   def jmapConfiguration(): JmapRfc8621Configuration = JmapRfc8621Configuration(
     urlPrefixString = URL_PREFIX_DEFAULT,
     websocketPrefixString = WEBSOCKET_URL_PREFIX_DEFAULT,
@@ -90,15 +98,23 @@ object LinagoraTicketAuthenticationContract {
 }
 
 trait LinagoraTicketAuthenticationContract {
+  def bobUsername: Username = LinagoraTicketAuthenticationContract.currentContext.get().bobUsername
+
+  def bobBasicAuthHeader: Header = new Header(AUTHORIZATION_HEADER, s"Basic ${toBase64(s"${bobUsername.asString}:$BOB_PASSWORD")}")
+
   private lazy val backend: SttpBackend[Identity, WebSockets] = OkHttpSyncBackend()
   private lazy implicit val monadError: MonadError[Identity] = IdMonad
 
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    val bob = Username.fromLocalPartWithDomain(s"bob$uniqueSuffix", DOMAIN)
+    LinagoraTicketAuthenticationContract.currentContext.set(LinagoraTicketAuthenticationContract.TestContext(bob))
+
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
       .addDomain(DOMAIN.asString())
-      .addUser(BOB.asString(), BOB_PASSWORD)
+      .addUser(bobUsername.asString(), BOB_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
       .setAuth(new NoAuthScheme)
@@ -132,7 +148,7 @@ trait LinagoraTicketAuthenticationContract {
     `with`()
       .basePath(s"/jmap/ws/ticket/$ticket")
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .headers(getHeadersWith(BOB_BASIC_AUTH_HEADER))
+      .headers(getHeadersWith(bobBasicAuthHeader))
       .delete()
 
     assertThatThrownBy(() => sendWebSocketRequest(server, ticket))
@@ -145,7 +161,7 @@ trait LinagoraTicketAuthenticationContract {
     val sessionJson: String = `given`()
       .when()
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
-      .headers(getHeadersWith(BOB_BASIC_AUTH_HEADER))
+      .headers(getHeadersWith(bobBasicAuthHeader))
       .get("/session")
     .`then`
       .statusCode(SC_OK)
@@ -168,7 +184,7 @@ trait LinagoraTicketAuthenticationContract {
       .when()
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .header("X-JMAP-PREFIX","http://custom")
-      .headers(getHeadersWith(BOB_BASIC_AUTH_HEADER))
+      .headers(getHeadersWith(bobBasicAuthHeader))
       .get("/session")
     .`then`
       .statusCode(SC_OK)
@@ -208,7 +224,7 @@ trait LinagoraTicketAuthenticationContract {
 
   private def getTicket: String = `given`()
       .basePath("/jmap/ws/ticket")
-      .headers(getHeadersWith(BOB_BASIC_AUTH_HEADER))
+      .headers(getHeadersWith(bobBasicAuthHeader))
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body("")
     .when()
