@@ -48,6 +48,7 @@ public class MemoryMailboxClearMethodTest implements MailboxClearContract {
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding().to(TeamMailboxProbe.class)))
         .extension(new ClockExtension())
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @Override
