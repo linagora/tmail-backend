@@ -68,5 +68,6 @@ public class DistributedPublicAssetGetMethodTest implements PublicAssetGetMethod
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new PublicAssetProbeModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }
