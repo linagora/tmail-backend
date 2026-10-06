@@ -80,6 +80,7 @@ public class PostgresTeamMailboxesTest implements TeamMailboxesContract {
         .extension(new RabbitMQExtension())
         .extension(new DockerOpenSearchExtension())
         .extension(new ClockExtension())
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @Override
