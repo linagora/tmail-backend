@@ -18,8 +18,11 @@
 
 package com.linagora.tmail.james.common
 
+import java.nio.charset.StandardCharsets
 import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
 
+import com.google.common.hash.Hashing
 import com.linagora.tmail.james.common.PublicAssetSetMethodContract.UploadResponse
 import com.linagora.tmail.james.common.probe.PublicAssetProbe
 import com.linagora.tmail.james.jmap.publicAsset.PublicAssetId
@@ -35,7 +38,7 @@ import org.apache.james.GuiceJamesServer
 import org.apache.james.core.Username
 import org.apache.james.jmap.api.model.{IdentityId, IdentityName}
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ANDRE, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE_PASSWORD, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.IdentityProbe
 import org.apache.james.jmap.rfc8621.contract.IdentitySetContract.IDENTITY_CREATION_REQUEST
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
@@ -53,6 +56,15 @@ import scala.annotation.tailrec
 import scala.jdk.CollectionConverters._
 
 object PublicAssetSetMethodContract {
+  case class TestContext(bobUsername: Username, andreUsername: Username) {
+    val bobAccountId: String = accountId(bobUsername)
+  }
+
+  private val currentContext: AtomicReference[TestContext] = new AtomicReference[TestContext]()
+
+  private def accountId(username: Username): String =
+    Hashing.sha256().hashString(username.asString(), StandardCharsets.UTF_8).toString
+
   val CONFIGURATION: JMAPExtensionConfiguration = JMAPExtensionConfiguration(
     publicAssetTotalSizeLimit = PublicAssetTotalSizeLimit.of(Size.of(500L, Size.Unit.B)).get
   )
@@ -61,16 +73,29 @@ object PublicAssetSetMethodContract {
 }
 
 trait PublicAssetSetMethodContract {
+  def bobUsername: Username = PublicAssetSetMethodContract.currentContext.get().bobUsername
+
+  def bobAccountId: String = PublicAssetSetMethodContract.currentContext.get().bobAccountId
+
+  def andreUsername: Username = PublicAssetSetMethodContract.currentContext.get().andreUsername
+
+  private def bobIdentityCreationRequest = IDENTITY_CREATION_REQUEST.copy(email = bobUsername.asMailAddress())
+
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    val bob = Username.fromLocalPartWithDomain(s"bob$uniqueSuffix", DOMAIN)
+    val andre = Username.fromLocalPartWithDomain(s"andre$uniqueSuffix", DOMAIN)
+    PublicAssetSetMethodContract.currentContext.set(PublicAssetSetMethodContract.TestContext(bob, andre))
+
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
       .addDomain(DOMAIN.asString)
-      .addUser(BOB.asString(), BOB_PASSWORD)
-      .addUser(ANDRE.asString(), ANDRE_PASSWORD)
+      .addUser(bobUsername.asString(), BOB_PASSWORD)
+      .addUser(andreUsername.asString(), ANDRE_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .setAuth(authScheme(UserCredential(bobUsername, BOB_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build()
       .log().ifValidationFails()
@@ -88,7 +113,7 @@ trait PublicAssetSetMethodContract {
         .contentType(contentType)
         .body(content)
       .when
-        .post(s"/upload/$ACCOUNT_ID")
+        .post(s"/upload/$bobAccountId")
       .`then`
         .extract
         .body
@@ -118,7 +143,7 @@ trait PublicAssetSetMethodContract {
          |  "methodCalls": [
          |    [
          |      "PublicAsset/set", {
-         |        "accountId": "$ACCOUNT_ID",
+         |        "accountId": "$bobAccountId",
          |        "create": {
          |          "4f29": {
          |            "blobId": "${uploadResponse.blobId}"
@@ -146,7 +171,7 @@ trait PublicAssetSetMethodContract {
         s"""[
            |    "PublicAsset/set",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "oldState": "$${json-unit.ignore}",
            |        "newState": "$${json-unit.ignore}",
            |        "created": {
@@ -171,7 +196,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "create": {
            |          "4f29": {
            |          }
@@ -189,7 +214,7 @@ trait PublicAssetSetMethodContract {
         s"""[
            |    "PublicAsset/set",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "oldState": "$${json-unit.ignore}",
            |        "newState": "$${json-unit.ignore}",
            |        "notCreated": {
@@ -216,7 +241,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "create": {
            |          "4f29": {
            |            "blobId": "${uploadResponse.blobId}"
@@ -258,7 +283,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "create": {
            |          "4f29": {
            |            "blobId": "$notFoundBlobId"
@@ -307,7 +332,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "create": {
            |          "4f29": {
            |            "blobId": "${uploadResponse.blobId}",
@@ -356,7 +381,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "create": {
            |          "4f29": {
            |            "blobId": "${uploadResponse.blobId}",
@@ -403,7 +428,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "create": {
            |          "4f29": {
            |            "blobId": "${uploadResponse.blobId}",
@@ -452,7 +477,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "create": {
            |          "4f29": {
            |            "blobId": "${uploadResponse.blobId}",
@@ -485,7 +510,7 @@ trait PublicAssetSetMethodContract {
         s"""[
            |    "PublicAsset/set",
            |    {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "oldState": "$${json-unit.ignore}",
            |        "newState": "$${json-unit.ignore}",
            |        "created": {
@@ -524,7 +549,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "create": {
            |          "4f29": {
            |            "blobId": "${uploadResponse.blobId}"
@@ -566,7 +591,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "create": {
            |          "4f29": {
            |            "invalid1": "invalid-blob-id"
@@ -611,7 +636,7 @@ trait PublicAssetSetMethodContract {
          |  "methodCalls": [
          |    [
          |      "PublicAsset/set", {
-         |        "accountId": "$ACCOUNT_ID",
+         |        "accountId": "$bobAccountId",
          |        "create": {
          |          "4f29": {
          |            "blobId": "${uploadResponse.blobId}",
@@ -643,7 +668,7 @@ trait PublicAssetSetMethodContract {
          |  "methodCalls": [
          |    [
          |      "PublicAsset/set", {
-         |        "accountId": "$ACCOUNT_ID",
+         |        "accountId": "$bobAccountId",
          |        "create": {
          |          "clientId1": {
          |            "blobId": "${uploadResponse.blobId}"
@@ -677,7 +702,7 @@ trait PublicAssetSetMethodContract {
            |    [
            |        "PublicAsset/set",
            |        {
-           |            "accountId": "$ACCOUNT_ID",
+           |            "accountId": "$bobAccountId",
            |            "oldState": "$${json-unit.ignore}",
            |            "newState": "$${json-unit.ignore}",
            |            "created": {
@@ -727,7 +752,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "update": {
            |          "$publicAssetId": {
            |            "identityIds": { "${identityIds.head}": true }
@@ -752,7 +777,7 @@ trait PublicAssetSetMethodContract {
         s"""[
            |  "PublicAsset/set",
            |  {
-           |    "accountId": "$ACCOUNT_ID",
+           |    "accountId": "$bobAccountId",
            |    "oldState": "$${json-unit.ignore}",
            |    "newState": "$${json-unit.ignore}",
            |    "updated": {
@@ -777,7 +802,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "update": {
            |          "$notFoundPublicAssetId": {
            |            "identityIds": { "${identityIds.head}": true }
@@ -803,7 +828,7 @@ trait PublicAssetSetMethodContract {
         s"""[
            |  "PublicAsset/set",
            |  {
-           |    "accountId": "$ACCOUNT_ID",
+           |    "accountId": "$bobAccountId",
            |    "oldState": "$${json-unit.ignore}",
            |    "newState": "$${json-unit.ignore}",
            |    "notUpdated": {
@@ -831,7 +856,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "update": {
            |          "$publicAssetId": {
            |            "identityIds": { "${notFoundIdentityId}": true }
@@ -857,7 +882,7 @@ trait PublicAssetSetMethodContract {
         s"""[
            |  "PublicAsset/set",
            |  {
-           |    "accountId": "$ACCOUNT_ID",
+           |    "accountId": "$bobAccountId",
            |    "oldState": "$${json-unit.ignore}",
            |    "newState": "$${json-unit.ignore}",
            |    "notUpdated": {
@@ -886,7 +911,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "update": {
            |          "$publicAssetId": {
            |            "identityIds": { "${notFoundIdentityId}": true,  "$identityId": true }
@@ -912,7 +937,7 @@ trait PublicAssetSetMethodContract {
         s"""[
            |  "PublicAsset/set",
            |  {
-           |    "accountId": "$ACCOUNT_ID",
+           |    "accountId": "$bobAccountId",
            |    "oldState": "$${json-unit.ignore}",
            |    "newState": "$${json-unit.ignore}",
            |    "notUpdated": {
@@ -939,7 +964,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "update": {
            |          "$publicAssetId": {
            |          }
@@ -964,7 +989,7 @@ trait PublicAssetSetMethodContract {
         s"""[
            |  "PublicAsset/set",
            |  {
-           |    "accountId": "$ACCOUNT_ID",
+           |    "accountId": "$bobAccountId",
            |    "oldState": "$${json-unit.ignore}",
            |    "newState": "$${json-unit.ignore}",
            |    "notUpdated": {
@@ -992,7 +1017,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "update": {
            |          "$publicAssetId1": {
            |            "identityIds": { "${identityIds.head}": true }
@@ -1036,7 +1061,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "update": {
            |          "$publicAssetId1": {
            |            "identityIds": { "$identityId": true, "$notFoundIdentityId": true}
@@ -1081,7 +1106,7 @@ trait PublicAssetSetMethodContract {
 
     // verify the public asset has no identityIds
     assertThat(server.getProbe(classOf[PublicAssetProbe])
-      .getByUsernameAndAssetId(BOB, PublicAssetId.fromString(publicAssetId).toOption.get)
+      .getByUsernameAndAssetId(bobUsername, PublicAssetId.fromString(publicAssetId).toOption.get)
       .identityIds.asJava).hasSize(0)
 
     // when update the public asset with identityIds
@@ -1092,7 +1117,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "update": {
            |          "$publicAssetId": {
            |            "identityIds":  { "${identityIds.head}": true }
@@ -1115,7 +1140,7 @@ trait PublicAssetSetMethodContract {
 
     // Then new IdentityIds was stored in the public asset
     assertThat(server.getProbe(classOf[PublicAssetProbe])
-      .getByUsernameAndAssetId(BOB, PublicAssetId.fromString(publicAssetId).toOption.get)
+      .getByUsernameAndAssetId(bobUsername, PublicAssetId.fromString(publicAssetId).toOption.get)
       .identityIds
       .map(_.id.toString)
       .asJava).containsExactlyInAnyOrder(identityIds.head)
@@ -1133,7 +1158,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "create": {
            |          "4f29": {
            |            "blobId": "${uploadResponse.blobId}",
@@ -1155,7 +1180,7 @@ trait PublicAssetSetMethodContract {
 
     // verify the public asset has identityIds
     assertThat(server.getProbe(classOf[PublicAssetProbe])
-      .getByUsernameAndAssetId(BOB, PublicAssetId.fromString(publicAssetId).toOption.get)
+      .getByUsernameAndAssetId(bobUsername, PublicAssetId.fromString(publicAssetId).toOption.get)
       .identityIds.asJava).hasSize(1)
 
     // when update the public asset with identityIds
@@ -1166,7 +1191,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "update": {
            |          "$publicAssetId": {
            |            "identityIds": {}
@@ -1189,7 +1214,7 @@ trait PublicAssetSetMethodContract {
 
     // Then new IdentityIds was stored in the public asset
     assertThat(server.getProbe(classOf[PublicAssetProbe])
-      .getByUsernameAndAssetId(BOB, PublicAssetId.fromString(publicAssetId).toOption.get)
+      .getByUsernameAndAssetId(bobUsername, PublicAssetId.fromString(publicAssetId).toOption.get)
       .identityIds
       .asJava).hasSize(0)
   }
@@ -1207,7 +1232,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "update": {
            |          "$publicAssetId": "not-json"
            |        }
@@ -1252,7 +1277,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "update": {
            |          "$publicAssetId": {
            |            "identityIds": { "invalid-identity-id": true }
@@ -1297,7 +1322,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "update": {
            |          "$publicAssetId": {
            |            "identityIds/${identityId1}": true
@@ -1323,7 +1348,7 @@ trait PublicAssetSetMethodContract {
         s"""{"$publicAssetId":null}""")
 
     // Then the public asset should have identityId1
-    assertThat(getIdentityIdsByUsernameAndPublicAssetId(BOB, PublicAssetId.fromString(publicAssetId).toOption.get, server))
+    assertThat(getIdentityIdsByUsernameAndPublicAssetId(bobUsername, PublicAssetId.fromString(publicAssetId).toOption.get, server))
       .containsExactlyInAnyOrder(identityId1)
   }
 
@@ -1341,7 +1366,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "update": {
            |          "$publicAssetId": {
            |            "identityIds/$notFoundIdentityId": true
@@ -1386,7 +1411,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "update": {
            |          "$publicAssetId": {
            |            "identityIds/${identityId1}": null
@@ -1412,7 +1437,7 @@ trait PublicAssetSetMethodContract {
         s"""{"$publicAssetId":null}""")
 
     // Then the public asset should not have identityId1
-    assertThat(getIdentityIdsByUsernameAndPublicAssetId(BOB, PublicAssetId.fromString(publicAssetId).toOption.get, server))
+    assertThat(getIdentityIdsByUsernameAndPublicAssetId(bobUsername, PublicAssetId.fromString(publicAssetId).toOption.get, server))
       .doesNotContain(identityId1)
   }
 
@@ -1430,7 +1455,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "update": {
            |          "$publicAssetId": {
            |            "identityIds/${identityId1}": null
@@ -1447,7 +1472,7 @@ trait PublicAssetSetMethodContract {
       .contentType(JSON)
       .body("methodResponses[0][1].updated", hasKey(publicAssetId))
 
-    assertThat(getIdentityIdsByUsernameAndPublicAssetId(BOB, PublicAssetId.fromString(publicAssetId).toOption.get, server))
+    assertThat(getIdentityIdsByUsernameAndPublicAssetId(bobUsername, PublicAssetId.fromString(publicAssetId).toOption.get, server))
       .hasSize(0)
   }
 
@@ -1455,9 +1480,9 @@ trait PublicAssetSetMethodContract {
   def updateShouldSupportMixAddAndRemovePartialAtSameTime(server: GuiceJamesServer): Unit = {
     // Given +3 identityIds
     val identityProbe = server.getProbe(classOf[IdentityProbe])
-    val identityId1: String = SMono(identityProbe.save(BOB, IDENTITY_CREATION_REQUEST)).block().id.serialize
-    val identityId2: String = SMono(identityProbe.save(BOB, IDENTITY_CREATION_REQUEST.copy(name = Some(IdentityName("Bob (custom address)2"))))).block().id.serialize
-    val identityId3: String = SMono(identityProbe.save(BOB, IDENTITY_CREATION_REQUEST.copy(name = Some(IdentityName("Bob (custom address)3"))))).block().id.serialize
+    val identityId1: String = SMono(identityProbe.save(bobUsername, bobIdentityCreationRequest)).block().id.serialize
+    val identityId2: String = SMono(identityProbe.save(bobUsername, bobIdentityCreationRequest.copy(name = Some(IdentityName("Bob (custom address)2"))))).block().id.serialize
+    val identityId3: String = SMono(identityProbe.save(bobUsername, bobIdentityCreationRequest.copy(name = Some(IdentityName("Bob (custom address)3"))))).block().id.serialize
     assertThat(getIdentityIds().size).isGreaterThan(3)
 
     // Given public asset Id with identityId1 + identityId2
@@ -1471,7 +1496,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "update": {
            |          "$publicAssetId": {
            |            "identityIds/${identityId1}": null,
@@ -1490,7 +1515,7 @@ trait PublicAssetSetMethodContract {
       .body("methodResponses[0][1].updated", hasKey(publicAssetId))
 
     // Then new IdentityIds should be is identityId2 + identityId3
-    assertThat(getIdentityIdsByUsernameAndPublicAssetId(BOB, PublicAssetId.fromString(publicAssetId).toOption.get, server))
+    assertThat(getIdentityIdsByUsernameAndPublicAssetId(bobUsername, PublicAssetId.fromString(publicAssetId).toOption.get, server))
       .containsExactlyInAnyOrder(identityId2, identityId3)
   }
 
@@ -1498,7 +1523,7 @@ trait PublicAssetSetMethodContract {
   def updateShouldReturnNotUpdatedWhenTryResetAndUpdatePartialAtSameTime(server: GuiceJamesServer): Unit = {
     // Given public asset Id with identityId1
     val identityProbe = server.getProbe(classOf[IdentityProbe])
-    val identityId1: String = SMono(identityProbe.save(BOB, IDENTITY_CREATION_REQUEST)).block().id.serialize
+    val identityId1: String = SMono(identityProbe.save(bobUsername, bobIdentityCreationRequest)).block().id.serialize
     val publicAssetId: String = createPublicAssetIdWithIdentityId(Seq(identityId1))
 
     // when update the public asset with reset and update partial at same time
@@ -1509,7 +1534,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "update": {
            |          "$publicAssetId": {
            |            "identityIds": { "${identityId1}": true },
@@ -1553,7 +1578,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "update": {
            |          "$publicAssetId": {
            |            "unknownProperty": true
@@ -1588,11 +1613,11 @@ trait PublicAssetSetMethodContract {
   def setUpdateShouldNotSupportDelegationWhenNotDelegatedUser(server: GuiceJamesServer): Unit = {
     // Given public asset Id (of Bob)
     val publicAssetId: String = createPublicAssetIdWithIdentityId(getIdentityIds())
-    val bobAccountID = ACCOUNT_ID
+    val bobAccountID = bobAccountId
 
     // when update the public asset with not delegated user
     val response: String = `given`()
-      .auth().basic(ANDRE.asString(), ANDRE_PASSWORD)
+      .auth().basic(andreUsername.asString(), ANDRE_PASSWORD)
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(
         s"""{
@@ -1631,7 +1656,7 @@ trait PublicAssetSetMethodContract {
          |}""".stripMargin)
 
     // Then the public asset should not be updated
-    assertThat(getIdentityIdsByUsernameAndPublicAssetId(BOB, PublicAssetId.fromString(publicAssetId).toOption.get, server).size())
+    assertThat(getIdentityIdsByUsernameAndPublicAssetId(bobUsername, PublicAssetId.fromString(publicAssetId).toOption.get, server).size())
       .isGreaterThan(0)
   }
 
@@ -1639,14 +1664,14 @@ trait PublicAssetSetMethodContract {
   def setUpdateShouldSupportDelegationWhenDelegatedUser(server: GuiceJamesServer): Unit = {
     // Given public asset Id (of Bob)
     val publicAssetId: String = createPublicAssetIdWithIdentityId(getIdentityIds())
-    val bobAccountID = ACCOUNT_ID
+    val bobAccountID = bobAccountId
     // Given delegation
     server.getProbe(classOf[DelegationProbe])
-      .addAuthorizedUser(BOB, ANDRE)
+      .addAuthorizedUser(bobUsername, andreUsername)
 
     // when update the public asset with delegated user
     `given`()
-      .auth().basic(ANDRE.asString(), ANDRE_PASSWORD)
+      .auth().basic(andreUsername.asString(), ANDRE_PASSWORD)
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(
         s"""{
@@ -1672,7 +1697,7 @@ trait PublicAssetSetMethodContract {
       .body("methodResponses[0][1].updated", hasKey(publicAssetId))
 
     // Then the public asset should be updated
-    assertThat(getIdentityIdsByUsernameAndPublicAssetId(BOB, PublicAssetId.fromString(publicAssetId).toOption.get, server).size())
+    assertThat(getIdentityIdsByUsernameAndPublicAssetId(bobUsername, PublicAssetId.fromString(publicAssetId).toOption.get, server).size())
       .isEqualTo(0)
   }
 
@@ -1691,7 +1716,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [[
            |    "Identity/get",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "ids": null
            |    },
            |    "c1"]]
@@ -1716,7 +1741,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "create": {
            |          "4f29": {
            |            "blobId": "${uploadResponse.blobId}"
@@ -1749,7 +1774,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "destroy": ["$publicAssetId"]
            |      }, "0"
            |    ]
@@ -1770,7 +1795,7 @@ trait PublicAssetSetMethodContract {
         s"""[
            |  "PublicAsset/set",
            |  {
-           |    "accountId": "$ACCOUNT_ID",
+           |    "accountId": "$bobAccountId",
            |    "oldState": "$${json-unit.ignore}",
            |    "newState": "$${json-unit.ignore}",
            |    "destroyed": ["$publicAssetId"]
@@ -1792,7 +1817,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "destroy": ["$publicAssetId"]
            |      }, "0"
            |    ]
@@ -1806,7 +1831,7 @@ trait PublicAssetSetMethodContract {
       .body("methodResponses[0][1].destroyed", hasItem(publicAssetId))
 
     assertThat(server.getProbe(classOf[PublicAssetProbe])
-      .getByUsernameAndAssetId(BOB, PublicAssetId.fromString(publicAssetId).toOption.get))
+      .getByUsernameAndAssetId(bobUsername, PublicAssetId.fromString(publicAssetId).toOption.get))
       .isNull()
   }
 
@@ -1823,7 +1848,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "destroy": ["$invalidPublicAssetId"]
            |      }, "0"
            |    ]
@@ -1845,7 +1870,7 @@ trait PublicAssetSetMethodContract {
         s"""[
            |  "PublicAsset/set",
            |  {
-           |    "accountId": "$ACCOUNT_ID",
+           |    "accountId": "$bobAccountId",
            |    "oldState": "$${json-unit.ignore}",
            |    "newState": "$${json-unit.ignore}",
            |    "notDestroyed": {
@@ -1872,7 +1897,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "destroy": ["$publicAssetId"]
            |      }, "0"
            |    ]
@@ -1893,7 +1918,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "destroy": ["$publicAssetId"]
            |      }, "0"
            |    ]
@@ -1915,7 +1940,7 @@ trait PublicAssetSetMethodContract {
         s"""[
            |  "PublicAsset/set",
            |  {
-           |    "accountId": "$ACCOUNT_ID",
+           |    "accountId": "$bobAccountId",
            |    "oldState": "$${json-unit.ignore}",
            |    "newState": "$${json-unit.ignore}",
            |    "destroyed": ["$publicAssetId"]
@@ -1928,11 +1953,11 @@ trait PublicAssetSetMethodContract {
   def setDestroyShouldNotSupportDelegationWhenNotDelegatedUser(server: GuiceJamesServer): Unit = {
     // Given public asset Id (of Bob)
     val publicAssetId: String = createPublicAssetId()
-    val bobAccountID = ACCOUNT_ID
+    val bobAccountID = bobAccountId
 
     // When destroy the public asset with not delegated user
     val response: String =  `given`()
-      .auth().basic(ANDRE.asString(), ANDRE_PASSWORD)
+      .auth().basic(andreUsername.asString(), ANDRE_PASSWORD)
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(
         s"""{
@@ -1966,7 +1991,7 @@ trait PublicAssetSetMethodContract {
          |  ]
          |}""".stripMargin)
     assertThat(server.getProbe(classOf[PublicAssetProbe])
-      .getByUsernameAndAssetId(BOB, PublicAssetId.fromString(publicAssetId).toOption.get))
+      .getByUsernameAndAssetId(bobUsername, PublicAssetId.fromString(publicAssetId).toOption.get))
       .isNotNull
   }
 
@@ -1974,16 +1999,16 @@ trait PublicAssetSetMethodContract {
   def setDestroyShouldSupportDelegationWhenDelegatedUser(server: GuiceJamesServer): Unit = {
     // Given public asset Id (of Bob)
     val publicAssetId: String = createPublicAssetId()
-    val bobAccountID = ACCOUNT_ID
+    val bobAccountID = bobAccountId
 
     // Given delegated user
     server.getProbe(classOf[DelegationProbe])
-      .addAuthorizedUser(BOB, ANDRE)
+      .addAuthorizedUser(bobUsername, andreUsername)
 
     // When destroy the public asset with delegated user
     // Then the request should return destroyed
     `given`()
-      .auth().basic(ANDRE.asString(), ANDRE_PASSWORD)
+      .auth().basic(andreUsername.asString(), ANDRE_PASSWORD)
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(
         s"""{
@@ -2006,7 +2031,7 @@ trait PublicAssetSetMethodContract {
 
     // Then the public asset was deleted
     assertThat(server.getProbe(classOf[PublicAssetProbe])
-      .getByUsernameAndAssetId(BOB, PublicAssetId.fromString(publicAssetId).toOption.get))
+      .getByUsernameAndAssetId(bobUsername, PublicAssetId.fromString(publicAssetId).toOption.get))
       .isNull()
   }
 
@@ -2020,7 +2045,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "create": {
            |          "4f29": {
            |            "blobId": "${uploadResponse.blobId}",
@@ -2056,7 +2081,7 @@ trait PublicAssetSetMethodContract {
          |  "methodCalls": [
          |    [
          |      "PublicAsset/set", {
-         |        "accountId": "$ACCOUNT_ID",
+         |        "accountId": "$bobAccountId",
          |        "create": {
          |          "4f29": {
          |            "blobId": "${uploadResponse.blobId}",
@@ -2085,7 +2110,7 @@ trait PublicAssetSetMethodContract {
          |  "methodCalls": [
          |    [
          |      "PublicAsset/set", {
-         |        "accountId": "$ACCOUNT_ID",
+         |        "accountId": "$bobAccountId",
          |        "create": {
          |          "4f29": {
          |            "blobId": "${uploadResponse2.blobId}",
@@ -2133,7 +2158,7 @@ trait PublicAssetSetMethodContract {
            |  "methodCalls": [
            |    [
            |      "PublicAsset/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "create": {
            |          "4f29": {
            |            "blobId": "${uploadResponse.blobId}"
@@ -2159,7 +2184,7 @@ trait PublicAssetSetMethodContract {
                 |  "methodCalls": [
                 |    [
                 |      "PublicAsset/set", {
-                |        "accountId": "$ACCOUNT_ID",
+                |        "accountId": "$bobAccountId",
                 |        "create": {
                 |          "4f29": {
                 |            "blobId": "${uploadResponse2.blobId}"
@@ -2184,7 +2209,7 @@ trait PublicAssetSetMethodContract {
            |    [
            |      "PublicAsset/get",
            |      {
-           |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+           |        "accountId": "${bobAccountId}",
            |        "ids": ["$publicAssetIdA"]
            |      },
            |      "c1"
