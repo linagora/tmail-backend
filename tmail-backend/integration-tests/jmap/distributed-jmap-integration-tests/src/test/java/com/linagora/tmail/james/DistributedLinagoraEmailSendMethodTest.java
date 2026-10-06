@@ -67,6 +67,7 @@ public class DistributedLinagoraEmailSendMethodTest implements LinagoraEmailSend
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(new DistributedEncryptedMailboxModule())
             .overrideWith(new LinagoraTestJMAPServerModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @Override

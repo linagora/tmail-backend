@@ -243,7 +243,7 @@ class DistributedLinagoraSecondaryBlobStoreTest {
     @Test
     void sendEmailShouldResultingInSavingDataToBothObjectStorages(GuiceJamesServer server) {
         given()
-            .body(LinagoraEmailSendMethodContract$.MODULE$.bobSendsAMailToAndre(server))
+            .body(LinagoraEmailSendMethodContract$.MODULE$.bobSendsAMailToAndre(server, BOB, ANDRE))
         .when()
             .post()
         .then()
@@ -271,7 +271,7 @@ class DistributedLinagoraSecondaryBlobStoreTest {
         secondaryS3.pause();
 
         given()
-            .body(LinagoraEmailSendMethodContract$.MODULE$.bobSendsAMailToAndre(server))
+            .body(LinagoraEmailSendMethodContract$.MODULE$.bobSendsAMailToAndre(server, BOB, ANDRE))
         .when()
             .post()
         .then()
@@ -300,7 +300,7 @@ class DistributedLinagoraSecondaryBlobStoreTest {
         secondaryS3.pause();
 
         given()
-            .body(LinagoraEmailSendMethodContract$.MODULE$.bobSendsAMailToAndre(server))
+            .body(LinagoraEmailSendMethodContract$.MODULE$.bobSendsAMailToAndre(server, BOB, ANDRE))
         .when()
             .post()
         .then()
