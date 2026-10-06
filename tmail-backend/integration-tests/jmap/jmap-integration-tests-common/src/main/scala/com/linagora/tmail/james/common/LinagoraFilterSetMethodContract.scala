@@ -18,6 +18,11 @@
 
 package com.linagora.tmail.james.common
 
+import java.nio.charset.StandardCharsets
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
+
+import com.google.common.hash.Hashing
 import com.linagora.tmail.james.common.LinagoraFilterSetMethodContract.firebasePushClient
 import com.linagora.tmail.james.jmap.firebase.{FirebasePushClient, FirebasePushRequest}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
@@ -31,9 +36,10 @@ import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
 import org.apache.http.HttpStatus
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
+import org.apache.james.core.Username
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.SoftAssertions
@@ -45,24 +51,39 @@ import play.api.libs.json.{JsValue, Json}
 import reactor.core.publisher.Mono
 
 object LinagoraFilterSetMethodContract {
+  case class TestContext(bobUsername: Username) {
+    val bobAccountId: String = accountId(bobUsername)
+  }
+
+  private val currentContext: AtomicReference[TestContext] = new AtomicReference[TestContext]()
+
+  private def accountId(username: Username): String =
+    Hashing.sha256().hashString(username.asString(), StandardCharsets.UTF_8).toString
+
   val firebasePushClient: FirebasePushClient = mock(classOf[FirebasePushClient])
 }
 
 trait LinagoraFilterSetMethodContract {
+  def bobUsername: Username = LinagoraFilterSetMethodContract.currentContext.get().bobUsername
+
+  def bobAccountId: String = LinagoraFilterSetMethodContract.currentContext.get().bobAccountId
 
   def generateMailboxIdForUser(): String
   def generateMailboxId2ForUser(): String
-  def generateAccountIdAsString(): String
 
   @BeforeEach
   def setUp(server : GuiceJamesServer): Unit = {
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    val bob = Username.fromLocalPartWithDomain(s"bob$uniqueSuffix", DOMAIN)
+    LinagoraFilterSetMethodContract.currentContext.set(LinagoraFilterSetMethodContract.TestContext(bob))
+
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
       .addDomain(DOMAIN.asString)
-      .addUser(BOB.asString(), BOB_PASSWORD)
+      .addUser(bobUsername.asString(), BOB_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .setAuth(authScheme(UserCredential(bobUsername, BOB_PASSWORD)))
       .build()
 
     reset(firebasePushClient)
@@ -77,7 +98,7 @@ trait LinagoraFilterSetMethodContract {
          |	"using": ["com:linagora:params:jmap:filter"],
          |	"methodCalls": [
          |		["Filter/set", {
-         |			"accountId": "$generateAccountIdAsString",
+         |			"accountId": "$bobAccountId",
          |			"update": {
          |				"singleton": [{
          |					"id": "1",
@@ -98,7 +119,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/get",
          |			{
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"ids": ["singleton"]
          |			},
          |			"c2"
@@ -128,7 +149,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/set",
          |			{
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"oldState": "-1",
          |				"newState": "0",
          |				"updated": {
@@ -141,7 +162,7 @@ trait LinagoraFilterSetMethodContract {
          |		],
          |		[
          |			"Filter/get", {
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"state": "0",
          |				"list": [{
          |					"id": "singleton",
@@ -185,7 +206,7 @@ trait LinagoraFilterSetMethodContract {
          |	"using": ["com:linagora:params:jmap:filter"],
          |	"methodCalls": [
          |		["Filter/set", {
-         |			"accountId": "$generateAccountIdAsString",
+         |			"accountId": "$bobAccountId",
          |			"update": {
          |				"singleton": [{
          |					"id": "1",
@@ -206,7 +227,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/get",
          |			{
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"ids": ["singleton"]
          |			},
          |			"c2"
@@ -236,7 +257,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/set",
          |			{
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"oldState": "-1",
          |				"newState": "0",
          |				"updated": {
@@ -249,7 +270,7 @@ trait LinagoraFilterSetMethodContract {
          |		],
          |		[
          |			"Filter/get", {
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"state": "0",
          |				"list": [{
          |					"id": "singleton",
@@ -292,7 +313,7 @@ trait LinagoraFilterSetMethodContract {
                      |	"using": ["com:linagora:params:jmap:filter"],
                      |	"methodCalls": [
                      |		["Filter/set", {
-                     |			"accountId": "$generateAccountIdAsString",
+                     |			"accountId": "$bobAccountId",
                      |			"update": {
                      |				"singleton": [{
                      |					"id": "1",
@@ -317,7 +338,7 @@ trait LinagoraFilterSetMethodContract {
                      |		[
                      |			"Filter/get",
                      |			{
-                     |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                     |				"accountId": "${bobAccountId}",
                      |				"ids": ["singleton"]
                      |			},
                      |			"c2"
@@ -345,7 +366,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/set",
          |			{
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"oldState": "-1",
          |				"newState": "0",
          |				"updated": {
@@ -358,7 +379,7 @@ trait LinagoraFilterSetMethodContract {
          |		],
          |		[
          |			"Filter/get", {
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"state": "0",
          |				"list": [{
          |					"id": "singleton",
@@ -406,7 +427,7 @@ trait LinagoraFilterSetMethodContract {
          |	"using": ["com:linagora:params:jmap:filter"],
          |	"methodCalls": [
          |		["Filter/set", {
-         |			"accountId": "$generateAccountIdAsString",
+         |			"accountId": "$bobAccountId",
          |			"update": {
          |				"singleton": [{
          |					"id": "1",
@@ -431,7 +452,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/get",
          |			{
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"ids": ["singleton"]
          |			},
          |			"c2"
@@ -459,7 +480,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/set",
          |			{
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"oldState": "-1",
          |				"newState": "0",
          |				"updated": {
@@ -472,7 +493,7 @@ trait LinagoraFilterSetMethodContract {
          |		],
          |		[
          |			"Filter/get", {
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"state": "0",
          |				"list": [{
          |					"id": "singleton",
@@ -518,13 +539,13 @@ trait LinagoraFilterSetMethodContract {
 
   @Test
   def updateRulesShouldFailWhenActionForwardContainsMailAddressOfCurrentUser(): Unit = {
-    val usernameString = BOB.asString()
+    val usernameString = bobUsername.asString()
     val request =
       s"""{
          |	"using": ["com:linagora:params:jmap:filter"],
          |	"methodCalls": [
          |		["Filter/set", {
-         |			"accountId": "$generateAccountIdAsString",
+         |			"accountId": "$bobAccountId",
          |			"update": {
          |				"singleton": [{
          |					"id": "1",
@@ -570,7 +591,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/set",
          |			{
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"oldState": "-1",
          |				"newState": "-1",
          |				"notUpdated": {
@@ -593,7 +614,7 @@ trait LinagoraFilterSetMethodContract {
          |	"using": ["com:linagora:params:jmap:filter"],
          |	"methodCalls": [
          |		["Filter/set", {
-         |			"accountId": "$generateAccountIdAsString",
+         |			"accountId": "$bobAccountId",
          |			"update": {
          |				"singleton": [{
          |					"id": "1",
@@ -617,7 +638,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/get",
          |			{
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"ids": ["singleton"]
          |			},
          |			"c2"
@@ -645,7 +666,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/set",
          |			{
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"oldState": "-1",
          |				"newState": "0",
          |				"updated": {
@@ -658,7 +679,7 @@ trait LinagoraFilterSetMethodContract {
          |		],
          |		[
          |			"Filter/get", {
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"state": "0",
          |				"list": [{
          |					"id": "singleton",
@@ -708,7 +729,7 @@ trait LinagoraFilterSetMethodContract {
          |	"using": ["com:linagora:params:jmap:filter"],
          |	"methodCalls": [
          |		["Filter/set", {
-         |			"accountId": "$generateAccountIdAsString",
+         |			"accountId": "$bobAccountId",
          |			"update": {
          |				"singleton": [{
          |					"id": "1",
@@ -729,7 +750,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/get",
          |			{
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"ids": ["singleton"]
          |			},
          |			"c2"
@@ -757,7 +778,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/set",
          |			{
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"oldState": "-1",
          |				"newState": "0",
          |				"updated": {
@@ -770,7 +791,7 @@ trait LinagoraFilterSetMethodContract {
          |		],
          |		[
          |			"Filter/get", {
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"state": "0",
          |				"list": [{
          |					"id": "singleton",
@@ -817,7 +838,7 @@ trait LinagoraFilterSetMethodContract {
          |	"using": ["com:linagora:params:jmap:filter"],
          |	"methodCalls": [
          |		["Filter/set", {
-         |			"accountId": "$generateAccountIdAsString",
+         |			"accountId": "$bobAccountId",
          |			"update": {
          |				"singleton": [{
          |					"id": "1",
@@ -838,7 +859,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/get",
          |			{
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"ids": ["singleton"]
          |			},
          |			"c2"
@@ -866,7 +887,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/set",
          |			{
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"oldState": "-1",
          |				"newState": "0",
          |				"updated": {
@@ -879,7 +900,7 @@ trait LinagoraFilterSetMethodContract {
          |		],
          |		[
          |			"Filter/get", {
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"state": "0",
          |				"list": [{
          |					"id": "singleton",
@@ -926,7 +947,7 @@ trait LinagoraFilterSetMethodContract {
          |	"using": ["com:linagora:params:jmap:filter"],
          |	"methodCalls": [
          |		["Filter/set", {
-         |			"accountId": "$generateAccountIdAsString",
+         |			"accountId": "$bobAccountId",
          |			"update": {
          |				"singleton": [{
          |					"id": "1",
@@ -947,7 +968,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/get",
          |			{
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"ids": ["singleton"]
          |			},
          |			"c2"
@@ -975,7 +996,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/set",
          |			{
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"oldState": "-1",
          |				"newState": "0",
          |				"updated": {
@@ -988,7 +1009,7 @@ trait LinagoraFilterSetMethodContract {
          |		],
          |		[
          |			"Filter/get", {
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"state": "0",
          |				"list": [{
          |					"id": "singleton",
@@ -1035,7 +1056,7 @@ trait LinagoraFilterSetMethodContract {
          |	"using": ["com:linagora:params:jmap:filter"],
          |	"methodCalls": [
          |		["Filter/set", {
-         |			"accountId": "$generateAccountIdAsString",
+         |			"accountId": "$bobAccountId",
          |			"update": {
          |				"singleton": [{
          |					"id": "1",
@@ -1077,7 +1098,7 @@ trait LinagoraFilterSetMethodContract {
          |        [
          |            "Filter/set",
          |            {
-         |                "accountId": "$generateAccountIdAsString",
+         |                "accountId": "$bobAccountId",
          |                "oldState": "-1",
          |                "newState": "-1",
          |                "notUpdated": {
@@ -1100,7 +1121,7 @@ trait LinagoraFilterSetMethodContract {
          |	"using": ["com:linagora:params:jmap:filter"],
          |	"methodCalls": [
          |		["Filter/set", {
-         |			"accountId": "$generateAccountIdAsString",
+         |			"accountId": "$bobAccountId",
          |			"update": {
          |				"singleton": [{
          |					"id": "1",
@@ -1142,7 +1163,7 @@ trait LinagoraFilterSetMethodContract {
          |        [
          |            "Filter/set",
          |            {
-         |                "accountId": "$generateAccountIdAsString",
+         |                "accountId": "$bobAccountId",
          |                "oldState": "-1",
          |                "newState": "-1",
          |                "notUpdated": {
@@ -1165,7 +1186,7 @@ trait LinagoraFilterSetMethodContract {
          |	"using": ["com:linagora:params:jmap:filter"],
          |	"methodCalls": [
          |		["Filter/set", {
-         |			"accountId": "$generateAccountIdAsString",
+         |			"accountId": "$bobAccountId",
          |			"update": {
          |				"singleton": [{
          |					"id": "1",
@@ -1207,7 +1228,7 @@ trait LinagoraFilterSetMethodContract {
          |        [
          |            "Filter/set",
          |            {
-         |                "accountId": "$generateAccountIdAsString",
+         |                "accountId": "$bobAccountId",
          |                "oldState": "-1",
          |                "newState": "-1",
          |                "notUpdated": {
@@ -1229,7 +1250,7 @@ trait LinagoraFilterSetMethodContract {
                      |	"using": [],
                      |	"methodCalls": [
                      |		["Filter/set", {
-                     |			"accountId": "$generateAccountIdAsString",
+                     |			"accountId": "$bobAccountId",
                      |			"update": {
                      |				"singleton": [{
                      |					"id": "1",
@@ -1339,7 +1360,7 @@ trait LinagoraFilterSetMethodContract {
                      |	"using": ["com:linagora:params:jmap:filter"],
                      |	"methodCalls": [
                      |		["Filter/set", {
-                     |			"accountId": "$generateAccountIdAsString",
+                     |			"accountId": "$bobAccountId",
                      |			"update": {
                      |				"singleton2": [{
                      |					"id": "1",
@@ -1380,7 +1401,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/set",
          |			{
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"oldState": "-1",
          |				"newState": "-1",
          |				"notUpdated": {
@@ -1402,7 +1423,7 @@ trait LinagoraFilterSetMethodContract {
                      |	"using": ["com:linagora:params:jmap:filter"],
                      |	"methodCalls": [
                      |		["Filter/set", {
-                     |			"accountId": "$generateAccountIdAsString",
+                     |			"accountId": "$bobAccountId",
                      |			"update": {
                      |				"singleton": [{
                      |					"id": "1",
@@ -1457,7 +1478,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/set",
          |			{
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"oldState": "-1",
          |				"newState": "0",
          |				"updated": {
@@ -1484,7 +1505,7 @@ trait LinagoraFilterSetMethodContract {
                      |	"using": ["com:linagora:params:jmap:filter"],
                      |	"methodCalls": [
                      |		["Filter/set", {
-                     |			"accountId": "$generateAccountIdAsString",
+                     |			"accountId": "$bobAccountId",
                      |			"create": {
                      |				"singleton": [{
                      |					"id": "1",
@@ -1526,7 +1547,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/set",
          |			{
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"oldState": "-1",
          |				"newState": "-1",
          |				"notCreated": {
@@ -1548,7 +1569,7 @@ trait LinagoraFilterSetMethodContract {
                      |	"using": ["com:linagora:params:jmap:filter"],
                      |	"methodCalls": [
                      |		["Filter/set", {
-                     |			"accountId": "$generateAccountIdAsString",
+                     |			"accountId": "$bobAccountId",
                      |			"destroy": ["singleton"]
                      |		}, "c1"]
                      |	]
@@ -1575,7 +1596,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/set",
          |			{
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"oldState": "-1",
          |				"newState": "-1",
          |				"notDestroyed": {
@@ -1597,7 +1618,7 @@ trait LinagoraFilterSetMethodContract {
                      |	"using": ["com:linagora:params:jmap:filter"],
                      |	"methodCalls": [
                      |		["Filter/set", {
-                     |			"accountId": "$generateAccountIdAsString",
+                     |			"accountId": "$bobAccountId",
                      |			"update": {
                      |				"singleton": [{
                      |					"id": "1",
@@ -1638,7 +1659,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/set",
          |			{
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"oldState": "-1",
          |				"newState": "-1",
          |				"notUpdated": {
@@ -1660,7 +1681,7 @@ trait LinagoraFilterSetMethodContract {
                      |	"using": ["com:linagora:params:jmap:filter"],
                      |	"methodCalls": [
                      |		["Filter/set", {
-                     |			"accountId": "$generateAccountIdAsString",
+                     |			"accountId": "$bobAccountId",
                      |			"update": {
                      |				"singleton": [{
                      |					"id": "1",
@@ -1701,7 +1722,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/set",
          |			{
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"oldState": "-1",
          |				"newState": "-1",
          |				"notUpdated": {
@@ -1723,7 +1744,7 @@ trait LinagoraFilterSetMethodContract {
                      |	"using": ["com:linagora:params:jmap:filter"],
                      |	"methodCalls": [
                      |		["Filter/set", {
-                     |			"accountId": "$generateAccountIdAsString",
+                     |			"accountId": "$bobAccountId",
                      |			"update": {
                      |				"singleton": [{
                      |					"id": "1",
@@ -1764,7 +1785,7 @@ trait LinagoraFilterSetMethodContract {
          |        [
          |            "Filter/set",
          |            {
-         |                "accountId": "$generateAccountIdAsString",
+         |                "accountId": "$bobAccountId",
          |                "oldState": "-1",
          |                "newState": "-1",
          |                "notUpdated": {
@@ -1786,7 +1807,7 @@ trait LinagoraFilterSetMethodContract {
                      |	"using": ["com:linagora:params:jmap:filter"],
                      |	"methodCalls": [
                      |		["Filter/set", {
-                     |			"accountId": "$generateAccountIdAsString",
+                     |			"accountId": "$bobAccountId",
                      |			"update": {
                      |				"singleton": [
                      |          {
@@ -1842,7 +1863,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/set",
          |			{
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"oldState": "-1",
          |				"newState": "-1",
          |				"notUpdated": {
@@ -1864,7 +1885,7 @@ trait LinagoraFilterSetMethodContract {
                       |	"using": ["com:linagora:params:jmap:filter"],
                       |	"methodCalls": [
                       |		["Filter/set", {
-                      |			"accountId": "$generateAccountIdAsString",
+                      |			"accountId": "$bobAccountId",
                       |			"update": {
                       |				"singleton": [{
                       |					"id": "1",
@@ -1898,7 +1919,7 @@ trait LinagoraFilterSetMethodContract {
                       |	"using": ["com:linagora:params:jmap:filter"],
                       |	"methodCalls": [
                       |		["Filter/set", {
-                      |			"accountId": "$generateAccountIdAsString",
+                      |			"accountId": "$bobAccountId",
                       |			"ifInState": "0",
                       |			"update": {
                       |				"singleton": [{
@@ -1920,7 +1941,7 @@ trait LinagoraFilterSetMethodContract {
                       |		[
                       |			"Filter/get",
                       |			{
-                      |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                      |				"accountId": "${bobAccountId}",
                       |				"ids": ["singleton"]
                       |			},
                       |			"c2"
@@ -1948,7 +1969,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/set",
          |			{
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"oldState": "0",
          |				"newState": "1",
          |				"updated": {
@@ -1961,7 +1982,7 @@ trait LinagoraFilterSetMethodContract {
          |		],
          |		[
          |			"Filter/get", {
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"state": "1",
          |				"list": [{
          |					"id": "singleton",
@@ -2003,7 +2024,7 @@ trait LinagoraFilterSetMethodContract {
                       |	"using": ["com:linagora:params:jmap:filter"],
                       |	"methodCalls": [
                       |		["Filter/set", {
-                      |			"accountId": "$generateAccountIdAsString",
+                      |			"accountId": "$bobAccountId",
                       |			"update": {
                       |				"singleton": [{
                       |					"id": "1",
@@ -2037,7 +2058,7 @@ trait LinagoraFilterSetMethodContract {
                       |	"using": ["com:linagora:params:jmap:filter"],
                       |	"methodCalls": [
                       |		["Filter/set", {
-                      |			"accountId": "$generateAccountIdAsString",
+                      |			"accountId": "$bobAccountId",
                       |			"update": {
                       |				"singleton": [{
                       |					"id": "2",
@@ -2078,7 +2099,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/set",
          |			{
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"oldState": "0",
          |				"newState": "1",
          |				"updated": {
@@ -2100,7 +2121,7 @@ trait LinagoraFilterSetMethodContract {
                      |	"using": ["com:linagora:params:jmap:filter"],
                      |	"methodCalls": [
                      |		["Filter/set", {
-                     |			"accountId": "$generateAccountIdAsString",
+                     |			"accountId": "$bobAccountId",
                      |			"ifInState": "-1",
                      |			"update": {
                      |				"singleton": [{
@@ -2122,7 +2143,7 @@ trait LinagoraFilterSetMethodContract {
                      |		[
                      |			"Filter/get",
                      |			{
-                     |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+                     |				"accountId": "${bobAccountId}",
                      |				"ids": ["singleton"]
                      |			},
                      |			"c2"
@@ -2150,7 +2171,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/set",
          |			{
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"oldState": "-1",
          |				"newState": "0",
          |				"updated": {
@@ -2163,7 +2184,7 @@ trait LinagoraFilterSetMethodContract {
          |		],
          |		[
          |			"Filter/get", {
-         |				"accountId": "$generateAccountIdAsString",
+         |				"accountId": "$bobAccountId",
          |				"state": "0",
          |				"list": [{
          |					"id": "singleton",
@@ -2205,7 +2226,7 @@ trait LinagoraFilterSetMethodContract {
                       |	"using": ["com:linagora:params:jmap:filter"],
                       |	"methodCalls": [
                       |		["Filter/set", {
-                      |			"accountId": "$generateAccountIdAsString",
+                      |			"accountId": "$bobAccountId",
                       |			"update": {
                       |				"singleton": [{
                       |					"id": "1",
@@ -2239,7 +2260,7 @@ trait LinagoraFilterSetMethodContract {
                       |	"using": ["com:linagora:params:jmap:filter"],
                       |	"methodCalls": [
                       |		["Filter/set", {
-                      |			"accountId": "$generateAccountIdAsString",
+                      |			"accountId": "$bobAccountId",
                       |			"ifInState": "-1",
                       |			"update": {
                       |				"singleton": [{
@@ -2281,7 +2302,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/set",
          |			{
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"oldState": "0",
          |				"newState": "0",
          |				"notUpdated": {
@@ -2303,7 +2324,7 @@ trait LinagoraFilterSetMethodContract {
                       |	"using": ["com:linagora:params:jmap:filter"],
                       |	"methodCalls": [
                       |		["Filter/set", {
-                      |			"accountId": "$generateAccountIdAsString",
+                      |			"accountId": "$bobAccountId",
                       |			"update": {
                       |				"singleton": [{
                       |					"id": "1",
@@ -2337,7 +2358,7 @@ trait LinagoraFilterSetMethodContract {
                       |	"using": ["com:linagora:params:jmap:filter"],
                       |	"methodCalls": [
                       |		["Filter/set", {
-                      |			"accountId": "$generateAccountIdAsString",
+                      |			"accountId": "$bobAccountId",
                       |			"ifInState": "1",
                       |			"update": {
                       |				"singleton": [{
@@ -2379,7 +2400,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/set",
          |			{
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"oldState": "0",
          |				"newState": "0",
          |				"notUpdated": {
@@ -2402,7 +2423,7 @@ trait LinagoraFilterSetMethodContract {
          |	"using": ["com:linagora:params:jmap:filter"],
          |	"methodCalls": [
          |		["Filter/set", {
-         |			"accountId": "$generateAccountIdAsString",
+         |			"accountId": "$bobAccountId",
          |			"update": {
          |				"singleton": [{
          |					"id": "1",
@@ -2433,7 +2454,7 @@ trait LinagoraFilterSetMethodContract {
          |		[
          |			"Filter/get",
          |			{
-         |				"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+         |				"accountId": "${bobAccountId}",
          |				"ids": ["singleton"]
          |			},
          |			"c2"
@@ -2463,7 +2484,7 @@ trait LinagoraFilterSetMethodContract {
            |		[
            |			"Filter/set",
            |			{
-           |				"accountId": "$generateAccountIdAsString",
+           |				"accountId": "$bobAccountId",
            |				"oldState": "-1",
            |				"newState": "0",
            |				"updated": {
@@ -2476,7 +2497,7 @@ trait LinagoraFilterSetMethodContract {
            |		],
            |		[
            |			"Filter/get", {
-           |				"accountId": "$generateAccountIdAsString",
+           |				"accountId": "$bobAccountId",
            |				"state": "0",
            |				"list": [{
            |					"id": "singleton",
@@ -2570,7 +2591,7 @@ trait LinagoraFilterSetMethodContract {
          |	"using": ["com:linagora:params:jmap:filter"],
          |	"methodCalls": [
          |		["Filter/set", {
-         |			"accountId": "$generateAccountIdAsString",
+         |			"accountId": "$bobAccountId",
          |			"update": {"singleton": $rules}
          |		}, "c1"]
          |	]
@@ -2582,7 +2603,7 @@ trait LinagoraFilterSetMethodContract {
          |	"using": ["com:linagora:params:jmap:filter"],
          |	"methodCalls": [
          |		["Filter/get", {
-         |			"accountId": "$generateAccountIdAsString",
+         |			"accountId": "$bobAccountId",
          |			"ids": ["singleton"]
          |		}, "c1"]
          |	]
@@ -2613,7 +2634,7 @@ trait LinagoraFilterSetMethodContract {
            |	"using": ["com:linagora:params:jmap:filter"],
            |	"methodCalls": [
            |		["Filter/set", {
-           |			"accountId": "$generateAccountIdAsString",
+           |			"accountId": "$bobAccountId",
            |			"create": {
            |				"singleton": [{
            |					"id": "1",
@@ -2642,7 +2663,7 @@ trait LinagoraFilterSetMethodContract {
         s"""[
            |	"Filter/set",
            |	{
-           |		"accountId": "$generateAccountIdAsString",
+           |		"accountId": "$bobAccountId",
            |		"oldState": "-1",
            |		"newState": "-1",
            |		"notCreated": {
@@ -2669,7 +2690,7 @@ trait LinagoraFilterSetMethodContract {
            |	"using": ["com:linagora:params:jmap:filter"],
            |	"methodCalls": [
            |		["Filter/set", {
-           |			"accountId": "$generateAccountIdAsString",
+           |			"accountId": "$bobAccountId",
            |			"update": {
            |				"singleton": [{
            |					"id": "1",
@@ -2704,7 +2725,7 @@ trait LinagoraFilterSetMethodContract {
 
       val stateChangesCapture: java.util.Map[String, String] = argumentCaptor.getValue.stateChangesMap()
       SoftAssertions.assertSoftly(softLy => {
-        softLy.assertThat(stateChangesCapture).containsOnlyKeys(s"$generateAccountIdAsString:Filter")
+        softLy.assertThat(stateChangesCapture).containsOnlyKeys(s"$bobAccountId:Filter")
         softLy.assertThat(stateChangesCapture).containsValue(newState)
       })
     })
@@ -2724,7 +2745,7 @@ trait LinagoraFilterSetMethodContract {
            |            "create": {
            |                "4f29": {
            |                  "deviceClientId": "a889-ffea-910",
-           |                  "token": "token1",
+           |                  "token": "token-${UUID.randomUUID().toString}",
            |                  "types": ["Filter"]
            |                }
            |              }

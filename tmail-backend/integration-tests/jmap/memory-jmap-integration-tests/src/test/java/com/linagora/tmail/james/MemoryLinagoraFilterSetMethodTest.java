@@ -44,6 +44,7 @@ public class MemoryLinagoraFilterSetMethodTest implements LinagoraFilterSetMetho
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(binder -> binder.bind(FirebasePushClient.class).toInstance(LinagoraFilterSetMethodContract.firebasePushClient()))
             .overrideWith(new LinagoraTestJMAPServerModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @Override
@@ -56,8 +57,4 @@ public class MemoryLinagoraFilterSetMethodTest implements LinagoraFilterSetMetho
         return InMemoryId.of(2).toString();
     }
 
-    @Override
-    public String generateAccountIdAsString() {
-        return "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6";
-    }
 }

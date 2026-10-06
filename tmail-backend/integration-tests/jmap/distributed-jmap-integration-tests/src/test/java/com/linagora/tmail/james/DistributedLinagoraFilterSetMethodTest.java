@@ -63,6 +63,7 @@ public class DistributedLinagoraFilterSetMethodTest implements LinagoraFilterSet
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(binder -> binder.bind(FirebasePushClient.class).toInstance(LinagoraFilterSetMethodContract.firebasePushClient()))
             .overrideWith(new LinagoraTestJMAPServerModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @Override
@@ -75,8 +76,4 @@ public class DistributedLinagoraFilterSetMethodTest implements LinagoraFilterSet
         return CassandraId.of("123e4567-e89b-12d3-a456-426614174001").asUuid().toString();
     }
 
-    @Override
-    public String generateAccountIdAsString() {
-        return "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6";
-    }
 }
