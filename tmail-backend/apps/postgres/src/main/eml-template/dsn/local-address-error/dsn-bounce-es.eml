@@ -1,0 +1,12 @@
+# Notificación del estado de entrega (error) del mensaje para {{RECIPIENTS}}: el usuario no existe
+
+Esta es una notificación del estado de entrega generada automáticamente.
+Lamentamos informarle de que su mensaje no se ha podido entregar porque el usuario indicado no existe.
+
+Detalles:
+- De: {{SENDER}}
+- Para: {{RECIPIENTS}}
+- Asunto original: {{SUBJECT}}
+- Fecha: {{DATE}}
+
+Póngase en contacto con el administrador para obtener más información.

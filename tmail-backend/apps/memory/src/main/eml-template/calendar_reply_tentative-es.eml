@@ -1,0 +1,5 @@
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Subject: Aceptado provisionalmente: {{EVENT_TITLE}} @ {{EVENT_START_DATE}} ({{ATTENDEE}})
+
+{{ATTENDEE}} ha respondido Quizás a esta invitación.

@@ -1,0 +1,12 @@
+# Benachrichtigung zum Zustellstatus (fehlgeschlagen) für die Nachricht an {{RECIPIENTS}}: Benutzer nicht vorhanden
+
+Dies ist eine automatisch erstellte Benachrichtigung zum Zustellstatus.
+Leider konnte Ihre Nachricht nicht zugestellt werden, da der angegebene Benutzer nicht existiert.
+
+Details:
+- Von: {{SENDER}}
+- An: {{RECIPIENTS}}
+- Ursprünglicher Betreff: {{SUBJECT}}
+- Datum: {{DATE}}
+
+Bitte wenden Sie sich für weitere Informationen an den Administrator.

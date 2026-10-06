@@ -1,0 +1,12 @@
+# Notifica sullo stato di consegna (errore) per il messaggio a {{RECIPIENTS}}: utente inesistente
+
+Questa è una notifica sullo stato di consegna generata automaticamente.
+Siamo spiacenti di informarti che non è stato possibile recapitare il tuo messaggio perché l'utente indicato non esiste.
+
+Dettagli:
+- Da: {{SENDER}}
+- A: {{RECIPIENTS}}
+- Oggetto originale: {{SUBJECT}}
+- Data: {{DATE}}
+
+Per maggiori informazioni, contatta l'amministratore.
