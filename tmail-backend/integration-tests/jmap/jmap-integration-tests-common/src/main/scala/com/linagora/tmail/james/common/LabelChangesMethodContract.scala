@@ -18,9 +18,13 @@
 
 package com.linagora.tmail.james.common
 
+import java.nio.charset.StandardCharsets
 import java.util
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
 
 import com.google.common.collect.ImmutableList
+import com.google.common.hash.Hashing
 import com.linagora.tmail.james.common.LabelChangesMethodContract.firebasePushClient
 import com.linagora.tmail.james.common.probe.JmapGuiceLabelProbe
 import com.linagora.tmail.james.jmap.firebase.{FirebasePushClient, FirebasePushRequest}
@@ -35,10 +39,11 @@ import net.javacrumbs.jsonunit.core.Option
 import org.apache.http.HttpStatus
 import org.apache.http.HttpStatus.SC_OK
 import org.apache.james.GuiceJamesServer
+import org.apache.james.core.Username
 import org.apache.james.jmap.api.change.State
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, ALICE_ACCOUNT_ID, ANDRE, ANDRE_ACCOUNT_ID, ANDRE_PASSWORD, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ALICE_ACCOUNT_ID, ANDRE_PASSWORD, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.DataProbeImpl
@@ -55,20 +60,42 @@ import reactor.core.publisher.Mono
 import scala.jdk.CollectionConverters._
 
 object LabelChangesMethodContract {
+  case class TestContext(bobUsername: Username, andreUsername: Username) {
+    val bobAccountId: String = accountId(bobUsername)
+    val andreAccountId: String = accountId(andreUsername)
+  }
+
   val firebasePushClient: FirebasePushClient = mock(classOf[FirebasePushClient])
+  private val currentContext: AtomicReference[TestContext] = new AtomicReference[TestContext]()
+
+  private def accountId(username: Username): String =
+    Hashing.sha256().hashString(username.asString(), StandardCharsets.UTF_8).toString
 }
 
 trait LabelChangesMethodContract {
+  def bobUsername: Username = LabelChangesMethodContract.currentContext.get().bobUsername
+
+  def andreUsername: Username = LabelChangesMethodContract.currentContext.get().andreUsername
+
+  def bobAccountId: String = LabelChangesMethodContract.currentContext.get().bobAccountId
+
+  def andreAccountId: String = LabelChangesMethodContract.currentContext.get().andreAccountId
+
   @BeforeEach
   def setUp(server: GuiceJamesServer): Unit = {
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    val bob = Username.fromLocalPartWithDomain(s"bob$uniqueSuffix", DOMAIN)
+    val andre = Username.fromLocalPartWithDomain(s"andre$uniqueSuffix", DOMAIN)
+    LabelChangesMethodContract.currentContext.set(LabelChangesMethodContract.TestContext(bob, andre))
+
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
       .addDomain(DOMAIN.asString)
-      .addUser(BOB.asString(), BOB_PASSWORD)
-      .addUser(ANDRE.asString(), ANDRE_PASSWORD)
+      .addUser(bob.asString(), BOB_PASSWORD)
+      .addUser(andre.asString(), ANDRE_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .setAuth(authScheme(UserCredential(bob, BOB_PASSWORD)))
       .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .build()
 
@@ -82,7 +109,7 @@ trait LabelChangesMethodContract {
   @Test
   def labelChangesShouldReturnCorrectState(server: GuiceJamesServer): Unit = {
     val change: LabelChange = LabelChange(
-      accountId = org.apache.james.jmap.api.model.AccountId.fromUsername(BOB),
+      accountId = org.apache.james.jmap.api.model.AccountId.fromUsername(bobUsername),
       created = Set(LabelId.generate()),
       updated = Set(),
       destroyed = Set(),
@@ -98,7 +125,7 @@ trait LabelChangesMethodContract {
            |  "methodCalls": [[
            |    "Label/changes",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "sinceState": "${SESSION_STATE.value}",
            |      "maxChanges": 50
            |    },
@@ -113,7 +140,7 @@ trait LabelChangesMethodContract {
         s"""[
            |	"Label/changes",
            |	{
-           |		"accountId": "$ACCOUNT_ID",
+           |		"accountId": "$bobAccountId",
            |		"oldState": "2c9f1b12-b35a-43e6-9af2-0106fb53a943",
            |		"newState": "${change.state.getValue.toString}",
            |		"hasMoreChanges": false,
@@ -135,7 +162,7 @@ trait LabelChangesMethodContract {
         s"""{ "using": [ "urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
            |  "methodCalls": [
            |    ["Label/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "create": {
            |          "L13": {
            |            "displayName": "DisplayName1",
@@ -162,7 +189,7 @@ trait LabelChangesMethodContract {
            |  "methodCalls": [[
            |    "Label/changes",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "sinceState": "${SESSION_STATE.value}",
            |      "maxChanges": 50
            |    },
@@ -192,7 +219,7 @@ trait LabelChangesMethodContract {
            |  "methodCalls": [[
            |    "Label/changes",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "sinceState": "$newState",
            |      "maxChanges": 50
            |    },
@@ -220,7 +247,7 @@ trait LabelChangesMethodContract {
            |  "methodCalls": [[
            |    "Label/changes",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "sinceState": "$newState",
            |      "maxChanges": 50
            |    },
@@ -248,7 +275,7 @@ trait LabelChangesMethodContract {
            |  "methodCalls": [[
            |    "Label/changes",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "sinceState": "$newState",
            |      "maxChanges": 50
            |    },
@@ -307,7 +334,7 @@ trait LabelChangesMethodContract {
            |  "methodCalls": [[
            |    "Label/changes",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "sinceState": "${SESSION_STATE.value}",
            |      "maxChanges": $limit
            |    },
@@ -344,7 +371,7 @@ trait LabelChangesMethodContract {
            |  "methodCalls": [[
            |    "Label/changes",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "sinceState": "${SESSION_STATE.value}",
            |      "maxChanges": $limit
            |    },
@@ -364,7 +391,7 @@ trait LabelChangesMethodContract {
     val bobState: String = getNewState()
 
     `given`
-      .auth().basic(ANDRE.asString(), ANDRE_PASSWORD)
+      .auth().basic(andreUsername.asString(), ANDRE_PASSWORD)
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(
         s"""{
@@ -373,7 +400,7 @@ trait LabelChangesMethodContract {
            |  "methodCalls": [[
            |    "Label/changes",
            |    {
-           |      "accountId": "$ANDRE_ACCOUNT_ID",
+           |      "accountId": "$andreAccountId",
            |      "sinceState": "$bobState",
            |      "maxChanges": 5
            |    },
@@ -393,16 +420,15 @@ trait LabelChangesMethodContract {
 
   @Test
   def shouldSupportDelegationWhenDelegatedUser(server: GuiceJamesServer): Unit = {
-    val bobAccountId = ACCOUNT_ID
 
     server.getProbe(classOf[DelegationProbe])
-      .addAuthorizedUser(BOB, ANDRE)
+      .addAuthorizedUser(bobUsername, andreUsername)
     val bobLabelId: String = createANewLabel()
     val bobState: String = getNewState()
     updateLabel(bobLabelId, "{ \"displayName\": \"newDisplayName2\"}")
 
     `given`
-      .auth().basic(ANDRE.asString(), ANDRE_PASSWORD)
+      .auth().basic(andreUsername.asString(), ANDRE_PASSWORD)
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(
         s"""{
@@ -436,7 +462,7 @@ trait LabelChangesMethodContract {
            |  "methodCalls": [[
            |    "Label/changes",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "sinceState": "$notFoundState",
            |      "maxChanges": 5
            |    },
@@ -463,7 +489,7 @@ trait LabelChangesMethodContract {
            |  "methodCalls": [[
            |    "Label/changes",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "sinceState": "${SESSION_STATE.value}",
            |      "maxChanges": 50
            |    },
@@ -489,7 +515,7 @@ trait LabelChangesMethodContract {
            |  "methodCalls": [[
            |    "Label/changes",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "sinceState": "${SESSION_STATE.value}",
            |      "maxChanges": 50
            |    },
@@ -516,7 +542,7 @@ trait LabelChangesMethodContract {
            |  "methodCalls": [[
            |    "Label/changes",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "sinceState": "invalidState",
            |      "maxChanges": 5
            |    },
@@ -545,7 +571,7 @@ trait LabelChangesMethodContract {
            |  "methodCalls": [[
            |    "Label/changes",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "sinceState": "${State.INITIAL.getValue}",
            |      "maxChanges": -1
            |    },
@@ -571,7 +597,7 @@ trait LabelChangesMethodContract {
            |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
            |  "methodCalls": [
            |    ["Label/set", {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "create": {
            |        "L13": {
            |          "displayName": "DisplayName1",
@@ -604,7 +630,7 @@ trait LabelChangesMethodContract {
            |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
            |  "methodCalls": [
            |    ["Label/set", {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |				"update": {
            |					"$labelId": {
            |						"color": "invalidColor"
@@ -636,7 +662,7 @@ trait LabelChangesMethodContract {
            |	"using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
            |	"methodCalls": [
            |		["Label/set", {
-           |			"accountId": "$ACCOUNT_ID",
+           |			"accountId": "$bobAccountId",
            |			"destroy": ["@invalidId"]
            |		}, "c1"]
            |	]
@@ -662,7 +688,7 @@ trait LabelChangesMethodContract {
       val argumentCaptor: ArgumentCaptor[FirebasePushRequest] = ArgumentCaptor.forClass(classOf[FirebasePushRequest])
       verify(firebasePushClient, times(1)).push(argumentCaptor.capture())
       assertThat(argumentCaptor.getValue.stateChangesMap())
-        .isEqualTo(java.util.Map.of(s"$ACCOUNT_ID:${LabelTypeName.asString}", newState))
+        .isEqualTo(java.util.Map.of(s"$bobAccountId:${LabelTypeName.asString}", newState))
     })
   }
 
@@ -681,7 +707,7 @@ trait LabelChangesMethodContract {
         .flatMap(_.stateChangesMap().asScala).toMap.asJava
 
       assertSoftly(softLy => {
-        softLy.assertThat(stateChangesCapture).containsKey(s"$ACCOUNT_ID:${LabelTypeName.asString}")
+        softLy.assertThat(stateChangesCapture).containsKey(s"$bobAccountId:${LabelTypeName.asString}")
         softLy.assertThat(stateChangesCapture).containsValue(updateState)
       })
     })
@@ -702,7 +728,7 @@ trait LabelChangesMethodContract {
         .flatMap(_.stateChangesMap().asScala).toMap.asJava
 
       assertSoftly(softLy => {
-        softLy.assertThat(stateChangesCapture).containsKey(s"$ACCOUNT_ID:${LabelTypeName.asString}")
+        softLy.assertThat(stateChangesCapture).containsKey(s"$bobAccountId:${LabelTypeName.asString}")
         softLy.assertThat(stateChangesCapture).containsValue(latestState)
       })
     })
@@ -714,13 +740,12 @@ trait LabelChangesMethodContract {
     registerFCMSubscribe()
 
     server.getProbe(classOf[DelegationProbe])
-      .addAuthorizedUser(BOB, ANDRE)
+      .addAuthorizedUser(bobUsername, andreUsername)
 
-    val bobAccountId = ACCOUNT_ID
 
     // andre create bob's label
     `given`()
-      .auth().basic(ANDRE.asString(), ANDRE_PASSWORD)
+      .auth().basic(andreUsername.asString(), ANDRE_PASSWORD)
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(
         s"""{ "using": [ "urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
@@ -766,7 +791,7 @@ trait LabelChangesMethodContract {
            |            "create": {
            |                "4f29": {
            |                  "deviceClientId": "a889-ffea-910",
-           |                  "token": "token1",
+           |                  "token": "token-${UUID.randomUUID().toString}",
            |                  "types": ["Label"]
            |                }
            |              }
@@ -788,7 +813,7 @@ trait LabelChangesMethodContract {
         s"""{ "using": [ "urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
            |  "methodCalls": [
            |    ["Label/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "create": {
            |          "L13": {
            |            "displayName": "$displayName",
@@ -813,7 +838,7 @@ trait LabelChangesMethodContract {
         s"""{ "using": [ "urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
            |  "methodCalls": [
            |    ["Label/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "update": {
            |          "$labelId": $updatePathObject
            |        }
@@ -833,7 +858,7 @@ trait LabelChangesMethodContract {
         s"""{ "using": [ "urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
            |  "methodCalls": [
            |    ["Label/set", {
-           |        "accountId": "$ACCOUNT_ID",
+           |        "accountId": "$bobAccountId",
            |        "destroy": [ "$labelId" ]
            |      }, "c1"
            | ]]}""".stripMargin)
@@ -853,7 +878,7 @@ trait LabelChangesMethodContract {
            |  "methodCalls": [[
            |    "Label/changes",
            |    {
-           |      "accountId": "$ACCOUNT_ID",
+           |      "accountId": "$bobAccountId",
            |      "sinceState": "${SESSION_STATE.value}",
            |      "maxChanges": 50
            |    },

@@ -68,6 +68,7 @@ public class DistributedLinagoraLabelChangesMethodTest implements LabelChangesMe
             .overrideWith(new JmapGuiceLabelModule())
                 .overrideWith(binder -> binder.bind(FirebasePushClient.class).toInstance(LabelChangesMethodContract.firebasePushClient()))
             .overrideWith(new DelegationProbeModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @Override
