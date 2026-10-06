@@ -19,7 +19,10 @@
 package com.linagora.tmail.james.common
 
 import java.nio.charset.StandardCharsets
+import java.util.UUID
+import java.util.concurrent.atomic.AtomicReference
 
+import com.google.common.hash.Hashing
 import com.linagora.tmail.james.common.LinagoraKeystoreGetMethodContract.{PGP_KEY_ARMORED, PGP_KEY_ARMORED2, PGP_KEY_ID, PGP_KEY_ID2}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
@@ -28,15 +31,25 @@ import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
 import net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER
 import org.apache.http.HttpStatus
 import org.apache.james.GuiceJamesServer
+import org.apache.james.core.Username
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.core.UuidState.INSTANCE
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ACCOUNT_ID, BOB, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.DataProbeImpl
 import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 
 object LinagoraKeystoreGetMethodContract {
+  case class TestContext(bobUsername: Username) {
+    val bobAccountId: String = accountId(bobUsername)
+  }
+
+  private val currentContext: AtomicReference[TestContext] = new AtomicReference[TestContext]()
+
+  private def accountId(username: Username): String =
+    Hashing.sha256().hashString(username.asString(), StandardCharsets.UTF_8).toString
+
   private val PGP_KEY: Array[Byte] = ClassLoader.getSystemClassLoader
     .getResourceAsStream("gpg.pub")
     .readAllBytes()
@@ -54,16 +67,23 @@ object LinagoraKeystoreGetMethodContract {
 }
 
 trait LinagoraKeystoreGetMethodContract {
+  def bobUsername: Username = LinagoraKeystoreGetMethodContract.currentContext.get().bobUsername
+
+  def bobAccountId: String = LinagoraKeystoreGetMethodContract.currentContext.get().bobAccountId
 
   @BeforeEach
   def setUp(server : GuiceJamesServer): Unit = {
+    val uniqueSuffix = UUID.randomUUID().toString.replace("-", "").take(8)
+    val bob = Username.fromLocalPartWithDomain(s"bob$uniqueSuffix", DOMAIN)
+    LinagoraKeystoreGetMethodContract.currentContext.set(LinagoraKeystoreGetMethodContract.TestContext(bob))
+
     server.getProbe(classOf[DataProbeImpl])
       .fluent()
       .addDomain(DOMAIN.asString)
-      .addUser(BOB.asString(), BOB_PASSWORD)
+      .addUser(bobUsername.asString(), BOB_PASSWORD)
 
     requestSpecification = baseRequestSpecBuilder(server)
-      .setAuth(authScheme(UserCredential(BOB, BOB_PASSWORD)))
+      .setAuth(authScheme(UserCredential(bobUsername, BOB_PASSWORD)))
       .build()
   }
 
@@ -73,7 +93,7 @@ trait LinagoraKeystoreGetMethodContract {
                      |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
                      |  "methodCalls": [
                      |    ["Keystore/set", {
-                     |      "accountId": "$ACCOUNT_ID",
+                     |      "accountId": "$bobAccountId",
                      |      "create": {
                      |        "K87": {
                      |          "key": "$PGP_KEY_ARMORED"
@@ -84,7 +104,7 @@ trait LinagoraKeystoreGetMethodContract {
                      |      }
                      |    }, "c1"],
                      |    ["Keystore/get", {
-                     |      "accountId": "$ACCOUNT_ID",
+                     |      "accountId": "$bobAccountId",
                      |      "ids": null
                      |    }, "c2"]
                      |  ]
@@ -110,7 +130,7 @@ trait LinagoraKeystoreGetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
          |    ["Keystore/set", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "created": {
          |        "K87": {
          |          "id": "$PGP_KEY_ID"
@@ -121,7 +141,7 @@ trait LinagoraKeystoreGetMethodContract {
          |      }
          |    }, "c1"],
          |    ["Keystore/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "state": "${INSTANCE.value}",
          |      "notFound": [],
          |      "list": [
@@ -146,7 +166,7 @@ trait LinagoraKeystoreGetMethodContract {
                      |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
                      |  "methodCalls": [
                      |    ["Keystore/set", {
-                     |      "accountId": "$ACCOUNT_ID",
+                     |      "accountId": "$bobAccountId",
                      |      "create": {
                      |        "K87": {
                      |          "key": "$PGP_KEY_ARMORED"
@@ -157,7 +177,7 @@ trait LinagoraKeystoreGetMethodContract {
                      |      }
                      |    }, "c1"],
                      |    ["Keystore/get", {
-                     |      "accountId": "$ACCOUNT_ID",
+                     |      "accountId": "$bobAccountId",
                      |      "ids": [
                      |        "$PGP_KEY_ID"
                      |      ]
@@ -185,7 +205,7 @@ trait LinagoraKeystoreGetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
          |    ["Keystore/set", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "created": {
          |        "K87": {
          |          "id": "$PGP_KEY_ID"
@@ -196,7 +216,7 @@ trait LinagoraKeystoreGetMethodContract {
          |      }
          |    }, "c1"],
          |    ["Keystore/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "state": "${INSTANCE.value}",
          |      "list": [
          |        {
@@ -216,7 +236,7 @@ trait LinagoraKeystoreGetMethodContract {
                      |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
                      |  "methodCalls": [
                      |    ["Keystore/set", {
-                     |      "accountId": "$ACCOUNT_ID",
+                     |      "accountId": "$bobAccountId",
                      |      "create": {
                      |        "K87": {
                      |          "key": "$PGP_KEY_ARMORED"
@@ -227,7 +247,7 @@ trait LinagoraKeystoreGetMethodContract {
                      |      }
                      |    }, "c1"],
                      |    ["Keystore/get", {
-                     |      "accountId": "$ACCOUNT_ID",
+                     |      "accountId": "$bobAccountId",
                      |      "ids": [
                      |        "#K87"
                      |      ]
@@ -255,7 +275,7 @@ trait LinagoraKeystoreGetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
          |    ["Keystore/set", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "created": {
          |        "K87": {
          |          "id": "$PGP_KEY_ID"
@@ -266,7 +286,7 @@ trait LinagoraKeystoreGetMethodContract {
          |      }
          |    }, "c1"],
          |    ["Keystore/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "state": "${INSTANCE.value}",
          |      "notFound": [],
          |      "list": [
@@ -286,7 +306,7 @@ trait LinagoraKeystoreGetMethodContract {
                      |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
                      |  "methodCalls": [
                      |    ["Keystore/get", {
-                     |      "accountId": "$ACCOUNT_ID",
+                     |      "accountId": "$bobAccountId",
                      |      "ids": []
                      |    }, "c1"]
                      |  ]
@@ -310,7 +330,7 @@ trait LinagoraKeystoreGetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
          |    ["Keystore/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "state": "${INSTANCE.value}",
          |      "list": [],
          |      "notFound": []
@@ -325,7 +345,7 @@ trait LinagoraKeystoreGetMethodContract {
                      |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:pgp"],
                      |  "methodCalls": [
                      |    ["Keystore/set", {
-                     |      "accountId": "$ACCOUNT_ID",
+                     |      "accountId": "$bobAccountId",
                      |      "create": {
                      |        "K87": {
                      |          "key": "$PGP_KEY_ARMORED"
@@ -333,7 +353,7 @@ trait LinagoraKeystoreGetMethodContract {
                      |      }
                      |    }, "c1"],
                      |    ["Keystore/get", {
-                     |      "accountId": "$ACCOUNT_ID",
+                     |      "accountId": "$bobAccountId",
                      |      "ids": [
                      |        "$PGP_KEY_ID2"
                      |      ]
@@ -359,7 +379,7 @@ trait LinagoraKeystoreGetMethodContract {
          |  "sessionState": "${SESSION_STATE.value}",
          |  "methodResponses": [
          |    ["Keystore/set", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "created": {
          |        "K87": {
          |          "id": "$PGP_KEY_ID"
@@ -367,7 +387,7 @@ trait LinagoraKeystoreGetMethodContract {
          |      }
          |    }, "c1"],
          |    ["Keystore/get", {
-         |      "accountId": "$ACCOUNT_ID",
+         |      "accountId": "$bobAccountId",
          |      "state": "${INSTANCE.value}",
          |      "list": [],
          |      "notFound":["12522CF961A95474431BADD676E1BC47187D6CEF"]
@@ -382,7 +402,7 @@ trait LinagoraKeystoreGetMethodContract {
                      |  "using": ["urn:ietf:params:jmap:core"],
                      |  "methodCalls": [
                      |    ["Keystore/get", {
-                     |      "accountId": "$ACCOUNT_ID"
+                     |      "accountId": "$bobAccountId"
                      |    }, "c1"]
                      |  ]
                      |}""".stripMargin
@@ -418,7 +438,7 @@ trait LinagoraKeystoreGetMethodContract {
                      |  "using": [],
                      |  "methodCalls": [
                      |    ["Keystore/get", {
-                     |      "accountId": "$ACCOUNT_ID"
+                     |      "accountId": "$bobAccountId"
                      |    }, "c1"]
                      |  ]
                      |}""".stripMargin

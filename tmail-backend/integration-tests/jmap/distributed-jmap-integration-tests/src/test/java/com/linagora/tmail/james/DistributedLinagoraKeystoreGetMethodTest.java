@@ -63,5 +63,6 @@ public class DistributedLinagoraKeystoreGetMethodTest implements LinagoraKeystor
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new JmapGuiceKeystoreManagerModule())
             .overrideWith(new DistributedEncryptedMailboxModule()))
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 }
