@@ -34,7 +34,9 @@ import com.datastax.oss.driver.api.core.uuid.Uuids;
 public class PostgresMailboxSetMethodTest implements MailboxSetMethodContract {
 
     @RegisterExtension
-    static JamesServerExtension testExtension = JAMES_SERVER_EXTENSION_SUPPLIER.get().build();
+    static JamesServerExtension testExtension = JAMES_SERVER_EXTENSION_SUPPLIER.get()
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
+        .build();
 
     @Override
     public MailboxId randomMailboxId() {
