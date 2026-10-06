@@ -47,6 +47,11 @@ case class User(name: String, email: String, password: String) {
   lazy val accountId: String = AccountId.from(username).right.get.id.value
 }
 
+object User {
+  def unique(name: String, username: Username, password: String, uniqueSuffix: String): User =
+    User(name, Username.fromLocalPartWithDomain(username.getLocalPart + uniqueSuffix, username.getDomainPart.get()).asString(), password)
+}
+
 object EmailData {
   def base64Encode: Mustache.Lambda = (frag: Template#Fragment, out: Writer) => {
     val writer = new StringWriter

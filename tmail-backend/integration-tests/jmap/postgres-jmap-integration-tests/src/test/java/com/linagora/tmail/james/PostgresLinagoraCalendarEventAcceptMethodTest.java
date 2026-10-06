@@ -30,6 +30,7 @@ public class PostgresLinagoraCalendarEventAcceptMethodTest extends LinagoraCalen
 
     @RegisterExtension
     static JamesServerExtension testExtension = JAMES_SERVER_EXTENSION_FUNCTION.apply(new DelegationProbeModule())
+        .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
     @Override
