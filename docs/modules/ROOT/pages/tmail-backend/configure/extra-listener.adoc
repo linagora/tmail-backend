@@ -256,3 +256,57 @@ Each label supports the following fields:
   </listener>
 </listeners>
 ----
+
+== Team Mailbox Events Listener
+
+This listener publishes an event to RabbitMQ each time a team mailbox receives or sends a message, so that other services can react to it.
+
+- A message delivered into any folder of a team mailbox produces a `received` event.
+- A message added to the `Sent` folder of a team mailbox, whether appended, moved or copied, produces a `sent` event.
+- Other additions, and messages in personal mailboxes, are ignored.
+
+The listener opens its own RabbitMQ connection and declares the exchange as a durable topic exchange before its first
+publication. Events are persistent JSON messages whose AMQP message id is `<messageId>:<direction>`. Consumers should
+deduplicate on it: when a publication fails, the event bus retries the whole mailbox event, so events published before
+the failure are sent again.
+
+Configuration keys:
+
+- `amqpUri`: Optional. URI of the RabbitMQ server receiving the events. Defaults to the RabbitMQ server configured in `rabbitmq.properties`.
+- `exchange`: Optional. Name of the topic exchange. Defaults to `tmail`.
+- `receivedRoutingKey`: Optional. Routing key of `received` events. Defaults to `team-mailbox.message.received`.
+- `sentRoutingKey`: Optional. Routing key of `sent` events. Defaults to `team-mailbox.message.sent`.
+
+[source,xml]
+----
+<listeners>
+  <listener>
+    <class>com.linagora.tmail.team.events.TeamMailboxEventsListener</class>
+  </listener>
+</listeners>
+----
+
+Example of a `received` event:
+
+[source,json]
+----
+{
+  "teamMailbox": "marketing@linagora.com",
+  "domain": "linagora.com",
+  "direction": "received",
+  "mailboxPath": "marketing.INBOX",
+  "mailboxId": "6e3c9a40-c1ab-11f1-bdf6-19e2a75a28cc",
+  "messageId": "1d2b7c50-c1ac-11f1-bdf6-19e2a75a28cc",
+  "subject": "Hello team",
+  "from": [{"name": "Alice", "email": "alice@external.com"}],
+  "to": [{"name": null, "email": "marketing@linagora.com"}],
+  "cc": [{"name": "Bob", "email": "bob@linagora.com"}],
+  "bcc": null,
+  "date": "2026-10-06T10:00:00Z",
+  "timestamp": "2026-10-06T12:00:00Z"
+}
+----
+
+`subject`, `from`, `to`, `cc`, `bcc` and `date` are `null` when the message lacks the matching header. `mailboxPath`
+changes when the mailbox is renamed, `mailboxId` does not. `date` is the `Date` header, `timestamp` is when the event
+was produced.
