@@ -212,6 +212,8 @@
                         <systemPropertyVariables>
                             <!-- Rethrow James startup errors instead of System.exit, so a reused fork keeps running the next test classes -->
                             <james.exit.on.startup.error>false</james.exit.on.startup.error>
+                            <!-- Embedded Artemis blocks every message send once disk usage exceeds 90%: tests hang silently on busy agents -->
+                            <brokerconfig.maxDiskUsage>-1</brokerconfig.maxDiskUsage>
                         </systemPropertyVariables>
                         <!-- Fail tests longer than 20 minutes, prevent form random locking tests -->
                         <forkedProcessTimeoutInSeconds>1200</forkedProcessTimeoutInSeconds>
