@@ -19,6 +19,9 @@
 package com.linagora.tmail.saas.rabbitmq.settings;
 
 
+import java.util.Optional;
+import java.util.stream.Stream;
+
 import jakarta.inject.Inject;
 
 import org.apache.james.core.Username;
@@ -41,6 +44,7 @@ public class TWPSettingsUpdaterImpl implements TWPSettingsUpdater {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TWPSettingsUpdaterImpl.class);
     private static final JmapSettingsKey LANGUAGE = JmapSettingsKey.liftOrThrow("language");
+    private static final JmapSettingsKey THEME = JmapSettingsKey.liftOrThrow("appearance.theme");
 
     private final UsersRepository usersRepository;
     private final JmapSettingsRepository jmapSettingsRepository;
@@ -84,15 +88,23 @@ public class TWPSettingsUpdaterImpl implements TWPSettingsUpdater {
     }
 
     private Mono<Void> applySettingsUpdate(TWPCommonSettingsMessage message, Username username) {
-        return message.languageSettings()
-            .map(languageSetting -> {
-                JmapSettingsPatch languagePatch = JmapSettingsPatch$.MODULE$.toUpsert(LANGUAGE, languageSetting.language());
-                JmapSettingsPatch versionPatch = JmapSettingsPatch$.MODULE$.toUpsert(TWPReadOnlyPropertyProvider.TWP_SETTINGS_VERSION, String.valueOf(languageSetting.version()));
-                JmapSettingsPatch combinedPatch = JmapSettingsPatch$.MODULE$.merge(languagePatch, versionPatch);
+        return settingsPatch(message)
+            .map(settingsPatch -> {
+                JmapSettingsPatch versionPatch = JmapSettingsPatch$.MODULE$.toUpsert(TWPReadOnlyPropertyProvider.TWP_SETTINGS_VERSION, String.valueOf(message.version()));
+                JmapSettingsPatch combinedPatch = JmapSettingsPatch$.MODULE$.merge(settingsPatch, versionPatch);
                 return Mono.from(jmapSettingsRepository.updatePartial(username, combinedPatch))
-                    .doOnNext(updatedSettings -> LOGGER.info("Updated language setting for user {} to {}", username.asString(), languageSetting.language()))
+                    .doOnNext(updatedSettings -> LOGGER.info("Updated TWP settings for user {}: language {}, theme {}",
+                        username.asString(), message.payload().language(), message.payload().theme()))
                     .then();
             })
             .orElse(Mono.empty());
+    }
+
+    private Optional<JmapSettingsPatch> settingsPatch(TWPCommonSettingsMessage message) {
+        return Stream.of(
+                message.payload().language().map(language -> JmapSettingsPatch$.MODULE$.toUpsert(LANGUAGE, language)),
+                message.payload().theme().map(theme -> JmapSettingsPatch$.MODULE$.toUpsert(THEME, theme)))
+            .flatMap(Optional::stream)
+            .reduce(JmapSettingsPatch$.MODULE$::merge);
     }
 }

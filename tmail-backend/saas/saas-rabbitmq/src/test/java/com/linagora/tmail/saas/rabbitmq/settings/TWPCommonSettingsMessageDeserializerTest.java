@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.saas.rabbitmq.settings;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Optional;
@@ -60,6 +61,70 @@ public class TWPCommonSettingsMessageDeserializerTest {
             softly.assertThat(twpCommonSettingsMessage.timestamp().longValue()).isEqualTo(176248374356283740L);
             softly.assertThat(twpCommonSettingsMessage.payload().language()).isEqualTo(Optional.of("fr"));
         });
+    }
+
+    @Test
+    void parseThemeShouldSucceed() {
+        String amqpMessage = """
+            {
+                "source": "twake-mail",
+                "nickname": "alice",
+                "request_id": "6de4a2d1-b322-42cd-9e49-fed5d3f9c9b7",
+                "timestamp": 176248374356283740,
+                "version": 1,
+                "payload": {
+                    "email": "alice@domain.tld",
+                    "language": "fr",
+                    "theme": "dark"
+                }
+            }
+            """;
+
+        TWPCommonSettingsMessage twpCommonSettingsMessage = TWPCommonSettingsMessage.Deserializer.parseAMQPMessage(amqpMessage);
+
+        assertThat(twpCommonSettingsMessage.payload().theme()).isEqualTo(Optional.of("dark"));
+    }
+
+    @Test
+    void parseMissingThemeShouldReturnEmpty() {
+        String amqpMessage = """
+            {
+                "source": "twake-mail",
+                "nickname": "alice",
+                "request_id": "6de4a2d1-b322-42cd-9e49-fed5d3f9c9b7",
+                "timestamp": 176248374356283740,
+                "version": 1,
+                "payload": {
+                    "email": "alice@domain.tld",
+                    "language": "fr"
+                }
+            }
+            """;
+
+        TWPCommonSettingsMessage twpCommonSettingsMessage = TWPCommonSettingsMessage.Deserializer.parseAMQPMessage(amqpMessage);
+
+        assertThat(twpCommonSettingsMessage.payload().theme()).isEmpty();
+    }
+
+    @Test
+    void parseNullThemeShouldReturnEmpty() {
+        String amqpMessage = """
+            {
+                "source": "twake-mail",
+                "nickname": "alice",
+                "request_id": "6de4a2d1-b322-42cd-9e49-fed5d3f9c9b7",
+                "timestamp": 176248374356283740,
+                "version": 1,
+                "payload": {
+                    "email": "alice@domain.tld",
+                    "theme": null
+                }
+            }
+            """;
+
+        TWPCommonSettingsMessage twpCommonSettingsMessage = TWPCommonSettingsMessage.Deserializer.parseAMQPMessage(amqpMessage);
+
+        assertThat(twpCommonSettingsMessage.payload().theme()).isEmpty();
     }
 
     @Test

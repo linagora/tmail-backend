@@ -13,9 +13,14 @@ When enabled, the TWP Settings module:
 2. Listens for user settings updates on the specified exchange and routing key
 3. Applies the received settings to the corresponding user in TMail
 
+The following settings are synchronized:
+
+- `language`: stored as the `language` JMAP setting. This setting is read-only.
+- `theme` (`light`, `dark` or `auto`): stored as the `appearance.theme` JMAP setting. It is optional: messages without a theme leave the stored theme untouched.
+
 This allows for seamless integration between Twake Workplace and TMail, ensuring that user settings are synchronized across the TWP platform.
 
-Users will not be able to modify related TWP settings from TMail, as they are read-only. Any changes to TWP settings must be made in Twake Workplace, and those changes will be reflected in TMail through the RabbitMQ updates.
+Users will not be able to modify read-only TWP settings from TMail. Any changes to TWP settings must be made in Twake Workplace, and those changes will be reflected in TMail through the RabbitMQ updates.
 
 === Enabling TWP Settings Module
 
