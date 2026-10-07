@@ -189,7 +189,10 @@ Please drop these changes from the pull request, or ask a linagora member to car
         stage('Compile') {
             steps {
                 tee('ci-logs/Compile.log') {
-                    sh 'mvn clean install -Dmaven.javadoc.skip=true -DskipTests -T1C'
+                    // custom-james-assembly runs jib in another class loader than the James apps,
+                    // on the same base image: concurrent builds fail with OverlappingFileLockException
+                    // (GoogleContainerTools/jib#3347). TMail does not need it.
+                    sh "mvn clean install -Dmaven.javadoc.skip=true -DskipTests -T1C -pl '!org.apache.james.examples:custom-james-assembly'"
                 }
             }
         }
