@@ -153,7 +153,9 @@ class SabreContactsConsumerTest {
 
     @AfterEach
     void afterEach() {
-        consumer.close();
+        if (consumer != null) {
+            consumer.close();
+        }
         Sender sender = channelPool.getSender();
         sender.delete(QueueSpecification.queue().name(SabreContactsConsumer.QUEUE_NAME_ADD)).block();
         sender.delete(QueueSpecification.queue().name(SabreContactsConsumer.QUEUE_NAME_UPDATE)).block();
