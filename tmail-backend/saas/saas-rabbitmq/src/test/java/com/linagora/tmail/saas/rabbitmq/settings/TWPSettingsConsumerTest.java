@@ -70,6 +70,10 @@ public class TWPSettingsConsumerTest {
     private static final JmapSettingsKey JMAP_LANGUAGE_KEY = JmapSettingsKey.liftOrThrow(LANGUAGE_KEY);
     private static final String LANGUAGE_FR = "fr";
     private static final String LANGUAGE_EN = "en";
+    private static final String THEME_KEY = "theme";
+    private static final JmapSettingsKey JMAP_THEME_KEY = JmapSettingsKey.liftOrThrow("appearance.theme");
+    private static final String THEME_DARK = "dark";
+    private static final String THEME_LIGHT = "light";
     private static final String EXCHANGE_NAME = "settings";
     private static final String ROUTING_KEY = "user.settings.updated";
     private static final Username ALICE = Username.of("alice@james.org");
@@ -191,6 +195,75 @@ public class TWPSettingsConsumerTest {
             assertThat(settings).isNotNull();
             assertThat(settings.settings().get(JMAP_LANGUAGE_KEY).get())
                 .isEqualTo(new JmapSettingsValue(LANGUAGE_FR));
+        });
+    }
+
+    @Test
+    void shouldSetThemeSettingForExistingUser() {
+        publishAmqpSettingsMessage(createSettingsUpdateMessage(ALICE,
+            Map.of(THEME_KEY, THEME_DARK),
+            1L));
+
+        awaitAtMost.untilAsserted(() -> {
+            JmapSettings settings = Mono.from(jmapSettingsRepository.get(ALICE)).block();
+            assertThat(settings).isNotNull();
+            assertThat(settings.settings().get(JMAP_THEME_KEY).get())
+                .isEqualTo(new JmapSettingsValue(THEME_DARK));
+            assertThat(settings.settings().get(TWP_SETTINGS_VERSION).get())
+                .isEqualTo(new JmapSettingsValue(String.valueOf(1L)));
+        });
+    }
+
+    @Test
+    void shouldSetLanguageAndThemeSettingsForExistingUser() {
+        publishAmqpSettingsMessage(createSettingsUpdateMessage(ALICE,
+            Map.of(LANGUAGE_KEY, LANGUAGE_FR, THEME_KEY, THEME_DARK),
+            1L));
+
+        awaitAtMost.untilAsserted(() -> {
+            JmapSettings settings = Mono.from(jmapSettingsRepository.get(ALICE)).block();
+            assertThat(settings).isNotNull();
+            assertThat(settings.settings().get(JMAP_LANGUAGE_KEY).get())
+                .isEqualTo(new JmapSettingsValue(LANGUAGE_FR));
+            assertThat(settings.settings().get(JMAP_THEME_KEY).get())
+                .isEqualTo(new JmapSettingsValue(THEME_DARK));
+        });
+    }
+
+    @Test
+    void shouldNotChangeTheExistingThemeWhenMessageWithoutThemeUpdate() {
+        Mono.from(jmapSettingsRepository.updatePartial(ALICE, JmapSettingsPatch$.MODULE$.toUpsert(JMAP_THEME_KEY, THEME_LIGHT))).block();
+
+        publishAmqpSettingsMessage(createSettingsUpdateMessage(ALICE,
+            Map.of(LANGUAGE_KEY, LANGUAGE_FR),
+            1L));
+
+        awaitAtMost.untilAsserted(() -> {
+            JmapSettings settings = Mono.from(jmapSettingsRepository.get(ALICE)).block();
+            assertThat(settings).isNotNull();
+            assertThat(settings.settings().get(JMAP_LANGUAGE_KEY).get())
+                .isEqualTo(new JmapSettingsValue(LANGUAGE_FR));
+            assertThat(settings.settings().get(JMAP_THEME_KEY).get())
+                .isEqualTo(new JmapSettingsValue(THEME_LIGHT));
+        });
+    }
+
+    @Test
+    void shouldRejectOutdatedThemeUpdate() {
+        JmapSettingsPatch themePatch = JmapSettingsPatch$.MODULE$.toUpsert(JMAP_THEME_KEY, THEME_LIGHT);
+        JmapSettingsPatch versionPatch = JmapSettingsPatch$.MODULE$.toUpsert(TWP_SETTINGS_VERSION, String.valueOf(2L));
+        Mono.from(jmapSettingsRepository.updatePartial(ALICE, JmapSettingsPatch$.MODULE$.merge(themePatch, versionPatch))).block();
+
+        publishAmqpSettingsMessage(createSettingsUpdateMessage(ALICE,
+            Map.of(THEME_KEY, THEME_DARK),
+            1L));
+
+        awaitAtMost.untilAsserted(() -> {
+            JmapSettings settings = Mono.from(jmapSettingsRepository.get(ALICE)).block();
+            assertThat(settings.settings().get(JMAP_THEME_KEY).get())
+                .isEqualTo(new JmapSettingsValue(THEME_LIGHT));
+            assertThat(settings.settings().get(TWP_SETTINGS_VERSION).get())
+                .isEqualTo(new JmapSettingsValue(String.valueOf(2L)));
         });
     }
 

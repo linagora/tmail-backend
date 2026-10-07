@@ -69,14 +69,17 @@ public record TWPCommonSettingsMessage(String source, String nickname, String re
     }
 
     public record Payload(String email,
-                          Optional<String> language) {
+                          Optional<String> language,
+                          Optional<String> theme) {
         @JsonCreator
         public Payload(@JsonProperty("email") String email,
-                       @JsonProperty("language") Optional<String> language) {
+                       @JsonProperty("language") Optional<String> language,
+                       @JsonProperty("theme") Optional<String> theme) {
             Preconditions.checkNotNull(email, "email cannot be null");
 
             this.email = email;
             this.language = language;
+            this.theme = theme;
         }
     }
 
