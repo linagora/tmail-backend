@@ -66,6 +66,7 @@ import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContact;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngine;
+import com.rabbitmq.client.AMQP;
 
 import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.ssl.SslContext;
@@ -93,6 +94,7 @@ class SabreContactsConsumerTest {
     private DavClient davClient;
     private HttpClient davHTTPClient;
     private EmailAddressContactSearchEngine emailAddressContactSearchEngine;
+    private SabreContactsConsumer consumer;
     private static ReactorRabbitMQChannelPool channelPool;
     private static SimpleConnectionPool connectionPool;
     private static RabbitMQConfiguration rabbitMQConfiguration;
@@ -106,11 +108,6 @@ class SabreContactsConsumerTest {
             .managementCredentials(DEFAULT_MANAGEMENT_CREDENTIAL)
             .maxRetries(3)
             .minDelayInMs(10)
-            .connectionTimeoutInMs(100)
-            .channelRpcTimeoutInMs(100)
-            .handshakeTimeoutInMs(100)
-            .shutdownTimeoutInMs(100)
-            .networkRecoveryIntervalInMs(100)
             .build();
 
         RabbitMQConnectionFactory connectionFactory = new RabbitMQConnectionFactory(rabbitMQConfiguration);
@@ -144,17 +141,19 @@ class SabreContactsConsumerTest {
             .secure(sslContextSpec -> sslContextSpec.sslContext(sslContext));
         OpenPaasRestClient openPaasRestClient = new OpenPaasRestClient(dockerOpenPaasExtension.dockerOpenPaasSetup().openPaasConfiguration());
         emailAddressContactSearchEngine = new InMemoryEmailAddressContactSearchEngine();
-        SabreContactsConsumer consumer = new SabreContactsConsumer(channelPool, emailAddressContactSearchEngine, openPaasRestClient);
+        consumer = new SabreContactsConsumer(channelPool, emailAddressContactSearchEngine, openPaasRestClient);
 
         SabreContactsOperator sabreContactsOperator = new SabreContactsOperator(channelPool, rabbitMQConfiguration,
             consumer, dockerOpenPaasSetup.openPaasConfiguration());
         sabreContactsOperator.init();
+        awaitConsumersRegistered();
 
         openPaasUser = dockerOpenPaasExtension.newTestUser();
     }
 
     @AfterEach
     void afterEach() {
+        consumer.close();
         Sender sender = channelPool.getSender();
         sender.delete(QueueSpecification.queue().name(SabreContactsConsumer.QUEUE_NAME_ADD)).block();
         sender.delete(QueueSpecification.queue().name(SabreContactsConsumer.QUEUE_NAME_UPDATE)).block();
@@ -504,6 +503,15 @@ class SabreContactsConsumerTest {
         awaitAtMost.untilAsserted(() -> assertThat(Flux.from(emailAddressContactSearchEngine.autoComplete(getAccountId(),
                 emailAddress, 255)).map(EmailAddressContact::fields)
             .collectList().block()).containsExactly(ContactFields.of(new MailAddress(emailAddress), "Java Member")));
+    }
+
+    private void awaitConsumersRegistered() {
+        calmlyAwait.atMost(30, TimeUnit.SECONDS).untilAsserted(() -> assertThat(
+            Flux.just(SabreContactsConsumer.QUEUE_NAME_ADD, SabreContactsConsumer.QUEUE_NAME_UPDATE, SabreContactsConsumer.QUEUE_NAME_DELETE)
+                .flatMap(queue -> channelPool.getSender().declareQueue(QueueSpecification.queue(queue).passive(true)))
+                .map(AMQP.Queue.DeclareOk::getConsumerCount)
+                .collectList().block())
+            .containsExactly(1, 1, 1));
     }
 
     private CardDavCreationObjectRequest createContact(String mailAddress, String fullName) {
