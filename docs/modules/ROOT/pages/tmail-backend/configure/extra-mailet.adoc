@@ -257,6 +257,9 @@ The matchers count the `Received` headers mentioning the configured host name or
 The host name or IP is looked up as a whole token, case insensitively: `smtp.twake.app` neither
 matches `smtp.twake.application` nor `relay.smtp.twake.app`, and `10.0.0.1` does not match `10.0.0.12`.
 
+NOTE: `Received` headers supplied by the sender are counted too. A match thus does not prove that the
+email actually transited via that host: a crafted email can trigger the configured processing.
+
 === Configuration
 
 The condition, mandatory, is the host name or IP to look up.

@@ -39,6 +39,9 @@ import com.google.common.collect.ImmutableList;
  * <p>The host name or IP is looked up as a whole token (case insensitive), meaning that
  * <code>smtp.twake.app</code> does not match <code>smtp.twake.application</code> nor
  * <code>relay.smtp.twake.app</code>.</p>
+ *
+ * <p>Sender supplied <code>Received</code> headers are counted too: a match does not prove that
+ * the mail actually transited via that host.</p>
  */
 public abstract class AbstractTransitedVia extends GenericMatcher {
     private static final String RECEIVED = "Received";
