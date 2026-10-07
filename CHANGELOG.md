@@ -7,6 +7,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 
 ### TMail
 
+#### Added
+
+- [FEATURE] `TransitedVia` and `TransitedTwiceVia` matchers for relay loop detection based on `Received` headers
+
 #### Fixes
 
 - [FIX] RAG: send the email metadata to OpenRAG as an `email` object (`subject`, `preview`) instead of dotted `email.*` keys, and add `created_at` (the internal date of the message)
