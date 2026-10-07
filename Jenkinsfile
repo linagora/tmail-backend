@@ -200,7 +200,7 @@ Please drop these changes from the pull request, or ask a linagora member to car
             steps {
                 tee('ci-logs/Test.log') {
                     dir("tmail-backend") {
-                        sh 'mvn -B -Dapi.version=1.43 surefire:test'
+                        sh 'mvn -B -Dapi.version=1.43 surefire:test -Pci-test'
                     }
                 }
             }
