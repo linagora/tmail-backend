@@ -236,6 +236,44 @@ SuspiciousDisplayName[=<userBase>][?stopWords=<csv>]
 </mailet>
 ....
 
+== TransitedVia and TransitedTwiceVia
+
+=== Purpose
+
+The `TransitedVia` and `TransitedTwiceVia` matchers look up a host name or an IP in the `Received`
+headers of an email in order to know whether it already transited via that host.
+
+They are primarily meant for relay loop detection: as the `Received` header added by the server
+upon reception already counts as one transit, `TransitedTwiceVia=<own host name>` matches emails
+that went out of the server and came back to it.
+
+=== How it works
+
+The matchers count the `Received` headers mentioning the configured host name or IP:
+
+* `TransitedVia` matches when at least one `Received` header mentions it
+* `TransitedTwiceVia` matches when at least two `Received` headers mention it
+
+The host name or IP is looked up as a whole token, case insensitively: `smtp.twake.app` neither
+matches `smtp.twake.application` nor `relay.smtp.twake.app`, and `10.0.0.1` does not match `10.0.0.12`.
+
+=== Configuration
+
+The condition, mandatory, is the host name or IP to look up.
+
+....
+<mailet match="TransitedTwiceVia=smtp.twake.app" class="ToProcessor">
+  <processor>relay-loop</processor>
+</mailet>
+....
+
+....
+<mailet match="TransitedVia=10.0.0.1" class="SetMimeHeader">
+  <name>X-Transited-Via-Gateway</name>
+  <value>true</value>
+</mailet>
+....
+
 == SuspiciousDomainInDisplayName
 
 === Purpose
