@@ -280,3 +280,14 @@ is still supported. The system prioritizes the new setting if both are present:
 3. Otherwise → uses default value (`false`)
 
 This setting is used to enable/disable the needs-action classification on mails using AI.
+
+=== Appearance theme
+Setting key: `appearance.theme`.
+Setting value: One in these values (`light`, `dark`, `auto`). Optional.
+
+This setting stores the theme the user wants TMail clients to use.
+
+When the xref:tmail-backend/configure/twake-workplace.adoc[Twake Workplace settings module] is enabled, this setting
+is synchronized from the `theme` field of Twake Workplace common settings: theme changes made in Twake Workplace are
+reflected here. Messages without a `theme` leave the stored value untouched. Unlike `language`, this setting is not
+read-only and remains editable by clients.
