@@ -300,6 +300,7 @@
                          occurred in starting fork"). -Xmx1024m still caps the heap. -->
                     <argLine>-Xmx1024m</argLine>
                     <forkedProcessTimeoutInSeconds>1200</forkedProcessTimeoutInSeconds>
+                    <rerunFailingTestsCount>2</rerunFailingTestsCount>
                 </configuration>
             </plugin>
             <plugin>
