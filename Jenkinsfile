@@ -149,6 +149,9 @@ def reportBuildFailure() {
 // in a pom, whatever its parent. The two branches share the agent's memory, which has no swap: its use and the load
 // are sampled every 30 s to ci-logs/test-resources-<branch>.txt (not .log: the failure report reads the newest
 // ci-logs/*.log as the failing stage output). Both Maven builds share ~/.m2, hence the resolver file locks.
+// BUILD_ID is hidden from Maven: James names its Cassandra test image after it, so every test JVM of the build would
+// build and tag the same image, and two of them doing it at once can leave the tag missing for a moment (PR-2723 #1
+// hung on it). Without it, each JVM builds its own image, a few seconds at most.
 def runTestBranch(String branch, boolean integrationModules) {
     tee("ci-logs/Test - ${branch}.log") {
         withEnv(["INTEGRATION_BRANCH=${integrationModules}", "RESOURCES_FILE=${env.WORKSPACE}/ci-logs/test-resources-${branch}.txt"]) {
@@ -163,7 +166,7 @@ def runTestBranch(String branch, boolean integrationModules) {
                     else
                         PROJECTS=$(echo "$INTEGRATION_MODULES" | sed 's/^/!/; s/,/,!/g')
                     fi
-                    mvn -B -Dapi.version=1.43 surefire:test -Pci-test -pl "$PROJECTS" \\
+                    env -u BUILD_ID mvn -B -Dapi.version=1.43 surefire:test -Pci-test -pl "$PROJECTS" \\
                         -Daether.syncContext.named.factory=file-lock -Daether.syncContext.named.nameMapper=file-gav
                 '''
             }
@@ -276,7 +279,8 @@ Please drop these changes from the pull request, or ask a linagora member to car
                     // surefire:test does not clean: drop the reports already recorded by the Test stage
                     sh 'find . -path "*/target/surefire-reports" -type d -prune -exec rm -rf {} +'
                     catchError(buildResult: 'SUCCESS', stageResult: 'FAILURE') {
-                        sh 'mvn -B -e -fae -Dapi.version=1.43 surefire:test -Punstable-tests'
+                        // Without BUILD_ID, each test JVM builds its own Cassandra test image: see runTestBranch
+                        sh 'env -u BUILD_ID mvn -B -e -fae -Dapi.version=1.43 surefire:test -Punstable-tests'
                     }
                 }
             }
