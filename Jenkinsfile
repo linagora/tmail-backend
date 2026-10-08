@@ -125,9 +125,14 @@ def reportBuildFailure() {
 
         reportScript = trustedReportScript()
         if (reportScript != null) {
-            withCredentials([usernamePassword(credentialsId: 'github',
-                    usernameVariable: 'GITHUB_CREDENTIAL_USR', passwordVariable: 'GITHUB_TOKEN')]) {
-                sh "bash '${reportScript}' || true"
+            // The newest ci-logs/*.log can be the Test branch aborted by the failing one: name the failing one instead
+            def failedTestBranch = env.FAILED_TEST_BRANCH ?
+                ["BUILD_LOG=${env.WORKSPACE}/ci-logs/Test - ${env.FAILED_TEST_BRANCH}.log", "STAGE_NAME=Test - ${env.FAILED_TEST_BRANCH}"] : []
+            withEnv(failedTestBranch) {
+                withCredentials([usernamePassword(credentialsId: 'github',
+                        usernameVariable: 'GITHUB_CREDENTIAL_USR', passwordVariable: 'GITHUB_TOKEN')]) {
+                    sh "bash '${reportScript}' || true"
+                }
             }
         }
     } catch (Exception e) {
@@ -135,6 +140,33 @@ def reportBuildFailure() {
     } finally {
         if (reportScript != null && reportScript != 'ci/report-build-failure.sh') {
             sh "rm -f '${reportScript}'"
+        }
+    }
+}
+
+// One branch of the Test stage. The modules under integration-tests/ and deployment-tests/ run in one branch, every
+// other module in the other: the split is computed from the directories, so a new module needs no change here or
+// in a pom, whatever its parent. The two branches share the agent's memory, which has no swap: its use and the load
+// are sampled every 30 s to ci-logs/test-resources-<branch>.txt (not .log: the failure report reads the newest
+// ci-logs/*.log as the failing stage output). Both Maven builds share ~/.m2, hence the resolver file locks.
+def runTestBranch(String branch, boolean integrationModules) {
+    tee("ci-logs/Test - ${branch}.log") {
+        withEnv(["INTEGRATION_BRANCH=${integrationModules}", "RESOURCES_FILE=${env.WORKSPACE}/ci-logs/test-resources-${branch}.txt"]) {
+            dir('tmail-backend') {
+                sh '''
+                    (set +x; free -m | head -n 1; while true; do echo "$(date +%T) $(free -m | sed -n 2p) load $(cut -d ' ' -f 1-3 /proc/loadavg)"; sleep 30; done) > "$RESOURCES_FILE" 2>&1 &
+                    trap "kill $! 2>/dev/null || true" EXIT
+                    INTEGRATION_MODULES=$(find integration-tests deployment-tests -name pom.xml -not -path '*/target/*' -not -path '*/src/*' | sed 's#/pom.xml$##' | sort | paste -sd , -)
+                    test -n "$INTEGRATION_MODULES"
+                    if [ "$INTEGRATION_BRANCH" = true ]; then
+                        PROJECTS="$INTEGRATION_MODULES"
+                    else
+                        PROJECTS=$(echo "$INTEGRATION_MODULES" | sed 's/^/!/; s/,/,!/g')
+                    fi
+                    mvn -B -Dapi.version=1.43 surefire:test -Pci-test -pl "$PROJECTS" \\
+                        -Daether.syncContext.named.factory=file-lock -Daether.syncContext.named.nameMapper=file-gav
+                '''
+            }
         }
     }
 }
@@ -197,16 +229,39 @@ Please drop these changes from the pull request, or ask a linagora member to car
             }
         }
         stage('Test') {
-            steps {
-                tee('ci-logs/Test.log') {
-                    dir("tmail-backend") {
-                        sh 'mvn -B -Dapi.version=1.43 surefire:test -Pci-test'
+            // Two Maven builds side by side, to use the CPU and memory the agent leaves idle with one (see runTestBranch).
+            // A failing branch aborts the other one, as the single build stopped at the first failing module
+            failFast true
+            parallel {
+                stage('Integration and deployment tests') {
+                    steps {
+                        runTestBranch('integration', true)
+                    }
+                    post {
+                        failure {
+                            script {
+                                env.FAILED_TEST_BRANCH = 'integration'
+                            }
+                        }
+                    }
+                }
+                stage('Other module tests') {
+                    steps {
+                        runTestBranch('modules', false)
+                    }
+                    post {
+                        failure {
+                            script {
+                                env.FAILED_TEST_BRANCH = 'modules'
+                            }
+                        }
                     }
                 }
             }
             post {
                 always {
                     junit(testResults: '**/surefire-reports/*.xml', allowEmptyResults: false)
+                    archiveArtifacts artifacts: 'ci-logs/test-resources-*.txt', allowEmptyArchive: true, fingerprint: false
                 }
                 failure {
                     archiveArtifacts artifacts: '**/target/test-run.log' , fingerprint: true
