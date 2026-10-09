@@ -30,7 +30,6 @@ import org.apache.james.user.api.model.User;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.linagora.tmail.james.jmap.settings.JmapSettingsKey;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsPatch;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsPatch$;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
@@ -43,8 +42,6 @@ import scala.jdk.javaapi.OptionConverters;
 public class TWPSettingsUpdaterImpl implements TWPSettingsUpdater {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(TWPSettingsUpdaterImpl.class);
-    private static final JmapSettingsKey LANGUAGE = JmapSettingsKey.liftOrThrow("language");
-    private static final JmapSettingsKey THEME = JmapSettingsKey.liftOrThrow("appearance.theme");
 
     private final UsersRepository usersRepository;
     private final JmapSettingsRepository jmapSettingsRepository;
@@ -102,8 +99,8 @@ public class TWPSettingsUpdaterImpl implements TWPSettingsUpdater {
 
     private Optional<JmapSettingsPatch> settingsPatch(TWPCommonSettingsMessage message) {
         return Stream.of(
-                message.payload().language().map(language -> JmapSettingsPatch$.MODULE$.toUpsert(LANGUAGE, language)),
-                message.payload().theme().map(theme -> JmapSettingsPatch$.MODULE$.toUpsert(THEME, theme)))
+                message.payload().language().map(language -> JmapSettingsPatch$.MODULE$.toUpsert(TWPReadOnlyPropertyProvider.LANGUAGE, language)),
+                message.payload().theme().map(theme -> JmapSettingsPatch$.MODULE$.toUpsert(TWPReadOnlyPropertyProvider.APPEARANCE_THEME, theme)))
             .flatMap(Optional::stream)
             .reduce(JmapSettingsPatch$.MODULE$::merge);
     }
