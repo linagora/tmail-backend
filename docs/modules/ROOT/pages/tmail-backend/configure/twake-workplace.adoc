@@ -16,7 +16,7 @@ When enabled, the TWP Settings module:
 The following settings are synchronized:
 
 - `language`: stored as the `language` JMAP setting. This setting is read-only.
-- `theme` (`light`, `dark` or `auto`): stored as the `appearance.theme` JMAP setting. It is optional: messages without a theme leave the stored theme untouched.
+- `theme` (`light`, `dark` or `auto`): stored as the `appearance.theme` JMAP setting. This setting is read-only. It is optional: messages without a theme leave the stored theme untouched.
 
 This allows for seamless integration between Twake Workplace and TMail, ensuring that user settings are synchronized across the TWP platform.
 

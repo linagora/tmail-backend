@@ -32,8 +32,9 @@ import reactor.core.publisher.Mono;
 public class TWPReadOnlyPropertyProvider implements ReadOnlyPropertyProvider {
     public static final JmapSettingsKey TWP_SETTINGS_VERSION = JmapSettingsKey.liftOrThrow("twp.settings.version");
     public static final long TWP_SETTINGS_VERSION_DEFAULT = 0;
-    private static final JmapSettingsKey LANGUAGE = JmapSettingsKey.liftOrThrow("language");
-    private static final List<JmapSettingsKey> TWP_SETTINGS_KEYS = ImmutableList.of(LANGUAGE, TWP_SETTINGS_VERSION);
+    public static final JmapSettingsKey LANGUAGE = JmapSettingsKey.liftOrThrow("language");
+    public static final JmapSettingsKey APPEARANCE_THEME = JmapSettingsKey.liftOrThrow("appearance.theme");
+    private static final List<JmapSettingsKey> TWP_SETTINGS_KEYS = ImmutableList.of(LANGUAGE, APPEARANCE_THEME, TWP_SETTINGS_VERSION);
 
     @Override
     public List<JmapSettingsKey> readOnlySettings() {
