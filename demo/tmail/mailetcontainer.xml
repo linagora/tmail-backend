@@ -65,6 +65,13 @@
                 <name>bcc</name>
                 <onMailetException>ignore</onMailetException>
             </mailet>
+            <mailet match="All" class="com.linagora.tmail.mailet.LDAPMailingList">
+                <baseDN>ou=groups,dc=tmail,dc=com</baseDN>
+                <mailAttributeForGroups>mail</mailAttributeForGroups>
+                <!-- Mailing lists only: team mailboxes and simple groups also live under ou=groups -->
+                <extraFilter>(|(twakeMailboxType=cn=mailingList,ou=twakeMailboxType,ou=nomenclature,dc=tmail,dc=com)(!(twakeMailboxType=*)))</extraFilter>
+                <rejectedSenderProcessor>rejectedSender</rejectedSenderProcessor>
+            </mailet>
             <mailet match="All" class="RecipientRewriteTable">
                 <errorProcessor>rrt-error</errorProcessor>
             </mailet>
@@ -114,6 +121,9 @@
         </processor>
 
         <processor state="local-address-error" enableJmx="true">
+            <mailet match="com.linagora.tmail.mailet.IsALDAPMailingList=ou=groups,dc=tmail,dc=com#groupofnames#mail" class="ToProcessor">
+                <processor>transport</processor>
+            </mailet>
             <mailet match="All" class="MetricsMailet">
                 <metricName>mailetContainerLocalAddressError</metricName>
             </mailet>
@@ -144,6 +154,13 @@
             </mailet>
             <mailet match="All" class="DSNBounce">
                 <passThrough>false</passThrough>
+            </mailet>
+        </processor>
+
+        <processor state="rejectedSender" enableJmx="true">
+            <mailet match="All" class="DSNBounce">
+                <passThrough>false</passThrough>
+                <messageString>You are forbidden to send email to this list...</messageString>
             </mailet>
         </processor>
 

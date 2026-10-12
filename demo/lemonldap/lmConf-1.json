@@ -375,11 +375,29 @@
       "family_name": "sn",
       "name": "cn",
       "preferred_username": "uid"
+    },
+    "twake-mail-admin": {
+      "email": "mail",
+      "family_name": "sn",
+      "name": "cn"
+    },
+    "twake-mail-functional-admin": {
+      "email": "mail",
+      "family_name": "sn",
+      "name": "cn"
+    },
+    "webadmin-proxy": {
+      "email": "mail",
+      "family_name": "sn",
+      "name": "cn"
     }
   },
   "oidcRPMetaDataMacros": {
     "james": {},
-    "twake-directory-manager": {}
+    "twake-directory-manager": {},
+    "twake-mail-admin": {},
+    "twake-mail-functional-admin": {},
+    "webadmin-proxy": {}
   },
   "oidcRPMetaDataOptions": {
     "james": {
@@ -462,6 +480,87 @@
       "oidcRPMetaDataOptionsRefreshToken": 0,
       "oidcRPMetaDataOptionsRequirePKCE": 0,
       "oidcRPMetaDataOptionsUserIDAttr": "uid",
+      "oidcRPMetaDataOptionsUserInfoSignAlg": ""
+    },
+    "twake-mail-admin": {
+      "oidcRPMetaDataOptionsAccessTokenClaims": 1,
+      "oidcRPMetaDataOptionsAccessTokenExpiration": 600,
+      "oidcRPMetaDataOptionsAccessTokenJWT": 0,
+      "oidcRPMetaDataOptionsAccessTokenSignAlg": "RS256",
+      "oidcRPMetaDataOptionsAllowClientCredentialsGrant": 0,
+      "oidcRPMetaDataOptionsAllowOffline": 1,
+      "oidcRPMetaDataOptionsAllowPasswordGrant": 0,
+      "oidcRPMetaDataOptionsAuthnLevel": 1,
+      "oidcRPMetaDataOptionsBypassConsent": 1,
+      "oidcRPMetaDataOptionsClientID": "twake-mail-admin",
+      "oidcRPMetaDataOptionsClientSecret": "",
+      "oidcRPMetaDataOptionsDisplayName": "Twake Mail Admin",
+      "oidcRPMetaDataOptionsIDTokenForceClaims": 0,
+      "oidcRPMetaDataOptionsIDTokenSignAlg": "RS256",
+      "oidcRPMetaDataOptionsLogoutBypassConfirm": 0,
+      "oidcRPMetaDataOptionsLogoutSessionRequired": 1,
+      "oidcRPMetaDataOptionsLogoutType": "front",
+      "oidcRPMetaDataOptionsLogoutUrl": "",
+      "oidcRPMetaDataOptionsOfflineSessionExpiration": 2592000,
+      "oidcRPMetaDataOptionsPostLogoutRedirectUris": "http://localhost:3333?logout=1",
+      "oidcRPMetaDataOptionsPublic": 1,
+      "oidcRPMetaDataOptionsRedirectUris": "http://localhost:3333/oidc-callback",
+      "oidcRPMetaDataOptionsRefreshToken": 1,
+      "oidcRPMetaDataOptionsRequirePKCE": 1,
+      "oidcRPMetaDataOptionsUserInfoSignAlg": ""
+    },
+    "twake-mail-functional-admin": {
+      "oidcRPMetaDataOptionsAccessTokenClaims": 1,
+      "oidcRPMetaDataOptionsAccessTokenExpiration": 600,
+      "oidcRPMetaDataOptionsAccessTokenJWT": 0,
+      "oidcRPMetaDataOptionsAccessTokenSignAlg": "RS256",
+      "oidcRPMetaDataOptionsAllowClientCredentialsGrant": 0,
+      "oidcRPMetaDataOptionsAllowOffline": 1,
+      "oidcRPMetaDataOptionsAllowPasswordGrant": 0,
+      "oidcRPMetaDataOptionsAuthnLevel": 1,
+      "oidcRPMetaDataOptionsBypassConsent": 1,
+      "oidcRPMetaDataOptionsClientID": "twake-mail-functional-admin",
+      "oidcRPMetaDataOptionsClientSecret": "",
+      "oidcRPMetaDataOptionsDisplayName": "Twake Mail Functional Admin",
+      "oidcRPMetaDataOptionsIDTokenForceClaims": 0,
+      "oidcRPMetaDataOptionsIDTokenSignAlg": "RS256",
+      "oidcRPMetaDataOptionsLogoutBypassConfirm": 0,
+      "oidcRPMetaDataOptionsLogoutSessionRequired": 1,
+      "oidcRPMetaDataOptionsLogoutType": "front",
+      "oidcRPMetaDataOptionsLogoutUrl": "",
+      "oidcRPMetaDataOptionsOfflineSessionExpiration": 2592000,
+      "oidcRPMetaDataOptionsPostLogoutRedirectUris": "http://localhost:3334?logout=1",
+      "oidcRPMetaDataOptionsPublic": 1,
+      "oidcRPMetaDataOptionsRedirectUris": "http://localhost:3334/oidc-callback",
+      "oidcRPMetaDataOptionsRefreshToken": 1,
+      "oidcRPMetaDataOptionsRequirePKCE": 1,
+      "oidcRPMetaDataOptionsUserInfoSignAlg": ""
+    },
+    "webadmin-proxy": {
+      "oidcRPMetaDataOptionsAccessTokenClaims": 1,
+      "oidcRPMetaDataOptionsAccessTokenExpiration": 600,
+      "oidcRPMetaDataOptionsAccessTokenJWT": 0,
+      "oidcRPMetaDataOptionsAccessTokenSignAlg": "RS256",
+      "oidcRPMetaDataOptionsAllowClientCredentialsGrant": 0,
+      "oidcRPMetaDataOptionsAllowOffline": 1,
+      "oidcRPMetaDataOptionsAllowPasswordGrant": 0,
+      "oidcRPMetaDataOptionsAuthnLevel": 1,
+      "oidcRPMetaDataOptionsBypassConsent": 1,
+      "oidcRPMetaDataOptionsClientID": "webadmin-proxy",
+      "oidcRPMetaDataOptionsClientSecret": "demo-webadmin-proxy-secret",
+      "oidcRPMetaDataOptionsDisplayName": "WebAdmin proxy (introspection)",
+      "oidcRPMetaDataOptionsIDTokenForceClaims": 0,
+      "oidcRPMetaDataOptionsIDTokenSignAlg": "RS256",
+      "oidcRPMetaDataOptionsLogoutBypassConfirm": 0,
+      "oidcRPMetaDataOptionsLogoutSessionRequired": 1,
+      "oidcRPMetaDataOptionsLogoutType": "front",
+      "oidcRPMetaDataOptionsLogoutUrl": "",
+      "oidcRPMetaDataOptionsOfflineSessionExpiration": 2592000,
+      "oidcRPMetaDataOptionsPostLogoutRedirectUris": "",
+      "oidcRPMetaDataOptionsPublic": 0,
+      "oidcRPMetaDataOptionsRedirectUris": "",
+      "oidcRPMetaDataOptionsRefreshToken": 0,
+      "oidcRPMetaDataOptionsRequirePKCE": 0,
       "oidcRPMetaDataOptionsUserInfoSignAlg": ""
     }
   },

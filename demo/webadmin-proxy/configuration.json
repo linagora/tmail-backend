@@ -1,0 +1,39 @@
+{
+  "port": "8001",
+  "oidc.userInfo.url": "http://sso.example.com/oauth2/userinfo",
+  "oidc.introspect.url": "http://sso.example.com/oauth2/introspect",
+  "oidc.introspect.credentials": "Basic d2ViYWRtaW4tcHJveHk6ZGVtby13ZWJhZG1pbi1wcm94eS1zZWNyZXQ=",
+  "oidc.audience": ["twake-mail-admin", "twake-mail-functional-admin"],
+  "oidc.claim.authenticated.user": "email",
+  "oidc.token.cache.expiration": "60s",
+  "cors.allow.origin": ["http://localhost:3333", "http://localhost:3334"],
+  "clients": [
+    {
+      "twake-mail-admin": {
+        "webadmin.backend": "http://tmail-backend:8000",
+        "webadmin.token": "unused-demo-webadmin-has-no-authentication",
+        "authorized.users": ["admin@tmail.com"],
+        "allowed.urls": [
+          {"include": "classpath://ldap-rest-managed-denials.json"},
+          {"include": "classpath://linagora-mail-admin-profile.json"}
+        ]
+      }
+    },
+    {
+      "twake-mail-functional-admin": {
+        "webadmin.backend": "http://tmail-backend:8000",
+        "webadmin.token": "unused-demo-webadmin-has-no-authentication",
+        "authorized.users": ["support@tmail.com", "admin@tmail.com"],
+        "allowed.urls": [
+          {"include": "classpath://linagora-mail-functional-admin-ldap-rest.json"}
+        ],
+        "url.patterns.restrictions": {
+          "domain": {
+            "backing.claim": "email",
+            "operator": "HAS_DOMAIN"
+          }
+        }
+      }
+    }
+  ]
+}

@@ -30,6 +30,7 @@ start_services() {
         echo "Login credentials are 'dwho / dwho' for 'Demo' method and 'james-user@tmail.com / secret' for 'LDAP' method"
         echo "Twake Mail can be reached at http://test.sso.example.com:8080"
         echo "Twake Directory Manager can be reached at http://directory.example.com:8081/static/console/ ('admin / secret')"
+        echo "Twake Mail Admin: technical console at http://localhost:3333 ('admin / secret'), functional console at http://localhost:3334 ('support / secret')"
         echo
 
         echo "For more information, check the README.md"
@@ -47,7 +48,7 @@ stop_services() {
 help() {
     echo "Usage: ./dev.sh (start | stop)"
     echo
-    echo "  start:   Start all services (twake mail, lemonldap, openldap, twake directory manager)"
+    echo "  start:   Start all services (twake mail, lemonldap, openldap, twake directory manager, twake mail admin)"
     echo "  stop:    Stop all services"
 }
 
