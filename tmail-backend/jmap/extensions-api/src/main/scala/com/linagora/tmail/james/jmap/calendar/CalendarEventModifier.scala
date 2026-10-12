@@ -146,15 +146,14 @@ case class CalendarEventModifier(patches: Seq[CalendarEventUpdatePatch],
     newCalendar
   }
 
-  private def findVEventByRecurrenceId(calendar: Calendar, recurrenceId: RecurrenceId[Temporal]): VEvent = {
-    val firstVEVent = calendar.getFirstVEvent
-    require(firstVEVent.getProperty(Property.RRULE).isPresent || firstVEVent.getProperty(Property.RDATE).isPresent,
-      s"Can not find VEVENT with recurrenceId $recurrenceId, the event is not a recurring event".asInstanceOf[Object])
-
+  private def findVEventByRecurrenceId(calendar: Calendar, recurrenceId: RecurrenceId[Temporal]): VEvent =
+    // An existing override is used as is: it may come without master event, eg when invited to a single occurrence
     calendar.getComponents[VEvent](Component.VEVENT).asScala
       .find(_.getRecurrenceId[Temporal] == recurrenceId)
       .getOrElse {
         val baseVEvent = calendar.getFirstVEvent
+        require(baseVEvent.getProperty(Property.RRULE).isPresent || baseVEvent.getProperty(Property.RDATE).isPresent,
+          s"Can not find VEVENT with recurrenceId $recurrenceId, the event is not a recurring event".asInstanceOf[Object])
 
         val filteredProperties: util.List[Property] = baseVEvent.getPropertyList.getAll.asScala
           .filterNot(p => RECURRENCE_IGNORE_COPIED_PROPERTIES.contains(p.getName))
@@ -176,7 +175,6 @@ case class CalendarEventModifier(patches: Seq[CalendarEventUpdatePatch],
         calendar.add(preVEvent)
         preVEvent
       }
-  }
 
   private def markEventAsModified(vEvent: VEvent): Unit = {
     // Update SEQUENCE

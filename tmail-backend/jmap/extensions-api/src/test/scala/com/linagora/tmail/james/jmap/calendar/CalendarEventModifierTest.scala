@@ -638,6 +638,81 @@ class CalendarEventModifierTest {
     }
 
     @Test
+    def withPartStatShouldUpdateRecurrenceEventWithoutMasterEvent(): Unit = {
+      // Attendees invited to a single occurrence only get the override, without master event
+      val baseCalendar =
+        """BEGIN:VCALENDAR
+          |VERSION:2.0
+          |PRODID:-//Sabre//Sabre VObject 5.0.0//EN
+          |CALSCALE:GREGORIAN
+          |BEGIN:VEVENT
+          |UID:16d1fb9a-f35f-4572-827a-ca6e531a815b
+          |DTSTART:20261013T080000Z
+          |DTEND:20261013T083000Z
+          |SEQUENCE:5
+          |SUMMARY:Daily
+          |ORGANIZER;CN=John1 Doe1:mailto:user1@open-paas.org
+          |RECURRENCE-ID:20261013T080000Z
+          |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:user2@open-paas.org
+          |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:user1@open-paas.org
+          |DTSTAMP:20261012T093540Z
+          |END:VEVENT
+          |END:VCALENDAR
+          |"""
+
+      val recurrenceEvent = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(baseCalendar.stripMargin.getBytes("UTF-8")))
+
+      val recurrenceId: Option[RecurrenceId[Temporal]] = Some(new RecurrenceId("20261013T080000Z"))
+      val updateCalendar = testee.withPartStat("user2@open-paas.org", PartStat.ACCEPTED, recurrenceId)
+        .apply(recurrenceEvent)
+
+      assertThat(updateCalendar.toString.removeDTSTAMPLines())
+        .isEqualToNormalizingNewlines(
+          """BEGIN:VCALENDAR
+            |VERSION:2.0
+            |PRODID:-//Sabre//Sabre VObject 5.0.0//EN
+            |CALSCALE:GREGORIAN
+            |BEGIN:VEVENT
+            |UID:16d1fb9a-f35f-4572-827a-ca6e531a815b
+            |DTSTART:20261013T080000Z
+            |DTEND:20261013T083000Z
+            |SEQUENCE:6
+            |SUMMARY:Daily
+            |ORGANIZER;CN=John1 Doe1:mailto:user1@open-paas.org
+            |RECURRENCE-ID:20261013T080000Z
+            |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:user1@open-paas.org
+            |ATTENDEE;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;PARTSTAT=ACCEPTED:mailto:user2@open-paas.org
+            |END:VEVENT
+            |END:VCALENDAR""".stripMargin)
+    }
+
+    @Test
+    def withPartStatShouldThrowWhenRecurrenceIdNotFoundAndEventIsNotRecurring(): Unit = {
+      val baseCalendar =
+        """BEGIN:VCALENDAR
+          |VERSION:2.0
+          |PRODID:-//Sabre//Sabre VObject 5.0.0//EN
+          |BEGIN:VEVENT
+          |UID:16d1fb9a-f35f-4572-827a-ca6e531a815b
+          |DTSTART:20261013T080000Z
+          |DTEND:20261013T083000Z
+          |ORGANIZER;CN=John1 Doe1:mailto:user1@open-paas.org
+          |RECURRENCE-ID:20261013T080000Z
+          |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:user2@open-paas.org
+          |DTSTAMP:20261012T093540Z
+          |END:VEVENT
+          |END:VCALENDAR
+          |"""
+
+      val recurrenceEvent = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(baseCalendar.stripMargin.getBytes("UTF-8")))
+
+      assertThatThrownBy(() => testee(Seq(AttendeePartStatusUpdatePatch("user2@open-paas.org", PartStat.ACCEPTED)), Some(new RecurrenceId[Temporal]("20261014T080000Z")))
+        .apply(recurrenceEvent))
+        .isInstanceOf(classOf[IllegalArgumentException])
+        .hasMessageContaining("the event is not a recurring event")
+    }
+
+    @Test
     def withPartStatShouldThrowWhenRecurringIdNotFound(): Unit = {
       val baseCalendar =
         """BEGIN:VCALENDAR
