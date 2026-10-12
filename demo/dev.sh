@@ -22,12 +22,14 @@ start_services() {
         echo
         echo "Please add the following line to your '/etc/hosts' file"
         echo
-        echo "127.0.0.1 api.manager.example.com manager.sso.example.com sso.example.com handler.sso.example.com test.sso.example.com tmail-backend"
+        echo "127.0.0.1 api.manager.example.com manager.sso.example.com sso.example.com handler.sso.example.com test.sso.example.com directory.example.com tmail-backend"
         echo
 
         echo "All service started!"
         echo "LemonLDAP can be reached at http://sso.example.com"
         echo "Login credentials are 'dwho / dwho' for 'Demo' method and 'james-user@tmail.com / secret' for 'LDAP' method"
+        echo "Twake Mail can be reached at http://test.sso.example.com:8080"
+        echo "Twake Directory Manager can be reached at http://directory.example.com:8081/static/console/ ('admin / secret')"
         echo
 
         echo "For more information, check the README.md"
@@ -39,13 +41,13 @@ start_services() {
 
 stop_services() {
     echo "Stopping all services..."
-    docker compose down
+    docker compose down --volumes
 }
 
 help() {
     echo "Usage: ./dev.sh (start | stop)"
     echo
-    echo "  start:   Start all services (james, krakend, lemonldap, openldap)"
+    echo "  start:   Start all services (twake mail, lemonldap, openldap, twake directory manager)"
     echo "  stop:    Stop all services"
 }
 

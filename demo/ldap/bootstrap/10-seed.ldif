@@ -1,0 +1,314 @@
+# Seed data loaded on the first start of OpenLDAP (dc=tmail,dc=com): the branches and
+# nomenclatures the Twake schemas of ldap-rest expect, a small organization tree and a few
+# accounts. Every account signs in with the password "secret".
+#
+# Only plain accounts are seeded: aliases, quotas and mailing lists reach Twake Mail when
+# they are set through ldap-rest, so create them from the Directory Manager.
+
+# ------------------------------------------------------------------------------------- branches
+dn: ou=users,dc=tmail,dc=com
+objectClass: organizationalUnit
+ou: users
+
+dn: ou=groups,dc=tmail,dc=com
+objectClass: organizationalUnit
+ou: groups
+
+dn: ou=positions,dc=tmail,dc=com
+objectClass: organizationalUnit
+ou: positions
+
+dn: ou=nomenclature,dc=tmail,dc=com
+objectClass: organizationalUnit
+ou: nomenclature
+
+# --------------------------------------------------------------------------------- nomenclatures
+dn: ou=twakeTitle,ou=nomenclature,dc=tmail,dc=com
+objectClass: organizationalUnit
+ou: twakeTitle
+
+dn: cn=Dr,ou=twakeTitle,ou=nomenclature,dc=tmail,dc=com
+objectClass: top
+objectClass: applicationProcess
+cn: Dr
+
+dn: cn=Mr,ou=twakeTitle,ou=nomenclature,dc=tmail,dc=com
+objectClass: top
+objectClass: applicationProcess
+cn: Mr
+
+dn: cn=Mrs,ou=twakeTitle,ou=nomenclature,dc=tmail,dc=com
+objectClass: top
+objectClass: applicationProcess
+cn: Mrs
+
+dn: cn=Ms,ou=twakeTitle,ou=nomenclature,dc=tmail,dc=com
+objectClass: top
+objectClass: applicationProcess
+cn: Ms
+
+dn: cn=Prof,ou=twakeTitle,ou=nomenclature,dc=tmail,dc=com
+objectClass: top
+objectClass: applicationProcess
+cn: Prof
+
+dn: ou=twakeAccountStatus,ou=nomenclature,dc=tmail,dc=com
+objectClass: organizationalUnit
+ou: twakeAccountStatus
+
+dn: cn=active,ou=twakeAccountStatus,ou=nomenclature,dc=tmail,dc=com
+objectClass: top
+objectClass: applicationProcess
+cn: active
+
+dn: cn=disabled,ou=twakeAccountStatus,ou=nomenclature,dc=tmail,dc=com
+objectClass: top
+objectClass: applicationProcess
+cn: disabled
+
+dn: cn=noaccess,ou=twakeAccountStatus,ou=nomenclature,dc=tmail,dc=com
+objectClass: top
+objectClass: applicationProcess
+cn: noaccess
+
+dn: cn=todelete,ou=twakeAccountStatus,ou=nomenclature,dc=tmail,dc=com
+objectClass: top
+objectClass: applicationProcess
+cn: todelete
+
+dn: ou=twakeDeliveryMode,ou=nomenclature,dc=tmail,dc=com
+objectClass: organizationalUnit
+ou: twakeDeliveryMode
+
+dn: cn=normal,ou=twakeDeliveryMode,ou=nomenclature,dc=tmail,dc=com
+objectClass: top
+objectClass: applicationProcess
+cn: normal
+
+dn: cn=forward,ou=twakeDeliveryMode,ou=nomenclature,dc=tmail,dc=com
+objectClass: top
+objectClass: applicationProcess
+cn: forward
+
+dn: cn=localDelivery,ou=twakeDeliveryMode,ou=nomenclature,dc=tmail,dc=com
+objectClass: top
+objectClass: applicationProcess
+cn: localDelivery
+
+dn: ou=twakeListType,ou=nomenclature,dc=tmail,dc=com
+objectClass: organizationalUnit
+ou: twakeListType
+
+dn: cn=openList,ou=twakeListType,ou=nomenclature,dc=tmail,dc=com
+objectClass: top
+objectClass: applicationProcess
+cn: openList
+
+dn: cn=memberRestrictedList,ou=twakeListType,ou=nomenclature,dc=tmail,dc=com
+objectClass: top
+objectClass: applicationProcess
+cn: memberRestrictedList
+
+dn: cn=ownerRestrictedList,ou=twakeListType,ou=nomenclature,dc=tmail,dc=com
+objectClass: top
+objectClass: applicationProcess
+cn: ownerRestrictedList
+
+dn: ou=twakeMailboxType,ou=nomenclature,dc=tmail,dc=com
+objectClass: organizationalUnit
+ou: twakeMailboxType
+
+dn: cn=group,ou=twakeMailboxType,ou=nomenclature,dc=tmail,dc=com
+objectClass: top
+objectClass: applicationProcess
+cn: group
+
+dn: cn=mailingList,ou=twakeMailboxType,ou=nomenclature,dc=tmail,dc=com
+objectClass: top
+objectClass: applicationProcess
+cn: mailingList
+
+dn: cn=teamMailbox,ou=twakeMailboxType,ou=nomenclature,dc=tmail,dc=com
+objectClass: top
+objectClass: applicationProcess
+cn: teamMailbox
+
+dn: ou=domains,ou=nomenclature,dc=tmail,dc=com
+objectClass: organizationalUnit
+ou: domains
+
+dn: dc=tmail,ou=domains,ou=nomenclature,dc=tmail,dc=com
+objectClass: top
+objectClass: domain
+objectClass: domainRelatedObject
+dc: tmail
+associatedDomain: tmail.com
+description: Main mail domain
+
+dn: dc=lists,ou=domains,ou=nomenclature,dc=tmail,dc=com
+objectClass: top
+objectClass: domain
+objectClass: domainRelatedObject
+dc: lists
+associatedDomain: lists.tmail.com
+description: Mailing list domain
+
+# ------------------------------------------------------------------------------------ positions
+dn: cn=Administrator,ou=positions,dc=tmail,dc=com
+objectClass: twakePosition
+cn: Administrator
+
+dn: cn=Sales Representative,ou=positions,dc=tmail,dc=com
+objectClass: twakePosition
+cn: Sales Representative
+
+dn: cn=Sales Manager,ou=positions,dc=tmail,dc=com
+objectClass: twakePosition
+cn: Sales Manager
+
+dn: cn=Software Engineer,ou=positions,dc=tmail,dc=com
+objectClass: twakePosition
+cn: Software Engineer
+
+dn: cn=Engineering Manager,ou=positions,dc=tmail,dc=com
+objectClass: twakePosition
+cn: Engineering Manager
+
+dn: cn=HR Officer,ou=positions,dc=tmail,dc=com
+objectClass: twakePosition
+cn: HR Officer
+
+# ---------------------------------------------------------------------------- organization tree
+# admin administers the whole directory.
+dn: ou=organization,dc=tmail,dc=com
+objectClass: top
+objectClass: organizationalUnit
+objectClass: twakeDepartment
+ou: organization
+description: Twake Mail demo
+twakeDepartmentPath: organization
+twakeLocalAdminLink: uid=admin,ou=users,dc=tmail,dc=com
+twakeDomainLink: dc=tmail,ou=domains,ou=nomenclature,dc=tmail,dc=com
+
+dn: ou=Sales,ou=organization,dc=tmail,dc=com
+objectClass: top
+objectClass: organizationalUnit
+objectClass: twakeDepartment
+ou: Sales
+twakeDepartmentPath: Sales
+
+dn: ou=Engineering,ou=organization,dc=tmail,dc=com
+objectClass: top
+objectClass: organizationalUnit
+objectClass: twakeDepartment
+ou: Engineering
+twakeDepartmentPath: Engineering
+
+# ------------------------------------------------------------------------------------- accounts
+dn: uid=admin,ou=users,dc=tmail,dc=com
+objectClass: top
+objectClass: twakeAccount
+objectClass: twakeWhitePages
+uid: admin
+employeeNumber: E0001
+cn: Ada Admin
+givenName: Ada
+sn: Admin
+displayName: Ada Admin
+mail: admin@tmail.com
+userPassword: secret
+title: cn=Administrator,ou=positions,dc=tmail,dc=com
+twakeDepartmentLink: ou=organization,dc=tmail,dc=com
+twakeDepartmentPath: organization
+twakeAccountStatus: cn=active,ou=twakeAccountStatus,ou=nomenclature,dc=tmail,dc=com
+twakeDeliveryMode: cn=normal,ou=twakeDeliveryMode,ou=nomenclature,dc=tmail,dc=com
+
+dn: uid=james-user,ou=users,dc=tmail,dc=com
+objectClass: top
+objectClass: twakeAccount
+objectClass: twakeWhitePages
+uid: james-user
+employeeNumber: E0002
+cn: James User
+givenName: James
+sn: User
+displayName: James User
+mail: james-user@tmail.com
+userPassword: secret
+title: cn=Software Engineer,ou=positions,dc=tmail,dc=com
+twakeDepartmentLink: ou=Engineering,ou=organization,dc=tmail,dc=com
+twakeDepartmentPath: Engineering
+twakeAccountStatus: cn=active,ou=twakeAccountStatus,ou=nomenclature,dc=tmail,dc=com
+twakeDeliveryMode: cn=normal,ou=twakeDeliveryMode,ou=nomenclature,dc=tmail,dc=com
+
+dn: uid=james-user2,ou=users,dc=tmail,dc=com
+objectClass: top
+objectClass: twakeAccount
+objectClass: twakeWhitePages
+uid: james-user2
+employeeNumber: E0003
+cn: James User2
+givenName: James
+sn: User2
+displayName: James User2
+mail: james-user2@tmail.com
+userPassword: secret
+title: cn=Engineering Manager,ou=positions,dc=tmail,dc=com
+twakeDepartmentLink: ou=Engineering,ou=organization,dc=tmail,dc=com
+twakeDepartmentPath: Engineering
+twakeAccountStatus: cn=active,ou=twakeAccountStatus,ou=nomenclature,dc=tmail,dc=com
+twakeDeliveryMode: cn=normal,ou=twakeDeliveryMode,ou=nomenclature,dc=tmail,dc=com
+
+dn: uid=alice,ou=users,dc=tmail,dc=com
+objectClass: top
+objectClass: twakeAccount
+objectClass: twakeWhitePages
+uid: alice
+employeeNumber: E0004
+cn: Alice Moreau
+givenName: Alice
+sn: Moreau
+displayName: Alice Moreau
+mail: alice@tmail.com
+userPassword: secret
+title: cn=Sales Manager,ou=positions,dc=tmail,dc=com
+twakeDepartmentLink: ou=Sales,ou=organization,dc=tmail,dc=com
+twakeDepartmentPath: Sales
+twakeAccountStatus: cn=active,ou=twakeAccountStatus,ou=nomenclature,dc=tmail,dc=com
+twakeDeliveryMode: cn=normal,ou=twakeDeliveryMode,ou=nomenclature,dc=tmail,dc=com
+
+dn: uid=bob,ou=users,dc=tmail,dc=com
+objectClass: top
+objectClass: twakeAccount
+objectClass: twakeWhitePages
+uid: bob
+employeeNumber: E0005
+cn: Bob Schneider
+givenName: Bob
+sn: Schneider
+displayName: Bob Schneider
+mail: bob@tmail.com
+userPassword: secret
+title: cn=Sales Representative,ou=positions,dc=tmail,dc=com
+twakeDepartmentLink: ou=Sales,ou=organization,dc=tmail,dc=com
+twakeDepartmentPath: Sales
+twakeAccountStatus: cn=active,ou=twakeAccountStatus,ou=nomenclature,dc=tmail,dc=com
+twakeDeliveryMode: cn=normal,ou=twakeDeliveryMode,ou=nomenclature,dc=tmail,dc=com
+
+dn: uid=gpt,ou=users,dc=tmail,dc=com
+objectClass: top
+objectClass: twakeAccount
+objectClass: twakeWhitePages
+uid: gpt
+employeeNumber: E0006
+cn: Twake Mail Bot
+givenName: Twake Mail
+sn: Bot
+displayName: Twake Mail Bot
+mail: gpt@tmail.com
+userPassword: secret
+title: cn=Administrator,ou=positions,dc=tmail,dc=com
+twakeDepartmentLink: ou=organization,dc=tmail,dc=com
+twakeDepartmentPath: organization
+twakeAccountStatus: cn=active,ou=twakeAccountStatus,ou=nomenclature,dc=tmail,dc=com
+twakeDeliveryMode: cn=normal,ou=twakeDeliveryMode,ou=nomenclature,dc=tmail,dc=com

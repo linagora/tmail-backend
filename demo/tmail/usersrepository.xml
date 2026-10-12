@@ -23,10 +23,10 @@
 <usersrepository name="LocalUsers"
                  class="org.apache.james.user.ldap.ReadOnlyUsersLDAPRepository"
                  ldapHost="ldap://ldap:389"
-                 principal="uid=james-user@tmail.com,ou=users,dc=tmail,dc=com"
-                 credentials="secret"
+                 principal="cn=admin,dc=tmail,dc=com"
+                 credentials="admin"
                  userBase="ou=users,dc=tmail,dc=com"
                  userIdAttribute="mail"
-                 userObjectClass="person">
+                 userObjectClass="twakeAccount">
     <supportsVirtualHosting>true</supportsVirtualHosting>
 </usersrepository>
