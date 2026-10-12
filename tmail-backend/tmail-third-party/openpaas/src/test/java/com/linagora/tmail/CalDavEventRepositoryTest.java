@@ -917,6 +917,49 @@ class CalDavEventRepositoryTest {
     }
 
     @Test
+    void setAttendanceStatusShouldSucceedForITIPImportedRecurrenceOverrideWithoutMasterEvent() {
+        // The attendee only got invited to a single occurrence: the ITIP REQUEST carries a RECURRENCE-ID but no master event.
+        String eventUid = UUID.randomUUID().toString();
+        String requestCalendar = "BEGIN:VCALENDAR\n" +
+            "VERSION:2.0\n" +
+            "PRODID:-//Sabre//Sabre VObject 5.0.0//EN\n" +
+            "CALSCALE:GREGORIAN\n" +
+            "METHOD:REQUEST\n" +
+            "BEGIN:VEVENT\n" +
+            "UID:" + eventUid + "\n" +
+            "TRANSP:OPAQUE\n" +
+            "DTSTART;TZID=Europe/Paris:20261013T100000\n" +
+            "DTEND;TZID=Europe/Paris:20261013T103000\n" +
+            "CLASS:PUBLIC\n" +
+            "SEQUENCE:5\n" +
+            "SUMMARY:Daily\n" +
+            "ORGANIZER;CN=organizer:mailto:organizer@open-paas.org\n" +
+            "RECURRENCE-ID;TZID=Europe/Paris:20261013T100000\n" +
+            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:other@open-paas.org\n" +
+            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:" + openPaasUser.email().asString() + "\n" +
+            "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=FALSE;ROLE=CHAIR;CUTYPE=INDIVIDUAL:mailto:organizer@open-paas.org\n" +
+            "DTSTAMP:20261012T093540Z\n" +
+            "END:VEVENT\n" +
+            "END:VCALENDAR\n";
+        when(calendarResolver.resolveRequestCalendar(any(), any(), any()))
+            .thenReturn(SMono.just(stringAsCalendar(requestCalendar)));
+        BlobId blobId = BlobId.of(new Random().nextInt(1_000_000) + "").get();
+
+        // First reply imports the event via ITIP: CalDAV then stores the lone override, without master event
+        assertThatCode(() -> testee.setAttendanceStatus(testUser, AttendanceStatus.Accepted, blobId).block())
+            .doesNotThrowAnyException();
+        // Replying again on the already ITIP-imported event
+        assertThatCode(() -> testee.setAttendanceStatus(testUser, AttendanceStatus.Declined, blobId).block())
+            .doesNotThrowAnyException();
+
+        DavCalendarObject davCalendarObject = davClient.caldav(openPaasUser.email())
+            .getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(eventUid)).block();
+        assertThat(davCalendarObject.calendarData().toString().replace("\r\n ", ""))
+            .contains("RECURRENCE-ID;TZID=Europe/Paris:20261013T100000")
+            .containsPattern("PARTSTAT=DECLINED[^\r\n]*:mailto:" + openPaasUser.email().asString());
+    }
+
+    @Test
     void setAttendanceStatusShouldThrowWhenEventIsCancelled() {
         String eventUid = UUID.randomUUID().toString();
         String cancelledCalendar = "BEGIN:VCALENDAR\n" +
