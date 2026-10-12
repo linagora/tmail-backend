@@ -312,3 +312,21 @@ twakeDepartmentLink: ou=organization,dc=tmail,dc=com
 twakeDepartmentPath: organization
 twakeAccountStatus: cn=active,ou=twakeAccountStatus,ou=nomenclature,dc=tmail,dc=com
 twakeDeliveryMode: cn=normal,ou=twakeDeliveryMode,ou=nomenclature,dc=tmail,dc=com
+
+dn: uid=support,ou=users,dc=tmail,dc=com
+objectClass: top
+objectClass: twakeAccount
+objectClass: twakeWhitePages
+uid: support
+employeeNumber: E0007
+cn: Sam Support
+givenName: Sam
+sn: Support
+displayName: Sam Support
+mail: support@tmail.com
+userPassword: secret
+title: cn=Administrator,ou=positions,dc=tmail,dc=com
+twakeDepartmentLink: ou=organization,dc=tmail,dc=com
+twakeDepartmentPath: organization
+twakeAccountStatus: cn=active,ou=twakeAccountStatus,ou=nomenclature,dc=tmail,dc=com
+twakeDeliveryMode: cn=normal,ou=twakeDeliveryMode,ou=nomenclature,dc=tmail,dc=com

@@ -96,6 +96,10 @@ services:
       - DM_BASE_URL=http://directory.example.com:8081
       - DM_EXTRA_PLUGINS=core/twake/james
       - DM_JAMES_WEBADMIN_URL=http://tmail-backend:8000
+      # Mailing lists are expanded, and their sender rules enforced, by the LDAPMailingList mailet
+      # straight from LDAP: keep the plugin from creating James address groups for them by
+      # allowing lists only under a branch that does not exist.
+      - DM_JAMES_MAILING_LIST_BRANCHES=ou=no-james-address-groups,dc=tmail,dc=com
     depends_on:
       - ldap
       - sso.example.com
@@ -103,6 +107,48 @@ services:
     networks:
       - tmail
     restart: on-failure
+
+  # Front of James WebAdmin for the admin SPAs: checks their LemonLDAP tokens and applies the
+  # per-client profile of webadmin-proxy/configuration.json.
+  webadmin-proxy:
+    image: linagora/webadmin-proxy:1.1.6
+    container_name: webadmin-proxy
+    ports:
+      - "8002:8001"
+    volumes:
+      - ./webadmin-proxy/configuration.json:/root/conf/configuration.json:ro
+    depends_on:
+      - sso.example.com
+      - tmail-backend
+    networks:
+      - tmail
+    restart: on-failure
+
+  # Twake Mail Admin, technical console (global mode), for admin@tmail.com.
+  # SSO_ALLOW_INSECURE_REQUESTS (http LemonLDAP) is not released yet: build the image from the
+  # sso-allow-insecure-requests branch of twake-mail-admin, see README.md.
+  twake-mail-admin:
+    image: twake-mail-admin:local
+    pull_policy: never
+    container_name: twake-mail-admin
+    ports:
+      - "3333:80"
+    volumes:
+      - ./twake-mail-admin/admin.env.js:/usr/share/nginx/html/env.js:ro
+    networks:
+      - tmail
+
+  # Twake Mail Admin, functional console (domain mode, tmail.com), for support@tmail.com.
+  twake-mail-functional-admin:
+    image: twake-mail-admin:local
+    pull_policy: never
+    container_name: twake-mail-functional-admin
+    ports:
+      - "3334:80"
+    volumes:
+      - ./twake-mail-admin/functional-admin.env.js:/usr/share/nginx/html/env.js:ro
+    networks:
+      - tmail
 
 networks:
   tmail:
