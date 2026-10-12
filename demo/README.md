@@ -10,9 +10,9 @@ pushes every change made through it to Tmail over WebAdmin.
 ```
  Directory Manager ──(LDAP)──> OpenLDAP <──(LDAP)── Tmail users repository, LemonLDAP
         │
-        └──(WebAdmin: aliases, quotas, mailing lists, team mailboxes, identities, delegation)──> Tmail
-                                                                                              ↑
- Twake Mail Admin (technical, functional) ──(OIDC token)──> webadmin-proxy ──(WebAdmin)───────┘
+        └──(WebAdmin: aliases, quotas, team mailboxes, identities, delegation)──> Tmail
+                                                                                    ↑
+ Twake Mail Admin ──(OIDC token)──> webadmin-proxy ──(WebAdmin)─────────────────────┘
 ```
 
 ## Quickstart
