@@ -21,6 +21,7 @@ package com.linagora.tmail.mailet;
 import static org.apache.james.user.ldap.DockerLdapSingleton.ADMIN;
 import static org.apache.james.user.ldap.DockerLdapSingleton.ADMIN_PASSWORD;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.util.Optional;
 
@@ -37,6 +38,8 @@ import org.apache.mailet.base.test.FakeMatcherConfig;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
+
+import com.unboundid.ldap.sdk.LDAPException;
 
 class IsALDAPMailingListTest {
     static LdapGenericContainer ldapContainer = DockerLdapSingleton.ldapContainer;
@@ -109,6 +112,74 @@ class IsALDAPMailingListTest {
 
         assertThat(testee.match(mail))
             .isEmpty();
+    }
+
+    @Test
+    void shouldMatchGroupsMatchingTheExtraFilter() throws Exception {
+        IsALDAPMailingList testee = new IsALDAPMailingList(LdapRepositoryConfiguration.from(ldapRepositoryConfigurationWithVirtualHosting(ldapContainer)));
+        testee.init(FakeMatcherConfig.builder()
+            .matcherName("IsALDAPMailingList")
+            .condition("ou=lists,dc=james,dc=org#groupofnames#description#(businessCategory=openList)")
+            .build());
+
+        FakeMail mail = FakeMail.builder()
+            .name("test-mail")
+            .state(FakeMail.DEFAULT)
+            .sender("bob@james.org")
+            .recipient("group2@lists.james.org")
+            .build();
+
+        assertThat(testee.match(mail))
+            .containsOnly(new MailAddress("group2@lists.james.org"));
+    }
+
+    @Test
+    void shouldNotMatchGroupsNotMatchingTheExtraFilter() throws Exception {
+        IsALDAPMailingList testee = new IsALDAPMailingList(LdapRepositoryConfiguration.from(ldapRepositoryConfigurationWithVirtualHosting(ldapContainer)));
+        testee.init(FakeMatcherConfig.builder()
+            .matcherName("IsALDAPMailingList")
+            .condition("ou=lists,dc=james,dc=org#groupofnames#description#(businessCategory=openList)")
+            .build());
+
+        FakeMail mail = FakeMail.builder()
+            .name("test-mail")
+            .state(FakeMail.DEFAULT)
+            .sender("bob@james.org")
+            .recipient("mygroup@lists.james.org")
+            .build();
+
+        assertThat(testee.match(mail))
+            .isEmpty();
+    }
+
+    @Test
+    void shouldKeepHashCharactersInTheExtraFilter() throws Exception {
+        IsALDAPMailingList testee = new IsALDAPMailingList(LdapRepositoryConfiguration.from(ldapRepositoryConfigurationWithVirtualHosting(ldapContainer)));
+        testee.init(FakeMatcherConfig.builder()
+            .matcherName("IsALDAPMailingList")
+            .condition("ou=lists,dc=james,dc=org#groupofnames#description#(|(businessCategory=openList)(businessCategory=no#such#category))")
+            .build());
+
+        FakeMail mail = FakeMail.builder()
+            .name("test-mail")
+            .state(FakeMail.DEFAULT)
+            .sender("bob@james.org")
+            .recipient("group2@lists.james.org")
+            .build();
+
+        assertThat(testee.match(mail))
+            .containsOnly(new MailAddress("group2@lists.james.org"));
+    }
+
+    @Test
+    void initShouldRejectAnInvalidExtraFilter() throws Exception {
+        IsALDAPMailingList testee = new IsALDAPMailingList(LdapRepositoryConfiguration.from(ldapRepositoryConfigurationWithVirtualHosting(ldapContainer)));
+
+        assertThatThrownBy(() -> testee.init(FakeMatcherConfig.builder()
+            .matcherName("IsALDAPMailingList")
+            .condition("ou=lists,dc=james,dc=org#groupofnames#description#not-a-filter")
+            .build()))
+            .isInstanceOf(LDAPException.class);
     }
 
     static HierarchicalConfiguration<ImmutableNode> ldapRepositoryConfigurationWithVirtualHosting(LdapGenericContainer ldapContainer) {

@@ -19,7 +19,9 @@
 package com.linagora.tmail.mailet;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import jakarta.inject.Inject;
 import jakarta.mail.MessagingException;
@@ -33,6 +35,7 @@ import org.apache.mailet.base.GenericMatcher;
 import com.github.fge.lambdas.Throwing;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
+import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
 import com.unboundid.ldap.sdk.Filter;
 import com.unboundid.ldap.sdk.LDAPConnectionPool;
@@ -49,11 +52,17 @@ import com.unboundid.ldap.sdk.SearchScope;
  * Useful for integrating LDAP lists with Recipient Rewrite Tables: it can be used to re-process lists generated as
  * an output of RRTs.
  *
- * Matcher argument needs to be in the form baseDN#groupObjectClass#mailAttribute
+ * Matcher argument needs to be in the form baseDN#groupObjectClass#mailAttribute, optionally followed by
+ * #extraFilter: an LDAP filter the group must also match. Use the extraFilter of the LDAPMailingList mailet, so that
+ * groups the mailet does not expand are not sent back to it, which would loop.
  *
  * Sample usage:
  *
  * <mailet match="com.linagora.tmail.mailet.IsALDAPMailingList=ou=lists,dc=tmail,dc=com#groupofnames#description" class="ToProcessor">
+ *   <processor>transport</processor>
+ * </mailet>
+ *
+ * <mailet match="com.linagora.tmail.mailet.IsALDAPMailingList=ou=groups,dc=tmail,dc=com#groupofnames#mail#(businessCategory=*)" class="ToProcessor">
  *   <processor>transport</processor>
  * </mailet>
  *
@@ -64,6 +73,7 @@ public class IsALDAPMailingList extends GenericMatcher {
     private String baseDN;
     private String groupObjectClass;
     private String mailAttribute;
+    private Optional<Filter> groupExtraFilter = Optional.empty();
 
     @Inject
     public IsALDAPMailingList(LDAPConnectionPool ldapConnectionPool, LdapRepositoryConfiguration configuration) {
@@ -87,15 +97,17 @@ public class IsALDAPMailingList extends GenericMatcher {
 
     @Override
     public void init() throws MessagingException {
-        String condition = getCondition();
-        Preconditions.checkState(condition.contains("#"), "Must match the 'baseDN#groupObjectClass#mailAttribute");
-        baseDN = condition.substring(0, condition.indexOf('#'));
+        // The extra filter is last and kept whole: a filter value may contain '#'
+        List<String> parts = Splitter.on('#').limit(4).splitToList(getCondition());
+        Preconditions.checkState(parts.size() >= 3, "Must match the 'baseDN#groupObjectClass#mailAttribute[#extraFilter]");
 
-        String afterBaseDN = condition.substring(baseDN.length() + 1);
-        Preconditions.checkState(afterBaseDN.contains("#"), "Must match the 'baseDN#groupObjectClass#mailAttribute");
-
-        groupObjectClass = afterBaseDN.substring(0, afterBaseDN.indexOf('#'));
-        mailAttribute = afterBaseDN.substring(groupObjectClass.length() + 1);
+        baseDN = parts.get(0);
+        groupObjectClass = parts.get(1);
+        mailAttribute = parts.get(2);
+        groupExtraFilter = parts.stream()
+            .skip(3)
+            .findFirst()
+            .map(Throwing.function(Filter::create).sneakyThrow());
     }
 
     private Optional<SearchResultEntry> resolveListDN(MailAddress rcpt) throws LDAPSearchException {
@@ -116,8 +128,8 @@ public class IsALDAPMailingList extends GenericMatcher {
     private Filter createFilter(String retrievalName, String ldapUserRetrievalAttribute) {
         Filter specificUserFilter = Filter.createEqualityFilter(ldapUserRetrievalAttribute, retrievalName);
         Filter objectClassFilter = Filter.createEqualityFilter("objectClass", groupObjectClass);
-        return userExtraFilter
-            .map(extraFilter -> Filter.createANDFilter(objectClassFilter, specificUserFilter, extraFilter))
-            .orElseGet(() -> Filter.createANDFilter(objectClassFilter, specificUserFilter));
+        return Filter.createANDFilter(Stream.of(Optional.of(objectClassFilter), Optional.of(specificUserFilter), userExtraFilter, groupExtraFilter)
+            .flatMap(Optional::stream)
+            .toList());
     }
 }

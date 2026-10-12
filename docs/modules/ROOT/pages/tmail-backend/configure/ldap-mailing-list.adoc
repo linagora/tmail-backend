@@ -85,12 +85,22 @@ Matcher matching mailing lists defined by the LDAP.
 Useful for integrating LDAP lists with Recipient Rewrite Tables: it can be used to re-process lists generated as
 an output of RRTs.
 
-Matcher argument needs to be in the form baseDN#groupObjectClass#mailAttribute
+Matcher argument needs to be in the form baseDN#groupObjectClass#mailAttribute, optionally followed by
+`#extraFilter`: an LDAP filter the group must also match. Set it to the `extraFilter` of the `LDAPMailingList`
+mailet: a group the matcher accepts but the mailet does not expand is sent back to the mailet forever.
 
 Sample usage:
 
 ....
 <mailet match="com.linagora.tmail.mailet.IsALDAPMailingList=ou=lists,dc=tmail,dc=com#groupofnames#description" class="ToProcessor">
+  <processor>transport</processor>
+</mailet>
+....
+
+With an extra filter:
+
+....
+<mailet match="com.linagora.tmail.mailet.IsALDAPMailingList=ou=groups,dc=tmail,dc=com#groupofnames#mail#(businessCategory=*)" class="ToProcessor">
   <processor>transport</processor>
 </mailet>
 ....
