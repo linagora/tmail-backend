@@ -21,7 +21,7 @@ package com.linagora.tmail.james.jmap.saas
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_SAAS
-import com.linagora.tmail.saas.api.SaaSAccountRepository
+import com.linagora.tmail.saas.api.{DomainSendingValidator, SaaSAccountRepository}
 import com.linagora.tmail.saas.model.{SaaSAccount}
 import jakarta.inject.Inject
 import org.apache.james.core.Username
@@ -30,20 +30,32 @@ import org.apache.james.jmap.core.{Capability, CapabilityFactory, CapabilityProp
 import play.api.libs.json.{JsObject, Json}
 import reactor.core.scala.publisher.SMono
 
-case class SaaSCapabilityProperties(saasAccount: SaaSAccount) extends CapabilityProperties {
-  override def jsonify(): JsObject = Json.obj("isPaying" -> saasAccount.isPaying, "canUpgrade" -> saasAccount.canUpgrade)
+import scala.jdk.OptionConverters._
+
+case class SaaSCapabilityProperties(saasAccount: SaaSAccount, mailDnsConfigurationValidated: Boolean) extends CapabilityProperties {
+  override def jsonify(): JsObject = Json.obj("isPaying" -> saasAccount.isPaying,
+    "canUpgrade" -> saasAccount.canUpgrade,
+    "mailDnsConfigurationValidated" -> mailDnsConfigurationValidated)
 }
 
 final case class SaaSCapability(properties: SaaSCapabilityProperties,
                                 identifier: CapabilityIdentifier = LINAGORA_SAAS) extends Capability
 
-class SaaSCapabilityFactory @Inject()(val saaSUserRepository: SaaSAccountRepository) extends CapabilityFactory {
+class SaaSCapabilityFactory @Inject()(val saaSUserRepository: SaaSAccountRepository,
+                                      val domainSendingValidator: DomainSendingValidator) extends CapabilityFactory {
   override def create(urlPrefixes: UrlPrefixes, username: Username): Capability =
     this.createReactive(urlPrefixes, username).block()
 
   override def createReactive(urlPrefixes: UrlPrefixes, username: Username): SMono[Capability] =
     SMono(saaSUserRepository.getSaaSAccount(username))
-      .map(saaSPlan => SaaSCapability(SaaSCapabilityProperties(saaSPlan)))
+      .flatMap(saaSPlan => mailDnsConfigurationValidated(username)
+        .map(mailDnsValidated => SaaSCapability(SaaSCapabilityProperties(saaSPlan, mailDnsValidated))))
+
+  // Domain level status: false while the domain awaits mail DNS validation, hence cannot send mails.
+  private def mailDnsConfigurationValidated(username: Username): SMono[Boolean] =
+    username.getDomainPart.toScala
+      .map(domain => SMono(domainSendingValidator.isMailDnsConfigurationValidated(domain)).map(_.booleanValue()))
+      .getOrElse(SMono.just(true))
 
   override def id(): CapabilityIdentifier = LINAGORA_SAAS
 }

@@ -8,10 +8,13 @@ Servers supporting the Twake Workplace SaaS integration need to advertise it thr
 com:linagora:params:saas
 ....
 
-The associated object has the following field:
+The associated object has the following fields:
 
 - `canUpgrade`: *Boolean*. True if the user can upgrade to a higher plan.
 - `isPaying`: *Boolean*. True if the user is currently on a paying plan.
+- `mailDnsConfigurationValidated`: *Boolean*. False while the user's domain awaits mail DNS
+validation: the <<_domain_dns_status,mail DNS sending controls>> then reject outgoing mail
+from this account.
 
 == Domain DNS status
 

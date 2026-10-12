@@ -85,6 +85,16 @@ trait JmapSaasContract {
     server
   }
 
+  private def publishDomainDnsStatus(mailDnsConfigurationValidated: Boolean): Unit =
+    publishAmqpSettingsMessage(
+      s"""{
+         |    "domain": "${TEST_DOMAIN.asString()}",
+         |    "organizationId": "orgid123",
+         |    "dnsOwnershipValidated": true,
+         |    "mailDnsConfigurationValidated": $mailDnsConfigurationValidated
+         |}""".stripMargin,
+      DOMAIN_SUBSCRIPTION_ROUTING_KEY)
+
   @AfterEach
   def tearDown(): Unit = stopJmapServer()
 
@@ -126,6 +136,63 @@ trait JmapSaasContract {
       .contentType(JSON)
       .body("capabilities.'com:linagora:params:saas'.isPaying", equalTo(false))
       .body("capabilities.'com:linagora:params:saas'.canUpgrade", equalTo(true))
+  }
+
+  @Test
+  def mailDnsConfigurationValidatedShouldBeTrueWhenNoDomainDnsStatus(): Unit = {
+    setUpJmapServer(saasSupport = true)
+
+    `given`()
+      .when()
+      .get("/session")
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .body("capabilities.'com:linagora:params:saas'.mailDnsConfigurationValidated", equalTo(true))
+  }
+
+  @Test
+  @Tag(CategoryTags.BASIC_FEATURE)
+  def mailDnsConfigurationValidatedShouldBeFalseWhenDomainAwaitsMailDnsValidation(): Unit = {
+    setUpJmapServer(saasSupport = true)
+
+    publishDomainDnsStatus(mailDnsConfigurationValidated = false)
+
+    awaitAtMostTenSeconds.untilAsserted { () =>
+      `given`()
+        .when()
+        .get("/session")
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .body("capabilities.'com:linagora:params:saas'.mailDnsConfigurationValidated", equalTo(false))
+    }
+  }
+
+  @Test
+  def mailDnsConfigurationValidatedShouldBeTrueOnceMailDnsValidated(): Unit = {
+    setUpJmapServer(saasSupport = true)
+
+    publishDomainDnsStatus(mailDnsConfigurationValidated = false)
+    awaitAtMostTenSeconds.untilAsserted { () =>
+      `given`()
+        .when()
+        .get("/session")
+      .`then`
+        .body("capabilities.'com:linagora:params:saas'.mailDnsConfigurationValidated", equalTo(false))
+    }
+
+    publishDomainDnsStatus(mailDnsConfigurationValidated = true)
+
+    awaitAtMostTenSeconds.untilAsserted { () =>
+      `given`()
+        .when()
+        .get("/session")
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .body("capabilities.'com:linagora:params:saas'.mailDnsConfigurationValidated", equalTo(true))
+    }
   }
 
   @Test

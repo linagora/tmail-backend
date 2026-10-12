@@ -45,11 +45,11 @@ public class DomainSendingValidator {
         return Flux.fromStream(() -> Stream.concat(
                 authenticatedUser.flatMap(Username::getDomainPart).stream(),
                 sender.asOptional().map(MailAddress::getDomain).stream()).distinct())
-            .concatMap(this::canSend)
+            .concatMap(this::isMailDnsConfigurationValidated)
             .all(Boolean::booleanValue);
     }
 
-    private Mono<Boolean> canSend(Domain domain) {
+    public Mono<Boolean> isMailDnsConfigurationValidated(Domain domain) {
         // Existing and non-SaaS domains have no DNS state. Only SaaS provisioning sets it.
         return Mono.from(repository.getMailDnsConfigurationValidated(domain)).defaultIfEmpty(true);
     }
