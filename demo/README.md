@@ -59,12 +59,21 @@ What the console changes, Tmail sees:
 - **delegation**: becomes a Tmail delegation;
 - **a changed address**: renames the Tmail account.
 
+The account state set in the console (`twakeAccountStatus`) is enforced by LDAP filters:
+
+| State | Signs in (LemonLDAP) | Mailbox (Tmail) |
+|---|---|---|
+| Enabled | yes | yes |
+| No access | no | yes: mail is still delivered |
+| Disabled, To be deleted | no | no: Tmail no longer sees the account, mail to it bounces |
+
+Re-enabling the account brings everything back: its mailbox content is not deleted.
+
 Mailing lists are not pushed to Tmail: the `LDAPMailingList` mailet reads them from LDAP at each
 mail (`tmail/mailetcontainer.xml`), so membership changes apply at once and the list type is
 enforced — open, members only, owners only, internal, same domain. A rejected sender gets a bounce.
-Give lists an address on `lists.tmail.com`. The plugin would otherwise mirror lists as James
-address groups, which cannot restrict senders: `DM_JAMES_MAILING_LIST_BRANCHES` points it at a
-branch that does not exist, so it skips them (and logs an error for each list created).
+Give lists an address on `lists.tmail.com`. ldap-rest leaves them to the mailet: it does not
+copy them to James.
 
 Only changes made through ldap-rest are propagated: an entry written straight into OpenLDAP
 reaches Tmail as an account, but its aliases, quota or list do not.
@@ -77,12 +86,19 @@ which grants each one a profile (`webadmin-proxy/configuration.json`):
 
 | Console | URL | Account | Profile |
 |---|---|---|---|
-| Technical (global mode) | http://localhost:3333 | `admin` / `secret` | `ldap-rest-managed-denials.json` + `linagora-mail-admin-profile.json` |
+| Technical (global mode) | http://localhost:3333 | `admin` / `secret` | `linagora-mail-god-ldap-rest.json`: everything but what ldap-rest owns |
 | Functional (domain mode, `tmail.com`) | http://localhost:3334 | `support` / `secret`, `admin` / `secret` | `linagora-mail-functional-admin-ldap-rest.json`, bound to the account's domain |
 
-Both profiles refuse what ldap-rest owns (user quotas, user aliases, renames, mailing lists): change
-those in the Directory Manager. The consoles are served on `localhost`, the only plain http origin
+Both profiles refuse what ldap-rest owns (user quotas, aliases, renames, delegation, team mailboxes,
+mailing lists): change those in the Directory Manager. The consoles are served on `localhost`, the only plain http origin
 browsers treat as secure, which their PKCE login needs.
+
+These profiles ship after webadmin-proxy 1.1.6: until its next release, build the proxy image from
+[webadmin-proxy](https://github.com/linagora/webadmin-proxy) before `./dev.sh start`:
+
+```sh
+mvn package -DskipTests jib:dockerBuild -Djib.to.image=linagora/webadmin-proxy:local
+```
 
 The consoles need `SSO_ALLOW_INSECURE_REQUESTS`, to talk to the plain http LemonLDAP, which no
 released image has yet. Build it from the `sso-allow-insecure-requests` branch of twake-mail-admin

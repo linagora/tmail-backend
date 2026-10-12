@@ -1,7 +1,7 @@
 {
   "ADPwdExpireWarning": 0,
   "ADPwdMaxAge": 0,
-  "LDAPFilter": "(&(objectClass=twakeAccount)(|(uid=$user)(mail=$user)))",
+  "LDAPFilter": "(&(objectClass=twakeAccount)(|(uid=$user)(mail=$user))(!(|(twakeAccountStatus=cn=disabled,ou=twakeAccountStatus,ou=nomenclature,dc=tmail,dc=com)(twakeAccountStatus=cn=noaccess,ou=twakeAccountStatus,ou=nomenclature,dc=tmail,dc=com)(twakeAccountStatus=cn=todelete,ou=twakeAccountStatus,ou=nomenclature,dc=tmail,dc=com))))",
   "SMTPServer": "",
   "SMTPTLS": "",
   "SMTPTLSOpts": {},
