@@ -1,4 +1,3 @@
-version: "3"
 
 
 services:
@@ -54,27 +53,56 @@ services:
       - LOGGER=stderr
       - USERLOGGER=stderr
     depends_on:
-      ldap:
-        condition: service_started
+      - ldap
     networks:
       - tmail
 
   ldap:
     container_name: ldap
-    image: bitnamilegacy/openldap
+    image: osixia/openldap:1.5.0
+    # --copy-service: the bootstrap LDIFs are copied before osixia rewrites them in place
+    command: --copy-service
     ports:
       - "389:389"
-      - "636:636"
     volumes:
-      - "./ldap/populate.ldif:/ldifs/populate.ldif"
+      - "./ldap/bootstrap:/container/service/slapd/assets/config/bootstrap/ldif/custom:ro"
     environment:
-      - LDAP_PORT_NUMBER=389
-      - LDAP_ADMIN_USERNAME=admin
+      - LDAP_ORGANISATION=Twake Mail demo
+      - LDAP_DOMAIN=tmail.com
       - LDAP_ADMIN_PASSWORD=admin
-      - LDAP_ROOT=dc=tmail,dc=com
-      - BITNAMI_DEBUG=true
+      - LDAP_CONFIG_PASSWORD=admin
+      - LDAP_RFC2307BIS_SCHEMA=true
+      - LDAP_TLS=false
     networks:
       - tmail
+
+  # Twake Directory Manager: ldap-rest and its administration console. Every change made
+  # through it is pushed to Twake Mail by the core/twake/james plugin over WebAdmin.
+  directory.example.com:
+    image: ghcr.io/linagora/twake-directory-manager:0.4.7
+    container_name: directory-manager
+    ports:
+      - "8081:8081"
+    environment:
+      - DM_LDAP_URL=ldap://ldap:389
+      - DM_LDAP_DN=cn=admin,dc=tmail,dc=com
+      - DM_LDAP_PWD=admin
+      - DM_LDAP_BASE=dc=tmail,dc=com
+      - DM_LDAP_TOP_ORGANIZATION=ou=organization,dc=tmail,dc=com
+      - DM_LDAP_GROUP_BASE=ou=groups,dc=tmail,dc=com
+      - DM_OIDC_SERVER=http://sso.example.com
+      - DM_OIDC_CLIENT_ID=twake-directory-manager
+      - DM_OIDC_CLIENT_SECRET=demo-directory-manager-secret-0123456789
+      - DM_BASE_URL=http://directory.example.com:8081
+      - DM_EXTRA_PLUGINS=core/twake/james
+      - DM_JAMES_WEBADMIN_URL=http://tmail-backend:8000
+    depends_on:
+      - ldap
+      - sso.example.com
+      - tmail-backend
+    networks:
+      - tmail
+    restart: on-failure
 
 networks:
   tmail:

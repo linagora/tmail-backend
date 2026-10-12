@@ -1,7 +1,7 @@
 {
   "ADPwdExpireWarning": 0,
   "ADPwdMaxAge": 0,
-  "LDAPFilter": "(&(objectClass=person)(|(uid=$user)(mail=$user)))",
+  "LDAPFilter": "(&(objectClass=twakeAccount)(|(uid=$user)(mail=$user)))",
   "SMTPServer": "",
   "SMTPTLS": "",
   "SMTPTLSOpts": {},
@@ -369,10 +369,17 @@
       "email": "mail",
       "family_name": "sn",
       "name": "cn"
+    },
+    "twake-directory-manager": {
+      "email": "mail",
+      "family_name": "sn",
+      "name": "cn",
+      "preferred_username": "uid"
     }
   },
   "oidcRPMetaDataMacros": {
-    "james": {}
+    "james": {},
+    "twake-directory-manager": {}
   },
   "oidcRPMetaDataOptions": {
     "james": {
@@ -427,6 +434,34 @@
       "oidcRPMetaDataOptionsRedirectUris": "http://test.sso.example.com:8080/login-callback.html",
       "oidcRPMetaDataOptionsRefreshToken": 0,
       "oidcRPMetaDataOptionsRequirePKCE": 0,
+      "oidcRPMetaDataOptionsUserInfoSignAlg": ""
+    },
+    "twake-directory-manager": {
+      "oidcRPMetaDataOptionsAccessTokenClaims": 1,
+      "oidcRPMetaDataOptionsAccessTokenExpiration": 120,
+      "oidcRPMetaDataOptionsAccessTokenJWT": 0,
+      "oidcRPMetaDataOptionsAccessTokenSignAlg": "RS256",
+      "oidcRPMetaDataOptionsAllowClientCredentialsGrant": 0,
+      "oidcRPMetaDataOptionsAllowOffline": 1,
+      "oidcRPMetaDataOptionsAllowPasswordGrant": 0,
+      "oidcRPMetaDataOptionsAuthnLevel": 1,
+      "oidcRPMetaDataOptionsBypassConsent": 1,
+      "oidcRPMetaDataOptionsClientID": "twake-directory-manager",
+      "oidcRPMetaDataOptionsClientSecret": "demo-directory-manager-secret-0123456789",
+      "oidcRPMetaDataOptionsDisplayName": "Twake Directory Manager",
+      "oidcRPMetaDataOptionsIDTokenForceClaims": 0,
+      "oidcRPMetaDataOptionsIDTokenSignAlg": "RS256",
+      "oidcRPMetaDataOptionsLogoutBypassConfirm": 0,
+      "oidcRPMetaDataOptionsLogoutSessionRequired": 1,
+      "oidcRPMetaDataOptionsLogoutType": "front",
+      "oidcRPMetaDataOptionsLogoutUrl": "",
+      "oidcRPMetaDataOptionsOfflineSessionExpiration": 2592000,
+      "oidcRPMetaDataOptionsPostLogoutRedirectUris": "",
+      "oidcRPMetaDataOptionsPublic": 0,
+      "oidcRPMetaDataOptionsRedirectUris": "http://directory.example.com:8081/callback",
+      "oidcRPMetaDataOptionsRefreshToken": 0,
+      "oidcRPMetaDataOptionsRequirePKCE": 0,
+      "oidcRPMetaDataOptionsUserIDAttr": "uid",
       "oidcRPMetaDataOptionsUserInfoSignAlg": ""
     }
   },
