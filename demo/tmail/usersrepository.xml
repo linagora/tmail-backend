@@ -20,6 +20,10 @@
 
 <!-- Read https://james.apache.org/server/config-users.html for further details -->
 
+<!-- A disabled or to-be-deleted account has no mailbox: James does not see it, its mail bounces.
+     The filter is negative on purpose: IsALDAPMailingList also applies it to groups, which have
+     no twakeAccountStatus. -->
+
 <usersrepository name="LocalUsers"
                  class="org.apache.james.user.ldap.ReadOnlyUsersLDAPRepository"
                  ldapHost="ldap://ldap:389"
@@ -27,6 +31,7 @@
                  credentials="admin"
                  userBase="ou=users,dc=tmail,dc=com"
                  userIdAttribute="mail"
-                 userObjectClass="twakeAccount">
+                 userObjectClass="twakeAccount"
+                 filter="(!(|(twakeAccountStatus=cn=disabled,ou=twakeAccountStatus,ou=nomenclature,dc=tmail,dc=com)(twakeAccountStatus=cn=todelete,ou=twakeAccountStatus,ou=nomenclature,dc=tmail,dc=com)))">
     <supportsVirtualHosting>true</supportsVirtualHosting>
 </usersrepository>

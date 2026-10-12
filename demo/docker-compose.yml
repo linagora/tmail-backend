@@ -79,7 +79,7 @@ services:
   # Twake Directory Manager: ldap-rest and its administration console. Every change made
   # through it is pushed to Twake Mail by the core/twake/james plugin over WebAdmin.
   directory.example.com:
-    image: ghcr.io/linagora/twake-directory-manager:0.4.7
+    image: ghcr.io/linagora/twake-directory-manager:0.5.0
     container_name: directory-manager
     ports:
       - "8081:8081"
@@ -96,10 +96,6 @@ services:
       - DM_BASE_URL=http://directory.example.com:8081
       - DM_EXTRA_PLUGINS=core/twake/james
       - DM_JAMES_WEBADMIN_URL=http://tmail-backend:8000
-      # Mailing lists are expanded, and their sender rules enforced, by the LDAPMailingList mailet
-      # straight from LDAP: keep the plugin from creating James address groups for them by
-      # allowing lists only under a branch that does not exist.
-      - DM_JAMES_MAILING_LIST_BRANCHES=ou=no-james-address-groups,dc=tmail,dc=com
     depends_on:
       - ldap
       - sso.example.com
