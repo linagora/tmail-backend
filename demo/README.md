@@ -93,14 +93,6 @@ Both profiles refuse what ldap-rest owns (user quotas, aliases, renames, delegat
 mailing lists): change those in the Directory Manager. The consoles are served on `localhost`, the only plain http origin
 browsers treat as secure, which their PKCE login needs.
 
-The consoles need `SSO_ALLOW_INSECURE_REQUESTS`, to talk to the plain http LemonLDAP, which no
-released image has yet. Build it from the `sso-allow-insecure-requests` branch of twake-mail-admin
-before `./dev.sh start`:
-
-```sh
-docker build -t twake-mail-admin:local <path to twake-mail-admin>
-```
-
 ## Flow
 
 Here's a recording of the flow:

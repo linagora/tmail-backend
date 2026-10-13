@@ -27,7 +27,7 @@ start_services() {
 
         echo "All service started!"
         echo "LemonLDAP can be reached at http://sso.example.com"
-        echo "Login credentials are 'dwho / dwho' for 'Demo' method and 'james-user@tmail.com / secret' for 'LDAP' method"
+        echo "Login credentials are 'james-user@tmail.com / secret' (every seeded account uses the password 'secret')"
         echo "Twake Mail can be reached at http://test.sso.example.com:8080"
         echo "Twake Directory Manager can be reached at http://directory.example.com:8081/static/console/ ('admin / secret')"
         echo "Twake Mail Admin: technical console at http://localhost:3333 ('admin / secret'), functional console at http://localhost:3334 ('support / secret')"

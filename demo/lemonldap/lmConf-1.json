@@ -472,7 +472,7 @@
       "oidcRPMetaDataOptionsPostLogoutRedirectUris": "",
       "oidcRPMetaDataOptionsPublic": 0,
       "oidcRPMetaDataOptionsRedirectUris": "http://directory.example.com:8081/callback",
-      "oidcRPMetaDataOptionsRefreshToken": 0,
+      "oidcRPMetaDataOptionsRefreshToken": 1,
       "oidcRPMetaDataOptionsRequirePKCE": 0,
       "oidcRPMetaDataOptionsUserIDAttr": "uid",
       "oidcRPMetaDataOptionsUserInfoSignAlg": ""
