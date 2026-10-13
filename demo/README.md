@@ -93,13 +93,6 @@ Both profiles refuse what ldap-rest owns (user quotas, aliases, renames, delegat
 mailing lists): change those in the Directory Manager. The consoles are served on `localhost`, the only plain http origin
 browsers treat as secure, which their PKCE login needs.
 
-These profiles ship after webadmin-proxy 1.1.6: until its next release, build the proxy image from
-[webadmin-proxy](https://github.com/linagora/webadmin-proxy) before `./dev.sh start`:
-
-```sh
-mvn package -DskipTests jib:dockerBuild -Djib.to.image=linagora/webadmin-proxy:local
-```
-
 The consoles need `SSO_ALLOW_INSECURE_REQUESTS`, to talk to the plain http LemonLDAP, which no
 released image has yet. Build it from the `sso-allow-insecure-requests` branch of twake-mail-admin
 before `./dev.sh start`:
