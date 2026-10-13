@@ -117,12 +117,7 @@
       "type": "category"
     }
   },
-  "authChoiceModules": {
-    "Demo": "Demo;Demo;Demo;;;{}",
-    "LDAP": "LDAP;LDAP;LDAP;;;{}"
-  },
-  "authChoiceParam": "lmAuth",
-  "authentication": "Choice",
+  "authentication": "LDAP",
   "autoSigninRules": {},
   "bruteForceProtectionLockTimes": "15, 30, 60, 300, 600",
   "bruteForceProtectionMaxAge": 300,
@@ -607,7 +602,7 @@
   "openIdSreg_timezone": "_timezone",
   "pamAuthnLevel": 2,
   "pamService": "login",
-  "passwordDB": "Choice",
+  "passwordDB": "LDAP",
   "passwordPolicyActivation": 1,
   "passwordPolicyMinDigit": 0,
   "passwordPolicyMinLower": 0,
@@ -632,7 +627,7 @@
   "portalDisplayLogout": 1,
   "portalDisplayOidcConsents": 1,
   "portalDisplayRefreshMyRights": 1,
-  "portalDisplayRegister": 1,
+  "portalDisplayRegister": 0,
   "portalErrorOnExpiredSession": 1,
   "portalFavicon": "common/favicon.ico",
   "portalForceAuthnInterval": 5,
