@@ -20,6 +20,9 @@ package com.linagora.tmail.jmap.aibot
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
 import com.linagora.tmail.james.jmap.event.ApplyWhenFilter
+import com.linagora.tmail.jmap.aibot.agent.AgentTool
+import com.linagora.tmail.jmap.aibot.agent.AIToolsRoutes
+import com.linagora.tmail.jmap.aibot.agent.tools.{CreateDraftTool, SearchEmailsTool}
 import com.linagora.tmail.jmap.aibot.CapabilityIdentifier.LINAGORA_AIBOT
 import com.linagora.tmail.jmap.aibot.redationalHelper.AiSuggestionMethod
 import com.linagora.tmail.jmap.aibot.scribe.AIChatCompletionRoutes
@@ -75,5 +78,10 @@ class AiMethodModule extends AbstractModule {
     Multibinder.newSetBinder(binder, classOf[JMAPRoutes])
       .addBinding()
       .to(classOf[AIChatCompletionRoutes])
+    val jmapRoutesBinder = Multibinder.newSetBinder(binder, classOf[JMAPRoutes])
+    jmapRoutesBinder.addBinding().to(classOf[AIChatCompletionRoutes])
+    jmapRoutesBinder.addBinding().to(classOf[AIToolsRoutes])
+
+    val agentToolBinder = Multibinder.newSetBinder(binder(), classOf[AgentTool])
   }
 }
