@@ -26,9 +26,10 @@ class CreateDraftTool extends AgentTool {
 
   override def definition: JsObject = Json.obj(
     "name" -> name.nameAsString,
-    "description" -> ("Create an email draft in the user's Drafts folder. " +
-      "The draft is not sent; the user will review and send it. " +
-      "Use inReplyTo to draft a reply to an existing email."),
+    "description" -> ("Create an email draft in the user's **Drafts** folder. " +
+      "The draft is not sent: it returns the **id** of the created draft, so the assistant can open a composer with it " +
+      "and ask the user for a sending confirmation.\n\n" +
+      "Use `inReplyTo` to draft a reply to an existing email."),
     "parameters" -> Json.obj(
       "type" -> "object",
       "properties" -> Json.obj(
@@ -45,7 +46,8 @@ class CreateDraftTool extends AgentTool {
           "description" -> "Email subject"),
         "body" -> Json.obj(
           "type" -> "string",
-          "description" -> "Plain text body of the email"),
+          "description" -> ("Body of the email. **Markdown** is supported for basic styling: " +
+            "**bold**, *italic*, lists, [links](https://example.com), `code`...")),
         "inReplyTo" -> Json.obj(
           "type" -> "string",
           "description" -> "Id of the email being replied to, as returned by search_emails")),

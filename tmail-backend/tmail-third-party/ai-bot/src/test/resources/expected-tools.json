@@ -4,7 +4,7 @@
       "type": "function",
       "function": {
         "name": "create_draft",
-        "description": "Create an email draft in the user's Drafts folder. The draft is not sent; the user will review and send it. Use inReplyTo to draft a reply to an existing email.",
+        "description": "Create an email draft in the user's **Drafts** folder. The draft is not sent: it returns the **id** of the created draft, so the assistant can open a composer with it and ask the user for a sending confirmation.\n\nUse `inReplyTo` to draft a reply to an existing email.",
         "parameters": {
           "type": "object",
           "properties": {
@@ -24,7 +24,7 @@
             },
             "body": {
               "type": "string",
-              "description": "Plain text body of the email"
+              "description": "Body of the email. **Markdown** is supported for basic styling: **bold**, *italic*, lists, [links](https://example.com), `code`..."
             },
             "inReplyTo": {
               "type": "string",
@@ -39,25 +39,38 @@
       "type": "function",
       "function": {
         "name": "search_emails",
-        "description": "Search the user's emails. Returns a list of matching emails with id, sender, subject, date and a short preview. Use the returned id with create_draft to reply to an email.",
+        "description": "Search the user's emails with filters. All filters are optional and combined with AND. Returns matching emails, most recent first, with id, sender, subject, date and a short preview. This is more expensive than list_emails: prefer list_emails first and use this tool only when filtering is needed. Use the returned id with create_draft to reply to an email.",
         "parameters": {
           "type": "object",
           "properties": {
             "from": {
               "type": "string",
-              "description": "Sender email address"
+              "description": "Sender email address or name"
             },
-            "keyword": {
+            "to": {
               "type": "string",
-              "description": "Text to search in subject and body"
+              "description": "Recipient email address or name"
             },
-            "unread": {
-              "type": "boolean",
-              "description": "Only return unread emails"
+            "text": {
+              "type": "string",
+              "description": "Text to search in the subject, addresses and body"
             },
             "after": {
               "type": "string",
               "description": "Only emails received after this date (ISO 8601, e.g. 2026-10-14)"
+            },
+            "before": {
+              "type": "string",
+              "description": "Only emails received before this date (ISO 8601, e.g. 2026-10-14)"
+            },
+            "inMailboxes": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Only emails in one of these mailbox ids. Searches all mailboxes if omitted"
+            },
+            "unread": {
+              "type": "boolean",
+              "description": "Only return unread emails"
             },
             "limit": {
               "type": "integer",
