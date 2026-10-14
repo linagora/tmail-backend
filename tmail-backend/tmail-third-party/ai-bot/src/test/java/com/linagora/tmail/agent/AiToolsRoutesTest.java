@@ -27,6 +27,13 @@ import static org.apache.james.jmap.rfc8621.contract.Fixture.authScheme;
 import static org.apache.james.jmap.rfc8621.contract.Fixture.baseRequestSpecBuilder;
 import static org.hamcrest.Matchers.equalTo;
 
+import java.io.BufferedReader;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.nio.charset.StandardCharsets;
+import java.util.stream.Collectors;
+
 import com.google.inject.util.Modules;
 import com.linagora.tmail.common.AIBaseModule;
 import com.linagora.tmail.james.app.MemoryConfiguration;
@@ -93,83 +100,9 @@ public class AiToolsRoutesTest {
     }
 
     @Test
-    void shouldReturn200WhenAccessingAiToolsEndpoint() {
+    void shouldReturn200WhenAccessingAiToolsEndpoint() throws IOException {
 
-        String resultBody = """
-        {
-                "tools": [
-            {
-                "type": "function",
-                "function": {
-                "name": "create_draft",
-                    "description": "Create an email draft in the user's Drafts folder. The draft is not sent; the user will review and send it. Use inReplyTo to draft a reply to an existing email.",
-                    "parameters": {
-                    "type": "object",
-                        "properties": {
-                        "to": {
-                            "type": "array",
-                                "items": { "type": "string" },
-                            "description": "Recipient email addresses"
-                        },
-                        "cc": {
-                            "type": "array",
-                                "items": { "type": "string" },
-                            "description": "CC email addresses"
-                        },
-                        "subject": {
-                            "type": "string",
-                                "description": "Email subject"
-                        },
-                        "body": {
-                            "type": "string",
-                                "description": "Plain text body of the email"
-                        },
-                        "inReplyTo": {
-                            "type": "string",
-                                "description": "Id of the email being replied to, as returned by search_emails"
-                        }
-                    },
-                    "required": ["body"]
-                }
-            }
-            },
-            {
-                "type": "function",
-                "function": {
-                "name": "search_emails",
-                    "description": "Search the user's emails. Returns a list of matching emails with id, sender, subject, date and a short preview. Use the returned id with create_draft to reply to an email.",
-                    "parameters": {
-                    "type": "object",
-                        "properties": {
-                        "from": {
-                            "type": "string",
-                                "description": "Sender email address"
-                        },
-                        "keyword": {
-                            "type": "string",
-                                "description": "Text to search in subject and body"
-                        },
-                        "unread": {
-                            "type": "boolean",
-                                "description": "Only return unread emails"
-                        },
-                        "after": {
-                            "type": "string",
-                                "description": "Only emails received after this date (ISO 8601, e.g. 2026-10-14)"
-                        },
-                        "limit": {
-                            "type": "integer",
-                                "description": "Maximum number of results, default 10, max 20"
-                        }
-                    },
-                    "required": []
-                }
-            }
-            }
-      ]
-    }""";
-
-        
+        String expectedBody = loadExpectedTools();
         String response = given()
             .when()
             .get()
@@ -182,7 +115,7 @@ public class AiToolsRoutesTest {
             .jsonPath()
             .prettify();
 
-        assertThatJson(response).isEqualTo(resultBody);
+        assertThatJson(response).isEqualTo(expectedBody);
     }
 
     @Test
@@ -229,5 +162,13 @@ public class AiToolsRoutesTest {
             .statusCode(SC_UNAUTHORIZED)
             .contentType("application/json")
             .body("detail", equalTo("User is not eligible for AI tools"));
+    }
+
+    private String loadExpectedTools() throws IOException {
+        try (InputStream inputStream = getClass().getClassLoader().getResourceAsStream("expected-tools.json")) {
+            return new BufferedReader(new InputStreamReader(inputStream, StandardCharsets.UTF_8))
+                .lines()
+                .collect(Collectors.joining("\n"));
+        }
     }
 }

@@ -17,15 +17,15 @@
  ********************************************************************/
 package com.linagora.tmail.jmap.aibot.agent.tools
 
-import com.linagora.tmail.jmap.aibot.agent.AgentTool
+import com.linagora.tmail.jmap.aibot.agent.{AgentTool, AgentToolName}
 import play.api.libs.json.{JsObject, Json}
 
 class CreateDraftTool extends AgentTool {
 
-  override def name: String = "create_draft"
+  override def name: AgentToolName = AgentToolName("create_draft")
 
   override def definition: JsObject = Json.obj(
-    "name" -> name,
+    "name" -> name.nameAsString,
     "description" -> ("Create an email draft in the user's Drafts folder. " +
       "The draft is not sent; the user will review and send it. " +
       "Use inReplyTo to draft a reply to an existing email."),
