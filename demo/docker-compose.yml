@@ -122,7 +122,7 @@ services:
 
   # Twake Mail Admin, technical console (global mode), for admin@tmail.com.
   twake-mail-admin:
-    image: linagora/twake-mail-admin:branch-master
+    image: linagora/twake-mail-admin:1.0.10
     container_name: twake-mail-admin
     ports:
       - "3333:80"
@@ -133,7 +133,7 @@ services:
 
   # Twake Mail Admin, functional console (domain mode, tmail.com), for support@tmail.com.
   twake-mail-functional-admin:
-    image: linagora/twake-mail-admin:branch-master
+    image: linagora/twake-mail-admin:1.0.10
     container_name: twake-mail-functional-admin
     ports:
       - "3334:80"
