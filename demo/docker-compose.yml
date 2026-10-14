@@ -79,7 +79,7 @@ services:
   # Twake Directory Manager: ldap-rest and its administration console. Every change made
   # through it is pushed to Twake Mail by the core/twake/james plugin over WebAdmin.
   directory.example.com:
-    image: ghcr.io/linagora/twake-directory-manager:0.6.1
+    image: ghcr.io/linagora/twake-directory-manager:0.6.3
     container_name: directory-manager
     ports:
       - "8081:8081"
