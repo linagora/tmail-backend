@@ -17,15 +17,15 @@
  ********************************************************************/
 package com.linagora.tmail.jmap.aibot.agent.tools
 
-import com.linagora.tmail.jmap.aibot.agent.AgentTool
+import com.linagora.tmail.jmap.aibot.agent.{AgentTool, AgentToolName}
 import play.api.libs.json.{JsObject, Json}
 
 class SearchEmailsTool extends AgentTool {
 
-  override def name: String = "search_emails"
+  override def name: AgentToolName = AgentToolName("search_emails")
 
   override val definition: JsObject = Json.obj(
-    "name" -> name,
+    "name" -> name.nameAsString,
     "description" -> ("Search the user's emails. " +
       "Returns a list of matching emails with id, sender, subject, date and a short preview. " +
       "Use the returned id with create_draft to reply to an email."),

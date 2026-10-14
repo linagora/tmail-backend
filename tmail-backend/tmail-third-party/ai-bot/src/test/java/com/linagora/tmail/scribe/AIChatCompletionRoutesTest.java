@@ -42,11 +42,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
 import com.google.inject.util.Modules;
-import com.linagora.tmail.common.AIBaseModule;
 import com.linagora.tmail.extension.WireMockAiServerExtension;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.jmap.event.ApplyWhenFilter;
+import com.linagora.tmail.common.AIBaseModule;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
 import com.linagora.tmail.saas.api.memory.MemorySaaSAccountRepository;

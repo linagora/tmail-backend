@@ -1,0 +1,72 @@
+{
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "create_draft",
+        "description": "Create an email draft in the user's Drafts folder. The draft is not sent; the user will review and send it. Use inReplyTo to draft a reply to an existing email.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "to": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Recipient email addresses"
+            },
+            "cc": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "CC email addresses"
+            },
+            "subject": {
+              "type": "string",
+              "description": "Email subject"
+            },
+            "body": {
+              "type": "string",
+              "description": "Plain text body of the email"
+            },
+            "inReplyTo": {
+              "type": "string",
+              "description": "Id of the email being replied to, as returned by search_emails"
+            }
+          },
+          "required": ["body"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "search_emails",
+        "description": "Search the user's emails. Returns a list of matching emails with id, sender, subject, date and a short preview. Use the returned id with create_draft to reply to an email.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "string",
+              "description": "Sender email address"
+            },
+            "keyword": {
+              "type": "string",
+              "description": "Text to search in subject and body"
+            },
+            "unread": {
+              "type": "boolean",
+              "description": "Only return unread emails"
+            },
+            "after": {
+              "type": "string",
+              "description": "Only emails received after this date (ISO 8601, e.g. 2026-10-14)"
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum number of results, default 10, max 20"
+            }
+          },
+          "required": []
+        }
+      }
+    }
+  ]
+}
