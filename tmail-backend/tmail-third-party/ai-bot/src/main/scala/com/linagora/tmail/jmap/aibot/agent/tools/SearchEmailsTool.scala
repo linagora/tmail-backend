@@ -24,26 +24,37 @@ class SearchEmailsTool extends AgentTool {
 
   override def name: AgentToolName = AgentToolName("search_emails")
 
-  override val definition: JsObject = Json.obj(
+  override def definition: JsObject = Json.obj(
     "name" -> name.nameAsString,
-    "description" -> ("Search the user's emails. " +
-      "Returns a list of matching emails with id, sender, subject, date and a short preview. " +
+    "description" -> ("Search the user's emails with filters. All filters are optional and combined with AND. " +
+      "Returns matching emails, most recent first, with id, sender, subject, date and a short preview. " +
+      "This is more expensive than list_emails: prefer list_emails first and use this tool only when filtering is needed. " +
       "Use the returned id with create_draft to reply to an email."),
     "parameters" -> Json.obj(
       "type" -> "object",
       "properties" -> Json.obj(
         "from" -> Json.obj(
           "type" -> "string",
-          "description" -> "Sender email address"),
-        "keyword" -> Json.obj(
+          "description" -> "Sender email address or name"),
+        "to" -> Json.obj(
           "type" -> "string",
-          "description" -> "Text to search in subject and body"),
-        "unread" -> Json.obj(
-          "type" -> "boolean",
-          "description" -> "Only return unread emails"),
+          "description" -> "Recipient email address or name"),
+        "text" -> Json.obj(
+          "type" -> "string",
+          "description" -> "Text to search in the subject, addresses and body"),
         "after" -> Json.obj(
           "type" -> "string",
           "description" -> "Only emails received after this date (ISO 8601, e.g. 2026-10-14)"),
+        "before" -> Json.obj(
+          "type" -> "string",
+          "description" -> "Only emails received before this date (ISO 8601, e.g. 2026-10-14)"),
+        "inMailboxes" -> Json.obj(
+          "type" -> "array",
+          "items" -> Json.obj("type" -> "string"),
+          "description" -> "Only emails in one of these mailbox ids. Searches all mailboxes if omitted"),
+        "unread" -> Json.obj(
+          "type" -> "boolean",
+          "description" -> "Only return unread emails"),
         "limit" -> Json.obj(
           "type" -> "integer",
           "description" -> "Maximum number of results, default 10, max 20")),
