@@ -5,11 +5,74 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
-### TMail
+## [1.0.22] - 2026-10-14
+
+Changes since 1.0.21.1.
+
+### James
+
+#### Added
+
+- JAMES-4228 `EmailSubmission/set` accepts extra validations configured with `send.extra.validations` in `jmap.properties`; rejected recipients are advertised in the `SetError`.
+- [ENHANCEMENT] WebAdmin `GET /users`: `limit` and `anchor` pagination, `query` username prefix search and `domain` filter. Pagination works with LDAP servers capping page sizes.
+- [ENHANCEMENT] `SolveMessageInconsistencies` can clean up mailbox entries without backing content.
+- [ENHANCEMENT] Blob folder hierarchy is configured with `james.blobstore.folder.hierarchy` (`james.s3.minio.compatibility.mode` remains an alias) and also applies to the file blob store.
+
+#### Changes
+
+- [UPGRADE] The embedded mail queue broker moves from ActiveMQ Classic (KahaDB) to ActiveMQ Artemis. Postgres deployments relying on the embedded mail queue must drain it before upgrading.
+- [IMPROVEMENT] RabbitMQ health checks: a single `RabbitMQConsumers` component and a single `RabbitMQDeadLetterQueues` component replace the per consumer and per dead letter queue health checks.
+- JAMES-4223 `objectstorage.s3.ifNoneMatch.enable` stays disabled by default.
+- [FIX] SMTP: the EHLO reply no longer contains the legacy `AUTH=` line.
+- [FIX] JMAP `Email/set` create rejects `bodyStructure` and unknown properties with `invalidProperties` instead of silently dropping them.
 
 #### Fixes
 
-- [FIX] RAG: send the email metadata to OpenRAG as an `email` object (`subject`, `preview`) instead of dotted `email.*` keys, and add `created_at` (the internal date of the message)
+- [FIX] RabbitMQ mail queue consumer health check restarts missing consumers again.
+- [FIX] SMTP: consistently validate HELO/EHLO; malformed DSN `NOTIFY`, `ORCPT` and `ENVID` parameters return `501` instead of closing the connection.
+- [FIX] WebAdmin `PUT /domainMappings` creates domain mappings rather than domain alias mappings.
+- [FIX] Postgres: cancel queries upon jOOQ reactive timeout, buffer the next page locally while paginating, and better support cancellation.
+- [FIX] JMAP `Email/get` read level when combined with attachments, and remove bidi control characters from attachment names.
+- [FIX] DNS resolution fallback, event bus stop and `@PreDestroy` of provider-built singletons.
+- [ENHANCEMENT] Harden the IMAP IDLE lifecycle, log OIDC validation failures and silence WebSocket handshake disconnections.
+
+#### Upgrades
+
+- [UPGRADE] jOOQ 3.20.20, r2dbc-postgresql 1.1.3, Postgres JDBC 42.7.13, log4j2 2.25.5, logback 1.5.38, BouncyCastle 1.85.2, amqp-client 5.35.0, angus-mail 2.0.5, Jsoup 1.23.2, Spark 3.0.5 and Micrometer.
+
+### TMail
+
+#### Added
+
+- ISSUE-2665 Rate limiting on the number of recipients sent per minute, hour and day, configurable per user and per domain through WebAdmin and SaaS subscription messages, with defaults on the `SentRateLimiting` mailet. Requires a schema change.
+- SaaS domain activation: persist the mail DNS validation status of SaaS domains, provision domains upon ownership verification, and optionally block outgoing mail of pending domains with the `MailDnsConfigurationValidation` JMAP validation and the `MailDnsConfigurationMailHook` SMTP hook. Requires a schema change.
+- ISSUE-2645 The SaaS JMAP capability advertises `mailDnsConfigurationValidated`.
+- Delete user data upon Twake Workplace user deletion events (B2C and B2B) when the TWP settings module is enabled.
+- ISSUE-2714 Synchronize `appearance.theme` from Twake Workplace common settings; ISSUE-2724 the setting is then read-only.
+- ISSUE-2712 Optional `TeamMailboxEventsListener` publishes team mailbox `received` and `sent` events to a RabbitMQ topic exchange.
+- ISSUE-2720 `TransitedVia` and `TransitedTwiceVia` matchers for relay loop detection based on `Received` headers.
+- `IsALDAPMailingList` accepts the extra filter of `LDAPMailingList`.
+- Migration proxy: optional SMTP submission proxy.
+- WebAdmin: task cleanup routes on the distributed and Postgres servers.
+- [I18N] Spanish, German and Italian calendar reply and DSN templates.
+- [ENHANCEMENT] Explicit audit log upon DAV collect mailets.
+
+#### Changes
+
+- ISSUE-2728 Docker images are based on `eclipse-temurin:27-jre-resolute` (formerly `eclipse-temurin:26-jre-noble`).
+- ISSUE-2674 TMail RabbitMQ consumers and dead letter queues (event bus partitions, TWP settings, SaaS subscriptions, TWP user deletion) are reported by the James `RabbitMQConsumers` and `RabbitMQDeadLetterQueues` health checks.
+- ISSUE-2691 `Forward/set` accepts partial patches.
+- ISSUE-2692 `Label/set` removes a label colour with `color: null`.
+- ISSUE-2693 `Filter/get` output is a valid `Filter/set` input; mismatching `condition` and `conditionGroup` is a request level `invalidArguments` error.
+
+#### Fixes
+
+- [FIX] RAG: send the email metadata to OpenRAG as an `email` object (`subject`, `preview`) instead of dotted `email.*` keys, and add `created_at` (the internal date of the message).
+- [FIX] `objectstorage.s3.ifNoneMatch.enable` is now honored by the TMail S3 blob store.
+- [FIX] Search: a single unbalanced double quote no longer breaks subject search.
+- [FIX] Support Microsoft Send-By in ORGANIZER validation prior to ITIP processing.
+- [FIX] Calendar replies to an invitation for a single occurrence of a recurring event, sent without its master event, no longer fail.
+- ISSUE-2682 Register `PopulateEmailQueryViewListener` in the memory server `listeners.xml`.
 
 ## [1.0.21.1] - 2026-09-17
 
