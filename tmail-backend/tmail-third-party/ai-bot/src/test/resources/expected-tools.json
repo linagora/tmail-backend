@@ -38,6 +38,48 @@
     {
       "type": "function",
       "function": {
+        "name": "get_email_details",
+        "description": "Get the details of a single email: sender, recipients, cc, subject, date, mailboxes, unread status, attachment names and the text body (truncated if too long). Use it after list_emails or search_emails returned an id and you need to read the email, for example to summarize it or to draft a reply with create_draft.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "Id of the email to retrieve, as returned by list_emails or search_emails"
+            }
+          },
+          "required": ["id"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "list_emails",
+        "description": "List the user's emails in a mailbox as seen by the user, most recent first. Returns id, sender, subject, date and a short preview for each email. This is cheaper than search_emails: favour this tool and try it before searching. Only fall back to search_emails when listing did not help to find the emails.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "mailboxId": {
+              "type": "string",
+              "description": "Id of the mailbox to list emails from. Defaults to the Inbox."
+            },
+            "page": {
+              "type": "integer",
+              "description": "Page number to retrieve, starting at 1, default 1"
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum number of results per page, default 10, max 20"
+            }
+          },
+          "required": []
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
         "name": "search_emails",
         "description": "Search the user's emails with filters. All filters are optional and combined with AND. Returns matching emails, most recent first, with id, sender, subject, date and a short preview. This is more expensive than list_emails: prefer list_emails first and use this tool only when filtering is needed. Use the returned id with create_draft to reply to an email.",
         "parameters": {
