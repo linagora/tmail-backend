@@ -75,13 +75,12 @@ class AiMethodModule extends AbstractModule {
       .addBinding()
       .to(classOf[AiSuggestionMethod])
 
-    Multibinder.newSetBinder(binder, classOf[JMAPRoutes])
-      .addBinding()
-      .to(classOf[AIChatCompletionRoutes])
     val jmapRoutesBinder = Multibinder.newSetBinder(binder, classOf[JMAPRoutes])
     jmapRoutesBinder.addBinding().to(classOf[AIChatCompletionRoutes])
     jmapRoutesBinder.addBinding().to(classOf[AIToolsRoutes])
 
     val agentToolBinder = Multibinder.newSetBinder(binder(), classOf[AgentTool])
+    agentToolBinder.addBinding().to(classOf[SearchEmailsTool])
+    agentToolBinder.addBinding().to(classOf[CreateDraftTool])
   }
 }
