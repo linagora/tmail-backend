@@ -971,6 +971,46 @@ public class TeamMailboxManagementRoutesTest {
             .then()
                 .statusCode(NO_CONTENT_204);
         }
+
+        @Test
+        void createMailboxFolderShouldReturn400WhenFolderNameHasAnEmptyPart() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            Map<String, Object> errors = given()
+                .put("/INBOX..x")
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", "Attempt to create an invalid mailbox");
+        }
+
+        @Test
+        void createMailboxFolderShouldReturn400WhenFolderNameIsTooLong() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            Map<String, Object> errors = given()
+                .put("/" + "x".repeat(300))
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", "Attempt to create an invalid mailbox");
+        }
     }
 
     @Nested
