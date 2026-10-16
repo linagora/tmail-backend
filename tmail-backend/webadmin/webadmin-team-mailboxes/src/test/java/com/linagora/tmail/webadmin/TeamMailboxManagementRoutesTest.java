@@ -716,6 +716,36 @@ public class TeamMailboxManagementRoutesTest {
         }
 
         @Test
+        void addMemberShouldReturnErrorWhenUserBelongsToAnotherDomain() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            Map<String, Object> errors = given()
+                .queryParam("role", "member")
+                .put("/olivia@example.org")
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .contentType(JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", "olivia@example.org does not belong to the domain of the team mailbox " + TEAM_MAILBOX.self().asString());
+        }
+
+        @Test
+        void addMemberShouldNotAddUserOfAnotherDomain() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            given()
+                .put("/olivia@example.org");
+
+            assertThat(Flux.from(teamMailboxRepository.listMembers(TEAM_MAILBOX)).collectList().block())
+                .isEmpty();
+        }
+
+        @Test
         void addMemberShouldCreateNewWithRoleMemberWhenRoleDoesNotExist() {
             Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
             given()

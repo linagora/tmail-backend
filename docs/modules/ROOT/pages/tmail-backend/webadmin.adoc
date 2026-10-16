@@ -107,7 +107,7 @@ Query paras:
 Return codes:
 
 - `204` the user is now a member of the team mailbox (either was already a member or was added)
-- `400` invalid domain, team mailbox name or user name
+- `400` invalid domain, team mailbox name or user name, or the user belongs to another domain than the team mailbox (unless cross-domain sharing is allowed)
 - `404` the domain was not found, the team mailbox cannot be found
 
 === Removing a member for a Team Mailbox
