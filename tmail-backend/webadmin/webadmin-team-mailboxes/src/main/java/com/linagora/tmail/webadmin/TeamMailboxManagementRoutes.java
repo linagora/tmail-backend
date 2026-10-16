@@ -25,12 +25,14 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import jakarta.inject.Inject;
+import jakarta.mail.internet.AddressException;
 
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.mailbox.exception.DifferentDomainException;
 import org.apache.james.mailbox.exception.MailboxExistsException;
 import org.apache.james.mailbox.exception.MailboxNotFoundException;
 import org.apache.james.mailbox.exception.UnsupportedRightException;
@@ -753,14 +755,18 @@ public class TeamMailboxManagementRoutes implements Routes {
                 throw teamMailboxNotFoundException(teamMailbox, new TeamMailboxNotFoundException(teamMailbox));
             }
 
-            Username senderUser = Username.of(request.params(EXTRA_SENDER_USERNAME_PARAM));
+            Username senderUser = extractExtraSender(request);
             assertNotProtectedAclUser(senderUser, teamMailbox);
 
             MailboxSession session = mailboxManager.createSystemSession(teamMailbox.admin());
-            mailboxManager.applyRightsCommand(
-                teamMailbox.mailboxPath(),
-                MailboxACL.command().forUser(senderUser).rights(MailboxACL.Right.Post).asAddition(),
-                session);
+            try {
+                mailboxManager.applyRightsCommand(
+                    teamMailbox.mailboxPath(),
+                    MailboxACL.command().forUser(senderUser).rights(MailboxACL.Right.Post).asAddition(),
+                    session);
+            } catch (DifferentDomainException e) {
+                throw extraSenderOfDifferentDomainException(teamMailbox, e);
+            }
             return Responses.returnNoContent(response);
         };
     }
@@ -774,7 +780,7 @@ public class TeamMailboxManagementRoutes implements Routes {
                 throw teamMailboxNotFoundException(teamMailbox, new TeamMailboxNotFoundException(teamMailbox));
             }
 
-            Username senderUser = Username.of(request.params(EXTRA_SENDER_USERNAME_PARAM));
+            Username senderUser = extractExtraSender(request);
             assertNotProtectedAclUser(senderUser, teamMailbox);
 
             MailboxSession session = mailboxManager.createSystemSession(teamMailbox.admin());
@@ -785,9 +791,37 @@ public class TeamMailboxManagementRoutes implements Routes {
                     session);
             } catch (MailboxNotFoundException e) {
                 // Idempotent - treat as success
+            } catch (DifferentDomainException e) {
+                throw extraSenderOfDifferentDomainException(teamMailbox, e);
             }
             return Responses.returnNoContent(response);
         };
+    }
+
+    private Username extractExtraSender(Request request) {
+        String rawSender = request.params(EXTRA_SENDER_USERNAME_PARAM);
+        try {
+            Username sender = Username.of(rawSender);
+            Preconditions.checkArgument(sender.hasDomainPart(), "missing domain part");
+            sender.asMailAddress();
+            return sender;
+        } catch (IllegalArgumentException | AddressException e) {
+            throw ErrorResponder.builder()
+                .statusCode(HttpStatus.BAD_REQUEST_400)
+                .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+                .message(rawSender + " is not a valid mail address")
+                .cause(e)
+                .haltError();
+        }
+    }
+
+    private HaltException extraSenderOfDifferentDomainException(TeamMailbox teamMailbox, DifferentDomainException exception) {
+        return ErrorResponder.builder()
+            .statusCode(HttpStatus.BAD_REQUEST_400)
+            .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+            .message("Extra senders must belong to " + teamMailbox.domain().asString())
+            .cause(exception)
+            .haltError();
     }
 
 }

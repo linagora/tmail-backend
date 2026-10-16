@@ -2152,6 +2152,40 @@ public class TeamMailboxManagementRoutesTest {
         }
 
         @Test
+        void addExtraSenderShouldReturn400WhenTargetIsNotAMailAddress() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            Map<String, Object> errors = given()
+                .put("/not-an-email")
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", "not-an-email is not a valid mail address");
+        }
+
+        @Test
+        void addExtraSenderShouldReturn400WhenTargetBelongsToAnotherDomain() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            Map<String, Object> errors = given()
+                .put("/ghost@nowhere.test")
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", "Extra senders must belong to " + TEAM_MAILBOX_DOMAIN.asString());
+        }
+
+        @Test
         void addExtraSenderShouldBeIdempotent() {
             Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
 
@@ -2199,6 +2233,40 @@ public class TeamMailboxManagementRoutesTest {
                 .delete("/" + ANDRE.asString())
             .then()
                 .statusCode(NO_CONTENT_204);
+        }
+
+        @Test
+        void deleteExtraSenderShouldReturn400WhenTargetIsNotAMailAddress() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            Map<String, Object> errors = given()
+                .delete("/not-an-email")
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", "not-an-email is not a valid mail address");
+        }
+
+        @Test
+        void deleteExtraSenderShouldReturn400WhenTargetBelongsToAnotherDomain() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            Map<String, Object> errors = given()
+                .delete("/ghost@nowhere.test")
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", "Extra senders must belong to " + TEAM_MAILBOX_DOMAIN.asString());
         }
 
         @Test
