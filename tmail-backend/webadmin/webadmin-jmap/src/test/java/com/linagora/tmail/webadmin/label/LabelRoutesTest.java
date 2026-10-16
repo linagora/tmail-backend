@@ -28,6 +28,7 @@ import static org.eclipse.jetty.http.HttpStatus.NOT_FOUND_404;
 import static org.eclipse.jetty.http.HttpStatus.NO_CONTENT_204;
 import static org.eclipse.jetty.http.HttpStatus.OK_200;
 import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -411,6 +412,59 @@ class LabelRoutesTest {
                 .patch(BOB_LABELS_PATH + "/" + created.id().serialize())
             .then()
                 .statusCode(BAD_REQUEST_400);
+        }
+
+        @Test
+        void updateLabelReturns400WithValidationMessageWhenColorInvalid() {
+            LabelCreationRequest req = new LabelCreationRequest(
+                new DisplayName("Work"), noColor(), noDescription(), false);
+            Label created = Mono.from(labelRepository.addLabel(BOB, req)).block();
+
+            given()
+                .contentType(JSON)
+                .body("{\"displayName\": \"Work\", \"color\": \"notacolor\"}")
+            .when()
+                .patch(BOB_LABELS_PATH + "/" + created.id().serialize())
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .body("type", is("InvalidArgument"))
+                .body("message", is("The string should be a valid hexadecimal color value following this pattern #[a-fA-F0-9]{6}"));
+        }
+
+        @Test
+        void updateLabelReturns400WithValidationMessageWhenDisplayNameEmpty() {
+            LabelCreationRequest req = new LabelCreationRequest(
+                new DisplayName("Work"), noColor(), noDescription(), false);
+            Label created = Mono.from(labelRepository.addLabel(BOB, req)).block();
+
+            given()
+                .contentType(JSON)
+                .body("{\"displayName\": \"\", \"color\": \"#00ff00\"}")
+            .when()
+                .patch(BOB_LABELS_PATH + "/" + created.id().serialize())
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .body("type", is("InvalidArgument"))
+                .body("message", is("'displayName' is required and must not be empty"));
+        }
+
+        @Test
+        void updateLabelShouldNotModifyLabelWhenColorInvalid() {
+            LabelCreationRequest req = new LabelCreationRequest(
+                new DisplayName("Work"), noColor(), noDescription(), false);
+            Label created = Mono.from(labelRepository.addLabel(BOB, req)).block();
+
+            given()
+                .contentType(JSON)
+                .body("{\"displayName\": \"Personal\", \"color\": \"notacolor\"}")
+            .when()
+                .patch(BOB_LABELS_PATH + "/" + created.id().serialize());
+
+            when()
+                .get(BOB_LABELS_PATH)
+            .then()
+                .statusCode(OK_200)
+                .body("[0].displayName", is("Work"));
         }
 
         @Test

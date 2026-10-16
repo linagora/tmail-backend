@@ -28,7 +28,7 @@ import com.fasterxml.jackson.annotation.JsonProperty;
 import com.linagora.tmail.james.jmap.model.Color;
 import com.linagora.tmail.james.jmap.model.DisplayName;
 
-public record UpdateLabelRequest(DisplayName displayName, Optional<Color> color, Optional<String> description, Optional<Boolean> readOnly) {
+public record UpdateLabelRequest(String displayName, Optional<String> color, Optional<String> description, Optional<Boolean> readOnly) {
 
     @JsonCreator
     public UpdateLabelRequest(
@@ -36,18 +36,25 @@ public record UpdateLabelRequest(DisplayName displayName, Optional<Color> color,
         @JsonProperty("color") Optional<String> color,
         @JsonProperty("description") Optional<String> description,
         @JsonProperty("readOnly") Optional<Boolean> readOnly) {
-        this(validateDisplayName(displayName), color.map(UpdateLabelRequest::asColor), description, readOnly);
+        this.displayName = displayName;
+        this.color = color;
+        this.description = description;
+        this.readOnly = readOnly;
     }
 
-    private static DisplayName validateDisplayName(String value) {
-        if (value == null || value.isBlank()) {
+    public DisplayName validatedDisplayName() {
+        if (displayName == null || displayName.isBlank()) {
             throw ErrorResponder.builder()
                 .statusCode(HttpStatus.BAD_REQUEST_400)
                 .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
                 .message("'displayName' is required and must not be empty")
                 .haltError();
         }
-        return new DisplayName(value);
+        return new DisplayName(displayName);
+    }
+
+    public Optional<Color> validatedColor() {
+        return color.map(UpdateLabelRequest::asColor);
     }
 
     private static Color asColor(String value) {
