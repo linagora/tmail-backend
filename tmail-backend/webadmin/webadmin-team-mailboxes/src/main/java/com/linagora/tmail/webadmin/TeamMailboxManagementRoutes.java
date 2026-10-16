@@ -51,6 +51,7 @@ import org.apache.james.webadmin.utils.Responses;
 import org.eclipse.jetty.http.HttpStatus;
 
 import com.google.common.base.Preconditions;
+import com.google.common.base.Throwables;
 import com.linagora.tmail.team.TeamMailbox;
 import com.linagora.tmail.team.TeamMailboxMember;
 import com.linagora.tmail.team.TeamMailboxName;
@@ -705,9 +706,23 @@ public class TeamMailboxManagementRoutes implements Routes {
             TeamMemberRole role = extractRole(request);
             Mono.from(teamMailboxRepository.addMember(teamMailbox, TeamMailboxMember.of(addUser, role)))
                 .onErrorMap(TeamMailboxNotFoundException.class, e -> teamMailboxNotFoundException(teamMailbox, e))
+                .onErrorMap(TeamMailboxManagementRoutes::isCausedByDifferentDomain, e -> memberOfDifferentDomainException(teamMailbox, addUser))
                 .block();
             return Responses.returnNoContent(response);
         };
+    }
+
+    private static boolean isCausedByDifferentDomain(Throwable throwable) {
+        return Throwables.getCausalChain(throwable).stream()
+            .anyMatch(DifferentDomainException.class::isInstance);
+    }
+
+    private HaltException memberOfDifferentDomainException(TeamMailbox teamMailbox, Username member) {
+        return ErrorResponder.builder()
+            .statusCode(HttpStatus.BAD_REQUEST_400)
+            .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+            .message(member.asString() + " does not belong to the domain of the team mailbox " + teamMailbox.self().asString())
+            .haltError();
     }
 
     public Route deleteMember() {
