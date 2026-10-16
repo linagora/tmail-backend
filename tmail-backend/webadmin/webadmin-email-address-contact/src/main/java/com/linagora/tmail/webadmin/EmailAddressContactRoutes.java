@@ -123,6 +123,7 @@ public class EmailAddressContactRoutes implements Routes {
 
             try {
                 EmailAddressContactDTO emailAddressContactDTO = jsonExtractorContact.parse(request.body());
+                verifyEmailAddressPresent(emailAddressContactDTO);
                 ContactFields contactFields = new ContactFields(
                     new MailAddress(emailAddressContactDTO.emailAddress()),
                     emailAddressContactDTO.firstname().orElse(""),
@@ -145,6 +146,16 @@ public class EmailAddressContactRoutes implements Routes {
                     .haltError();
             }
         });
+    }
+
+    private void verifyEmailAddressPresent(EmailAddressContactDTO emailAddressContactDTO) {
+        if (emailAddressContactDTO.emailAddress() == null) {
+            throw ErrorResponder.builder()
+                .statusCode(HttpStatus.BAD_REQUEST_400)
+                .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+                .message("emailAddress is required")
+                .haltError();
+        }
     }
 
     private void verifyDomain(Domain domain) throws DomainListException {
@@ -206,6 +217,7 @@ public class EmailAddressContactRoutes implements Routes {
         if (updatedFields.firstname().isEmpty() || updatedFields.surname().isEmpty()) {
             return Mono.from(emailAddressContactSearchEngine.get(domain, mailAddress))
                 .map(contact -> fillUp(contact.fields(), updatedFields))
+                .onErrorResume(ContactNotFoundException.class, e -> Mono.empty())
                 .defaultIfEmpty(fromDTOToContactFields(mailAddress, updatedFields));
         }
         return Mono.just(fromDTOToContactFields(mailAddress, updatedFields));

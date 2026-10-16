@@ -497,6 +497,25 @@ class EmailAddressContactRoutesTest {
                 .containsEntry("type", "InvalidArgument")
                 .containsEntry("message", "Invalid character at 8 in 'john@bob@contact.com'");
         }
+
+        @Test
+        void createContactShouldThrowWhenEmailAddressIsMissing() {
+            Map<String, Object> errors = given()
+                .body("{}")
+            .when()
+                .post()
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", "emailAddress is required");
+        }
     }
 
     @Nested
@@ -589,6 +608,38 @@ class EmailAddressContactRoutesTest {
                     .collectList()
                     .block())
                 .containsOnly(new ContactFields(new MailAddress(mailAddressA), firstnameA, surnameA));
+        }
+
+        @Test
+        void updateContactShouldCreateContactWhenNotExistsAndSurnameMissing() throws Exception {
+            given()
+                .body("{\"firstname\": \"John\"}")
+            .when()
+                .put("/john")
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(Flux.from(emailAddressContactSearchEngine.list(CONTACT_DOMAIN))
+                    .map(EmailAddressContact::fields)
+                    .collectList()
+                    .block())
+                .containsOnly(new ContactFields(new MailAddress(mailAddressA), firstnameA, ""));
+        }
+
+        @Test
+        void updateContactShouldCreateContactWhenNotExistsAndNamesMissing() throws Exception {
+            given()
+                .body("{}")
+            .when()
+                .put("/john")
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(Flux.from(emailAddressContactSearchEngine.list(CONTACT_DOMAIN))
+                    .map(EmailAddressContact::fields)
+                    .collectList()
+                    .block())
+                .containsOnly(new ContactFields(new MailAddress(mailAddressA), "", ""));
         }
 
         @Test
