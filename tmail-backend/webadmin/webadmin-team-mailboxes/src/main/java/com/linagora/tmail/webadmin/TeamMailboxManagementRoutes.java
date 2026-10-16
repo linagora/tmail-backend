@@ -32,6 +32,7 @@ import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.exception.MailboxExistsException;
+import org.apache.james.mailbox.exception.MailboxNameException;
 import org.apache.james.mailbox.exception.MailboxNotFoundException;
 import org.apache.james.mailbox.exception.UnsupportedRightException;
 import org.apache.james.mailbox.model.MailboxACL;
@@ -338,6 +339,13 @@ public class TeamMailboxManagementRoutes implements Routes {
                 mailboxManager.createMailbox(teamMailbox.mailboxPath(folderName), session);
             } catch (MailboxExistsException e) {
                 // Idempotent
+            } catch (MailboxNameException e) {
+                throw ErrorResponder.builder()
+                    .statusCode(HttpStatus.BAD_REQUEST_400)
+                    .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+                    .message("Attempt to create an invalid mailbox")
+                    .cause(e)
+                    .haltError();
             }
             return Responses.returnNoContent(response);
         };

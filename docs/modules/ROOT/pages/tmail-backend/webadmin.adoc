@@ -188,7 +188,7 @@ Creates the `MyFolder` folder inside the `marketing@domain.tld` team mailbox.
 Return codes:
 
 - `204` the folder now exists (was already present or was created)
-- `400` invalid domain or team mailbox name
+- `400` invalid domain, team mailbox name or folder name (eg: empty hierarchy part, too long name)
 - `404` the domain was not found, the team mailbox cannot be found
 
 === Deleting a folder in a Team Mailbox
