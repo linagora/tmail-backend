@@ -25,6 +25,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.Function;
 
+import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.commons.lang3.NotImplementedException;
 import org.apache.james.ExtraProperties;
 import org.apache.james.GuiceJamesServer;
@@ -206,6 +207,8 @@ import com.linagora.tmail.modules.data.TMailPostgresUsersRepositoryModule;
 import com.linagora.tmail.rate.limiter.api.postgres.module.PostgresRateLimitingModule;
 import com.linagora.tmail.rspamd.RspamdModule;
 import com.linagora.tmail.smtp.TMailSMTPModule;
+import com.linagora.tmail.space.SpaceModule;
+import com.linagora.tmail.space.SpaceModuleChooserConfiguration;
 import com.linagora.tmail.team.TMailQuotaUsernameSupplier;
 import com.linagora.tmail.team.TeamMailboxModule;
 import com.linagora.tmail.webadmin.EmailAddressContactRoutesModule;
@@ -301,6 +304,7 @@ public class PostgresTmailServer {
             .overrideWith(chooseJmapOidc(configuration))
             .overrideWith(chooseUnauthenticatedBlobAccessModules(configuration))
             .overrideWith(chooseTWPSettingsModule(configuration.twpSettingsModuleChooserConfiguration()))
+            .overrideWith(chooseSpaceModule(configuration))
             .overrideWith(chooseEventBusModules(configuration.eventBusImpl()))
             .overrideWith(chooseKeywordEmailQueryListener(configuration));
     }
@@ -633,6 +637,17 @@ public class PostgresTmailServer {
             return moduleBuilder.build();
         }
         return List.of(CALDAV_SUPPORT_MODULE_PROVIDER.apply(!CALDAV_SUPPORTED));
+    }
+
+    private static List<Module> chooseSpaceModule(PostgresTmailConfiguration configuration) {
+        try {
+            if (SpaceModuleChooserConfiguration.parse(configuration.propertiesProvider()).enabled()) {
+                return List.of(new SpaceModule());
+            }
+            return List.of();
+        } catch (ConfigurationException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private static List<Module> chooseTWPSettingsModule(TWPSettingsModuleChooserConfiguration twpSettingsModuleChooserConfiguration) {

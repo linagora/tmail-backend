@@ -226,6 +226,8 @@ import com.linagora.tmail.modules.data.TMailCassandraDomainListModule;
 import com.linagora.tmail.rate.limiter.api.cassandra.module.CassandraRateLimitingModule;
 import com.linagora.tmail.rspamd.RspamdModule;
 import com.linagora.tmail.smtp.TMailSMTPModule;
+import com.linagora.tmail.space.SpaceModule;
+import com.linagora.tmail.space.SpaceModuleChooserConfiguration;
 import com.linagora.tmail.team.TMailQuotaUsernameSupplier;
 import com.linagora.tmail.team.TeamMailboxModule;
 import com.linagora.tmail.webadmin.EmailAddressContactRoutesModule;
@@ -480,6 +482,7 @@ public class DistributedServer {
             })
             .overrideWith(chooseOpenPaasModule(configuration.openPaasModuleChooserConfiguration()))
             .overrideWith(chooseTWPSettingsModule(configuration.twpSettingsModuleChooserConfiguration()))
+            .overrideWith(chooseSpaceModule(configuration))
             .overrideWith(chooseModules(searchConfiguration))
             .overrideWith(chooseJmapModule(configuration))
             .overrideWith(UploadFromUrlJmapModule.from(configuration))
@@ -580,6 +583,17 @@ public class DistributedServer {
             return moduleBuilder.build();
         }
         return List.of(CALDAV_SUPPORT_MODULE_PROVIDER.apply(!CALDAV_SUPPORTED));
+    }
+
+    private static List<Module> chooseSpaceModule(DistributedJamesConfiguration configuration) {
+        try {
+            if (SpaceModuleChooserConfiguration.parse(configuration.propertiesProvider()).enabled()) {
+                return List.of(new SpaceModule());
+            }
+            return List.of();
+        } catch (ConfigurationException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private static List<Module> chooseTWPSettingsModule(TWPSettingsModuleChooserConfiguration twpSettingsModuleChooserConfiguration) {
