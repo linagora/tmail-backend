@@ -34,6 +34,18 @@ An example would be `marketting@linagora.com`.
 
 xref:tmail-backend/features/teamMailboxes.adoc[Read more]...
 
+== Twake Space
+
+Give every TwakeSpace space its own team mailbox!
+
+The Twake Space extension follows the spaces of TwakeSpace through RabbitMQ:
+
+- Each space gets a team mailbox, whose members follow the space's admins and editors.
+- The mail of the team mailbox is reported to the space feed.
+- A deleted space loses access at once, and its team mailbox is deleted after a retention.
+
+xref:tmail-backend/features/twake-space.adoc[Read more]...
+
 == TMail Rate Limiting
 
 Manage email rate limiting plans and apply them to your users!
