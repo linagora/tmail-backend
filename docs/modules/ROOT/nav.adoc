@@ -28,6 +28,7 @@
 *** xref:tmail-backend/features/encrypted-mailbox.adoc[]
 *** xref:tmail-backend/features/contactAutocomplete.adoc[]
 *** xref:tmail-backend/features/teamMailboxes.adoc[]
+*** xref:tmail-backend/features/twake-space.adoc[]
 *** xref:tmail-backend/features/tmailRateLimiting.adoc[]
 *** xref:tmail-backend/features/ldapMailingLists.adoc[]
 *** xref:tmail-backend/features/openpaas-integration.adoc[]

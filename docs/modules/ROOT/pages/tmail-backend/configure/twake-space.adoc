@@ -1,102 +1,252 @@
-= Twake Space
+= Configuring Twake Space
 :navtitle: Twake Space
 
-The Twake Space extension gives each TwakeSpace space a team mailbox, keeps its members in step with the space, and
-reports its mail to the space feed. It replaces the Twake Mail side service.
+Read xref:tmail-backend/features/twake-space.adoc[this page] for feature explanations.
 
-== Configuration
+== Prerequisites
 
-The extension is loaded when `space.properties` contains `enabled=true`. Every other key is optional.
+- xref:tmail-backend/configure/team-mailboxes.adoc[Team mailboxes] are configured: the `TMailLocalDelivery` mailet and
+the `TMailValidRcptHandler` RCPT hook.
+- TMail runs with RabbitMQ (distributed or postgres application).
+- ldap-rest publishes the space events with `organizationDomain`.
 
-.space.properties
+== Enabling the extension
+
+The extension is loaded when `space.properties` contains `enabled=true`. Without the file, or with `enabled=false`,
+nothing of it runs: no queue, no listener, no route.
+
+.Minimal space.properties
+[source,properties]
+----
+enabled=true
+----
+
+The distributed application ships a commented
+link:https://github.com/linagora/tmail-backend/blob/master/tmail-backend/apps/distributed/src/main/conf/space.properties[space.properties].
+
+== space.properties
+
 |===
 | Key | Default | Description
 
-| `enabled` | `false` | Loads the extension.
-| `rabbitmq.uri` | the server of `rabbitmq.properties` | RabbitMQ server holding the exchanges below. One connection serves every component of the extension.
-| `space.exchange` | `space` | Where the space events are read, and where `twake.space.sync.requested` is published.
-| `dns.exchange` | `admin-panel` | Where the admin panel publishes its DNS validation event.
-| `dns.routingKey` | `dns.validated` | Routing key of the DNS validation event.
-| `activity.exchange` | `activity` | Where the `com.twake.mail.*` activity events are published. Declared as a durable topic exchange.
-| `queue` | `tmail-space` | Queue of the space and DNS events. Quorum when `rabbitmq.properties` asks for quorum queues, with a single active consumer.
-| `deadLetterQueue` | `tmail-space-dead-letter` | Where failed events go. Nothing replays them: request a sync instead.
-| `teamMailbox.prefix` | empty | Put before each team mailbox name, like `space-` for `space-sales@acme.com`. Lowercase letters, digits or `_`, ending with a dash.
-| `retention` | `30d` | How long the team mailbox of a deleted space is kept before being deleted.
-| `purge.interval` | `1h` | How often team mailboxes past the retention are deleted.
-| `teamMailboxEvents.enabled` | `false` | Publishes the team mailbox `received` and `sent` events described below.
-| `teamMailboxEvents.exchange` | `tmail` | Topic exchange of these events.
-| `teamMailboxEvents.receivedRoutingKey` | `team-mailbox.message.received` | Routing key of `received` events.
-| `teamMailboxEvents.sentRoutingKey` | `team-mailbox.message.sent` | Routing key of `sent` events.
+| `enabled`
+| `false`
+| Loads the extension.
+
+| `rabbitmq.uri`
+| the server of `rabbitmq.properties`
+| AMQP URI of the RabbitMQ server holding the exchanges below, vhost included, like
+`amqp://user:password@rabbitmq:5672/twake`. SSL and management settings come from `rabbitmq.properties`. One
+connection serves every component of the extension.
+
+| `space.exchange`
+| `space`
+| Where the space events are read, and where `twake.space.sync.requested` is published.
+
+| `dns.exchange`
+| `admin-panel`
+| Where the admin panel publishes its DNS validation event. Match its `RABBITMQ_PUBLISHER_EXCHANGE`.
+
+| `dns.routingKey`
+| `dns.validated`
+| Routing key of the DNS validation event. Match the admin panel's `RABBITMQ_DNS_ROUTING_KEY`.
+
+| `activity.exchange`
+| `activity`
+| Where the `com.twake.mail.*` events for TwakeSpace are published.
+
+| `queue`
+| `tmail-space`
+| Queue of the space and DNS events.
+
+| `deadLetterQueue`
+| `tmail-space-dead-letter`
+| Where the events whose handling failed go. Also the name of its fanout dead letter exchange.
+
+| `teamMailbox.prefix`
+| empty
+| Put before the name of each team mailbox, like `space-` for `space-sales@acme.com`, so that a space never takes the
+address of a person, a list or a role. Lowercase letters, digits or `_`, ending with a dash. Applies to new spaces only.
+
+| `retention`
+| `30d`
+| How long the team mailbox of a deleted space is kept before being deleted. Days unless a unit is given.
+
+| `purge.interval`
+| `1h`
+| How often the team mailboxes past the retention are deleted. Seconds unless a unit is given.
+
+| `teamMailboxEvents.enabled`
+| `false`
+| Publishes the xref:#_team_mailbox_events[team mailbox events].
+
+| `teamMailboxEvents.exchange`
+| `tmail`
+| Topic exchange of the team mailbox events.
+
+| `teamMailboxEvents.receivedRoutingKey`
+| `team-mailbox.message.received`
+| Routing key of `received` events.
+
+| `teamMailboxEvents.sentRoutingKey`
+| `team-mailbox.message.sent`
+| Routing key of `sent` events.
 |===
 
-Delivery is at least once. Every handler is idempotent, and published events carry deterministic ids, so a redelivery
-changes nothing on TMail's side and consumers can deduplicate on the id.
+An invalid value, like a blank exchange name or a malformed prefix, stops TMail at startup.
 
-== Storage
+== RabbitMQ
 
-The extension adds no table. The space of a team mailbox is stored as annotations of its root mailbox:
+=== Topology
 
-- `/shared/vendor/twake/organizationId` and `/shared/vendor/twake/spaceId`, written when the mailbox is created.
-- `/shared/vendor/twake/deletedAt`, written when the space is deleted.
+At startup, TMail declares:
 
-These keys are read only: members can read them with IMAP `GETMETADATA`, nobody can change them with `SETMETADATA`.
+- The queue `tmail-space`, bound to `space` with each consumed routing key and to `admin-panel` with `dns.validated`.
+It is a quorum queue when `quorum.queues.enable=true` in `rabbitmq.properties`, and always has a single active
+consumer, so that the events are handled one at a time across the cluster.
+- The dead letter exchange and queue `tmail-space-dead-letter`.
+- The `space` and `admin-panel` exchanges, as durable topic exchanges. When they already exist with other settings,
+TMail logs a warning and uses them as they are.
+
+On its first publication, TMail declares the `activity` exchange, and `tmail` when the team mailbox events are
+enabled, as durable topic exchanges.
+
+=== Permissions
+
+The RabbitMQ user needs:
+
+- `configure`, `write` and `read` on the `tmail-space` and `tmail-space-dead-letter` queues, and on the
+`tmail-space-dead-letter` exchange.
+- `configure` and `read` on the `space` and `admin-panel` exchanges, plus `write` on `space` for the sync requests.
+- `configure` and `write` on the `activity` exchange, and on `tmail` when the team mailbox events are enabled.
+
+=== Failures
+
+|===
+| Case | Outcome
+
+| The body is not JSON
+| The event goes to the dead letter queue.
+
+| A JSON body misses a required field, or has a wrong type
+| The event is logged and dropped: no retry can fix it.
+
+| The domain of the event is not a TMail domain
+| The event is logged and skipped. The DNS validation of the organization brings its spaces back.
+
+| The address of a new space and its `-2` to `-20` variants are all taken
+| The event goes to the dead letter queue. The log names the space.
+
+| Any other failure (mailbox storage, RabbitMQ...)
+| The event goes to the dead letter queue. It is not retried in process.
+|===
+
+Nothing replays a dead letter on its own, since it could apply an old event over newer ones. Request a sync of the
+space or the organization instead, with the xref:tmail-backend/webadmin.adoc#_twake_space[Twake Space webadmin routes].
+
+The mail activity and team mailbox events are published by mailbox event bus listeners
+(`SpaceActivityListener`, `TeamMailboxEventsListener`). A failed publication is retried by the event bus, then stored
+in its event dead letters, from which the
+link:https://james.apache.org/server/manage-webadmin.html#Event_Dead_Letter[event dead letters webadmin routes]
+redeliver it, with the same event ids.
+
+=== Monitoring
+
+The queue is watched by the `RabbitMQConsumers` health check, which restarts the consumer when it is gone, for example
+after a RabbitMQ reconnection. The dead letter queue is watched by the `RabbitMQDeadLetterQueues` health check, which
+reports degraded as soon as it holds a message.
 
 == Consumed events
 
+Fields not listed are ignored. Timestamps are not read: the events of a space are applied in the order they arrive.
+
 |===
-| Exchange | Routing key | Effect
+| Exchange | Routing key | Fields read
 
-| `space` | `twake.space.created` | Creates the team mailbox of the space if it has none, then sets its members.
-| `space` | `twake.space.synced` | Same, and makes the members those of the event, removing anyone else. Publishes `provisioned` again.
-| `space` | `twake.space.member.added`, `twake.space.member.role.changed` | Adds the named members, or changes their role.
-| `space` | `twake.space.member.removed` | Removes the named members.
-| `space` | `twake.space.updated` | Nothing: a team mailbox keeps its address when its space is renamed.
-| `space` | `twake.space.deleted` | Removes every member and writes `deletedAt`. The mailbox and its mail stay until the purge.
-| `space` | `twake.space.sync.completed` | Closes, as on a deletion, the live spaces of the organization the snapshot does not list.
-| `admin-panel` | `dns.validated` | When validated, publishes `twake.space.sync.requested` for the organization.
+| `space` | `twake.space.created`, `twake.space.synced`
+| `organizationId`, `organizationDomain`, `id`, `name`, `members[].email`, `members[].role`
+
+| `space` | `twake.space.member.added`, `twake.space.member.role.changed`
+| `organizationDomain`, `id`, `members[].email`, `members[].role`
+
+| `space` | `twake.space.member.removed`
+| `organizationDomain`, `id`, `members[].email`
+
+| `space` | `twake.space.deleted`
+| `id`, `organizationDomain` (optional)
+
+| `space` | `twake.space.sync.completed`
+| `organizationId`, `organizationDomain`, `spaceIds`
+
+| `space` | `twake.space.updated`
+| `id`
+
+| `admin-panel` | `dns.validated`
+| `organizationId`, `mailDnsConfigurationValidated`
 |===
 
-Space events must carry `organizationDomain`: TMail finds a space's team mailbox among the domain's ones. An event for
-a domain TMail does not have is skipped, the DNS validation of the organization brings its spaces back. A deleted
-space stays deleted: later events about it are ignored.
-
-Roles: `admin` becomes `manager`, `editor` becomes `member`, `viewer` gets no access. Members are matched by email,
-case insensitive.
-
-=== Addresses
-
-The address of a team mailbox is the space name with accents dropped, lowercased, every run of characters other than
-`a-z`, `0-9`, `-` and `_` replaced by one `-`, dashes trimmed, at most 64 characters (`space` when empty), under
-`teamMailbox.prefix`. When another space, a user, an alias, a group or an LDAP mailing list holds it, `-2`, `-3`... up
-to `-20` are tried. When the address is a team mailbox no space holds, the event fails: bind it with the route below
-if it is the space's.
+`role` is one of `admin`, `editor` and `viewer`.
 
 == Published events
 
-On `activity`, as CloudEvents 1.0 with the event type as routing key and the event id as AMQP message id:
+=== Activity
 
-- `com.twake.mail.space.provisioned.v1`, id `<space id>:<root mailbox id>:provisioned`, once the team mailbox is created and on every sync.
-- `com.twake.mail.message.received.v1` and `com.twake.mail.message.sent.v1`, id `<root mailbox id>:<message id>:<direction>`,
-for the mail of team mailboxes bound to a live space.
+On the `activity` exchange, persistent JSON messages whose routing key is the event type, and whose AMQP message id is
+the event id. The body is a CloudEvent 1.0:
 
-On `space`: `twake.space.sync.requested`, body `{"organizationId", "id", "timestamp"}`, both ids optional.
+[source,json]
+----
+{
+  "specversion": "1.0",
+  "id": "<event id>",
+  "source": "twake://mail",
+  "type": "com.twake.mail.space.provisioned.v1",
+  "time": "2026-10-09T08:00:00Z",
+  "twakeorg": "<organization id>",
+  "data": {}
+}
+----
 
-== WebAdmin routes
+|===
+| Type | Id | Data
 
-- `POST /spaces?action=sync[&organizationId=...][&spaceId=...]`: publishes `twake.space.sync.requested`. `spaceId` needs `organizationId`. Answers `204`.
-- `GET /domains/{domain}/team-mailboxes/{name}/space`: the space binding of a team mailbox, `404` when it has none.
-- `PUT /domains/{domain}/team-mailboxes/{name}/space` with `{"organizationId": "...", "spaceId": "..."}`: binds an existing team mailbox to a space, then requests a sync of that space. Answers `204`, `404` for an unknown team mailbox, `409` when it is bound to another space.
+| `com.twake.mail.space.provisioned.v1`
+| `<space id>:<root mailbox id>:provisioned`
+| `{"space_id": "<space id>", "resource": {"kind": "mailbox", "id": "<root mailbox id>"}}`
+
+| `com.twake.mail.message.received.v1`, `com.twake.mail.message.sent.v1`
+| `<root mailbox id>:<message id>:received` or `:sent`
+| `{"object": {"type": "message", "id": "<message id>", "title": "<subject, or (no subject)>", "container": {"kind": "mailbox", "id": "<root mailbox id>"}}}`
+|===
+
+The root mailbox id is the JMAP id of the team mailbox's root mailbox, the one the Twake Mail embed opens. `time` is
+when TMail produced the event.
+
+=== Sync requests
+
+On the `space` exchange, routing key `twake.space.sync.requested`:
+
+[source,json]
+----
+{"organizationId": "<organization id>", "id": "<space id>", "timestamp": "2026-10-09T08:00:00Z"}
+----
+
+Both ids are optional: with none, the request covers every organization. ldap-rest answers with a
+`twake.space.synced` per space, then a `twake.space.sync.completed` per organization, or with a `twake.space.deleted`
+for a single space that is gone.
 
 == Team mailbox events
 
-With `teamMailboxEvents.enabled=true`, an event is published each time a team mailbox receives or sends a message:
+With `teamMailboxEvents.enabled=true`, TMail publishes an event each time a team mailbox receives or sends a message,
+whether or not it belongs to a space:
 
 - A message delivered into any folder of a team mailbox produces a `received` event.
 - A message added to the `Sent` folder of a team mailbox, whether appended, moved or copied, produces a `sent` event.
 - Other additions, and messages in personal mailboxes, are ignored.
 
 Events are persistent JSON messages whose AMQP message id is `<messageId>:<direction>`. When a publication fails, the
-event bus retries the whole mailbox event, so events published before the failure are sent again.
+event bus retries the whole mailbox event, so events published before the failure are sent again: deduplicate on the
+message id.
 
 Example of a `received` event:
 
@@ -122,3 +272,7 @@ Example of a `received` event:
 `subject`, `from`, `to`, `cc`, `bcc` and `date` are `null` when the message lacks the matching header. `mailboxPath`
 changes when the mailbox is renamed, `mailboxId` does not. `date` is the `Date` header, `timestamp` is when the event
 was produced.
+
+Up to TMail 1.0.22, this listener was declared in `listeners.xml` as
+`com.linagora.tmail.team.events.TeamMailboxEventsListener`, with `amqpUri`, `exchange`, `receivedRoutingKey` and
+`sentRoutingKey`. Remove that declaration and use `rabbitmq.uri` and the `teamMailboxEvents.*` keys instead.
