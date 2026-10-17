@@ -16,12 +16,10 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.team.events;
+package com.linagora.tmail.space;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-
-import java.util.Optional;
 
 import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,38 +27,34 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
 
-import com.linagora.tmail.AmqpUri;
-
 class TeamMailboxEventsConfigurationTest {
-    private static final String AMQP_URI = "amqp://user:pass@rabbitmq.example.com:5673/vhost";
-
     private BaseHierarchicalConfiguration configuration;
 
     @BeforeEach
     void setUp() {
         configuration = new BaseHierarchicalConfiguration();
-        configuration.addProperty("amqpUri", AMQP_URI);
-        configuration.addProperty("exchange", "team-events");
-        configuration.addProperty("receivedRoutingKey", "team.received");
-        configuration.addProperty("sentRoutingKey", "team.sent");
+        configuration.addProperty("teamMailboxEvents.enabled", true);
+        configuration.addProperty("teamMailboxEvents.exchange", "team-events");
+        configuration.addProperty("teamMailboxEvents.receivedRoutingKey", "team.received");
+        configuration.addProperty("teamMailboxEvents.sentRoutingKey", "team.sent");
     }
 
     @Test
     void fromShouldReadAllParameters() {
         assertThat(TeamMailboxEventsConfiguration.from(configuration))
-            .isEqualTo(new TeamMailboxEventsConfiguration(Optional.of(AmqpUri.from(AMQP_URI)), "team-events",
+            .isEqualTo(new TeamMailboxEventsConfiguration(true, "team-events",
                 "team.received", "team.sent"));
     }
 
     @Test
     void fromShouldApplyDefaultsWhenParametersAreMissing() {
         assertThat(TeamMailboxEventsConfiguration.from(new BaseHierarchicalConfiguration()))
-            .isEqualTo(new TeamMailboxEventsConfiguration(Optional.empty(), "tmail",
+            .isEqualTo(new TeamMailboxEventsConfiguration(false, "tmail",
                 "team-mailbox.message.received", "team-mailbox.message.sent"));
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"amqpUri", "exchange", "receivedRoutingKey", "sentRoutingKey"})
+    @ValueSource(strings = {"teamMailboxEvents.exchange", "teamMailboxEvents.receivedRoutingKey", "teamMailboxEvents.sentRoutingKey"})
     void fromShouldFailWhenAParameterIsBlank(String parameter) {
         configuration.setProperty(parameter, "  ");
 

@@ -16,7 +16,6 @@
   ~  PURPOSE. See the GNU Affero General Public License for         ~
   ~  more details.                                                  ~
   ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~-->
-
 <project xmlns="http://maven.apache.org/POM/4.0.0"
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
@@ -25,16 +24,25 @@
         <groupId>com.linagora.tmail</groupId>
         <artifactId>tmail-backend</artifactId>
         <version>1.0.0-SNAPSHOT</version>
-        <relativePath>../../../pom.xml</relativePath>
+        <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>team-mailbox-events</artifactId>
-    <name>Twake Mail :: Mailbox :: Plugin :: Team mailbox events listener</name>
+    <artifactId>twake-space</artifactId>
+    <name>Twake Mail :: Twake Space</name>
+    <description>Gives each TwakeSpace space a team mailbox, and reports its mail to the space feed</description>
 
     <dependencies>
         <dependency>
             <groupId>${james.groupId}</groupId>
+            <artifactId>apache-james-backends-rabbitmq</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
             <artifactId>apache-james-mailbox-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>apache-james-mailbox-store</artifactId>
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
@@ -42,7 +50,19 @@
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
-            <artifactId>apache-james-backends-rabbitmq</artifactId>
+            <artifactId>james-server-data-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-guice-configuration</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-webadmin-core</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
+            <artifactId>data-rabbitmq</artifactId>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
@@ -50,7 +70,7 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>data-rabbitmq</artifactId>
+            <artifactId>webadmin-mailing-list</artifactId>
         </dependency>
         <dependency>
             <groupId>org.apache.james</groupId>
@@ -66,18 +86,24 @@
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
-            <artifactId>apache-james-mailbox-memory</artifactId>
-            <scope>test</scope>
-        </dependency>
-        <dependency>
-            <groupId>${james.groupId}</groupId>
-            <artifactId>apache-james-mailbox-memory</artifactId>
+            <artifactId>apache-james-backends-rabbitmq</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
             <artifactId>apache-james-mailbox-api</artifactId>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>apache-james-mailbox-memory</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>apache-james-mailbox-memory</artifactId>
             <type>test-jar</type>
             <scope>test</scope>
         </dependency>
@@ -94,8 +120,12 @@
         </dependency>
         <dependency>
             <groupId>${james.groupId}</groupId>
-            <artifactId>apache-james-backends-rabbitmq</artifactId>
-            <type>test-jar</type>
+            <artifactId>james-server-data-memory</artifactId>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>${james.groupId}</groupId>
+            <artifactId>james-server-dnsservice-test</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

@@ -16,6 +16,26 @@ You can also find more detailed instructions for releases under the respective s
 
 Note: this section is in progress. It will be updated during all the development process until the release.
 
+### Team mailbox events move to space.properties
+
+`com.linagora.tmail.team.events.TeamMailboxEventsListener` is now part of the Twake Space extension. Remove it from
+`listeners.xml` (the class no longer exists, and TMail fails to start while it is declared), and configure it in
+`space.properties` instead:
+
+```properties
+enabled=true
+# was amqpUri
+rabbitmq.uri=amqp://user:password@rabbitmq:5672/vhost
+teamMailboxEvents.enabled=true
+# were exchange, receivedRoutingKey and sentRoutingKey
+teamMailboxEvents.exchange=tmail
+teamMailboxEvents.receivedRoutingKey=team-mailbox.message.received
+teamMailboxEvents.sentRoutingKey=team-mailbox.message.sent
+```
+
+`enabled=true` also starts the space events consumer (queue `tmail-space`) and the activity publication: see
+`docs/modules/ROOT/pages/tmail-backend/configure/twake-space.adoc`.
+
 ### SaaS domain provisioning before mail DNS activation
 
 Before deploying, add the nullable DNS state column to the domain table:

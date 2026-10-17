@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.team.events;
+package com.linagora.tmail.space;
 
 import java.time.Instant;
 import java.util.List;

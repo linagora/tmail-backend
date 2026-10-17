@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.team.events;
+package com.linagora.tmail.space;
 
 import static java.nio.charset.StandardCharsets.UTF_8;
 import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
@@ -43,6 +43,7 @@ import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
+import org.apache.james.events.EventCollector;
 import org.apache.james.events.InVMEventBus;
 import org.apache.james.events.MemoryEventDeadLetters;
 import org.apache.james.events.delivery.InVmEventDelivery;
@@ -81,6 +82,7 @@ class TeamMailboxEventsListenerTest {
     private static final Domain DOMAIN = Domain.of("linagora.com");
     private static final Username BOB = Username.of("bob@linagora.com");
     private static final Instant NOW = Instant.parse("2026-10-06T12:00:00Z");
+    private static final Clock CLOCK = Clock.fixed(NOW, ZoneOffset.UTC);
     private static final boolean IS_DELIVERY = true;
     private static final boolean IS_NOT_DELIVERY = false;
     private static final String MESSAGE = """
@@ -103,6 +105,7 @@ class TeamMailboxEventsListenerTest {
     static RabbitMQExtension rabbitMQExtension = RabbitMQExtension.singletonRabbitMQ()
         .isolationPolicy(WEAK);
 
+    private InMemoryIntegrationResources resources;
     private InMemoryMailboxManager mailboxManager;
     private MessageIdManager messageIdManager;
     private MemoryEventDeadLetters eventDeadLetters;
@@ -110,13 +113,14 @@ class TeamMailboxEventsListenerTest {
     private MailboxSession teamSession;
     private String exchange;
     private TeamMailboxEventsListener testee;
+    private SpacePublisher spacePublisher;
     private ConcurrentLinkedQueue<Published> published;
     private Disposable consumer;
 
     @BeforeEach
     void setUp() throws Exception {
         eventDeadLetters = new MemoryEventDeadLetters();
-        InMemoryIntegrationResources resources = InMemoryIntegrationResources.builder()
+        resources = InMemoryIntegrationResources.builder()
             .preProvisionnedFakeAuthenticator()
             .fakeAuthorizator()
             .eventBus(new InVMEventBus(new InVmEventDelivery(new RecordingMetricFactory()), RETRY_BACKOFF_CONFIGURATION, eventDeadLetters))
@@ -138,10 +142,8 @@ class TeamMailboxEventsListenerTest {
         teamSession = mailboxManager.createSystemSession(marketing.owner());
 
         exchange = "tmail-" + UUID.randomUUID();
-        BaseHierarchicalConfiguration configuration = new BaseHierarchicalConfiguration();
-        configuration.addProperty("exchange", exchange);
-        testee = new TeamMailboxEventsListener(mailboxManager, messageIdManager, Clock.fixed(NOW, ZoneOffset.UTC),
-            rabbitMQExtension.getRabbitMQ().getConfiguration(), configuration);
+        spacePublisher = SpacePublisher.create(SpaceConfiguration.DEFAULT, rabbitMQExtension.getRabbitMQ().getConfiguration(), CLOCK);
+        testee = new TeamMailboxEventsListener(mailboxManager, messageIdManager, CLOCK, enabled(exchange), spacePublisher);
         resources.getEventBus().register(testee);
 
         String queue = "team-mailbox-events-" + UUID.randomUUID();
@@ -162,7 +164,7 @@ class TeamMailboxEventsListenerTest {
     @AfterEach
     void tearDown() {
         consumer.dispose();
-        testee.close();
+        spacePublisher.close();
     }
 
     @Test
@@ -215,17 +217,16 @@ class TeamMailboxEventsListenerTest {
     }
 
     @Test
-    void amqpUriShouldTakePrecedenceOverTMailRabbitMQConfiguration() throws Exception {
+    void rabbitMQUriShouldTakePrecedenceOverTMailRabbitMQConfiguration() throws Exception {
         RabbitMQConfiguration unreachableTMailRabbitMQ = RabbitMQConfiguration.builder()
             .amqpUri(new URI("amqp://localhost:1"))
             .managementUri(rabbitMQExtension.getRabbitMQ().managementUri())
             .managementCredentials(DEFAULT_MANAGEMENT_CREDENTIAL)
             .build();
         BaseHierarchicalConfiguration configuration = new BaseHierarchicalConfiguration();
-        configuration.addProperty("amqpUri", rabbitMQExtension.getRabbitMQ().amqpUri().toString());
-        configuration.addProperty("exchange", exchange);
-        RabbitMQTeamMailboxEventPublisher publisher = RabbitMQTeamMailboxEventPublisher.create(
-            TeamMailboxEventsConfiguration.from(configuration), unreachableTMailRabbitMQ);
+        configuration.addProperty("rabbitmq.uri", rabbitMQExtension.getRabbitMQ().amqpUri().toString());
+        SpacePublisher otherSpacePublisher = SpacePublisher.create(SpaceConfiguration.from(configuration), unreachableTMailRabbitMQ, CLOCK);
+        RabbitMQTeamMailboxEventPublisher publisher = new RabbitMQTeamMailboxEventPublisher(otherSpacePublisher.sender(), enabled(exchange));
         MessageId messageId = append(marketing.mailboxPath(DefaultMailboxes.DRAFTS), MESSAGE, IS_NOT_DELIVERY);
 
         try {
@@ -233,12 +234,27 @@ class TeamMailboxEventsListenerTest {
                 mailboxId(marketing.sentPath()), messageId, Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(),
                 Optional.empty(), Optional.empty(), NOW))).block();
         } finally {
-            publisher.close();
+            otherSpacePublisher.close();
         }
 
         await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> assertThat(published)
             .extracting(Published::messageId)
             .containsExactly(messageId.serialize() + ":sent"));
+    }
+
+    @Test
+    void disabledListenerShouldHandleNoEvent() throws Exception {
+        EventCollector collector = new EventCollector();
+        resources.getEventBus().register(collector);
+        TeamMailboxEventsListener disabled = new TeamMailboxEventsListener(mailboxManager, messageIdManager, CLOCK,
+            new TeamMailboxEventsConfiguration(false, exchange, "team-mailbox.message.received", "team-mailbox.message.sent"), spacePublisher);
+
+        append(marketing.inboxPath(), MESSAGE, IS_DELIVERY);
+
+        assertThat(collector.getEvents())
+            .filteredOn(testee::isHandling)
+            .isNotEmpty()
+            .noneMatch(disabled::isHandling);
     }
 
     @Test
@@ -325,6 +341,10 @@ class TeamMailboxEventsListenerTest {
         await().atMost(Duration.ofSeconds(30))
             .untilAsserted(() -> assertThat(eventDeadLetters.groupsWithFailedEvents().collectList().block())
                 .containsExactly(testee.getDefaultGroup()));
+    }
+
+    private static TeamMailboxEventsConfiguration enabled(String exchange) {
+        return new TeamMailboxEventsConfiguration(true, exchange, "team-mailbox.message.received", "team-mailbox.message.sent");
     }
 
     private void assertOnlySentinelIsPublished() throws Exception {

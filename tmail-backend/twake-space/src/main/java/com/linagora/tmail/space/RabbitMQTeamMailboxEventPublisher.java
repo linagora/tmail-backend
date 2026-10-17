@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.team.events;
+package com.linagora.tmail.space;
 
 import static com.rabbitmq.client.MessageProperties.PERSISTENT_TEXT_PLAIN;
 
@@ -24,9 +24,6 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 
-import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
-import org.apache.james.backends.rabbitmq.RabbitMQConnectionFactory;
-import org.apache.james.backends.rabbitmq.SimpleConnectionPool;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
@@ -42,31 +39,18 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.ExchangeSpecification;
 import reactor.rabbitmq.OutboundMessage;
-import reactor.rabbitmq.RabbitFlux;
 import reactor.rabbitmq.Sender;
-import reactor.rabbitmq.SenderOptions;
 
 public class RabbitMQTeamMailboxEventPublisher {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
     private static final String CONTENT_TYPE = "application/json";
 
-    public static RabbitMQTeamMailboxEventPublisher create(TeamMailboxEventsConfiguration configuration, RabbitMQConfiguration tmailRabbitMQConfiguration) {
-        RabbitMQConfiguration rabbitMQConfiguration = configuration.amqpUri()
-            .map(amqpUri -> amqpUri.toRabbitMqConfiguration(tmailRabbitMQConfiguration).build())
-            .orElse(tmailRabbitMQConfiguration);
-        SimpleConnectionPool connectionPool = new SimpleConnectionPool(new RabbitMQConnectionFactory(rabbitMQConfiguration),
-            SimpleConnectionPool.Configuration.DEFAULT);
-        return new RabbitMQTeamMailboxEventPublisher(connectionPool, configuration);
-    }
-
-    private final SimpleConnectionPool connectionPool;
     private final Sender sender;
     private final TeamMailboxEventsConfiguration configuration;
     private final Mono<AMQP.Exchange.DeclareOk> exchangeDeclaration;
 
-    private RabbitMQTeamMailboxEventPublisher(SimpleConnectionPool connectionPool, TeamMailboxEventsConfiguration configuration) {
-        this.connectionPool = connectionPool;
-        this.sender = RabbitFlux.createSender(new SenderOptions().connectionMono(connectionPool.getResilientConnection()));
+    public RabbitMQTeamMailboxEventPublisher(Sender sender, TeamMailboxEventsConfiguration configuration) {
+        this.sender = sender;
         this.configuration = configuration;
         this.exchangeDeclaration = sender.declareExchange(ExchangeSpecification.exchange(configuration.exchange())
                 .type(BuiltinExchangeType.TOPIC.getType())
@@ -84,11 +68,6 @@ public class RabbitMQTeamMailboxEventPublisher {
             })
             .subscribeOn(Schedulers.boundedElastic())
             .then();
-    }
-
-    public void close() {
-        sender.close();
-        connectionPool.close();
     }
 
     private OutboundMessage toMessage(TeamMailboxEvent event) throws JsonProcessingException {

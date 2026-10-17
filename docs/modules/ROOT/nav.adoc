@@ -21,6 +21,7 @@
 *** xref:tmail-backend/configure/standalone-calendar.adoc[]
 *** xref:tmail-backend/configure/structured-logging.adoc[]
 *** xref:tmail-backend/configure/team-mailboxes.adoc[]
+*** xref:tmail-backend/configure/twake-space.adoc[]
 *** xref:tmail-backend/configure/users-repository.adoc[]
 *** xref:tmail-backend/configure/extra-listener.adoc[]
 ** xref:tmail-backend/features/index.adoc[]

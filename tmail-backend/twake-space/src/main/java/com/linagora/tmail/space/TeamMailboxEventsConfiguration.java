@@ -16,27 +16,31 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.team.events;
+package com.linagora.tmail.space;
 
 import java.util.Optional;
 
 import org.apache.commons.configuration2.Configuration;
 
 import com.google.common.base.Preconditions;
-import com.linagora.tmail.AmqpUri;
 
-public record TeamMailboxEventsConfiguration(Optional<AmqpUri> amqpUri, String exchange, String receivedRoutingKey, String sentRoutingKey) {
-    private static final String AMQP_URI_PARAMETER = "amqpUri";
-    private static final String EXCHANGE_PARAMETER = "exchange";
-    private static final String RECEIVED_ROUTING_KEY_PARAMETER = "receivedRoutingKey";
-    private static final String SENT_ROUTING_KEY_PARAMETER = "sentRoutingKey";
+/** The {@code teamMailboxEvents.*} keys of {@code space.properties}. */
+public record TeamMailboxEventsConfiguration(boolean enabled, String exchange, String receivedRoutingKey, String sentRoutingKey) {
+    private static final String ENABLED_PARAMETER = "teamMailboxEvents.enabled";
+    private static final String EXCHANGE_PARAMETER = "teamMailboxEvents.exchange";
+    private static final String RECEIVED_ROUTING_KEY_PARAMETER = "teamMailboxEvents.receivedRoutingKey";
+    private static final String SENT_ROUTING_KEY_PARAMETER = "teamMailboxEvents.sentRoutingKey";
+    private static final boolean DEFAULT_ENABLED = false;
     private static final String DEFAULT_EXCHANGE = "tmail";
     private static final String DEFAULT_RECEIVED_ROUTING_KEY = "team-mailbox.message.received";
     private static final String DEFAULT_SENT_ROUTING_KEY = "team-mailbox.message.sent";
 
+    public static final TeamMailboxEventsConfiguration DEFAULT = new TeamMailboxEventsConfiguration(DEFAULT_ENABLED,
+        DEFAULT_EXCHANGE, DEFAULT_RECEIVED_ROUTING_KEY, DEFAULT_SENT_ROUTING_KEY);
+
     public static TeamMailboxEventsConfiguration from(Configuration configuration) {
         return new TeamMailboxEventsConfiguration(
-            optional(configuration, AMQP_URI_PARAMETER).map(AmqpUri::from),
+            configuration.getBoolean(ENABLED_PARAMETER, DEFAULT_ENABLED),
             optional(configuration, EXCHANGE_PARAMETER).orElse(DEFAULT_EXCHANGE),
             optional(configuration, RECEIVED_ROUTING_KEY_PARAMETER).orElse(DEFAULT_RECEIVED_ROUTING_KEY),
             optional(configuration, SENT_ROUTING_KEY_PARAMETER).orElse(DEFAULT_SENT_ROUTING_KEY));
