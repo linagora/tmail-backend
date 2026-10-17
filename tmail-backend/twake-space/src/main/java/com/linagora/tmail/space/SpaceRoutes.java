@@ -23,8 +23,10 @@ import java.util.Optional;
 import jakarta.inject.Inject;
 
 import org.apache.james.core.Domain;
+import org.apache.james.task.TaskManager;
 import org.apache.james.webadmin.Constants;
 import org.apache.james.webadmin.Routes;
+import org.apache.james.webadmin.tasks.TaskFromRequest;
 import org.apache.james.webadmin.utils.ErrorResponder;
 import org.apache.james.webadmin.utils.JsonExtractException;
 import org.apache.james.webadmin.utils.JsonExtractor;
@@ -39,6 +41,7 @@ import com.linagora.tmail.team.TeamMailbox;
 import scala.jdk.javaapi.OptionConverters;
 import spark.HaltException;
 import spark.Request;
+import spark.Response;
 import spark.Route;
 import spark.Service;
 
@@ -63,13 +66,18 @@ public class SpaceRoutes implements Routes {
     private static final JsonExtractor<SpaceBindingDTO> BINDING_EXTRACTOR = new JsonExtractor<>(SpaceBindingDTO.class);
 
     private final SpaceReconciler reconciler;
+    private final SpacePurge purge;
     private final SpacePublisher publisher;
+    private final TaskManager taskManager;
     private final JsonTransformer jsonTransformer;
 
     @Inject
-    public SpaceRoutes(SpaceReconciler reconciler, SpacePublisher publisher, JsonTransformer jsonTransformer) {
+    public SpaceRoutes(SpaceReconciler reconciler, SpacePurge purge, SpacePublisher publisher, TaskManager taskManager,
+                       JsonTransformer jsonTransformer) {
         this.reconciler = reconciler;
+        this.purge = purge;
         this.publisher = publisher;
+        this.taskManager = taskManager;
         this.jsonTransformer = jsonTransformer;
     }
 
@@ -80,25 +88,39 @@ public class SpaceRoutes implements Routes {
 
     @Override
     public void define(Service service) {
-        service.post(SPACES_PATH, requestSync(), jsonTransformer);
+        service.post(SPACES_PATH, spacesAction(), jsonTransformer);
         service.get(BINDING_PATH, getBinding(), jsonTransformer);
         service.put(BINDING_PATH, bind(), jsonTransformer);
     }
 
-    private Route requestSync() {
+    private Route spacesAction() {
+        TaskFromRequest purgeTask = request -> new SpacePurgeTask(this.purge);
+        TaskFromRequest reindexTask = request -> new SpaceReindexTask(reconciler);
+        Route purgeRoute = purgeTask.asRoute(taskManager);
+        Route reindexRoute = reindexTask.asRoute(taskManager);
         return (request, response) -> {
             String action = request.queryParams("action");
-            if (!"sync".equals(action)) {
-                throw badRequest("Invalid action supplied: " + action + ". Supported actions: [sync]");
+            if ("sync".equals(action)) {
+                return requestSync(request, response);
             }
-            Optional<String> organizationId = queryParam(request, "organizationId");
-            Optional<String> spaceId = queryParam(request, "spaceId");
-            if (spaceId.isPresent() && organizationId.isEmpty()) {
-                throw badRequest("'spaceId' needs 'organizationId'");
+            if ("purge".equals(action)) {
+                return purgeRoute.handle(request, response);
             }
-            publisher.requestSync(organizationId, spaceId).block();
-            return Responses.returnNoContent(response);
+            if ("reindex".equals(action)) {
+                return reindexRoute.handle(request, response);
+            }
+            throw badRequest("Invalid action supplied: " + action + ". Supported actions: [sync, purge, reindex]");
         };
+    }
+
+    private Object requestSync(Request request, Response response) {
+        Optional<String> organizationId = queryParam(request, "organizationId");
+        Optional<String> spaceId = queryParam(request, "spaceId");
+        if (spaceId.isPresent() && organizationId.isEmpty()) {
+            throw badRequest("'spaceId' needs 'organizationId'");
+        }
+        publisher.requestSync(organizationId, spaceId).block();
+        return Responses.returnNoContent(response);
     }
 
     private Route getBinding() {

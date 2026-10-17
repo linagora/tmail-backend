@@ -70,11 +70,8 @@ address of a person, a list or a role. Lowercase letters, digits or `_`, ending 
 
 | `retention`
 | `30d`
-| How long the team mailbox of a deleted space is kept before being deleted. Days unless a unit is given.
-
-| `purge.interval`
-| `1h`
-| How often the team mailboxes past the retention are deleted. Seconds unless a unit is given.
+| How long the team mailbox of a deleted space is kept before the xref:#_purge[purge] deletes it. Days unless a unit is
+given.
 
 | `teamMailboxEvents.enabled`
 | `false`
@@ -155,6 +152,53 @@ redeliver it, with the same event ids.
 The queue is watched by the `RabbitMQConsumers` health check, which restarts the consumer when it is gone, for example
 after a RabbitMQ reconnection. The dead letter queue is watched by the `RabbitMQDeadLetterQueues` health check, which
 reports degraded as soon as it holds a message.
+
+== Purge
+
+TMail does not schedule the purge of the team mailboxes of deleted spaces: it *needs a webadmin cron*. Without one, the
+team mailboxes of deleted spaces, and their mail, are kept forever, and their addresses are never freed.
+
+The cron calls `POST /spaces?action=purge`, which starts a task deleting the team mailboxes of spaces deleted for longer
+than `retention`. Running it more often than needed is harmless, and running it on two replicas at once too. Once a day
+is enough.
+
+.Kubernetes CronJob
+[source,yaml]
+----
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: tmail-twake-space-purge
+spec:
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: purge
+              image: curlimages/curl:8.10.1
+              args:
+                - --fail
+                - -X
+                - POST
+                - -H
+                - "Authorization: Bearer $(WEBADMIN_TOKEN)"
+                - http://tmail-webadmin:8000/spaces?action=purge
+              env:
+                - name: WEBADMIN_TOKEN
+                  valueFrom:
+                    secretKeyRef:
+                      name: tmail-webadmin
+                      key: token
+----
+
+The call answers `201` with the id of the task. Its outcome, the count of deleted team mailboxes and the addresses that
+failed, are read with `GET /tasks/{taskId}`: see the
+xref:tmail-backend/webadmin.adoc#_twake_space[Twake Space webadmin routes]. A failed deletion is retried by the next
+run.
 
 == Consumed events
 
