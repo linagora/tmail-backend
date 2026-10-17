@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.space;
 
+import java.time.Clock;
 import java.time.Instant;
 import java.time.format.DateTimeParseException;
 import java.util.Map;
@@ -65,12 +66,15 @@ public class SpaceMailboxes {
     private final MailboxManager mailboxManager;
     private final MailboxSessionMapperFactory mapperFactory;
     private final TeamMailboxRepository teamMailboxRepository;
+    private final Clock clock;
 
     @Inject
-    public SpaceMailboxes(MailboxManager mailboxManager, MailboxSessionMapperFactory mapperFactory, TeamMailboxRepository teamMailboxRepository) {
+    public SpaceMailboxes(MailboxManager mailboxManager, MailboxSessionMapperFactory mapperFactory, TeamMailboxRepository teamMailboxRepository,
+                          Clock clock) {
         this.mailboxManager = mailboxManager;
         this.mapperFactory = mapperFactory;
         this.teamMailboxRepository = teamMailboxRepository;
+        this.clock = clock;
     }
 
     /** Empty when the team mailbox does not exist. */
@@ -88,14 +92,15 @@ public class SpaceMailboxes {
             .concatMap(this::read);
     }
 
-    public Mono<Void> bind(SpaceMailbox spaceMailbox, String organizationId, String spaceId) {
+    public Mono<Void> bind(SpaceMailbox spaceMailbox, SpaceRef space) {
         return write(spaceMailbox, ImmutableMap.of(
-            SpaceAnnotations.ORGANIZATION_ID, organizationId,
-            SpaceAnnotations.SPACE_ID, spaceId));
+            SpaceAnnotations.ORGANIZATION_ID, space.organizationId(),
+            SpaceAnnotations.SPACE_ID, space.spaceId()));
     }
 
-    public Mono<Void> markDeleted(SpaceMailbox spaceMailbox, Instant deletedAt) {
-        return write(spaceMailbox, ImmutableMap.of(SpaceAnnotations.DELETED_AT, deletedAt.toString()));
+    /** Writes {@code deletedAt}, now. */
+    public Mono<Void> markDeleted(SpaceMailbox spaceMailbox) {
+        return write(spaceMailbox, ImmutableMap.of(SpaceAnnotations.DELETED_AT, clock.instant().toString()));
     }
 
     public Mono<Void> unmarkDeleted(SpaceMailbox spaceMailbox) {

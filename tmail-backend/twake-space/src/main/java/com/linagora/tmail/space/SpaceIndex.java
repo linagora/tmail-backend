@@ -27,6 +27,7 @@ import jakarta.inject.Inject;
 
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
+import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.exception.MailboxExistsException;
@@ -43,6 +44,7 @@ import com.linagora.tmail.team.TeamMailbox;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import scala.jdk.javaapi.OptionConverters;
 
 /**
@@ -90,11 +92,20 @@ public class SpaceIndex {
 
     private final MailboxManager mailboxManager;
     private final MailboxSessionMapperFactory mapperFactory;
+    private final DomainList domainList;
 
     @Inject
-    public SpaceIndex(MailboxManager mailboxManager, MailboxSessionMapperFactory mapperFactory) {
+    public SpaceIndex(MailboxManager mailboxManager, MailboxSessionMapperFactory mapperFactory, DomainList domainList) {
         this.mailboxManager = mailboxManager;
         this.mapperFactory = mapperFactory;
+        this.domainList = domainList;
+    }
+
+    /** The domains that may hold an index. */
+    public Flux<Domain> domains() {
+        return Mono.fromCallable(domainList::getDomains)
+            .subscribeOn(Schedulers.boundedElastic())
+            .flatMapIterable(domains -> domains);
     }
 
     /** The team mailbox the index names for this space, valid or not. */

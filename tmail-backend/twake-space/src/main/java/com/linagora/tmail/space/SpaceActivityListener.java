@@ -118,8 +118,8 @@ public class SpaceActivityListener implements EventListener.ReactiveGroupEventLi
                     mailboxManager.createSystemSession(teamMailbox.owner())))
                 .distinct(MessageResult::getMessageId)
                 .concatMap(message -> Mono.fromCallable(() -> subject(message))
-                    .flatMap(subject -> publisher.publishMessage(organizationId(spaceMailbox), spaceMailbox.rootId(),
-                        message.getMessageId(), direction, subject, time)))
+                    .flatMap(subject -> publisher.publishMessage(new SpacePublisher.MessageActivity(organizationId(spaceMailbox),
+                        spaceMailbox.rootId(), message.getMessageId(), direction, subject, time))))
                 .then());
     }
 

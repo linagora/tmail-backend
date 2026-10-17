@@ -38,6 +38,7 @@ import org.apache.james.mailbox.model.MessageId;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.base.Preconditions;
 import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
 
@@ -72,6 +73,42 @@ public class SpacePublisher {
         String eventType() {
             return "com.twake.mail.message." + value + ".v1";
         }
+    }
+
+    /** What a sync request covers: every space, the spaces of an organization, or one space. */
+    public record SyncScope(Optional<String> organizationId, Optional<String> spaceId) {
+        public static final SyncScope ALL = new SyncScope(Optional.empty(), Optional.empty());
+
+        public static SyncScope organization(String organizationId) {
+            return new SyncScope(Optional.of(organizationId), Optional.empty());
+        }
+
+        public static SyncScope space(SpaceRef space) {
+            return new SyncScope(Optional.of(space.organizationId()), Optional.of(space.spaceId()));
+        }
+
+        public SyncScope {
+            Preconditions.checkArgument(spaceId.isEmpty() || organizationId.isPresent(), "A space sync needs the organization");
+        }
+    }
+
+    /** A message that reached a space's team mailbox, or its Sent folder, at {@code time}. */
+    public record MessageActivity(String organizationId, MailboxId rootId, MessageId messageId, Direction direction,
+                                  Optional<String> subject, Instant time) {
+        String title() {
+            return subject.filter(value -> !value.isBlank()).orElse(NO_SUBJECT);
+        }
+
+        CloudEventHeader header() {
+            return new CloudEventHeader(rootId.serialize() + ":" + messageId.serialize() + ":" + direction.asString(),
+                direction.eventType(), time, organizationId);
+        }
+    }
+
+    private record CloudEventHeader(String id, String type, Instant time, String organizationId) {
+    }
+
+    private record Envelope(String exchange, String routingKey, String messageId) {
     }
 
     public static final String PROVISIONED = "com.twake.mail.space.provisioned.v1";
@@ -115,59 +152,57 @@ public class SpacePublisher {
         return () -> RabbitFlux.createReceiver(new ReceiverOptions().connectionMono(connectionPool.getResilientConnection()));
     }
 
-    public Mono<Void> publishProvisioned(String organizationId, String spaceId, MailboxId rootId) {
-        ObjectNode data = OBJECT_MAPPER.createObjectNode().put("space_id", spaceId);
+    public Mono<Void> publishProvisioned(SpaceRef space, MailboxId rootId) {
+        ObjectNode data = OBJECT_MAPPER.createObjectNode().put("space_id", space.spaceId());
         data.putObject("resource")
             .put("kind", "mailbox")
             .put("id", rootId.serialize());
-        String id = spaceId + ":" + rootId.serialize() + ":provisioned";
-        return publish(configuration.activityExchange(), PROVISIONED, id, cloudEvent(id, PROVISIONED, clock.instant(), organizationId, data));
+        CloudEventHeader header = new CloudEventHeader(space.spaceId() + ":" + rootId.serialize() + ":provisioned", PROVISIONED,
+            clock.instant(), space.organizationId());
+        return publishActivity(header, data);
     }
 
-    public Mono<Void> publishMessage(String organizationId, MailboxId rootId, MessageId messageId, Direction direction,
-                                     Optional<String> subject, Instant time) {
+    public Mono<Void> publishMessage(MessageActivity activity) {
         ObjectNode data = OBJECT_MAPPER.createObjectNode();
         ObjectNode object = data.putObject("object")
             .put("type", "message")
-            .put("id", messageId.serialize())
-            .put("title", subject.filter(value -> !value.isBlank()).orElse(NO_SUBJECT));
+            .put("id", activity.messageId().serialize())
+            .put("title", activity.title());
         object.putObject("container")
             .put("kind", "mailbox")
-            .put("id", rootId.serialize());
-        String id = rootId.serialize() + ":" + messageId.serialize() + ":" + direction.asString();
-        String type = direction.eventType();
-        return publish(configuration.activityExchange(), type, id, cloudEvent(id, type, time, organizationId, data));
+            .put("id", activity.rootId().serialize());
+        return publishActivity(activity.header(), data);
     }
 
     /** Asks ldap-rest for a snapshot: of every space, of an organization's, or of one space. */
-    public Mono<Void> requestSync(Optional<String> organizationId, Optional<String> spaceId) {
+    public Mono<Void> requestSync(SyncScope scope) {
         ObjectNode body = OBJECT_MAPPER.createObjectNode();
-        organizationId.ifPresent(value -> body.put("organizationId", value));
-        spaceId.ifPresent(value -> body.put("id", value));
+        scope.organizationId().ifPresent(value -> body.put("organizationId", value));
+        scope.spaceId().ifPresent(value -> body.put("id", value));
         body.put("timestamp", clock.instant().toString());
-        return publish(configuration.spaceExchange(), SYNC_REQUESTED, UUID.randomUUID().toString(), body);
+        return publish(new Envelope(configuration.spaceExchange(), SYNC_REQUESTED, UUID.randomUUID().toString()), body);
     }
 
-    private ObjectNode cloudEvent(String id, String type, Instant time, String organizationId, ObjectNode data) {
+    private Mono<Void> publishActivity(CloudEventHeader header, ObjectNode data) {
         ObjectNode event = OBJECT_MAPPER.createObjectNode()
             .put("specversion", "1.0")
-            .put("id", id)
+            .put("id", header.id())
             .put("source", SOURCE)
-            .put("type", type)
-            .put("time", time.toString())
-            .put("twakeorg", organizationId);
+            .put("type", header.type())
+            .put("time", header.time().toString())
+            .put("twakeorg", header.organizationId());
         event.set("data", data);
-        return event;
+        return publish(new Envelope(configuration.activityExchange(), header.type(), header.id()), event);
     }
 
-    private Mono<Void> publish(String exchange, String routingKey, String messageId, ObjectNode body) {
-        return exchangeDeclaration(exchange)
-            .then(Mono.fromCallable(() -> toMessage(exchange, routingKey, messageId, body)))
+    private Mono<Void> publish(Envelope envelope, ObjectNode body) {
+        return exchangeDeclaration(envelope.exchange())
+            .then(Mono.fromCallable(() -> toMessage(envelope, body)))
             .flatMap(message -> sender.sendWithPublishConfirms(Mono.just(message))
                 .next()
                 .handle((result, sink) -> {
                     if (!result.isAck()) {
-                        sink.error(new RuntimeException("Space event " + messageId + " was not acked by RabbitMQ"));
+                        sink.error(new RuntimeException("Space event " + envelope.messageId() + " was not acked by RabbitMQ"));
                         return;
                     }
                     sink.complete();
@@ -183,13 +218,13 @@ public class SpacePublisher {
             .cacheInvalidateIf(declareOk -> false));
     }
 
-    private OutboundMessage toMessage(String exchange, String routingKey, String messageId, ObjectNode body) throws JsonProcessingException {
+    private OutboundMessage toMessage(Envelope envelope, ObjectNode body) throws JsonProcessingException {
         AMQP.BasicProperties properties = new AMQP.BasicProperties.Builder()
-            .messageId(messageId)
+            .messageId(envelope.messageId())
             .contentType(CONTENT_TYPE)
             .deliveryMode(PERSISTENT_TEXT_PLAIN.getDeliveryMode())
             .build();
-        return new OutboundMessage(exchange, routingKey, properties, OBJECT_MAPPER.writeValueAsBytes(body));
+        return new OutboundMessage(envelope.exchange(), envelope.routingKey(), properties, OBJECT_MAPPER.writeValueAsBytes(body));
     }
 
     @PreDestroy
