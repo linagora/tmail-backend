@@ -119,7 +119,7 @@ public class SpaceRoutes implements Routes {
         if (spaceId.isPresent() && organizationId.isEmpty()) {
             throw badRequest("'spaceId' needs 'organizationId'");
         }
-        publisher.requestSync(organizationId, spaceId).block();
+        publisher.requestSync(new SpacePublisher.SyncScope(organizationId, spaceId)).block();
         return Responses.returnNoContent(response);
     }
 
@@ -145,7 +145,7 @@ public class SpaceRoutes implements Routes {
                         .message("The team mailbox is bound to space " + existing.spaceId())
                         .haltError();
                 });
-            reconciler.bind(spaceMailbox, binding.organizationId(), binding.spaceId()).block();
+            reconciler.bind(spaceMailbox, new SpaceRef(binding.organizationId(), binding.spaceId())).block();
             return Responses.returnNoContent(response);
         };
     }

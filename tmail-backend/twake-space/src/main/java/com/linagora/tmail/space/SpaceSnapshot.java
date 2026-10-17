@@ -51,6 +51,10 @@ public record SpaceSnapshot(String organizationId, Domain domain, String spaceId
     public record Member(String email, Role role) {
     }
 
+    public SpaceRef ref() {
+        return new SpaceRef(organizationId, spaceId);
+    }
+
     public SpaceSnapshot {
         Preconditions.checkNotNull(organizationId);
         Preconditions.checkNotNull(domain);

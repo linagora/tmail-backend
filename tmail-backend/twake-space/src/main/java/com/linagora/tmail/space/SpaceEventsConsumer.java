@@ -22,7 +22,9 @@ import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.function.Function;
 import java.util.stream.StreamSupport;
 
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
@@ -33,6 +35,7 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.linagora.tmail.rabbitmq.ManagedRabbitMQConsumer;
 import com.linagora.tmail.rabbitmq.QueueDeclaration;
 
@@ -86,14 +89,23 @@ public class SpaceEventsConsumer {
                 .build());
     }
 
-    private final SpaceReconciler reconciler;
     private final SpacePublisher publisher;
     private final SpaceConfiguration configuration;
+    private final Map<String, Function<JsonNode, Mono<Void>>> handlers;
 
     public SpaceEventsConsumer(SpaceReconciler reconciler, SpacePublisher publisher, SpaceConfiguration configuration) {
-        this.reconciler = reconciler;
         this.publisher = publisher;
         this.configuration = configuration;
+        this.handlers = ImmutableMap.<String, Function<JsonNode, Mono<Void>>>builder()
+            .put("twake.space.created", json -> reconciler.apply(snapshot(json), false))
+            .put("twake.space.synced", json -> reconciler.apply(snapshot(json), true))
+            .put("twake.space.deleted", json -> reconciler.close(optionalDomain(json), text(json, "id")))
+            .put("twake.space.sync.completed", json -> reconciler.closeUnlisted(text(json, "organizationId"), domain(json), spaceIds(json)))
+            .put("twake.space.member.added", json -> reconciler.changeMembers(domain(json), text(json, "id"), members(json)))
+            .put("twake.space.member.role.changed", json -> reconciler.changeMembers(domain(json), text(json, "id"), members(json)))
+            .put("twake.space.member.removed", json -> reconciler.removeMembers(domain(json), text(json, "id"), removedMembers(json)))
+            .put("twake.space.updated", this::renamed)
+            .build();
     }
 
     public Mono<Void> handle(AcknowledgableDelivery delivery) {
@@ -103,34 +115,27 @@ public class SpaceEventsConsumer {
     /** Fails, so that the event is dead lettered, when its body is not JSON or the handling failed. */
     public Mono<Void> handle(String exchange, String routingKey, byte[] body) {
         return Mono.fromCallable(() -> OBJECT_MAPPER.readTree(body))
-            .flatMap(json -> Mono.defer(() -> route(exchange, routingKey, json)))
+            .flatMap(json -> Mono.defer(() -> route(exchange, routingKey).apply(json)))
             .onErrorResume(MalformedEventException.class, e -> {
                 LOGGER.warn("Dropping malformed {} event: {}", routingKey, e.getMessage());
                 return Mono.empty();
             });
     }
 
-    private Mono<Void> route(String exchange, String routingKey, JsonNode json) {
+    private Function<JsonNode, Mono<Void>> route(String exchange, String routingKey) {
         if (exchange.equals(configuration.dnsExchange()) && routingKey.equals(configuration.dnsRoutingKey())) {
-            return dnsValidated(json);
+            return this::dnsValidated;
         }
-        return switch (routingKey) {
-            case "twake.space.created" -> reconciler.apply(snapshot(json), false);
-            case "twake.space.synced" -> reconciler.apply(snapshot(json), true);
-            case "twake.space.deleted" -> reconciler.close(optionalDomain(json), text(json, "id"));
-            case "twake.space.sync.completed" -> reconciler.closeUnlisted(text(json, "organizationId"), domain(json), spaceIds(json));
-            case "twake.space.member.added", "twake.space.member.role.changed" -> reconciler.changeMembers(domain(json), text(json, "id"), members(json));
-            case "twake.space.member.removed" -> reconciler.removeMembers(domain(json), text(json, "id"), removedMembers(json));
-            case "twake.space.updated" -> {
-                // A team mailbox keeps its address when its space is renamed
-                LOGGER.debug("Ignoring the rename of space {}", text(json, "id"));
-                yield Mono.empty();
-            }
-            default -> {
-                LOGGER.debug("No handler for {} on {}", routingKey, exchange);
-                yield Mono.empty();
-            }
-        };
+        return handlers.getOrDefault(routingKey, json -> {
+            LOGGER.debug("No handler for {} on {}", routingKey, exchange);
+            return Mono.empty();
+        });
+    }
+
+    private Mono<Void> renamed(JsonNode json) {
+        // A team mailbox keeps its address when its space is renamed
+        LOGGER.debug("Ignoring the rename of space {}", text(json, "id"));
+        return Mono.empty();
     }
 
     private Mono<Void> dnsValidated(JsonNode json) {
@@ -138,7 +143,7 @@ public class SpaceEventsConsumer {
         if (!json.path("mailDnsConfigurationValidated").asBoolean(false)) {
             return Mono.empty();
         }
-        return publisher.requestSync(Optional.of(organizationId), Optional.empty());
+        return publisher.requestSync(SpacePublisher.SyncScope.organization(organizationId));
     }
 
     private SpaceSnapshot snapshot(JsonNode json) {
@@ -205,10 +210,10 @@ public class SpaceEventsConsumer {
     }
 
     private static String text(JsonNode json, String field) {
-        JsonNode value = json.get(field);
-        if (value == null || !value.isTextual() || value.asText().isBlank()) {
-            throw new MalformedEventException("'" + field + "' must be a non-blank string");
-        }
-        return value.asText();
+        return Optional.ofNullable(json.get(field))
+            .filter(JsonNode::isTextual)
+            .map(JsonNode::asText)
+            .filter(value -> !value.isBlank())
+            .orElseThrow(() -> new MalformedEventException("'" + field + "' must be a non-blank string"));
     }
 }

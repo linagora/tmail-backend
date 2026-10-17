@@ -27,7 +27,6 @@ import java.util.concurrent.atomic.AtomicLong;
 import jakarta.inject.Inject;
 
 import org.apache.james.core.Domain;
-import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.task.Task;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -39,7 +38,6 @@ import com.linagora.tmail.team.TeamMailbox;
 import com.linagora.tmail.team.TeamMailboxRepository;
 
 import reactor.core.publisher.Mono;
-import reactor.core.scheduler.Schedulers;
 import scala.jdk.javaapi.OptionConverters;
 
 /**
@@ -63,17 +61,15 @@ public class SpacePurge {
 
     private final SpaceMailboxes spaceMailboxes;
     private final SpaceIndex index;
-    private final DomainList domainList;
     private final TeamMailboxRepository teamMailboxRepository;
     private final SpaceConfiguration configuration;
     private final Clock clock;
 
     @Inject
-    public SpacePurge(SpaceMailboxes spaceMailboxes, SpaceIndex index, DomainList domainList, TeamMailboxRepository teamMailboxRepository,
+    public SpacePurge(SpaceMailboxes spaceMailboxes, SpaceIndex index, TeamMailboxRepository teamMailboxRepository,
                       SpaceConfiguration configuration, Clock clock) {
         this.spaceMailboxes = spaceMailboxes;
         this.index = index;
-        this.domainList = domainList;
         this.teamMailboxRepository = teamMailboxRepository;
         this.configuration = configuration;
         this.clock = clock;
@@ -81,9 +77,7 @@ public class SpacePurge {
 
     public Mono<Task.Result> purge(Context context) {
         Instant threshold = clock.instant().minus(configuration.retention());
-        return Mono.fromCallable(domainList::getDomains)
-            .subscribeOn(Schedulers.boundedElastic())
-            .flatMapIterable(domains -> domains)
+        return index.domains()
             .concatMap(domain -> index.list(domain)
                 .concatMap(entry -> Mono.justOrEmpty(OptionConverters.toJava(TeamMailbox.fromJava(domain, entry.teamMailboxName())))
                     .flatMap(spaceMailboxes::read)

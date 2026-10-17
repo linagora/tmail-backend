@@ -69,6 +69,9 @@ public class SpaceModule extends AbstractModule {
     protected void configure() {
         bind(SpaceMailboxes.class).in(Scopes.SINGLETON);
         bind(SpaceReconciler.class).in(Scopes.SINGLETON);
+        bind(SpaceProvisioner.class).in(Scopes.SINGLETON);
+        bind(SpaceAddresses.class).in(Scopes.SINGLETON);
+        bind(SpaceMembers.class).in(Scopes.SINGLETON);
         bind(SpaceIndex.class).in(Scopes.SINGLETON);
         bind(SpacePurge.class).in(Scopes.SINGLETON);
 
@@ -119,16 +122,16 @@ public class SpaceModule extends AbstractModule {
 
     @Provides
     @Singleton
-    SpaceReconciler.MailingLists provideMailingLists(Optional<MailingListRepository> mailingListRepository) {
+    SpaceAddresses.MailingLists provideMailingLists(Optional<MailingListRepository> mailingListRepository) {
         return mailingListRepository
-            .<SpaceReconciler.MailingLists>map(repository -> address -> {
+            .<SpaceAddresses.MailingLists>map(repository -> address -> {
                 try {
                     return repository.get(address).isPresent();
                 } catch (MailingListsNotConfiguredException e) {
                     return false;
                 }
             })
-            .orElse(SpaceReconciler.MailingLists.NONE);
+            .orElse(SpaceAddresses.MailingLists.NONE);
     }
 
     @Provides

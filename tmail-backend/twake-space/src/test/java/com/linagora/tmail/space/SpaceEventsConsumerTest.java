@@ -152,12 +152,11 @@ class SpaceEventsConsumerTest {
             "space-" + suffix, DNS_EXCHANGE, "dns.validated", "activity-" + suffix, "", Duration.ofDays(30));
         clock = new UpdatableTickingClock(NOW);
         mailingLists = new HashSet<>();
-        spaceMailboxes = new SpaceMailboxes(mailboxManager, mailboxManager.getMapperFactory(), teamMailboxRepository);
+        spaceMailboxes = new SpaceMailboxes(mailboxManager, mailboxManager.getMapperFactory(), teamMailboxRepository, clock);
         publisher = SpacePublisher.create(configuration, rabbitMQExtension.getRabbitMQ().getConfiguration(), clock);
-        index = new SpaceIndex(mailboxManager, mailboxManager.getMapperFactory());
+        index = new SpaceIndex(mailboxManager, mailboxManager.getMapperFactory(), domainList);
         this.domainList = domainList;
-        reconciler = new SpaceReconciler(spaceMailboxes, index, teamMailboxRepository, domainList, address -> mailingLists.contains(address),
-            publisher, configuration, clock);
+        reconciler = reconciler(address -> mailingLists.contains(address));
         testee = new SpaceEventsConsumer(reconciler, publisher, configuration);
 
         String queue = "space-test-" + suffix;
@@ -228,8 +227,7 @@ class SpaceEventsConsumerTest {
         configuration = new SpaceConfiguration(Optional.empty(), configuration.queue(), configuration.deadLetterQueue(),
             configuration.spaceExchange(), configuration.dnsExchange(), configuration.dnsRoutingKey(), configuration.activityExchange(),
             "space-", configuration.retention());
-        reconciler = new SpaceReconciler(spaceMailboxes, index, teamMailboxRepository, domainListWith(DOMAIN), SpaceReconciler.MailingLists.NONE,
-            publisher, configuration, clock);
+        reconciler = reconciler(SpaceAddresses.MailingLists.NONE);
         testee = new SpaceEventsConsumer(reconciler, publisher, configuration);
 
         handle("twake.space.created", created(SPACE, "Sales"));
@@ -490,7 +488,7 @@ class SpaceEventsConsumerTest {
                 {"organizationDomain": "acme.com", "id": "%s"}
                 """.formatted(SPACE));
             clock.setInstant(NOW.plus(Duration.ofDays(31)));
-            SpacePurgeTask task = new SpacePurgeTask(new SpacePurge(spaceMailboxes, index, domainList, teamMailboxRepository, configuration, clock));
+            SpacePurgeTask task = new SpacePurgeTask(new SpacePurge(spaceMailboxes, index, teamMailboxRepository, configuration, clock));
 
             assertThat(task.run()).isEqualTo(Task.Result.COMPLETED);
             assertThat(task.details()).hasValueSatisfying(details ->
@@ -661,7 +659,7 @@ class SpaceEventsConsumerTest {
         void aSpaceBoundBeforeTheIndexShouldBeIndexedByItsNextEvent() {
             TeamMailbox sales = teamMailbox("sales");
             Mono.from(teamMailboxRepository.createTeamMailbox(sales)).block();
-            spaceMailboxes.bind(spaceMailbox(sales), ORGANIZATION, SPACE).block();
+            spaceMailboxes.bind(spaceMailbox(sales), new SpaceRef(ORGANIZATION, SPACE)).block();
 
             handle("twake.space.synced", created(SPACE, "Sales", member(ALICE, "admin")));
 
@@ -673,7 +671,7 @@ class SpaceEventsConsumerTest {
         void memberEventsShouldGoThroughTheIndex() {
             TeamMailbox sales = teamMailbox("sales");
             Mono.from(teamMailboxRepository.createTeamMailbox(sales)).block();
-            spaceMailboxes.bind(spaceMailbox(sales), ORGANIZATION, SPACE).block();
+            spaceMailboxes.bind(spaceMailbox(sales), new SpaceRef(ORGANIZATION, SPACE)).block();
 
             handle("twake.space.member.added", memberEvent(SPACE, member(ALICE, "admin")));
             assertThat(members(sales)).isEmpty();
@@ -688,7 +686,7 @@ class SpaceEventsConsumerTest {
         void reindexShouldIndexEveryBoundTeamMailbox() {
             TeamMailbox sales = teamMailbox("sales");
             Mono.from(teamMailboxRepository.createTeamMailbox(sales)).block();
-            spaceMailboxes.bind(spaceMailbox(sales), ORGANIZATION, SPACE).block();
+            spaceMailboxes.bind(spaceMailbox(sales), new SpaceRef(ORGANIZATION, SPACE)).block();
             Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox("unbound"))).block();
             AtomicLong indexed = new AtomicLong();
 
@@ -722,7 +720,7 @@ class SpaceEventsConsumerTest {
         void setUp() {
             MemoryTaskManager taskManager = new MemoryTaskManager(new Hostname("foo"));
             JsonTransformer jsonTransformer = new JsonTransformer();
-            SpacePurge purge = new SpacePurge(spaceMailboxes, index, domainList, teamMailboxRepository, configuration, clock);
+            SpacePurge purge = new SpacePurge(spaceMailboxes, index, teamMailboxRepository, configuration, clock);
             webAdminServer = WebAdminUtils.createWebAdminServer(
                     new SpaceRoutes(reconciler, purge, publisher, taskManager, jsonTransformer),
                     new TasksRoutes(taskManager, jsonTransformer,
@@ -808,7 +806,7 @@ class SpaceEventsConsumerTest {
         void reindexShouldRunAsATask() {
             TeamMailbox sales = teamMailbox("sales");
             Mono.from(teamMailboxRepository.createTeamMailbox(sales)).block();
-            spaceMailboxes.bind(spaceMailbox(sales), ORGANIZATION, SPACE).block();
+            spaceMailboxes.bind(spaceMailbox(sales), new SpaceRef(ORGANIZATION, SPACE)).block();
 
             String taskId = given()
                 .queryParam("action", "reindex")
@@ -933,7 +931,7 @@ class SpaceEventsConsumerTest {
 
     @Test
     void taskDTOsShouldRoundTrip() throws Exception {
-        SpacePurge purge = new SpacePurge(spaceMailboxes, index, domainList, teamMailboxRepository, configuration, clock);
+        SpacePurge purge = new SpacePurge(spaceMailboxes, index, teamMailboxRepository, configuration, clock);
         JsonSerializationVerifier.dtoModule(SpacePurgeTask.SpacePurgeTaskDTO.module(purge))
             .bean(new SpacePurgeTask(purge))
             .json("""
@@ -958,9 +956,15 @@ class SpaceEventsConsumerTest {
         assertThat(SpaceAnnotations.READ_ONLY.isReadOnly(new MailboxAnnotationKey("/shared/comment"))).isFalse();
     }
 
+    private SpaceReconciler reconciler(SpaceAddresses.MailingLists lists) {
+        SpaceProvisioner provisioner = new SpaceProvisioner(spaceMailboxes, index, teamMailboxRepository,
+            new SpaceAddresses(configuration, lists), domainList);
+        return new SpaceReconciler(provisioner, spaceMailboxes, index, new SpaceMembers(teamMailboxRepository), publisher);
+    }
+
     private SpacePurge.Context purge() {
         SpacePurge.Context context = new SpacePurge.Context();
-        new SpacePurge(spaceMailboxes, index, domainList, teamMailboxRepository, configuration, clock).purge(context).block();
+        new SpacePurge(spaceMailboxes, index, teamMailboxRepository, configuration, clock).purge(context).block();
         return context;
     }
 
