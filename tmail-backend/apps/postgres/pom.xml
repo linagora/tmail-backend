@@ -265,6 +265,10 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
+            <artifactId>twake-space</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>${project.groupId}</groupId>
             <artifactId>tmail-webadmin-tmail-tasks</artifactId>
         </dependency>
         <dependency>

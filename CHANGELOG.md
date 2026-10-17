@@ -5,6 +5,16 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### TMail
+
+#### Added
+
+- Twake Space extension (`space.properties`): gives each TwakeSpace space a team mailbox from the `space` and `admin-panel` events, reports its mail on `activity`, with no table of its own.
+
+#### Changes
+
+- [UPGRADE] `TeamMailboxEventsListener` moves to the Twake Space extension and is configured in `space.properties` instead of `listeners.xml`.
+
 ## [1.0.22] - 2026-10-14
 
 Changes since 1.0.21.1.

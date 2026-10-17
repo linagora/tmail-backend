@@ -175,7 +175,7 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>team-mailbox-events</artifactId>
+            <artifactId>twake-space</artifactId>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>

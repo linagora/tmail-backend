@@ -16,7 +16,7 @@
  *  more details.                                                   *
  ********************************************************************/
 
-package com.linagora.tmail.team.events;
+package com.linagora.tmail.space;
 
 import java.io.IOException;
 import java.io.InputStream;
@@ -25,12 +25,8 @@ import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 
-import jakarta.annotation.PreDestroy;
 import jakarta.inject.Inject;
 
-import org.apache.commons.configuration2.HierarchicalConfiguration;
-import org.apache.commons.configuration2.tree.ImmutableNode;
-import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.events.Event;
 import org.apache.james.events.EventListener;
 import org.apache.james.events.Group;
@@ -65,20 +61,17 @@ public class TeamMailboxEventsListener implements EventListener.ReactiveGroupEve
     private final MailboxManager mailboxManager;
     private final MessageIdManager messageIdManager;
     private final Clock clock;
+    private final TeamMailboxEventsConfiguration configuration;
     private final RabbitMQTeamMailboxEventPublisher publisher;
 
     @Inject
     public TeamMailboxEventsListener(MailboxManager mailboxManager, MessageIdManager messageIdManager, Clock clock,
-                                     RabbitMQConfiguration rabbitMQConfiguration, HierarchicalConfiguration<ImmutableNode> configuration) {
+                                     TeamMailboxEventsConfiguration configuration, SpacePublisher spacePublisher) {
         this.mailboxManager = mailboxManager;
         this.messageIdManager = messageIdManager;
         this.clock = clock;
-        this.publisher = RabbitMQTeamMailboxEventPublisher.create(TeamMailboxEventsConfiguration.from(configuration), rabbitMQConfiguration);
-    }
-
-    @PreDestroy
-    public void close() {
-        publisher.close();
+        this.configuration = configuration;
+        this.publisher = new RabbitMQTeamMailboxEventPublisher(spacePublisher.sender(), configuration);
     }
 
     @Override
@@ -88,7 +81,8 @@ public class TeamMailboxEventsListener implements EventListener.ReactiveGroupEve
 
     @Override
     public boolean isHandling(Event event) {
-        return event instanceof MailboxEvents.Added addedEvent
+        return configuration.enabled()
+            && event instanceof MailboxEvents.Added addedEvent
             && addedEvent.getMailboxPath().getNamespace().equals(TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE());
     }
 
