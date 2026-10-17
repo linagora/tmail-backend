@@ -41,13 +41,12 @@ public record SpaceConfiguration(Optional<AmqpUri> rabbitMQUri,
                                  String dnsRoutingKey,
                                  String activityExchange,
                                  String teamMailboxPrefix,
-                                 Duration retention,
-                                 Duration purgeInterval) {
+                                 Duration retention) {
     private static final Pattern PREFIX_PATTERN = Pattern.compile("([a-z0-9_]+-)?");
 
     public static final SpaceConfiguration DEFAULT = new SpaceConfiguration(Optional.empty(),
         "tmail-space", "tmail-space-dead-letter", "space", "admin-panel", "dns.validated", "activity", "",
-        Duration.ofDays(30), Duration.ofHours(1));
+        Duration.ofDays(30));
 
     public static SpaceConfiguration from(Configuration configuration) {
         return new SpaceConfiguration(
@@ -59,14 +58,13 @@ public record SpaceConfiguration(Optional<AmqpUri> rabbitMQUri,
             optional(configuration, "dns.routingKey").orElse(DEFAULT.dnsRoutingKey()),
             optional(configuration, "activity.exchange").orElse(DEFAULT.activityExchange()),
             Optional.ofNullable(configuration.getString("teamMailbox.prefix", null)).orElse(DEFAULT.teamMailboxPrefix()),
-            optional(configuration, "retention").map(value -> DurationParser.parse(value, ChronoUnit.DAYS)).orElse(DEFAULT.retention()),
-            optional(configuration, "purge.interval").map(value -> DurationParser.parse(value, ChronoUnit.SECONDS)).orElse(DEFAULT.purgeInterval()));
+            optional(configuration, "retention").map(value -> DurationParser.parse(value, ChronoUnit.DAYS)).orElse(DEFAULT.retention()));
     }
 
     public SpaceConfiguration {
         Preconditions.checkArgument(PREFIX_PATTERN.matcher(teamMailboxPrefix).matches(),
             "'teamMailbox.prefix' must be lowercase letters, digits or '_', ending with a dash");
-        Preconditions.checkArgument(!purgeInterval.isNegative() && !purgeInterval.isZero(), "'purge.interval' must be positive");
+        Preconditions.checkArgument(!retention.isNegative(), "'retention' must not be negative");
     }
 
     private static Optional<String> optional(Configuration configuration, String parameter) {

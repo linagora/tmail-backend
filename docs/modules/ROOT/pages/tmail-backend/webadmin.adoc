@@ -681,7 +681,61 @@ Without any of them, every space of every organization is synced.
 Return codes:
 
 - `204` the request was published
-- `400` missing or invalid `action`, or `spaceId` without `organizationId`
+- `400` invalid `action`, or `spaceId` without `organizationId`
+
+=== Purging the team mailboxes of deleted spaces
+
+....
+curl -XPOST 'http://ip:port/spaces?action=purge'
+....
+
+Deletes the team mailboxes, and their mail, of the spaces deleted for longer than the `retention` of
+`space.properties`, which frees their addresses. TMail does not run it on its own: a webadmin cron has to call it, see
+xref:tmail-backend/configure/twake-space.adoc#_purge[configuring the purge].
+
+link:https://james.apache.org/server/manage-webadmin.html#Endpoints_returning_a_task[More details about endpoints returning a task].
+
+Return codes:
+
+- `201` the task was created, its id is returned
+
+The task has the type `twake-space-purge` and the following `additionalInformation`:
+
+....
+{
+  "type": "twake-space-purge",
+  "timestamp": "2026-10-09T08:00:00Z",
+  "deletedTeamMailboxes": 2,
+  "failedTeamMailboxes": ["sales@acme.com"]
+}
+....
+
+A team mailbox whose deletion failed is listed in `failedTeamMailboxes`, the task ends `failed`, and the next run tries
+it again.
+
+=== Rebuilding the space index
+
+....
+curl -XPOST 'http://ip:port/spaces?action=reindex'
+....
+
+Writes an index entry for every team mailbox bound to a space. Run it once after binding team mailboxes outside of the
+extension, for instance after migrating from the Twake Mail side service, or if the index mailbox was lost. It scans
+every team mailbox.
+
+Return codes:
+
+- `201` the task was created, its id is returned
+
+The task has the type `twake-space-reindex` and the following `additionalInformation`:
+
+....
+{
+  "type": "twake-space-reindex",
+  "timestamp": "2026-10-09T08:00:00Z",
+  "indexedSpaces": 12
+}
+....
 
 === Getting the space of a Team Mailbox
 
@@ -715,7 +769,7 @@ curl -XPUT http://ip:port/domains/domain.tld/team-mailboxes/sales/space \
 ....
 
 Makes an existing team mailbox the one of a space: writes its `organizationId` and `spaceId` annotations, removes its
-`deletedAt` annotation, then requests a sync of the space so that its members are set and its `provisioned` event is
+`deletedAt` annotation, indexes it, then requests a sync of the space so that its members are set and its `provisioned` event is
 published.
 
 Use it for a team mailbox created by the Twake Mail side service, and to reopen a space closed by mistake.

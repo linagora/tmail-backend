@@ -32,10 +32,17 @@ import org.apache.james.backends.rabbitmq.MonitoredRabbitMQConsumers;
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.events.EventListener;
 import org.apache.james.mailbox.ReadOnlyAnnotationPredicate;
+import org.apache.james.server.task.json.dto.AdditionalInformationDTO;
+import org.apache.james.server.task.json.dto.AdditionalInformationDTOModule;
+import org.apache.james.server.task.json.dto.TaskDTO;
+import org.apache.james.server.task.json.dto.TaskDTOModule;
+import org.apache.james.task.Task;
+import org.apache.james.task.TaskExecutionDetails;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
 import org.apache.james.utils.PropertiesProvider;
 import org.apache.james.webadmin.Routes;
+import org.apache.james.webadmin.dto.DTOModuleInjections;
 
 import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
@@ -62,6 +69,7 @@ public class SpaceModule extends AbstractModule {
     protected void configure() {
         bind(SpaceMailboxes.class).in(Scopes.SINGLETON);
         bind(SpaceReconciler.class).in(Scopes.SINGLETON);
+        bind(SpaceIndex.class).in(Scopes.SINGLETON);
         bind(SpacePurge.class).in(Scopes.SINGLETON);
 
         OptionalBinder.newOptionalBinder(binder(), MailingListRepository.class);
@@ -153,9 +161,34 @@ public class SpaceModule extends AbstractModule {
     }
 
     @ProvidesIntoSet
-    InitializationOperation initializePurge(SpacePurge purge) {
-        return InitilizationOperationBuilder
-            .forClass(SpacePurge.class)
-            .init(purge::start);
+    TaskDTOModule<? extends Task, ? extends TaskDTO> purgeTask(SpacePurge purge) {
+        return SpacePurgeTask.SpacePurgeTaskDTO.module(purge);
+    }
+
+    @ProvidesIntoSet
+    TaskDTOModule<? extends Task, ? extends TaskDTO> reindexTask(SpaceReconciler reconciler) {
+        return SpaceReindexTask.SpaceReindexTaskDTO.module(reconciler);
+    }
+
+    @ProvidesIntoSet
+    AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends AdditionalInformationDTO> purgeDetails() {
+        return SpacePurgeTask.DetailsDTO.SERIALIZATION_MODULE;
+    }
+
+    @ProvidesIntoSet
+    AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends AdditionalInformationDTO> reindexDetails() {
+        return SpaceReindexTask.DetailsDTO.SERIALIZATION_MODULE;
+    }
+
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
+    @ProvidesIntoSet
+    AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends AdditionalInformationDTO> webAdminPurgeDetails() {
+        return SpacePurgeTask.DetailsDTO.SERIALIZATION_MODULE;
+    }
+
+    @Named(DTOModuleInjections.WEBADMIN_DTO)
+    @ProvidesIntoSet
+    AdditionalInformationDTOModule<? extends TaskExecutionDetails.AdditionalInformation, ? extends AdditionalInformationDTO> webAdminReindexDetails() {
+        return SpaceReindexTask.DetailsDTO.SERIALIZATION_MODULE;
     }
 }

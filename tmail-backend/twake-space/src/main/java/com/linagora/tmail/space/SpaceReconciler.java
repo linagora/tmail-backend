@@ -31,6 +31,7 @@ import org.apache.james.core.Domain;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
 import org.apache.james.domainlist.api.DomainList;
+import org.apache.james.util.ReactorUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -66,6 +67,7 @@ public class SpaceReconciler {
     private static final TeamMemberRole MEMBER = TeamMemberRole.apply(TeamMemberRole.MemberRole());
 
     private final SpaceMailboxes spaceMailboxes;
+    private final SpaceIndex index;
     private final TeamMailboxRepository teamMailboxRepository;
     private final DomainList domainList;
     private final MailingLists mailingLists;
@@ -74,9 +76,10 @@ public class SpaceReconciler {
     private final Clock clock;
 
     @Inject
-    public SpaceReconciler(SpaceMailboxes spaceMailboxes, TeamMailboxRepository teamMailboxRepository, DomainList domainList,
+    public SpaceReconciler(SpaceMailboxes spaceMailboxes, SpaceIndex index, TeamMailboxRepository teamMailboxRepository, DomainList domainList,
                            MailingLists mailingLists, SpacePublisher publisher, SpaceConfiguration configuration, Clock clock) {
         this.spaceMailboxes = spaceMailboxes;
+        this.index = index;
         this.teamMailboxRepository = teamMailboxRepository;
         this.domainList = domainList;
         this.mailingLists = mailingLists;
@@ -97,13 +100,40 @@ public class SpaceReconciler {
                     LOGGER.info("Skipping space {}: domain {} is not a TMail domain yet", snapshot.spaceId(), snapshot.domain().asString());
                     return Mono.empty();
                 }
-                return spaceMailboxes.find(snapshot.domain(), snapshot.spaceId())
-                    .map(Optional::of)
-                    .defaultIfEmpty(Optional.empty())
-                    .flatMap(found -> found
-                        .map(spaceMailbox -> reconcile(spaceMailbox, snapshot, republish))
-                        .orElseGet(() -> provision(snapshot)));
+                return index.get(snapshot.domain(), snapshot.spaceId())
+                    .flatMap(teamMailbox -> settleIndexed(snapshot, teamMailbox, republish))
+                    .defaultIfEmpty(false)
+                    .flatMap(settled -> settled ? Mono.<Void>empty() : provision(snapshot, republish));
             });
+    }
+
+    /**
+     * The index entry is written before the team mailbox is created, so a crash anywhere leaves an entry to resume
+     * from: the team mailbox is created, adopted or reconciled at the name it gives. False when that name is unusable.
+     */
+    private Mono<Boolean> settleIndexed(SpaceSnapshot snapshot, TeamMailbox teamMailbox, boolean republish) {
+        return readOptional(teamMailbox)
+            .flatMap(existing -> existing
+                .map(spaceMailbox -> settleExisting(snapshot, spaceMailbox, republish)
+                    .switchIfEmpty(Mono.fromRunnable(() -> LOGGER.warn("The index names {} for space {}, which belongs to another space",
+                        teamMailbox.asMailAddress().asString(), snapshot.spaceId()))))
+                .orElseGet(() -> create(teamMailbox)
+                    .flatMap(created -> bindNew(snapshot, created).thenReturn(true))
+                    .defaultIfEmpty(false)));
+    }
+
+    /** True once handled, empty when the team mailbox belongs to another space. */
+    private Mono<Boolean> settleExisting(SpaceSnapshot snapshot, SpaceMailbox spaceMailbox, boolean republish) {
+        Optional<String> boundTo = spaceMailbox.binding().map(SpaceBinding::spaceId);
+        if (boundTo.isEmpty()) {
+            return adopt(spaceMailbox)
+                .then(bindNew(snapshot, spaceMailbox))
+                .thenReturn(true);
+        }
+        if (boundTo.get().equals(snapshot.spaceId())) {
+            return reconcile(spaceMailbox, snapshot, republish).thenReturn(true);
+        }
+        return Mono.empty();
     }
 
     private Mono<Void> reconcile(SpaceMailbox spaceMailbox, SpaceSnapshot snapshot, boolean republish) {
@@ -117,54 +147,73 @@ public class SpaceReconciler {
         return provisioned.then(setMembers(spaceMailbox.teamMailbox(), snapshot.members()));
     }
 
-    private Mono<Void> provision(SpaceSnapshot snapshot) {
+    private Mono<Void> provision(SpaceSnapshot snapshot, boolean republish) {
         String name = SpaceNames.mailboxName(snapshot.name(), configuration.teamMailboxPrefix());
         return Flux.fromIterable(SpaceNames.candidates(name))
-            .concatMap(candidate -> take(snapshot.domain(), candidate))
+            .concatMap(candidate -> take(snapshot, candidate, republish))
             .next()
             .switchIfEmpty(Mono.error(() -> new SpaceProvisioningException("No free address for space " + snapshot.spaceId()
                 + " from " + name + "@" + snapshot.domain().asString())))
-            .flatMap(spaceMailbox -> spaceMailboxes.bind(spaceMailbox, snapshot.organizationId(), snapshot.spaceId())
-                .doOnSuccess(any -> LOGGER.info("Space {} got the team mailbox {}", snapshot.spaceId(), spaceMailbox.teamMailbox().asMailAddress().asString()))
-                .then(publisher.publishProvisioned(snapshot.organizationId(), snapshot.spaceId(), spaceMailbox.rootId()))
-                .then(setMembers(spaceMailbox.teamMailbox(), snapshot.members())));
+            .then();
     }
 
-    /** The created team mailbox, or empty when the address is held by another space, a user, an alias, a group or a list. */
-    private Mono<SpaceMailbox> take(Domain domain, String candidate) {
-        Optional<TeamMailbox> maybeTeamMailbox = OptionConverters.toJava(TeamMailbox.fromJava(domain, candidate));
+    /**
+     * True once the space holds the candidate address, empty when another space, a user, an alias, a group or a list
+     * holds it.
+     */
+    private Mono<Boolean> take(SpaceSnapshot snapshot, String candidate, boolean republish) {
+        Optional<TeamMailbox> maybeTeamMailbox = OptionConverters.toJava(TeamMailbox.fromJava(snapshot.domain(), candidate));
         if (maybeTeamMailbox.isEmpty()) {
             return Mono.empty();
         }
         TeamMailbox teamMailbox = maybeTeamMailbox.get();
-        return spaceMailboxes.read(teamMailbox)
-            .map(Optional::of)
-            .defaultIfEmpty(Optional.empty())
+        return readOptional(teamMailbox)
             .flatMap(existing -> existing
-                .map(spaceMailbox -> heldBy(spaceMailbox))
-                .orElseGet(() -> create(teamMailbox)));
+                // Bound to this space before it was indexed, or no space holds it, or another space does
+                .map(spaceMailbox -> spaceMailbox.binding().filter(binding -> !binding.spaceId().equals(snapshot.spaceId())).isPresent()
+                    ? Mono.<Boolean>empty()
+                    : index.put(snapshot.domain(), snapshot.spaceId(), teamMailbox)
+                        .then(settleExisting(snapshot, spaceMailbox, republish)))
+                .orElseGet(() -> isMailingList(teamMailbox)
+                    .flatMap(isList -> isList
+                        ? Mono.<Boolean>empty()
+                        : index.put(snapshot.domain(), snapshot.spaceId(), teamMailbox)
+                            .then(create(teamMailbox))
+                            .flatMap(created -> bindNew(snapshot, created).thenReturn(true)))));
+    }
+
+    private Mono<Void> bindNew(SpaceSnapshot snapshot, SpaceMailbox spaceMailbox) {
+        return spaceMailboxes.bind(spaceMailbox, snapshot.organizationId(), snapshot.spaceId())
+            .doOnSuccess(any -> LOGGER.info("Space {} got the team mailbox {}", snapshot.spaceId(), spaceMailbox.teamMailbox().asMailAddress().asString()))
+            .then(publisher.publishProvisioned(snapshot.organizationId(), snapshot.spaceId(), spaceMailbox.rootId()))
+            .then(setMembers(spaceMailbox.teamMailbox(), snapshot.members()));
     }
 
     /**
-     * A team mailbox of another space is taken. One no space holds is adopted: where there are spaces, team mailboxes
-     * are only created for them, so it is what a crash between its creation and the writing of its annotations left.
+     * A team mailbox no space holds is adopted: where there are spaces, team mailboxes are only created for them, so it
+     * is what a crash between its creation and the writing of its annotations left. This completes the folders and
+     * rights the crash may have left out.
      */
-    private Mono<SpaceMailbox> heldBy(SpaceMailbox spaceMailbox) {
-        if (spaceMailbox.binding().isPresent()) {
-            return Mono.empty();
-        }
-        // Completes the folders and rights the crash may have left out
-        return Mono.from(teamMailboxRepository.createTeamMailbox(spaceMailbox.teamMailbox()))
-            .thenReturn(spaceMailbox);
+    private Mono<Void> adopt(SpaceMailbox spaceMailbox) {
+        return Mono.from(teamMailboxRepository.createTeamMailbox(spaceMailbox.teamMailbox()));
     }
 
+    /** The created team mailbox, or empty when a user, an alias or a group holds the address. */
     private Mono<SpaceMailbox> create(TeamMailbox teamMailbox) {
+        return Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox))
+            .then(spaceMailboxes.read(teamMailbox))
+            .onErrorResume(TeamMailboxNameConflictException.class, e -> Mono.empty());
+    }
+
+    private Mono<Boolean> isMailingList(TeamMailbox teamMailbox) {
         return Mono.fromCallable(() -> mailingLists.exists(teamMailbox.asMailAddress()))
-            .subscribeOn(Schedulers.boundedElastic())
-            .filter(isList -> !isList)
-            .flatMap(any -> Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox))
-                .then(spaceMailboxes.read(teamMailbox))
-                .onErrorResume(TeamMailboxNameConflictException.class, e -> Mono.empty()));
+            .subscribeOn(Schedulers.boundedElastic());
+    }
+
+    private Mono<Optional<SpaceMailbox>> readOptional(TeamMailbox teamMailbox) {
+        return spaceMailboxes.read(teamMailbox)
+            .map(Optional::of)
+            .defaultIfEmpty(Optional.empty());
     }
 
     /** Admins become managers and editors members. Viewers get no access, team mailboxes having no read only access. */
@@ -209,9 +258,8 @@ public class SpaceReconciler {
 
     /** A deleted space: its team mailbox loses its members, and is deleted after the retention. Its mail stays until then. */
     public Mono<Void> close(Optional<Domain> domain, String spaceId) {
-        Flux<SpaceMailbox> candidates = domain.map(spaceMailboxes::list).orElseGet(spaceMailboxes::listAll);
-        return candidates
-            .filter(spaceMailbox -> spaceMailbox.isLiveFor(spaceId))
+        return domain.map(Flux::just).orElseGet(this::domains)
+            .concatMap(candidate -> liveMailboxOf(candidate, spaceId))
             .concatMap(this::close)
             .then();
     }
@@ -227,12 +275,10 @@ public class SpaceReconciler {
     /** After a snapshot of an organization: its live spaces the snapshot did not list are gone. */
     public Mono<Void> closeUnlisted(String organizationId, Domain domain, Collection<String> listedSpaceIds) {
         Set<String> listed = ImmutableSet.copyOf(listedSpaceIds);
-        return spaceMailboxes.list(domain)
-            .filter(spaceMailbox -> spaceMailbox.binding()
-                .filter(SpaceBinding::isLive)
-                .filter(binding -> binding.organizationId().equals(organizationId))
-                .filter(binding -> !listed.contains(binding.spaceId()))
-                .isPresent())
+        return index.list(domain)
+            .filter(entry -> !listed.contains(entry.spaceId()))
+            .concatMap(entry -> liveMailboxOf(domain, entry.spaceId()))
+            .filter(spaceMailbox -> spaceMailbox.binding().map(SpaceBinding::organizationId).filter(organizationId::equals).isPresent())
             .concatMap(this::close)
             .then();
     }
@@ -260,16 +306,38 @@ public class SpaceReconciler {
     }
 
     private Mono<SpaceMailbox> liveMailbox(Domain domain, String spaceId) {
-        return spaceMailboxes.find(domain, spaceId)
-            .filter(SpaceMailbox::isLive)
+        return liveMailboxOf(domain, spaceId)
             .switchIfEmpty(Mono.fromRunnable(() -> LOGGER.info("Skipping member event: space {} has no live team mailbox", spaceId)));
+    }
+
+    /** The live team mailbox of a space, through the index. */
+    private Mono<SpaceMailbox> liveMailboxOf(Domain domain, String spaceId) {
+        return index.get(domain, spaceId)
+            .flatMap(spaceMailboxes::read)
+            .filter(spaceMailbox -> spaceMailbox.isLiveFor(spaceId));
+    }
+
+    private Flux<Domain> domains() {
+        return Mono.fromCallable(domainList::getDomains)
+            .subscribeOn(Schedulers.boundedElastic())
+            .flatMapIterable(domains -> domains);
     }
 
     /** Makes a team mailbox the one of a space, then asks ldap-rest for the space so that its members are set. */
     public Mono<Void> bind(SpaceMailbox spaceMailbox, String organizationId, String spaceId) {
         return spaceMailboxes.bind(spaceMailbox, organizationId, spaceId)
             .then(spaceMailboxes.unmarkDeleted(spaceMailbox))
+            .then(index.put(spaceMailbox.teamMailbox().domain(), spaceId, spaceMailbox.teamMailbox()))
             .then(publisher.requestSync(Optional.of(organizationId), Optional.of(spaceId)));
+    }
+
+    /** Indexes every team mailbox bound to a space, for the spaces bound before the index existed. */
+    public Mono<Void> reindex(Runnable onIndexed) {
+        return spaceMailboxes.listAll()
+            .flatMap(spaceMailbox -> Mono.justOrEmpty(spaceMailbox.binding())
+                .flatMap(binding -> index.put(spaceMailbox.teamMailbox().domain(), binding.spaceId(), spaceMailbox.teamMailbox()))
+                .then(Mono.fromRunnable(() -> spaceMailbox.binding().ifPresent(any -> onIndexed.run()))), ReactorUtils.DEFAULT_CONCURRENCY)
+            .then();
     }
 
     public SpaceMailboxes spaceMailboxes() {

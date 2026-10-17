@@ -24,7 +24,11 @@ import static org.apache.james.backends.rabbitmq.RabbitMQExtension.IsolationPoli
 import static org.apache.james.events.EventBusTestFixture.RETRY_BACKOFF_CONFIGURATION;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static io.restassured.RestAssured.given;
 import static org.awaitility.Awaitility.await;
+import static org.hamcrest.Matchers.hasSize;
+import static org.hamcrest.Matchers.is;
+import static org.hamcrest.Matchers.nullValue;
 
 import java.time.Duration;
 import java.time.Instant;
@@ -34,7 +38,9 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicLong;
 
+import org.apache.james.JsonSerializationVerifier;
 import org.apache.james.backends.rabbitmq.RabbitMQExtension;
 import org.apache.james.core.Domain;
 import org.apache.james.core.MailAddress;
@@ -55,7 +61,15 @@ import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.mailbox.store.StoreSubscriptionManager;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
+import org.apache.james.json.DTOConverter;
+import org.apache.james.task.Hostname;
+import org.apache.james.task.MemoryTaskManager;
+import org.apache.james.task.Task;
 import org.apache.james.utils.UpdatableTickingClock;
+import org.apache.james.webadmin.WebAdminServer;
+import org.apache.james.webadmin.WebAdminUtils;
+import org.apache.james.webadmin.routes.TasksRoutes;
+import org.apache.james.webadmin.utils.JsonTransformer;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
@@ -70,6 +84,7 @@ import com.linagora.tmail.team.TeamMailboxMember;
 import com.linagora.tmail.team.TeamMailboxRepositoryImpl;
 import com.rabbitmq.client.BuiltinExchangeType;
 
+import io.restassured.RestAssured;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -101,6 +116,8 @@ class SpaceEventsConsumerTest {
     private MessageIdManager messageIdManager;
     private TeamMailboxRepositoryImpl teamMailboxRepository;
     private SpaceMailboxes spaceMailboxes;
+    private SpaceIndex index;
+    private MemoryDomainList domainList;
     private SpacePublisher publisher;
     private SpaceReconciler reconciler;
     private SpaceEventsConsumer testee;
@@ -132,12 +149,14 @@ class SpaceEventsConsumerTest {
 
         String suffix = UUID.randomUUID().toString();
         configuration = new SpaceConfiguration(Optional.empty(), "tmail-space-" + suffix, "tmail-space-dead-letter-" + suffix,
-            "space-" + suffix, DNS_EXCHANGE, "dns.validated", "activity-" + suffix, "", Duration.ofDays(30), Duration.ofHours(1));
+            "space-" + suffix, DNS_EXCHANGE, "dns.validated", "activity-" + suffix, "", Duration.ofDays(30));
         clock = new UpdatableTickingClock(NOW);
         mailingLists = new HashSet<>();
         spaceMailboxes = new SpaceMailboxes(mailboxManager, mailboxManager.getMapperFactory(), teamMailboxRepository);
         publisher = SpacePublisher.create(configuration, rabbitMQExtension.getRabbitMQ().getConfiguration(), clock);
-        reconciler = new SpaceReconciler(spaceMailboxes, teamMailboxRepository, domainList, address -> mailingLists.contains(address),
+        index = new SpaceIndex(mailboxManager, mailboxManager.getMapperFactory());
+        this.domainList = domainList;
+        reconciler = new SpaceReconciler(spaceMailboxes, index, teamMailboxRepository, domainList, address -> mailingLists.contains(address),
             publisher, configuration, clock);
         testee = new SpaceEventsConsumer(reconciler, publisher, configuration);
 
@@ -208,8 +227,8 @@ class SpaceEventsConsumerTest {
     void createdShouldUseTheTeamMailboxPrefix() {
         configuration = new SpaceConfiguration(Optional.empty(), configuration.queue(), configuration.deadLetterQueue(),
             configuration.spaceExchange(), configuration.dnsExchange(), configuration.dnsRoutingKey(), configuration.activityExchange(),
-            "space-", configuration.retention(), configuration.purgeInterval());
-        reconciler = new SpaceReconciler(spaceMailboxes, teamMailboxRepository, domainListWith(DOMAIN), SpaceReconciler.MailingLists.NONE,
+            "space-", configuration.retention());
+        reconciler = new SpaceReconciler(spaceMailboxes, index, teamMailboxRepository, domainListWith(DOMAIN), SpaceReconciler.MailingLists.NONE,
             publisher, configuration, clock);
         testee = new SpaceEventsConsumer(reconciler, publisher, configuration);
 
@@ -441,10 +460,41 @@ class SpaceEventsConsumerTest {
                 """.formatted(SPACE));
             clock.setInstant(NOW.plus(Duration.ofDays(31)));
 
-            new SpacePurge(spaceMailboxes, teamMailboxRepository, configuration, clock).purge().block();
+            SpacePurge.Context context = purge();
 
             assertThat(Flux.from(teamMailboxRepository.listTeamMailboxes(DOMAIN)).collectList().block())
                 .containsExactly(teamMailbox("support"));
+            assertThat(context.snapshot()).isEqualTo(new SpacePurge.Context.Snapshot(1, List.of()));
+            assertThat(index.get(DOMAIN, SPACE).blockOptional()).isEmpty();
+            assertThat(index.get(DOMAIN, OTHER_SPACE).block()).isEqualTo(teamMailbox("support"));
+        }
+
+        @Test
+        void aPurgedAddressShouldBeFreeForANewSpace() {
+            handle("twake.space.created", created(SPACE, "Sales"));
+            handle("twake.space.deleted", """
+                {"organizationDomain": "acme.com", "id": "%s"}
+                """.formatted(SPACE));
+            clock.setInstant(NOW.plus(Duration.ofDays(31)));
+            purge();
+
+            handle("twake.space.created", created(OTHER_SPACE, "Sales"));
+
+            assertThat(spaceMailbox(teamMailbox("sales")).isLiveFor(OTHER_SPACE)).isTrue();
+        }
+
+        @Test
+        void taskShouldReportTheDeletedTeamMailboxes() {
+            handle("twake.space.created", created(SPACE, "Sales"));
+            handle("twake.space.deleted", """
+                {"organizationDomain": "acme.com", "id": "%s"}
+                """.formatted(SPACE));
+            clock.setInstant(NOW.plus(Duration.ofDays(31)));
+            SpacePurgeTask task = new SpacePurgeTask(new SpacePurge(spaceMailboxes, index, domainList, teamMailboxRepository, configuration, clock));
+
+            assertThat(task.run()).isEqualTo(Task.Result.COMPLETED);
+            assertThat(task.details()).hasValueSatisfying(details ->
+                assertThat(((SpacePurgeTask.Details) details).deletedTeamMailboxes()).isEqualTo(1));
         }
 
         @Test
@@ -455,7 +505,7 @@ class SpaceEventsConsumerTest {
                 """.formatted(SPACE));
             clock.setInstant(NOW.plus(Duration.ofDays(29)));
 
-            new SpacePurge(spaceMailboxes, teamMailboxRepository, configuration, clock).purge().block();
+            purge();
 
             assertThat(Flux.from(teamMailboxRepository.listTeamMailboxes(DOMAIN)).collectList().block())
                 .containsExactly(teamMailbox("sales"));
@@ -561,10 +611,357 @@ class SpaceEventsConsumerTest {
         }
     }
 
+    @Nested
+    class Index {
+        @Test
+        void provisioningShouldIndexTheSpace() {
+            handle("twake.space.created", created(SPACE, "Sales"));
+
+            assertThat(index.get(DOMAIN, SPACE).block()).isEqualTo(teamMailbox("sales"));
+            assertThat(index.list(DOMAIN).collectList().block())
+                .containsExactly(new SpaceIndex.Entry(SPACE, "sales"));
+        }
+
+        @Test
+        void aRenamedSpaceShouldKeepItsTeamMailbox() {
+            handle("twake.space.created", created(SPACE, "Sales", member(ALICE, "admin")));
+
+            handle("twake.space.synced", created(SPACE, "Revenue", member(BOB, "admin")));
+
+            assertThat(Flux.from(teamMailboxRepository.listTeamMailboxes(DOMAIN)).collectList().block())
+                .containsExactly(teamMailbox("sales"));
+            assertThat(members(teamMailbox("sales"))).containsExactly(TeamMailboxMember.asManager(BOB));
+        }
+
+        @Test
+        void aCrashAfterIndexingShouldResumeAtTheIndexedName() {
+            index.put(DOMAIN, SPACE, teamMailbox("sales")).block();
+
+            handle("twake.space.created", created(SPACE, "Renamed before the retry", member(ALICE, "admin")));
+
+            assertThat(spaceMailbox(teamMailbox("sales")).isLiveFor(SPACE)).isTrue();
+            assertThat(members(teamMailbox("sales"))).containsExactly(TeamMailboxMember.asManager(ALICE));
+            assertThat(Flux.from(teamMailboxRepository.listTeamMailboxes(DOMAIN)).collectList().block())
+                .containsExactly(teamMailbox("sales"));
+        }
+
+        @Test
+        void anEntryNamingAnotherSpacesTeamMailboxShouldBeIgnored() {
+            handle("twake.space.created", created(OTHER_SPACE, "Sales"));
+            index.put(DOMAIN, SPACE, teamMailbox("sales")).block();
+
+            handle("twake.space.created", created(SPACE, "Support"));
+
+            assertThat(spaceMailbox(teamMailbox("support")).isLiveFor(SPACE)).isTrue();
+            assertThat(spaceMailbox(teamMailbox("sales")).isLiveFor(OTHER_SPACE)).isTrue();
+            assertThat(index.get(DOMAIN, SPACE).block()).isEqualTo(teamMailbox("support"));
+        }
+
+        @Test
+        void aSpaceBoundBeforeTheIndexShouldBeIndexedByItsNextEvent() {
+            TeamMailbox sales = teamMailbox("sales");
+            Mono.from(teamMailboxRepository.createTeamMailbox(sales)).block();
+            spaceMailboxes.bind(spaceMailbox(sales), ORGANIZATION, SPACE).block();
+
+            handle("twake.space.synced", created(SPACE, "Sales", member(ALICE, "admin")));
+
+            assertThat(index.get(DOMAIN, SPACE).block()).isEqualTo(sales);
+            assertThat(members(sales)).containsExactly(TeamMailboxMember.asManager(ALICE));
+        }
+
+        @Test
+        void memberEventsShouldGoThroughTheIndex() {
+            TeamMailbox sales = teamMailbox("sales");
+            Mono.from(teamMailboxRepository.createTeamMailbox(sales)).block();
+            spaceMailboxes.bind(spaceMailbox(sales), ORGANIZATION, SPACE).block();
+
+            handle("twake.space.member.added", memberEvent(SPACE, member(ALICE, "admin")));
+            assertThat(members(sales)).isEmpty();
+
+            reconciler.reindex(() -> { }).block();
+            handle("twake.space.member.added", memberEvent(SPACE, member(ALICE, "admin")));
+
+            assertThat(members(sales)).containsExactly(TeamMailboxMember.asManager(ALICE));
+        }
+
+        @Test
+        void reindexShouldIndexEveryBoundTeamMailbox() {
+            TeamMailbox sales = teamMailbox("sales");
+            Mono.from(teamMailboxRepository.createTeamMailbox(sales)).block();
+            spaceMailboxes.bind(spaceMailbox(sales), ORGANIZATION, SPACE).block();
+            Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox("unbound"))).block();
+            AtomicLong indexed = new AtomicLong();
+
+            reconciler.reindex(indexed::incrementAndGet).block();
+
+            assertThat(indexed).hasValue(1);
+            assertThat(index.list(DOMAIN).collectList().block())
+                .containsExactly(new SpaceIndex.Entry(SPACE, "sales"));
+        }
+
+        @Test
+        void theIndexMailboxShouldNotBeATeamMailbox() {
+            handle("twake.space.created", created(SPACE, "Sales"));
+
+            assertThat(Flux.from(teamMailboxRepository.listTeamMailboxes()).collectList().block())
+                .containsExactly(teamMailbox("sales"));
+        }
+
+        @Test
+        void keysShouldRoundTrip() {
+            assertThat(SpaceIndex.spaceId(SpaceIndex.key(SPACE))).contains(SPACE);
+            assertThat(SpaceIndex.spaceId(SpaceIndex.key("Not-A-UUID_é"))).contains("Not-A-UUID_é");
+        }
+    }
+
+    @Nested
+    class Routes {
+        private WebAdminServer webAdminServer;
+
+        @BeforeEach
+        void setUp() {
+            MemoryTaskManager taskManager = new MemoryTaskManager(new Hostname("foo"));
+            JsonTransformer jsonTransformer = new JsonTransformer();
+            SpacePurge purge = new SpacePurge(spaceMailboxes, index, domainList, teamMailboxRepository, configuration, clock);
+            webAdminServer = WebAdminUtils.createWebAdminServer(
+                    new SpaceRoutes(reconciler, purge, publisher, taskManager, jsonTransformer),
+                    new TasksRoutes(taskManager, jsonTransformer,
+                        DTOConverter.of(SpacePurgeTask.DetailsDTO.SERIALIZATION_MODULE, SpaceReindexTask.DetailsDTO.SERIALIZATION_MODULE)))
+                .start();
+            RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer).build();
+        }
+
+        @AfterEach
+        void tearDown() {
+            webAdminServer.destroy();
+        }
+
+        @Test
+        void syncShouldPublishASyncRequest() {
+            given()
+                .queryParam("action", "sync")
+                .queryParam("organizationId", ORGANIZATION)
+                .queryParam("spaceId", SPACE)
+            .when()
+                .post("/spaces")
+            .then()
+                .statusCode(204);
+
+            await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> assertThat(published).singleElement()
+                .satisfies(request -> assertThatJson(request.body()).isEqualTo("""
+                    {"organizationId": "org-1", "id": "%s", "timestamp": "2026-10-09T08:00:00Z"}""".formatted(SPACE))));
+        }
+
+        @Test
+        void syncOfASpaceShouldNeedItsOrganization() {
+            given()
+                .queryParam("action", "sync")
+                .queryParam("spaceId", SPACE)
+            .when()
+                .post("/spaces")
+            .then()
+                .statusCode(400);
+        }
+
+        @Test
+        void unknownActionShouldBeRejected() {
+            given()
+                .queryParam("action", "unknown")
+            .when()
+                .post("/spaces")
+            .then()
+                .statusCode(400);
+        }
+
+        @Test
+        void purgeShouldRunAsATask() {
+            handle("twake.space.created", created(SPACE, "Sales"));
+            handle("twake.space.deleted", """
+                {"organizationDomain": "acme.com", "id": "%s"}
+                """.formatted(SPACE));
+            clock.setInstant(NOW.plus(Duration.ofDays(31)));
+
+            String taskId = given()
+                .queryParam("action", "purge")
+            .when()
+                .post("/spaces")
+            .then()
+                .statusCode(201)
+                .extract()
+                .jsonPath()
+                .get("taskId");
+
+            given()
+                .basePath(TasksRoutes.BASE)
+            .when()
+                .get(taskId + "/await")
+            .then()
+                .statusCode(200)
+                .body("status", is("completed"))
+                .body("type", is("twake-space-purge"))
+                .body("additionalInformation.deletedTeamMailboxes", is(1))
+                .body("additionalInformation.failedTeamMailboxes", hasSize(0));
+            assertThat(Flux.from(teamMailboxRepository.listTeamMailboxes(DOMAIN)).collectList().block()).isEmpty();
+        }
+
+        @Test
+        void reindexShouldRunAsATask() {
+            TeamMailbox sales = teamMailbox("sales");
+            Mono.from(teamMailboxRepository.createTeamMailbox(sales)).block();
+            spaceMailboxes.bind(spaceMailbox(sales), ORGANIZATION, SPACE).block();
+
+            String taskId = given()
+                .queryParam("action", "reindex")
+            .when()
+                .post("/spaces")
+            .then()
+                .statusCode(201)
+                .extract()
+                .jsonPath()
+                .get("taskId");
+
+            given()
+                .basePath(TasksRoutes.BASE)
+            .when()
+                .get(taskId + "/await")
+            .then()
+                .body("status", is("completed"))
+                .body("type", is("twake-space-reindex"))
+                .body("additionalInformation.indexedSpaces", is(1));
+            assertThat(index.get(DOMAIN, SPACE).block()).isEqualTo(sales);
+        }
+
+        @Test
+        void getBindingShouldReturnTheSpace() {
+            handle("twake.space.created", created(SPACE, "Sales"));
+
+            given()
+            .when()
+                .get("/domains/acme.com/team-mailboxes/sales/space")
+            .then()
+                .statusCode(200)
+                .body("organizationId", is(ORGANIZATION))
+                .body("spaceId", is(SPACE))
+                .body("deletedAt", nullValue());
+        }
+
+        @Test
+        void getBindingOfAnUnboundTeamMailboxShouldReturn404() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox("sales"))).block();
+
+            given()
+            .when()
+                .get("/domains/acme.com/team-mailboxes/sales/space")
+            .then()
+                .statusCode(404);
+        }
+
+        @Test
+        void bindShouldBindIndexAndRequestASync() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox("sales"))).block();
+
+            given()
+                .body("""
+                    {"organizationId": "org-1", "spaceId": "%s"}""".formatted(SPACE))
+            .when()
+                .put("/domains/acme.com/team-mailboxes/sales/space")
+            .then()
+                .statusCode(204);
+
+            assertThat(spaceMailbox(teamMailbox("sales")).isLiveFor(SPACE)).isTrue();
+            assertThat(index.get(DOMAIN, SPACE).block()).isEqualTo(teamMailbox("sales"));
+            await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> assertThat(published)
+                .extracting(Published::routingKey)
+                .containsExactly(SpacePublisher.SYNC_REQUESTED));
+        }
+
+        @Test
+        void bindShouldReopenAClosedSpace() {
+            handle("twake.space.created", created(SPACE, "Sales"));
+            handle("twake.space.deleted", """
+                {"organizationDomain": "acme.com", "id": "%s"}
+                """.formatted(SPACE));
+
+            given()
+                .body("""
+                    {"organizationId": "org-1", "spaceId": "%s"}""".formatted(SPACE))
+            .when()
+                .put("/domains/acme.com/team-mailboxes/sales/space")
+            .then()
+                .statusCode(204);
+
+            assertThat(spaceMailbox(teamMailbox("sales")).isLiveFor(SPACE)).isTrue();
+        }
+
+        @Test
+        void bindToAnotherSpaceShouldReturn409() {
+            handle("twake.space.created", created(SPACE, "Sales"));
+
+            given()
+                .body("""
+                    {"organizationId": "org-1", "spaceId": "%s"}""".formatted(OTHER_SPACE))
+            .when()
+                .put("/domains/acme.com/team-mailboxes/sales/space")
+            .then()
+                .statusCode(409);
+        }
+
+        @Test
+        void bindOfAnUnknownTeamMailboxShouldReturn404() {
+            given()
+                .body("""
+                    {"organizationId": "org-1", "spaceId": "%s"}""".formatted(SPACE))
+            .when()
+                .put("/domains/acme.com/team-mailboxes/sales/space")
+            .then()
+                .statusCode(404);
+        }
+
+        @Test
+        void bindWithoutSpaceIdShouldReturn400() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox("sales"))).block();
+
+            given()
+                .body("""
+                    {"organizationId": "org-1"}""")
+            .when()
+                .put("/domains/acme.com/team-mailboxes/sales/space")
+            .then()
+                .statusCode(400);
+        }
+    }
+
+    @Test
+    void taskDTOsShouldRoundTrip() throws Exception {
+        SpacePurge purge = new SpacePurge(spaceMailboxes, index, domainList, teamMailboxRepository, configuration, clock);
+        JsonSerializationVerifier.dtoModule(SpacePurgeTask.SpacePurgeTaskDTO.module(purge))
+            .bean(new SpacePurgeTask(purge))
+            .json("""
+                {"type": "twake-space-purge"}""")
+            .equalityTester((a, b) -> assertThat(a.type()).isEqualTo(b.type()))
+            .verify();
+        JsonSerializationVerifier.dtoModule(SpacePurgeTask.DetailsDTO.SERIALIZATION_MODULE)
+            .bean(new SpacePurgeTask.Details(NOW, 2, List.of("sales@acme.com")))
+            .json("""
+                {"type": "twake-space-purge", "timestamp": "2026-10-09T08:00:00Z", "deletedTeamMailboxes": 2, "failedTeamMailboxes": ["sales@acme.com"]}""")
+            .verify();
+        JsonSerializationVerifier.dtoModule(SpaceReindexTask.DetailsDTO.SERIALIZATION_MODULE)
+            .bean(new SpaceReindexTask.Details(NOW, 3))
+            .json("""
+                {"type": "twake-space-reindex", "timestamp": "2026-10-09T08:00:00Z", "indexedSpaces": 3}""")
+            .verify();
+    }
+
     @Test
     void readOnlyPredicateShouldCoverTheSpaceKeys() {
         assertThat(SpaceAnnotations.KEYS).allMatch(SpaceAnnotations.READ_ONLY::isReadOnly);
         assertThat(SpaceAnnotations.READ_ONLY.isReadOnly(new MailboxAnnotationKey("/shared/comment"))).isFalse();
+    }
+
+    private SpacePurge.Context purge() {
+        SpacePurge.Context context = new SpacePurge.Context();
+        new SpacePurge(spaceMailboxes, index, domainList, teamMailboxRepository, configuration, clock).purge(context).block();
+        return context;
     }
 
     private void handle(String routingKey, String body) {

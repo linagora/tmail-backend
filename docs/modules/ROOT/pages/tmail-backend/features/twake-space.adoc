@@ -85,7 +85,7 @@ A space never gets a second team mailbox, even after a rename.
 
 === Storage
 
-The extension adds no table and no index. The space a team mailbox belongs to is stored as
+The extension adds no table. The space a team mailbox belongs to is stored as
 link:https://datatracker.ietf.org/doc/html/rfc5464[RFC 5464] annotations of the team mailbox's root mailbox:
 
 |===
@@ -101,8 +101,23 @@ A team mailbox without `spaceId` was not made for a space, and is never taken ov
 These keys are read only. Members can read them with IMAP `GETMETADATA`, but IMAP `SETMETADATA`, and any annotation
 update through the mailbox manager, is refused for them, whoever asks.
 
-Everything else is read from where it already lives: members are the team mailbox ACLs, the team mailbox of a space is
-found by scanning the team mailboxes of its domain. A domain holds a few dozen spaces, so the scan stays cheap.
+Members are read from where they already live: the team mailbox ACLs.
+
+==== Index
+
+To find the team mailbox of a space without scanning its domain, each domain with spaces holds an index mailbox,
+`#TwakeSpace:team-mailbox-admin@<domain>:spaces`. It has one annotation per space,
+`/shared/vendor/twake/space/<hexadecimal space id>`, whose value is the name of the space's team mailbox.
+
+- Its namespace is its own, so it never clashes with a team mailbox, and no team mailbox feature (listing, quotas,
+IMAP paths) sees it.
+- It is created and written without events and without rights: no IMAP or JMAP client can list or open it, and the
+annotation limits of IMAP `SETMETADATA` do not apply to it.
+- It is *reserved*: do not delete it. If it is lost, the `reindex` webadmin task rebuilds it from the team mailboxes.
+
+The entry of a new space is written before its team mailbox is created, and the annotations of the team mailbox stay
+the source of truth: an entry is checked against the `spaceId` of the team mailbox it names. A crash at any step is thus
+resumed by the next event of the space, at the same address, even if the space was renamed in between.
 
 === Mail activity
 
@@ -122,6 +137,8 @@ address in the meantime. Mail sent to the address is still delivered, but nobody
 A deleted space stays deleted: a later creation, sync, member event or mail about it changes nothing.
 
 After the retention (30 days by default), the purge deletes the team mailbox and its mail, which frees the address.
+TMail does not schedule the purge itself: a webadmin cron, like a Kubernetes CronJob, has to call it. See
+xref:tmail-backend/configure/twake-space.adoc#_purge[configuring the purge].
 
 == Guarantees
 
@@ -137,8 +154,12 @@ published.
 
 == Limits
 
-- Space events have to carry `organizationDomain`: TMail finds the team mailbox of a space among the team mailboxes of
-its domain. Recent ldap-rest versions do. A `twake.space.deleted` without it scans every team mailbox.
+- Space events have to carry `organizationDomain`: TMail finds the team mailbox of a space through the index of its
+domain. Recent ldap-rest versions do. A `twake.space.deleted` without it looks the space up in the index of every
+domain.
+- A team mailbox bound to a space before the index existed, by the Twake Mail side service for instance, is indexed by
+the next `created` or `synced` event of its space, unless the space was renamed since. Run the `reindex` webadmin task
+once after such a migration.
 - An event about a domain TMail does not have yet is skipped. The DNS validation of the organization requests a sync,
 which brings its spaces back.
 - Team mailboxes are not to be created by other means on a domain with spaces: a space adopts the team mailbox no

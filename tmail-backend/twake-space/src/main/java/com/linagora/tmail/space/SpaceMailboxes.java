@@ -26,7 +26,6 @@ import java.util.function.Function;
 
 import jakarta.inject.Inject;
 
-import org.apache.james.core.Domain;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.model.MailboxAnnotation;
@@ -83,21 +82,10 @@ public class SpaceMailboxes {
                 .map(annotations -> new SpaceMailbox(teamMailbox, root.getMailboxId(), binding(teamMailbox, annotations))));
     }
 
-    public Flux<SpaceMailbox> list(Domain domain) {
-        return Flux.from(teamMailboxRepository.listTeamMailboxes(domain))
-            .concatMap(this::read);
-    }
-
+    /** Every team mailbox: a full scan, only for repairs. Lookups go through the {@link SpaceIndex}. */
     public Flux<SpaceMailbox> listAll() {
         return Flux.from(teamMailboxRepository.listTeamMailboxes())
             .concatMap(this::read);
-    }
-
-    /** The team mailbox bound to this space, closed or not. A domain holds a few dozen spaces, so this scans them. */
-    public Mono<SpaceMailbox> find(Domain domain, String spaceId) {
-        return list(domain)
-            .filter(spaceMailbox -> spaceMailbox.binding().map(SpaceBinding::spaceId).filter(spaceId::equals).isPresent())
-            .next();
     }
 
     public Mono<Void> bind(SpaceMailbox spaceMailbox, String organizationId, String spaceId) {

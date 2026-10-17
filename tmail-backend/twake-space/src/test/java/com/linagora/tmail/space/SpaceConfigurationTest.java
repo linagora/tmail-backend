@@ -51,11 +51,10 @@ class SpaceConfigurationTest {
         configuration.addProperty("activity.exchange", "feed");
         configuration.addProperty("teamMailbox.prefix", "space-");
         configuration.addProperty("retention", "7d");
-        configuration.addProperty("purge.interval", "10m");
 
         assertThat(SpaceConfiguration.from(configuration))
             .isEqualTo(new SpaceConfiguration(Optional.of(AmqpUri.from("amqp://user:pass@rabbitmq.example.com:5672/twake")),
-                "q", "dlq", "spaces", "admin", "dns.ok", "feed", "space-", Duration.ofDays(7), Duration.ofMinutes(10)));
+                "q", "dlq", "spaces", "admin", "dns.ok", "feed", "space-", Duration.ofDays(7)));
     }
 
     @ParameterizedTest
