@@ -1,0 +1,127 @@
+{
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "create_draft",
+        "description": "Create an email draft in the user's **Drafts** folder. The draft is not sent: it returns the **id** of the created draft, so the assistant can open a composer with it and ask the user for a sending confirmation.\n\nUse `inReplyTo` to draft a reply to an existing email.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "to": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Recipient email addresses"
+            },
+            "cc": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "CC email addresses"
+            },
+            "subject": {
+              "type": "string",
+              "description": "Email subject"
+            },
+            "body": {
+              "type": "string",
+              "description": "Body of the email. **Markdown** is supported for basic styling: **bold**, *italic*, lists, [links](https://example.com), `code`..."
+            },
+            "inReplyTo": {
+              "type": "string",
+              "description": "Id of the email being replied to, as returned by search_emails"
+            }
+          },
+          "required": ["body"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "get_email_details",
+        "description": "Get the details of a single email: sender, recipients, cc, subject, date, mailboxes, unread status, attachment names and the text body (truncated if too long). Use it after list_emails or search_emails returned an id and you need to read the email, for example to summarize it or to draft a reply with create_draft.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "id": {
+              "type": "string",
+              "description": "Id of the email to retrieve, as returned by list_emails or search_emails"
+            }
+          },
+          "required": ["id"]
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "list_emails",
+        "description": "List the user's emails in a mailbox as seen by the user, most recent first. Returns id, sender, subject, date and a short preview for each email. This is cheaper than search_emails: favour this tool and try it before searching. Only fall back to search_emails when listing did not help to find the emails.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "mailboxId": {
+              "type": "string",
+              "description": "Id of the mailbox to list emails from. Defaults to the Inbox."
+            },
+            "page": {
+              "type": "integer",
+              "description": "Page number to retrieve, starting at 1, default 1"
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum number of results per page, default 10, max 20"
+            }
+          },
+          "required": []
+        }
+      }
+    },
+    {
+      "type": "function",
+      "function": {
+        "name": "search_emails",
+        "description": "Search the user's emails with filters. All filters are optional and combined with AND. Returns matching emails, most recent first, with id, sender, subject, date and a short preview. This is more expensive than list_emails: prefer list_emails first and use this tool only when filtering is needed. Use the returned id with create_draft to reply to an email.",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "from": {
+              "type": "string",
+              "description": "Sender email address or name"
+            },
+            "to": {
+              "type": "string",
+              "description": "Recipient email address or name"
+            },
+            "text": {
+              "type": "string",
+              "description": "Text to search in the subject, addresses and body"
+            },
+            "after": {
+              "type": "string",
+              "description": "Only emails received after this date (ISO 8601, e.g. 2026-10-14)"
+            },
+            "before": {
+              "type": "string",
+              "description": "Only emails received before this date (ISO 8601, e.g. 2026-10-14)"
+            },
+            "inMailboxes": {
+              "type": "array",
+              "items": { "type": "string" },
+              "description": "Only emails in one of these mailbox ids. Searches all mailboxes if omitted"
+            },
+            "unread": {
+              "type": "boolean",
+              "description": "Only return unread emails"
+            },
+            "limit": {
+              "type": "integer",
+              "description": "Maximum number of results, default 10, max 20"
+            }
+          },
+          "required": []
+        }
+      }
+    }
+  ]
+}
