@@ -37,8 +37,10 @@ import org.apache.james.webadmin.utils.JsonTransformer;
 import org.eclipse.jetty.http.HttpStatus;
 
 import com.linagora.tmail.james.jmap.label.LabelRepository;
+import com.linagora.tmail.james.jmap.model.Color;
 import com.linagora.tmail.james.jmap.model.ColorUpdate;
 import com.linagora.tmail.james.jmap.model.DescriptionUpdate;
+import com.linagora.tmail.james.jmap.model.DisplayName;
 import com.linagora.tmail.james.jmap.model.Label;
 import com.linagora.tmail.james.jmap.model.LabelId;
 import com.linagora.tmail.james.jmap.model.LabelNotFoundException;
@@ -123,12 +125,14 @@ public class LabelRoutes implements Routes {
         assertUserExists(username);
         LabelId labelId = extractLabelId(request);
         UpdateLabelRequest body = updateExtractor.parse(request.body());
+        DisplayName displayName = body.validatedDisplayName();
+        Optional<Color> validatedColor = body.validatedColor();
 
         try {
             Mono.from(labelRepository.updateLabel(
                     username, labelId,
-                    OptionConverters.toScala(Optional.of(body.displayName())),
-                    OptionConverters.toScala(body.color()
+                    OptionConverters.toScala(Optional.of(displayName)),
+                    OptionConverters.toScala(validatedColor
                         .map(color -> new ColorUpdate(OptionConverters.toScala(Optional.of(color))))),
                     OptionConverters.toScala(Optional.of(new DescriptionUpdate(OptionConverters.toScala(body.description()))))))
                 .block();
