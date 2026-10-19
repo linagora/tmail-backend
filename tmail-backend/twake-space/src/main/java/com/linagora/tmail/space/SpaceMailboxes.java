@@ -100,7 +100,12 @@ public class SpaceMailboxes {
 
     /** Writes {@code deletedAt}, now. */
     public Mono<Void> markDeleted(SpaceMailbox spaceMailbox) {
-        return write(spaceMailbox, ImmutableMap.of(SpaceAnnotations.DELETED_AT, clock.instant().toString()));
+        return markDeleted(spaceMailbox, clock.instant());
+    }
+
+    /** Writes {@code deletedAt}, for a space deleted before its team mailbox was bound to it. */
+    public Mono<Void> markDeleted(SpaceMailbox spaceMailbox, Instant deletedAt) {
+        return write(spaceMailbox, ImmutableMap.of(SpaceAnnotations.DELETED_AT, deletedAt.toString()));
     }
 
     public Mono<Void> unmarkDeleted(SpaceMailbox spaceMailbox) {

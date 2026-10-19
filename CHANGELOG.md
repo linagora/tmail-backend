@@ -14,6 +14,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 #### Changes
 
 - [UPGRADE] `TeamMailboxEventsListener` moves to the Twake Space extension and is configured in `space.properties` instead of `listeners.xml`.
+- [UPGRADE] Migrating from `twake-mail-side-service`: bind its team mailboxes to their spaces, see `upgrade-instructions.md`.
 
 ## [1.0.22] - 2026-10-14
 
