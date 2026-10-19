@@ -254,23 +254,37 @@ class SpaceEventsConsumerTest {
     }
 
     @Test
-    void aTeamMailboxNoSpaceHoldsShouldBeAdopted() {
+    void aTeamMailboxNoSpaceHoldsShouldBeLeftAlone() {
         Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox("sales"))).block();
         Mono.from(teamMailboxRepository.addMember(teamMailbox("sales"), TeamMailboxMember.asMember(CAROL))).block();
 
         handle("twake.space.created", created(SPACE, "Sales", member(ALICE, "admin")));
 
-        assertThat(spaceMailbox(teamMailbox("sales")).binding())
-            .contains(new SpaceBinding(ORGANIZATION, SPACE, Optional.empty()));
-        assertThat(members(teamMailbox("sales"))).containsExactly(TeamMailboxMember.asManager(ALICE));
-        assertThat(Flux.from(teamMailboxRepository.listTeamMailboxes(DOMAIN)).collectList().block())
-            .containsExactly(teamMailbox("sales"));
+        assertThat(spaceMailbox(teamMailbox("sales")).binding()).isEmpty();
+        assertThat(members(teamMailbox("sales"))).containsExactly(TeamMailboxMember.asMember(CAROL));
+        assertThat(spaceMailbox(teamMailbox("sales-2")).isLiveFor(SPACE)).isTrue();
+        assertThat(members(teamMailbox("sales-2"))).containsExactly(TeamMailboxMember.asManager(ALICE));
+    }
+
+    @Test
+    void theTeamMailboxOfAClosedSpaceShouldNotBeTakenByANewOne() {
+        handle("twake.space.created", created(SPACE, "Sales", member(ALICE, "admin")));
+        handle("twake.space.deleted", """
+            {"organizationId": "org-1", "organizationDomain": "acme.com", "id": "%s"}
+            """.formatted(SPACE));
+
+        handle("twake.space.created", created(OTHER_SPACE, "Sales", member(BOB, "admin")));
+
+        assertThat(spaceMailbox(teamMailbox("sales")).binding().map(SpaceBinding::spaceId)).contains(SPACE);
+        assertThat(members(teamMailbox("sales"))).isEmpty();
+        assertThat(spaceMailbox(teamMailbox("sales-2")).isLiveFor(OTHER_SPACE)).isTrue();
     }
 
     @Test
     void aCrashBeforeTheAnnotationsShouldBeRecoveredByTheNextEvent() throws Exception {
         TeamMailbox sales = teamMailbox("sales");
         MailboxSession session = mailboxManager.createSystemSession(sales.owner());
+        index.put(DOMAIN, SPACE, sales).block();
         mailboxManager.createMailbox(sales.mailboxPath(), session);
 
         handle("twake.space.created", created(SPACE, "Sales", member(ALICE, "admin")));
@@ -892,6 +906,61 @@ class SpaceEventsConsumerTest {
         }
 
         @Test
+        void bindWithDeletedAtShouldCloseWithoutRequestingASync() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox("sales"))).block();
+            Mono.from(teamMailboxRepository.addMember(teamMailbox("sales"), TeamMailboxMember.asMember(CAROL))).block();
+            Instant deletedAt = NOW.minus(Duration.ofDays(3));
+
+            given()
+                .body("""
+                    {"organizationId": "org-1", "spaceId": "%s", "deletedAt": "%s"}""".formatted(SPACE, deletedAt))
+            .when()
+                .put("/domains/acme.com/team-mailboxes/sales/space")
+            .then()
+                .statusCode(204);
+
+            assertThat(spaceMailbox(teamMailbox("sales")).binding())
+                .contains(new SpaceBinding(ORGANIZATION, SPACE, Optional.of(deletedAt)));
+            assertThat(members(teamMailbox("sales"))).isEmpty();
+            assertThat(index.get(DOMAIN, SPACE).block()).isEqualTo(teamMailbox("sales"));
+            handle("twake.space.created", created(OTHER_SPACE, "Support"));
+            await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> assertThat(published)
+                .extracting(Published::routingKey)
+                .containsExactly(SpacePublisher.PROVISIONED));
+        }
+
+        @Test
+        void aSpaceBoundWithDeletedAtShouldBePurgedAfterTheRetention() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox("sales"))).block();
+
+            given()
+                .body("""
+                    {"organizationId": "org-1", "spaceId": "%s", "deletedAt": "%s"}""".formatted(SPACE, NOW.minus(Duration.ofDays(31))))
+            .when()
+                .put("/domains/acme.com/team-mailboxes/sales/space")
+            .then()
+                .statusCode(204);
+
+            assertThat(purge().snapshot().deletedTeamMailboxes()).isEqualTo(1);
+            assertThat(spaceMailboxes.read(teamMailbox("sales")).blockOptional()).isEmpty();
+        }
+
+        @Test
+        void bindWithAnInvalidDeletedAtShouldReturn400() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox("sales"))).block();
+
+            given()
+                .body("""
+                    {"organizationId": "org-1", "spaceId": "%s", "deletedAt": "yesterday"}""".formatted(SPACE))
+            .when()
+                .put("/domains/acme.com/team-mailboxes/sales/space")
+            .then()
+                .statusCode(400);
+
+            assertThat(spaceMailbox(teamMailbox("sales")).binding()).isEmpty();
+        }
+
+        @Test
         void bindToAnotherSpaceShouldReturn409() {
             handle("twake.space.created", created(SPACE, "Sales"));
 
@@ -902,6 +971,23 @@ class SpaceEventsConsumerTest {
                 .put("/domains/acme.com/team-mailboxes/sales/space")
             .then()
                 .statusCode(409);
+        }
+
+        @Test
+        void bindWhenTheSpaceHasAnotherTeamMailboxShouldReturn409() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox("sales"))).block();
+            handle("twake.space.created", created(SPACE, "Sales", member(ALICE, "admin")));
+
+            given()
+                .body("""
+                    {"organizationId": "org-1", "spaceId": "%s"}""".formatted(SPACE))
+            .when()
+                .put("/domains/acme.com/team-mailboxes/sales/space")
+            .then()
+                .statusCode(409);
+
+            assertThat(spaceMailbox(teamMailbox("sales")).binding()).isEmpty();
+            assertThat(index.get(DOMAIN, SPACE).block()).isEqualTo(teamMailbox("sales-2"));
         }
 
         @Test

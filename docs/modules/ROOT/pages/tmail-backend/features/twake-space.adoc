@@ -77,9 +77,10 @@ The address of a team mailbox comes from the name of its space, the same way the
 When the address is already held by another space, a user, an alias, a group or, in LDAP deployments, an LDAP mailing
 list, `-2`, `-3`... up to `-20` are tried in turn.
 
-A team mailbox no space owns at that address is adopted by the space: where there are spaces, team mailboxes are only
-created for them, so such a team mailbox is what a crash between its creation and the writing of its annotations left.
-The space completes its folders, binds it and sets its members.
+A team mailbox no space owns at that address counts as taken too: it may have been made by hand, or be the team mailbox
+of a deleted space migrated without its annotations, and taking it would hand its mail to the members of the new space.
+The space only takes over the team mailbox its index entry names, which is what a crash between the creation of a team
+mailbox and the writing of its annotations leaves: it completes its folders, binds it and sets its members.
 
 A space never gets a second team mailbox, even after a rename.
 
@@ -157,13 +158,14 @@ published.
 - Space events have to carry `organizationDomain`: TMail finds the team mailbox of a space through the index of its
 domain. Recent ldap-rest versions do. A `twake.space.deleted` without it looks the space up in the index of every
 domain.
-- A team mailbox bound to a space before the index existed, by the Twake Mail side service for instance, is indexed by
-the next `created` or `synced` event of its space, unless the space was renamed since. Run the `reindex` webadmin task
-once after such a migration.
+- The team mailboxes of the Twake Mail side service carry no annotations: bind each of them to its space right after
+enabling the extension, before the next event of its space, as the
+link:https://github.com/linagora/tmail-backend/blob/master/upgrade-instructions.md[upgrade instructions] describe.
+Otherwise the space gets a second team mailbox, with a `-2` address.
+- A team mailbox bound to a space before the index existed is indexed by the next `created` or `synced` event of its
+space, unless the space was renamed since. The `reindex` webadmin task indexes all of them at once.
 - An event about a domain TMail does not have yet is skipped. The DNS validation of the organization requests a sync,
 which brings its spaces back.
-- Team mailboxes are not to be created by other means on a domain with spaces: a space adopts the team mailbox no
-space owns that sits at its address, and makes its members those of the space.
 - `twake.space.sync.completed` closes every unlisted space of the organization, including one created between the
 snapshot and the event. Its next event does not reopen it: an operator binds it again.
 - `domain.user.deleted` is not handled by this extension: TMail's user data deletion, which the Twake Workplace user

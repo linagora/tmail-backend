@@ -765,6 +765,7 @@ Return codes:
 
 ....
 curl -XPUT http://ip:port/domains/domain.tld/team-mailboxes/sales/space \
+  -H "Content-Type: application/json" \
   -d '{"organizationId": "org-1", "spaceId": "11111111-1111-1111-1111-111111111111"}'
 ....
 
@@ -774,12 +775,23 @@ published.
 
 Use it for a team mailbox created by the Twake Mail side service, and to reopen a space closed by mistake.
 
+With `deletedAt`, an ISO 8601 instant, the team mailbox is bound to a deleted space instead: its members are removed,
+its `deletedAt` annotation is written with that instant, and no sync is requested. The purge deletes it once
+`retention` has passed since `deletedAt`. Use it for the spaces the Twake Mail side service deleted but did not purge
+yet:
+
+....
+curl -XPUT http://ip:port/domains/domain.tld/team-mailboxes/sales/space \
+  -H "Content-Type: application/json" \
+  -d '{"organizationId": "org-1", "spaceId": "11111111-1111-1111-1111-111111111111", "deletedAt": "2026-10-01T08:00:00Z"}'
+....
+
 Return codes:
 
 - `204` the team mailbox is bound to the space
-- `400` invalid domain, team mailbox name or body, or missing `organizationId` or `spaceId`
+- `400` invalid domain, team mailbox name or body, missing `organizationId` or `spaceId`, or invalid `deletedAt`
 - `404` the team mailbox does not exist
-- `409` the team mailbox already belongs to another space
+- `409` the team mailbox already belongs to another space, or the space already has another team mailbox
 
 == JMAP Labels
 

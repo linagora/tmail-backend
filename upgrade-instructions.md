@@ -36,6 +36,43 @@ teamMailboxEvents.sentRoutingKey=team-mailbox.message.sent
 `enabled=true` also starts the space events consumer (queue `tmail-space`) and the activity publication: see
 `docs/modules/ROOT/pages/tmail-backend/configure/twake-space.adoc`.
 
+### Migrating from the Twake Mail side service
+
+The Twake Space extension replaces `twake-mail-side-service`. The team mailboxes the side service created carry no
+space annotations, so the extension does not know them: bind each one to its space, from the side service's database,
+before the next event of its space comes. Otherwise the space gets a second team mailbox, at a `-2` address.
+
+1. Stop the side service.
+2. Deploy TMail with `enabled=true` in `space.properties`, and the side service's `TEAM_MAILBOX_PREFIX` as
+`teamMailbox.prefix`.
+3. Right after, bind the team mailboxes, reading the side service's database. A deleted space is bound with its
+deletion date, so its team mailbox is purged when the side service would have purged it:
+
+```sh
+psql "$SIDE_SERVICE_DATABASE_URL" -At -F ' ' -c "
+  SELECT space_id, organization_id, address,
+         coalesce(to_char(deleted_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '')
+  FROM spaces WHERE address IS NOT NULL" |
+while read -r space organization address deleted; do
+  body=$(jq -nc --arg o "$organization" --arg s "$space" --arg d "$deleted" \
+    '{organizationId: $o, spaceId: $s} + (if $d == "" then {} else {deletedAt: $d} end)')
+  curl -sS -o /dev/null -w "%{http_code} $address\n" -XPUT \
+    -H "Authorization: Bearer $WEBADMIN_TOKEN" -H "Content-Type: application/json" -d "$body" \
+    "$WEBADMIN_URL/domains/${address#*@}/team-mailboxes/${address%@*}/space"
+done
+```
+
+`204` binds the team mailbox, `404` means the side service never created it (a space still waiting for its mail DNS),
+`409` that it is bound to another space already, or that an event reached its space first and gave it a `-2` team
+mailbox: delete that one, then bind again. A live space is bound with a sync request, which sets its members
+and republishes its `provisioned` event.
+
+4. Request a sync of every space, for the events published while the side service was stopped:
+`curl -XPOST -H "Authorization: Bearer $WEBADMIN_TOKEN" "$WEBADMIN_URL/spaces?action=sync"`.
+5. Add the purge CronJob described in `docs/modules/ROOT/pages/tmail-backend/configure/twake-space.adoc`.
+6. Once the team mailboxes are bound, delete the side service, its database and its `twake-mail-side-service.v2`
+queues.
+
 ### SaaS domain provisioning before mail DNS activation
 
 Before deploying, add the nullable DNS state column to the domain table:

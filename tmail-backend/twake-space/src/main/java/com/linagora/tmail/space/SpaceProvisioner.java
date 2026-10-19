@@ -39,9 +39,9 @@ import reactor.core.publisher.Mono;
  * Finds, or creates, the team mailbox of a space. The index entry of a new space is written before its team mailbox
  * is created, so a crash at any step leaves an entry to resume from, at the same address, even after a rename.
  *
- * <p>A team mailbox no space holds is adopted: where there are spaces, team mailboxes are only created for them, so it
- * is what a crash between its creation and the writing of its annotations left. Adopting it completes the folders and
- * rights the crash may have left out.</p>
+ * <p>The team mailbox an entry names, bound to no space, is what a crash between its creation and the writing of its
+ * annotations left: it is adopted, which completes the folders and rights the crash may have left out. Any other team
+ * mailbox no space holds counts as taken.</p>
  */
 public class SpaceProvisioner {
     private static final Logger LOGGER = LoggerFactory.getLogger(SpaceProvisioner.class);
@@ -105,13 +105,22 @@ public class SpaceProvisioner {
                 .orElseGet(() -> claimFree(snapshot, teamMailbox)));
     }
 
-    /** A team mailbox at the address: bound to this space before it was indexed, held by no space, or by another. */
+    /**
+     * A team mailbox at the address: only one bound to this space before it was indexed is taken. One bound to no space
+     * may have been made by hand, or be a former space's kept for the purge: adopting it would hand its mail to the
+     * members of this space. A crash before the binding leaves an index entry, which {@link #fromIndex} resumes.
+     */
     private Mono<SpaceMailbox> claim(SpaceSnapshot snapshot, SpaceMailbox spaceMailbox) {
+        if (spaceMailbox.binding().isEmpty()) {
+            LOGGER.warn("Space {} skips the address {}: a team mailbox bound to no space holds it", snapshot.spaceId(),
+                spaceMailbox.teamMailbox().asMailAddress().asString());
+            return Mono.empty();
+        }
         if (isHeldByAnother(snapshot, spaceMailbox)) {
             return Mono.empty();
         }
         return index.put(snapshot.domain(), snapshot.spaceId(), spaceMailbox.teamMailbox())
-            .then(ownedOrAdopted(snapshot, spaceMailbox));
+            .thenReturn(spaceMailbox);
     }
 
     private Mono<SpaceMailbox> claimFree(SpaceSnapshot snapshot, TeamMailbox teamMailbox) {

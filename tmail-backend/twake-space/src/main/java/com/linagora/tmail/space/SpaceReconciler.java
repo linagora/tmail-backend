@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.space;
 
+import java.time.Instant;
 import java.util.Collection;
 import java.util.Optional;
 import java.util.Set;
@@ -133,6 +134,14 @@ public class SpaceReconciler {
             .then(publisher.requestSync(SpacePublisher.SyncScope.space(space)));
     }
 
+    /** Makes a team mailbox the one of a space deleted at {@code deletedAt}, so the purge deletes it after the retention. */
+    public Mono<Void> bindClosed(SpaceMailbox spaceMailbox, SpaceRef space, Instant deletedAt) {
+        return spaceMailboxes.bind(spaceMailbox, space)
+            .then(members.removeAll(spaceMailbox.teamMailbox()))
+            .then(spaceMailboxes.markDeleted(spaceMailbox, deletedAt))
+            .then(index.put(spaceMailbox.teamMailbox().domain(), space.spaceId(), spaceMailbox.teamMailbox()));
+    }
+
     /** Indexes every team mailbox bound to a space, for the spaces bound before the index existed. */
     public Mono<Void> reindex(Runnable onIndexed) {
         return spaceMailboxes.listAll()
@@ -140,6 +149,13 @@ public class SpaceReconciler {
                 .flatMap(binding -> index.put(spaceMailbox.teamMailbox().domain(), binding.spaceId(), spaceMailbox.teamMailbox())
                     .then(Mono.fromRunnable(onIndexed))), ReactorUtils.DEFAULT_CONCURRENCY)
             .then();
+    }
+
+    /** The team mailbox the index names for a space, when it is still bound to that space. */
+    public Mono<SpaceMailbox> indexedMailbox(Domain domain, String spaceId) {
+        return index.get(domain, spaceId)
+            .flatMap(spaceMailboxes::read)
+            .filter(spaceMailbox -> spaceMailbox.binding().map(SpaceBinding::spaceId).filter(spaceId::equals).isPresent());
     }
 
     public SpaceMailboxes spaceMailboxes() {

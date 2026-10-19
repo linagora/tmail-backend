@@ -18,6 +18,8 @@
 
 package com.linagora.tmail.space;
 
+import java.time.Instant;
+import java.time.format.DateTimeParseException;
 import java.util.Optional;
 
 import jakarta.inject.Inject;
@@ -49,7 +51,8 @@ import spark.Service;
  * Repairs of the space extension: asking ldap-rest for a snapshot, and binding a team mailbox to a space.
  */
 public class SpaceRoutes implements Routes {
-    public record SpaceBindingDTO(String organizationId, String spaceId) {
+    /** {@code deletedAt}, optional, binds a deleted space, like one migrated from the Twake Mail side service. */
+    public record SpaceBindingDTO(String organizationId, String spaceId, String deletedAt) {
     }
 
     public record SpaceBindingResponse(String organizationId, String spaceId, Optional<String> deletedAt) {
@@ -135,19 +138,35 @@ public class SpaceRoutes implements Routes {
     private Route bind() {
         return (request, response) -> {
             SpaceBindingDTO binding = extractBinding(request);
+            Optional<Instant> deletedAt = deletedAt(binding);
             SpaceMailbox spaceMailbox = readTeamMailbox(request);
             spaceMailbox.binding()
                 .filter(existing -> !existing.spaceId().equals(binding.spaceId()))
                 .ifPresent(existing -> {
-                    throw ErrorResponder.builder()
-                        .statusCode(HttpStatus.CONFLICT_409)
-                        .type(ErrorResponder.ErrorType.WRONG_STATE)
-                        .message("The team mailbox is bound to space " + existing.spaceId())
-                        .haltError();
+                    throw conflict("The team mailbox is bound to space " + existing.spaceId());
                 });
-            reconciler.bind(spaceMailbox, new SpaceRef(binding.organizationId(), binding.spaceId())).block();
+            reconciler.indexedMailbox(spaceMailbox.teamMailbox().domain(), binding.spaceId())
+                .filter(indexed -> !indexed.teamMailbox().equals(spaceMailbox.teamMailbox()))
+                .blockOptional()
+                .ifPresent(indexed -> {
+                    throw conflict("Space " + binding.spaceId() + " already has the team mailbox "
+                        + indexed.teamMailbox().asMailAddress().asString());
+                });
+            SpaceRef space = new SpaceRef(binding.organizationId(), binding.spaceId());
+            deletedAt
+                .map(instant -> reconciler.bindClosed(spaceMailbox, space, instant))
+                .orElseGet(() -> reconciler.bind(spaceMailbox, space))
+                .block();
             return Responses.returnNoContent(response);
         };
+    }
+
+    private Optional<Instant> deletedAt(SpaceBindingDTO binding) {
+        try {
+            return Optional.ofNullable(binding.deletedAt()).map(Instant::parse);
+        } catch (DateTimeParseException e) {
+            throw badRequest("'deletedAt' must be an ISO 8601 instant: " + binding.deletedAt());
+        }
     }
 
     private SpaceBindingDTO extractBinding(Request request) {
@@ -191,6 +210,14 @@ public class SpaceRoutes implements Routes {
         return ErrorResponder.builder()
             .statusCode(HttpStatus.BAD_REQUEST_400)
             .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+            .message(message)
+            .haltError();
+    }
+
+    private HaltException conflict(String message) {
+        return ErrorResponder.builder()
+            .statusCode(HttpStatus.CONFLICT_409)
+            .type(ErrorResponder.ErrorType.WRONG_STATE)
             .message(message)
             .haltError();
     }
