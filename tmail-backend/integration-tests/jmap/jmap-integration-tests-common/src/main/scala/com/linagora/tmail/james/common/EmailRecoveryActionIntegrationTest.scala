@@ -229,6 +229,7 @@ trait EmailRecoveryActionIntegrationTest {
            |        "create": {
            |          "K87": {
            |            "email/create": {
+           |              "from": [{"email": "${bobUsername.asString}"}],
            |              "mailboxIds": {"${bobInboxId}": true},
            |              "subject": "World domination${emailSubjectSuffix.getOrElse("")}",
            |              "htmlBody": [{"partId": "a49d", "type": "text/html"}],
