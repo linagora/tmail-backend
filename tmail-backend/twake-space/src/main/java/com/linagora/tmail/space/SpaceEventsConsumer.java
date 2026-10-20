@@ -18,8 +18,6 @@
 
 package com.linagora.tmail.space;
 
-import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
-
 import java.time.Duration;
 import java.util.List;
 import java.util.Map;
@@ -29,6 +27,7 @@ import java.util.stream.StreamSupport;
 
 import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.core.Domain;
+import org.apache.james.events.RetryBackoffConfiguration;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -41,13 +40,15 @@ import com.linagora.tmail.rabbitmq.QueueDeclaration;
 
 import reactor.core.publisher.Mono;
 import reactor.rabbitmq.AcknowledgableDelivery;
+import reactor.util.retry.Retry;
 
 /**
  * Reads the space events and the admin panel DNS event, and applies what each one carries to the team mailbox of the
  * space. Delivery is at least once: every handler is idempotent, so a redelivered event changes nothing.
  *
  * <p>The queue has a single active consumer handling one event at a time, so the events of a space are applied in
- * the order they were published.</p>
+ * the order they were published. A failed handling is retried in place, with a backoff, before the event is dead
+ * lettered: the next events wait, so the order holds.</p>
  */
 public class SpaceEventsConsumer {
     public static final List<String> SPACE_ROUTING_KEYS = ImmutableList.of(
@@ -68,6 +69,8 @@ public class SpaceEventsConsumer {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SpaceEventsConsumer.class);
     private static final Duration CONSUMER_TIMEOUT = Duration.ofMinutes(10L);
+    // One unacked event at a time: the retries of an event must not age the prefetched ones past the consumer timeout
+    private static final int PREFETCH = 1;
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     public static ManagedRabbitMQConsumer create(SpacePublisher publisher, RabbitMQConfiguration rabbitMQConfiguration,
@@ -84,18 +87,26 @@ public class SpaceEventsConsumer {
                 .queueArguments(rabbitMQConfiguration::workQueueArgumentsBuilder)
                 .singleActiveConsumer()
                 .consumerTimeout(CONSUMER_TIMEOUT)
-                .qos(DEFAULT_CONCURRENCY)
+                .qos(PREFETCH)
                 .handleDelivery(consumer::handle)
                 .build());
     }
 
     private final SpacePublisher publisher;
     private final SpaceConfiguration configuration;
+    private final RetryBackoffConfiguration retryBackoff;
     private final Map<String, Function<JsonNode, Mono<Void>>> handlers;
 
+    /** Retries a failed handling up to 8 times, from 100 ms doubling: about 25 seconds in all. */
     public SpaceEventsConsumer(SpaceReconciler reconciler, SpacePublisher publisher, SpaceConfiguration configuration) {
+        this(reconciler, publisher, configuration, RetryBackoffConfiguration.DEFAULT);
+    }
+
+    public SpaceEventsConsumer(SpaceReconciler reconciler, SpacePublisher publisher, SpaceConfiguration configuration,
+                               RetryBackoffConfiguration retryBackoff) {
         this.publisher = publisher;
         this.configuration = configuration;
+        this.retryBackoff = retryBackoff;
         this.handlers = ImmutableMap.<String, Function<JsonNode, Mono<Void>>>builder()
             .put("twake.space.created", json -> reconciler.apply(snapshot(json), false))
             .put("twake.space.synced", json -> reconciler.apply(snapshot(json), true))
@@ -112,14 +123,27 @@ public class SpaceEventsConsumer {
         return handle(delivery.getEnvelope().getExchange(), delivery.getEnvelope().getRoutingKey(), delivery.getBody());
     }
 
-    /** Fails, so that the event is dead lettered, when its body is not JSON or the handling failed. */
+    /**
+     * Fails, so that the event is dead lettered, when its body is not JSON, or when the handling still fails once
+     * retried. The handlers being idempotent, a retry redoes what the failed attempt did not.
+     */
     public Mono<Void> handle(String exchange, String routingKey, byte[] body) {
         return Mono.fromCallable(() -> OBJECT_MAPPER.readTree(body))
-            .flatMap(json -> Mono.defer(() -> route(exchange, routingKey).apply(json)))
+            .flatMap(json -> Mono.defer(() -> route(exchange, routingKey).apply(json))
+                .retryWhen(retry(routingKey)))
             .onErrorResume(MalformedEventException.class, e -> {
                 LOGGER.warn("Dropping malformed {} event: {}", routingKey, e.getMessage());
                 return Mono.empty();
             });
+    }
+
+    /** A malformed event, or a space with no free address, fails the same way however often it is retried. */
+    private Retry retry(String routingKey) {
+        return retryBackoff.asReactorRetry()
+            .filter(error -> !(error instanceof MalformedEventException) && !(error instanceof SpaceProvisioningException))
+            .doBeforeRetry(signal -> LOGGER.warn("Retrying the {} event, attempt {} failed: {}", routingKey,
+                signal.totalRetries() + 1, signal.failure().toString()))
+            .onRetryExhaustedThrow((spec, signal) -> signal.failure());
     }
 
     private Function<JsonNode, Mono<Void>> route(String exchange, String routingKey) {

@@ -152,6 +152,8 @@ keeps the id of the first copy. TwakeSpace deduplicates on it.
 it always comes before the mail events of that team mailbox.
 - The events of the queue are handled one at a time, by a single consumer across the cluster, in the order they were
 published.
+- A failed event is handled again a few times, with a growing delay, before it goes to the dead letter queue: a
+storage or RabbitMQ hiccup changes nothing.
 
 == Limits
 
