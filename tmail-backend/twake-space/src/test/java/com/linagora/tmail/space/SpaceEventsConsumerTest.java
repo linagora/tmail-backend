@@ -423,6 +423,29 @@ class SpaceEventsConsumerTest {
     }
 
     @Test
+    void syncCompletedOfADeletedOrganizationShouldCloseItsSpacesInEveryDomain() throws Exception {
+        Domain otherDomain = Domain.of("acme.org");
+        domainList.addDomain(otherDomain);
+        handle("twake.space.created", created(SPACE, "Sales", member(ALICE, "admin")));
+        handle("twake.space.created", """
+            {"organizationId": "org-1", "organizationDomain": "acme.org", "id": "%s", "name": "Support"}
+            """.formatted(OTHER_SPACE));
+        handle("twake.space.created", """
+            {"organizationId": "org-2", "organizationDomain": "acme.com", "id": "33333333-3333-3333-3333-333333333333", "name": "Other org"}
+            """);
+
+        // ldap-rest can no longer read the domain of a deleted organization
+        handle("twake.space.sync.completed", """
+            {"organizationId": "org-1", "spaceIds": []}
+            """);
+
+        assertThat(spaceMailbox(teamMailbox("sales")).isLive()).isFalse();
+        assertThat(members(teamMailbox("sales"))).isEmpty();
+        assertThat(spaceMailbox(OptionConverters.toJava(TeamMailbox.fromJava(otherDomain, "support")).orElseThrow()).isLive()).isFalse();
+        assertThat(spaceMailbox(teamMailbox("other-org")).isLive()).isTrue();
+    }
+
+    @Test
     void validatedDnsShouldRequestASyncOfTheOrganization() {
         testee.handle(DNS_EXCHANGE, "dns.validated", """
             {"organizationId": "org-1", "domain": "acme.com", "mailDnsConfigurationValidated": true}
