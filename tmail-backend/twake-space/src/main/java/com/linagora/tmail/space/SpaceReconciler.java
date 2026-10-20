@@ -62,13 +62,14 @@ public class SpaceReconciler {
 
     /**
      * Creates the team mailbox of a space that has none, and sets the members of a live one. A closed one stays
-     * closed. {@code republish} sends the provisioned event again for a live mailbox, as a sync does.
+     * closed. The provisioned event is sent again for a live mailbox: a redelivered creation thus repairs one that
+     * failed to go out once the binding was written.
      */
-    public Mono<Void> apply(SpaceSnapshot snapshot, boolean republish) {
+    public Mono<Void> apply(SpaceSnapshot snapshot) {
         return provisioner.resolve(snapshot)
             .flatMap(spaceMailbox -> spaceMailbox.binding().isEmpty()
                 ? bindNew(snapshot, spaceMailbox)
-                : reconcile(snapshot, spaceMailbox, republish));
+                : reconcile(snapshot, spaceMailbox));
     }
 
     private Mono<Void> bindNew(SpaceSnapshot snapshot, SpaceMailbox spaceMailbox) {
@@ -78,15 +79,13 @@ public class SpaceReconciler {
             .then(members.set(spaceMailbox.teamMailbox(), snapshot.members()));
     }
 
-    private Mono<Void> reconcile(SpaceSnapshot snapshot, SpaceMailbox spaceMailbox, boolean republish) {
+    private Mono<Void> reconcile(SpaceSnapshot snapshot, SpaceMailbox spaceMailbox) {
         if (!spaceMailbox.isLive()) {
             LOGGER.info("Skipping space {}: its team mailbox {} is closed", snapshot.spaceId(), address(spaceMailbox));
             return Mono.empty();
         }
-        Mono<Void> provisioned = republish
-            ? publisher.publishProvisioned(snapshot.ref(), spaceMailbox.rootId())
-            : Mono.empty();
-        return provisioned.then(members.set(spaceMailbox.teamMailbox(), snapshot.members()));
+        return publisher.publishProvisioned(snapshot.ref(), spaceMailbox.rootId())
+            .then(members.set(spaceMailbox.teamMailbox(), snapshot.members()));
     }
 
     /** Adds the named members, or changes their role. A viewer loses access. */
