@@ -222,7 +222,7 @@ Fields not listed are ignored. Timestamps are not read: the events of a space ar
 | `id`, `organizationDomain` (optional)
 
 | `space` | `twake.space.sync.completed`
-| `organizationId`, `organizationDomain`, `spaceIds`
+| `organizationId`, `organizationDomain` (optional), `spaceIds`
 
 | `space` | `twake.space.updated`
 | `id`

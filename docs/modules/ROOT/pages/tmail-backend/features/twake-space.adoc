@@ -158,8 +158,8 @@ storage or RabbitMQ hiccup changes nothing.
 == Limits
 
 - Space events have to carry `organizationDomain`: TMail finds the team mailbox of a space through the index of its
-domain. Recent ldap-rest versions do. A `twake.space.deleted` without it looks the space up in the index of every
-domain.
+domain. Recent ldap-rest versions do. A `twake.space.deleted` or `twake.space.sync.completed` without it, like the
+ones of a deleted organization, looks in the index of every domain.
 - The team mailboxes of the Twake Mail side service carry no annotations: bind each of them to its space right after
 enabling the extension, before the next event of its space, as the
 link:https://github.com/linagora/tmail-backend/blob/master/upgrade-instructions.md[upgrade instructions] describe.

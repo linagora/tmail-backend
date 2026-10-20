@@ -111,7 +111,7 @@ public class SpaceEventsConsumer {
             .put("twake.space.created", json -> reconciler.apply(snapshot(json), false))
             .put("twake.space.synced", json -> reconciler.apply(snapshot(json), true))
             .put("twake.space.deleted", json -> reconciler.close(optionalDomain(json), text(json, "id")))
-            .put("twake.space.sync.completed", json -> reconciler.closeUnlisted(text(json, "organizationId"), domain(json), spaceIds(json)))
+            .put("twake.space.sync.completed", json -> reconciler.closeUnlisted(text(json, "organizationId"), optionalDomain(json), spaceIds(json)))
             .put("twake.space.member.added", json -> reconciler.changeMembers(domain(json), text(json, "id"), members(json)))
             .put("twake.space.member.role.changed", json -> reconciler.changeMembers(domain(json), text(json, "id"), members(json)))
             .put("twake.space.member.removed", json -> reconciler.removeMembers(domain(json), text(json, "id"), removedMembers(json)))

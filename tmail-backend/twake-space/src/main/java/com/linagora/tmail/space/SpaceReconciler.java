@@ -108,12 +108,16 @@ public class SpaceReconciler {
             .then();
     }
 
-    /** After a snapshot of an organization: its live spaces the snapshot did not list are gone. */
-    public Mono<Void> closeUnlisted(String organizationId, Domain domain, Collection<String> listedSpaceIds) {
+    /**
+     * After a snapshot of an organization: its live spaces the snapshot did not list are gone. Without the domain, as
+     * for a deleted organization whose domain ldap-rest can no longer read, every domain is looked at.
+     */
+    public Mono<Void> closeUnlisted(String organizationId, Optional<Domain> domain, Collection<String> listedSpaceIds) {
         Set<String> listed = ImmutableSet.copyOf(listedSpaceIds);
-        return index.list(domain)
-            .filter(entry -> !listed.contains(entry.spaceId()))
-            .concatMap(entry -> liveMailbox(domain, entry.spaceId()))
+        return domain.map(Flux::just).orElseGet(index::domains)
+            .concatMap(candidate -> index.list(candidate)
+                .filter(entry -> !listed.contains(entry.spaceId()))
+                .concatMap(entry -> liveMailbox(candidate, entry.spaceId())))
             .filter(spaceMailbox -> spaceMailbox.binding().map(SpaceBinding::organizationId).filter(organizationId::equals).isPresent())
             .concatMap(this::close)
             .then();
