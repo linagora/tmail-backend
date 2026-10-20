@@ -53,7 +53,7 @@ import org.awaitility.Awaitility
 import org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS
 import org.awaitility.core.ConditionFactory
 import org.junit.jupiter.api.{BeforeEach, Tag, Test}
-import play.api.libs.json.{JsString, JsValue, Json}
+import play.api.libs.json.{JsObject, JsString, JsValue, Json}
 
 import scala.jdk.CollectionConverters._
 
@@ -105,6 +105,7 @@ object LinagoraEmailSendMethodContract {
        |        "create": {
        |          "K87": {
        |            "email/create": {
+       |              "from": [{"email": "${bob.asString}"}],
        |              "mailboxIds": {
        |                "${getInboxId(server, bob).serialize}": true
        |              },
@@ -382,6 +383,7 @@ trait LinagoraEmailSendMethodContract {
          |                "create": {
          |                    "K87": {
          |                        "email/create": {
+         |                            "from": [{"email": "${bobUsername.asString}"}],
          |                            "mailboxIds": {
          |                                "${getBobInboxId(server).serialize}": true
          |                            },
@@ -415,6 +417,7 @@ trait LinagoraEmailSendMethodContract {
          |                    },
          |                    "K88": {
          |                        "email/create": {
+         |                            "from": [{"email": "${bobUsername.asString}"}],
          |                            "mailboxIds": {
          |                                "${getBobInboxId(server).serialize}": true
          |                            },
@@ -435,6 +438,7 @@ trait LinagoraEmailSendMethodContract {
          |                    },
          |                    "K89": {
          |                        "email/create": {
+         |                            "from": [{"email": "${bobUsername.asString}"}],
          |                            "mailboxIds": {
          |                                "${getBobInboxId(server).serialize}": true
          |                            },
@@ -566,6 +570,7 @@ trait LinagoraEmailSendMethodContract {
          |        "create": {
          |          "K87": {
          |            "email/create": {
+         |              "from": [{"email": "${bobUsername.asString}"}],
          |              "mailboxIds": {
          |                "${bobDraftMailBoxId.serialize}": true
          |              },
@@ -648,6 +653,7 @@ trait LinagoraEmailSendMethodContract {
          |        "create": {
          |          "K87": {
          |            "email/create": {
+         |              "from": [{"email": "${bobUsername.asString}"}],
          |              "mailboxIds": {
          |                "${getBobInboxId(server).serialize}": true
          |              },
@@ -1064,85 +1070,107 @@ trait LinagoraEmailSendMethodContract {
   }
 
   @Test
-  def emailSendShouldNotCreatedWhenEnvelopAbsentAndEmailSetDoNotHaveHeader(server: GuiceJamesServer): Unit = {
-    val request: String =
-      s"""
-         |{
-         |  "using": [
-         |    "urn:ietf:params:jmap:core",
-         |    "urn:ietf:params:jmap:mail",
-         |    "urn:ietf:params:jmap:submission",
-         |    "com:linagora:params:jmap:pgp"
-         |  ],
-         |  "methodCalls": [
-         |    [
-         |      "Email/send",
-         |      {
-         |        "accountId": "$bobAccountId",
-         |        "create": {
-         |          "K87": {
-         |            "email/create": {
-         |              "mailboxIds": {
-         |                "${getBobInboxId(server).serialize}": true
-         |              },
-         |              "subject": "World domination",
-         |              "htmlBody": [
-         |                {
-         |                  "partId": "a49d",
-         |                  "type": "text/html"
-         |                }
-         |              ],
-         |              "bodyValues": {
-         |                "a49d": {
-         |                  "value": "$HTML_BODY",
-         |                  "isTruncated": false,
-         |                  "isEncodingProblem": false
-         |                }
-         |              }
-         |            },
-         |            "emailSubmission/set": {}
-         |          }
-         |        }
-         |      },
-         |      "c1"
-         |    ]
-         |  ]
-         |}""".stripMargin
+  def emailSendShouldRejectForbiddenFrom(server: GuiceJamesServer): Unit =
+    assertSendRejected(server, Json.obj("from" -> Json.arr(Json.obj("email" -> "ghost@domain.tld"))),
+      Some(validSenderEnvelope), "forbiddenFrom", Seq("from"))
 
-    val response: String = `given`
-      .body(request)
-    .when()
-      .post()
-    .`then`
-      .statusCode(HttpStatus.SC_OK)
-      .contentType(JSON)
-      .extract()
-      .body()
-      .asString()
+  @Test
+  def emailSendShouldRejectForbiddenFromWithImplicitEnvelope(server: GuiceJamesServer): Unit =
+    assertSendRejected(server, Json.obj("from" -> Json.arr(Json.obj("email" -> "ghost@domain.tld"))),
+      None, "forbiddenFrom", Seq("from"))
 
-    assertThatJson(response)
-      .isEqualTo(
-        s"""
-           |{
-           |    "sessionState": "${SESSION_STATE.value}",
-           |    "methodResponses": [
-           |        [
-           |            "Email/send",
-           |            {
-           |                "accountId": "$bobAccountId",
-           |                "newState": "$${json-unit.ignore}",
-           |                "notCreated": {
-           |                    "K87": {
-           |                        "type": "serverFail",
-           |                        "description": "Implicit envelope detection requires a from field"
-           |                    }
-           |                }
-           |            },
-           |            "c1"
-           |        ]
-           |    ]
-           |}""".stripMargin)
+  @Test
+  def emailSendShouldRejectForbiddenSender(server: GuiceJamesServer): Unit =
+    assertSendRejected(server, Json.obj(
+      "from" -> Json.arr(Json.obj("email" -> bobUsername.asString)),
+      "sender" -> Json.arr(Json.obj("email" -> andreUsername.asString))),
+      Some(validSenderEnvelope), "forbiddenFrom", Seq("sender"))
 
+  @Test
+  def emailSendShouldReportBothForbiddenHeaders(server: GuiceJamesServer): Unit =
+    assertSendRejected(server, Json.obj(
+      "from" -> Json.arr(Json.obj("email" -> andreUsername.asString)),
+      "sender" -> Json.arr(Json.obj("email" -> andreUsername.asString))),
+      Some(validSenderEnvelope), "forbiddenFrom", Seq("from", "sender"))
+
+  @Test
+  def emailSendShouldRejectForbiddenEnvelope(server: GuiceJamesServer): Unit =
+    assertSendRejected(server, Json.obj("from" -> Json.arr(Json.obj("email" -> bobUsername.asString))),
+      Some(validSenderEnvelope ++ Json.obj("mailFrom" -> Json.obj("email" -> "ghost@domain.tld"))),
+      "forbiddenMailFrom", Seq("envelope.mailFrom"))
+
+  @Test
+  def emailSendShouldPreferForbiddenHeaderOverForbiddenEnvelope(server: GuiceJamesServer): Unit =
+    assertSendRejected(server, Json.obj("from" -> Json.arr(Json.obj("email" -> "ghost@domain.tld"))),
+      Some(validSenderEnvelope ++ Json.obj("mailFrom" -> Json.obj("email" -> andreUsername.asString))),
+      "forbiddenFrom", Seq("from"))
+
+  @Test
+  def emailSendShouldRejectMissingFromWithExplicitEnvelope(server: GuiceJamesServer): Unit =
+    assertMissingFromRejected(server, Json.obj(), Some(validSenderEnvelope))
+
+  @Test
+  def emailSendShouldRejectMissingFromWithImplicitEnvelope(server: GuiceJamesServer): Unit =
+    assertMissingFromRejected(server, Json.obj(), None)
+
+  @Test
+  def emailSendShouldRejectMissingFromEvenWhenSenderIsPresent(server: GuiceJamesServer): Unit =
+    assertMissingFromRejected(server, Json.obj("sender" -> Json.arr(Json.obj("email" -> bobUsername.asString))),
+      Some(validSenderEnvelope))
+
+  @Test
+  def emailSendShouldRejectEmptyFrom(server: GuiceJamesServer): Unit =
+    assertMissingFromRejected(server, Json.obj("from" -> Json.arr()), Some(validSenderEnvelope))
+
+  @Test
+  def emailSendShouldRejectNoRecipients(server: GuiceJamesServer): Unit =
+    assertSendRejected(server, Json.obj("from" -> Json.arr(Json.obj("email" -> bobUsername.asString))),
+      Some(validSenderEnvelope ++ Json.obj("rcptTo" -> Json.arr())), "noRecipients", Seq.empty)
+
+  private def assertMissingFromRejected(server: GuiceJamesServer, headers: JsObject, envelope: scala.Option[JsObject]): Unit = {
+    assertSendRejected(server, headers, envelope, "invalidEmail", Seq("from"))
+
+    val request = Json.obj(
+      "using" -> Json.arr("urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail"),
+      "methodCalls" -> Json.arr(Json.arr("Mailbox/get", Json.obj(
+        "accountId" -> bobAccountId,
+        "ids" -> Json.arr(getBobInboxId(server).serialize),
+        "properties" -> Json.arr("id", "totalEmails")), "c1")))
+    val response = `given`.body(request.toString).when.post.`then`
+      .statusCode(HttpStatus.SC_OK).contentType(JSON).extract.asString
+    assertThatJson(response).inPath("methodResponses[0][1].list[0].totalEmails").isEqualTo(0)
+  }
+
+  private def validSenderEnvelope: JsObject = Json.obj(
+    "mailFrom" -> Json.obj("email" -> bobUsername.asString),
+    "rcptTo" -> Json.arr(Json.obj("email" -> andreUsername.asString)))
+
+  private def assertSendRejected(server: GuiceJamesServer, headers: JsObject, envelope: scala.Option[JsObject],
+                                 errorType: String, properties: Seq[String]): Unit = {
+    val email = Json.obj(
+      "mailboxIds" -> Json.obj(getBobInboxId(server).serialize -> true),
+      "to" -> Json.arr(Json.obj("email" -> andreUsername.asString)),
+      "subject" -> "Sender validation",
+      "bodyValues" -> Json.obj("text" -> Json.obj("value" -> "testmail")),
+      "textBody" -> Json.arr(Json.obj("partId" -> "text", "type" -> "text/plain"))) ++ headers
+    val submission = envelope.map(value => Json.obj("envelope" -> value)).getOrElse(Json.obj())
+    val request = Json.obj(
+      "using" -> Json.arr("urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail",
+        "urn:ietf:params:jmap:submission", "com:linagora:params:jmap:pgp"),
+      "methodCalls" -> Json.arr(Json.arr("Email/send", Json.obj(
+        "accountId" -> bobAccountId,
+        "create" -> Json.obj("rejected" -> Json.obj("email/create" -> email, "emailSubmission/set" -> submission))), "c1")))
+
+    val response = `given`.body(request.toString).when.post.`then`
+      .statusCode(HttpStatus.SC_OK).contentType(JSON).extract.asString
+    assertThatJson(response).inPath("methodResponses[0][1].created").isAbsent()
+    assertThatJson(response).inPath("methodResponses[0][1].notCreated.rejected.type").isEqualTo(errorType)
+    if (properties.nonEmpty) {
+      assertThatJson(response).when(Option.IGNORING_ARRAY_ORDER)
+        .inPath("methodResponses[0][1].notCreated.rejected.properties").isEqualTo(Json.toJson(properties).toString)
+    } else {
+      assertThatJson(response).inPath("methodResponses[0][1].notCreated.rejected.properties").isAbsent()
+    }
   }
 
   @Test
@@ -1182,6 +1210,7 @@ trait LinagoraEmailSendMethodContract {
          |        "create": {
          |          "K87": {
          |            "email/create": {
+         |              "from": [{"email": "${bobUsername.asString}"}],
          |              "mailboxIds": {
          |                "${getBobInboxId(server).serialize}": true
          |              },
@@ -1284,6 +1313,7 @@ trait LinagoraEmailSendMethodContract {
          |                "create": {
          |                    "K87": {
          |                        "email/create": {
+         |                            "from": [{"email": "${bobUsername.asString}"}],
          |                            "mailboxIds": {
          |                                "${getBobInboxId(server).serialize}": true
          |                            },
@@ -1499,6 +1529,7 @@ trait LinagoraEmailSendMethodContract {
          |                "create": {
          |                    "K87": {
          |                        "email/create": {
+         |                            "from": [{"email": "${bobUsername.asString}"}],
          |                            "mailboxIds": {
          |                                "${getBobInboxId(server).serialize}": true
          |                            },
@@ -1695,6 +1726,7 @@ trait LinagoraEmailSendMethodContract {
          |        "create": {
          |          "K87": {
          |            "email/create": {
+         |              "from": [{"email": "${bobUsername.asString}"}],
          |              "mailboxIds": {
          |                "${getBobInboxId(server).serialize}": true
          |              },
