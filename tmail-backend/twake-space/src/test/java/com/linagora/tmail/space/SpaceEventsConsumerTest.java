@@ -38,6 +38,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
 
 import org.apache.james.JsonSerializationVerifier;
@@ -50,6 +51,7 @@ import org.apache.james.domainlist.lib.DomainListConfiguration;
 import org.apache.james.domainlist.memory.MemoryDomainList;
 import org.apache.james.events.InVMEventBus;
 import org.apache.james.events.MemoryEventDeadLetters;
+import org.apache.james.events.RetryBackoffConfiguration;
 import org.apache.james.events.delivery.InVmEventDelivery;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageIdManager;
@@ -157,7 +159,7 @@ class SpaceEventsConsumerTest {
         index = new SpaceIndex(mailboxManager, mailboxManager.getMapperFactory(), domainList);
         this.domainList = domainList;
         reconciler = reconciler(address -> mailingLists.contains(address));
-        testee = new SpaceEventsConsumer(reconciler, publisher, configuration);
+        testee = new SpaceEventsConsumer(reconciler, publisher, configuration, RetryBackoffConfiguration.FAST);
 
         String queue = "space-test-" + suffix;
         rabbitMQExtension.getSender().declareExchange(topicExchange(configuration.activityExchange())).block();
@@ -228,7 +230,7 @@ class SpaceEventsConsumerTest {
             configuration.spaceExchange(), configuration.dnsExchange(), configuration.dnsRoutingKey(), configuration.activityExchange(),
             "space-", configuration.retention());
         reconciler = reconciler(SpaceAddresses.MailingLists.NONE);
-        testee = new SpaceEventsConsumer(reconciler, publisher, configuration);
+        testee = new SpaceEventsConsumer(reconciler, publisher, configuration, RetryBackoffConfiguration.FAST);
 
         handle("twake.space.created", created(SPACE, "Sales"));
 
@@ -459,6 +461,48 @@ class SpaceEventsConsumerTest {
     void nonJsonBodyShouldFail() {
         assertThatThrownBy(() -> testee.handle(configuration.spaceExchange(), "twake.space.created", "not json".getBytes(UTF_8)).block())
             .isNotNull();
+    }
+
+    @Test
+    void aTransientFailureShouldBeRetried() {
+        AtomicInteger failures = new AtomicInteger(1);
+        testee = new SpaceEventsConsumer(reconciler(address -> {
+            if (failures.getAndDecrement() > 0) {
+                throw new RuntimeException("mailing lists unavailable");
+            }
+            return false;
+        }), publisher, configuration, RetryBackoffConfiguration.FAST);
+
+        handle("twake.space.created", created(SPACE, "Sales", member(ALICE, "admin")));
+
+        assertThat(spaceMailbox(teamMailbox("sales")).isLiveFor(SPACE)).isTrue();
+        assertThat(members(teamMailbox("sales"))).containsExactly(TeamMailboxMember.asManager(ALICE));
+    }
+
+    @Test
+    void aFailureLastingBeyondTheRetriesShouldFail() {
+        AtomicInteger attempts = new AtomicInteger();
+        testee = new SpaceEventsConsumer(reconciler(address -> {
+            attempts.incrementAndGet();
+            throw new RuntimeException("mailing lists unavailable");
+        }), publisher, configuration, RetryBackoffConfiguration.FAST);
+
+        assertThatThrownBy(() -> handle("twake.space.created", created(SPACE, "Sales")))
+            .hasMessage("mailing lists unavailable");
+        assertThat(attempts).hasValue(RetryBackoffConfiguration.FAST.getMaxRetries() + 1);
+    }
+
+    @Test
+    void aSpaceWithNoFreeAddressShouldNotBeRetried() {
+        AtomicInteger lookups = new AtomicInteger();
+        testee = new SpaceEventsConsumer(reconciler(address -> {
+            lookups.incrementAndGet();
+            return true;
+        }), publisher, configuration, RetryBackoffConfiguration.FAST);
+
+        assertThatThrownBy(() -> handle("twake.space.created", created(SPACE, "Sales")))
+            .isInstanceOf(SpaceProvisioningException.class);
+        assertThat(lookups).hasValue(20);
     }
 
     @Nested

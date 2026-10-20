@@ -132,10 +132,12 @@ The RabbitMQ user needs:
 | The event is logged and skipped. The DNS validation of the organization brings its spaces back.
 
 | The address of a new space and its `-2` to `-20` variants are all taken
-| The event goes to the dead letter queue. The log names the space.
+| The event goes to the dead letter queue at once. The log names the space.
 
 | Any other failure (mailbox storage, RabbitMQ...)
-| The event goes to the dead letter queue. It is not retried in process.
+| The event is handled again, up to 8 times, waiting about 100 milliseconds then about twice as long each time, give or
+take a random jitter: some 25 seconds of waiting in all. The next events wait meanwhile, so the order holds. Then the
+event goes to the dead letter queue.
 |===
 
 Nothing replays a dead letter on its own, since it could apply an old event over newer ones. Request a sync of the
