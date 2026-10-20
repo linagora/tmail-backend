@@ -416,6 +416,7 @@ public class DistributedLinagoraRedisFailureTest {
                         "create": {
                            "K87": {
                               "email/create": {
+                                 "from": [{"email": "%s"}],
                                  "mailboxIds": {
                                     "%s": true
                                  },
@@ -453,7 +454,7 @@ public class DistributedLinagoraRedisFailureTest {
                   ]
                ]
             }
-            """.stripIndent(), accountId, bobInboxId, bobEmail, andreEmail);
+            """.stripIndent(), accountId, bobEmail, bobInboxId, bobEmail, andreEmail);
     }
 
 
