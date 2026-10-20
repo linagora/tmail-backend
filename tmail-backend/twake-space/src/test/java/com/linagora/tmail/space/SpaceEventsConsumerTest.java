@@ -317,6 +317,17 @@ class SpaceEventsConsumerTest {
     }
 
     @Test
+    void aRedeliveredCreatedShouldRepublishProvisionedUnderTheSameId() {
+        handle("twake.space.created", created(SPACE, "Sales"));
+        handle("twake.space.created", created(SPACE, "Sales"));
+
+        await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> assertThat(published)
+            .extracting(Published::messageId)
+            .hasSize(2)
+            .containsOnly(SPACE + ":" + spaceMailbox(teamMailbox("sales")).rootId().serialize() + ":provisioned"));
+    }
+
+    @Test
     void syncedShouldRepublishProvisionedUnderTheSameId() {
         handle("twake.space.created", created(SPACE, "Sales"));
         handle("twake.space.synced", created(SPACE, "Sales"));

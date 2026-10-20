@@ -34,7 +34,8 @@ Each event is a hint that a space changed. TMail applies what the event carries 
 | Event | Effect on the team mailbox
 
 | `twake.space.created`
-| Created when the space has none, then its members are set.
+| Created when the space has none, then its members are set. When it has one already, as on a redelivery, the
+`provisioned` event is published again.
 
 | `twake.space.synced`
 | Same as created. The members become exactly those of the event: anyone else, including members added by hand in

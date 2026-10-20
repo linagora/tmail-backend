@@ -108,8 +108,8 @@ public class SpaceEventsConsumer {
         this.configuration = configuration;
         this.retryBackoff = retryBackoff;
         this.handlers = ImmutableMap.<String, Function<JsonNode, Mono<Void>>>builder()
-            .put("twake.space.created", json -> reconciler.apply(snapshot(json), false))
-            .put("twake.space.synced", json -> reconciler.apply(snapshot(json), true))
+            .put("twake.space.created", json -> reconciler.apply(snapshot(json)))
+            .put("twake.space.synced", json -> reconciler.apply(snapshot(json)))
             .put("twake.space.deleted", json -> reconciler.close(optionalDomain(json), text(json, "id")))
             .put("twake.space.sync.completed", json -> reconciler.closeUnlisted(text(json, "organizationId"), optionalDomain(json), spaceIds(json)))
             .put("twake.space.member.added", json -> reconciler.changeMembers(domain(json), text(json, "id"), members(json)))
