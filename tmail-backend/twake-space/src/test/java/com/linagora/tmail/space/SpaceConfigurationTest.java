@@ -58,13 +58,21 @@ class SpaceConfigurationTest {
     }
 
     @ParameterizedTest
-    @ValueSource(strings = {"Space-", "space", "spa ce-", "-"})
+    @ValueSource(strings = {"Space-", "space", "spa ce-", "-", "abcdefghijklmnopqrstuvwxyz012345-"})
     void fromShouldRejectInvalidPrefixes(String prefix) {
         BaseHierarchicalConfiguration configuration = new BaseHierarchicalConfiguration();
         configuration.addProperty("teamMailbox.prefix", prefix);
 
         assertThatThrownBy(() -> SpaceConfiguration.from(configuration))
             .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void fromShouldAcceptAPrefixOf32Characters() {
+        BaseHierarchicalConfiguration configuration = new BaseHierarchicalConfiguration();
+        configuration.addProperty("teamMailbox.prefix", "abcdefghijklmnopqrstuvwxyz01234-");
+
+        assertThat(SpaceConfiguration.from(configuration).teamMailboxPrefix()).isEqualTo("abcdefghijklmnopqrstuvwxyz01234-");
     }
 
     @ParameterizedTest

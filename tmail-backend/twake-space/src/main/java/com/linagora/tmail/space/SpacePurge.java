@@ -82,7 +82,13 @@ public class SpacePurge {
                 .concatMap(entry -> Mono.justOrEmpty(OptionConverters.toJava(TeamMailbox.fromJava(domain, entry.teamMailboxName())))
                     .flatMap(spaceMailboxes::read)
                     .filter(spaceMailbox -> closedBefore(spaceMailbox, entry.spaceId(), threshold))
-                    .flatMap(spaceMailbox -> delete(domain, entry.spaceId(), spaceMailbox, context))))
+                    .flatMap(spaceMailbox -> delete(domain, entry.spaceId(), spaceMailbox, context))
+                    .onErrorResume(e -> {
+                        String address = entry.teamMailboxName() + "@" + domain.asString();
+                        LOGGER.error("Failed to read the team mailbox {} of space {}", address, entry.spaceId(), e);
+                        context.failedTeamMailboxes.add(address);
+                        return Mono.just(Task.Result.PARTIAL);
+                    })))
             .reduce(Task.Result.COMPLETED, Task::combine)
             .defaultIfEmpty(Task.Result.COMPLETED);
     }

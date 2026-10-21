@@ -588,6 +588,37 @@ class SpaceEventsConsumerTest {
         }
 
         @Test
+        void aTeamMailboxFailingToBeReadShouldNotStopThePurge() {
+            handle("twake.space.created", created(SPACE, "Sales"));
+            handle("twake.space.created", created(OTHER_SPACE, "Support"));
+            handle("twake.space.deleted", """
+                {"organizationDomain": "acme.com", "id": "%s"}
+                """.formatted(SPACE));
+            handle("twake.space.deleted", """
+                {"organizationDomain": "acme.com", "id": "%s"}
+                """.formatted(OTHER_SPACE));
+            clock.setInstant(NOW.plus(Duration.ofDays(31)));
+            TeamMailbox sales = teamMailbox("sales");
+            SpaceMailboxes failingOnSales = new SpaceMailboxes(mailboxManager, mailboxManager.getMapperFactory(), teamMailboxRepository, clock) {
+                @Override
+                public Mono<SpaceMailbox> read(TeamMailbox candidate) {
+                    if (candidate.equals(sales)) {
+                        return Mono.error(new RuntimeException("Simulated read failure"));
+                    }
+                    return super.read(candidate);
+                }
+            };
+
+            SpacePurge.Context context = new SpacePurge.Context();
+            Task.Result result = new SpacePurge(failingOnSales, index, teamMailboxRepository, configuration, clock).purge(context).block();
+
+            assertThat(result).isEqualTo(Task.Result.PARTIAL);
+            assertThat(context.snapshot()).isEqualTo(new SpacePurge.Context.Snapshot(1, List.of("sales@acme.com")));
+            assertThat(Flux.from(teamMailboxRepository.listTeamMailboxes(DOMAIN)).collectList().block())
+                .containsExactly(sales);
+        }
+
+        @Test
         void shouldKeepTheTeamMailboxesClosedRecently() {
             handle("twake.space.created", created(SPACE, "Sales"));
             handle("twake.space.deleted", """

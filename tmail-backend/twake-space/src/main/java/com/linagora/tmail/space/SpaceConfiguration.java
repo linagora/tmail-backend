@@ -43,6 +43,8 @@ public record SpaceConfiguration(Optional<AmqpUri> rabbitMQUri,
                                  String teamMailboxPrefix,
                                  Duration retention) {
     private static final Pattern PREFIX_PATTERN = Pattern.compile("([a-z0-9_]+-)?");
+    // As the Twake Mail side service: leaves room in the 64 characters of a team mailbox name
+    private static final int PREFIX_MAX_LENGTH = 32;
 
     public static final SpaceConfiguration DEFAULT = new SpaceConfiguration(Optional.empty(),
         "tmail-space", "tmail-space-dead-letter", "space", "admin-panel", "dns.validated", "activity", "",
@@ -64,6 +66,8 @@ public record SpaceConfiguration(Optional<AmqpUri> rabbitMQUri,
     public SpaceConfiguration {
         Preconditions.checkArgument(PREFIX_PATTERN.matcher(teamMailboxPrefix).matches(),
             "'teamMailbox.prefix' must be lowercase letters, digits or '_', ending with a dash");
+        Preconditions.checkArgument(teamMailboxPrefix.length() <= PREFIX_MAX_LENGTH,
+            "'teamMailbox.prefix' must be at most %s characters", PREFIX_MAX_LENGTH);
         Preconditions.checkArgument(!retention.isNegative(), "'retention' must not be negative");
     }
 
