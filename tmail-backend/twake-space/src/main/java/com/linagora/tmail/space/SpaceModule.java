@@ -58,9 +58,9 @@ import com.linagora.tmail.webadmin.mailinglist.MailingListsNotConfiguredExceptio
 import reactor.core.publisher.Mono;
 
 /**
- * Gives each TwakeSpace space a team mailbox. Load it with
- * {@code guice.extension.module=com.linagora.tmail.space.SpaceModule} in {@code extensions.properties}; it reads
- * {@code space.properties}.
+ * Gives each TwakeSpace space a team mailbox. The distributed and postgres servers install it when
+ * {@code space.properties} says {@code enabled=true}, see {@link SpaceModuleChooserConfiguration}: do not declare it in
+ * {@code extensions.properties} too.
  */
 public class SpaceModule extends AbstractModule {
     private static final String SPACE_CONSUMER = "space-consumer";

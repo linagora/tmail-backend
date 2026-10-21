@@ -66,7 +66,8 @@ connection serves every component of the extension.
 | `teamMailbox.prefix`
 | empty
 | Put before the name of each team mailbox, like `space-` for `space-sales@acme.com`, so that a space never takes the
-address of a person, a list or a role. Lowercase letters, digits or `_`, ending with a dash. Applies to new spaces only.
+address of a person, a list or a role. Lowercase letters, digits or `_`, ending with a dash, at most 32 characters.
+Applies to new spaces only.
 
 | `retention`
 | `30d`
