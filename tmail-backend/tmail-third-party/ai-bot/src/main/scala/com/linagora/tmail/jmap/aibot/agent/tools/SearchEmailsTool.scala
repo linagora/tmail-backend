@@ -31,8 +31,15 @@ import reactor.core.scala.publisher.{SFlux, SMono}
 import scala.jdk.CollectionConverters._
 
 object SearchEmailsTool {
-  val DEFAULT_LIMIT = 10
-  val MAX_LIMIT = 20
+  val FROM: ArgumentName = ArgumentName("from")
+  val TO: ArgumentName = ArgumentName("to")
+  val TEXT: ArgumentName = ArgumentName("text")
+  val AFTER: ArgumentName = ArgumentName("after")
+  val BEFORE: ArgumentName = ArgumentName("before")
+  val IN_MAILBOXES: ArgumentName = ArgumentName("inMailboxes")
+  val UNREAD: ArgumentName = ArgumentName("unread")
+  val LIMIT: ArgumentName = ArgumentName("limit")
+  val PAGE_SIZE: PageSize = PageSize(default = 10, max = 20)
 }
 
 class SearchEmailsTool @Inject()(val mailboxManager: MailboxManager,
@@ -50,29 +57,29 @@ class SearchEmailsTool @Inject()(val mailboxManager: MailboxManager,
     "parameters" -> Json.obj(
       "type" -> "object",
       "properties" -> Json.obj(
-        "from" -> Json.obj(
+        SearchEmailsTool.FROM.value -> Json.obj(
           "type" -> "string",
           "description" -> "Sender email address or name"),
-        "to" -> Json.obj(
+        SearchEmailsTool.TO.value -> Json.obj(
           "type" -> "string",
           "description" -> "Recipient email address or name"),
-        "text" -> Json.obj(
+        SearchEmailsTool.TEXT.value -> Json.obj(
           "type" -> "string",
           "description" -> "Text to search in the subject, addresses and body"),
-        "after" -> Json.obj(
+        SearchEmailsTool.AFTER.value -> Json.obj(
           "type" -> "string",
           "description" -> "Only emails received after this date (ISO 8601, e.g. 2026-10-14)"),
-        "before" -> Json.obj(
+        SearchEmailsTool.BEFORE.value -> Json.obj(
           "type" -> "string",
           "description" -> "Only emails received before this date (ISO 8601, e.g. 2026-10-14)"),
-        "inMailboxes" -> Json.obj(
+        SearchEmailsTool.IN_MAILBOXES.value -> Json.obj(
           "type" -> "array",
           "items" -> Json.obj("type" -> "string"),
           "description" -> "Only emails in one of these mailbox ids. Searches all mailboxes if omitted"),
-        "unread" -> Json.obj(
+        SearchEmailsTool.UNREAD.value -> Json.obj(
           "type" -> "boolean",
           "description" -> "Only return unread emails"),
-        "limit" -> Json.obj(
+        SearchEmailsTool.LIMIT.value -> Json.obj(
           "type" -> "integer",
           "description" -> "Maximum number of results, default 10, max 20")),
       "required" -> Json.arr()))
@@ -80,7 +87,7 @@ class SearchEmailsTool @Inject()(val mailboxManager: MailboxManager,
   override def execute(session: MailboxSession, arguments: JsObject): SMono[JsValue] =
     SMono.fromCallable(() => {
       val args = ToolArguments(arguments)
-      (query(args), args.limit("limit", SearchEmailsTool.DEFAULT_LIMIT, SearchEmailsTool.MAX_LIMIT))
+      (query(args), args.limit(SearchEmailsTool.LIMIT, SearchEmailsTool.PAGE_SIZE))
     }).flatMap { case (query, limit) =>
       SFlux(mailboxManager.search(query, session, SearchOptions.limit(Limit.from(limit))))
         .collectSeq()
@@ -89,7 +96,7 @@ class SearchEmailsTool @Inject()(val mailboxManager: MailboxManager,
     }
 
   private def query(args: ToolArguments): MultimailboxesSearchQuery = {
-    val text: Option[Criterion] = args.string("text").map(text => SearchQuery.or(Seq(
+    val text: Option[Criterion] = args.string(SearchEmailsTool.TEXT).map(text => SearchQuery.or(Seq(
       SearchQuery.address(AddressType.From, text),
       SearchQuery.address(AddressType.To, text),
       SearchQuery.address(AddressType.Cc, text),
@@ -99,12 +106,12 @@ class SearchEmailsTool @Inject()(val mailboxManager: MailboxManager,
       SearchQuery.attachmentContains(text),
       SearchQuery.attachmentFileName(text)).asJava))
     val criteria: Seq[Criterion] = Seq(
-      args.string("from").map(SearchQuery.address(AddressType.From, _)),
-      args.string("to").map(SearchQuery.address(AddressType.To, _)),
+      args.string(SearchEmailsTool.FROM).map(SearchQuery.address(AddressType.From, _)),
+      args.string(SearchEmailsTool.TO).map(SearchQuery.address(AddressType.To, _)),
       text,
-      args.date("after").map(SearchQuery.internalDateAfter(_, DateResolution.Second)),
-      args.date("before").map(SearchQuery.internalDateBefore(_, DateResolution.Second)),
-      args.boolean("unread").map {
+      args.date(SearchEmailsTool.AFTER).map(SearchQuery.internalDateAfter(_, DateResolution.Second)),
+      args.date(SearchEmailsTool.BEFORE).map(SearchQuery.internalDateBefore(_, DateResolution.Second)),
+      args.boolean(SearchEmailsTool.UNREAD).map {
         case true => SearchQuery.flagIsUnSet(Flags.Flag.SEEN)
         case false => SearchQuery.flagIsSet(Flags.Flag.SEEN)
       }).flatten
@@ -113,7 +120,7 @@ class SearchEmailsTool @Inject()(val mailboxManager: MailboxManager,
       .andCriteria((if (criteria.isEmpty) Seq(SearchQuery.all()) else criteria).asJava)
       .sorts(new Sort(SortClause.Arrival, Order.REVERSE))
       .build()
-    val mailboxIds = args.strings("inMailboxes").map(ToolIds.mailboxId(mailboxIdFactory, _))
+    val mailboxIds = args.strings(SearchEmailsTool.IN_MAILBOXES).map(ToolIds.mailboxId(mailboxIdFactory, _))
     val builder = MultimailboxesSearchQuery.from(searchQuery)
     if (mailboxIds.nonEmpty) builder.inMailboxes(mailboxIds.asJava).build() else builder.build()
   }

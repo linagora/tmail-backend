@@ -66,7 +66,7 @@
             },
             "page": {
               "type": "integer",
-              "description": "Page number to retrieve, starting at 1, default 1"
+              "description": "Page number to retrieve, starting at 1, default 1, max 50"
             },
             "limit": {
               "type": "integer",

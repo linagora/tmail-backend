@@ -35,9 +35,12 @@ case class ListEmailsRequest(mailboxId: Option[MailboxId], page: Int, limit: Int
 }
 
 object ListEmailsTool {
-  val DEFAULT_LIMIT = 10
-  val MAX_LIMIT = 20
+  val MAILBOX_ID: ArgumentName = ArgumentName("mailboxId")
+  val PAGE: ArgumentName = ArgumentName("page")
+  val LIMIT: ArgumentName = ArgumentName("limit")
+  val PAGE_SIZE: PageSize = PageSize(default = 10, max = 20)
   val MAX_PAGE = 50
+  val COLLAPSE_THREADS = false
 }
 
 class ListEmailsTool @Inject()(val mailboxManager: MailboxManager,
@@ -57,13 +60,13 @@ class ListEmailsTool @Inject()(val mailboxManager: MailboxManager,
     "parameters" -> Json.obj(
       "type" -> "object",
       "properties" -> Json.obj(
-        "mailboxId" -> Json.obj(
+        ListEmailsTool.MAILBOX_ID.value -> Json.obj(
           "type" -> "string",
           "description" -> "Id of the mailbox to list emails from. Defaults to the Inbox."),
-        "page" -> Json.obj(
+        ListEmailsTool.PAGE.value -> Json.obj(
           "type" -> "integer",
           "description" -> "Page number to retrieve, starting at 1, default 1, max 50"),
-        "limit" -> Json.obj(
+        ListEmailsTool.LIMIT.value -> Json.obj(
           "type" -> "integer",
           "description" -> "Maximum number of results per page, default 10, max 20")),
       "required" -> Json.arr()))
@@ -84,23 +87,23 @@ class ListEmailsTool @Inject()(val mailboxManager: MailboxManager,
       "emails" -> emails.map(_.json))
 
   private def request(args: ToolArguments): ListEmailsRequest = {
-    val page: Int = args.int("page").getOrElse(1)
+    val page: Int = args.int(ListEmailsTool.PAGE).getOrElse(1)
     if (page < 1) {
-      throw InvalidToolCallException("'page' must be positive")
+      throw InvalidToolCallException(s"'${ListEmailsTool.PAGE.value}' must be positive")
     }
     if (page > ListEmailsTool.MAX_PAGE) {
-      throw InvalidToolCallException(s"'page' must be at most ${ListEmailsTool.MAX_PAGE}")
+      throw InvalidToolCallException(s"'${ListEmailsTool.PAGE.value}' must be at most ${ListEmailsTool.MAX_PAGE}")
     }
     ListEmailsRequest(
-      mailboxId = args.string("mailboxId").map(id => ToolIds.mailboxId(mailboxIdFactory, id)),
+      mailboxId = args.string(ListEmailsTool.MAILBOX_ID).map(id => ToolIds.mailboxId(mailboxIdFactory, id)),
       page = page,
-      limit = args.limit("limit", ListEmailsTool.DEFAULT_LIMIT, ListEmailsTool.MAX_LIMIT))
+      limit = args.limit(ListEmailsTool.LIMIT, ListEmailsTool.PAGE_SIZE))
   }
 
   private def listIds(session: MailboxSession, mailboxId: MailboxId, request: ListEmailsRequest): SMono[Seq[MessageId]] =
     if (jmapConfiguration.isEmailQueryViewEnabled) {
       SFlux(emailQueryViewManager.getEmailQueryView(session.getUser)
-          .listMailboxContentSortedByReceivedAt(mailboxId, Limit.from(request.offset + request.limit), false))
+          .listMailboxContentSortedByReceivedAt(mailboxId, Limit.from(request.offset + request.limit), ListEmailsTool.COLLAPSE_THREADS))
         .drop(request.offset)
         .collectSeq()
     } else {

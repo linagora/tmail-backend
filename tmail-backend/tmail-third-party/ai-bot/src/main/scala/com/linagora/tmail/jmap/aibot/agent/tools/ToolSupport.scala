@@ -25,6 +25,7 @@ import java.util.Date
 import com.linagora.tmail.jmap.aibot.agent.InvalidToolCallException
 import jakarta.inject.Inject
 import jakarta.mail.Flags
+import org.apache.james.jmap.api.model.Preview
 import org.apache.james.jmap.api.projections.{MessageFastViewPrecomputedProperties, MessageFastViewProjection}
 import org.apache.james.mailbox.model.{FetchGroup, MailboxId, MessageId, MessageResult}
 import org.apache.james.mailbox.{MailboxSession, MessageIdManager}
@@ -46,57 +47,61 @@ import scala.util.Try
 
 case class EmailNotFoundException(id: String) extends RuntimeException(s"Email $id not found")
 
+case class ArgumentName(value: String) extends AnyVal
+
+case class PageSize(default: Int, max: Int)
+
 case class ToolArguments(json: JsObject) {
 
-  private def value(name: String): Option[JsValue] = json.value.get(name).filter {
+  private def value(name: ArgumentName): Option[JsValue] = json.value.get(name.value).filter {
     case JsNull => false
     case JsString(string) => string.trim.nonEmpty
     case _ => true
   }
 
-  def string(name: String): Option[String] = value(name).map {
+  def string(name: ArgumentName): Option[String] = value(name).map {
     case JsString(string) => string.trim
-    case _ => throw InvalidToolCallException(s"'$name' must be a string")
+    case _ => throw InvalidToolCallException(s"'${name.value}' must be a string")
   }
 
-  def requiredString(name: String): String =
-    string(name).getOrElse(throw InvalidToolCallException(s"Missing '$name'"))
+  def requiredString(name: ArgumentName): String =
+    string(name).getOrElse(throw InvalidToolCallException(s"Missing '${name.value}'"))
 
-  def strings(name: String): Seq[String] = value(name) match {
+  def strings(name: ArgumentName): Seq[String] = value(name) match {
     case None => Seq()
     case Some(JsString(string)) => Seq(string.trim)
     case Some(JsArray(values)) => values.toSeq.map {
       case JsString(string) => string.trim
-      case _ => throw InvalidToolCallException(s"'$name' must be an array of strings")
+      case _ => throw InvalidToolCallException(s"'${name.value}' must be an array of strings")
     }.filter(_.nonEmpty)
-    case Some(_) => throw InvalidToolCallException(s"'$name' must be an array of strings")
+    case Some(_) => throw InvalidToolCallException(s"'${name.value}' must be an array of strings")
   }
 
-  def int(name: String): Option[Int] = value(name).map {
+  def int(name: ArgumentName): Option[Int] = value(name).map {
     case JsNumber(number) if number.isValidInt => number.toInt
     case JsString(string) => string.trim.toIntOption
-      .getOrElse(throw InvalidToolCallException(s"'$name' must be an integer"))
-    case _ => throw InvalidToolCallException(s"'$name' must be an integer")
+      .getOrElse(throw InvalidToolCallException(s"'${name.value}' must be an integer"))
+    case _ => throw InvalidToolCallException(s"'${name.value}' must be an integer")
   }
 
-  def boolean(name: String): Option[Boolean] = value(name).map {
+  def boolean(name: ArgumentName): Option[Boolean] = value(name).map {
     case JsBoolean(boolean) => boolean
     case JsString(string) => string.trim.toBooleanOption
-      .getOrElse(throw InvalidToolCallException(s"'$name' must be a boolean"))
-    case _ => throw InvalidToolCallException(s"'$name' must be a boolean")
+      .getOrElse(throw InvalidToolCallException(s"'${name.value}' must be a boolean"))
+    case _ => throw InvalidToolCallException(s"'${name.value}' must be a boolean")
   }
 
-  def date(name: String): Option[Date] = string(name).map(string =>
+  def date(name: ArgumentName): Option[Date] = string(name).map(string =>
     Try(OffsetDateTime.parse(string).toInstant)
       .orElse(Try(Instant.parse(string)))
       .orElse(Try(LocalDate.parse(string).atStartOfDay(ZoneOffset.UTC).toInstant))
       .map(Date.from)
-      .getOrElse(throw InvalidToolCallException(s"'$name' must be an ISO 8601 date")))
+      .getOrElse(throw InvalidToolCallException(s"'${name.value}' must be an ISO 8601 date")))
 
-  def limit(name: String, default: Int, max: Int): Int = int(name) match {
-    case None => default
-    case Some(limit) if limit < 1 => throw InvalidToolCallException(s"'$name' must be positive")
-    case Some(limit) => Math.min(limit, max)
+  def limit(name: ArgumentName, pageSize: PageSize): Int = int(name) match {
+    case None => pageSize.default
+    case Some(limit) if limit < 1 => throw InvalidToolCallException(s"'${name.value}' must be positive")
+    case Some(limit) => Math.min(limit, pageSize.max)
   }
 }
 
@@ -202,11 +207,11 @@ class ToolEmailReader @Inject()(val messageIdManager: MessageIdManager,
       SMono(messageFastViewProjection.retrieve(ids.asJava))
         .map(_.asScala.toMap)
         .flatMap(fastViews => previews(session, ids.filterNot(fastViews.contains))
-          .map(computed => fastViews.view.mapValues(_.getPreview.getValue).toMap ++ computed))
+          .map(computed => fastViews.view.mapValues(_.getPreview).toMap ++ computed))
         .flatMap(previews => SFlux(messageIdManager.getMessagesReactive(ids.asJava, FetchGroup.HEADERS, session))
           .collectSeq()
           .flatMap(results => SFlux.fromIterable(group(ids, results))
-            .concatMap(messages => summary(messages, previews.getOrElse(messages.head.getMessageId, "")))
+            .concatMap(messages => summary(messages, previews.getOrElse(messages.head.getMessageId, Preview.EMPTY)))
             .collectSeq()))
     }
 
@@ -232,7 +237,7 @@ class ToolEmailReader @Inject()(val messageIdManager: MessageIdManager,
     ids.distinct.flatMap(byId.get)
   }
 
-  private def previews(session: MailboxSession, missing: Seq[MessageId]): SMono[Map[MessageId, String]] =
+  private def previews(session: MailboxSession, missing: Seq[MessageId]): SMono[Map[MessageId, Preview]] =
     if (missing.isEmpty) {
       SMono.just(Map())
     } else {
@@ -244,16 +249,16 @@ class ToolEmailReader @Inject()(val messageIdManager: MessageIdManager,
         .map(_.toMap)
     }
 
-  private def computePreview(result: MessageResult): SMono[(MessageId, String)] =
+  private def computePreview(result: MessageResult): SMono[(MessageId, Preview)] =
     SMono.fromCallable(() => fastViewFactory.from(result))
       .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
       .doOnNext(fastView => SMono(messageFastViewProjection.store(result.getMessageId, fastView))
         .doOnError(e => ToolEmailReader.LOGGER.error("Cannot store the fast view projection of {}", result.getMessageId, e))
         .subscribeOn(Schedulers.parallel())
         .subscribe())
-      .map(fastView => result.getMessageId -> fastView.getPreview.getValue)
+      .map(fastView => result.getMessageId -> fastView.getPreview)
 
-  private def summary(results: Seq[MessageResult], preview: String): SMono[ToolEmailSummary] = {
+  private def summary(results: Seq[MessageResult], preview: Preview): SMono[ToolEmailSummary] = {
     val first = results.head
     ToolEmail.parse(first.getHeaders.getInputStream)
       .map(message => ToolEmailSummary(
@@ -261,7 +266,7 @@ class ToolEmailReader @Inject()(val messageIdManager: MessageIdManager,
         receivedAt = first.getInternalDate,
         flags = first.getFlags,
         message = message,
-        preview = preview))
+        preview = preview.getValue))
   }
 
   private def email(results: Seq[MessageResult]): SMono[ToolEmail] = {
