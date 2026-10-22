@@ -42,10 +42,10 @@ object CalendarEventSerializer {
   private implicit val calendarAttendeeMailToWrites: Writes[CalendarAttendeeMailTo] = mail => JsString(mail.serialize())
   private implicit val calendarAttendeeParticipationStatusWrites: Writes[CalendarAttendeeParticipationStatus] = Json.valueWrites[CalendarAttendeeParticipationStatus]
   private implicit val calendarAttendeeExpectReplyWrites: Writes[CalendarAttendeeExpectReply] = Json.valueWrites[CalendarAttendeeExpectReply]
-  private implicit val calendarAttendeeFieldWrites: Writes[CalendarAttendeeField] = Json.writes[CalendarAttendeeField]
+  private implicit val calendarAttendeeFieldWrites: Writes[CalendarAttendeeField] = Json.configured(JsonConfiguration(optionHandlers = OptionHandlers.WritesNull)).writes[CalendarAttendeeField]
   private implicit val calendarDescriptionFieldFormat: Writes[CalendarDescriptionField] = Json.valueWrites[CalendarDescriptionField]
   private implicit val calendarLocationFieldFormat: Writes[CalendarLocationField] = Json.valueWrites[CalendarLocationField]
-  private implicit val calendarOrganizerFieldWrites: Writes[CalendarOrganizerField] = Json.writes[CalendarOrganizerField]
+  private implicit val calendarOrganizerFieldWrites: Writes[CalendarOrganizerField] = Json.configured(JsonConfiguration(optionHandlers = OptionHandlers.WritesNull)).writes[CalendarOrganizerField]
   private implicit val calendarStartFieldWrites: Writes[CalendarStartField] = Json.valueWrites[CalendarStartField]
   private implicit val calendarEndFieldWrites: Writes[CalendarEndField] = Json.valueWrites[CalendarEndField]
   private implicit val calendarDurationWrites : Writes[CalendarDurationField] = duration => JsString(duration.value.toString)
@@ -75,7 +75,7 @@ object CalendarEventSerializer {
   private implicit val calendarExcludedRecurrenceRulesFieldWrites: Writes[ExcludedRecurrenceRulesField] = Json.valueWrites[ExcludedRecurrenceRulesField]
   private implicit val calendarRecurrenceIdFieldWrites: Writes[RecurrenceIdField] = Json.valueWrites[RecurrenceIdField]
 
-  private implicit val calendarEventParsedWrites: Writes[CalendarEventParsed] = Json.writes[CalendarEventParsed]
+  private implicit val calendarEventParsedWrites: Writes[CalendarEventParsed] = Json.configured(JsonConfiguration(optionHandlers = OptionHandlers.WritesNull)).writes[CalendarEventParsed]
   private implicit val calendarEventParsedListWrites: Writes[CalendarEventParsedList] = Json.valueWrites[CalendarEventParsedList]
   private implicit val parsedMapWrites: Writes[Map[BlobId, CalendarEventParsedList]] = mapWrites[BlobId, CalendarEventParsedList](s => s.value.value, calendarEventParsedListWrites)
 

@@ -359,7 +359,7 @@ trait LabelGetMethodContract {
   @Tag(CategoryTags.BASIC_FEATURE)
   def shouldReturnAllPropertiesByDefault(server: GuiceJamesServer): Unit = {
     val label1: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
-      .addLabel(bobUsername, LabelCreationRequest(DisplayName("Label 1"), Some(RED), Some("Description for label 1")))
+      .addLabel(bobUsername, LabelCreationRequest(DisplayName("Label 1"), None, None))
 
     val response = `given`
       .body(s"""{
@@ -399,8 +399,8 @@ trait LabelGetMethodContract {
          |						"id": "${label1.id.id.value}",
          |						"displayName": "Label 1",
          |						"keyword": "${label1.keyword.flagName}",
-         |						"color": "${RED.value}",
-         |            "description": "Description for label 1",
+         |						"color": null,
+         |            "description": null,
          |            "readOnly": false
          |					}]
          |			},
@@ -456,7 +456,7 @@ trait LabelGetMethodContract {
   @Test
   def shouldSupportFilteringByProperties(server: GuiceJamesServer): Unit = {
     val label1: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
-      .addLabel(bobUsername, LabelCreationRequest(DisplayName("Label 1"), Some(RED), Some("Description for label 1")))
+      .addLabel(bobUsername, LabelCreationRequest(DisplayName("Label 1"), None, None))
 
     val response = `given`
       .body(s"""{
@@ -467,7 +467,7 @@ trait LabelGetMethodContract {
                |			{
                |				"accountId": "${bobAccountId}",
                |				"ids": null,
-               |				"properties": ["keyword"]
+               |				"properties": ["keyword", "color"]
                |			},
                |			"c1"
                |		]
@@ -495,7 +495,7 @@ trait LabelGetMethodContract {
          |				"state": "${INSTANCE.value}",
          |				"list": [{
          |						"id": "${label1.id.id.value}",
-         |						"keyword": "${label1.keyword.flagName}"
+         |						"color": null, "keyword": "${label1.keyword.flagName}"
          |					}]
          |			},
          |			"c1"

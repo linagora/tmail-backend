@@ -28,7 +28,7 @@ import org.apache.james.jmap.core.{Properties, SetError, UuidState}
 import org.apache.james.jmap.json.mapWrites
 import org.apache.james.jmap.mail.Keyword
 import play.api.libs.functional.syntax._
-import play.api.libs.json.{Format, JsArray, JsError, JsObject, JsResult, JsString, JsSuccess, JsValue, Json, JsonValidationError, Reads, Writes, __}
+import play.api.libs.json.{Format, JsArray, JsError, JsObject, JsResult, JsString, JsSuccess, JsValue, Json, JsonConfiguration, JsonValidationError, OptionHandlers, Reads, Writes, __}
 
 object LabelSerializer {
   private implicit val labelIdFormat: Format[LabelId] = Json.valueFormat[LabelId]
@@ -50,7 +50,7 @@ object LabelSerializer {
 
   private implicit val keywordWrites: Writes[Keyword] = Json.valueWrites[Keyword]
   private implicit val displayNameFormat: Format[DisplayName] = Json.valueFormat[DisplayName]
-  private implicit val labelWrites: Writes[Label] = Json.writes[Label]
+  private implicit val labelWrites: Writes[Label] = Json.configured(JsonConfiguration(optionHandlers = OptionHandlers.WritesNull)).writes[Label]
   private implicit val stateWrites: Writes[UuidState] = Json.valueWrites[UuidState]
   private implicit val labelGetResponseWrites: Writes[LabelGetResponse] = Json.writes[LabelGetResponse]
 

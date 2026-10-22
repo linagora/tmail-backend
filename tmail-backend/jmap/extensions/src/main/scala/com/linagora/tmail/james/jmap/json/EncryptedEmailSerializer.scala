@@ -23,7 +23,7 @@ import com.linagora.tmail.james.jmap.model.{EncryptedEmailDetailedResponse, Encr
 import org.apache.james.jmap.core.UuidState
 import org.apache.james.jmap.mail.{EmailIds, EmailNotFound, UnparsedEmailId}
 import org.apache.james.mailbox.model.MessageId
-import play.api.libs.json.{JsResult, JsString, JsValue, Json, Reads, Writes}
+import play.api.libs.json.{JsResult, JsString, JsValue, Json, JsonConfiguration, OptionHandlers, Reads, Writes}
 
 object EncryptedEmailSerializer {
   private implicit val unparsedMessageIdReads: Reads[UnparsedEmailId] = Json.valueReads[UnparsedEmailId]
@@ -38,7 +38,7 @@ object EncryptedEmailSerializer {
   private implicit val encryptedEmailGetResponseWrites: Writes[EncryptedEmailGetResponse] = Json.writes[EncryptedEmailGetResponse]
   private implicit val encryptedHtmlWrites: Writes[EncryptedHtml] = Json.valueWrites[EncryptedHtml]
   private implicit val encryptedAttachmentMetadataWrites: Writes[EncryptedAttachmentMetadata] = Json.valueWrites[EncryptedAttachmentMetadata]
-  private implicit val encryptedEmailDetailedViewWrites: Writes[EncryptedEmailDetailedView] = Json.writes[EncryptedEmailDetailedView]
+  private implicit val encryptedEmailDetailedViewWrites: Writes[EncryptedEmailDetailedView] = Json.configured(JsonConfiguration(optionHandlers = OptionHandlers.WritesNull)).writes[EncryptedEmailDetailedView]
   private implicit val encryptedEmailDetailedResponseWrites: Writes[EncryptedEmailDetailedResponse] = Json.writes[EncryptedEmailDetailedResponse]
 
   def deserializeEncryptedEmailGetRequest(input: JsValue): JsResult[EncryptedEmailGetRequest] =
