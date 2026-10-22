@@ -41,6 +41,12 @@ import scala.jdk.CollectionConverters._
 import scala.util.Try
 
 object CreateDraftTool {
+  val TO: ArgumentName = ArgumentName("to")
+  val CC: ArgumentName = ArgumentName("cc")
+  val SUBJECT: ArgumentName = ArgumentName("subject")
+  val BODY: ArgumentName = ArgumentName("body")
+  val IN_REPLY_TO: ArgumentName = ArgumentName("inReplyTo")
+
   private val markdownParser: Parser = Parser.builder().build()
 
   private val htmlRenderer: HtmlRenderer = HtmlRenderer.builder()
@@ -61,8 +67,8 @@ object CreateDraftTool {
       .setContentTransferEncoding("quoted-printable")
 }
 
-case class DraftRequest(to: Seq[Mailbox],
-                        cc: Seq[Mailbox],
+case class DraftRequest(to: Option[Seq[Mailbox]],
+                        cc: Option[Seq[Mailbox]],
                         subject: Option[String],
                         body: String,
                         inReplyTo: Option[MessageId])
@@ -82,25 +88,25 @@ class CreateDraftTool @Inject()(val mailboxManager: MailboxManager,
     "parameters" -> Json.obj(
       "type" -> "object",
       "properties" -> Json.obj(
-        "to" -> Json.obj(
+        CreateDraftTool.TO.value -> Json.obj(
           "type" -> "array",
           "items" -> Json.obj("type" -> "string"),
           "description" -> "Recipient email addresses"),
-        "cc" -> Json.obj(
+        CreateDraftTool.CC.value -> Json.obj(
           "type" -> "array",
           "items" -> Json.obj("type" -> "string"),
           "description" -> "CC email addresses"),
-        "subject" -> Json.obj(
+        CreateDraftTool.SUBJECT.value -> Json.obj(
           "type" -> "string",
           "description" -> "Email subject"),
-        "body" -> Json.obj(
+        CreateDraftTool.BODY.value -> Json.obj(
           "type" -> "string",
           "description" -> ("Body of the email. **Markdown** is supported for basic styling: " +
             "**bold**, *italic*, lists, [links](https://example.com), `code`...")),
-        "inReplyTo" -> Json.obj(
+        CreateDraftTool.IN_REPLY_TO.value -> Json.obj(
           "type" -> "string",
           "description" -> "Id of the email being replied to, as returned by search_emails")),
-      "required" -> Json.arr("body")))
+      "required" -> Json.arr(CreateDraftTool.BODY.value)))
 
   override def execute(session: MailboxSession, arguments: JsObject): SMono[JsValue] =
     SMono.fromCallable(() => parse(ToolArguments(arguments)))
@@ -126,11 +132,14 @@ class CreateDraftTool @Inject()(val mailboxManager: MailboxManager,
 
   private def parse(args: ToolArguments): DraftRequest =
     DraftRequest(
-      to = args.strings("to").map(address),
-      cc = args.strings("cc").map(address),
-      subject = args.string("subject"),
-      body = args.requiredString("body"),
-      inReplyTo = args.string("inReplyTo").map(ToolIds.messageId(messageIdFactory, _)))
+      to = addresses(args, CreateDraftTool.TO),
+      cc = addresses(args, CreateDraftTool.CC),
+      subject = args.string(CreateDraftTool.SUBJECT),
+      body = args.requiredString(CreateDraftTool.BODY),
+      inReplyTo = args.string(CreateDraftTool.IN_REPLY_TO).map(ToolIds.messageId(messageIdFactory, _)))
+
+  private def addresses(args: ToolArguments, name: ArgumentName): Option[Seq[Mailbox]] =
+    Option(args.strings(name).map(address)).filter(_.nonEmpty)
 
   private def address(value: String): Mailbox =
     Try(DefaultAddressParser.DEFAULT.parseMailbox(value))
@@ -145,8 +154,8 @@ class CreateDraftTool @Inject()(val mailboxManager: MailboxManager,
   private def message(session: MailboxSession, request: DraftRequest, original: Option[ToolEmail]): Message = {
     val builder = Message.Builder.of()
     builder.setFrom(session.getUser.asString())
-    if (request.to.nonEmpty) builder.setTo(request.to.asJava)
-    if (request.cc.nonEmpty) builder.setCc(request.cc.asJava)
+    request.to.map(_.asJava).foreach(builder.setTo)
+    request.cc.map(_.asJava).foreach(builder.setCc)
     builder.setSubject(subject(request, original))
     builder.setDate(new Date())
     builder.generateMessageId(session.getUser.getDomainPart.map(_.asString()).orElse("localhost"))

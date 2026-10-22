@@ -25,6 +25,7 @@ import play.api.libs.json.{JsObject, JsValue, Json}
 import reactor.core.scala.publisher.SMono
 
 object GetEmailDetailsTool {
+  val ID: ArgumentName = ArgumentName("id")
   val BODY_MAX_LENGTH = 5000
 }
 
@@ -42,13 +43,13 @@ class GetEmailDetailsTool @Inject()(val emailReader: ToolEmailReader,
     "parameters" -> Json.obj(
       "type" -> "object",
       "properties" -> Json.obj(
-        "id" -> Json.obj(
+        GetEmailDetailsTool.ID.value -> Json.obj(
           "type" -> "string",
           "description" -> "Id of the email to retrieve, as returned by list_emails or search_emails")),
-      "required" -> Json.arr("id")))
+      "required" -> Json.arr(GetEmailDetailsTool.ID.value)))
 
   override def execute(session: MailboxSession, arguments: JsObject): SMono[JsValue] =
-    SMono.fromCallable(() => ToolIds.messageId(messageIdFactory, ToolArguments(arguments).requiredString("id")))
+    SMono.fromCallable(() => ToolIds.messageId(messageIdFactory, ToolArguments(arguments).requiredString(GetEmailDetailsTool.ID)))
       .flatMap(id => emailReader.readOne(session, id))
       .map(email => {
         val body = email.textBody.getOrElse("")
