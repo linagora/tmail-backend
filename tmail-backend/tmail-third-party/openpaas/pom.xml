@@ -137,6 +137,13 @@
             <groupId>com.googlecode.ez-vcard</groupId>
             <artifactId>ez-vcard</artifactId>
             <version>0.12.1</version>
+            <exclusions>
+                <!-- Only used for hCard HTML rendering, which we do not use (CVE-2026-84939) -->
+                <exclusion>
+                    <groupId>org.freemarker</groupId>
+                    <artifactId>freemarker</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <dependency>
             <groupId>org.mongodb</groupId>
