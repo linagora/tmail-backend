@@ -7,7 +7,8 @@
 #   /root/conf                    <- src/main/conf
 #   /root/classes                 <- target/classes
 #   /root/resources               <- target/classes (resources live there too)
-#   /root/libs/*                  <- target/dependency (repository layout) + src/main/extensions-jars
+#   /root/libs/*                  <- target/dependency (FLAT layout, see below)
+#                                     + src/main/extensions-jars
 #   /root/glowroot                <- target/glowroot (downloaded + filtered in the package phase)
 #   /root/async-profiler          <- target/async-profiler-2.9-linux-x64
 #   /root/eml-template            <- src/main/eml-template
@@ -33,9 +34,11 @@
 # ) with target/dependency populated by dependency:copy-dependencies (FLAT
 # layout: the classpath wildcard /root/libs/* only matches jars in that exact
 # directory, not subdirectories, so a maven repository-layout tree would be
-# invisible to the JVM). CI runs copy-dependencies explicitly before the
-# docker build; locally `mvn install` of the distributed module leaves the
-# same content in target/dependency via the same goal when run as documented.
+# invisible to the JVM). target/dependency is ONLY produced by an explicit
+# dependency:copy-dependencies invocation — it is not bound to the Maven
+# lifecycle, so `mvn install`/`mvn package` alone do not create it. CI runs
+# copy-dependencies explicitly before the docker build; locally run the same
+# mvn command shown above.
 #
 # NON-ROOT: everything is installed under /root with ownership given to the
 # `james` user (uid 1000), which is also the user the container runs as.
@@ -51,13 +54,14 @@
 # in the conf files. The EXPOSE statements below are metadata only; they
 # mirror the jib configuration for documentation purposes.
 
-FROM eclipse-temurin:26-jre-noble
+# Base image: hardcoded copy of the `jib.base.image` property in the root
+# pom.xml — keep it in sync with that property when it changes.
+FROM eclipse-temurin:27-jre-resolute
 
 ARG JAMES_USER=james
 ARG JAMES_UID=1000
 
-# curl and healthcheck dependencies: we ship a static curl binary (see below),
-# so nothing extra is needed here.
+# static curl binary for runtime use (no HEALTHCHECK is defined).
 # eclipse-temurin:noble ships an `ubuntu` user/group at uid/gid 1000; rename
 # it to `james` instead of creating a conflicting one.
 RUN groupmod -n ${JAMES_USER} ubuntu && \
@@ -103,10 +107,15 @@ COPY target/async-profiler-2.9-linux-x64 /root/async-profiler/
 COPY target/curl/curl /usr/local/bin/curl
 
 # Fix ownership + permissions (jib equivalent permissions block).
+# [ -f ... ] && makes a missing file a loud build failure instead of a
+# silently skipped chmod.
 RUN chmod 755 /usr/bin/james-cli /usr/local/bin/curl && \
+    [ -f /root/async-profiler/profiler.sh ] && \
+    [ -f /root/async-profiler/build/libasyncProfiler.so ] && \
+    [ -f /root/async-profiler/build/jattach ] && \
     chmod 755 /root/async-profiler/profiler.sh \
               /root/async-profiler/build/libasyncProfiler.so \
-              /root/async-profiler/build/jattach 2>/dev/null || true && \
+              /root/async-profiler/build/jattach && \
     chown -R ${JAMES_USER}:${JAMES_USER} /root
 
 USER ${JAMES_USER}

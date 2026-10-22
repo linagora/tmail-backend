@@ -340,12 +340,17 @@ Please drop these changes from the pull request, or ask a linagora member to car
               withCredentials([usernamePassword(credentialsId: 'dockerHub',
                       usernameVariable: 'DOCKER_HUB_CREDENTIAL_USR', passwordVariable: 'DOCKER_HUB_CREDENTIAL_PSW')]) {
                 dir("tmail-backend") {
-                  // The distributed image is built from a Dockerfile (non-root,
-                  // no jib) instead of the jib PR image. The runtime deps and
-                  // the module jars must be in place before the docker build:
-                  // dependency:copy-dependencies fills target/dependency
-                  // (repository layout), consumed as /root/libs by the
-                  // Dockerfile. docker login/logout wraps all pushes.
+                  // The distributed image is built from a Dockerfile (non-root)
+                  // instead of jib. The runtime deps and the module jars must
+                  // be in place before the docker build: dependency:copy-
+                  // dependencies fills target/dependency (FLAT layout — no
+                  // useRepositoryLayout, the classpath wildcard /root/libs/*
+                  // only matches jars in that exact directory), consumed as
+                  // /root/libs by the Dockerfile. docker login/logout wraps
+                  // all pushes.
+                  // Rebuild the artifacts first so a reused workspace cannot
+                  // push a stale image.
+                  sh 'mvn -f apps/distributed/pom.xml package -DskipTests -T1C'
                   sh 'mvn -f apps/distributed/pom.xml dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=target/dependency'
                   sh 'echo "$DOCKER_HUB_CREDENTIAL_PSW" | docker login -u "$DOCKER_HUB_CREDENTIAL_USR" --password-stdin'
                   sh 'docker build -f dockerfiles/distributed/Dockerfile -t linagora/tmail-backend-pr:$CHANGE_ID apps/distributed'
@@ -356,6 +361,8 @@ Please drop these changes from the pull request, or ask a linagora member to car
                   sh 'docker build -f dockerfiles/distributed/Dockerfile -t linagora/tmail-backend-distributed-pr:ai-$CHANGE_ID apps/distributed'
                   sh 'docker push linagora/tmail-backend-distributed-pr:ai-$CHANGE_ID'
                   sh 'rm -f apps/distributed/src/main/extensions-jars/tmail-ai-bot-jar-with-dependencies.jar'
+                  // migration-proxy still builds via jib, also for PRs.
+                  sh 'mvn -Pci jib:build -Djib.to.image=linagora/tmail-migration-proxy-pr -Djib.to.tags=$CHANGE_ID -pl apps/migration-proxy'
                   sh 'docker logout'
                 }
               }
@@ -396,12 +403,15 @@ Please drop these changes from the pull request, or ask a linagora member to car
               withCredentials([usernamePassword(credentialsId: 'dockerHub',
                       usernameVariable: 'DOCKER_HUB_CREDENTIAL_USR', passwordVariable: 'DOCKER_HUB_CREDENTIAL_PSW')]) {
                 dir("tmail-backend") {
-                  // The distributed image is built from a Dockerfile (non-root,
-                  // no jib): the runtime deps must be in place before the
-                  // docker build, dependency:copy-dependencies fills
-                  // target/dependency (repository layout), consumed as
-                  // /root/libs by the Dockerfile. memory/postgresql/
-                  // migration-proxy keep their jib-based builds below.
+                  // The distributed image is built from a Dockerfile (non-root):
+                  // the runtime deps must be in place before the docker build,
+                  // dependency:copy-dependencies fills target/dependency (FLAT
+                  // layout — no useRepositoryLayout), consumed as /root/libs by
+                  // the Dockerfile. memory/postgresql/migration-proxy keep
+                  // their jib-based builds below.
+                  // Rebuild the artifacts first so a reused workspace cannot
+                  // push a stale image.
+                  sh 'mvn -f apps/distributed/pom.xml package -DskipTests -T1C'
                   sh 'mvn -f apps/distributed/pom.xml dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=target/dependency'
                   sh 'echo "$DOCKER_HUB_CREDENTIAL_PSW" | docker login -u "$DOCKER_HUB_CREDENTIAL_USR" --password-stdin'
                   sh 'docker build -f dockerfiles/distributed/Dockerfile -t linagora/tmail-backend:distributed-$DOCKER_TAG apps/distributed'
@@ -409,12 +419,10 @@ Please drop these changes from the pull request, or ask a linagora member to car
                   sh 'mvn -Pci jib:build -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -Djib.to.tags=memory-$DOCKER_TAG -pl apps/memory -X'
                   sh 'mvn -Pci jib:build -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -Djib.to.tags=postgresql-$DOCKER_TAG -pl apps/postgres -X'
                   sh 'mvn -Pci jib:build -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -Djib.to.tags=$DOCKER_TAG -pl apps/migration-proxy -X'
-                  sh 'docker logout'
 
                   // Build tmail distributed AI image: same Dockerfile with the
                   // AI bot extension jar placed in extensions-jars before the build.
                   sh 'cp tmail-third-party/ai-bot/target/tmail-ai-bot-jar-with-dependencies.jar apps/distributed/src/main/extensions-jars'
-                  sh 'echo "$DOCKER_HUB_CREDENTIAL_PSW" | docker login -u "$DOCKER_HUB_CREDENTIAL_USR" --password-stdin'
                   sh 'docker build -f dockerfiles/distributed/Dockerfile -t linagora/tmail-backend:distributed-ai-$DOCKER_TAG apps/distributed'
                   sh 'docker push linagora/tmail-backend:distributed-ai-$DOCKER_TAG'
                   sh 'rm -f apps/distributed/src/main/extensions-jars/tmail-ai-bot-jar-with-dependencies.jar'
