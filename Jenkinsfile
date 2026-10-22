@@ -340,6 +340,11 @@ Please drop these changes from the pull request, or ask a linagora member to car
               withCredentials([usernamePassword(credentialsId: 'dockerHub',
                       usernameVariable: 'DOCKER_HUB_CREDENTIAL_USR', passwordVariable: 'DOCKER_HUB_CREDENTIAL_PSW')]) {
                 dir("tmail-backend") {
+                  // Per-build isolated docker config: concurrent builds on the
+                  // same agent must not share the default $HOME/.docker
+                  // config.json, and logout must run even if a build step fails.
+                  env.DOCKER_CONFIG = "${WORKSPACE}/.docker-config-pr-${env.CHANGE_ID}"
+                  try {
                   // The distributed image is built from a Dockerfile (non-root)
                   // instead of jib. The runtime deps and the module jars must
                   // be in place before the docker build: dependency:copy-
@@ -363,7 +368,11 @@ Please drop these changes from the pull request, or ask a linagora member to car
                   sh 'rm -f apps/distributed/src/main/extensions-jars/tmail-ai-bot-jar-with-dependencies.jar'
                   // migration-proxy still builds via jib, also for PRs.
                   sh 'mvn -Pci jib:build -Djib.to.image=linagora/tmail-migration-proxy-pr -Djib.to.tags=$CHANGE_ID -pl apps/migration-proxy'
-                  sh 'docker logout'
+                  } finally {
+                    // Always logout and drop the isolated config dir, even on failure.
+                    sh 'DOCKER_CONFIG=$DOCKER_CONFIG docker logout || true'
+                    sh 'rm -rf "$DOCKER_CONFIG"'
+                  }
                 }
               }
 
@@ -403,6 +412,11 @@ Please drop these changes from the pull request, or ask a linagora member to car
               withCredentials([usernamePassword(credentialsId: 'dockerHub',
                       usernameVariable: 'DOCKER_HUB_CREDENTIAL_USR', passwordVariable: 'DOCKER_HUB_CREDENTIAL_PSW')]) {
                 dir("tmail-backend") {
+                  // Per-build isolated docker config: concurrent builds on the
+                  // same agent must not share the default $HOME/.docker
+                  // config.json, and logout must run even if a build step fails.
+                  env.DOCKER_CONFIG = "${WORKSPACE}/.docker-config-dist-${env.BUILD_NUMBER}"
+                  try {
                   // The distributed image is built from a Dockerfile (non-root):
                   // the runtime deps must be in place before the docker build,
                   // dependency:copy-dependencies fills target/dependency (FLAT
@@ -426,7 +440,11 @@ Please drop these changes from the pull request, or ask a linagora member to car
                   sh 'docker build -f dockerfiles/distributed/Dockerfile -t linagora/tmail-backend:distributed-ai-$DOCKER_TAG apps/distributed'
                   sh 'docker push linagora/tmail-backend:distributed-ai-$DOCKER_TAG'
                   sh 'rm -f apps/distributed/src/main/extensions-jars/tmail-ai-bot-jar-with-dependencies.jar'
-                  sh 'docker logout'
+                  } finally {
+                    // Always logout and drop the isolated config dir, even on failure.
+                    sh 'DOCKER_CONFIG=$DOCKER_CONFIG docker logout || true'
+                    sh 'rm -rf "$DOCKER_CONFIG"'
+                  }
                 }
               }
             }
