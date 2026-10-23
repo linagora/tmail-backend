@@ -252,6 +252,8 @@ class TeamMailboxesQuotaExtensionsContract {
          |                "state": "b14eb58e-1975-396c-b362-d6514724ff35",
          |                "list": [
          |                    {
+         |                        "softLimit": null,
+         |                        "description": null,
          |                        "used": 0,
          |                        "name": "#TeamMailbox&marketing@domain.tld@domain.tld:account:count:Mail",
          |                        "warnLimit": 36,
@@ -264,6 +266,8 @@ class TeamMailboxesQuotaExtensionsContract {
          |                        "scope": "account"
          |                    },
          |                    {
+         |                        "softLimit": null,
+         |                        "description": null,
          |                        "used": 0,
          |                        "name": "#private&bob@domain.tld@domain.tld:account:count:Mail",
          |                        "warnLimit": 9,
@@ -333,6 +337,8 @@ class TeamMailboxesQuotaExtensionsContract {
          |                "state": "d827da1e-f368-3747-be57-be123a4d0a80",
          |                "list": [
          |                    {
+         |                        "softLimit": null,
+         |                        "description": null,
          |                        "used": 0,
          |                        "name": "#private&bob@domain.tld@domain.tld:account:count:Mail",
          |                        "warnLimit": 9,
@@ -415,6 +421,8 @@ class TeamMailboxesQuotaExtensionsContract {
            |                "state": "70c4fad2-c9b8-39c7-9d71-85d4cadeda62",
            |                "list": [
            |                    {
+           |                        "softLimit": null,
+           |                        "description": null,
            |                        "used": 0,
            |                        "name": "#TeamMailbox&marketing@domain.tld@domain.tld:account:count:Mail",
            |                        "warnLimit": 36,
@@ -427,6 +435,8 @@ class TeamMailboxesQuotaExtensionsContract {
            |                        "scope": "account"
            |                    },
            |                    {
+           |                        "softLimit": null,
+           |                        "description": null,
            |                        "used": 0,
            |                        "name": "#private&bob@domain.tld@domain.tld:account:count:Mail",
            |                        "warnLimit": 9,
@@ -439,6 +449,8 @@ class TeamMailboxesQuotaExtensionsContract {
            |                        "scope": "account"
            |                    },
            |                    {
+           |                        "softLimit": null,
+           |                        "description": null,
            |                        "used": 0,
            |                        "name": "#private&cedric@domain.tld@domain.tld:account:count:Mail",
            |                        "warnLimit": 79,
