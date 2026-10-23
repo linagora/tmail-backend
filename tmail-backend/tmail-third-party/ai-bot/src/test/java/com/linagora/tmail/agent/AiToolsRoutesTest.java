@@ -18,13 +18,11 @@
 package com.linagora.tmail.agent;
 
 import static io.restassured.RestAssured.given;
-import static io.restassured.RestAssured.requestSpecification;
 import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
+import static org.apache.http.HttpStatus.SC_BAD_REQUEST;
+import static org.apache.http.HttpStatus.SC_NOT_FOUND;
 import static org.apache.http.HttpStatus.SC_OK;
 import static org.apache.http.HttpStatus.SC_UNAUTHORIZED;
-import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
-import static org.apache.james.jmap.rfc8621.contract.Fixture.authScheme;
-import static org.apache.james.jmap.rfc8621.contract.Fixture.baseRequestSpecBuilder;
 import static org.hamcrest.Matchers.equalTo;
 
 import java.io.BufferedReader;
@@ -33,71 +31,26 @@ import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 
-import com.google.inject.util.Modules;
-import com.linagora.tmail.common.AIBaseModule;
-import com.linagora.tmail.james.app.MemoryConfiguration;
-import com.linagora.tmail.james.app.MemoryServer;
-import com.linagora.tmail.james.jmap.event.ApplyWhenFilter;
-import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
-import com.linagora.tmail.saas.api.SaaSAccountRepository;
-import com.linagora.tmail.saas.api.memory.MemorySaaSAccountRepository;
-import com.linagora.tmail.saas.filter.SaaSPayingUser;
-import com.linagora.tmail.saas.model.SaaSAccount;
+import io.restassured.http.ContentType;
+import io.restassured.http.Method;
+import io.restassured.response.ValidatableResponse;
 import io.restassured.specification.RequestSpecification;
 import org.apache.james.GuiceJamesServer;
-import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.core.Username;
-import org.apache.james.jmap.http.UserCredential;
-import org.apache.james.utils.DataProbeImpl;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import reactor.core.publisher.Mono;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 
-public class AiToolsRoutesTest {
-
-    private static final String AI_TOOLS_ENDPOINT = "/ai/v1/tools";
-    static final String DOMAIN = "domain.tld";
-    static final String PASSWORD = "secret";
-    private static final Username PAYING_USER = Username.fromLocalPartWithDomain("paying", DOMAIN);
-    private static final Username NON_PAYING_USER = Username.fromLocalPartWithDomain("nonpaying", DOMAIN);
-    private static final Username USER_WITH_NO_SAAS = Username.fromLocalPartWithDomain("no-saas", DOMAIN);
-    private static final MemorySaaSAccountRepository SAAS_REPOSITORY = new MemorySaaSAccountRepository();
+public class AiToolsRoutesTest extends AiToolsTestBase {
 
     @RegisterExtension
-    static JamesServerExtension jamesServerExtension =  new JamesServerBuilder<MemoryConfiguration>(tmpDir ->
-        MemoryConfiguration.builder()
-            .workingDirectory(tmpDir)
-            .configurationFromClasspath()
-            .usersRepository(DEFAULT)
-            .build())
-        .server(configuration -> MemoryServer.createServer(configuration)
-            .overrideWith(new LinagoraTestJMAPServerModule())
-            .overrideWith(Modules.override(new AIBaseModule())
-                .with(binder -> {
-                    binder.bind(ApplyWhenFilter.class).toInstance(new SaaSPayingUser(SAAS_REPOSITORY));
-                    binder.bind(SaaSAccountRepository.class).toInstance(SAAS_REPOSITORY);
-                })))
-        .build();
-
-    @BeforeEach
-    void setUp(GuiceJamesServer jamesServer) throws Exception {
-        jamesServer.getProbe(DataProbeImpl.class).fluent()
-            .addDomain(DOMAIN)
-            .addUser(PAYING_USER.asString(), PASSWORD)
-            .addUser(NON_PAYING_USER.asString(), PASSWORD)
-            .addUser(USER_WITH_NO_SAAS.asString(), PASSWORD);
-
-        Mono.from(SAAS_REPOSITORY.upsertSaasAccount(PAYING_USER, new SaaSAccount(true, true))).block();
-        Mono.from(SAAS_REPOSITORY.upsertSaasAccount(NON_PAYING_USER, new SaaSAccount(true, false))).block();
-
-        requestSpecification = baseRequestSpecBuilder(jamesServer)
-            .setBasePath(AI_TOOLS_ENDPOINT)
-            .setAuth(authScheme(new UserCredential(PAYING_USER, PASSWORD)))
-            .build();
-    }
+    static JamesServerExtension jamesServerExtension = server();
 
     @Test
     void shouldReturn200WhenAccessingAiToolsEndpoint() throws IOException {
@@ -118,50 +71,67 @@ public class AiToolsRoutesTest {
         assertThatJson(response).isEqualTo(expectedBody);
     }
 
-    @Test
-    void aiToolsRouteShouldReturnErrorWhenWrongAuth(GuiceJamesServer jamesServer) {
-        RequestSpecification unauthorizedSpecification = baseRequestSpecBuilder(jamesServer)
-            .setBasePath(AI_TOOLS_ENDPOINT)
-            .setAuth(authScheme(new UserCredential(Username.fromLocalPartWithDomain("unknown", DOMAIN), PASSWORD)))
-            .build();
-
-        given(unauthorizedSpecification)
-        .when()
-            .get()
-        .then()
+    @ParameterizedTest
+    @EnumSource(value = Method.class, names = {"GET", "POST"})
+    void shouldReturnErrorWhenWrongAuth(Method method, GuiceJamesServer jamesServer) {
+        requestAs(jamesServer, Username.fromLocalPartWithDomain("unknown", DOMAIN), method)
             .statusCode(SC_UNAUTHORIZED)
             .contentType("application/json");
     }
 
-    @Test
-    void aiToolsRouteShouldRejectUserWithNoSaasAccount(GuiceJamesServer jamesServer) {
-        RequestSpecification noSaasSpecification = baseRequestSpecBuilder(jamesServer)
-            .setBasePath(AI_TOOLS_ENDPOINT)
-            .setAuth(authScheme(new UserCredential(USER_WITH_NO_SAAS, PASSWORD)))
-            .build();
-
-        given(noSaasSpecification)
-        .when()
-            .get()
-        .then()
+    @ParameterizedTest
+    @EnumSource(value = Method.class, names = {"GET", "POST"})
+    void shouldRejectUserWithNoSaasAccount(Method method, GuiceJamesServer jamesServer) {
+        requestAs(jamesServer, USER_WITH_NO_SAAS, method)
             .statusCode(SC_UNAUTHORIZED)
             .contentType("application/json");
     }
 
-    @Test
-    void aiToolsRouteShouldRejectNonPayingUser(GuiceJamesServer jamesServer) {
-        RequestSpecification nonPayingSpecification = baseRequestSpecBuilder(jamesServer)
-            .setBasePath(AI_TOOLS_ENDPOINT)
-            .setAuth(authScheme(new UserCredential(NON_PAYING_USER, PASSWORD)))
-            .build();
-
-        given(nonPayingSpecification)
-        .when()
-            .get()
-        .then()
+    @ParameterizedTest
+    @EnumSource(value = Method.class, names = {"GET", "POST"})
+    void shouldRejectNonPayingUser(Method method, GuiceJamesServer jamesServer) {
+        requestAs(jamesServer, NON_PAYING_USER, method)
             .statusCode(SC_UNAUTHORIZED)
             .contentType("application/json")
             .body("detail", equalTo("User is not eligible for AI tools"));
+    }
+
+    @Test
+    void postShouldAnswerWithAToolMessage() {
+        postTool("list_emails", "{}")
+            .statusCode(SC_OK)
+            .header("Access-Control-Allow-Origin", "*")
+            .contentType("application/json")
+            .body("role", equalTo("tool"))
+            .body("tool_call_id", equalTo("call_1"))
+            .body("content", equalTo("{\"mailboxId\":\"" + inboxId.serialize() + "\",\"page\":1,\"limit\":10,\"emails\":[]}"));
+    }
+
+    @Test
+    void shouldAcceptArgumentsAsAJsonString() {
+        postTool("list_emails", "\"{\\\"limit\\\": 5}\"")
+            .statusCode(SC_OK)
+            .body("content", equalTo("{\"mailboxId\":\"" + inboxId.serialize() + "\",\"page\":1,\"limit\":5,\"emails\":[]}"));
+    }
+
+    @Test
+    void shouldAcceptACallWithoutArguments() {
+        given()
+            .contentType(ContentType.JSON)
+            .body("{\"id\": \"call_1\", \"function\": {\"name\": \"list_emails\"}}")
+        .when()
+            .post()
+        .then()
+            .statusCode(SC_OK);
+    }
+
+    // The list of the tools for a GET, a call of one for a POST
+    private static ValidatableResponse requestAs(GuiceJamesServer jamesServer, Username username, Method method) {
+        RequestSpecification request = given(specificationOf(jamesServer, username));
+        if (method == Method.POST) {
+            request = request.contentType(ContentType.JSON).body(toolCall("list_emails", "{}"));
+        }
+        return request.when().request(method).then();
     }
 
     private String loadExpectedTools() throws IOException {
@@ -170,5 +140,22 @@ public class AiToolsRoutesTest {
                 .lines()
                 .collect(Collectors.joining("\n"));
         }
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("invalidCalls")
+    void shouldRejectAnInvalidCall(String description, String body, int status, String detail) {
+        post(body)
+            .statusCode(status)
+            .body("detail", equalTo(detail));
+    }
+
+    static Stream<Arguments> invalidCalls() {
+        return Stream.of(
+            Arguments.of("shouldReturnNotFoundForAnUnknownTool", toolCall("delete_everything", "{}"), SC_NOT_FOUND, "Unknown tool: delete_everything"),
+            Arguments.of("shouldRejectABodyThatIsNotJson", "not json", SC_BAD_REQUEST, "Request body is not valid JSON"),
+            Arguments.of("shouldRejectACallWithoutId", "{\"function\": {\"name\": \"list_emails\", \"arguments\": {}}}", SC_BAD_REQUEST, "Missing 'id'"),
+            Arguments.of("shouldRejectACallWithoutToolName", "{\"id\": \"call_1\", \"function\": {\"arguments\": {}}}", SC_BAD_REQUEST, "Missing 'function.name'"),
+            Arguments.of("shouldRejectArgumentsThatAreNotAnObject", toolCall("list_emails", "\"[1, 2]\""), SC_BAD_REQUEST, "'function.arguments' is not a valid JSON object"));
     }
 }

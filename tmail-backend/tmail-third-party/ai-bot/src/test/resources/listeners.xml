@@ -21,6 +21,10 @@
 
 <listeners>
     <listener>
+        <class>org.apache.james.jmap.event.PopulateEmailQueryViewListener</class>
+        <async>false</async>
+    </listener>
+    <listener>
         <class>com.linagora.tmail.mailet.rag.RagListener</class>
     </listener>
 </listeners>
