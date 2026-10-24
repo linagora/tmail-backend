@@ -176,6 +176,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |                     "expectReply": true
            |                 },
            |                 {
+           |                     "role": null,
            |                     "name": "Laura ROYET",
            |                     "mailto": "royet@domain.tld",
            |                     "kind": "INDIVIDUAL",
@@ -247,6 +248,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |        "parsed": {
            |            "$blobId": [
            |                {
+           |                    "duration": null,
            |                    "method": "REQUEST",
            |                    "priority": 5,
            |                    "location": "Réunion Microsoft Teams",
@@ -257,6 +259,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |                    "description": "Petit point cassandra",
            |                    "participants": [
            |                        {
+           |                            "kind": null,
            |                            "name": "btellier",
            |                            "mailto": "btellier@example.com",
            |                            "role": "REQ-PARTICIPANT",
@@ -264,6 +267,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |                            "expectReply": true
            |                        },
            |                        {
+           |                            "kind": null,
            |                            "name": "Bob",
            |                            "mailto": "bob@example.com",
            |                            "role": "REQ-PARTICIPANT",
@@ -336,6 +340,12 @@ trait LinagoraCalendarEventParseMethodContract {
            |		"accountId": "$bobAccountId",
            |		"parsed": {
            |			"$blobId": [{
+           |					"timeZone": null,
+           |					"duration": null,
+           |					"location": null,
+           |					"priority": null,
+           |					"privacy": null,
+           |					"organizer": null,
            |					"method": "PUBLISH",
            |					"description": "Example event 1",
            |					"participants": [
@@ -361,6 +371,12 @@ trait LinagoraCalendarEventParseMethodContract {
            |					"uid": "1285935469767a7c7c1a9b3f0df8003a@yoursever.com"
            |				},
            |				{
+           |					"timeZone": null,
+           |					"duration": null,
+           |					"location": null,
+           |					"priority": null,
+           |					"privacy": null,
+           |					"organizer": null,
            |					"method": "PUBLISH",
            |					"description": "Example event 2",
            |					"participants": [
@@ -463,6 +479,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |                        "expectReply": true
            |                    },
            |                    {
+           |                        "role": null,
            |                        "name": "Laura ROYET",
            |                        "mailto": "royet@domain.tld",
            |                        "kind": "INDIVIDUAL",
@@ -491,6 +508,8 @@ trait LinagoraCalendarEventParseMethodContract {
            |                   }]
            |            }],
            |            "$blobId2": [{
+           |                "timeZone": null,
+           |                "status": null,
            |                "uid": "ea127690-0440-404b-af98-9823c855a284",
            |                "title": "Sprint planning #24",
            |                "description": "description 456",
@@ -511,6 +530,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |                },
            |                "participants": [
            |                    {
+           |                        "role": null,
            |                        "name": "Matthieu EXT_BAECHLER",
            |                        "mailto": "baechler@domain.tld",
            |                        "kind": "INDIVIDUAL",
@@ -518,6 +538,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |                        "expectReply": true
            |                    },
            |                    {
+           |                        "role": null,
            |                        "name": "Laura ROYET",
            |                        "mailto": "royet@domain.tld",
            |                        "kind": "INDIVIDUAL",
@@ -697,6 +718,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |                        "expectReply": true
            |                    },
            |                    {
+           |                        "role": null,
            |                        "name": "Laura ROYET",
            |                        "mailto": "royet@domain.tld",
            |                        "kind": "INDIVIDUAL",
@@ -959,6 +981,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |                            "expectReply": true
            |                        },
            |                        {
+           |                            "role": null,
            |                            "name": "Laura ROYET",
            |                            "mailto": "royet@domain.tld",
            |                            "kind": "INDIVIDUAL",
@@ -1104,6 +1127,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |                        "expectReply": true
            |                    },
            |                    {
+           |                        "role": null,
            |                        "name": "Laura ROYET",
            |                        "mailto": "royet@domain.tld",
            |                        "kind": "INDIVIDUAL",
@@ -1218,6 +1242,11 @@ trait LinagoraCalendarEventParseMethodContract {
            |        "accountId": "$bobAccountId",
            |        "parsed": {
            |            "$blobId": [{
+           |                "description": null,
+           |                "duration": null,
+           |                "location": null,
+           |                "priority": null,
+           |                "status": null,
            |                "uid": "037aaad3-17c9-47c8-bd6b-f2cbfe925ef7",
            |                "title": "MOB: integration tests",
            |                "start": "2023-03-09T14:00:00",
@@ -1415,6 +1444,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |                     "expectReply": true
            |                 },
            |                 {
+           |                     "role": null,
            |                     "name": "Laura ROYET",
            |                     "mailto": "royet@domain.tld",
            |                     "kind": "INDIVIDUAL",
@@ -1516,6 +1546,7 @@ trait LinagoraCalendarEventParseMethodContract {
            |                     "expectReply": true
            |                 },
            |                 {
+           |                     "role": null,
            |                     "name": "Laura ROYET",
            |                     "mailto": "royet@domain.tld",
            |                     "kind": "INDIVIDUAL",
@@ -1690,6 +1721,9 @@ trait LinagoraCalendarEventParseMethodContract {
            |  "method": "REPLY",
            |  "participants": [
            |    {
+           |      "kind": null,
+           |      "role": null,
+           |      "expectReply": null,
            |      "name": "Laura ROYET",
            |      "mailto": "bob@domain.tld",
            |      "participationStatus": "ACCEPTED"
@@ -1698,9 +1732,8 @@ trait LinagoraCalendarEventParseMethodContract {
            |}]""".stripMargin)
 
     assertThatJson(response)
-      .inPath("methodResponses[0][1].parsed.*[0]")
-      .node("organizer")
-      .isAbsent()
+      .inPath(s"methodResponses[0][1].parsed['$blobId'][0].organizer")
+      .isNull()
   }
 
   private def uploadAndGetBlobId(payload: InputStream): String =

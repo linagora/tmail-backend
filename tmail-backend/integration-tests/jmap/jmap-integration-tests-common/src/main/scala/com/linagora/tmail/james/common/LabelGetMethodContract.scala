@@ -400,8 +400,8 @@ trait LabelGetMethodContract {
          |						"displayName": "Label 1",
          |						"keyword": "${label1.keyword.flagName}",
          |						"color": "${RED.value}",
-         |            "description": "Description for label 1",
-         |            "readOnly": false
+         |						"description": "Description for label 1",
+         |						"readOnly": false
          |					}]
          |			},
          |			"c1"
@@ -502,6 +502,72 @@ trait LabelGetMethodContract {
          |		]
          |	]
          |}""".stripMargin)
+  }
+
+  @Test
+  def shouldReturnPropertiesWithoutValueAsNullByDefault(server: GuiceJamesServer): Unit = {
+    val label: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
+      .addLabel(bobUsername, LabelCreationRequest(DisplayName("Label 1"), None, None))
+
+    val response = `given`
+      .body(s"""{
+               |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+               |  "methodCalls": [["Label/get", {
+               |    "accountId": "$bobAccountId",
+               |    "ids": ["${label.id.id.value}"]
+               |  }, "c1"]]
+               |}""".stripMargin)
+      .when
+      .post
+      .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].list")
+      .isEqualTo(s"""[{
+                    |  "id": "${label.id.id.value}",
+                    |  "displayName": "Label 1",
+                    |  "keyword": "${label.keyword.flagName}",
+                    |  "color": null,
+                    |  "description": null,
+                    |  "readOnly": false
+                    |}]""".stripMargin)
+  }
+
+  @Test
+  def shouldReturnRequestedPropertiesWithoutValueAsNull(server: GuiceJamesServer): Unit = {
+    val label: Label = server.getProbe(classOf[JmapGuiceLabelProbe])
+      .addLabel(bobUsername, LabelCreationRequest(DisplayName("Label 1"), None, None))
+
+    val response = `given`
+      .body(s"""{
+               |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:labels"],
+               |  "methodCalls": [["Label/get", {
+               |    "accountId": "$bobAccountId",
+               |    "ids": ["${label.id.id.value}"],
+               |    "properties": ["color", "description"]
+               |  }, "c1"]]
+               |}""".stripMargin)
+      .when
+      .post
+      .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].list")
+      .isEqualTo(s"""[{
+                    |  "id": "${label.id.id.value}",
+                    |  "color": null,
+                    |  "description": null
+                    |}]""".stripMargin)
   }
 
   @Test

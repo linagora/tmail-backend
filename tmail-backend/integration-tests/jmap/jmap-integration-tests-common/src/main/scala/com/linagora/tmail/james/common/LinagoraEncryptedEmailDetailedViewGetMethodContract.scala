@@ -455,6 +455,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
            |    "notFound": [],
            |    "list": [
            |        {
+           |            "encryptedAttachmentMetadata": null,
            |            "id": "${messageId.serialize()}",
            |            "encryptedPreview": "$${json-unit.ignore}",
            |            "hasAttachment": false,
@@ -473,7 +474,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
     // Because message doesn't have attachment
     assertThatJson(response)
       .inPath("methodResponses[0][1].list[0].encryptedAttachmentMetadata")
-      .isAbsent()
+      .isNull()
   }
 
   @Test
@@ -526,18 +527,21 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
            |    "notFound": [],
            |    "list": [
            |            {
+           |                "encryptedAttachmentMetadata": null,
            |                "id": "${messageId1.serialize()}",
            |                "encryptedPreview": "$${json-unit.ignore}",
            |                "hasAttachment": false,
            |                "encryptedHtml": "$${json-unit.ignore}"
            |            },
            |            {
+           |                "encryptedAttachmentMetadata": null,
            |                "id": "${messageId2.serialize()}",
            |                "encryptedPreview": "$${json-unit.ignore}",
            |                "hasAttachment": false,
            |                "encryptedHtml": "$${json-unit.ignore}"
            |            },
            |            {
+           |                "encryptedAttachmentMetadata": null,
            |                "id": "${messageId3.serialize()}",
            |                "encryptedPreview": "$${json-unit.ignore}",
            |                "hasAttachment": false,
@@ -587,6 +591,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
            |    "state": "${INSTANCE.value}",
            |    "list": [
            |            {
+           |                "encryptedAttachmentMetadata": null,
            |                "id": "${existMessageId.serialize()}",
            |                "encryptedPreview": "$${json-unit.ignore}",
            |                "hasAttachment": false,
@@ -988,6 +993,7 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
            |                "notFound": [],
            |                "list": [
            |                        {
+           |                            "encryptedAttachmentMetadata": null,
            |                            "id": "$${json-unit.ignore}",
            |                            "encryptedPreview": "$${json-unit.ignore}",
            |                            "encryptedHtml": "$${json-unit.ignore}",

@@ -799,6 +799,11 @@ abstract class LinagoraCalendarEventRejectMethodContract {
              |    "hasAttachment": true,
              |    "attachments": [
              |        {
+             |            "name": null,
+             |            "disposition": null,
+             |            "cid": null,
+             |            "language": null,
+             |            "location": null,
              |            "charset": "UTF-8",
              |            "size": ${replyIcsSize(874)},
              |            "partId": "3",
@@ -806,6 +811,9 @@ abstract class LinagoraCalendarEventRejectMethodContract {
              |            "type": "text/calendar"
              |        },
              |        {
+             |            "cid": null,
+             |            "language": null,
+             |            "location": null,
              |            "charset": "US-ASCII",
              |            "disposition": "attachment",
              |            "size": ${replyIcsSize(874)},
@@ -912,6 +920,11 @@ abstract class LinagoraCalendarEventRejectMethodContract {
              |    "hasAttachment": true,
              |    "attachments": [
              |        {
+             |            "name": null,
+             |            "disposition": null,
+             |            "cid": null,
+             |            "language": null,
+             |            "location": null,
              |            "charset": "UTF-8",
              |            "size": ${replyIcsSize(874)},
              |            "partId": "3",
@@ -919,6 +932,9 @@ abstract class LinagoraCalendarEventRejectMethodContract {
              |            "type": "text/calendar"
              |        },
              |        {
+             |            "cid": null,
+             |            "language": null,
+             |            "location": null,
              |            "charset": "US-ASCII",
              |            "disposition": "attachment",
              |            "size": ${replyIcsSize(874)},
