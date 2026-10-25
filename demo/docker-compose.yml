@@ -107,7 +107,7 @@ services:
   # Front of James WebAdmin for the admin SPAs: checks their LemonLDAP tokens and applies the
   # per-client profile of webadmin-proxy/configuration.json.
   webadmin-proxy:
-    image: linagora/webadmin-proxy:1.1.7
+    image: linagora/webadmin-proxy:1.1.8
     container_name: webadmin-proxy
     ports:
       - "8002:8001"
