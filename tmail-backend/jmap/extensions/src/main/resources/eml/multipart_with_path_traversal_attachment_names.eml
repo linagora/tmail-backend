@@ -1,0 +1,39 @@
+Return-Path: <from@linagora.com>
+To: to@linagora.com
+From: Lina <from@linagora.com>
+Subject: Path traversal attachment names
+Message-ID: <a8f0e1c2-2760-4c1b-9d3e-5f6a7b8c9d0e@linagora.com>
+Date: Mon, 27 Feb 2017 11:24:48 +0700
+MIME-Version: 1.0
+Content-Type: multipart/mixed;
+ boundary="------------2760BOUNDARY"
+
+This is a multi-part message in MIME format.
+--------------2760BOUNDARY
+Content-Type: text/plain; charset=utf-8; format=flowed
+Content-Transfer-Encoding: 7bit
+
+Send
+
+--------------2760BOUNDARY
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="../../zipslip.txt"
+
+zipslip
+--------------2760BOUNDARY
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="/etc/abs.txt"
+
+abs
+--------------2760BOUNDARY
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 7bit
+Content-Disposition: attachment;
+ filename="..\\..\\win.txt"
+
+win
+--------------2760BOUNDARY--

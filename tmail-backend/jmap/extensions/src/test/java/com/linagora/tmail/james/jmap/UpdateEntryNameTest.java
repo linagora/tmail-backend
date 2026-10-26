@@ -40,8 +40,34 @@ public class UpdateEntryNameTest {
         assertThat(actual).isEqualTo(expected);
     }
 
+    @ParameterizedTest
+    @MethodSource("provideUnsafeEntryNames")
+    public void sanitizeEntryNameShouldRemovePathTraversal(String input, String expected) {
+        assertThat(ZipUtil.sanitizeEntryName(input)).isEqualTo(expected);
+    }
+
+    private static Stream<Arguments> provideUnsafeEntryNames() {
+        return Stream.of(
+            Arguments.of("text.txt", "text.txt"),
+            Arguments.of("../../zipslip.txt", "zipslip.txt"),
+            Arguments.of("/etc/abs.txt", "abs.txt"),
+            Arguments.of("..\\..\\win.txt", "win.txt"),
+            Arguments.of("C:\\Windows\\evil.txt", "evil.txt"),
+            Arguments.of("C:evil.txt", "evil.txt"),
+            Arguments.of("evil\u0000\n.txt", "evil.txt"),
+            Arguments.of("..", "noname"),
+            Arguments.of(".", "noname"),
+            Arguments.of("dir/", "noname"),
+            Arguments.of("", "noname"),
+            Arguments.of("..file.txt", "..file.txt"));
+    }
+
     private static Stream<Arguments> provideEntryNames() {
         return Stream.of(
+            Arguments.of(
+                ImmutableList.of("../a.txt", "/b/a.txt", "a.txt"),
+                ImmutableList.of("a.txt", "a_1.txt", "a_2.txt")
+            ),
             Arguments.of(
                 ImmutableList.of("text1", "text2", "text3"),
                 ImmutableList.of("text1", "text2", "text3")
