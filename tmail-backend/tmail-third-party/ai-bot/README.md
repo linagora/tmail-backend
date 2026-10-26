@@ -342,6 +342,12 @@ You can test the AIBot extension with the demo server.
 
 Sample configuration files are located in the `demo/tmail` directory. Modify these files as needed, and proceed with the [demo instructions](../../../demo/README.md). The default bot address is `gpt@tmail.com`.
 
+## AI tools for the assistant
+
+The AI module exposes the tools an AI assistant can use on the user's mailbox (`list_emails`, `search_emails`,
+`get_email_details`, `create_draft`,...) on `/ai/v1/tools`: `GET` lists them in the OpenAI function-calling format,
+`POST` runs a tool call. See [AIToolsRoutes.adoc](AIToolsRoutes.adoc).
+
 ## Considerations for deployment
 
 > [!NOTE] Scope of this section

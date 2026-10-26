@@ -33,6 +33,7 @@
 
     <properties>
         <langchain4j.version>0.36.2</langchain4j.version>
+        <commonmark.version>0.30.0</commonmark.version>
         <jmh.version>1.35</jmh.version>
     </properties>
 
@@ -178,6 +179,11 @@
             <groupId>com.google.inject</groupId>
             <artifactId>guice</artifactId>
             <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.commonmark</groupId>
+            <artifactId>commonmark</artifactId>
+            <version>${commonmark.version}</version>
         </dependency>
         <dependency>
             <groupId>dev.langchain4j</groupId>
