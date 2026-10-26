@@ -1,0 +1,210 @@
+= JMAP AI Tools
+
+This extension lets an AI assistant act on the user's mailbox. Twake Mail exposes a set of tools in the
+OpenAI function-calling format: the assistant gives them to the LLM, and when the LLM picks one, the assistant
+asks Twake Mail to run it for the user.
+
+Twake Mail never calls the LLM here: the assistant owns the conversation, Twake Mail only describes and runs
+the tools.
+
+== Authentication and eligibility
+
+Both endpoints use the JMAP authentication of the server (the strategies of `authentication.strategy.rfc8621`
+in `jmap.properties`: Basic, JWT, OIDC...). Tools always run as the authenticated user, on their own mailboxes.
+
+The user must also be eligible for AI features (the `ApplyWhenFilter` of the AI module, for example the SaaS
+paying users). Otherwise both endpoints answer `401` with the detail `User is not eligible for AI tools`.
+
+== List the tools
+
+----
+GET /ai/v1/tools
+----
+
+Returns every tool, sorted by name, in the OpenAI function-calling format, so the assistant can pass the list
+to the LLM as is:
+
+----
+{
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "create_draft",
+        "description": "Create an email draft in the user's **Drafts** folder. ...",
+        "parameters": {
+          "type": "object",
+          "properties": { ... },
+          "required": ["body"]
+        }
+      }
+    },
+    ...
+  ]
+}
+----
+
+== Run a tool
+
+----
+POST /ai/v1/tools
+----
+
+The body is the tool call returned by the LLM, as is. `arguments` can be a JSON object, or a string containing
+a JSON object (as OpenAI sends it):
+
+----
+{
+  "id": "call_123",
+  "type": "function",
+  "function": {
+    "name": "search_emails",
+    "arguments": "{\"unread\": true, \"after\": \"2026-10-13\"}"
+  }
+}
+----
+
+The answer is a `tool` message the assistant appends to the conversation. `content` is the result of the tool,
+serialized as a JSON string:
+
+----
+{
+  "role": "tool",
+  "tool_call_id": "call_123",
+  "content": "{\"emails\":[{\"id\":\"...\",\"from\":\"...\",\"subject\":\"...\",...}]}"
+}
+----
+
+Numbers and booleans are also accepted as strings (`"limit": "5"`, `"unread": "true"`), as some assistants only
+send strings.
+
+=== Errors
+
+Errors are JSON problem details (`status`, `detail`):
+
+[cols="1,3"]
+|===
+| Status | When
+
+| `400`
+| The body is not JSON, `id` or `function.name` is missing, `function.arguments` is not a JSON object, or an
+argument is invalid (for example `'limit' must be an integer`, `Missing 'body'`, `Invalid email id: ...`).
+
+| `401`
+| The user is not authenticated, or not eligible for AI tools.
+
+| `404`
+| Unknown tool (`Unknown tool: ...`), email not found or not readable by the user (`Email ... not found`),
+mailbox not found or not readable by the user (`Mailbox not found`).
+
+| `500`
+| Unexpected error.
+|===
+
+== Tools
+
+=== list_emails
+
+Lists the emails of a mailbox, most recent first, as the user sees them. It is cheaper than `search_emails`,
+and the LLM is told to try it first.
+
+[cols="1,1,3"]
+|===
+| Argument | Type | Description
+
+| `mailboxId` | string | Mailbox to list. The Inbox by default.
+| `page` | integer | Page to return, from 1 (default) to 50.
+| `limit` | integer | Emails per page: 10 by default, at most 20.
+|===
+
+Result:
+
+----
+{
+  "mailboxId": "...",
+  "page": 1,
+  "limit": 10,
+  "emails": [
+    { "id": "...", "from": "Alice <alice@domain.tld>", "subject": "...", "receivedAt": "2026-10-14T09:00:00Z",
+      "unread": true, "preview": "..." }
+  ]
+}
+----
+
+A user without an Inbox gets an empty list (`"mailboxId": null`). The preview is the one James computes for JMAP.
+
+When `view.email.query.enabled` is `true` in `jmap.properties`, the emails are read from the email query view,
+as JMAP `Email/query` does for a mailbox sorted by `receivedAt`. Otherwise they are read from the search index.
+
+=== search_emails
+
+Searches the emails of the user, most recent first. All filters are optional and combined with AND.
+
+[cols="1,1,3"]
+|===
+| Argument | Type | Description
+
+| `from` | string | Sender address or name.
+| `to` | string | Recipient address or name.
+| `text` | string | Text in the addresses, the subject, the body or the attachments (as the JMAP `text` filter).
+| `after` | string | Only emails received after this date (ISO 8601: `2026-10-14` or `2026-10-14T10:00:00Z`).
+| `before` | string | Only emails received before this date (ISO 8601).
+| `inMailboxes` | array of strings | Only emails in one of these mailboxes. All the mailboxes by default.
+| `unread` | boolean | Only unread (`true`) or read (`false`) emails.
+| `limit` | integer | Maximum number of emails: 10 by default, at most 20.
+|===
+
+Result: `{ "emails": [ ... ] }`, each email as in `list_emails`.
+
+=== get_email_details
+
+Reads one email, for example to summarize it or to reply to it.
+
+[cols="1,1,3"]
+|===
+| Argument | Type | Description
+
+| `id` | string | *Required.* Id of the email, as returned by `list_emails` or `search_emails`.
+|===
+
+Result:
+
+----
+{
+  "id": "...",
+  "from": ["Alice <alice@domain.tld>"],
+  "to": ["paying@domain.tld"],
+  "cc": [],
+  "subject": "...",
+  "receivedAt": "2026-10-14T08:30:00Z",
+  "mailboxIds": ["..."],
+  "unread": true,
+  "attachments": ["report.pdf"],
+  "body": "...",
+  "truncated": false
+}
+----
+
+The body is the text of the email (the text extracted from the HTML for an HTML only email), cut after 5000
+characters (`truncated` is then `true`).
+
+=== create_draft
+
+Creates a draft in the user's `Drafts` mailbox (created if missing). The draft is never sent: the assistant can
+open it in a composer so that the user reviews it and sends it.
+
+[cols="1,1,3"]
+|===
+| Argument | Type | Description
+
+| `to` | array of strings | Recipient addresses.
+| `cc` | array of strings | CC addresses.
+| `subject` | string | Subject. For a reply without subject, `Re: ` and the subject of the original email.
+| `body` | string | *Required.* Body, in Markdown.
+| `inReplyTo` | string | Id of the email this draft replies to: sets `In-Reply-To` and `References`, so the reply stays in the thread.
+|===
+
+Result: `{ "id": "...", "mailboxId": "...", "subject": "..." }`, `id` being the id of the draft.
+
+The draft is flagged as a draft and as seen (`$draft` and `$seen` in JMAP). Its body is a `multipart/alternative`: the Markdown as `text/plain`,
+and its rendering as `text/html`. Raw HTML written in the body is escaped, and `javascript:` links are dropped.
