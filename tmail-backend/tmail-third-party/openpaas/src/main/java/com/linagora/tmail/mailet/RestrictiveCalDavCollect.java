@@ -51,6 +51,7 @@ import com.linagora.tmail.dav.DavClient;
 import com.linagora.tmail.dav.DavUid;
 import com.linagora.tmail.dav.DavUser;
 import com.linagora.tmail.dav.DavUserProvider;
+import com.linagora.tmail.james.jmap.calendar.ICal4JTimeZoneRegistry;
 import com.linagora.tmail.james.jmap.model.CalendarUidField;
 
 import net.fortuna.ical4j.data.CalendarBuilder;
@@ -311,7 +312,7 @@ public class RestrictiveCalDavCollect extends GenericMailet {
     }
 
     private Calendar parseICalString(String icsContent) throws Exception {
-        return new CalendarBuilder().build(new StringReader(icsContent));
+        return new CalendarBuilder(new ICal4JTimeZoneRegistry()).build(new StringReader(icsContent));
     }
 
     private boolean isReply(Calendar calendar) {
