@@ -33,6 +33,7 @@ import java.util.zip.ZipOutputStream;
 import org.apache.commons.io.IOUtils;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.CharMatcher;
 import com.google.common.base.Splitter;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
@@ -43,8 +44,8 @@ import reactor.core.publisher.FluxSink;
 
 public class ZipUtil {
     private static final String DEFAULT_ENTRY_NAME = "noname";
-    private static final Splitter PATH_SEPARATORS = Splitter.onPattern("[/\\\\]");
-    private static final Pattern CONTROL_CHARACTERS = Pattern.compile("\\p{Cntrl}");
+    private static final Splitter PATH_SEPARATORS = Splitter.on(CharMatcher.anyOf("/\\"));
+    private static final CharMatcher CONTROL_CHARACTERS = CharMatcher.javaIsoControl();
     private static final Pattern DRIVE_PREFIX = Pattern.compile("^[a-zA-Z]:");
 
     public record ZipEntryStreamSource(InputStream inputStream, String entryName) {}
@@ -110,7 +111,7 @@ public class ZipUtil {
     @VisibleForTesting
     static String sanitizeEntryName(String entryName) {
         String lastPathComponent = Iterables.getLast(PATH_SEPARATORS.split(Strings.nullToEmpty(entryName)));
-        String withoutControlCharacters = CONTROL_CHARACTERS.matcher(lastPathComponent).replaceAll("").trim();
+        String withoutControlCharacters = CONTROL_CHARACTERS.removeFrom(lastPathComponent).trim();
         String sanitized = DRIVE_PREFIX.matcher(withoutControlCharacters)
             .replaceFirst("")
             .trim();
