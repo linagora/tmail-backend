@@ -110,7 +110,8 @@ public class ZipUtil {
     @VisibleForTesting
     static String sanitizeEntryName(String entryName) {
         String lastPathComponent = Iterables.getLast(PATH_SEPARATORS.split(Strings.nullToEmpty(entryName)));
-        String sanitized = DRIVE_PREFIX.matcher(CONTROL_CHARACTERS.matcher(lastPathComponent).replaceAll(""))
+        String withoutControlCharacters = CONTROL_CHARACTERS.matcher(lastPathComponent).replaceAll("").trim();
+        String sanitized = DRIVE_PREFIX.matcher(withoutControlCharacters)
             .replaceFirst("")
             .trim();
         if (sanitized.isEmpty() || sanitized.equals(".") || sanitized.equals("..")) {
