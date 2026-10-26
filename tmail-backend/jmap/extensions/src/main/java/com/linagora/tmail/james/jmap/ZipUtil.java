@@ -25,6 +25,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
 import java.util.zip.ZipOutputStream;
@@ -32,12 +33,20 @@ import java.util.zip.ZipOutputStream;
 import org.apache.commons.io.IOUtils;
 
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Splitter;
+import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.Iterables;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.FluxSink;
 
 public class ZipUtil {
+    private static final String DEFAULT_ENTRY_NAME = "noname";
+    private static final Splitter PATH_SEPARATORS = Splitter.onPattern("[/\\\\]");
+    private static final Pattern CONTROL_CHARACTERS = Pattern.compile("\\p{Cntrl}");
+    private static final Pattern DRIVE_PREFIX = Pattern.compile("^[a-zA-Z]:");
+
     public record ZipEntryStreamSource(InputStream inputStream, String entryName) {}
 
     public record ZipEntryData(String fileName, String content) {}
@@ -99,12 +108,24 @@ public class ZipUtil {
     }
 
     @VisibleForTesting
+    static String sanitizeEntryName(String entryName) {
+        String lastPathComponent = Iterables.getLast(PATH_SEPARATORS.split(Strings.nullToEmpty(entryName)));
+        String sanitized = DRIVE_PREFIX.matcher(CONTROL_CHARACTERS.matcher(lastPathComponent).replaceAll(""))
+            .replaceFirst("")
+            .trim();
+        if (sanitized.isEmpty() || sanitized.equals(".") || sanitized.equals("..")) {
+            return DEFAULT_ENTRY_NAME;
+        }
+        return sanitized;
+    }
+
+    @VisibleForTesting
     static Collection<ZipEntryStreamSource> updateEntryName(Collection<ZipEntryStreamSource> streamSources) {
         Map<String, Integer> nameCount = new HashMap<>();
         ImmutableList.Builder<ZipEntryStreamSource> result = new ImmutableList.Builder<>();
 
         for (ZipEntryStreamSource streamSource : streamSources) {
-            String entryName = streamSource.entryName();
+            String entryName = sanitizeEntryName(streamSource.entryName());
 
             if (!nameCount.containsKey(entryName)) {
                 nameCount.put(entryName, 0);

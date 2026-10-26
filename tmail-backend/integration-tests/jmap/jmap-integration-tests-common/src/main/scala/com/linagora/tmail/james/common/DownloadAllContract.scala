@@ -278,6 +278,34 @@ trait DownloadAllContract {
   }
 
   @Test
+  def downloadAllShouldStripPathsFromAttachmentNames(server: GuiceJamesServer): Unit = {
+    val path = MailboxPath.inbox(bobUsername)
+    server.getProbe(classOf[MailboxProbeImpl]).createMailbox(path)
+    val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessage(bobUsername.asString, path, AppendCommand.from(
+        ClassLoaderUtils.getSystemResourceAsSharedStream("eml/multipart_with_path_traversal_attachment_names.eml")))
+      .getMessageId
+
+    val response = `given`
+      .basePath("")
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+    .when
+      .get(s"/downloadAll/$bobAccountId/${messageId.serialize()}")
+    .`then`
+      .statusCode(SC_OK)
+      .contentType("application/zip")
+      .extract
+      .body
+      .asInputStream()
+
+    assertThat(ZipUtil.readZipData(response))
+      .containsExactlyInAnyOrder(
+        new ZipEntryData("zipslip.txt", "zipslip"),
+        new ZipEntryData("abs.txt", "abs"),
+        new ZipEntryData("win.txt", "win"))
+  }
+
+  @Test
   def downloadShouldFailWhenUnauthenticated(server: GuiceJamesServer): Unit = {
     val path = MailboxPath.inbox(bobUsername)
     server.getProbe(classOf[MailboxProbeImpl]).createMailbox(path)
