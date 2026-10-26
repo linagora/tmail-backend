@@ -56,6 +56,8 @@ public class UpdateEntryNameTest {
             Arguments.of("C:evil.txt", "evil.txt"),
             Arguments.of(" C:evil.txt", "evil.txt"),
             Arguments.of("C: evil.txt", "evil.txt"),
+            Arguments.of("C:D:evil.txt", "evil.txt"),
+            Arguments.of("C: D:evil.txt", "evil.txt"),
             Arguments.of("evil\u0000\n.txt", "evil.txt"),
             Arguments.of("..", "noname"),
             Arguments.of(".", "noname"),
