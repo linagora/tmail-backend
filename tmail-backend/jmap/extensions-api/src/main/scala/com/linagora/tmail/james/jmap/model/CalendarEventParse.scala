@@ -27,6 +27,7 @@ import com.google.common.base.Preconditions
 import com.ibm.icu.util.{TimeZone => Icu4jTimeZone}
 import com.linagora.tmail.james.jmap.AttendanceStatus
 import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier.ImplicitCalendar
+import com.linagora.tmail.james.jmap.calendar.ICal4JTimeZoneRegistry
 import com.linagora.tmail.james.jmap.model.CalendarEventParse.UnparsedBlobId
 import com.linagora.tmail.james.jmap.model.CalendarEventStatusField.EventStatus
 import com.linagora.tmail.james.jmap.model.CalendarFreeBusyStatusField.FreeBusyStatus
@@ -581,7 +582,7 @@ object CalendarEventParsed {
   def parseICal4jCalendar(calendarContent: InputStream): Calendar = {
     new CalendarBuilder(CalendarParserFactory.getInstance.get,
       new ContentHandlerContext().withSuppressInvalidProperties(true),
-      TimeZoneRegistryFactory.getInstance.createRegistry)
+      new ICal4JTimeZoneRegistry())
       .build(calendarContent)
   }
 
