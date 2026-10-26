@@ -46,7 +46,7 @@ public class ZipUtil {
     private static final String DEFAULT_ENTRY_NAME = "noname";
     private static final Splitter PATH_SEPARATORS = Splitter.on(CharMatcher.anyOf("/\\"));
     private static final CharMatcher CONTROL_CHARACTERS = CharMatcher.javaIsoControl();
-    private static final Pattern DRIVE_PREFIX = Pattern.compile("^[a-zA-Z]:");
+    private static final Pattern DRIVE_PREFIX = Pattern.compile("^([a-zA-Z]:\\s*)+");
 
     public record ZipEntryStreamSource(InputStream inputStream, String entryName) {}
 
