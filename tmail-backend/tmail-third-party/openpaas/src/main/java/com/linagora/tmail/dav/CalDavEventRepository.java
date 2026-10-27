@@ -216,33 +216,46 @@ public class CalDavEventRepository implements CalendarEventRepository {
             });
     }
 
+    // Signals, from within the calendar object updater, that the fetched version is cancelled and must not be written
+    private static class CancelledCalendarObjectException extends RuntimeException {
+        CancelledCalendarObjectException(URI calendarObjectUri) {
+            super("Calendar object '%s' is cancelled".formatted(calendarObjectUri));
+        }
+    }
+
     @Override
     public Mono<Void> updateEvent(Username username, CalendarUidField eventUid, CalendarEventModifier eventModifier) {
-        UnaryOperator<DavCalendarObject> updateEventOperator = calendarObject -> calendarObject.withUpdatePatches(eventModifier);
         return davUserProvider.provide(username)
             .flatMap(davUser -> davClient.caldav(davUser.username()).getCalendarObjects(davUser, DavUid.fromCalendarUidField(eventUid))
                 .switchIfEmpty(Flux.error(new CalendarEventNotFoundException(username, eventUid)))
-                .flatMap(calendarObject -> doUpdateCalendarObject(davUser, calendarObject, updateEventOperator, eventModifier))
+                .flatMap(calendarObject -> doUpdateCalendarObject(davUser, calendarObject, eventModifier))
                 .takeUntil(UpdateOutcome.UPDATED::equals)
                 .reduce(UpdateOutcome::mostRelevant)
                 .flatMap(outcome -> outcome.asResult(username, eventUid)));
     }
 
-    private Mono<UpdateOutcome> doUpdateCalendarObject(DavUser davUser, DavCalendarObject calendarObject,
-                                                       UnaryOperator<DavCalendarObject> updateEventOperator,
-                                                       CalendarEventModifier eventModifier) {
-        // Cancellation is checked before any write: a cancelled event must be left untouched.
+    private Mono<UpdateOutcome> doUpdateCalendarObject(DavUser davUser, DavCalendarObject calendarObject, CalendarEventModifier eventModifier) {
         // PermissionDenied remains the only reliable delegated-calendar guard, hence the outcome aggregation in updateEvent.
-        if (isCancelled(calendarObject, eventModifier)) {
-            LOGGER.debug("Skipping calendar object '{}': event is cancelled", calendarObject.uri());
-            return Mono.just(UpdateOutcome.CANCELLED);
-        }
-        return davClient.caldav(davUser.username()).updateCalendarObject(calendarObject.uri(), updateEventOperator)
+        return davClient.caldav(davUser.username()).updateCalendarObject(calendarObject.uri(), cancellationAwareUpdater(eventModifier))
             .thenReturn(UpdateOutcome.UPDATED)
+            .onErrorResume(CancelledCalendarObjectException.class, e -> {
+                LOGGER.debug("Skipping calendar object '{}': event is cancelled", calendarObject.uri());
+                return Mono.just(UpdateOutcome.CANCELLED);
+            })
             .onErrorResume(DavClientException.PermissionDenied.class, e -> {
                 LOGGER.debug("Skipping calendar object '{}': permission denied, likely a delegated calendar", calendarObject.uri());
                 return Mono.just(UpdateOutcome.SKIPPED);
             });
+    }
+
+    // Cancellation is checked on every fetched version, ETag retries included: a cancelled event must be left untouched.
+    private UnaryOperator<DavCalendarObject> cancellationAwareUpdater(CalendarEventModifier eventModifier) {
+        return calendarObject -> {
+            if (isCancelled(calendarObject, eventModifier)) {
+                throw new CancelledCalendarObjectException(calendarObject.uri());
+            }
+            return calendarObject.withUpdatePatches(eventModifier);
+        };
     }
 
     private boolean isCancelled(DavCalendarObject calendarObject, CalendarEventModifier eventModifier) {
