@@ -82,6 +82,28 @@ public class CalDavEventRepository implements CalendarEventRepository {
         }
     }
 
+    // Declared by decreasing relevance: the most relevant outcome among the calendar objects of an event wins
+    private enum UpdateOutcome {
+        UPDATED,
+        CANCELLED,
+        SKIPPED;
+
+        static UpdateOutcome mostRelevant(UpdateOutcome outcome1, UpdateOutcome outcome2) {
+            if (outcome1.compareTo(outcome2) <= 0) {
+                return outcome1;
+            }
+            return outcome2;
+        }
+
+        Mono<Void> asResult(Username username, CalendarUidField eventUid) {
+            return switch (this) {
+                case UPDATED -> Mono.empty();
+                case CANCELLED -> Mono.error(new CalendarEventCancelledException(username, eventUid));
+                case SKIPPED -> Mono.error(new CalendarEventNotFoundException(username, eventUid));
+            };
+        }
+    }
+
     private final DavClient davClient;
     private final SessionProvider sessionProvider;
     private final DavUserProvider davUserProvider;
@@ -200,29 +222,26 @@ public class CalDavEventRepository implements CalendarEventRepository {
         return davUserProvider.provide(username)
             .flatMap(davUser -> davClient.caldav(davUser.username()).getCalendarObjects(davUser, DavUid.fromCalendarUidField(eventUid))
                 .switchIfEmpty(Flux.error(new CalendarEventNotFoundException(username, eventUid)))
-                .flatMap(calendarObject -> doUpdateCalendarObject(davUser, calendarObject, username, eventUid, updateEventOperator, eventModifier))
-                .next()
-                .switchIfEmpty(Mono.error(new CalendarEventNotFoundException(username, eventUid)))
-                .then());
+                .flatMap(calendarObject -> doUpdateCalendarObject(davUser, calendarObject, updateEventOperator, eventModifier))
+                .takeUntil(UpdateOutcome.UPDATED::equals)
+                .reduce(UpdateOutcome::mostRelevant)
+                .flatMap(outcome -> outcome.asResult(username, eventUid)));
     }
 
-    private Mono<Boolean> doUpdateCalendarObject(DavUser davUser, DavCalendarObject calendarObject,
-                                                  Username username, CalendarUidField eventUid,
-                                                  UnaryOperator<DavCalendarObject> updateEventOperator,
-                                                  CalendarEventModifier eventModifier) {
-        // Cancellation is checked after the write: PermissionDenied is the only reliable delegated-calendar guard.
-        // Writing PARTSTAT on a cancelled event is acceptable (invisible to the user); the error below prevents a false success.
+    private Mono<UpdateOutcome> doUpdateCalendarObject(DavUser davUser, DavCalendarObject calendarObject,
+                                                       UnaryOperator<DavCalendarObject> updateEventOperator,
+                                                       CalendarEventModifier eventModifier) {
+        // Cancellation is checked before any write: a cancelled event must be left untouched.
+        // PermissionDenied remains the only reliable delegated-calendar guard, hence the outcome aggregation in updateEvent.
+        if (isCancelled(calendarObject, eventModifier)) {
+            LOGGER.debug("Skipping calendar object '{}': event is cancelled", calendarObject.uri());
+            return Mono.just(UpdateOutcome.CANCELLED);
+        }
         return davClient.caldav(davUser.username()).updateCalendarObject(calendarObject.uri(), updateEventOperator)
-            .thenReturn(Boolean.TRUE)
+            .thenReturn(UpdateOutcome.UPDATED)
             .onErrorResume(DavClientException.PermissionDenied.class, e -> {
                 LOGGER.debug("Skipping calendar object '{}': permission denied, likely a delegated calendar", calendarObject.uri());
-                return Mono.empty();
-            })
-            .flatMap(updated -> {
-                if (isCancelled(calendarObject, eventModifier)) {
-                    return Mono.<Boolean>error(new CalendarEventCancelledException(username, eventUid));
-                }
-                return Mono.just(Boolean.TRUE);
+                return Mono.just(UpdateOutcome.SKIPPED);
             });
     }
 
