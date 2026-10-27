@@ -112,7 +112,7 @@ When deployed with OpenPaaS CalDAV, if the event referenced by the blob does not
 }, "c1" ]]
 ```
 
-When deployed with OpenPaaS CalDAV, if the event referenced by the blob exists in the user's CalDAV calendar but has `STATUS:CANCELLED` (e.g. the organizer deleted the event and OpenPaaS propagated the cancellation to the attendee's calendar), the server would respond:
+When deployed with OpenPaaS CalDAV, if the event referenced by the blob exists in the user's CalDAV calendar but has `STATUS:CANCELLED` (e.g. the organizer deleted the event and OpenPaaS propagated the cancellation to the attendee's calendar), the server leaves the cancelled event untouched (the attendance is not recorded) and would respond:
 
 ```
 [[ "CalendarEvent/accept",
