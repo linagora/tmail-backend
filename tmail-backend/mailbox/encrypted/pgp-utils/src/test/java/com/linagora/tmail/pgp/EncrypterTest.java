@@ -36,11 +36,13 @@ import org.apache.james.mime4j.message.DefaultMessageWriter;
 import org.apache.james.mime4j.message.MultipartBuilder;
 import org.apache.james.mime4j.message.SingleBodyBuilder;
 import org.apache.james.mime4j.stream.NameValuePair;
+import org.bouncycastle.openpgp.PGPUtil;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import com.google.common.io.BaseEncoding;
 import com.google.common.io.ByteSource;
+import com.google.common.primitives.Bytes;
 
 class EncrypterTest {
     public static final String INPUT = "ga bou zo meuh\r\nBienvenue chez les shadocks.\r\n";
@@ -160,6 +162,16 @@ class EncrypterTest {
         byte[] keyBytes = ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.pub").readAllBytes();
 
         assertThat(Encrypter.readPublicKey(new ByteArrayInputStream(keyBytes)).isEncryptionKey())
+            .isTrue();
+    }
+
+    @Test
+    void readPublicKeyShouldIgnoreMarkerPackets() throws Exception {
+        // Old format marker packet (tag 10) holding "PGP", to be ignored by readers (RFC 4880 section 5.8)
+        byte[] markerPacket = {(byte) 0xa8, 0x03, 0x50, 0x47, 0x50};
+        byte[] keyPackets = PGPUtil.getDecoderStream(ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.pub")).readAllBytes();
+
+        assertThat(Encrypter.readPublicKey(new ByteArrayInputStream(Bytes.concat(markerPacket, keyPackets))).isEncryptionKey())
             .isTrue();
     }
 

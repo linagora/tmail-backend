@@ -31,8 +31,9 @@ import java.util.Set;
  */
 class PublicKeyPacketsValidator {
     private static final int USER_ATTRIBUTE_PACKET_TAG = 17;
-    // Signature, public key, trust, user ID, public subkey, user attribute, padding (RFC 9580)
-    private static final Set<Integer> PUBLIC_KEY_PACKET_TAGS = Set.of(2, 6, 12, 13, 14, USER_ATTRIBUTE_PACKET_TAG, 21);
+    // Signature, public key, marker, trust, user ID, public subkey, user attribute, padding (RFC 9580)
+    // Marker and padding packets are skipped by BouncyCastle when reading a key ring
+    private static final Set<Integer> PUBLIC_KEY_PACKET_TAGS = Set.of(2, 6, 10, 12, 13, 14, USER_ATTRIBUTE_PACKET_TAG, 21);
 
     static void validate(byte[] packets) {
         ByteBuffer buffer = ByteBuffer.wrap(packets);
