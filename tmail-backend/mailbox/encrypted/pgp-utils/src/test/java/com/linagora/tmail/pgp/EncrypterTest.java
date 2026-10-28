@@ -39,6 +39,7 @@ import org.apache.james.mime4j.stream.NameValuePair;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import com.google.common.io.BaseEncoding;
 import com.google.common.io.ByteSource;
 
 class EncrypterTest {
@@ -103,6 +104,63 @@ class EncrypterTest {
     void readPublicKeyShouldThrowOnBadFormat() {
         assertThatThrownBy(() -> Encrypter.readPublicKey(new ByteArrayInputStream("bad".getBytes(StandardCharsets.UTF_8))))
             .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void readPublicKeyShouldRejectAnAbsurdUserAttributeSubpacketLength() {
+        byte[] payload = BaseEncoding.base64().decode("j4/R4v8+QI/R//8AAQI=");
+
+        assertThatThrownBy(() -> Encrypter.readPublicKey(new ByteArrayInputStream(payload)))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void readPublicKeyShouldRejectAnArmoredAbsurdUserAttributeSubpacketLength() {
+        String armoredKey = """
+            -----BEGIN PGP PUBLIC KEY BLOCK-----
+
+            j4/R4v8+QI/R//8AAQI=
+            -----END PGP PUBLIC KEY BLOCK-----
+            """;
+
+        assertThatThrownBy(() -> Encrypter.readPublicKey(new ByteArrayInputStream(armoredKey.getBytes(StandardCharsets.UTF_8))))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void readPublicKeyShouldRejectAUserAttributeSubpacketLengthExceedingThePacket() {
+        // New format user attribute packet (tag 17) whose subpacket announces 0x3e408fd1 bytes
+        byte[] payload = {(byte) 0xd1, 0x05, (byte) 0xff, 0x3e, 0x40, (byte) 0x8f, (byte) 0xd1};
+
+        assertThatThrownBy(() -> Encrypter.readPublicKey(new ByteArrayInputStream(payload)))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("1044418513");
+    }
+
+    @Test
+    void readPublicKeyShouldRejectAPacketLengthExceedingThePayload() {
+        // New format public key packet (tag 6) announcing 0x7fffffff bytes
+        byte[] payload = {(byte) 0xc6, (byte) 0xff, 0x7f, (byte) 0xff, (byte) 0xff, (byte) 0xff, 0x04};
+
+        assertThatThrownBy(() -> Encrypter.readPublicKey(new ByteArrayInputStream(payload)))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void readPublicKeyShouldRejectTooBigKeys() {
+        byte[] payload = new byte[2 * 1024 * 1024];
+        payload[0] = (byte) 0x99;
+
+        assertThatThrownBy(() -> Encrypter.readPublicKey(new ByteArrayInputStream(payload)))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void readPublicKeyShouldAcceptValidKeys() throws Exception {
+        byte[] keyBytes = ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.pub").readAllBytes();
+
+        assertThat(Encrypter.readPublicKey(new ByteArrayInputStream(keyBytes)).isEncryptionKey())
+            .isTrue();
     }
 
     @Test
