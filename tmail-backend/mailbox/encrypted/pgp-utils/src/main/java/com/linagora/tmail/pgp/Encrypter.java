@@ -20,6 +20,7 @@ package com.linagora.tmail.pgp;
 
 import java.io.BufferedOutputStream;
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
@@ -53,10 +54,12 @@ import org.bouncycastle.openpgp.operator.jcajce.JcePublicKeyKeyEncryptionMethodG
 import com.github.fge.lambdas.Throwing;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteSource;
+import com.google.common.io.ByteStreams;
 import com.google.common.io.FileBackedOutputStream;
 
 public class Encrypter {
     private static final int FILE_THRESHOLD = 100 * 1024;
+    private static final int MAX_KEY_SIZE = 1024 * 1024;
 
     public static Encrypter forKeys(Collection<byte[]> armoredKeys) {
         return new Encrypter(createEncryptor(armoredKeys));
@@ -81,7 +84,9 @@ public class Encrypter {
     }
 
     public static PGPPublicKey readPublicKey(InputStream in) throws Exception {
-        PGPPublicKeyRingCollection pgpPub = new PGPPublicKeyRingCollection(PGPUtil.getDecoderStream(in),
+        byte[] packets = readBounded(PGPUtil.getDecoderStream(in));
+        PublicKeyPacketsValidator.validate(packets);
+        PGPPublicKeyRingCollection pgpPub = new PGPPublicKeyRingCollection(new ByteArrayInputStream(packets),
             new BcKeyFingerprintCalculator());
 
         return ImmutableList.copyOf(pgpPub.getKeyRings())
@@ -90,6 +95,14 @@ public class Encrypter {
             .filter(PGPPublicKey::isEncryptionKey)
             .findFirst()
             .orElseThrow(() -> new IllegalArgumentException("Can't find encryption key in key ring."));
+    }
+
+    private static byte[] readBounded(InputStream in) throws IOException {
+        byte[] packets = ByteStreams.limit(in, MAX_KEY_SIZE + 1).readAllBytes();
+        if (packets.length > MAX_KEY_SIZE) {
+            throw new IllegalArgumentException("PGP public key exceeds " + MAX_KEY_SIZE + " bytes");
+        }
+        return packets;
     }
 
     private final PGPEncryptedDataGenerator pgpEncryptedDataGenerator;
