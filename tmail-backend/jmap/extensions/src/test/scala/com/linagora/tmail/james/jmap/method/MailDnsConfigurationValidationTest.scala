@@ -21,16 +21,19 @@ package com.linagora.tmail.james.jmap.method
 import com.linagora.tmail.saas.api.DomainSendingValidator
 import com.linagora.tmail.saas.api.memory.MemorySaaSAccountRepository
 import org.apache.james.core.Domain
+import org.apache.james.mailbox.MailboxSession
 import org.apache.james.server.core.MailImpl
 import org.apache.mailet.{Attribute, AttributeValue, Mail}
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
+import org.mockito.Mockito.mock
 import reactor.core.publisher.Mono
 
 class MailDnsConfigurationValidationTest {
   private val repository = new MemorySaaSAccountRepository()
   private val validation = new MailDnsConfigurationValidation(new DomainSendingValidator(repository))
   private val domain = Domain.of("migration.example")
+  private val session: MailboxSession = mock(classOf[MailboxSession])
 
   @Test
   def shouldRejectPendingDomainAndAcceptAfterValidation(): Unit = {
@@ -38,9 +41,9 @@ class MailDnsConfigurationValidationTest {
       .addAttribute(new Attribute(Mail.JMAP_AUTH_USER, AttributeValue.of("alice@migration.example"))).build()
     try {
       Mono.from(repository.setMailDnsConfigurationValidated(domain, false)).block()
-      assertThat(validation.validate(mail).block().get.`type`.value).isEqualTo("forbiddenToSend")
+      assertThat(validation.validate(mail, session).block().get.`type`.value).isEqualTo("forbiddenToSend")
       Mono.from(repository.setMailDnsConfigurationValidated(domain, true)).block()
-      assertThat(validation.validate(mail).block().isEmpty).isTrue
+      assertThat(validation.validate(mail, session).block().isEmpty).isTrue
     } finally {
       mail.dispose()
     }
@@ -52,7 +55,7 @@ class MailDnsConfigurationValidationTest {
       .addAttribute(new Attribute(Mail.JMAP_AUTH_USER, AttributeValue.of("alice@migration.example"))).build()
     try {
       Mono.from(repository.setMailDnsConfigurationValidated(domain, false)).block()
-      assertThat(validation.validate(mail).block().get.`type`.value).isEqualTo("forbiddenToSend")
+      assertThat(validation.validate(mail, session).block().get.`type`.value).isEqualTo("forbiddenToSend")
     } finally {
       mail.dispose()
     }
@@ -64,7 +67,7 @@ class MailDnsConfigurationValidationTest {
       .addAttribute(new Attribute(Mail.JMAP_AUTH_USER, AttributeValue.of("alice@other.example"))).build()
     try {
       Mono.from(repository.setMailDnsConfigurationValidated(domain, false)).block()
-      assertThat(validation.validate(mail).block().get.`type`.value).isEqualTo("forbiddenToSend")
+      assertThat(validation.validate(mail, session).block().get.`type`.value).isEqualTo("forbiddenToSend")
     } finally {
       mail.dispose()
     }
@@ -74,7 +77,7 @@ class MailDnsConfigurationValidationTest {
   def shouldPreserveExistingDomainBehavior(): Unit = {
     val mail = MailImpl.builder().name("submission").sender("alice@migration.example").build()
     try {
-      assertThat(validation.validate(mail).block().isEmpty).isTrue
+      assertThat(validation.validate(mail, session).block().isEmpty).isTrue
     } finally {
       mail.dispose()
     }

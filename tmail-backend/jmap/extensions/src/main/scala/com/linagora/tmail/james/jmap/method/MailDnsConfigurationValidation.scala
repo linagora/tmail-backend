@@ -25,13 +25,14 @@ import org.apache.james.core.Username
 import org.apache.james.jmap.core.SetError
 import org.apache.james.jmap.core.SetError.{SetErrorDescription, SetErrorType}
 import org.apache.james.jmap.method.EmailSubmissionSetValidation
+import org.apache.james.mailbox.MailboxSession
 import org.apache.mailet.Mail
 import reactor.core.scala.publisher.SMono
 
 class MailDnsConfigurationValidation @Inject()(domainSendingValidator: DomainSendingValidator) extends EmailSubmissionSetValidation {
   private val forbiddenToSend: SetErrorType = "forbiddenToSend"
 
-  override def validate(mail: Mail): SMono[Option[SetError]] = {
+  override def validate(mail: Mail, mailboxSession: MailboxSession): SMono[Option[SetError]] = {
     val authenticatedUser = mail.getAttribute(Mail.JMAP_AUTH_USER)
       .map(attribute => Username.of(attribute.getValue.getValue.toString))
     SMono(domainSendingValidator.canSend(authenticatedUser, mail.getMaybeSender))
