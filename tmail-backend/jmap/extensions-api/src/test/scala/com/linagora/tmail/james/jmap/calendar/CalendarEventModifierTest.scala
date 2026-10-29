@@ -240,6 +240,7 @@ class CalendarEventModifierTest {
     assertThatThrownBy(() => testee.withPartStat("bob@james.org", PartStat.ACCEPTED, calendar).apply(calendar))
       .isInstanceOf(classOf[IllegalArgumentException])
       .hasMessage("Invalid calendar property VERSION")
+      .hasCauseInstanceOf(classOf[RuntimeException])
   }
 
   @Test
