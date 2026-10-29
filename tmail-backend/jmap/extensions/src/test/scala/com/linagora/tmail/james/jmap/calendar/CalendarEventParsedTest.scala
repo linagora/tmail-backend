@@ -118,6 +118,27 @@ class CalendarEventParsedTest {
   }
 
   @Test
+  def endShouldBeEmptyWhenDtStartHasNoValue(): Unit = {
+    val icsPayload = """BEGIN:VCALENDAR
+                       |VERSION:2.0
+                       |PRODID:-//Example//EN
+                       |METHOD:REQUEST
+                       |BEGIN:VEVENT
+                       |UID:1@example.com
+                       |DTSTAMP:20250101T000000Z
+                       |DTSTART;TZID=Europe/Paris:
+                       |SUMMARY:Meeting
+                       |END:VEVENT
+                       |END:VCALENDAR
+                       |""".stripMargin
+
+    val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(new ByteArrayInputStream(icsPayload.getBytes())).head
+
+    assertThat(calendarEventParsed.end.isEmpty).isTrue
+    assertThat(calendarEventParsed.title.map(_.value).orNull).isEqualTo("Meeting")
+  }
+
+  @Test
   def shouldParseStartAndEndTimeOfAllDayEvent(): Unit = {
     val icsPayload = """BEGIN:VCALENDAR
                        |PRODID:-//Google Inc//Google Calendar 70.9054//EN

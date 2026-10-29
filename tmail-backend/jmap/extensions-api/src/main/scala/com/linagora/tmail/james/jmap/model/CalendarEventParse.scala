@@ -212,7 +212,9 @@ case class CalendarStartField(value: ZonedDateTime) extends AnyVal {
 
 object CalendarEndField {
   def from(calendarEvent: VEvent): Option[CalendarEndField] =
-    calendarEvent.getEndDate[Temporal]().toScala
+    Try(calendarEvent.getEndDate[Temporal]().toScala)
+      .toOption
+      .flatten
       .map(endDate => endDate.getDate)
       .flatMap(temporal => VEventTemporalUtil.temporalToZonedDateTime(temporal, VEventTemporalUtil.getAlternativeZoneId(calendarEvent)))
       .map(CalendarEndField(_))
