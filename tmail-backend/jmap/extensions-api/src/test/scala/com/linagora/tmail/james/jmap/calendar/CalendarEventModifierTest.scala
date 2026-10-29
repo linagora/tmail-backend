@@ -221,6 +221,7 @@ class CalendarEventModifierTest {
   @Test
   def applyShouldRejectPropertiesThatCannotBeCopied(): Unit = {
     // ical4j keeps some invalid values its copy() can not round-trip, cf https://github.com/linagora/tmail-backend/issues/2798
+    // Here the invalid property is `VERSION:2;//SabreN`: parsing accepts it, but copying it fails
     val calendar: Calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
       s"""BEGIN:VCALENDAR
          |VERSION:2;//SabreN
@@ -238,6 +239,7 @@ class CalendarEventModifierTest {
 
     assertThatThrownBy(() => testee.withPartStat("bob@james.org", PartStat.ACCEPTED, calendar).apply(calendar))
       .isInstanceOf(classOf[IllegalArgumentException])
+      .hasMessage("Invalid calendar property VERSION")
   }
 
   @Test
