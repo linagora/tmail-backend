@@ -219,6 +219,28 @@ class CalendarEventModifierTest {
   }
 
   @Test
+  def applyShouldRejectPropertiesThatCannotBeCopied(): Unit = {
+    // ical4j keeps some invalid values its copy() can not round-trip, cf https://github.com/linagora/tmail-backend/issues/2798
+    val calendar: Calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+      s"""BEGIN:VCALENDAR
+         |VERSION:2;//SabreN
+         |PRODID:-//test//EN
+         |METHOD:REQUEST
+         |BEGIN:VEVENT
+         |DTSTART:20250108T090000Z
+         |UID:1@example.com
+         |DTSTAMP:20250101T000000Z
+         |ORGANIZER:mailto:alice@example.com
+         |ATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:bob@james.org
+         |END:VEVENT
+         |END:VCALENDAR
+         |""".stripMargin.getBytes("UTF-8")))
+
+    assertThatThrownBy(() => testee.withPartStat("bob@james.org", PartStat.ACCEPTED, calendar).apply(calendar))
+      .isInstanceOf(classOf[IllegalArgumentException])
+  }
+
+  @Test
   def shouldSucceedWhenEventContainsCustomXProperties(): Unit = {
     // ical4j `Calendar.copy()` throws `UnsupportedOperationException` on custom `X-` properties, cf https://github.com/linagora/tmail-backend/issues/2471
     val calendarWithXProperties: Calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
