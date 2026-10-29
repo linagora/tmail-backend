@@ -23,7 +23,6 @@ import jakarta.inject.Singleton;
 import org.apache.james.modules.protocols.SmtpDefaultSaslMechanismFactories;
 import org.apache.james.protocols.api.sasl.SaslMechanismFactory;
 import org.apache.james.protocols.sasl.OauthBearerSaslMechanismFactory;
-import org.apache.james.protocols.sasl.PlainSaslMechanismFactory;
 import org.apache.james.protocols.sasl.XOauth2SaslMechanismFactory;
 import org.apache.james.protocols.smtp.core.esmtp.LoginSaslMechanismFactory;
 
@@ -38,8 +37,7 @@ public class TMailSMTPModule extends AbstractModule {
     @SmtpDefaultSaslMechanismFactories
     ImmutableList<SaslMechanismFactory> provideDefaultSmtpSaslMechanismFactories(OauthBearerSaslMechanismFactory oauthBearer,
                                                                                  XOauth2SaslMechanismFactory xoauth2) {
-        TMailPlainSaslMechanismFactory plain = new TMailPlainSaslMechanismFactory(false,
-            PlainSaslMechanismFactory.IGNORE_REQUIRE_SSL_CONFIGURATION);
+        TMailPlainSaslMechanismFactory plain = new TMailPlainSaslMechanismFactory(false);
         return ImmutableList.of(new LoginSaslMechanismFactory(plain), plain, oauthBearer, xoauth2);
     }
 }
