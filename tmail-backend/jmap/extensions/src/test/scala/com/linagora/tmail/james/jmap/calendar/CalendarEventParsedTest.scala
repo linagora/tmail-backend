@@ -263,6 +263,48 @@ class CalendarEventParsedTest {
   }
 
   @Test
+  def durationShouldSupportDayBasedValues(): Unit = {
+    val icsPayload = """BEGIN:VCALENDAR
+                       |VERSION:2.0
+                       |PRODID:-//Example//EN
+                       |METHOD:REQUEST
+                       |BEGIN:VEVENT
+                       |UID:1@example.com
+                       |DTSTAMP:20250101T000000Z
+                       |DTSTART;VALUE=DATE:20250101
+                       |DURATION:P1D
+                       |SUMMARY:All day
+                       |END:VEVENT
+                       |END:VCALENDAR
+                       |""".stripMargin
+
+    val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(new ByteArrayInputStream(icsPayload.getBytes())).head
+
+    assertThat(calendarEventParsed.duration.get.value).isEqualTo(java.time.Duration.ofDays(1))
+  }
+
+  @Test
+  def durationShouldSupportWeekBasedValues(): Unit = {
+    val icsPayload = """BEGIN:VCALENDAR
+                       |VERSION:2.0
+                       |PRODID:-//Example//EN
+                       |METHOD:REQUEST
+                       |BEGIN:VEVENT
+                       |UID:1@example.com
+                       |DTSTAMP:20250101T000000Z
+                       |DTSTART;VALUE=DATE:20250101
+                       |DURATION:P2W
+                       |SUMMARY:Two weeks
+                       |END:VEVENT
+                       |END:VCALENDAR
+                       |""".stripMargin
+
+    val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(new ByteArrayInputStream(icsPayload.getBytes())).head
+
+    assertThat(calendarEventParsed.duration.get.value).isEqualTo(java.time.Duration.ofDays(14))
+  }
+
+  @Test
   def shouldParseExpectedFields(): Unit = {
     val icsPayload =
       """BEGIN:VCALENDAR
