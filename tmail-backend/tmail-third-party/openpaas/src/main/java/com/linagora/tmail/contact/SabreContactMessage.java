@@ -141,6 +141,7 @@ public record SabreContactMessage(Owner owner,
         return vcard.getEmails().stream()
             .map(email -> StringUtils.replace(email.getValue(), "mailto:", StringUtils.EMPTY))
             .map(Throwing.function(MailAddress::new))
+            .distinct()
             .toList();
     }
 

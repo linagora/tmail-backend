@@ -25,6 +25,7 @@ import java.io.Closeable;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
+import java.util.function.BinaryOperator;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -59,6 +60,7 @@ public class SabreContactsConsumer implements Closeable {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SabreContactsConsumer.class);
     private static final boolean REQUEUE_ON_NACK = true;
+    private static final BinaryOperator<ContactFields> KEEP_FIRST = (first, second) -> first;
     public static final String QUEUE_NAME_ADD = "sabre-contacts-queue-add";
     public static final String QUEUE_NAME_UPDATE = "sabre-contacts-queue-update";
     public static final String QUEUE_NAME_DELETE = "sabre-contacts-queue-delete";
@@ -153,11 +155,11 @@ public class SabreContactsConsumer implements Closeable {
         Mono<Map<MailAddress, ContactFields>> existingContacts = Flux.from(contactSearchEngine.list(ownerAccountId, sabreContactMessage.getVCardUid()))
             .collectList()
             .map(list -> list.stream()
-                .collect(Collectors.toMap(addressContact -> addressContact.fields().address(), EmailAddressContact::fields)));
+                .collect(Collectors.toMap(addressContact -> addressContact.fields().address(), EmailAddressContact::fields, KEEP_FIRST)));
 
         Mono<Map<MailAddress, ContactFields>> incomingContacts = Mono.fromCallable(() -> sabreContactMessage.getContactFields()
             .stream()
-            .collect(Collectors.toMap(ContactFields::address, Function.identity())));
+            .collect(Collectors.toMap(ContactFields::address, Function.identity(), KEEP_FIRST)));
 
         return Mono.zip(incomingContacts, existingContacts)
             .flatMap(tuple ->
@@ -213,11 +215,11 @@ public class SabreContactsConsumer implements Closeable {
         Mono<Map<MailAddress, ContactFields>> existingContacts = Flux.from(contactSearchEngine.list(domain))
             .collectList()
             .map(list -> list.stream()
-                .collect(Collectors.toMap(addressContact -> addressContact.fields().address(), EmailAddressContact::fields)));
+                .collect(Collectors.toMap(addressContact -> addressContact.fields().address(), EmailAddressContact::fields, KEEP_FIRST)));
 
         Mono<Map<MailAddress, ContactFields>> incomingContacts = Mono.fromCallable(() -> sabreContactMessage.getContactFields()
             .stream()
-            .collect(Collectors.toMap(ContactFields::address, Function.identity())));
+            .collect(Collectors.toMap(ContactFields::address, Function.identity(), KEEP_FIRST)));
 
         return Mono.zip(incomingContacts, existingContacts)
             .flatMap(tuple -> applyDomainContactDiff(domain, tuple.getT1(), tuple.getT2()));
