@@ -81,7 +81,7 @@ object CalendarEventReplyGenerator {
   }
 
   private def buildReplyAttendee(attendeeReply: AttendeeReply): Attendee =
-    Some(new Attendee(URI.create("mailto:" + attendeeReply.attendee.asString()))
+    Some(new Attendee(new URI("mailto", attendeeReply.attendee.asString(), null))
       .withParameter(Role.REQ_PARTICIPANT)
       .withParameter(attendeeReply.partStat)
       .withParameter(CuType.INDIVIDUAL))
