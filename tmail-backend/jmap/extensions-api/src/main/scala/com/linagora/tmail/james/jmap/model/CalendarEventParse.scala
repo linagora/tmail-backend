@@ -19,7 +19,7 @@
 package com.linagora.tmail.james.jmap.model
 
 import java.io.InputStream
-import java.time.temporal.Temporal
+import java.time.temporal.{Temporal, TemporalAmount}
 import java.time.{Duration, _}
 import java.util.{Locale, Optional, TimeZone}
 
@@ -242,8 +242,16 @@ object CalendarDurationField {
   def from(calendarEvent: VEvent): Option[CalendarDurationField] =
     Option(calendarEvent.getDuration)
       .map(_.getDuration)
-      .map(java.time.Duration.from)
+      .flatMap(asDuration)
       .map(CalendarDurationField(_))
+
+  // iCalendar day and week based durations (eg P1D, P2W) are represented as a Period, which carries
+  // estimated units that java.time.Duration.from rejects. Weeks are stored as days by ical4j.
+  private def asDuration(amount: TemporalAmount): Option[Duration] = amount match {
+    case duration: Duration => Some(duration)
+    case period: java.time.Period if period.getYears == 0 && period.getMonths == 0 => Some(Duration.ofDays(period.getDays))
+    case _ => None
+  }
 }
 
 case class CalendarDurationField(value: Duration) extends AnyVal
