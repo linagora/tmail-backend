@@ -24,12 +24,12 @@ import java.util
 import java.util.function.Predicate
 
 import com.google.common.base.Preconditions
+import com.linagora.tmail.james.jmap.calendar.CalendarValidation
 import net.fortuna.ical4j.model.component.{VEvent, VTimeZone}
 import net.fortuna.ical4j.model.parameter.{Cn, CuType, PartStat, Role}
 import net.fortuna.ical4j.model.property.immutable.ImmutableMethod
 import net.fortuna.ical4j.model.property.{Attendee, DtStamp, LastModified, Method}
 import net.fortuna.ical4j.model.{Calendar, Component, Property, PropertyList}
-import net.fortuna.ical4j.validate.ValidationResult
 import org.apache.james.core.MailAddress
 
 import scala.jdk.CollectionConverters._
@@ -67,12 +67,7 @@ object CalendarEventReplyGenerator {
       }).get
 
     val replyPropertyList = new PropertyList(replyProperty)
-    val validationResult: Seq[ValidationResult] = replyPropertyList.getAll.asScala
-      .map(_.validate())
-      .filter(_.hasErrors)
-      .toSeq
-
-    Preconditions.checkArgument(validationResult.isEmpty, s"Invalidate calendar event: ${validationResultAsString(validationResult)}".asInstanceOf[Object])
+    CalendarValidation.requireValid(replyPropertyList.getAll.asScala.map(_.validate()).toSeq)
 
     val calendar = new Calendar()
       .withDefaults()
@@ -94,7 +89,4 @@ object CalendarEventReplyGenerator {
         attendeeReply.cn.map(cn => attendee.withParameter(cn))
         attendee
       }).get.getFluentTarget.asInstanceOf[Attendee]
-
-  private def validationResultAsString(input: Seq[ValidationResult]): String =
-    input.flatMap(_.getEntries.asScala.toSeq).map(error => s"${error.getContext} : ${error.getMessage}").mkString(";")
 }

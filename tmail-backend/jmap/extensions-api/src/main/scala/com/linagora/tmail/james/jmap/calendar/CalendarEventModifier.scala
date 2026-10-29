@@ -32,7 +32,6 @@ import net.fortuna.ical4j.model.parameter.PartStat
 import net.fortuna.ical4j.model.property.immutable.ImmutableMethod
 import net.fortuna.ical4j.model.property.{Attendee, DtEnd, DtStart, Location, RecurrenceId, Sequence, XProperty}
 import net.fortuna.ical4j.model.{Calendar, Component, ComponentList, Parameter, Period, Property, PropertyList, RelationshipPropertyModifiers}
-import net.fortuna.ical4j.validate.ValidationResult
 import org.apache.james.core.Username
 
 import scala.jdk.CollectionConverters._
@@ -187,11 +186,8 @@ case class CalendarEventModifier(patches: Seq[CalendarEventUpdatePatch],
     vEvent.getDateTimeStamp.setDate(Instant.now)
   }
 
-  private def validateAfterUpdate(calendar: Calendar): Unit = {
-    val validationResult: ValidationResult = calendar.validate()
-    require(!validationResult.hasErrors,
-      s"Invalidate calendar event: ${validationResult.getEntries.asScala.toSeq.map(error => s"${error.getContext} : ${error.getMessage}").mkString(";")}".asInstanceOf[Object])
-  }
+  private def validateAfterUpdate(calendar: Calendar): Unit =
+    CalendarValidation.requireValid(Seq(calendar.validate()))
 }
 
 object CalendarEventModifier {
