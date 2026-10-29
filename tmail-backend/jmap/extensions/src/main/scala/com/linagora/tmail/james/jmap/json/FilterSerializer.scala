@@ -25,6 +25,8 @@ import org.apache.james.jmap.mail.{Keyword, Name}
 import org.apache.james.mailbox.model.MailboxId
 import play.api.libs.json.{Format, JsError, JsResult, JsString, JsSuccess, JsValue, Json, Reads, Writes}
 
+import scala.util.Try
+
 case class FilterSerializer @Inject()(mailboxIdFactory: MailboxId.Factory) {
 
   implicit val comparatorFormat: Format[Comparator] = Json.valueFormat[Comparator]
@@ -43,8 +45,10 @@ case class FilterSerializer @Inject()(mailboxIdFactory: MailboxId.Factory) {
   implicit val conditionCombinerReads: Reads[ConditionCombiner] = Reads.enumNameReads(ConditionCombiner)
   implicit val conditionGroupReads: Reads[ConditionGroup] = Json.reads[ConditionGroup]
   implicit val mailboxIdReads: Reads[MailboxId] = {
-    case JsString(serializedMailboxId) => JsSuccess(mailboxIdFactory.fromString(serializedMailboxId))
-    case _ => JsError()
+    case JsString(serializedMailboxId) => Try(mailboxIdFactory.fromString(serializedMailboxId))
+      .fold(e => JsError(s"Invalid mailboxId '$serializedMailboxId': ${e.getMessage}"),
+        JsSuccess(_))
+    case _ => JsError("Expecting a string as a mailboxId")
   }
   implicit val appendInReads: Reads[AppendIn] = Json.reads[AppendIn]
   private implicit val keywordReads: Reads[Keyword] = {
