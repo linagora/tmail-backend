@@ -428,6 +428,30 @@ class CalendarEventModifierTest {
       .hasCauseInstanceOf(classOf[DateTimeException])
   }
 
+  @Test
+  def applyShouldRejectUnknownTimeZonesWithIllegalArgumentException(): Unit = {
+    val calendar: Calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+      """BEGIN:VCALENDAR
+        |VERSION:2.0
+        |PRODID:-//test//EN
+        |METHOD:REQUEST
+        |BEGIN:VEVENT
+        |UID:1@example.com
+        |DTSTAMP:20250101T000000Z
+        |DTSTART;TZID=Invalid/Zone:20250106T100000
+        |DTEND;TZID=Invalid/Zone:20250106T110000
+        |ORGANIZER:mailto:alice@example.com
+        |ATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:bob@james.org
+        |END:VEVENT
+        |END:VCALENDAR
+        |""".stripMargin.getBytes("UTF-8")))
+
+    assertThatThrownBy(() => testee.withPartStat("bob@james.org", PartStat.ACCEPTED, calendar).apply(calendar))
+      .isInstanceOf(classOf[IllegalArgumentException])
+      .hasMessageStartingWith("Invalidate calendar event:")
+      .hasCauseInstanceOf(classOf[DateTimeException])
+  }
+
   @Nested
   class LocationPatch {
     @Test
