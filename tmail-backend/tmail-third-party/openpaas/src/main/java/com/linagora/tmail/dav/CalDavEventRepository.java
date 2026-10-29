@@ -22,7 +22,6 @@ import static com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults
 import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
 import java.net.URI;
-import java.time.temporal.Temporal;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Function;
@@ -59,7 +58,6 @@ import net.fortuna.ical4j.model.Component;
 import net.fortuna.ical4j.model.Property;
 import net.fortuna.ical4j.model.component.VEvent;
 import net.fortuna.ical4j.model.property.Organizer;
-import net.fortuna.ical4j.model.property.RecurrenceId;
 import net.fortuna.ical4j.model.property.Status;
 import net.fortuna.ical4j.model.property.immutable.ImmutableMethod;
 import reactor.core.publisher.Flux;
@@ -258,15 +256,9 @@ public class CalDavEventRepository implements CalendarEventRepository {
         };
     }
 
+    // Inspects the VEVENT the modifier patches, or the one a missing occurrence override is copied from (eg a cancelled series)
     private boolean isCancelled(DavCalendarObject calendarObject, CalendarEventModifier eventModifier) {
-        Optional<RecurrenceId<Temporal>> recurrenceId = scala.jdk.javaapi.OptionConverters.toJava(eventModifier.recurrenceId());
-        return calendarObject.calendarData().getComponents(Component.VEVENT).stream()
-            .filter(c -> c instanceof VEvent)
-            .map(c -> (VEvent) c)
-            .filter(vEvent -> recurrenceId
-                .map(rid -> rid.equals(vEvent.getRecurrenceId()))
-                .orElseGet(() -> vEvent.getRecurrenceId() == null))
-            .findFirst()
+        return OptionConverters.toJava(eventModifier.targetedVEvent(calendarObject.calendarData()))
             .map(VEvent::getStatus)
             .map(status -> Status.VALUE_CANCELLED.equals(status.getValue()))
             .orElse(false);
