@@ -53,6 +53,19 @@ class CalendarEventReplySerializerTest {
   }
 
   @Test
+  def deserializeRequestShouldFailWhenUnknownLanguage(): Unit = {
+    val jsInput: JsValue = Json.parse(
+      """{
+        |        "accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        |        "blobIds": ["2c9f1b12-b35a-43e6-9af2-0106fb53a943"],
+        |        "language": "f6"
+        |      }""".stripMargin)
+
+    assertThat(testee.deserializeRequest(jsInput).isError)
+      .isTrue
+  }
+
+  @Test
   def serializeAcceptedResponseShouldSuccess(): Unit = {
     val response: CalendarEventReplyAcceptedResponse = CalendarEventReplyAcceptedResponse(
       accountId = AccountId.from(Username.of("bob")).toOption.get,
