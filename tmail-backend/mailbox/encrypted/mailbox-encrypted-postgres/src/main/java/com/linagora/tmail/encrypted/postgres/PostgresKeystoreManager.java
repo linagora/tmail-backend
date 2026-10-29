@@ -75,7 +75,6 @@ public class PostgresKeystoreManager implements KeystoreManager {
 
     private String computeKeyId(byte[] payload) throws Exception {
         return BaseEncoding.base16()
-            .encode(Encrypter.readPublicKey(new ByteArrayInputStream(payload))
-                .getFingerprint());
+            .encode(Encrypter.readFingerprint(new ByteArrayInputStream(payload)));
     }
 }

@@ -21,6 +21,7 @@ package com.linagora.tmail.pgp;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.util.Optional;
 import java.util.stream.Stream;
 
 import org.bouncycastle.openpgp.PGPCompressedData;
@@ -31,8 +32,6 @@ import org.bouncycastle.openpgp.PGPObjectFactory;
 import org.bouncycastle.openpgp.PGPOnePassSignatureList;
 import org.bouncycastle.openpgp.PGPPrivateKey;
 import org.bouncycastle.openpgp.PGPPublicKeyEncryptedData;
-import org.bouncycastle.openpgp.PGPSecretKey;
-import org.bouncycastle.openpgp.PGPSecretKeyRing;
 import org.bouncycastle.openpgp.PGPSecretKeyRingCollection;
 import org.bouncycastle.openpgp.PGPUtil;
 import org.bouncycastle.openpgp.operator.bc.BcKeyFingerprintCalculator;
@@ -45,29 +44,16 @@ import com.google.common.collect.ImmutableList;
 
 public class Decrypter {
     public static Decrypter forKey(InputStream keyIn, char[] pass) throws Exception {
-        return new Decrypter(retrievePrivateKey(keyIn, pass));
+        PGPSecretKeyRingCollection secretKeyRings = new PGPSecretKeyRingCollection(PGPUtil.getDecoderStream(keyIn), new JcaKeyFingerprintCalculator());
+        return new Decrypter(secretKeyRings, pass);
     }
 
-    private static PGPPrivateKey retrievePrivateKey(InputStream keyIn, char[] pass) throws Exception {
-        return asSecretKey(keyIn)
-            .extractPrivateKey(new JcePBESecretKeyDecryptorBuilder().setProvider("BC").build(pass));
-    }
+    private final PGPSecretKeyRingCollection secretKeyRings;
+    private final char[] pass;
 
-    private static PGPSecretKey asSecretKey(InputStream in) throws Exception {
-        PGPSecretKeyRingCollection pgpSec = new PGPSecretKeyRingCollection(PGPUtil.getDecoderStream(in), new JcaKeyFingerprintCalculator());
-
-        return ImmutableList.copyOf(pgpSec.getKeyRings())
-            .stream()
-            .map(PGPSecretKeyRing::getSecretKey)
-            .filter(PGPSecretKey::isSigningKey)
-            .findFirst()
-            .orElseThrow(() -> new IllegalArgumentException("Can't find signing key in key ring."));
-    }
-
-    private final PGPPrivateKey privateKey;
-
-    private Decrypter(PGPPrivateKey privateKey) {
-        this.privateKey = privateKey;
+    private Decrypter(PGPSecretKeyRingCollection secretKeyRings, char[] pass) {
+        this.secretKeyRings = secretKeyRings;
+        this.pass = pass;
     }
 
     public InputStream decrypt(InputStream in) throws Exception {
@@ -92,7 +78,7 @@ public class Decrypter {
     }
 
     private Stream<InputStream> decrypt(PGPPublicKeyEncryptedData pgpPublicKeyEncryptedData) throws PGPException, IOException {
-        InputStream clear = pgpPublicKeyEncryptedData.getDataStream(new BcPublicKeyDataDecryptorFactory(privateKey));
+        InputStream clear = pgpPublicKeyEncryptedData.getDataStream(new BcPublicKeyDataDecryptorFactory(retrievePrivateKey(pgpPublicKeyEncryptedData.getKeyID())));
         PGPObjectFactory plainFact = new PGPObjectFactory(clear, new BcKeyFingerprintCalculator());
         Object message = retrieveMessage(plainFact);
 
@@ -102,6 +88,12 @@ public class Decrypter {
             return Stream.of(new ByteArrayInputStream(bytes));
         }
         throw new PGPException("message is not a simple encrypted file - type unknown.");
+    }
+
+    private PGPPrivateKey retrievePrivateKey(long keyId) throws PGPException {
+        return Optional.ofNullable(secretKeyRings.getSecretKey(keyId))
+            .orElseThrow(() -> new PGPException("No secret key matching key id " + Long.toHexString(keyId)))
+            .extractPrivateKey(new JcePBESecretKeyDecryptorBuilder().setProvider("BC").build(pass));
     }
 
     private void assertIntegrity(PGPPublicKeyEncryptedData pgpPublicKeyEncryptedData) throws PGPException, IOException {

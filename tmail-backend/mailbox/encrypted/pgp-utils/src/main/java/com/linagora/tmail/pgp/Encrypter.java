@@ -25,6 +25,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.Date;
 
@@ -44,7 +45,6 @@ import org.bouncycastle.openpgp.PGPEncryptedDataGenerator;
 import org.bouncycastle.openpgp.PGPLiteralData;
 import org.bouncycastle.openpgp.PGPLiteralDataGenerator;
 import org.bouncycastle.openpgp.PGPPublicKey;
-import org.bouncycastle.openpgp.PGPPublicKeyRing;
 import org.bouncycastle.openpgp.PGPPublicKeyRingCollection;
 import org.bouncycastle.openpgp.PGPUtil;
 import org.bouncycastle.openpgp.operator.bc.BcKeyFingerprintCalculator;
@@ -84,17 +84,24 @@ public class Encrypter {
     }
 
     public static PGPPublicKey readPublicKey(InputStream in) throws Exception {
+        return selectEncryptionKey(in).encryptionKey();
+    }
+
+    /**
+     * Fingerprint of the primary key owning the encryption key: it identifies the key ring whatever
+     * subkey is used to encrypt.
+     */
+    public static byte[] readFingerprint(InputStream in) throws Exception {
+        return selectEncryptionKey(in).primaryKey().getFingerprint();
+    }
+
+    private static EncryptionKeySelector.Selection selectEncryptionKey(InputStream in) throws Exception {
         byte[] packets = readBounded(PGPUtil.getDecoderStream(in));
         PublicKeyPacketsValidator.validate(packets);
         PGPPublicKeyRingCollection pgpPub = new PGPPublicKeyRingCollection(new ByteArrayInputStream(packets),
             new BcKeyFingerprintCalculator());
 
-        return ImmutableList.copyOf(pgpPub.getKeyRings())
-            .stream()
-            .map(PGPPublicKeyRing::getPublicKey)
-            .filter(PGPPublicKey::isEncryptionKey)
-            .findFirst()
-            .orElseThrow(() -> new IllegalArgumentException("Can't find encryption key in key ring."));
+        return EncryptionKeySelector.select(pgpPub, Instant.now());
     }
 
     private static byte[] readBounded(InputStream in) throws IOException {
