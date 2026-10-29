@@ -28,12 +28,12 @@ import java.util.UUID
 import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier.{ImplicitCalendar, ImplicitVEvent, NoUpdateRequiredException}
 import com.linagora.tmail.james.jmap.calendar.{CalendarEventModifier => testee}
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed
-import net.fortuna.ical4j.model.component.VEvent
+import net.fortuna.ical4j.model.component.{VEvent, VTimeZone}
 import net.fortuna.ical4j.model.parameter.PartStat
 import net.fortuna.ical4j.model.property.{Attendee, RecurrenceId}
 import net.fortuna.ical4j.model.{Calendar, Component, Property}
 import org.apache.james.core.Username
-import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}
+import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
 import org.assertj.core.api.SoftAssertions
 import org.junit.jupiter.api.{Nested, Test}
 import org.junit.jupiter.params.ParameterizedTest
@@ -306,6 +306,95 @@ class CalendarEventModifierTest {
     softly.assertThat(newCalendar.toString)
       .contains("X-MOZ-GENERATION:1")
     softly.assertAll()
+  }
+
+  @Test
+  def deepCopyShouldSupportCustomPropertiesOutsideVEvent(): Unit = {
+    // cf https://github.com/linagora/tmail-backend/issues/2797
+    val calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+      """BEGIN:VCALENDAR
+        |VERSION:2.0
+        |CALSCALE:GREGORIAN
+        |METHOD:REQUEST
+        |BEGIN:VTIMEZONE
+        |TZID:Asia/Ho_Chi_Minh
+        |0000
+        |END:STANDARD
+        |END:VTIMEZONE
+        |BEGIN:VEVENT
+        |UID:1
+        |END:VEVENT
+        |END:VCALENDAR
+        |""".stripMargin.getBytes("UTF-8")))
+
+    assertThatCode(() => testee.deepCopy(calendar)).doesNotThrowAnyException()
+  }
+
+  @Test
+  def deepCopyShouldPreserveCustomPropertiesAndComponentsAtAnyDepth(): Unit = {
+    val calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+      """BEGIN:VCALENDAR
+        |VERSION:2.0
+        |PRODID:-//Example Corp//NONSGML Event//EN
+        |METHOD:REQUEST
+        |BEGIN:VTIMEZONE
+        |TZID:Europe/Paris
+        |X-LIC-LOCATION:Europe/Paris
+        |BEGIN:STANDARD
+        |TZOFFSETFROM:+0200
+        |TZOFFSETTO:+0100
+        |TZNAME:CET
+        |DTSTART:19701025T030000
+        |X-STANDARD-CUSTOM:standard
+        |END:STANDARD
+        |END:VTIMEZONE
+        |BEGIN:X-CUSTOM-COMPONENT
+        |X-CUSTOM-PROPERTY:component
+        |END:X-CUSTOM-COMPONENT
+        |BEGIN:VEVENT
+        |UID:123456789@example.com
+        |DTSTAMP:20250318T120000Z
+        |DTSTART;TZID=Europe/Paris:20250320T150000
+        |DTEND;TZID=Europe/Paris:20250320T160000
+        |BEGIN:VALARM
+        |ACTION:DISPLAY
+        |TRIGGER:-PT15M
+        |DESCRIPTION:Reminder
+        |X-ALARM-CUSTOM:alarm
+        |END:VALARM
+        |END:VEVENT
+        |END:VCALENDAR
+        |""".stripMargin.getBytes("UTF-8")))
+
+    val copy = testee.deepCopy(calendar)
+
+    val softly = new SoftAssertions()
+    softly.assertThat(copy.toString).isEqualTo(calendar.toString)
+    softly.assertThat(copy.getComponent[VEvent](Component.VEVENT).get())
+      .isNotSameAs(calendar.getComponent[VEvent](Component.VEVENT).get())
+    softly.assertThat(copy.getComponent[VTimeZone](Component.VTIMEZONE).get())
+      .isNotSameAs(calendar.getComponent[VTimeZone](Component.VTIMEZONE).get())
+    softly.assertAll()
+  }
+
+  @Test
+  def deepCopyShouldSupportNonAlarmSubComponentsInVEvent(): Unit = {
+    val calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+      """BEGIN:VCALENDAR
+        |VERSION:2.0
+        |PRODID:-//Example Corp//NONSGML Event//EN
+        |METHOD:REQUEST
+        |BEGIN:VEVENT
+        |UID:123456789@example.com
+        |DTSTAMP:20250318T120000Z
+        |BEGIN:VTIMEZONE
+        |TZID:Europe/Paris
+        |END:VTIMEZONE
+        |END:VEVENT
+        |END:VCALENDAR
+        |""".stripMargin.getBytes("UTF-8")))
+
+    assertThat(testee.deepCopy(calendar).toString).isEqualTo(calendar.toString)
   }
 
   @Test
