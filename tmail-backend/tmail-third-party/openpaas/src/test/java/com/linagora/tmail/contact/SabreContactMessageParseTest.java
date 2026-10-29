@@ -155,4 +155,21 @@ public class SabreContactMessageParseTest {
                 .containsExactlyInAnyOrder(new MailAddress("tung1@gmail.com"),
                     new MailAddress("tung2@gmail.com"), new MailAddress("tung3@gmail.com")));
     }
+
+    @Test
+    void getContactFieldsShouldNotRepeatAnAddressListedTwice() {
+        String amqpMessage = """
+            {
+                "path": "addressbooks\\/67ef5\\/contacts\\/1.vcf",
+                "owner": "principals\\/users\\/67ef5",
+                "carddata": "BEGIN:VCARD\\r\\nVERSION:4.0\\r\\nUID:a\\r\\nFN:Tung\\r\\nEMAIL;TYPE=work:tung@example.com\\r\\nEMAIL;TYPE=home:tung@example.com\\r\\nEND:VCARD\\r\\n"
+            }""";
+
+        assertThat(SabreContactMessage.parseAMQPMessage(amqpMessage))
+            .isPresent()
+            .get()
+            .satisfies(message -> assertThat(message.getContactFields())
+                .extracting(fields -> fields.address().asString())
+                .containsExactly("tung@example.com"));
+    }
 }
