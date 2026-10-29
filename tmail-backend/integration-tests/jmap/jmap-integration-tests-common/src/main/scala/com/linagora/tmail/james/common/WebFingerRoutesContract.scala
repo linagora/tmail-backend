@@ -177,7 +177,7 @@ trait WebFingerRoutesContract {
 
   @Test
   def shouldRejectInvalidResource(): Unit = {
-    `given`()
+    val response: String = `given`()
     .when()
       .basePath(".well-known/webfinger")
       .queryParam("resource", ":")
@@ -186,5 +186,12 @@ trait WebFingerRoutesContract {
     .`then`()
       .statusCode(SC_BAD_REQUEST)
       .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response).node("type").isEqualTo("about:blank")
+    assertThatJson(response).node("status").isEqualTo(400)
+    assertThatJson(response).node("detail").isString().startsWith("Invalid 'resource'")
   }
 }
