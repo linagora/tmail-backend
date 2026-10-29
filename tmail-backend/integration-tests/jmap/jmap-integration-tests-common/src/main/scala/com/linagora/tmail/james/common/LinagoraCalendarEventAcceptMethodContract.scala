@@ -806,8 +806,10 @@ abstract class LinagoraCalendarEventAcceptMethodContract {
     .when
       .post
     .`then`
-      .statusCode(HttpStatus.SC_BAD_REQUEST)
-      .body("detail", Matchers.containsString("The language must be a valid ISO language code"))
+      .statusCode(HttpStatus.SC_OK)
+      .body("methodResponses[0][0]", Matchers.is("error"))
+      .body("methodResponses[0][1].type", Matchers.is("invalidArguments"))
+      .body("methodResponses[0][1].description", Matchers.containsString("The language must be a valid ISO language code"))
   }
 
   @Test
