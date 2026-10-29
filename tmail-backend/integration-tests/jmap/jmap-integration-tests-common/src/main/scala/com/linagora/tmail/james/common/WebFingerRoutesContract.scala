@@ -145,4 +145,46 @@ trait WebFingerRoutesContract {
            |}
            |""".stripMargin)
   }
+
+  @Test
+  def shouldReturnOpenIdURLForAcctResource(): Unit = {
+    val response: String = `given`()
+    .when()
+      .basePath(".well-known/webfinger")
+      .queryParam("resource", "acct:bob@linagora.com")
+      .queryParam("rel", "http://openid.net/specs/connect/1.0/issuer")
+      .get()
+    .`then`()
+      .statusCode(SC_OK)
+      .contentType("application/jrd+json")
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .isEqualTo(
+        s"""{
+           |    "subject": "acct:bob@linagora.com",
+           |    "links": [
+           |        {
+           |            "rel": "http://openid.net/specs/connect/1.0/issuer",
+           |            "href": "https://auth.linagora.com/auth/realms/jmap"
+           |        }
+           |    ]
+           |}
+           |""".stripMargin)
+  }
+
+  @Test
+  def shouldRejectInvalidResource(): Unit = {
+    `given`()
+    .when()
+      .basePath(".well-known/webfinger")
+      .queryParam("resource", ":")
+      .queryParam("rel", "http://openid.net/specs/connect/1.0/issuer")
+      .get()
+    .`then`()
+      .statusCode(SC_BAD_REQUEST)
+      .contentType(JSON)
+  }
 }

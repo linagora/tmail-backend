@@ -18,7 +18,7 @@
 
 package com.linagora.tmail.james.jmap.oidc
 
-import java.net.{URI, URL, URLDecoder, URLEncoder}
+import java.net.{URI, URISyntaxException, URL, URLDecoder, URLEncoder}
 import java.nio.charset.StandardCharsets
 import java.util.stream
 
@@ -41,20 +41,21 @@ import reactor.core.scala.publisher.SMono
 import reactor.netty.http.server.{HttpServerRequest, HttpServerResponse}
 
 import scala.jdk.CollectionConverters._
-import scala.util.{Failure, Try}
+import scala.util.{Failure, Success, Try}
 
 case class WebFingerLink(rel: URL, href: URL)
-case class WebFingerResponse(subject: URL, links: Seq[WebFingerLink])
+case class WebFingerResponse(subject: URI, links: Seq[WebFingerLink])
 
 private[oidc] object Serializers {
-  private implicit val stateWrites: Writes[URL] = url => JsString(url.toString)
+  private implicit val urlWrites: Writes[URL] = url => JsString(url.toString)
+  private implicit val uriWrites: Writes[URI] = uri => JsString(uri.toString)
   private implicit val linkWrites: Writes[WebFingerLink] = Json.writes[WebFingerLink]
   private implicit val responseWrites: Writes[WebFingerResponse] = Json.writes[WebFingerResponse]
 
   def serialise(response: WebFingerResponse): String = Json.stringify(Json.toJson(response))
 }
 
-case class WebFingerRequest(resource: URL)
+case class WebFingerRequest(resource: URI)
 
 case class WebFingerModule() extends AbstractModule {
   override def configure(): Unit = {
@@ -119,9 +120,23 @@ class WebFingerRoutes @Inject()(configuration: WebFingerConfiguration) extends J
     case (None, _) => Failure(new IllegalArgumentException("'resource' query parameter is compulsory"))
     case (_, None) => Failure(new IllegalArgumentException("'rel' query parameter is compulsory"))
     case (Some(resource), Some("http://openid.net/specs/connect/1.0/issuer")) =>
-      Try(WebFingerRequest(new URI(URLDecoder.decode(resource, StandardCharsets.UTF_8)).toURL))
+      parseResource(resource).map(WebFingerRequest)
     case _ => Failure(new IllegalArgumentException(s"'rel' supports only '$REL' (URL encoded: ${URLEncoder.encode(REL.toString, StandardCharsets.UTF_8)})"))
   }
+
+  private def parseResource(resource: String): Try[URI] =
+    Try(new URI(URLDecoder.decode(resource, StandardCharsets.UTF_8)))
+      .recoverWith {
+        case e: URISyntaxException => Failure(new IllegalArgumentException(s"Invalid 'resource': ${e.getMessage}", e))
+      }
+      .flatMap(requireAbsolute)
+
+  private def requireAbsolute(uri: URI): Try[URI] =
+    if (uri.isAbsolute) {
+      Success(uri)
+    } else {
+      Failure(new IllegalArgumentException(s"Invalid 'resource': '$uri' is not an absolute URI"))
+    }
 
   def toWebFingerResponse(request: WebFingerRequest, openIdUrl: URL): WebFingerResponse =
     WebFingerResponse(subject = request.resource,
