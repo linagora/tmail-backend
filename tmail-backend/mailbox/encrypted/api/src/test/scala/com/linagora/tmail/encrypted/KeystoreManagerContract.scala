@@ -79,6 +79,20 @@ trait KeystoreManagerContract {
   }
 
   @Test
+  def saveShouldNotDuplicateAKeyUploadedTwice(): Unit = {
+    val payload: Array[Byte] = ClassLoader.getSystemClassLoader.getResourceAsStream("gpg.pub").readAllBytes()
+
+    val keyId: KeyId = SMono.fromPublisher(keyStoreManager.save(BOB, payload)).block()
+
+    assertSoftly(softly => {
+      softly.assertThat(SMono.fromPublisher(keyStoreManager.save(BOB, payload.clone())).block())
+        .isEqualTo(keyId)
+      softly.assertThat(SFlux.fromPublisher(keyStoreManager.listPublicKeys(BOB)).collectSeq().block().size)
+        .isEqualTo(1)
+    })
+  }
+
+  @Test
   def saveShouldThrowWhenInvalidPayload(): Unit = {
     val payload: Array[Byte] = "123456789".getBytes
 
