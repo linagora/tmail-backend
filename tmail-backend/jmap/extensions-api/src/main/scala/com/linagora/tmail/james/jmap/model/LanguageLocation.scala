@@ -25,12 +25,10 @@ import scala.util.Try
 object LanguageLocation {
   def fromString(languageCode: String): Try[LanguageLocation] = detectLocale(languageCode).map(LanguageLocation.apply)
 
-  def detectLocale(languageCode: String): Try[Locale] =
-    if (Locale.getISOLanguages.contains(languageCode)) {
-      Try(Locale.forLanguageTag(languageCode))
-    } else {
-      throw new IllegalArgumentException("The language must be a valid ISO language code")
-    }
+  def detectLocale(languageCode: String): Try[Locale] = Try {
+    require(Locale.getISOLanguages.contains(languageCode), "The language must be a valid ISO language code")
+    Locale.forLanguageTag(languageCode)
+  }
 }
 
 case class LanguageLocation(language: Locale) {
