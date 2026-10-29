@@ -145,10 +145,21 @@ case class CalendarEventModifier(patches: Seq[CalendarEventUpdatePatch],
     newCalendar
   }
 
-  private def findVEventByRecurrenceId(calendar: Calendar, recurrenceId: RecurrenceId[Temporal]): VEvent =
-    // An existing override is used as is: it may come without master event, eg when invited to a single occurrence
+  /**
+   * The VEVENT this modifier acts upon: the patched one, or, when the targeted override is missing,
+   * the VEVENT it would be copied from. Lets callers inspect it (eg its STATUS) before applying the modifier.
+   */
+  def targetedVEvent(calendar: Calendar): Option[VEvent] =
+    recurrenceId.flatMap(findOverride(calendar, _))
+      .orElse(calendar.getComponents[VEvent](Component.VEVENT).asScala.headOption)
+
+  private def findOverride(calendar: Calendar, recurrenceId: RecurrenceId[Temporal]): Option[VEvent] =
     calendar.getComponents[VEvent](Component.VEVENT).asScala
       .find(_.getRecurrenceId[Temporal] == recurrenceId)
+
+  private def findVEventByRecurrenceId(calendar: Calendar, recurrenceId: RecurrenceId[Temporal]): VEvent =
+    // An existing override is used as is: it may come without master event, eg when invited to a single occurrence
+    findOverride(calendar, recurrenceId)
       .getOrElse {
         val baseVEvent = calendar.getFirstVEvent
         require(baseVEvent.getProperty(Property.RRULE).isPresent || baseVEvent.getProperty(Property.RDATE).isPresent,
