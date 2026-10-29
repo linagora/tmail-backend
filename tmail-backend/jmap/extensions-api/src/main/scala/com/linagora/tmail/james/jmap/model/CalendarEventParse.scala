@@ -638,7 +638,7 @@ case class CalendarEventParsed(uid: Option[CalendarUidField] = None,
                                recurrenceId: Option[RecurrenceIdField] = None) {
   def getAttendanceStatus(username: String): Option[AttendanceStatus] = participants.findParticipantByMailTo(username)
     .flatMap(_.participationStatus)
-    .map((status: CalendarAttendeeParticipationStatus) => AttendanceStatus.fromCalendarAttendeeParticipationStatus(status).orElseThrow)
+    .flatMap((status: CalendarAttendeeParticipationStatus) => AttendanceStatus.fromCalendarAttendeeParticipationStatus(status).toScala)
 
   def uidAsString(): Optional[String] = uid.map(_.value).toJava
   def startAsJava(): Optional[ZonedDateTime] = start.map(_.value).toJava
