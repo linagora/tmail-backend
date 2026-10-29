@@ -30,6 +30,7 @@ import org.assertj.core.api.SoftAssertions
 import org.junit.jupiter.api.{Nested, Test}
 
 import scala.jdk.CollectionConverters._
+import scala.jdk.OptionConverters._
 
 class CalendarEventParsedTest {
 
@@ -671,6 +672,28 @@ class CalendarEventParsedTest {
       assertThat(calendarEventParsed.end.get.value.format(DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ssX")))
         .isEqualTo("2025-03-20T16:00:00Z")
     })
+  }
+
+  @Test
+  def getAttendanceStatusShouldReturnEmptyOnUnsupportedPartStat(): Unit = {
+    val icsPayload = """BEGIN:VCALENDAR
+                       |VERSION:2.0
+                       |PRODID:-//Example//EN
+                       |METHOD:REQUEST
+                       |BEGIN:VEVENT
+                       |UID:1@example.com
+                       |DTSTAMP:20250101T000000Z
+                       |DTSTART:20250108T090000Z
+                       |DTEND:20250108T100000Z
+                       |ORGANIZER:mailto:alice@example.com
+                       |ATTENDEE;PARTSTAT=DELEGATED;DELEGATED-TO="mailto:carol@example.com":mailto:bob@example.com
+                       |END:VEVENT
+                       |END:VCALENDAR
+                       |""".stripMargin
+
+    val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(new ByteArrayInputStream(icsPayload.getBytes())).head
+
+    assertThat(calendarEventParsed.getAttendanceStatus("bob@example.com").toJava).isEmpty
   }
 
   def icsPayloadWith(additionalField: String): String =
