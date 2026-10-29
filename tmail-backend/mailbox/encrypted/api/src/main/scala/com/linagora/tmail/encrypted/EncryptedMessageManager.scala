@@ -110,7 +110,7 @@ class EncryptedMessageManager @Inject()(messageManager: MessageManager,
 
   private def isMessageEncrypted(message: Message): Boolean =
     Option(message.getHeader.getField("Content-Type").asInstanceOf[ContentTypeField])
-      .exists(field => field.getMediaType.equals("multipart") && field.getSubType.equals("encrypted"))
+      .exists(field => "multipart".equalsIgnoreCase(field.getMediaType) && "encrypted".equalsIgnoreCase(field.getSubType))
 
   private def storeEncryptedMessage(session: MailboxSession,
                                     keys: Seq[PublicKey],
