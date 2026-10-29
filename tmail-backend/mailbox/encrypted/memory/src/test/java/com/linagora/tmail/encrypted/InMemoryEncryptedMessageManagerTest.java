@@ -311,4 +311,21 @@ public class InMemoryEncryptedMessageManagerTest {
         assertThat(new String(result.getBody().getInputStream().readAllBytes(), StandardCharsets.UTF_8))
             .contains("content email 123");
     }
+
+    @Test
+    void commandAppendShouldEncryptMessageWhenContentTypeHasNoSubType() throws Exception {
+        byte[] keyBytes = ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.pub").readAllBytes();
+        Mono.from(keystoreManager.save(BOB, keyBytes)).block();
+
+        byte[] messageBytes = "From: a@b.c\r\nContent-Type: text\r\n\r\ntestmail\r\n".getBytes(StandardCharsets.US_ASCII);
+
+        testee.appendMessage(MessageManager.AppendCommand.builder().build(messageBytes), session);
+
+        MessageResultIterator messages = mailboxManager.getMailbox(path, session)
+            .getMessages(MessageRange.all(), FetchGroup.BODY_CONTENT, session);
+        MessageResult result = messages.next();
+
+        assertThat(new String(result.getBody().getInputStream().readAllBytes(), StandardCharsets.UTF_8))
+            .doesNotContain("testmail");
+    }
 }
