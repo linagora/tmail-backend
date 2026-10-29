@@ -19,7 +19,7 @@
 package com.linagora.tmail.james.jmap.calendar
 
 import java.time.temporal.Temporal
-import java.time.{Instant, ZoneId, ZonedDateTime}
+import java.time.{DateTimeException, Instant, ZoneId, ZonedDateTime}
 import java.util
 import java.util.function.Consumer
 
@@ -133,7 +133,16 @@ case class CalendarEventModifier(patches: Seq[CalendarEventUpdatePatch],
                                  recurrenceId: Option[RecurrenceId[Temporal]],
                                  validator: Consumer[Calendar] = (_: Calendar) => {}) {
 
-  def apply(calendar: Calendar): Calendar = {
+  def apply(calendar: Calendar): Calendar =
+    try {
+      applyPatches(calendar)
+    } catch {
+      // ical4j parses date values lazily: an unparsable date or an unknown time zone surfaces as a DateTimeException
+      // thrown while copying or validating the calendar rather than as a validation error
+      case e: DateTimeException => throw new IllegalArgumentException(s"Invalidate calendar event: ${e.getMessage}", e)
+    }
+
+  private def applyPatches(calendar: Calendar): Calendar = {
     val newCalendar = deepCopy(calendar)
     validator.accept(newCalendar)
 
