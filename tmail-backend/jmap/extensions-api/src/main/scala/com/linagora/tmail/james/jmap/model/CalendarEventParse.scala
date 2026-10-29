@@ -203,8 +203,7 @@ case class CalendarLocationField(value: String) extends AnyVal
 
 object CalendarStartField {
   def from(calendarEvent: VEvent): Option[CalendarStartField] =
-    Option(calendarEvent.getDateTimeStart[Temporal]())
-      .map(startDate => startDate.getDate)
+    VEventTemporalUtil.parseDate(Option(calendarEvent.getDateTimeStart[Temporal]()))
       .flatMap(temporal => VEventTemporalUtil.temporalToZonedDateTime(temporal, VEventTemporalUtil.getAlternativeZoneId(calendarEvent)))
       .map(CalendarStartField(_))
 }
@@ -215,15 +214,16 @@ case class CalendarStartField(value: ZonedDateTime) extends AnyVal {
 
 object CalendarEndField {
   def from(calendarEvent: VEvent): Option[CalendarEndField] =
-    Try(calendarEvent.getEndDate[Temporal]().toScala)
-      .toOption
-      .flatten
-      .map(endDate => endDate.getDate)
+    VEventTemporalUtil.parseDate(calendarEvent.getEndDate[Temporal]().toScala)
       .flatMap(temporal => VEventTemporalUtil.temporalToZonedDateTime(temporal, VEventTemporalUtil.getAlternativeZoneId(calendarEvent)))
       .map(CalendarEndField(_))
 }
 
 object VEventTemporalUtil {
+
+  // ical4j 4 parses date values lazily: an invalid value or TZID only fails here, with a DateTimeException
+  def parseDate(dateProperty: => Option[DateProperty[Temporal]]): Option[Temporal] =
+    Try(dateProperty.map(_.getDate)).toOption.flatten
 
   def temporalToZonedDateTime(temporal: Temporal, zoneIdDefault: ZoneId = ZoneId.systemDefault()): Option[ZonedDateTime] = temporal match {
     case zdt: ZonedDateTime => Some(zdt)
