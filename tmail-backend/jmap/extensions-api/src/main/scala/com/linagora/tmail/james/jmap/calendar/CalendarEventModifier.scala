@@ -30,7 +30,7 @@ import com.linagora.tmail.james.jmap.model.{CalendarAttendeeMailTo, CalendarEndF
 import net.fortuna.ical4j.model.component.{CalendarComponent, VAlarm, VEvent}
 import net.fortuna.ical4j.model.parameter.PartStat
 import net.fortuna.ical4j.model.property.immutable.ImmutableMethod
-import net.fortuna.ical4j.model.property.{Attendee, DtEnd, DtStart, Location, RecurrenceId, Sequence, XProperty}
+import net.fortuna.ical4j.model.property.{Attendee, DtEnd, DtStamp, DtStart, Location, RecurrenceId, Sequence, XProperty}
 import net.fortuna.ical4j.model.{Calendar, Component, ComponentList, Parameter, Period, Property, PropertyList, RelationshipPropertyModifiers}
 import net.fortuna.ical4j.validate.ValidationResult
 import org.apache.james.core.Username
@@ -184,7 +184,10 @@ case class CalendarEventModifier(patches: Seq[CalendarEventUpdatePatch],
     }
 
     // Update DTSTAMP
-    vEvent.getDateTimeStamp.setDate(Instant.now)
+    Option(vEvent.getDateTimeStamp) match {
+      case Some(dtStamp) => dtStamp.setDate(Instant.now)
+      case None => vEvent.addProperty(new DtStamp(Instant.now).asInstanceOf[Property])
+    }
   }
 
   private def validateAfterUpdate(calendar: Calendar): Unit = {
