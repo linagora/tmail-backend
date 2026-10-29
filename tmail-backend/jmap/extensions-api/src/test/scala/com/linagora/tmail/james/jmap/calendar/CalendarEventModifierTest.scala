@@ -21,7 +21,7 @@ package com.linagora.tmail.james.jmap.calendar
 import java.io.ByteArrayInputStream
 import java.time.format.DateTimeFormatter
 import java.time.temporal.Temporal
-import java.time.{ZoneId, ZonedDateTime}
+import java.time.{DateTimeException, ZoneId, ZonedDateTime}
 import java.util
 import java.util.UUID
 
@@ -424,6 +424,8 @@ class CalendarEventModifierTest {
 
     assertThatThrownBy(() => testee.withPartStat("bob@james.org", PartStat.ACCEPTED, calendar).apply(calendar))
       .isInstanceOf(classOf[IllegalArgumentException])
+      .hasMessageStartingWith("Invalidate calendar event:")
+      .hasCauseInstanceOf(classOf[DateTimeException])
   }
 
   @Nested
