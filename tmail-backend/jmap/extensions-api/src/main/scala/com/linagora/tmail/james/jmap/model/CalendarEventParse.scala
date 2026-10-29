@@ -139,10 +139,11 @@ object CalendarFreeBusyStatusField extends Enumeration {
 
   def from(vEvent: VEvent): Option[CalendarFreeBusyStatusField] =
     Option(vEvent.getTimeTransparency)
-      .map(transparency => transparency.getValue match {
+      .map(_.getValue)
+      .collect {
         case Transp.VALUE_OPAQUE => Busy
         case Transp.VALUE_TRANSPARENT => Free
-      })
+      }
       .map(CalendarFreeBusyStatusField(_))
 }
 
@@ -156,11 +157,12 @@ object CalendarEventStatusField extends Enumeration {
 
   def from(vEvent: VEvent): Option[CalendarEventStatusField] =
     Option(vEvent.getStatus)
-      .map(status => status.getValue match {
+      .map(_.getValue)
+      .collect {
         case Status.VALUE_CONFIRMED => Confirmed
         case Status.VALUE_CANCELLED => Cancelled
         case Status.VALUE_TENTATIVE => Tentative
-      })
+      }
       .map(CalendarEventStatusField(_))
 }
 
@@ -174,11 +176,12 @@ object CalendarPrivacyField extends Enumeration {
 
   def from(vEvent: VEvent): Option[CalendarPrivacyField] =
     Option(vEvent.getClassification)
-      .map(accessClassification => accessClassification.getValue match {
+      .map(_.getValue)
+      .collect {
         case Clazz.VALUE_PUBLIC => Public
         case Clazz.VALUE_PRIVATE => Private
         case Clazz.VALUE_CONFIDENTIAL => Secret
-      })
+      }
       .map(CalendarPrivacyField(_))
 }
 
