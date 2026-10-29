@@ -30,7 +30,7 @@ import com.linagora.tmail.james.jmap.model.{CalendarAttendeeMailTo, CalendarEndF
 import net.fortuna.ical4j.model.component.{CalendarComponent, VAlarm, VEvent}
 import net.fortuna.ical4j.model.parameter.PartStat
 import net.fortuna.ical4j.model.property.immutable.ImmutableMethod
-import net.fortuna.ical4j.model.property.{Attendee, DtEnd, DtStamp, DtStart, Location, RecurrenceId, Sequence, XProperty}
+import net.fortuna.ical4j.model.property.{Attendee, DateProperty, DtEnd, DtStamp, DtStart, Location, RecurrenceId, Sequence, XProperty}
 import net.fortuna.ical4j.model.{Calendar, Component, ComponentList, Parameter, Period, Property, PropertyList, RelationshipPropertyModifiers}
 import org.apache.james.core.Username
 
@@ -241,11 +241,15 @@ object CalendarEventModifier {
    * ical4j keeps some properties with a value it cannot round-trip (eg `VERSION:2;x`, unparsable dates):
    * their `copy()` fails with an unchecked exception. The original instance can not be reused as patches
    * mutate properties in place, so such calendars are rejected as invalid.
+   *
+   * Date properties are evaluated upon copy, as ical4j may otherwise resolve them lazily: one with an unknown
+   * TZID or an unparsable value can not be copied, nor written back, hence the calendar is rejected as invalid.
    */
   def copyProperty(property: Property): Property =
     rejectingUnevaluable(property) {
       property match {
         case xProperty: XProperty => new XProperty(xProperty.getName, xProperty.getParameterList, xProperty.getValue)
+        case dateProperty: DateProperty[_] => evaluate(dateProperty).copy()
         case other => other.copy()
       }
     }
@@ -255,11 +259,13 @@ object CalendarEventModifier {
    * the request is rejected as invalid.
    */
   private def requireEvaluable(recurrenceId: RecurrenceId[Temporal]): RecurrenceId[Temporal] =
-    rejectingUnevaluable(recurrenceId) {
-      recurrenceId.getValue
-      recurrenceId.getDate
-      recurrenceId
-    }
+    rejectingUnevaluable(recurrenceId)(evaluate(recurrenceId))
+
+  private def evaluate[P <: DateProperty[_]](dateProperty: P): P = {
+    dateProperty.getValue
+    dateProperty.getDate
+    dateProperty
+  }
 
   private def rejectingUnevaluable[T](property: Property)(evaluation: => T): T =
     try {
