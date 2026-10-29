@@ -19,7 +19,7 @@
 package com.linagora.tmail.james.jmap.calendar
 
 import java.time.temporal.Temporal
-import java.time.{Instant, ZoneId, ZonedDateTime}
+import java.time.{DateTimeException, Instant, ZoneId, ZonedDateTime}
 import java.util
 import java.util.function.Consumer
 
@@ -155,7 +155,7 @@ case class CalendarEventModifier(patches: Seq[CalendarEventUpdatePatch],
 
   private def findOverride(calendar: Calendar, recurrenceId: RecurrenceId[Temporal]): Option[VEvent] =
     calendar.getComponents[VEvent](Component.VEVENT).asScala
-      .find(_.getRecurrenceId[Temporal] == recurrenceId)
+      .find(hasRecurrenceId(_, recurrenceId))
 
   private def findVEventByRecurrenceId(calendar: Calendar, recurrenceId: RecurrenceId[Temporal]): VEvent =
     // An existing override is used as is: it may come without master event, eg when invited to a single occurrence
@@ -252,6 +252,17 @@ object CalendarEventModifier {
       case e: RuntimeException => throw new IllegalArgumentException(s"Invalid calendar property ${property.getName}", e)
     }
 
+  /**
+   * ical4j compares RECURRENCE-IDs by their formatted values, resolving their TZID lazily: a RECURRENCE-ID
+   * with an unknown TZID or an unparsable value cannot be evaluated, and is considered as not matching.
+   */
+  def hasRecurrenceId(vEvent: VEvent, recurrenceId: RecurrenceId[Temporal]): Boolean =
+    try {
+      recurrenceId == vEvent.getRecurrenceId[Temporal]
+    } catch {
+      case _: DateTimeException | _: NullPointerException => false
+    }
+
   def of(patch: CalendarEventUpdatePatch): CalendarEventModifier =
     CalendarEventModifier(Seq(patch), None)
 
@@ -289,7 +300,7 @@ object CalendarEventModifier {
     val validator: Consumer[Calendar] = calendar =>
       recurrenceId.foreach { rid =>
         calendar.getComponents[VEvent](Component.VEVENT).asScala
-          .find(_.getRecurrenceId[Temporal] == rid)
+          .find(hasRecurrenceId(_, rid))
           .getOrElse(throw new IllegalArgumentException(s"Cannot find VEVENT with recurrenceId $rid"))
       }
 

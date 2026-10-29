@@ -823,6 +823,68 @@ class CalendarEventModifierTest {
         .apply(recurrenceEvent))
         .isInstanceOf(classOf[IllegalArgumentException])
     }
+
+    @ParameterizedTest
+    @ValueSource(strings = Array(
+      "RECURRENCE-ID;TZID=Europe/Pa:20250402T090000",
+      "RECURRENCE-ID;TZID=Europe/PaRECURRENCE-ID:20250402T090000",
+      "RECURRENCE-ID;TZID=Europe/Paris:20250402000"))
+    def withPartStatShouldRejectCalendarWithAnUnevaluableRecurrenceId(invalidRecurrenceId: String): Unit = {
+      val baseCalendar =
+        s"""BEGIN:VCALENDAR
+          |VERSION:2.0
+          |PRODID:-//Sabre//Sabre VObject 4.5.7//EN
+          |BEGIN:VEVENT
+          |UID:6f3d2a
+          |DTSTART;TZID=Europe/Paris:20250402T090000
+          |DTEND;TZID=Europe/Paris:20250402T100000
+          |$invalidRecurrenceId
+          |ORGANIZER;CN=organizer:mailto:user1@open-paas.org
+          |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:user2@open-paas.org
+          |DTSTAMP:20250401T000000Z
+          |END:VEVENT
+          |BEGIN:VEVENT
+          |UID:6f3d2a
+          |DTSTART;TZID=Europe/Paris:20250409T090000
+          |DTEND;TZID=Europe/Paris:20250409T100000
+          |RECURRENCE-ID;TZID=Europe/Paris:20250409T090000
+          |ORGANIZER;CN=organizer:mailto:user1@open-paas.org
+          |ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:user2@open-paas.org
+          |DTSTAMP:20250401T000000Z
+          |END:VEVENT
+          |END:VCALENDAR
+          |"""
+
+      val recurrenceEvent = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(baseCalendar.stripMargin.getBytes("UTF-8")))
+      val recurrenceId: RecurrenceId[Temporal] = recurrenceEvent.getComponents[VEvent](Component.VEVENT).get(1).getRecurrenceId[Temporal]
+
+      assertThatThrownBy(() => testee.withPartStat("user2@open-paas.org", PartStat.ACCEPTED, Some(recurrenceId))
+        .apply(recurrenceEvent))
+        .isInstanceOf(classOf[IllegalArgumentException])
+        .hasMessageContaining("RECURRENCE-ID")
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = Array(
+      "RECURRENCE-ID;TZID=Europe/Pa:20250402T090000",
+      "RECURRENCE-ID;TZID=Europe/Paris:20250402000"))
+    def hasRecurrenceIdShouldReturnFalseWhenTheRecurrenceIdCannotBeEvaluated(invalidRecurrenceId: String): Unit = {
+      val calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+        s"""BEGIN:VCALENDAR
+          |VERSION:2.0
+          |PRODID:-//Sabre//Sabre VObject 4.5.7//EN
+          |BEGIN:VEVENT
+          |UID:6f3d2a
+          |DTSTART;TZID=Europe/Paris:20250402T090000
+          |$invalidRecurrenceId
+          |DTSTAMP:20250401T000000Z
+          |END:VEVENT
+          |END:VCALENDAR
+          |""".stripMargin.getBytes("UTF-8")))
+
+      assertThat(testee.hasRecurrenceId(calendar.getFirstVEvent, new RecurrenceId[Temporal]("20250402T080000Z")))
+        .isFalse
+    }
   }
 
   @Nested
