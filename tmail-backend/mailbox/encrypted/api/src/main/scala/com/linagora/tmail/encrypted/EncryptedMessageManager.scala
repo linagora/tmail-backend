@@ -18,7 +18,7 @@
 
 package com.linagora.tmail.encrypted
 
-import java.io.InputStream
+import java.io.{ByteArrayInputStream, InputStream}
 import java.util
 import java.util.Date
 
@@ -33,10 +33,17 @@ import org.apache.james.mime4j.dom.Message
 import org.apache.james.mime4j.dom.field.ContentTypeField
 import org.apache.james.mime4j.message.DefaultMessageBuilder
 import org.apache.james.mime4j.stream.MimeConfig
+import org.bouncycastle.openpgp.PGPPublicKey
 import org.reactivestreams.Publisher
+import org.slf4j.{Logger, LoggerFactory}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.CollectionConverters._
+import scala.util.Try
+
+object EncryptedMessageManager {
+  val LOGGER: Logger = LoggerFactory.getLogger(classOf[EncryptedMessageManager])
+}
 
 class EncryptedMessageManager @Inject()(messageManager: MessageManager,
                                         keystoreManager: KeystoreManager,
@@ -116,7 +123,7 @@ class EncryptedMessageManager @Inject()(messageManager: MessageManager,
                                     keys: Seq[PublicKey],
                                     clearMessage: Message,
                                     clearContent: ClearEmailContent): SMono[AppendResult] = {
-    val encrypter = Encrypter.forKeys(keys.map(key => key.key).asJava)
+    val encrypter = Encrypter.forPublicKeys(usableEncryptionKeys(session, keys).asJava)
     val encryptedMessage: Message = encrypter
       .encrypt(clearMessage)
 
@@ -128,6 +135,14 @@ class EncryptedMessageManager @Inject()(messageManager: MessageManager,
           .`then`(SMono.just(appendResult))
       })
   }
+
+  // Stored keys may have become unusable since their upload (expiry, revocation): skip them rather than failing
+  private def usableEncryptionKeys(session: MailboxSession, keys: Seq[PublicKey]): Seq[PGPPublicKey] =
+    keys.flatMap(key => Try(Encrypter.readPublicKey(new ByteArrayInputStream(key.key)))
+      .fold(e => {
+        EncryptedMessageManager.LOGGER.warn("Skipping unusable PGP key {} of {}", key.id.value, session.getUser.asString(), e)
+        None
+      }, Some(_)))
 
   override def getMailboxCountersReactive(mailboxSession: MailboxSession): Publisher[MailboxCounters] = messageManager.getMailboxCountersReactive(mailboxSession)
 

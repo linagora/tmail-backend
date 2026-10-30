@@ -24,8 +24,13 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.nio.charset.StandardCharsets;
+import java.security.KeyPairGenerator;
 import java.security.Provider;
 import java.security.Security;
+import java.security.spec.ECGenParameterSpec;
+import java.time.Duration;
+import java.time.Instant;
+import java.util.Date;
 
 import org.apache.james.mime4j.dom.Body;
 import org.apache.james.mime4j.dom.Message;
@@ -36,16 +41,37 @@ import org.apache.james.mime4j.message.DefaultMessageWriter;
 import org.apache.james.mime4j.message.MultipartBuilder;
 import org.apache.james.mime4j.message.SingleBodyBuilder;
 import org.apache.james.mime4j.stream.NameValuePair;
+import org.bouncycastle.bcpg.HashAlgorithmTags;
+import org.bouncycastle.bcpg.PublicKeyAlgorithmTags;
+import org.bouncycastle.bcpg.sig.KeyFlags;
+import org.bouncycastle.openpgp.PGPKeyPair;
+import org.bouncycastle.openpgp.PGPKeyRingGenerator;
+import org.bouncycastle.openpgp.PGPSignature;
+import org.bouncycastle.openpgp.PGPSignatureSubpacketGenerator;
+import org.bouncycastle.openpgp.PGPSignatureSubpacketVector;
 import org.bouncycastle.openpgp.PGPUtil;
+import org.bouncycastle.openpgp.operator.jcajce.JcaPGPContentSignerBuilder;
+import org.bouncycastle.openpgp.operator.jcajce.JcaPGPDigestCalculatorProviderBuilder;
+import org.bouncycastle.openpgp.operator.jcajce.JcaPGPKeyPair;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.io.BaseEncoding;
 import com.google.common.io.ByteSource;
 import com.google.common.primitives.Bytes;
 
 class EncrypterTest {
     public static final String INPUT = "ga bou zo meuh\r\nBienvenue chez les shadocks.\r\n";
+
+    private static final int SIGN_FLAGS = KeyFlags.CERTIFY_OTHER | KeyFlags.SIGN_DATA;
+    private static final int ENCRYPT_FLAGS = KeyFlags.ENCRYPT_COMMS | KeyFlags.ENCRYPT_STORAGE;
+    private static final long NO_EXPIRATION = 0L;
+    private static final long ONE_HOUR = Duration.ofHours(1).toSeconds();
+    private static final long ONE_DAY = Duration.ofDays(1).toSeconds();
+    private static final Instant NOW = Instant.now();
+    private static final Instant YESTERDAY = NOW.minus(Duration.ofDays(1));
+    private static final Instant LAST_WEEK = NOW.minus(Duration.ofDays(7));
 
     @BeforeAll
     static void setUpAll() throws Exception {
@@ -100,6 +126,12 @@ class EncrypterTest {
 
         assertThat(new String(decryptedPayload, StandardCharsets.UTF_8))
             .isEqualTo(INPUT);
+    }
+
+    @Test
+    void forPublicKeysShouldRejectEmptyKeys() {
+        assertThatThrownBy(() -> Encrypter.forPublicKeys(ImmutableList.of()))
+            .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
@@ -173,6 +205,70 @@ class EncrypterTest {
 
         assertThat(Encrypter.readPublicKey(new ByteArrayInputStream(Bytes.concat(markerPacket, keyPackets))).isEncryptionKey())
             .isTrue();
+    }
+
+    @Test
+    void readPublicKeyShouldSelectTheEncryptionSubkey() throws Exception {
+        PGPKeyPair ecdsaPair = ecKeyPair(PublicKeyAlgorithmTags.ECDSA, NOW);
+        PGPKeyPair ecdhPair = ecKeyPair(PublicKeyAlgorithmTags.ECDH, NOW);
+        byte[] keyRing = keyRing(ecdsaPair, flags(SIGN_FLAGS, NO_EXPIRATION), new Subkey(ecdhPair, flags(ENCRYPT_FLAGS, NO_EXPIRATION)));
+
+        assertThat(Encrypter.readPublicKey(new ByteArrayInputStream(keyRing)).getKeyID())
+            .isEqualTo(ecdhPair.getKeyID());
+    }
+
+    @Test
+    void readPublicKeyShouldNotSelectASignOnlyPrimaryKey() throws Exception {
+        byte[] keyBytes = ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.pub").readAllBytes();
+
+        assertThat(Encrypter.readPublicKey(new ByteArrayInputStream(keyBytes)).isMasterKey())
+            .isFalse();
+    }
+
+    @Test
+    void readPublicKeyShouldRejectAKeyRingWithoutEncryptionFlag() throws Exception {
+        byte[] keyRing = keyRing(ecKeyPair(PublicKeyAlgorithmTags.ECDSA, NOW), flags(SIGN_FLAGS, NO_EXPIRATION),
+            new Subkey(ecKeyPair(PublicKeyAlgorithmTags.ECDH, NOW), flags(SIGN_FLAGS, NO_EXPIRATION)));
+
+        assertThatThrownBy(() -> Encrypter.readPublicKey(new ByteArrayInputStream(keyRing)))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void readPublicKeyShouldRejectAnExpiredEncryptionSubkey() throws Exception {
+        byte[] keyRing = keyRing(ecKeyPair(PublicKeyAlgorithmTags.ECDSA, LAST_WEEK), flags(SIGN_FLAGS, NO_EXPIRATION),
+            new Subkey(ecKeyPair(PublicKeyAlgorithmTags.ECDH, LAST_WEEK), flags(ENCRYPT_FLAGS, ONE_DAY)));
+
+        assertThatThrownBy(() -> Encrypter.readPublicKey(new ByteArrayInputStream(keyRing)))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void readPublicKeyShouldRejectAnExpiredPrimaryKey() throws Exception {
+        byte[] keyRing = keyRing(ecKeyPair(PublicKeyAlgorithmTags.ECDSA, LAST_WEEK), flags(SIGN_FLAGS, ONE_DAY),
+            new Subkey(ecKeyPair(PublicKeyAlgorithmTags.ECDH, LAST_WEEK), flags(ENCRYPT_FLAGS, NO_EXPIRATION)));
+
+        assertThatThrownBy(() -> Encrypter.readPublicKey(new ByteArrayInputStream(keyRing)))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void readPublicKeyShouldSkipAnExpiredEncryptionSubkey() throws Exception {
+        PGPKeyPair validSubkey = ecKeyPair(PublicKeyAlgorithmTags.ECDH, LAST_WEEK);
+        byte[] keyRing = keyRing(ecKeyPair(PublicKeyAlgorithmTags.ECDSA, LAST_WEEK), flags(SIGN_FLAGS, NO_EXPIRATION),
+            new Subkey(validSubkey, flags(ENCRYPT_FLAGS, NO_EXPIRATION)),
+            new Subkey(ecKeyPair(PublicKeyAlgorithmTags.ECDH, YESTERDAY), flags(ENCRYPT_FLAGS, ONE_HOUR)));
+
+        assertThat(Encrypter.readPublicKey(new ByteArrayInputStream(keyRing)).getKeyID())
+            .isEqualTo(validSubkey.getKeyID());
+    }
+
+    @Test
+    void readFingerprintShouldReturnThePrimaryKeyFingerprint() throws Exception {
+        byte[] keyBytes = ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.pub").readAllBytes();
+
+        assertThat(BaseEncoding.base16().encode(Encrypter.readFingerprint(new ByteArrayInputStream(keyBytes))))
+            .isEqualTo("3BA423385C8C80D453D7E6F95BF4E866E9CC6FA2");
     }
 
     @Test
@@ -271,5 +367,36 @@ class EncrypterTest {
                 Final-Recipient: rfc822; final_recipient\r
                 ---=Part.0.9726a619aa3f23a9.178aa7b7a6b.e3060dccb56a8d65=---\r
                 """);
+    }
+
+    private static PGPKeyPair ecKeyPair(int algorithm, Instant creationTime) throws Exception {
+        KeyPairGenerator generator = KeyPairGenerator.getInstance("EC", "BC");
+        generator.initialize(new ECGenParameterSpec("P-256"));
+        return new JcaPGPKeyPair(algorithm, generator.generateKeyPair(), Date.from(creationTime));
+    }
+
+    private static PGPSignatureSubpacketVector flags(int keyFlags, long expirationSeconds) {
+        PGPSignatureSubpacketGenerator generator = new PGPSignatureSubpacketGenerator();
+        generator.setKeyFlags(false, keyFlags);
+        if (expirationSeconds != NO_EXPIRATION) {
+            generator.setKeyExpirationTime(false, expirationSeconds);
+        }
+        return generator.generate();
+    }
+
+    private record Subkey(PGPKeyPair keyPair, PGPSignatureSubpacketVector flags) {
+    }
+
+    private static byte[] keyRing(PGPKeyPair primaryKey, PGPSignatureSubpacketVector primaryKeyFlags, Subkey... subkeys) throws Exception {
+        PGPKeyRingGenerator generator = new PGPKeyRingGenerator(PGPSignature.POSITIVE_CERTIFICATION, primaryKey,
+            "bob <bob@domain.tld>", new JcaPGPDigestCalculatorProviderBuilder().build().get(HashAlgorithmTags.SHA1),
+            primaryKeyFlags, null,
+            new JcaPGPContentSignerBuilder(primaryKey.getPublicKey().getAlgorithm(), HashAlgorithmTags.SHA256), null);
+        for (Subkey subkey : subkeys) {
+            generator.addSubKey(subkey.keyPair(), subkey.flags(), null);
+        }
+        ByteArrayOutputStream encoded = new ByteArrayOutputStream();
+        generator.generatePublicKeyRing().encode(encoded);
+        return encoded.toByteArray();
     }
 }

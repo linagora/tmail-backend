@@ -76,7 +76,7 @@ class CassandraKeystoreManager @Inject()(cassandraKeystoreDAO: CassandraKeystore
     cassandraKeystoreDAO.deleteAllKeys(username)
 
   private def computeKeyId(payload: Array[Byte]): Either[Throwable, KeyId] =
-    Try(Encrypter.readPublicKey(new ByteArrayInputStream(payload)))
+    Try(Encrypter.readFingerprint(new ByteArrayInputStream(payload)))
       .toEither
-      .map(key => KeyId(BaseEncoding.base16().encode(key.getFingerprint)))
+      .map(fingerprint => KeyId(BaseEncoding.base16().encode(fingerprint)))
 }
