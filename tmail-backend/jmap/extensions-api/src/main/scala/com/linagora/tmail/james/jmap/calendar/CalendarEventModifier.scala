@@ -27,11 +27,12 @@ import com.google.common.base.Preconditions.{checkArgument => require}
 import com.google.common.collect.ImmutableList
 import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier._
 import com.linagora.tmail.james.jmap.model.{CalendarAttendeeMailTo, CalendarEndField, CalendarLocationField, CalendarOrganizerField, CalendarStartField, CalendarTimeZoneField, VEventTemporalUtil}
-import net.fortuna.ical4j.model.component.{CalendarComponent, VAlarm, VEvent}
+import net.fortuna.ical4j.data.DefaultComponentFactorySupplier
+import net.fortuna.ical4j.model.component.{CalendarComponent, VEvent}
 import net.fortuna.ical4j.model.parameter.PartStat
 import net.fortuna.ical4j.model.property.immutable.ImmutableMethod
 import net.fortuna.ical4j.model.property.{Attendee, DateProperty, DtEnd, DtStamp, DtStart, Location, RecurrenceId, Sequence, XProperty}
-import net.fortuna.ical4j.model.{Calendar, Component, ComponentList, Parameter, Period, Property, PropertyList, RelationshipPropertyModifiers}
+import net.fortuna.ical4j.model.{Calendar, Component, ComponentContainer, ComponentFactory, ComponentList, Parameter, Period, Property, PropertyList, RelationshipPropertyModifiers}
 import org.apache.james.core.Username
 
 import scala.jdk.CollectionConverters._
@@ -216,6 +217,7 @@ case class CalendarEventModifier(patches: Seq[CalendarEventUpdatePatch],
 object CalendarEventModifier {
   val MODIFIED_SEQUENCE_DEFAULT: Sequence = new Sequence("1")
   val RECURRENCE_IGNORE_COPIED_PROPERTIES: Set[String] = Set(Property.RRULE, Property.RDATE, Property.CREATED)
+  private val COMPONENT_FACTORIES: Seq[ComponentFactory[_ <: Component]] = new DefaultComponentFactorySupplier().get().asScala.toSeq
 
   /**
    * Deep copy a calendar by structurally rebuilding it from copied components and properties.
@@ -236,12 +238,31 @@ object CalendarEventModifier {
     new Calendar(properties, components)
   }
 
-  def copyComponent(component: CalendarComponent): CalendarComponent = component match {
-    case vEvent: VEvent =>
-      val properties = new PropertyList(vEvent.getPropertyList.getAll.asScala.map(copyProperty).asJava)
-      val alarms = new ComponentList(vEvent.getComponentList.getAll.asScala.map(_.copy().asInstanceOf[VAlarm]).asJava)
-      new VEvent(properties, alarms)
-    case other => other.copy().asInstanceOf[CalendarComponent]
+  /**
+   * Recursively copy a component: it is rebuilt, of its own class, from `copyProperty`-copied properties
+   * and recursively copied sub-components, as ical4j `Component.copy()` fails on custom `X-` properties.
+   *
+   * Non-standard components (which ical4j cannot copy) are kept as is: they are never patched.
+   */
+  def copyComponent[T <: Component](component: T): T =
+    COMPONENT_FACTORIES.find(_.supports(component.getName))
+      .map(factory => factory.createComponent(copyProperties(component)))
+      .map(copy => withCopiedSubComponents(component, copy).asInstanceOf[T])
+      .getOrElse(component)
+
+  private def copyProperties(component: Component): PropertyList =
+    new PropertyList(component.getPropertyList.getAll.asScala.map(copyProperty).asJava)
+
+  private def withCopiedSubComponents(original: Component, copy: Component): Component = {
+    (original, copy) match {
+      case (originalContainer: ComponentContainer[_], copyContainer: ComponentContainer[_]) =>
+        val subComponents: util.List[Component] = originalContainer.getComponentList.getAll.asScala
+          .map(subComponent => copyComponent(subComponent: Component))
+          .asJava
+        copyContainer.asInstanceOf[ComponentContainer[Component]].setComponentList(new ComponentList(subComponents))
+      case _ =>
+    }
+    copy
   }
 
   /**
