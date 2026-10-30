@@ -30,6 +30,7 @@ import com.linagora.tmail.encrypted.PublicKey;
 import com.linagora.tmail.pgp.Encrypter;
 
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 
 public class PostgresKeystoreManager implements KeystoreManager {
     private final PostgresKeystoreDAO.Factory keystoreDAOFactory;
@@ -47,7 +48,8 @@ public class PostgresKeystoreManager implements KeystoreManager {
             } catch (Exception ex) {
                 throw new IllegalArgumentException(ex);
             }
-        }).flatMap(keyId -> keystoreDAOFactory.create(username.getDomainPart()).insertKey(username, new PublicKey(keyId, payload))
+        }).subscribeOn(Schedulers.boundedElastic())
+            .flatMap(keyId -> keystoreDAOFactory.create(username.getDomainPart()).insertKey(username, new PublicKey(keyId, payload))
             .thenReturn(new KeyId(keyId)));
     }
 

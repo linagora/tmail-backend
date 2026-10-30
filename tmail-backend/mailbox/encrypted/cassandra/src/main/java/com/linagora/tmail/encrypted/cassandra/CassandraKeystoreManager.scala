@@ -30,6 +30,7 @@ import org.apache.james.core.Username
 import org.apache.james.user.api.{DeleteUserDataTaskStep, UsernameChangeTaskStep}
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.SMono
+import reactor.core.scheduler.Schedulers
 
 import scala.util.Try
 
@@ -56,10 +57,11 @@ case class KeystoreCassandraModule() extends AbstractModule {
 
 class CassandraKeystoreManager @Inject()(cassandraKeystoreDAO: CassandraKeystoreDAO) extends KeystoreManager {
   override def save(username: Username, payload: Array[Byte]): Publisher[KeyId] =
-    computeKeyId(payload)
-      .fold(e => SMono.error(new IllegalArgumentException(e)),
+    SMono.fromCallable(() => computeKeyId(payload))
+      .subscribeOn(Schedulers.boundedElastic())
+      .flatMap(_.fold(e => SMono.error(new IllegalArgumentException(e)),
         keyId => cassandraKeystoreDAO.insert(username, PublicKey(keyId, payload))
-          .`then`(SMono.just(keyId)))
+          .`then`(SMono.just(keyId))))
 
   override def listPublicKeys(username: Username): Publisher[PublicKey] =
     cassandraKeystoreDAO.getAllKeys(username)
