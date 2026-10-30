@@ -21,6 +21,7 @@ package com.linagora.tmail.encrypted;
 import static org.apache.james.jmap.JMAPTestingConstants.ALICE;
 import static org.apache.james.jmap.JMAPTestingConstants.BOB;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
@@ -32,6 +33,7 @@ import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.api.PlainBlobId;
 import org.apache.james.blob.memory.MemoryBlobStoreDAO;
+import org.apache.james.core.Username;
 import org.apache.james.jmap.api.model.Preview;
 import org.apache.james.jmap.utils.JsoupHtmlTextExtractor;
 import org.apache.james.mailbox.MailboxManager;
@@ -56,12 +58,44 @@ import org.apache.james.util.mime.MessageContentExtractor;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.reactivestreams.Publisher;
 
 import com.linagora.tmail.pgp.Decrypter;
 
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
 public class InMemoryEncryptedMessageManagerTest {
+    private static final PublicKey UNUSABLE_KEY = new PublicKey("UNUSABLE", "not a PGP key".getBytes(StandardCharsets.UTF_8));
+
+    // Simulates a key that was valid when uploaded but can no longer be used to encrypt (expired, revoked...)
+    private record KeystoreWithUnusableKey(KeystoreManager delegate) implements KeystoreManager {
+        @Override
+        public Publisher<KeyId> save(Username username, byte[] payload) {
+            return delegate.save(username, payload);
+        }
+
+        @Override
+        public Publisher<PublicKey> listPublicKeys(Username username) {
+            return Flux.concat(Mono.just(UNUSABLE_KEY), delegate.listPublicKeys(username));
+        }
+
+        @Override
+        public Publisher<PublicKey> retrieveKey(Username username, String id) {
+            return delegate.retrieveKey(username, id);
+        }
+
+        @Override
+        public Publisher<Void> delete(Username username, String id) {
+            return delegate.delete(username, id);
+        }
+
+        @Override
+        public Publisher<Void> deleteAll(Username username) {
+            return delegate.deleteAll(username);
+        }
+    }
+
     private EncryptedMessageManager testee;
     private MailboxManager mailboxManager;
     private MessageManager messageManager;
@@ -87,12 +121,9 @@ public class InMemoryEncryptedMessageManagerTest {
         messageManager = mailboxManager.getMailbox(mailboxId, session);
 
         keystoreManager = new InMemoryKeystoreManager();
-        MessageContentExtractor messageContentExtractor = new MessageContentExtractor();
         blobStore = new DeDuplicationBlobStore(new MemoryBlobStoreDAO(), BucketName.DEFAULT, new PlainBlobId.Factory());
         emailContentStore = new InMemoryEncryptedEmailContentStore(blobStore);
-        testee = new EncryptedMessageManager(messageManager, keystoreManager,
-            new ClearEmailContentFactory(new MessageParserImpl(), messageContentExtractor, new Preview.Factory(messageContentExtractor, new JsoupHtmlTextExtractor())),
-            emailContentStore);
+        testee = encryptedMessageManager(keystoreManager);
 
         message = Message.Builder
             .of()
@@ -102,6 +133,13 @@ public class InMemoryEncryptedMessageManagerTest {
             .setTo(ALICE.asString())
             .setBody("testmail", StandardCharsets.UTF_8)
             .build();
+    }
+
+    private EncryptedMessageManager encryptedMessageManager(KeystoreManager keystoreManager) {
+        MessageContentExtractor messageContentExtractor = new MessageContentExtractor();
+        return new EncryptedMessageManager(messageManager, keystoreManager,
+            new ClearEmailContentFactory(new MessageParserImpl(), messageContentExtractor, new Preview.Factory(messageContentExtractor, new JsoupHtmlTextExtractor())),
+            emailContentStore);
     }
 
     @Test
@@ -244,6 +282,34 @@ public class InMemoryEncryptedMessageManagerTest {
 
         assertThat(new String(decryptedPayload, StandardCharsets.UTF_8))
             .contains("testmail");
+    }
+
+    @Test
+    void commandAppendShouldSkipUnusableKeys() throws Exception {
+        byte[] keyBytes = ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.pub").readAllBytes();
+        Mono.from(keystoreManager.save(BOB, keyBytes)).block();
+        EncryptedMessageManager testee = encryptedMessageManager(new KeystoreWithUnusableKey(keystoreManager));
+
+        MessageManager.AppendResult appendResult = testee.appendMessage(MessageManager.AppendCommand.from(message), session);
+
+        EncryptedEmailFastView fastView = Mono.from(emailContentStore.retrieveFastView(appendResult.getId().getMessageId())).block();
+        byte[] decryptedPayload = Decrypter
+            .forKey(ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.private"), "123456".toCharArray())
+            .decrypt(new ByteArrayInputStream(fastView.encryptedPreview().getBytes(StandardCharsets.UTF_8)))
+            .readAllBytes();
+
+        assertThat(new String(decryptedPayload, StandardCharsets.UTF_8))
+            .contains("testmail");
+    }
+
+    @Test
+    void commandAppendShouldFailWhenNoKeyIsUsable() throws Exception {
+        EncryptedMessageManager testee = encryptedMessageManager(new KeystoreWithUnusableKey(keystoreManager));
+
+        assertThatThrownBy(() -> testee.appendMessage(MessageManager.AppendCommand.from(message), session))
+            .isInstanceOf(IllegalArgumentException.class);
+        assertThat(messageManager.getMessageCount(session))
+            .isZero();
     }
 
     @Test

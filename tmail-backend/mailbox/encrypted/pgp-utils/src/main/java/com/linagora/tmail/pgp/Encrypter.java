@@ -52,6 +52,7 @@ import org.bouncycastle.openpgp.operator.jcajce.JcePGPDataEncryptorBuilder;
 import org.bouncycastle.openpgp.operator.jcajce.JcePublicKeyKeyEncryptionMethodGenerator;
 
 import com.github.fge.lambdas.Throwing;
+import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.io.ByteSource;
 import com.google.common.io.ByteStreams;
@@ -62,22 +63,28 @@ public class Encrypter {
     private static final int MAX_KEY_SIZE = 1024 * 1024;
 
     public static Encrypter forKeys(Collection<byte[]> armoredKeys) {
-        return new Encrypter(createEncryptor(armoredKeys));
+        return forPublicKeys(armoredKeys.stream()
+            .map(ByteArrayInputStream::new)
+            .map(Throwing.function(Encrypter::readPublicKey))
+            .collect(ImmutableList.toImmutableList()));
     }
 
     public static Encrypter forKeys(byte[]... armoredKeys) {
         return forKeys(ImmutableList.copyOf(armoredKeys));
     }
 
-    private static PGPEncryptedDataGenerator createEncryptor(Collection<byte[]> armoredKeys) {
+    public static Encrypter forPublicKeys(Collection<PGPPublicKey> encryptionKeys) {
+        Preconditions.checkArgument(!encryptionKeys.isEmpty(), "At least one encryption key is required");
+        return new Encrypter(createEncryptor(encryptionKeys));
+    }
+
+    private static PGPEncryptedDataGenerator createEncryptor(Collection<PGPPublicKey> encryptionKeys) {
         PGPEncryptedDataGenerator pgpEncryptedDataGenerator = new PGPEncryptedDataGenerator(new JcePGPDataEncryptorBuilder(PGPEncryptedData.AES_128)
             .setSecureRandom(new SecureRandom())
             .setProvider("BC")
             .setWithIntegrityPacket(true));
 
-        armoredKeys.stream()
-            .map(ByteArrayInputStream::new)
-            .map(Throwing.function(Encrypter::readPublicKey))
+        encryptionKeys.stream()
             .map(JcePublicKeyKeyEncryptionMethodGenerator::new)
             .forEach(pgpEncryptedDataGenerator::addMethod);
         return pgpEncryptedDataGenerator;

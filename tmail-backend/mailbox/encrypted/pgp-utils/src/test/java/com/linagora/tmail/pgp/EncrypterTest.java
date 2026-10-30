@@ -56,6 +56,7 @@ import org.bouncycastle.openpgp.operator.jcajce.JcaPGPKeyPair;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
+import com.google.common.collect.ImmutableList;
 import com.google.common.io.BaseEncoding;
 import com.google.common.io.ByteSource;
 import com.google.common.primitives.Bytes;
@@ -125,6 +126,12 @@ class EncrypterTest {
 
         assertThat(new String(decryptedPayload, StandardCharsets.UTF_8))
             .isEqualTo(INPUT);
+    }
+
+    @Test
+    void forPublicKeysShouldRejectEmptyKeys() {
+        assertThatThrownBy(() -> Encrypter.forPublicKeys(ImmutableList.of()))
+            .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
