@@ -28,7 +28,7 @@ import java.util.UUID
 import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier.{ImplicitCalendar, ImplicitVEvent, NoUpdateRequiredException}
 import com.linagora.tmail.james.jmap.calendar.{CalendarEventModifier => testee}
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed
-import net.fortuna.ical4j.model.component.{VEvent, VTimeZone}
+import net.fortuna.ical4j.model.component.{Observance, VEvent, VTimeZone}
 import net.fortuna.ical4j.model.parameter.PartStat
 import net.fortuna.ical4j.model.property.{Attendee, RecurrenceId}
 import net.fortuna.ical4j.model.{Calendar, Component, Property}
@@ -374,8 +374,20 @@ class CalendarEventModifierTest {
       .isNotSameAs(calendar.getComponent[VEvent](Component.VEVENT).get())
     softly.assertThat(copy.getComponent[VTimeZone](Component.VTIMEZONE).get())
       .isNotSameAs(calendar.getComponent[VTimeZone](Component.VTIMEZONE).get())
+    softly.assertThat(standardObservance(copy))
+      .isNotSameAs(standardObservance(calendar))
+    softly.assertThat(vAlarm(copy))
+      .isNotSameAs(vAlarm(calendar))
     softly.assertAll()
   }
+
+  private def standardObservance(calendar: Calendar): Component =
+    calendar.getComponent[VTimeZone](Component.VTIMEZONE).get()
+      .getComponent[Observance](Observance.STANDARD).get()
+
+  private def vAlarm(calendar: Calendar): Component =
+    calendar.getComponent[VEvent](Component.VEVENT).get()
+      .getComponent[Component](Component.VALARM).get()
 
   @Test
   def deepCopyShouldSupportNonAlarmSubComponentsInVEvent(): Unit = {
