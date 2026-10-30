@@ -57,6 +57,7 @@ import org.junit.jupiter.params.provider.MethodSource;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linagora.tmail.api.OpenPaasRestClient;
+import com.linagora.tmail.configuration.DavConfiguration;
 import com.linagora.tmail.dav.CalDavEventRepository;
 import com.linagora.tmail.dav.DavCalendarObject;
 import com.linagora.tmail.dav.DavClient;
@@ -82,10 +83,13 @@ import com.rabbitmq.client.Connection;
 import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.GetResponse;
 
+import io.netty.handler.codec.http.HttpHeaderNames;
 import net.fortuna.ical4j.model.Calendar;
 import net.fortuna.ical4j.model.parameter.PartStat;
 import reactor.core.publisher.Mono;
 import reactor.core.scala.publisher.SMono;
+import reactor.netty.ByteBufFlux;
+import reactor.netty.http.client.HttpClient;
 import scala.jdk.javaapi.CollectionConverters;
 import scala.jdk.javaapi.OptionConverters;
 
@@ -1097,6 +1101,73 @@ class CalDavEventRepositoryTest {
         assertThatThrownBy(() -> testee.setAttendanceStatus(testUser, AttendanceStatus.Accepted, blobId).block())
             .isInstanceOf(CalendarEventCancelledException.class)
             .hasMessageContaining("Calendar event is cancelled");
+    }
+
+    @Test
+    void setAttendanceStatusShouldDetectCancelledOverrideNextToAnOverrideWithAnUnknownTimeZone() {
+        String eventUid = UUID.randomUUID().toString();
+        pushRawCalendarToDav(eventUid, calendarWithAnUnknownTimeZoneOverride(eventUid, "STATUS:CANCELLED\n"));
+
+        BlobId blobId = setupCalendarResolver(eventUid, Optional.of("RECURRENCE-ID;TZID=Europe/Paris:20250409T090000"));
+
+        assertThatThrownBy(() -> testee.setAttendanceStatus(testUser, AttendanceStatus.Accepted, blobId).block())
+            .isInstanceOf(CalendarEventCancelledException.class);
+    }
+
+    @Test
+    void setAttendanceStatusShouldRejectCalendarWithAnOverrideWithAnUnknownTimeZone() {
+        String eventUid = UUID.randomUUID().toString();
+        pushRawCalendarToDav(eventUid, calendarWithAnUnknownTimeZoneOverride(eventUid, ""));
+
+        BlobId blobId = setupCalendarResolver(eventUid, Optional.of("RECURRENCE-ID;TZID=Europe/Paris:20250409T090000"));
+
+        assertThatThrownBy(() -> testee.setAttendanceStatus(testUser, AttendanceStatus.Accepted, blobId).block())
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("RECURRENCE-ID");
+    }
+
+    private String calendarWithAnUnknownTimeZoneOverride(String eventUid, String validOverrideExtraLines) {
+        return "BEGIN:VCALENDAR\n" +
+            "VERSION:2.0\n" +
+            "PRODID:-//Sabre//Sabre VObject 4.5.7//EN\n" +
+            "BEGIN:VEVENT\n" +
+            "UID:" + eventUid + "\n" +
+            "DTSTART;TZID=Europe/Paris:20250402T090000\n" +
+            "DTEND;TZID=Europe/Paris:20250402T100000\n" +
+            "RECURRENCE-ID;TZID=Europe/Pa:20250402T090000\n" +
+            "ORGANIZER;CN=organizer:mailto:organizer@open-paas.org\n" +
+            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:" + openPaasUser.email().asString() + "\n" +
+            "DTSTAMP:20250401T000000Z\n" +
+            "END:VEVENT\n" +
+            "BEGIN:VEVENT\n" +
+            "UID:" + eventUid + "\n" +
+            "DTSTART;TZID=Europe/Paris:20250409T090000\n" +
+            "DTEND;TZID=Europe/Paris:20250409T100000\n" +
+            "RECURRENCE-ID;TZID=Europe/Paris:20250409T090000\n" +
+            "ORGANIZER;CN=organizer:mailto:organizer@open-paas.org\n" +
+            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:" + openPaasUser.email().asString() + "\n" +
+            validOverrideExtraLines +
+            "DTSTAMP:20250401T000000Z\n" +
+            "END:VEVENT\n" +
+            "END:VCALENDAR\n";
+    }
+
+    // ical4j can not serialize a RECURRENCE-ID with an unknown TZID: the raw calendar is pushed as is
+    private void pushRawCalendarToDav(String eventUid, String rawCalendar) {
+        DavConfiguration davConfiguration = dockerOpenPaasExtension.dockerOpenPaasSetup().davConfiguration();
+
+        Integer statusCode = HttpClient.create()
+            .baseUrl(davConfiguration.baseUrl().toString())
+            .headers(headers -> headers.add(HttpHeaderNames.AUTHORIZATION, davConfiguration.authenticationToken(openPaasUser.email().asString()))
+                .add(HttpHeaderNames.CONTENT_TYPE, "text/calendar"))
+            .put()
+            .uri("/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/" + eventUid + ".ics")
+            .send(ByteBufFlux.fromString(Mono.just(rawCalendar)))
+            .response()
+            .map(response -> response.status().code())
+            .block();
+
+        assertThat(statusCode).isEqualTo(201);
     }
 
     @Test

@@ -30,7 +30,7 @@ import com.linagora.tmail.james.jmap.model.{CalendarAttendeeMailTo, CalendarEndF
 import net.fortuna.ical4j.model.component.{CalendarComponent, VAlarm, VEvent}
 import net.fortuna.ical4j.model.parameter.PartStat
 import net.fortuna.ical4j.model.property.immutable.ImmutableMethod
-import net.fortuna.ical4j.model.property.{Attendee, DtEnd, DtStamp, DtStart, Location, RecurrenceId, Sequence, XProperty}
+import net.fortuna.ical4j.model.property.{Attendee, DateProperty, DtEnd, DtStamp, DtStart, Location, RecurrenceId, Sequence, XProperty}
 import net.fortuna.ical4j.model.{Calendar, Component, ComponentList, Parameter, Period, Property, PropertyList, RelationshipPropertyModifiers}
 import org.apache.james.core.Username
 
@@ -164,7 +164,7 @@ case class CalendarEventModifier(patches: Seq[CalendarEventUpdatePatch],
 
   private def findOverride(calendar: Calendar, recurrenceId: RecurrenceId[Temporal]): Option[VEvent] =
     calendar.getComponents[VEvent](Component.VEVENT).asScala
-      .find(_.getRecurrenceId[Temporal] == recurrenceId)
+      .find(hasRecurrenceId(_, recurrenceId))
 
   private def findVEventByRecurrenceId(calendar: Calendar, recurrenceId: RecurrenceId[Temporal]): VEvent =
     // An existing override is used as is: it may come without master event, eg when invited to a single occurrence
@@ -250,15 +250,48 @@ object CalendarEventModifier {
    * ical4j keeps some properties with a value it cannot round-trip (eg `VERSION:2;x`, unparsable dates):
    * their `copy()` fails with an unchecked exception. The original instance can not be reused as patches
    * mutate properties in place, so such calendars are rejected as invalid.
+   *
+   * Date properties are evaluated upon copy, as ical4j may otherwise resolve them lazily: one with an unknown
+   * TZID or an unparsable value can not be copied, nor written back, hence the calendar is rejected as invalid.
    */
   def copyProperty(property: Property): Property =
-    try {
+    rejectingUnevaluable(property) {
       property match {
         case xProperty: XProperty => new XProperty(xProperty.getName, xProperty.getParameterList, xProperty.getValue)
+        case dateProperty: DateProperty[_] => evaluate(dateProperty).copy()
         case other => other.copy()
       }
+    }
+
+  /**
+   * A requested RECURRENCE-ID with an unknown TZID or an unparsable value can not designate any occurrence:
+   * the request is rejected as invalid.
+   */
+  private def requireEvaluable(recurrenceId: RecurrenceId[Temporal]): RecurrenceId[Temporal] =
+    rejectingUnevaluable(recurrenceId)(evaluate(recurrenceId))
+
+  private def evaluate[P <: DateProperty[_]](dateProperty: P): P = {
+    dateProperty.getValue
+    dateProperty.getDate
+    dateProperty
+  }
+
+  private def rejectingUnevaluable[T](property: Property)(evaluation: => T): T =
+    try {
+      evaluation
     } catch {
       case e: RuntimeException => throw new IllegalArgumentException(s"Invalid calendar property ${property.getName}", e)
+    }
+
+  /**
+   * ical4j compares RECURRENCE-IDs by their formatted values, resolving their TZID lazily: a RECURRENCE-ID
+   * with an unknown TZID or an unparsable value cannot be evaluated, and is considered as not matching.
+   */
+  def hasRecurrenceId(vEvent: VEvent, recurrenceId: RecurrenceId[Temporal]): Boolean =
+    try {
+      recurrenceId == vEvent.getRecurrenceId[Temporal]
+    } catch {
+      case _: DateTimeException | _: NullPointerException => false
     }
 
   def of(patch: CalendarEventUpdatePatch): CalendarEventModifier =
@@ -280,7 +313,7 @@ object CalendarEventModifier {
       Option(vEvent.getAttendees.asScala.toSeq).map(AttendeeUpdatePatch)).flatten
 
     CalendarEventModifier(patches = patches,
-      recurrenceId = Option(vEvent.getRecurrenceId[Temporal]),
+      recurrenceId = Option(vEvent.getRecurrenceId[Temporal]).map(requireEvaluable),
       validator = OrganizerValidator(userRequest.asString()))
   }
 
@@ -294,15 +327,16 @@ object CalendarEventModifier {
   def withPartStat(targetAttendeeEmail: String,
                    status: PartStat,
                    recurrenceId: Option[RecurrenceId[Temporal]]): CalendarEventModifier = {
+    val evaluableRecurrenceId = recurrenceId.map(requireEvaluable)
 
     val validator: Consumer[Calendar] = calendar =>
-      recurrenceId.foreach { rid =>
+      evaluableRecurrenceId.foreach { rid =>
         calendar.getComponents[VEvent](Component.VEVENT).asScala
-          .find(_.getRecurrenceId[Temporal] == rid)
+          .find(hasRecurrenceId(_, rid))
           .getOrElse(throw new IllegalArgumentException(s"Cannot find VEVENT with recurrenceId $rid"))
       }
 
-    CalendarEventModifier(Seq(AttendeePartStatusUpdatePatch(targetAttendeeEmail, status)), recurrenceId, validator)
+    CalendarEventModifier(Seq(AttendeePartStatusUpdatePatch(targetAttendeeEmail, status)), evaluableRecurrenceId, validator)
   }
 
   case class NoUpdateRequiredException() extends RuntimeException
