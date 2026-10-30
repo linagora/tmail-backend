@@ -860,4 +860,24 @@ class CalendarEventParsedTest {
        |END:VCALENDAR
        |""".stripMargin
 
+  @Test
+  def recurrenceIdShouldBeEmptyWhenItsValueIsInvalid(): Unit = {
+    val icsPayload = """BEGIN:VCALENDAR
+                       |VERSION:2.0
+                       |PRODID:-//Example//EN
+                       |METHOD:REQUEST
+                       |BEGIN:VEVENT
+                       |UID:1@example.com
+                       |DTSTAMP:20250101T000000Z
+                       |DTSTART:20250108T090000Z
+                       |DTEND:20250108T100000Z
+                       |RECURRENCE-ID;TZID=Europe/Paris:
+                       |END:VEVENT
+                       |END:VCALENDAR
+                       |""".stripMargin
+
+    val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(new ByteArrayInputStream(icsPayload.getBytes())).head
+
+    assertThat(calendarEventParsed.recurrenceId.isEmpty).isTrue
+  }
 }

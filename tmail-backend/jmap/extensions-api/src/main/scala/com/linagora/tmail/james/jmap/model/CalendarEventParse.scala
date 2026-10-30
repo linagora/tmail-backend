@@ -561,7 +561,8 @@ case class RecurrenceRule(frequency: RecurrenceRuleFrequency,
 object RecurrenceIdField {
 
   def from(vEvent: VEvent): Option[RecurrenceIdField] =
-    Option(vEvent.getRecurrenceId[Temporal]).map(_.getValue)
+    Option(vEvent.getRecurrenceId[Temporal])
+      .flatMap(recurrenceId => Try(recurrenceId.getValue).toOption.flatMap(Option(_)))
       .map(RecurrenceIdField(_))
 
   def getRecurrenceIdAsString(calendar: Calendar): Optional[String] =
