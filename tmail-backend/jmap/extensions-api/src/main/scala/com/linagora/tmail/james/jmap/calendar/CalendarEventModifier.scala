@@ -138,7 +138,7 @@ case class CalendarEventModifier(patches: Seq[CalendarEventUpdatePatch],
     } catch {
       // ical4j parses date values lazily: an unparsable date or an unknown time zone surfaces as a DateTimeException
       // thrown while copying or validating the calendar rather than as a validation error
-      case e: DateTimeException => throw new IllegalArgumentException(s"Invalidate calendar event: ${e.getMessage}", e)
+      case e: DateTimeException => throw CalendarEventModifier.invalidCalendarEvent(e.getMessage, e)
     }
 
   private def applyPatches(calendar: Calendar): Calendar = {
@@ -252,7 +252,8 @@ object CalendarEventModifier {
    * mutate properties in place, so such calendars are rejected as invalid.
    *
    * Date properties are evaluated upon copy, as ical4j may otherwise resolve them lazily: one with an unknown
-   * TZID or an unparsable value can not be copied, nor written back, hence the calendar is rejected as invalid.
+   * TZID or an unparsable value can not be copied, nor written back, hence the calendar is rejected as an
+   * invalid calendar event.
    */
   def copyProperty(property: Property): Property =
     rejectingUnevaluable(property) {
@@ -280,8 +281,12 @@ object CalendarEventModifier {
     try {
       evaluation
     } catch {
+      case e: DateTimeException => throw invalidCalendarEvent(s"Invalid calendar property ${property.getName}: ${e.getMessage}", e)
       case e: RuntimeException => throw new IllegalArgumentException(s"Invalid calendar property ${property.getName}", e)
     }
+
+  private def invalidCalendarEvent(reason: String, cause: DateTimeException): IllegalArgumentException =
+    new IllegalArgumentException(s"Invalidate calendar event: $reason", cause)
 
   /**
    * ical4j compares RECURRENCE-IDs by their formatted values, resolving their TZID lazily: a RECURRENCE-ID
