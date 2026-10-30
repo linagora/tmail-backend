@@ -237,11 +237,20 @@ object CalendarEventModifier {
 
   /**
    * Copy a property, handling custom `X-` properties whose `copy()` is unsupported by ical4j.
+   *
+   * ical4j keeps some properties with a value it cannot round-trip (eg `VERSION:2;x`, unparsable dates):
+   * their `copy()` fails with an unchecked exception. The original instance can not be reused as patches
+   * mutate properties in place, so such calendars are rejected as invalid.
    */
-  def copyProperty(property: Property): Property = property match {
-    case xProperty: XProperty => new XProperty(xProperty.getName, xProperty.getParameterList, xProperty.getValue)
-    case other => other.copy()
-  }
+  def copyProperty(property: Property): Property =
+    try {
+      property match {
+        case xProperty: XProperty => new XProperty(xProperty.getName, xProperty.getParameterList, xProperty.getValue)
+        case other => other.copy()
+      }
+    } catch {
+      case e: RuntimeException => throw new IllegalArgumentException(s"Invalid calendar property ${property.getName}", e)
+    }
 
   def of(patch: CalendarEventUpdatePatch): CalendarEventModifier =
     CalendarEventModifier(Seq(patch), None)
