@@ -21,7 +21,7 @@ package com.linagora.tmail.james.jmap.calendar
 import java.io.ByteArrayInputStream
 import java.time.format.DateTimeFormatter
 import java.time.temporal.Temporal
-import java.time.{ZoneId, ZonedDateTime}
+import java.time.{DateTimeException, ZoneId, ZonedDateTime}
 import java.util
 import java.util.UUID
 
@@ -448,6 +448,60 @@ class CalendarEventModifierTest {
         END_DATE_SAMPLE))
       .apply(noVEventCalendar))
       .isInstanceOf(classOf[IllegalArgumentException])
+  }
+
+  @Test
+  def applyShouldRejectUnparsableDatesWithIllegalArgumentException(): Unit = {
+    val calendar: Calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+      """BEGIN:VCALENDAR
+        |VERSION:2.0
+        |PRODID:-//test//EN
+        |METHOD:REQUEST
+        |BEGIN:VEVENT
+        |UID:1@example.com
+        |DTSTAMP:20250101T000000Z
+        |DTSTART;TZID=Europe/Paris:20250106T100000
+        |DTEND;TZID=Europe/Paris:20250106T110000
+        |ORGANIZER:mailto:alice@example.com
+        |ATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:bob@james.org
+        |BEGIN:VALARM
+        |ACTION:DISPLAY
+        |TRIGGER:-PT15M
+        |DTEND;TZID=Europe/Paris:20250106
+        |DESCRIPTION:Reminder
+        |END:VALARM
+        |END:VEVENT
+        |END:VCALENDAR
+        |""".stripMargin.getBytes("UTF-8")))
+
+    assertThatThrownBy(() => testee.withPartStat("bob@james.org", PartStat.ACCEPTED, calendar).apply(calendar))
+      .isInstanceOf(classOf[IllegalArgumentException])
+      .hasMessageStartingWith("Invalidate calendar event:")
+      .hasCauseInstanceOf(classOf[DateTimeException])
+  }
+
+  @Test
+  def applyShouldRejectUnknownTimeZonesWithIllegalArgumentException(): Unit = {
+    val calendar: Calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+      """BEGIN:VCALENDAR
+        |VERSION:2.0
+        |PRODID:-//test//EN
+        |METHOD:REQUEST
+        |BEGIN:VEVENT
+        |UID:1@example.com
+        |DTSTAMP:20250101T000000Z
+        |DTSTART;TZID=Invalid/Zone:20250106T100000
+        |DTEND;TZID=Invalid/Zone:20250106T110000
+        |ORGANIZER:mailto:alice@example.com
+        |ATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:bob@james.org
+        |END:VEVENT
+        |END:VCALENDAR
+        |""".stripMargin.getBytes("UTF-8")))
+
+    assertThatThrownBy(() => testee.withPartStat("bob@james.org", PartStat.ACCEPTED, calendar).apply(calendar))
+      .isInstanceOf(classOf[IllegalArgumentException])
+      .hasMessageStartingWith("Invalidate calendar event:")
+      .hasCauseInstanceOf(classOf[DateTimeException])
   }
 
   @Nested
