@@ -25,6 +25,7 @@ import java.util.Collection;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipInputStream;
@@ -47,6 +48,9 @@ public class ZipUtil {
     private static final Splitter PATH_SEPARATORS = Splitter.on(CharMatcher.anyOf("/\\"));
     private static final CharMatcher CONTROL_CHARACTERS = CharMatcher.javaIsoControl();
     private static final Pattern DRIVE_PREFIX = Pattern.compile("^([a-zA-Z]:\\s*)+");
+    // Leaves room, under the usual 255 bytes file system limit, for the "_<n>" suffix added by updateEntryName
+    private static final int MAX_ENTRY_NAME_BYTES = 200;
+    private static final int MAX_EXTENSION_BYTES = 32;
 
     public record ZipEntryStreamSource(InputStream inputStream, String entryName) {}
 
@@ -118,7 +122,40 @@ public class ZipUtil {
         if (sanitized.isEmpty() || sanitized.equals(".") || sanitized.equals("..")) {
             return DEFAULT_ENTRY_NAME;
         }
-        return sanitized;
+        return truncateEntryName(sanitized);
+    }
+
+    private static String truncateEntryName(String entryName) {
+        if (utf8Length(entryName) <= MAX_ENTRY_NAME_BYTES) {
+            return entryName;
+        }
+        String extension = boundedExtension(entryName);
+        String baseName = entryName.substring(0, entryName.length() - extension.length());
+        return truncateToUtf8Bytes(baseName, MAX_ENTRY_NAME_BYTES - utf8Length(extension)) + extension;
+    }
+
+    private static String boundedExtension(String entryName) {
+        int dotIndex = entryName.lastIndexOf('.');
+        if (dotIndex <= 0) {
+            return "";
+        }
+        String extension = entryName.substring(dotIndex);
+        if (utf8Length(extension) > MAX_EXTENSION_BYTES) {
+            return "";
+        }
+        return extension;
+    }
+
+    private static String truncateToUtf8Bytes(String value, int maxBytes) {
+        AtomicInteger usedBytes = new AtomicInteger();
+        return value.codePoints()
+            .takeWhile(codePoint -> usedBytes.addAndGet(utf8Length(Character.toString(codePoint))) <= maxBytes)
+            .collect(StringBuilder::new, StringBuilder::appendCodePoint, StringBuilder::append)
+            .toString();
+    }
+
+    private static int utf8Length(String value) {
+        return value.getBytes(StandardCharsets.UTF_8).length;
     }
 
     @VisibleForTesting

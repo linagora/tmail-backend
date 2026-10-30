@@ -95,9 +95,8 @@ class InMemoryKeystoreManager (keystore: scala.collection.concurrent.Map[Usernam
 
   private def update(username: Username, keyId: KeyId, payload: Array[Byte]): Publisher[KeyId] = {
     val oldKeys = keystore(username)
-    val newkey = PublicKey(keyId, payload)
-    Option.when(oldKeys.contains(newkey))(SMono.just(keyId))
-      .getOrElse(insertNewKey(username, oldKeys, newkey))
+    Option.when(oldKeys.exists(_.id.equals(keyId)))(SMono.just(keyId))
+      .getOrElse(insertNewKey(username, oldKeys, PublicKey(keyId, payload)))
   }
 
   private def insertNewKey(username: Username, oldKeys: Set[PublicKey], newKey: PublicKey): SMono[KeyId] =

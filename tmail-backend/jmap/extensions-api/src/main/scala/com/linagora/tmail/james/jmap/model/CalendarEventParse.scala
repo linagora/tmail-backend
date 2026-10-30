@@ -212,7 +212,9 @@ case class CalendarStartField(value: ZonedDateTime) extends AnyVal {
 
 object CalendarEndField {
   def from(calendarEvent: VEvent): Option[CalendarEndField] =
-    calendarEvent.getEndDate[Temporal]().toScala
+    Try(calendarEvent.getEndDate[Temporal]().toScala)
+      .toOption
+      .flatten
       .map(endDate => endDate.getDate)
       .flatMap(temporal => VEventTemporalUtil.temporalToZonedDateTime(temporal, VEventTemporalUtil.getAlternativeZoneId(calendarEvent)))
       .map(CalendarEndField(_))
@@ -638,7 +640,7 @@ case class CalendarEventParsed(uid: Option[CalendarUidField] = None,
                                recurrenceId: Option[RecurrenceIdField] = None) {
   def getAttendanceStatus(username: String): Option[AttendanceStatus] = participants.findParticipantByMailTo(username)
     .flatMap(_.participationStatus)
-    .map((status: CalendarAttendeeParticipationStatus) => AttendanceStatus.fromCalendarAttendeeParticipationStatus(status).orElseThrow)
+    .flatMap((status: CalendarAttendeeParticipationStatus) => AttendanceStatus.fromCalendarAttendeeParticipationStatus(status).toScala)
 
   def uidAsString(): Optional[String] = uid.map(_.value).toJava
   def startAsJava(): Optional[ZonedDateTime] = start.map(_.value).toJava

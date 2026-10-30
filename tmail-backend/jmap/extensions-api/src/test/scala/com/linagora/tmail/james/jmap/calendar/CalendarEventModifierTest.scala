@@ -145,6 +145,33 @@ class CalendarEventModifierTest {
   }
 
   @Test
+  def shouldAddDTSTAMPWhenAbsentDTSTAMP(): Unit = {
+    val absentDtStampCalendar: Calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+      s"""
+         |BEGIN:VCALENDAR
+         |VERSION:2.0
+         |PRODID:-//Example Corp//NONSGML Event//EN
+         |METHOD:REQUEST
+         |BEGIN:VEVENT
+         |UID:123456789@example.com
+         |DTSTART:$START_DATE_SAMPLE_VALUE
+         |DTEND:$END_DATE_SAMPLE_VALUE
+         |SUMMARY:Project Kickoff Meeting
+         |ORGANIZER:mailto:organizer@example.com
+         |ATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:bob@james.org
+         |END:VEVENT
+         |END:VCALENDAR
+         |
+         |""".stripMargin.getBytes("UTF-8")))
+
+    val newCalendar = testee.withPartStat("bob@james.org", PartStat.ACCEPTED, absentDtStampCalendar)
+      .apply(absentDtStampCalendar)
+
+    assertThat(newCalendar.getComponent[VEvent](Component.VEVENT).get().getDateTimeStamp)
+      .isNotNull
+  }
+
+  @Test
   def shouldChangeDTSTAMPWhenChangingEvent(): Unit = {
     val newCalendar = testee.of(CalendarEventTimingUpdatePatch(START_DATE_SAMPLE.minusHours(1), END_DATE_SAMPLE))
       .apply(SAMPLE_CALENDAR)

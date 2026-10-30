@@ -19,6 +19,7 @@
 package com.linagora.tmail.james.jmap.calendar
 
 import java.io.ByteArrayInputStream
+import java.nio.charset.StandardCharsets
 import java.time.temporal.Temporal
 import java.util.stream.Stream
 
@@ -32,7 +33,7 @@ import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatTh
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
-import org.junit.jupiter.params.provider.{Arguments, MethodSource}
+import org.junit.jupiter.params.provider.{Arguments, MethodSource, ValueSource}
 
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
@@ -342,6 +343,31 @@ class CalendarEventReplyGeneratorTest {
   def shouldNotThrowWhenNotInvitedToAttend(): Unit = {
     assertThatCode(() => testee.generate(calendarEventRequestTemplate, AttendeeReply(new MailAddress("not-invited@domain.com"), PartStat.DECLINED)))
       .doesNotThrowAnyException()
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = Array(
+    "DTSTART;TZID=Europe/Paris:20250101T900000",
+    "DTSTART;TZID=Unknown/Zone:20250101T090000",
+    "DTSTART;TZID=+99:20250101T090000"))
+  def generateShouldRejectUnparsableDatesWithIllegalArgumentException(dtStart: String): Unit = {
+    val request: Calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+      s"""BEGIN:VCALENDAR
+        |VERSION:2.0
+        |PRODID:-//test//EN
+        |METHOD:REQUEST
+        |BEGIN:VEVENT
+        |UID:1@example.com
+        |DTSTAMP:20250101T000000Z
+        |$dtStart
+        |ORGANIZER:mailto:alice@example.com
+        |ATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:bob@james.org
+        |END:VEVENT
+        |END:VCALENDAR
+        |""".stripMargin.getBytes(StandardCharsets.UTF_8)))
+
+    assertThatThrownBy(() => testee.generate(request, AttendeeReply(new MailAddress("bob@james.org"), PartStat.ACCEPTED)))
+      .isInstanceOf(classOf[IllegalArgumentException])
   }
 
   private def getVEVENT(calendar: Calendar): VEvent = calendar.getComponents[VEvent](Component.VEVENT).asScala.head

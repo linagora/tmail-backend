@@ -20,10 +20,14 @@ package com.linagora.tmail.james.jmap;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.stream.Stream;
 
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -44,6 +48,65 @@ public class UpdateEntryNameTest {
     @MethodSource("provideUnsafeEntryNames")
     public void sanitizeEntryNameShouldRemovePathTraversal(String input, String expected) {
         assertThat(ZipUtil.sanitizeEntryName(input)).isEqualTo(expected);
+    }
+
+    @Test
+    void createZipStreamShouldSupportAnAttachmentNameLongerThanTheZipLimit() {
+        assertZipOf("a".repeat(70_000) + ".pdf");
+    }
+
+    @Test
+    void createZipStreamShouldSupportANonAsciiNameLongerThanTheZipLimitInBytes() {
+        assertZipOf("é".repeat(40_000) + ".pdf");
+    }
+
+    @Test
+    void sanitizeEntryNameShouldNotSplitSurrogatePairs() {
+        String sanitized = ZipUtil.sanitizeEntryName("😀".repeat(1_000) + ".pdf");
+
+        assertThat(sanitized)
+            .endsWith(".pdf")
+            .isEqualTo("😀".repeat(49) + ".pdf");
+    }
+
+    @Test
+    void sanitizeEntryNameShouldDropAnOversizedExtension() {
+        String sanitized = ZipUtil.sanitizeEntryName("a." + "b".repeat(70_000));
+
+        assertThat(sanitized).isEqualTo("a." + "b".repeat(198));
+    }
+
+    @Test
+    void sanitizeEntryNameShouldKeepNamesWithinTheLimit() {
+        String name = "a".repeat(196) + ".pdf";
+
+        assertThat(ZipUtil.sanitizeEntryName(name)).isEqualTo(name);
+    }
+
+    @Test
+    void updateEntryNameShouldDeduplicateTruncatedNames() {
+        List<ZipUtil.ZipEntryStreamSource> streamSources = Stream.of("a".repeat(300) + "1.pdf", "a".repeat(300) + "2.pdf")
+            .map(entryName -> new ZipUtil.ZipEntryStreamSource(InputStream.nullInputStream(), entryName))
+            .toList();
+
+        List<String> actual = ZipUtil.updateEntryName(streamSources).stream().map(ZipUtil.ZipEntryStreamSource::entryName).toList();
+
+        assertThat(actual).containsExactly("a".repeat(196) + ".pdf", "a".repeat(196) + "_1.pdf");
+    }
+
+    private void assertZipOf(String attachmentName) {
+        List<byte[]> chunks = ZipUtil.createZipStream(ImmutableList.of(
+                new ZipUtil.ZipEntryStreamSource(new ByteArrayInputStream("content".getBytes(StandardCharsets.UTF_8)), attachmentName),
+                new ZipUtil.ZipEntryStreamSource(new ByteArrayInputStream("other".getBytes(StandardCharsets.UTF_8)), "other.txt")))
+            .collectList()
+            .block();
+        ByteArrayOutputStream zip = new ByteArrayOutputStream();
+        chunks.forEach(zip::writeBytes);
+
+        List<ZipUtil.ZipEntryData> entries = ZipUtil.readZipData(new ByteArrayInputStream(zip.toByteArray()));
+        assertThat(entries).extracting(ZipUtil.ZipEntryData::content).containsExactly("content", "other");
+        assertThat(entries.get(0).fileName().getBytes(StandardCharsets.UTF_8).length).isLessThanOrEqualTo(255);
+        assertThat(entries.get(0).fileName()).endsWith(".pdf");
     }
 
     private static Stream<Arguments> provideUnsafeEntryNames() {

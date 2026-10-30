@@ -30,9 +30,8 @@ import com.linagora.tmail.james.jmap.model.{CalendarAttendeeMailTo, CalendarEndF
 import net.fortuna.ical4j.model.component.{CalendarComponent, VAlarm, VEvent}
 import net.fortuna.ical4j.model.parameter.PartStat
 import net.fortuna.ical4j.model.property.immutable.ImmutableMethod
-import net.fortuna.ical4j.model.property.{Attendee, DtEnd, DtStart, Location, RecurrenceId, Sequence, XProperty}
+import net.fortuna.ical4j.model.property.{Attendee, DtEnd, DtStamp, DtStart, Location, RecurrenceId, Sequence, XProperty}
 import net.fortuna.ical4j.model.{Calendar, Component, ComponentList, Parameter, Period, Property, PropertyList, RelationshipPropertyModifiers}
-import net.fortuna.ical4j.validate.ValidationResult
 import org.apache.james.core.Username
 
 import scala.jdk.CollectionConverters._
@@ -146,10 +145,21 @@ case class CalendarEventModifier(patches: Seq[CalendarEventUpdatePatch],
     newCalendar
   }
 
-  private def findVEventByRecurrenceId(calendar: Calendar, recurrenceId: RecurrenceId[Temporal]): VEvent =
-    // An existing override is used as is: it may come without master event, eg when invited to a single occurrence
+  /**
+   * The VEVENT this modifier acts upon: the patched one, or, when the targeted override is missing,
+   * the VEVENT it would be copied from. Lets callers inspect it (eg its STATUS) before applying the modifier.
+   */
+  def targetedVEvent(calendar: Calendar): Option[VEvent] =
+    recurrenceId.flatMap(findOverride(calendar, _))
+      .orElse(calendar.getComponents[VEvent](Component.VEVENT).asScala.headOption)
+
+  private def findOverride(calendar: Calendar, recurrenceId: RecurrenceId[Temporal]): Option[VEvent] =
     calendar.getComponents[VEvent](Component.VEVENT).asScala
       .find(_.getRecurrenceId[Temporal] == recurrenceId)
+
+  private def findVEventByRecurrenceId(calendar: Calendar, recurrenceId: RecurrenceId[Temporal]): VEvent =
+    // An existing override is used as is: it may come without master event, eg when invited to a single occurrence
+    findOverride(calendar, recurrenceId)
       .getOrElse {
         val baseVEvent = calendar.getFirstVEvent
         require(baseVEvent.getProperty(Property.RRULE).isPresent || baseVEvent.getProperty(Property.RDATE).isPresent,
@@ -184,14 +194,14 @@ case class CalendarEventModifier(patches: Seq[CalendarEventUpdatePatch],
     }
 
     // Update DTSTAMP
-    vEvent.getDateTimeStamp.setDate(Instant.now)
+    Option(vEvent.getDateTimeStamp) match {
+      case Some(dtStamp) => dtStamp.setDate(Instant.now)
+      case None => vEvent.addProperty(new DtStamp(Instant.now).asInstanceOf[Property])
+    }
   }
 
-  private def validateAfterUpdate(calendar: Calendar): Unit = {
-    val validationResult: ValidationResult = calendar.validate()
-    require(!validationResult.hasErrors,
-      s"Invalidate calendar event: ${validationResult.getEntries.asScala.toSeq.map(error => s"${error.getContext} : ${error.getMessage}").mkString(";")}".asInstanceOf[Object])
-  }
+  private def validateAfterUpdate(calendar: Calendar): Unit =
+    CalendarValidation.requireValid(Seq(calendar.validate()))
 }
 
 object CalendarEventModifier {
