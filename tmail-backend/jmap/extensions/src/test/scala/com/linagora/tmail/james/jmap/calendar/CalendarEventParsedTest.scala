@@ -675,7 +675,55 @@ class CalendarEventParsedTest {
       assertThat(calendarEventParsed.status.head)
         .isEqualTo(CalendarEventStatusField(Tentative))
     }
+
+    @Test
+    def statusShouldBeEmptyWhenUnknownValue(): Unit = {
+      val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
+        new ByteArrayInputStream(icsPayloadWith("STATUS:CONFIRMD").getBytes())).head
+
+      assertThat(calendarEventParsed.status.isEmpty).isTrue
+    }
   }
+
+  @Test
+  def privacyShouldBeEmptyWhenClassIsAnExtensionValue(): Unit = {
+    val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
+      new ByteArrayInputStream(minimalIcsPayloadWith("CLASS:X-INTERNAL").getBytes())).head
+
+    assertThat(calendarEventParsed.privacy.isEmpty).isTrue
+  }
+
+  @Test
+  def freeBusyStatusShouldBeEmptyWhenTranspIsUnknown(): Unit = {
+    val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
+      new ByteArrayInputStream(minimalIcsPayloadWith("TRANSP:TRANSPA#RENT").getBytes())).head
+
+    assertThat(calendarEventParsed.freeBusyStatus.isEmpty).isTrue
+  }
+
+  @Test
+  def parseShouldKeepOtherFieldsWhenClassIsAnExtensionValue(): Unit = {
+    val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(
+      new ByteArrayInputStream(minimalIcsPayloadWith("CLASS:X-INTERNAL").getBytes())).head
+
+    assertThat(calendarEventParsed.title.get.value).isEqualTo("Meeting")
+  }
+
+  private def minimalIcsPayloadWith(additionalField: String): String =
+    s"""BEGIN:VCALENDAR
+       |VERSION:2.0
+       |PRODID:-//Example//EN
+       |METHOD:REQUEST
+       |BEGIN:VEVENT
+       |UID:1@example.com
+       |DTSTAMP:20250101T000000Z
+       |DTSTART:20250101T100000Z
+       |DTEND:20250101T110000Z
+       |SUMMARY:Meeting
+       |$additionalField
+       |END:VEVENT
+       |END:VCALENDAR
+       |""".stripMargin
 
   @Test
   def parseShouldSucceedWhenAttendeeHasMalformedMailto(): Unit = {

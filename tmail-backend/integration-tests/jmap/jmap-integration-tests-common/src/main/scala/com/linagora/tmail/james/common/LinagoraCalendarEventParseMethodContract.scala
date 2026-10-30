@@ -1285,7 +1285,7 @@ trait LinagoraCalendarEventParseMethodContract {
   }
 
   @Test
-  def parseInvalidIcsPayloadShouldReturnNotParsable(): Unit = {
+  def parseShouldIgnoreUnknownTranspAndStatusValues(): Unit = {
     val blobId1: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/invalid_TRANSP.ics"))
     val blobId2: String = uploadAndGetBlobId(ClassLoader.getSystemResourceAsStream("ics/invalid_STATUS.ics"))
 
@@ -1298,7 +1298,8 @@ trait LinagoraCalendarEventParseMethodContract {
          |    "CalendarEvent/parse",
          |    {
          |      "accountId": "$bobAccountId",
-         |      "blobIds": [ "$blobId1", "$blobId2" ]
+         |      "blobIds": [ "$blobId1", "$blobId2" ],
+         |      "properties": ["title", "status", "freeBusyStatus"]
          |    },
          |    "c1"]]
          |}""".stripMargin
@@ -1322,10 +1323,18 @@ trait LinagoraCalendarEventParseMethodContract {
            |	"CalendarEvent/parse",
            |	{
            |		"accountId": "$bobAccountId",
-           |		"notParsable": [
-           |			"$blobId1",
-           |			"$blobId2"
-           |		]
+           |		"parsed": {
+           |			"$blobId1": [{
+           |				"title": "Sprint planning #23",
+           |				"status": "confirmed",
+           |				"freeBusyStatus": null
+           |			}],
+           |			"$blobId2": [{
+           |				"title": "Sprint planning #23",
+           |				"status": null,
+           |				"freeBusyStatus": null
+           |			}]
+           |		}
            |	},
            |	"c1"
            |]""".stripMargin)
