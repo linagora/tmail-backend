@@ -18,8 +18,6 @@
 
 package com.linagora.tmail.encrypted.postgres;
 
-import java.io.ByteArrayInputStream;
-
 import jakarta.inject.Inject;
 
 import org.apache.james.core.Username;
@@ -75,6 +73,6 @@ public class PostgresKeystoreManager implements KeystoreManager {
 
     private String computeKeyId(byte[] payload) throws Exception {
         return BaseEncoding.base16()
-            .encode(Encrypter.readFingerprint(new ByteArrayInputStream(payload)));
+            .encode(Encrypter.readEncryptionCapableFingerprint(payload));
     }
 }

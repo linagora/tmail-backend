@@ -28,6 +28,7 @@ import java.security.SecureRandom;
 import java.time.Instant;
 import java.util.Collection;
 import java.util.Date;
+import java.util.Set;
 
 import org.apache.james.mime4j.dom.Header;
 import org.apache.james.mime4j.dom.Message;
@@ -38,6 +39,8 @@ import org.apache.james.mime4j.message.DefaultMessageBuilder;
 import org.apache.james.mime4j.message.DefaultMessageWriter;
 import org.apache.james.mime4j.stream.NameValuePair;
 import org.bouncycastle.bcpg.ArmoredOutputStream;
+import org.bouncycastle.bcpg.PublicKeyAlgorithmTags;
+import org.bouncycastle.jce.provider.BouncyCastleProvider;
 import org.bouncycastle.openpgp.PGPCompressedData;
 import org.bouncycastle.openpgp.PGPCompressedDataGenerator;
 import org.bouncycastle.openpgp.PGPEncryptedData;
@@ -61,6 +64,10 @@ import com.google.common.io.FileBackedOutputStream;
 public class Encrypter {
     private static final int FILE_THRESHOLD = 100 * 1024;
     private static final int MAX_KEY_SIZE = 1024 * 1024;
+    private static final int MAX_ELGAMAL_BIT_STRENGTH = 4096;
+    private static final Set<Integer> ELGAMAL_ALGORITHMS = Set.of(PublicKeyAlgorithmTags.ELGAMAL_ENCRYPT, PublicKeyAlgorithmTags.ELGAMAL_GENERAL);
+    private static final BouncyCastleProvider BOUNCY_CASTLE_PROVIDER = new BouncyCastleProvider();
+    private static final ByteSource ENCRYPTION_PROBE = ByteSource.wrap("probe".getBytes(StandardCharsets.UTF_8));
 
     public static Encrypter forKeys(Collection<byte[]> armoredKeys) {
         return forPublicKeys(armoredKeys.stream()
@@ -81,11 +88,11 @@ public class Encrypter {
     private static PGPEncryptedDataGenerator createEncryptor(Collection<PGPPublicKey> encryptionKeys) {
         PGPEncryptedDataGenerator pgpEncryptedDataGenerator = new PGPEncryptedDataGenerator(new JcePGPDataEncryptorBuilder(PGPEncryptedData.AES_128)
             .setSecureRandom(new SecureRandom())
-            .setProvider("BC")
+            .setProvider(BOUNCY_CASTLE_PROVIDER)
             .setWithIntegrityPacket(true));
 
         encryptionKeys.stream()
-            .map(JcePublicKeyKeyEncryptionMethodGenerator::new)
+            .map(publicKey -> new JcePublicKeyKeyEncryptionMethodGenerator(publicKey).setProvider(BOUNCY_CASTLE_PROVIDER))
             .forEach(pgpEncryptedDataGenerator::addMethod);
         return pgpEncryptedDataGenerator;
     }
@@ -102,13 +109,43 @@ public class Encrypter {
         return selectEncryptionKey(in).primaryKey().getFingerprint();
     }
 
+    /**
+     * Fingerprint of the primary key owning the encryption key, once ensured this encryption key can actually be
+     * used to encrypt data, the same way it would be at delivery time.
+     *
+     * @throws IllegalArgumentException if no encryption key can be found, or if it can not be used to encrypt data
+     */
+    public static byte[] readEncryptionCapableFingerprint(byte[] armoredKey) throws Exception {
+        EncryptionKeySelector.Selection selection = selectEncryptionKey(new ByteArrayInputStream(armoredKey));
+        ensureCanEncrypt(selection.encryptionKey());
+        return selection.primaryKey().getFingerprint();
+    }
+
+    private static void ensureCanEncrypt(PGPPublicKey encryptionKey) {
+        try {
+            forPublicKeys(ImmutableList.of(encryptionKey))
+                .encrypt(ENCRYPTION_PROBE, OutputStream.nullOutputStream());
+        } catch (Exception e) {
+            throw new IllegalArgumentException("PGP public key can not be used for encryption", e);
+        }
+    }
+
     private static EncryptionKeySelector.Selection selectEncryptionKey(InputStream in) throws Exception {
         byte[] packets = readBounded(PGPUtil.getDecoderStream(in));
         PublicKeyPacketsValidator.validate(packets);
         PGPPublicKeyRingCollection pgpPub = new PGPPublicKeyRingCollection(new ByteArrayInputStream(packets),
             new BcKeyFingerprintCalculator());
 
-        return EncryptionKeySelector.select(pgpPub, Instant.now());
+        EncryptionKeySelector.Selection selection = EncryptionKeySelector.select(pgpPub, Instant.now());
+        requireBoundedElGamalStrength(selection.encryptionKey());
+        return selection;
+    }
+
+    // Unlike RSA, capped by the JCA provider, ElGamal encryption cost grows with the prime size without any bound
+    private static void requireBoundedElGamalStrength(PGPPublicKey encryptionKey) {
+        if (ELGAMAL_ALGORITHMS.contains(encryptionKey.getAlgorithm()) && encryptionKey.getBitStrength() > MAX_ELGAMAL_BIT_STRENGTH) {
+            throw new IllegalArgumentException("ElGamal PGP public key exceeds " + MAX_ELGAMAL_BIT_STRENGTH + " bits");
+        }
     }
 
     private static byte[] readBounded(InputStream in) throws IOException {

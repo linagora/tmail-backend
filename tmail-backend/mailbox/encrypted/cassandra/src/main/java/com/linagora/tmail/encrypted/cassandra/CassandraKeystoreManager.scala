@@ -18,8 +18,6 @@
 
 package com.linagora.tmail.encrypted.cassandra
 
-import java.io.ByteArrayInputStream
-
 import com.google.common.io.BaseEncoding
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
@@ -76,7 +74,7 @@ class CassandraKeystoreManager @Inject()(cassandraKeystoreDAO: CassandraKeystore
     cassandraKeystoreDAO.deleteAllKeys(username)
 
   private def computeKeyId(payload: Array[Byte]): Either[Throwable, KeyId] =
-    Try(Encrypter.readFingerprint(new ByteArrayInputStream(payload)))
+    Try(Encrypter.readEncryptionCapableFingerprint(payload))
       .toEither
       .map(fingerprint => KeyId(BaseEncoding.base16().encode(fingerprint)))
 }

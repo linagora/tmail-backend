@@ -18,8 +18,6 @@
 
 package com.linagora.tmail.encrypted
 
-import java.io.ByteArrayInputStream
-
 import com.google.common.io.BaseEncoding
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
@@ -51,9 +49,9 @@ class InMemoryKeystoreManager (keystore: scala.collection.concurrent.Map[Usernam
   def this() = this(keystore = scala.collection.concurrent.TrieMap())
 
   override def save(username: Username, payload: Array[Byte]): Publisher[KeyId] =
-    computeKeyId(payload)
+    SMono.defer(() => SMono.fromPublisher(computeKeyId(payload)
       .fold(e => SMono.error(new IllegalArgumentException(e)), keyId => usernameExists(username)
-        .fold(_ => create(username, keyId, payload), _ => update(username, keyId, payload)))
+        .fold(_ => create(username, keyId, payload), _ => update(username, keyId, payload)))))
 
   override def listPublicKeys(username: Username): Publisher[PublicKey] =
     usernameExists(username)
@@ -104,7 +102,7 @@ class InMemoryKeystoreManager (keystore: scala.collection.concurrent.Map[Usernam
       .`then`(SMono.just(newKey.id))
 
   private def computeKeyId(payload: Array[Byte]): Either[Throwable, KeyId] =
-    Try(Encrypter.readFingerprint(new ByteArrayInputStream(payload)))
+    Try(Encrypter.readEncryptionCapableFingerprint(payload))
       .toEither
       .map(fingerprint => KeyId(BaseEncoding.base16().encode(fingerprint)))
 
