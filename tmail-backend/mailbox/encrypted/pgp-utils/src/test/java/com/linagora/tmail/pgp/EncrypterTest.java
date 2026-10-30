@@ -23,6 +23,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
+import java.math.BigInteger;
 import java.nio.charset.StandardCharsets;
 import java.security.KeyPairGenerator;
 import java.security.Provider;
@@ -269,6 +270,67 @@ class EncrypterTest {
 
         assertThat(BaseEncoding.base16().encode(Encrypter.readFingerprint(new ByteArrayInputStream(keyBytes))))
             .isEqualTo("3BA423385C8C80D453D7E6F95BF4E866E9CC6FA2");
+    }
+
+    @Test
+    void readEncryptionCapableFingerprintShouldReturnThePrimaryKeyFingerprintWhenUsable() throws Exception {
+        byte[] keyBytes = ClassLoader.getSystemClassLoader().getResourceAsStream("gpg.pub").readAllBytes();
+
+        assertThat(BaseEncoding.base16().encode(Encrypter.readEncryptionCapableFingerprint(keyBytes)))
+            .isEqualTo("3BA423385C8C80D453D7E6F95BF4E866E9CC6FA2");
+    }
+
+    @Test
+    void readEncryptionCapableFingerprintShouldRejectRSAKeyWithTooSmallExponent() throws Exception {
+        BigInteger modulus = BigInteger.ONE.shiftLeft(1023).add(BigInteger.valueOf(1999));
+        byte[] keyBytes = CraftedKeyRings.withRSAEncryptionSubkey(modulus, BigInteger.ONE);
+
+        assertThatThrownBy(() -> Encrypter.readEncryptionCapableFingerprint(keyBytes))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("PGP public key can not be used for encryption");
+    }
+
+    @Test
+    void readEncryptionCapableFingerprintShouldRejectRSAKeyWithTooShortModulus() throws Exception {
+        BigInteger modulus = BigInteger.ONE.shiftLeft(255).add(BigInteger.valueOf(1999));
+        byte[] keyBytes = CraftedKeyRings.withRSAEncryptionSubkey(modulus, BigInteger.valueOf(65537));
+
+        assertThatThrownBy(() -> Encrypter.readEncryptionCapableFingerprint(keyBytes))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("PGP public key can not be used for encryption");
+    }
+
+    @Test
+    void readEncryptionCapableFingerprintShouldRejectElGamalKeyWithTooShortPrime() throws Exception {
+        byte[] keyBytes = CraftedKeyRings.withElGamalEncryptionSubkey(BigInteger.valueOf(23));
+
+        assertThatThrownBy(() -> Encrypter.readEncryptionCapableFingerprint(keyBytes))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("PGP public key can not be used for encryption");
+    }
+
+    @Test
+    void readEncryptionCapableFingerprintShouldRejectElGamalKeyWithTooLongPrime() throws Exception {
+        byte[] keyBytes = CraftedKeyRings.withElGamalEncryptionSubkey(BigInteger.ONE.shiftLeft(4096).add(BigInteger.valueOf(1999)));
+
+        assertThatThrownBy(() -> Encrypter.readEncryptionCapableFingerprint(keyBytes))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("ElGamal PGP public key exceeds 4096 bits");
+    }
+
+    @Test
+    void readPublicKeyShouldRejectElGamalKeyWithTooLongPrime() throws Exception {
+        byte[] keyBytes = CraftedKeyRings.withElGamalEncryptionSubkey(BigInteger.ONE.shiftLeft(4096).add(BigInteger.valueOf(1999)));
+
+        assertThatThrownBy(() -> Encrypter.readPublicKey(new ByteArrayInputStream(keyBytes)))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessage("ElGamal PGP public key exceeds 4096 bits");
+    }
+
+    @Test
+    void readEncryptionCapableFingerprintShouldRejectBadFormat() {
+        assertThatThrownBy(() -> Encrypter.readEncryptionCapableFingerprint("bad".getBytes(StandardCharsets.UTF_8)))
+            .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test

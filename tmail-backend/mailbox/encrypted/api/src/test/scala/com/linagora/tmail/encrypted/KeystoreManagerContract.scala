@@ -18,6 +18,9 @@
 
 package com.linagora.tmail.encrypted
 
+import java.math.BigInteger
+
+import com.linagora.tmail.pgp.CraftedKeyRings
 import org.apache.james.core.{Domain, Username}
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
 import org.assertj.core.api.SoftAssertions.assertSoftly
@@ -25,6 +28,7 @@ import org.junit.jupiter.api.Test
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.CollectionConverters._
+import scala.util.Try
 
 trait KeystoreManagerContract {
 
@@ -99,6 +103,44 @@ trait KeystoreManagerContract {
     assertThatThrownBy(() => SMono.fromPublisher(keyStoreManager.save(BOB, payload)).block())
       .isInstanceOf(classOf[IllegalArgumentException])
   }
+
+  @Test
+  def saveShouldRejectRSAKeyWithTooSmallExponent(): Unit = {
+    val modulus: BigInteger = BigInteger.ONE.shiftLeft(1023).add(BigInteger.valueOf(1999))
+
+    assertThatThrownBy(() => SMono.fromPublisher(keyStoreManager.save(BOB, CraftedKeyRings.withRSAEncryptionSubkey(modulus, BigInteger.ONE))).block())
+      .isInstanceOf(classOf[IllegalArgumentException])
+  }
+
+  @Test
+  def saveShouldRejectRSAKeyWithTooShortModulus(): Unit = {
+    val modulus: BigInteger = BigInteger.ONE.shiftLeft(255).add(BigInteger.valueOf(1999))
+
+    assertThatThrownBy(() => SMono.fromPublisher(keyStoreManager.save(BOB, CraftedKeyRings.withRSAEncryptionSubkey(modulus, BigInteger.valueOf(65537)))).block())
+      .isInstanceOf(classOf[IllegalArgumentException])
+  }
+
+  @Test
+  def saveShouldNotStoreKeysThatCannotEncrypt(): Unit = {
+    Try(SMono.fromPublisher(keyStoreManager.save(BOB, keyThatCannotEncrypt)).block())
+
+    assertThat(SFlux.fromPublisher(keyStoreManager.listPublicKeys(BOB)).collectSeq().block().asJava)
+      .isEmpty()
+  }
+
+  @Test
+  def saveShouldNotStoreKeysThatCannotEncryptWhenUserHasKeys(): Unit = {
+    val payload: Array[Byte] = ClassLoader.getSystemClassLoader.getResourceAsStream("gpg.pub").readAllBytes()
+    val keyId: KeyId = SMono.fromPublisher(keyStoreManager.save(BOB, payload)).block()
+
+    Try(SMono.fromPublisher(keyStoreManager.save(BOB, keyThatCannotEncrypt)).block())
+
+    assertThat(SFlux.fromPublisher(keyStoreManager.listPublicKeys(BOB)).map(_.id).collectSeq().block().asJava)
+      .containsExactly(keyId)
+  }
+
+  private def keyThatCannotEncrypt: Array[Byte] =
+    CraftedKeyRings.withRSAEncryptionSubkey(BigInteger.ONE.shiftLeft(1023).add(BigInteger.valueOf(1999)), BigInteger.ONE)
 
   @Test
   def listPublicKeysShouldListAllKeys(): Unit = {
