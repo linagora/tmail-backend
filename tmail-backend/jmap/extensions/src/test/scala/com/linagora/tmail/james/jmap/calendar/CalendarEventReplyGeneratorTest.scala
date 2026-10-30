@@ -370,5 +370,13 @@ class CalendarEventReplyGeneratorTest {
       .isInstanceOf(classOf[IllegalArgumentException])
   }
 
+  @Test
+  def shouldPercentEncodeQuotedLocalPartOfAttendee(): Unit = {
+    val replyCalendarEvent: Calendar = testee.generate(calendarEventRequestTemplate, AttendeeReply(new MailAddress("\"quoted local\"@domain.tld"), PartStat.ACCEPTED))
+    val replyAttendee: Option[Attendee] = getVEVENT(replyCalendarEvent).getProperty[Attendee]("ATTENDEE").toScala
+
+    assertThat(replyAttendee.get.getCalAddress.toASCIIString).isEqualTo("mailto:%22quoted%20local%22@domain.tld")
+  }
+
   private def getVEVENT(calendar: Calendar): VEvent = calendar.getComponents[VEvent](Component.VEVENT).asScala.head
 }
