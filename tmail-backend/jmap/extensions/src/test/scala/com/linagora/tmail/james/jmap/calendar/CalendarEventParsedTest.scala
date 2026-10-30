@@ -139,6 +139,105 @@ class CalendarEventParsedTest {
   }
 
   @Test
+  def startShouldBeEmptyWhenDtStartValueIsInvalid(): Unit = {
+    val icsPayload = """BEGIN:VCALENDAR
+                       |VERSION:2.0
+                       |PRODID:-//Example//EN
+                       |METHOD:REQUEST
+                       |BEGIN:VEVENT
+                       |UID:1@example.com
+                       |DTSTAMP:20250101T000000Z
+                       |DTSTART;TZID=Europe/Paris:20250101T900000
+                       |SUMMARY:Meeting
+                       |END:VEVENT
+                       |END:VCALENDAR
+                       |""".stripMargin
+
+    val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(new ByteArrayInputStream(icsPayload.getBytes())).head
+
+    SoftAssertions.assertSoftly(softly => {
+      softly.assertThat(calendarEventParsed.start.isEmpty).isTrue
+      softly.assertThat(calendarEventParsed.end.isEmpty).isTrue
+      softly.assertThat(calendarEventParsed.title.get.value).isEqualTo("Meeting")
+    })
+  }
+
+  @Test
+  def endShouldBeEmptyWhenDtEndValueIsInvalid(): Unit = {
+    val icsPayload = """BEGIN:VCALENDAR
+                       |VERSION:2.0
+                       |PRODID:-//Example//EN
+                       |METHOD:REQUEST
+                       |BEGIN:VEVENT
+                       |UID:1@example.com
+                       |DTSTAMP:20250101T000000Z
+                       |DTSTART;TZID=Europe/Paris:20250115T160000
+                       |DTEND;TZID=Europe/Paris:20250151T170000
+                       |SUMMARY:Meeting
+                       |END:VEVENT
+                       |END:VCALENDAR
+                       |""".stripMargin
+
+    val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(new ByteArrayInputStream(icsPayload.getBytes())).head
+
+    SoftAssertions.assertSoftly(softly => {
+      softly.assertThat(calendarEventParsed.start.isDefined).isTrue
+      softly.assertThat(calendarEventParsed.end.isEmpty).isTrue
+    })
+  }
+
+  @Test
+  def startAndEndShouldBeEmptyWhenTzIdIsInvalid(): Unit = {
+    val icsPayload = """BEGIN:VCALENDAR
+                       |VERSION:2.0
+                       |PRODID:-//Example//EN
+                       |METHOD:REQUEST
+                       |BEGIN:VEVENT
+                       |UID:1@example.com
+                       |DTSTAMP:20250101T000000Z
+                       |DTSTART;TZID=Asia/Ho_ChIVIDUAL:20250115T160000
+                       |DTEND;TZID=Asia/Ho_ChIVIDUAL:20250115T170000
+                       |SUMMARY:Meeting
+                       |END:VEVENT
+                       |END:VCALENDAR
+                       |""".stripMargin
+
+    val calendarEventParsed: CalendarEventParsed = CalendarEventParsed.from(new ByteArrayInputStream(icsPayload.getBytes())).head
+
+    SoftAssertions.assertSoftly(softly => {
+      softly.assertThat(calendarEventParsed.start.isEmpty).isTrue
+      softly.assertThat(calendarEventParsed.end.isEmpty).isTrue
+    })
+  }
+
+  @Test
+  def invalidEventShouldNotPreventParsingOtherEvents(): Unit = {
+    val icsPayload = """BEGIN:VCALENDAR
+                       |VERSION:2.0
+                       |PRODID:-//Example//EN
+                       |METHOD:REQUEST
+                       |BEGIN:VEVENT
+                       |UID:1@example.com
+                       |DTSTAMP:20250101T000000Z
+                       |DTSTART;TZID=Europe/Paris:20250101T900000
+                       |SUMMARY:Broken
+                       |END:VEVENT
+                       |BEGIN:VEVENT
+                       |UID:2@example.com
+                       |DTSTAMP:20250101T000000Z
+                       |DTSTART;TZID=Europe/Paris:20250101T090000
+                       |SUMMARY:Valid
+                       |END:VEVENT
+                       |END:VCALENDAR
+                       |""".stripMargin
+
+    val calendarEventParsed: List[CalendarEventParsed] = CalendarEventParsed.from(new ByteArrayInputStream(icsPayload.getBytes()))
+
+    assertThat(calendarEventParsed.filter(_.start.isDefined).flatMap(_.title).map(_.value).asJava)
+      .containsExactly("Valid")
+  }
+
+  @Test
   def shouldParseStartAndEndTimeOfAllDayEvent(): Unit = {
     val icsPayload = """BEGIN:VCALENDAR
                        |PRODID:-//Google Inc//Google Calendar 70.9054//EN
