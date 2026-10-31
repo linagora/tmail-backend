@@ -33,6 +33,10 @@ public class DavPropstat {
         return status;
     }
 
+    public boolean isSuccess() {
+        return status != null && status.isSuccess();
+    }
+
     public DavProp getProp() {
         return prop;
     }
