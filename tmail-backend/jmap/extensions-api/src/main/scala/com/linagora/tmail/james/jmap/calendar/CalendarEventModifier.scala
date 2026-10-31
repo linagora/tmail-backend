@@ -174,6 +174,10 @@ case class CalendarEventModifier(patches: Seq[CalendarEventUpdatePatch],
         val baseVEvent = calendar.getFirstVEvent
         require(baseVEvent.getProperty(Property.RRULE).isPresent || baseVEvent.getProperty(Property.RDATE).isPresent,
           s"Can not find VEVENT with recurrenceId $recurrenceId, the event is not a recurring event".asInstanceOf[Object])
+        require(Option(recurrenceId.getDate).isDefined,
+          s"Can not compute the occurrence, the recurrenceId $recurrenceId has no date".asInstanceOf[Object])
+        require(Option(baseVEvent.getDateTimeStart[Temporal]()).flatMap(dtStart => Option(dtStart.getDate)).isDefined,
+          s"Can not compute the occurrence $recurrenceId, the recurring event has no start date".asInstanceOf[Object])
 
         val filteredProperties: util.List[Property] = baseVEvent.getPropertyList.getAll.asScala
           .filterNot(p => RECURRENCE_IGNORE_COPIED_PROPERTIES.contains(p.getName))

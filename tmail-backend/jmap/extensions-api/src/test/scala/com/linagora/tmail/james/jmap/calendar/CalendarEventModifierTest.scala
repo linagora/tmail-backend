@@ -920,6 +920,78 @@ class CalendarEventModifierTest {
     }
 
     @Test
+    def acceptingACounterForAnOccurrenceShouldRejectAMasterWithoutStartDate(): Unit = {
+      val stored = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+        """BEGIN:VCALENDAR
+          |VERSION:2.0
+          |PRODID:-//x//EN
+          |BEGIN:VEVENT
+          |UID:rec-2
+          |DTSTAMP:20250401T090000Z
+          |DTSTART:
+          |DTEND:20250402T080000Z
+          |RRULE:FREQ=WEEKLY;COUNT=4
+          |ORGANIZER:mailto:organizer@domain.tld
+          |END:VEVENT
+          |END:VCALENDAR
+          |""".stripMargin.getBytes("UTF-8")))
+      val counter = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+        """BEGIN:VCALENDAR
+          |VERSION:2.0
+          |PRODID:-//x//EN
+          |METHOD:COUNTER
+          |BEGIN:VEVENT
+          |UID:rec-2
+          |DTSTAMP:20250402T090000Z
+          |RECURRENCE-ID:20250409T070000Z
+          |DTSTART:20250409T140000Z
+          |DTEND:20250409T150000Z
+          |END:VEVENT
+          |END:VCALENDAR
+          |""".stripMargin.getBytes("UTF-8")))
+
+      assertThatThrownBy(() => testee.of(counter, Username.of("organizer@domain.tld")).apply(stored))
+        .isInstanceOf(classOf[IllegalArgumentException])
+        .hasMessageContaining("the recurring event has no start date")
+    }
+
+    @Test
+    def acceptingACounterWithAnEmptyRecurrenceIdShouldBeRejected(): Unit = {
+      val stored = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+        """BEGIN:VCALENDAR
+          |VERSION:2.0
+          |PRODID:-//x//EN
+          |BEGIN:VEVENT
+          |UID:rec-2
+          |DTSTAMP:20250401T090000Z
+          |DTSTART:20250402T070000Z
+          |DTEND:20250402T080000Z
+          |RRULE:FREQ=WEEKLY;COUNT=4
+          |ORGANIZER:mailto:organizer@domain.tld
+          |END:VEVENT
+          |END:VCALENDAR
+          |""".stripMargin.getBytes("UTF-8")))
+      val counter = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+        """BEGIN:VCALENDAR
+          |VERSION:2.0
+          |PRODID:-//x//EN
+          |METHOD:COUNTER
+          |BEGIN:VEVENT
+          |UID:rec-2
+          |DTSTAMP:20250402T090000Z
+          |RECURRENCE-ID:
+          |DTSTART:20250409T140000Z
+          |DTEND:20250409T150000Z
+          |END:VEVENT
+          |END:VCALENDAR
+          |""".stripMargin.getBytes("UTF-8")))
+
+      assertThatThrownBy(() => testee.of(counter, Username.of("organizer@domain.tld")).apply(stored))
+        .isInstanceOf(classOf[IllegalArgumentException])
+        .hasMessageContaining("has no date")
+    }
+
+    @Test
     def withPartStatShouldThrowWhenRecurringIdNotFound(): Unit = {
       val baseCalendar =
         """BEGIN:VCALENDAR
