@@ -20,12 +20,16 @@ package com.linagora.tmail.dav.cal;
 
 import java.time.Instant;
 import java.util.List;
+import java.util.Optional;
 
 import org.apache.commons.collections.CollectionUtils;
 
 public record FreeBusyResponse(Instant start, Instant end, List<User> users) {
 
     public record User(String id, List<Calendar> calendars) {
+        public User {
+            calendars = emptyIfNull(calendars);
+        }
     }
 
     public record Calendar(String id, List<BusyTime> busy) {
@@ -38,7 +42,15 @@ public record FreeBusyResponse(Instant start, Instant end, List<User> users) {
     public record BusyTime(String uid, Instant start, Instant end) {
     }
 
+    public FreeBusyResponse {
+        users = emptyIfNull(users);
+    }
+
     public static FreeBusyResponse deserialize(byte[] bytes) {
         return FreeBusySerializer.INSTANCE.deserialize(bytes);
+    }
+
+    private static <T> List<T> emptyIfNull(List<T> list) {
+        return Optional.ofNullable(list).orElse(List.of());
     }
 }
