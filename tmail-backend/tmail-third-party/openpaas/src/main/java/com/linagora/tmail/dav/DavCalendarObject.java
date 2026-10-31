@@ -43,9 +43,17 @@ public record DavCalendarObject(URI uri, Calendar calendarData, String eTag) {
                 IOUtils.toInputStream(calendarData, StandardCharsets.UTF_8)))
             .map(calendar ->
                 new DavCalendarObject(
-                    davResponse.getHref().getValue().map(URI::create).orElseThrow(() ->
+                    davResponse.getHref().getValue().map(DavCalendarObject::asUri).orElseThrow(() ->
                         new DavClientException("Unable to find calendar object Href in dav response: " + davResponse)),
                     calendar, davResponse.getPropstat().getProp().getETag().orElse("ETag_NOT_FOUND")));
+    }
+
+    private static URI asUri(String href) {
+        try {
+            return URI.create(href);
+        } catch (IllegalArgumentException e) {
+            throw new DavClientException("Invalid calendar object Href in dav response: " + href, e);
+        }
     }
 
     public CalendarEventParsed parse(Optional<String> recurrenceId) {
