@@ -605,6 +605,49 @@ class CalendarEventModifierTest {
       .hasCauseInstanceOf(classOf[DateTimeException])
   }
 
+  @Test
+  def acceptingACounterShouldApplyEveryProposedChange(): Unit = {
+    val stored: Calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+      """BEGIN:VCALENDAR
+        |VERSION:2.0
+        |PRODID:-//x//EN
+        |BEGIN:VEVENT
+        |UID:ev-1
+        |DTSTAMP:20250401T090000Z
+        |DTSTART:20250402T070000Z
+        |DTEND:20250402T080000Z
+        |LOCATION:Hall
+        |ORGANIZER:mailto:organizer@domain.tld
+        |ATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:bob@domain.tld
+        |END:VEVENT
+        |END:VCALENDAR
+        |""".stripMargin.getBytes("UTF-8")))
+    val counter: Calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+      """BEGIN:VCALENDAR
+        |VERSION:2.0
+        |PRODID:-//x//EN
+        |METHOD:COUNTER
+        |BEGIN:VEVENT
+        |UID:ev-1
+        |DTSTAMP:20250402T090000Z
+        |DTSTART:20250402T090000Z
+        |DTEND:20250402T100000Z
+        |LOCATION:Room 2
+        |ATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:carol@domain.tld
+        |END:VEVENT
+        |END:VCALENDAR
+        |""".stripMargin.getBytes("UTF-8")))
+
+    val result: VEvent = testee.of(counter, Username.of("organizer@domain.tld")).apply(stored).getFirstVEvent
+
+    SoftAssertions.assertSoftly(softly => {
+      softly.assertThat(result.getDateTimeStart[Temporal].getValue).isEqualTo("20250402T090000")
+      softly.assertThat(result.getLocation.getValue).isEqualTo("Room 2")
+      softly.assertThat(result.getAttendees.asScala.map(_.getCalAddress.toASCIIString).asJava)
+        .containsExactlyInAnyOrder("mailto:bob@domain.tld", "mailto:carol@domain.tld")
+    })
+  }
+
   @Nested
   class LocationPatch {
     @Test
