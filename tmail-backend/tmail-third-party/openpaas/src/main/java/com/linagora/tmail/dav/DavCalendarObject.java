@@ -27,6 +27,7 @@ import java.util.Optional;
 import org.apache.commons.io.IOUtils;
 
 import com.linagora.tmail.dav.xml.CalendarData;
+import com.linagora.tmail.dav.xml.DavProp;
 import com.linagora.tmail.dav.xml.DavResponse;
 import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier;
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
@@ -37,15 +38,16 @@ import scala.jdk.javaapi.CollectionConverters;
 public record DavCalendarObject(URI uri, Calendar calendarData, String eTag) {
 
     public static Optional<DavCalendarObject> fromDavResponse(DavResponse davResponse) {
-        return davResponse.getPropstat().getProp().getCalendarData()
+        return davResponse.getProp()
+            .flatMap(DavProp::getCalendarData)
             .map(CalendarData::getValue)
             .map(calendarData -> CalendarEventParsed.parseICal4jCalendar(
                 IOUtils.toInputStream(calendarData, StandardCharsets.UTF_8)))
             .map(calendar ->
                 new DavCalendarObject(
-                    davResponse.getHref().getValue().map(DavCalendarObject::asUri).orElseThrow(() ->
+                    davResponse.getHrefValue().map(DavCalendarObject::asUri).orElseThrow(() ->
                         new DavClientException("Unable to find calendar object Href in dav response: " + davResponse)),
-                    calendar, davResponse.getPropstat().getProp().getETag().orElse("ETag_NOT_FOUND")));
+                    calendar, davResponse.getProp().flatMap(DavProp::getETag).orElse("ETag_NOT_FOUND")));
     }
 
     private static URI asUri(String href) {

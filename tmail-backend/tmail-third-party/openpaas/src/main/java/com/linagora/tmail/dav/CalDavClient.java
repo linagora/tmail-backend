@@ -286,8 +286,7 @@ public class CalDavClient {
     private List<URI> extractCalendarURIsFromResponse(DavMultistatus multistatus, String userId) {
         return multistatus.getResponses().stream()
             .filter(DavResponse::isCalendarCollectionResponse)
-            .flatMap(response -> response.getHref()
-                .getValue()
+            .flatMap(response -> response.getHrefValue()
                 .filter(href -> href.startsWith(CALENDAR_PATH + userId + "/"))
                 .filter(href -> !(href.endsWith("inbox/") || href.endsWith("outbox/")))
                 .flatMap(this::parseCalendarHref).stream())
