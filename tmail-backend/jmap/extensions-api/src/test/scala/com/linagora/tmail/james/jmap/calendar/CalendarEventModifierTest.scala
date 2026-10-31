@@ -735,6 +735,9 @@ class CalendarEventModifierTest {
 
       assertThat(updatedCalendar.getFirstVEvent.getAttendees.size())
         .isEqualTo(currentAttendees.size() + 1)
+      assertThat(updatedCalendar.getFirstVEvent.getAttendees)
+        .contains(newAttendee)
+        .doesNotContain(sameAttendeeWithParameters)
     }
   }
 
