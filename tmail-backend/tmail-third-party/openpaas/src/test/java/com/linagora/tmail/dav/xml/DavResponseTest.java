@@ -19,20 +19,20 @@
 package com.linagora.tmail.dav.xml;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatCode;
 
 import org.junit.jupiter.api.Test;
 
 class DavResponseTest {
 
     @Test
-    void getPropstatShouldNotThrowWhenStatusIsMissing() {
+    void getPropstatShouldFallbackToPropstatWithoutStatus() {
         DavMultistatus multistatus = XMLUtil.parse(
             "<d:multistatus xmlns:d=\"DAV:\"><d:response><d:href>/calendars/u/c/x.ics</d:href>"
                 + "<d:propstat><d:prop><d:getetag>\"1\"</d:getetag></d:prop></d:propstat></d:response></d:multistatus>",
             DavMultistatus.class);
 
-        assertThatCode(() -> multistatus.getResponses().getFirst().getPropstat()).doesNotThrowAnyException();
+        assertThat(multistatus.getResponses().getFirst().getPropstat().getProp().getETag())
+            .contains("\"1\"");
     }
 
     @Test
