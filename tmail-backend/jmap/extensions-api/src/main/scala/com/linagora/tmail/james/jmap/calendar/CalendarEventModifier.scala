@@ -33,7 +33,7 @@ import net.fortuna.ical4j.model.parameter.PartStat
 import net.fortuna.ical4j.model.property.immutable.ImmutableMethod
 import net.fortuna.ical4j.model.property.{Attendee, DateProperty, DtEnd, DtStamp, DtStart, Location, RecurrenceId, Sequence, XProperty}
 import net.fortuna.ical4j.model.{Calendar, Component, ComponentContainer, ComponentFactory, ComponentList, Parameter, Period, Property, PropertyList, RelationshipPropertyModifiers}
-import org.apache.james.core.Username
+import org.apache.james.core.{MailAddress, Username}
 
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
@@ -92,12 +92,15 @@ case class LocationUpdatePatch(newLocation: String) extends CalendarEventUpdateP
 
 case class AttendeeUpdatePatch(attendeeList: Seq[Attendee]) extends CalendarEventUpdatePatch {
   override def apply(vEvent: VEvent): Boolean = {
-    val originalAttendees: Seq[String] = vEvent.getAttendees.asScala.toSeq
-      .flatMap(_.getIdentity)
+    // MailAddress equality ignores case: an attendee is identified by its mail address, not by its raw spelling
+    val originalAttendees: Set[MailAddress] = vEvent.getAttendees.asScala.toSet
+      .flatMap((attendee: Attendee) => attendee.getMailAddress)
 
     val newAttendees: Seq[Property] = attendeeList
-      .flatMap(attendee => attendee.getIdentity.filterNot(originalAttendees.contains)
-        .map(_ => attendee.copy()))
+      .flatMap(attendee => attendee.getMailAddress.map(_ -> attendee))
+      .filterNot { case (mailAddress, _) => originalAttendees.contains(mailAddress) }
+      .distinctBy { case (mailAddress, _) => mailAddress }
+      .map { case (_, attendee) => attendee.copy() }
 
     if (newAttendees.nonEmpty) {
       vEvent.addProperty(newAttendees)
@@ -390,7 +393,7 @@ object CalendarEventModifier {
   }
 
   implicit class ImplicitAttendee(attendee: Attendee) {
-    def getIdentity: Option[String] =
-      CalendarAttendeeMailTo.from(attendee).map(_.value.asString())
+    def getMailAddress: Option[MailAddress] =
+      CalendarAttendeeMailTo.from(attendee).map(_.value)
   }
 }
