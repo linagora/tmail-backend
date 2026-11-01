@@ -31,7 +31,7 @@ class DavResponseTest {
                 + "<d:propstat><d:prop><d:getetag>\"1\"</d:getetag></d:prop></d:propstat></d:response></d:multistatus>",
             DavMultistatus.class);
 
-        assertThat(multistatus.getResponses().getFirst().getPropstat().getProp().getETag())
+        assertThat(multistatus.getResponses().getFirst().getProp().flatMap(DavProp::getETag))
             .contains("\"1\"");
     }
 
@@ -44,7 +44,7 @@ class DavResponseTest {
                 + "</d:response></d:multistatus>",
             DavMultistatus.class);
 
-        assertThat(multistatus.getResponses().getFirst().getPropstat().getProp().getETag())
+        assertThat(multistatus.getResponses().getFirst().getProp().flatMap(DavProp::getETag))
             .contains("\"2\"");
     }
 }
