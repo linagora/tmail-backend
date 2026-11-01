@@ -40,7 +40,7 @@ public class DavResponse {
     public DavPropstat getPropstat() {
         if (propstat == null && propstats != null) {
             propstat = propstats.stream()
-                .filter(p -> p.getStatus().isSuccess())
+                .filter(DavPropstat::isSuccess)
                 .findFirst()
                 .orElse(propstats.getFirst());
         }
