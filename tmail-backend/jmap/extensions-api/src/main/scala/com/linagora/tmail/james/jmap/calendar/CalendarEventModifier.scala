@@ -149,7 +149,9 @@ case class CalendarEventModifier(patches: Seq[CalendarEventUpdatePatch],
     val vEVentNeedToUpdate: VEvent = recurrenceId.map(findVEventByRecurrenceId(newCalendar, _))
       .getOrElse(newCalendar.getFirstVEvent)
 
-    if (!patches.exists(_.apply(vEVentNeedToUpdate))) throw NoUpdateRequiredException()
+    // apply every patch: Seq.exists would short-circuit and skip the patches following the first applied one
+    val appliedPatches: Seq[Boolean] = patches.map(_.apply(vEVentNeedToUpdate))
+    if (!appliedPatches.contains(true)) throw NoUpdateRequiredException()
     markEventAsModified(vEVentNeedToUpdate)
     validateAfterUpdate(newCalendar)
     newCalendar
