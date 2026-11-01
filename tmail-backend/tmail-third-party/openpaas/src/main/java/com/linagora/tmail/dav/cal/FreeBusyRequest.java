@@ -36,7 +36,9 @@ public record FreeBusyRequest(Instant start,
     public static Optional<FreeBusyRequest.Builder> tryFromCalendarEventParsed(CalendarEventParsed calendarEventParsed) {
         return calendarEventParsed.startAsJava()
             .flatMap(start -> calendarEventParsed.endAsJava()
+                .filter(end -> start.isBefore(end))
                 .flatMap(end -> calendarEventParsed.uidAsString()
+                    .filter(uid -> !uid.isEmpty())
                     .map(DavUid::new)
                     .map(uid -> FreeBusyRequest.builder().start(start).end(end).uid(uid))));
     }

@@ -402,6 +402,37 @@ class CalDavEventRepositoryTest {
     }
 
     @Test
+    void getAttendanceStatusShouldReturnIsFreeTrueWhenEventHasZeroDuration() {
+        // Given a calendar event A, already ACCEPTED
+        ZonedDateTime startDateOfEventA = ZonedDateTime.parse("2025-03-14T14:00:00Z");
+        CalendarEventHelper calendarEventA = new CalendarEventHelper(openPaasUser.email().asString(), PartStat.ACCEPTED, startDateOfEventA, startDateOfEventA.plusHours(2));
+        pushCalendarToDav(openPaasUser.email().asString(), calendarEventA);
+
+        // And a zero length calendar event B within the time slot of event A
+        ZonedDateTime startDateOfEventB = startDateOfEventA.plusHours(1);
+        CalendarEventHelper calendarEventB = new CalendarEventHelper(openPaasUser.email().asString(), PartStat.TENTATIVE, startDateOfEventB, startDateOfEventB);
+        pushCalendarToDav(openPaasUser.email().asString(), calendarEventB);
+
+        // When getAttendanceStatus of event B
+        BlobId blobId = setupCalendarResolver(calendarEventB.uid());
+
+        CalendarEventAttendanceResults calendarEventAttendanceResults = Mono.from(testee.getAttendanceStatus(testUser, List.of(blobId))).block();
+
+        // Then the entry is done, free, with the known PARTSTAT
+        assertThat(calendarEventAttendanceResults).isNotNull();
+        assertThat(calendarEventAttendanceResults.done().size()).isEqualTo(1);
+
+        EventAttendanceStatusEntry attendanceStatusEntry = CollectionConverters.asJava(calendarEventAttendanceResults.done()).getFirst();
+
+        SoftAssertions.assertSoftly(softly -> {
+            softly.assertThat(attendanceStatusEntry.eventAttendanceStatus().toPartStat())
+                .isEqualTo(PartStat.TENTATIVE);
+            softly.assertThat(OptionConverters.toJava(attendanceStatusEntry.isFree()))
+                .isEqualTo(Optional.of(true));
+        });
+    }
+
+    @Test
     void shouldReturnNotDoneWhenEventIdIsMissingInDavServer() {
         BlobId blobId = setupCalendarResolver(UUID.randomUUID().toString());
 
