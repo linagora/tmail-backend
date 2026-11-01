@@ -21,6 +21,7 @@ package com.linagora.tmail.imap;
 import java.util.List;
 import java.util.Optional;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.apache.james.imap.main.PathConverter;
@@ -83,7 +84,12 @@ public class TMailFullDomainPathConverter extends TMailPathConverter implements 
         List<String> externalMailboxNameParts = Splitter.on(mailboxSession.getPathDelimiter())
                 .splitToList(externalMailboxName);
         if (externalMailboxNameParts.size() < 2) {
-            throw new IllegalArgumentException("Invalid single part external mailbox name.");
+            return new MailboxPath(TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE(), teamMailboxUsername(mailboxSession), "");
+        }
+
+        // Allow listing
+        if (StringUtils.equals(externalMailboxNameParts.get(1), "*") && externalMailboxNameParts.size() == 2) {
+            return new MailboxPath(TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE(), teamMailboxUsername(mailboxSession), "*");
         }
 
         List<String> usernameDomain = Splitter.on("@").splitToList(externalMailboxNameParts.get(1));
@@ -102,12 +108,12 @@ public class TMailFullDomainPathConverter extends TMailPathConverter implements 
 
         return new MailboxPath(
                 TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE(),
-                teamMailboxUsername(domain),
+                teamMailboxUsernameFromDomainString(domain),
                 team + (folder.isEmpty() ? "" : mailboxSession.getPathDelimiter() + folder)
         );
     }
 
-    protected Username teamMailboxUsername(String domain) {
+    protected Username teamMailboxUsernameFromDomainString(String domain) {
         return Username.from(TeamMailbox.TEAM_MAILBOX_LOCAL_PART(), Optional.of(domain));
     }
 }
