@@ -19,6 +19,7 @@
 package com.linagora.tmail.james.jmap.calendar
 
 import java.io.ByteArrayInputStream
+import java.nio.charset.StandardCharsets
 import java.time.format.DateTimeFormatter
 import java.time.temporal.Temporal
 import java.time.{DateTimeException, ZoneId, ZonedDateTime}
@@ -729,6 +730,57 @@ class CalendarEventModifierTest {
       assertThat(updatedCalendar.getFirstVEvent.getAttendees.size())
         .isEqualTo(currentAttendees.size() + 1)
       assertThat(updatedCalendar.getFirstVEvent.getAttendees).containsAll(currentAttendees)
+    }
+
+    @Test
+    def shouldNotDuplicateAnAttendeeDifferingByCase(): Unit = {
+      val stored = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+        """BEGIN:VCALENDAR
+          |VERSION:2.0
+          |PRODID:-//x//EN
+          |BEGIN:VEVENT
+          |UID:ev-1
+          |DTSTAMP:20250401T090000Z
+          |DTSTART:20250402T070000Z
+          |DTEND:20250402T080000Z
+          |ORGANIZER:mailto:organizer@domain.tld
+          |ATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:bob@domain.tld
+          |END:VEVENT
+          |END:VCALENDAR
+          |""".stripMargin.getBytes(StandardCharsets.UTF_8)))
+      val proposed = Seq(
+        new Attendee("mailto:Bob@domain.tld"),
+        new Attendee("mailto:carol@domain.tld"),
+        new Attendee("mailto:carol@domain.tld"))
+
+      val result = testee.of(AttendeeUpdatePatch(proposed)).apply(stored).getFirstVEvent
+
+      assertThat(result.getAttendees.asScala.map(_.getCalAddress.toASCIIString.toLowerCase).asJava)
+        .containsExactlyInAnyOrder("mailto:bob@domain.tld", "mailto:carol@domain.tld")
+    }
+
+    @Test
+    def shouldNotModifyAttendeesWhenOnlyDifferingByCase(): Unit = {
+      val existingAttendees = SAMPLE_CALENDAR.getFirstVEvent.getAttendees.asScala.toSeq
+        .map(attendee => new Attendee(attendee.getCalAddress.toASCIIString.toUpperCase))
+
+      assertThatThrownBy(() => testee.of(AttendeeUpdatePatch(existingAttendees)).apply(SAMPLE_CALENDAR))
+        .isInstanceOf(classOf[NoUpdateRequiredException])
+    }
+
+    @Test
+    def shouldAddOnceANewAttendeeListedSeveralTimes(): Unit = {
+      val currentAttendees: util.List[Attendee] = SAMPLE_CALENDAR.getFirstVEvent.getAttendees
+      val newAttendee = new Attendee("mailto:carol@example.com")
+      val sameAttendeeWithParameters = new Attendee("mailto:Carol@example.com").add[Attendee](PartStat.ACCEPTED)
+
+      val updatedCalendar = testee.of(AttendeeUpdatePatch(Seq(newAttendee, sameAttendeeWithParameters))).apply(SAMPLE_CALENDAR)
+
+      assertThat(updatedCalendar.getFirstVEvent.getAttendees.size())
+        .isEqualTo(currentAttendees.size() + 1)
+      assertThat(updatedCalendar.getFirstVEvent.getAttendees)
+        .contains(newAttendee)
+        .doesNotContain(sameAttendeeWithParameters)
     }
   }
 
