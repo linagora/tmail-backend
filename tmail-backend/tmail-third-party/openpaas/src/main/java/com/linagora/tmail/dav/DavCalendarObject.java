@@ -33,6 +33,9 @@ import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier;
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
 
 import net.fortuna.ical4j.model.Calendar;
+import net.fortuna.ical4j.model.Component;
+import net.fortuna.ical4j.model.component.VEvent;
+import net.fortuna.ical4j.model.property.Uid;
 import scala.jdk.javaapi.CollectionConverters;
 
 public record DavCalendarObject(URI uri, Calendar calendarData, String eTag) {
@@ -68,6 +71,15 @@ public record DavCalendarObject(URI uri, Calendar calendarData, String eTag) {
                 .filter(event -> id.equals(event.recurrenceIdAsJava().orElse("")))
                 .findFirst())
             .orElse(events.getFirst());
+    }
+
+    public boolean hasVEventWithUid(DavUid eventUid) {
+        return calendarData().getComponents(Component.VEVENT).stream()
+            .filter(VEvent.class::isInstance)
+            .map(VEvent.class::cast)
+            .flatMap(event -> event.getUid().stream())
+            .map(Uid::getValue)
+            .anyMatch(eventUid.value()::equals);
     }
 
     public DavCalendarObject withUpdatePatches(CalendarEventModifier eventModifier) {

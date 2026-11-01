@@ -251,18 +251,34 @@ public class CalDavClient {
         if (responseStatus == HttpResponseStatus.MULTI_STATUS) {
             return responseContent.asString(StandardCharsets.UTF_8)
                 .map(content -> XMLUtil.parse(content, DavMultistatus.class))
-                .map(this::extractCalendarObject)
+                .map(multistatus -> extractCalendarObject(multistatus, eventUid))
                 .flatMap(Mono::justOrEmpty);
         }
         return Mono.error(new DavClientException(
             String.format("Unexpected status code: %d when finding VCALENDAR object containing event: %s", responseStatus.code(), eventUid.value())));
     }
 
-    private Optional<DavCalendarObject> extractCalendarObject(DavMultistatus multistatus) {
+    /**
+     * The REPORT filters on the UID with a CalDAV text-match, which is a substring match (RFC 4791 section 9.7.5):
+     * the DAV server can also answer objects whose UID merely contains the requested one. Only an object holding a
+     * VEVENT whose UID is exactly the requested one is selected, otherwise updates would be written into another event.
+     */
+    private Optional<DavCalendarObject> extractCalendarObject(DavMultistatus multistatus, DavUid eventUid) {
         return multistatus.getResponses()
             .stream()
-            .findFirst()
-            .flatMap(DavCalendarObject::fromDavResponse);
+            .flatMap(response -> parseCalendarObject(response, eventUid).stream())
+            .filter(calendarObject -> calendarObject.hasVEventWithUid(eventUid))
+            .findFirst();
+    }
+
+    private Optional<DavCalendarObject> parseCalendarObject(DavResponse response, DavUid eventUid) {
+        try {
+            return DavCalendarObject.fromDavResponse(response);
+        } catch (Exception e) {
+            // the ical4j parser, called from Scala, can throw checked exceptions (ParserException) undeclared
+            LOGGER.debug("Skipping unparsable calendar object {} while looking for VEvent '{}'", response.getHrefValue().orElse(""), eventUid.value(), e);
+            return Optional.empty();
+        }
     }
 
     public Flux<URI> findUserCalendars(DavUser user) {
