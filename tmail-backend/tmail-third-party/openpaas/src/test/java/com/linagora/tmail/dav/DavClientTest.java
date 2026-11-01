@@ -348,6 +348,75 @@ class DavClientTest {
     }
 
     @Test
+    void getCalendarObjectShouldNotReturnAnObjectWhoseUidOnlyContainsTheRequestedOne() {
+        DavUid requested = new DavUid("1234");
+        stubUidReport(requested, calendarObjectResponse("other.ics", "team-1234-sync"), calendarObjectResponse("invite.ics", "1234"));
+
+        DavCalendarObject found = client.caldav(ALICE_DAV_USER.username()).getCalendarObject(ALICE_DAV_USER, requested).block();
+
+        assertThat(found.uri().getPath()).endsWith("/invite.ics");
+    }
+
+    @Test
+    void getCalendarObjectShouldReturnEmptyWhenNoObjectHoldsExactlyTheRequestedUid() {
+        DavUid requested = new DavUid("1234");
+        stubUidReport(requested, calendarObjectResponse("other.ics", "team-1234-sync"), calendarObjectResponse("another.ics", "12345"));
+
+        assertThat(client.caldav(ALICE_DAV_USER.username()).getCalendarObject(ALICE_DAV_USER, requested).blockOptional())
+            .isEmpty();
+    }
+
+    @Test
+    void getCalendarObjectShouldCompareUidsCaseSensitively() {
+        DavUid requested = new DavUid("abcd");
+        stubUidReport(requested, calendarObjectResponse("upper.ics", "ABCD"), calendarObjectResponse("lower.ics", "abcd"));
+
+        DavCalendarObject found = client.caldav(ALICE_DAV_USER.username()).getCalendarObject(ALICE_DAV_USER, requested).block();
+
+        assertThat(found.uri().getPath()).endsWith("/lower.ics");
+    }
+
+    @Test
+    void getCalendarObjectShouldSkipUnparsableObjectsListedBeforeTheRequestedOne() {
+        DavUid requested = new DavUid("1234");
+        String unparsable = """
+            <d:response><d:href>/calendars/%s/%s/broken.ics</d:href>
+              <d:propstat><d:prop><d:getetag>"0"</d:getetag><cal:calendar-data>not an iCalendar 1234</cal:calendar-data></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>
+            """.formatted(ALICE_ID, ALICE_CALENDAR_1);
+        stubUidReport(requested, unparsable, calendarObjectResponse("invite.ics", "1234"));
+
+        DavCalendarObject found = client.caldav(ALICE_DAV_USER.username()).getCalendarObject(ALICE_DAV_USER, requested).block();
+
+        assertThat(found.uri().getPath()).endsWith("/invite.ics");
+    }
+
+    private void stubUidReport(DavUid requested, String... responses) {
+        davServerExtension.stubFor(
+            report("/calendars/%s/%s/".formatted(ALICE_ID, ALICE_CALENDAR_1))
+                .withRequestBody(equalTo(new GetCalendarByEventIdRequestBody(requested).value()))
+                .willReturn(aResponse().withStatus(207).withBody("""
+                    <d:multistatus xmlns:d="DAV:" xmlns:cal="urn:ietf:params:xml:ns:caldav">
+                    %s
+                    </d:multistatus>""".formatted(String.join("\n", responses)))));
+    }
+
+    private static String calendarObjectResponse(String fileName, String uid) {
+        return """
+            <d:response><d:href>/calendars/%s/%s/%s</d:href>
+              <d:propstat><d:prop><d:getetag>"1"</d:getetag><cal:calendar-data>BEGIN:VCALENDAR
+            VERSION:2.0
+            PRODID:-//test//EN
+            BEGIN:VEVENT
+            UID:%s
+            DTSTAMP:20250101T000000Z
+            DTSTART:20250101T100000Z
+            ATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:bob@domain.tld
+            END:VEVENT
+            END:VCALENDAR</cal:calendar-data></d:prop><d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response>
+            """.formatted(ALICE_ID, ALICE_CALENDAR_1, fileName, uid);
+    }
+
+    @Test
     void updateCalendarObjectShouldSucceed() {
         assertThatCode(() -> client.caldav(ALICE_DAV_USER.username()).updateCalendarObject(URI.create(ALICE_CALENDAR_OBJECT_1), DUMMY_CALENDAR_OBJECT_UPDATER).block())
             .doesNotThrowAnyException();
