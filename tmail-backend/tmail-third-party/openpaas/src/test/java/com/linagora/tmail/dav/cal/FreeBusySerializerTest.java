@@ -115,4 +115,45 @@ public class FreeBusySerializerTest {
                     Instant.parse("2025-03-09T03:00:00Z"
             )));
     }
+
+    @Test
+    void deserializeResponseWithoutUsersShouldReturnEmptyUsers() {
+        String json = """
+            {
+                "start": "20250308T023500Z",
+                "end": "20250310T031500Z"
+            }""";
+
+        FreeBusyResponse response = serializer.deserialize(json);
+
+        Assertions.assertThat(response.users()).isEmpty();
+    }
+
+    @Test
+    void deserializeResponseWithNullUsersShouldReturnEmptyUsers() {
+        String json = """
+            {
+                "start": "20250308T023500Z",
+                "end": "20250310T031500Z",
+                "users": null
+            }""";
+
+        FreeBusyResponse response = serializer.deserialize(json);
+
+        Assertions.assertThat(response.users()).isEmpty();
+    }
+
+    @Test
+    void deserializeResponseWithoutCalendarsShouldReturnEmptyCalendars() {
+        String json = """
+            {
+                "start": "20250308T023500Z",
+                "end": "20250310T031500Z",
+                "users": [{"id": "67c913533f46f500576ed03e"}]
+            }""";
+
+        FreeBusyResponse response = serializer.deserialize(json);
+
+        Assertions.assertThat(response.users().getFirst().calendars()).isEmpty();
+    }
 }
