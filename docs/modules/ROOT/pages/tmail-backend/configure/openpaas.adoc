@@ -71,6 +71,10 @@ This mailet synchronizes calendars in mails with dav server (create, update, del
 | No validation is performed — any `From` address is accepted. This is the most permissive setting.
 |===
 +
+In `strict` and `sameDomain` modes the check applies to *every* `VEVENT` of the payload: a payload containing a `VEVENT`
+that is not aligned with the `From` address (including a `VEVENT` without `ORGANIZER`), or containing no `VEVENT` at all,
+is rejected as a whole. An `ORGANIZER`/`ATTENDEE` is also considered aligned when its `SENT-BY` delegate matches the `From` address.
++
 When the alignment check fails the ITIP is silently dropped and a warning is logged.
 
 === Example

@@ -111,6 +111,112 @@ class CalDavCollectTest {
         END:VEVENT
         END:VCALENDAR
         """.formatted(ALICE, DELEGATE, ORGANIZER);
+    private static final String ICS_ONE_ALIGNED_ONE_FORGED = """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        PRODID:-//Twake Mail//EN
+        METHOD:REQUEST
+        BEGIN:VEVENT
+        UID:ab3db856-a866-4a91-99a3-c84372eaee87
+        DTSTAMP:20250101T100000Z
+        DTSTART:20250101T110000Z
+        DTEND:20250101T120000Z
+        ORGANIZER:mailto:%s
+        ATTENDEE:mailto:%s
+        END:VEVENT
+        BEGIN:VEVENT
+        UID:event-1
+        DTSTAMP:20250101T100000Z
+        DTSTART:20250101T110000Z
+        DTEND:20250101T120000Z
+        ORGANIZER:mailto:%s
+        ATTENDEE:mailto:%s
+        END:VEVENT
+        END:VCALENDAR
+        """.formatted(STRANGER, ALICE, ORGANIZER, ALICE);
+    private static final String ICS_ONE_ALIGNED_ONE_WITHOUT_ORGANIZER = """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        PRODID:-//Twake Mail//EN
+        METHOD:REQUEST
+        BEGIN:VEVENT
+        UID:ab3db856-a866-4a91-99a3-c84372eaee87
+        DTSTAMP:20250101T100000Z
+        DTSTART:20250101T110000Z
+        DTEND:20250101T120000Z
+        ORGANIZER:mailto:%s
+        ATTENDEE:mailto:%s
+        END:VEVENT
+        BEGIN:VEVENT
+        UID:event-1
+        DTSTAMP:20250101T100000Z
+        DTSTART:20250101T110000Z
+        DTEND:20250101T120000Z
+        ATTENDEE:mailto:%s
+        END:VEVENT
+        END:VCALENDAR
+        """.formatted(ORGANIZER, ALICE, ALICE);
+    private static final String ICS_REPLY_ONE_ALIGNED_ONE_FORGED = """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        PRODID:-//Twake Mail//EN
+        METHOD:REPLY
+        BEGIN:VEVENT
+        UID:event-0
+        DTSTAMP:20250101T100000Z
+        DTSTART:20250101T110000Z
+        DTEND:20250101T120000Z
+        ORGANIZER:mailto:%s
+        ATTENDEE;PARTSTAT=ACCEPTED:mailto:%s
+        END:VEVENT
+        BEGIN:VEVENT
+        UID:event-1
+        DTSTAMP:20250101T100000Z
+        DTSTART:20250101T110000Z
+        DTEND:20250101T120000Z
+        ORGANIZER:mailto:%s
+        ATTENDEE;PARTSTAT=DECLINED:mailto:%s
+        END:VEVENT
+        END:VCALENDAR
+        """.formatted(ALICE, STRANGER, ALICE, ORGANIZER);
+    private static final String ICS_RECURRING_WITH_EXCEPTION = """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        PRODID:-//Twake Mail//EN
+        METHOD:REQUEST
+        BEGIN:VEVENT
+        UID:ab3db856-a866-4a91-99a3-c84372eaee87
+        DTSTAMP:20250101T100000Z
+        DTSTART:20250101T110000Z
+        DTEND:20250101T120000Z
+        RRULE:FREQ=WEEKLY;COUNT=4
+        ORGANIZER:mailto:%s
+        ATTENDEE:mailto:%s
+        END:VEVENT
+        BEGIN:VEVENT
+        UID:ab3db856-a866-4a91-99a3-c84372eaee87
+        RECURRENCE-ID:20250108T110000Z
+        DTSTAMP:20250101T100000Z
+        DTSTART:20250108T130000Z
+        DTEND:20250108T140000Z
+        ORGANIZER:mailto:%s
+        ATTENDEE:mailto:%s
+        END:VEVENT
+        END:VCALENDAR
+        """.formatted(ORGANIZER, ALICE, ORGANIZER, ALICE);
+    private static final String ICS_WITHOUT_VEVENT = """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        PRODID:-//Twake Mail//EN
+        METHOD:REQUEST
+        BEGIN:VTODO
+        UID:todo-0
+        DTSTAMP:20250101T100000Z
+        ORGANIZER:mailto:%s
+        ATTENDEE:mailto:%s
+        END:VTODO
+        END:VCALENDAR
+        """.formatted(ORGANIZER, ALICE);
     private static final String SABRE_ERROR_BODY = """
         <?xml version="1.0" encoding="utf-8"?>
         <d:error xmlns:d="DAV:" xmlns:s="http://sabredav.org/ns">
@@ -194,6 +300,51 @@ class CalDavCollectTest {
         davServerExtension.stubFor(itip("/calendars/" + ALICE_ID).willReturn(noContent()));
 
         mailet.service(mailWithCalendar(ICS_SENT_BY_ORGANIZER_DELEGATE, STRANGER));
+
+        davServerExtension.verify(0, itipRequestPattern());
+    }
+
+    @Test
+    void serviceShouldNotSendItipRequestWhenOnlyOneVEventIsOrganizedByTheSender() throws Exception {
+        davServerExtension.stubFor(itip("/calendars/" + ALICE_ID).willReturn(noContent()));
+
+        mailet.service(mailWithCalendar(ICS_ONE_ALIGNED_ONE_FORGED, STRANGER));
+
+        davServerExtension.verify(0, itipRequestPattern());
+    }
+
+    @Test
+    void serviceShouldNotSendItipRequestWhenAVEventHasNoOrganizer() throws Exception {
+        davServerExtension.stubFor(itip("/calendars/" + ALICE_ID).willReturn(noContent()));
+
+        mailet.service(mailWithCalendar(ICS_ONE_ALIGNED_ONE_WITHOUT_ORGANIZER, ORGANIZER));
+
+        davServerExtension.verify(0, itipRequestPattern());
+    }
+
+    @Test
+    void serviceShouldNotSendItipRequestWhenReplySenderIsAttendeeOfOnlyOneVEvent() throws Exception {
+        davServerExtension.stubFor(itip("/calendars/" + ALICE_ID).willReturn(noContent()));
+
+        mailet.service(mailWithCalendar(ICS_REPLY_ONE_ALIGNED_ONE_FORGED, STRANGER));
+
+        davServerExtension.verify(0, itipRequestPattern());
+    }
+
+    @Test
+    void serviceShouldSendItipRequestWhenEveryVEventIsOrganizedByTheSender() throws Exception {
+        davServerExtension.stubFor(itip("/calendars/" + ALICE_ID).willReturn(noContent()));
+
+        mailet.service(mailWithCalendar(ICS_RECURRING_WITH_EXCEPTION, ORGANIZER));
+
+        davServerExtension.verify(1, itipRequestPattern());
+    }
+
+    @Test
+    void serviceShouldNotSendItipRequestWhenPayloadHasNoVEvent() throws Exception {
+        davServerExtension.stubFor(itip("/calendars/" + ALICE_ID).willReturn(noContent()));
+
+        mailet.service(mailWithCalendar(ICS_WITHOUT_VEVENT, ORGANIZER));
 
         davServerExtension.verify(0, itipRequestPattern());
     }

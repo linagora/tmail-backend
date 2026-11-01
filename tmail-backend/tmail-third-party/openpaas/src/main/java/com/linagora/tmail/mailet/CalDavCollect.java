@@ -23,8 +23,10 @@ import static com.linagora.tmail.dav.CalDavClient.CALENDAR_PATH;
 import java.io.StringReader;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import jakarta.inject.Inject;
@@ -171,23 +173,30 @@ public class CalDavCollect extends GenericMailet {
     }
 
     private boolean isSenderAlignedWithOrganizer(MailAddress sender, Calendar calendar) {
-        return calendar.getComponents(Component.VEVENT).stream()
-            .filter(VEvent.class::isInstance)
-            .map(VEvent.class::cast)
-            .anyMatch(event -> Optional.ofNullable(event.getOrganizer())
-                .stream()
-                .flatMap(organizer -> actingAddresses(organizer, organizer.getCalAddress()))
-                .anyMatch(organizerAddress -> isSenderAlignedWith(sender, organizerAddress)));
+        return everyVEventMatches(calendar, event -> Optional.ofNullable(event.getOrganizer())
+            .stream()
+            .flatMap(organizer -> actingAddresses(organizer, organizer.getCalAddress()))
+            .anyMatch(organizerAddress -> isSenderAlignedWith(sender, organizerAddress)));
     }
 
     private boolean isSenderAlignedWithAnyAttendee(MailAddress sender, Calendar calendar) {
-        return calendar.getComponents(Component.VEVENT).stream()
+        return everyVEventMatches(calendar, event -> event.getProperties(Property.ATTENDEE).stream()
+            .map(attendee -> (Attendee) attendee)
+            .flatMap(attendee -> actingAddresses(attendee, attendee.getCalAddress()))
+            .anyMatch(attendeeAddress -> isSenderAlignedWith(sender, attendeeAddress)));
+    }
+
+    /**
+     * The alignment applies to the whole ITIP payload: every VEVENT must satisfy it, otherwise a sender could
+     * smuggle VEVENTs it is not entitled to send alongside a single aligned one. A payload without VEVENT is
+     * rejected.
+     */
+    private static boolean everyVEventMatches(Calendar calendar, Predicate<VEvent> alignment) {
+        List<VEvent> events = calendar.getComponents(Component.VEVENT).stream()
             .filter(VEvent.class::isInstance)
             .map(VEvent.class::cast)
-            .anyMatch(event -> event.getProperties(Property.ATTENDEE).stream()
-                .map(attendee -> (Attendee) attendee)
-                .flatMap(attendee -> actingAddresses(attendee, attendee.getCalAddress()))
-                .anyMatch(attendeeAddress -> isSenderAlignedWith(sender, attendeeAddress)));
+            .toList();
+        return !events.isEmpty() && events.stream().allMatch(alignment);
     }
 
     /**
