@@ -1,0 +1,380 @@
+/********************************************************************
+ *  As a subpart of Twake Mail, this file is edited by Linagora.    *
+ *                                                                  *
+ *  https://twake-mail.com/                                         *
+ *  https://linagora.com                                            *
+ *                                                                  *
+ *  This file is subject to The Affero Gnu Public License           *
+ *  version 3.                                                      *
+ *                                                                  *
+ *  https://www.gnu.org/licenses/agpl-3.0.en.html                   *
+ *                                                                  *
+ *  This program is distributed in the hope that it will be         *
+ *  useful, but WITHOUT ANY WARRANTY; without even the implied      *
+ *  warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR         *
+ *  PURPOSE. See the GNU Affero General Public License for          *
+ *  more details.                                                   *
+ ********************************************************************/
+
+package com.linagora.tmail.mailet;
+
+import static com.github.tomakehurst.wiremock.client.WireMock.badRequest;
+import static com.github.tomakehurst.wiremock.client.WireMock.equalTo;
+import static com.github.tomakehurst.wiremock.client.WireMock.noContent;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
+import static com.linagora.tmail.dav.DavServerExtension.ALICE;
+import static com.linagora.tmail.dav.DavServerExtension.ALICE_DAV_USER;
+import static com.linagora.tmail.dav.DavServerExtension.ALICE_ID;
+import static com.linagora.tmail.dav.DavServerExtension.createDelegatedBasicAuthenticationToken;
+import static com.linagora.tmail.dav.DavServerExtension.itip;
+import static org.assertj.core.api.Assertions.assertThat;
+
+import java.nio.charset.StandardCharsets;
+import java.util.List;
+
+import org.apache.mailet.Attribute;
+import org.apache.mailet.AttributeName;
+import org.apache.mailet.AttributeValue;
+import org.apache.mailet.Mail;
+import org.apache.mailet.base.test.FakeMail;
+import org.apache.mailet.base.test.FakeMailetConfig;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.RegisterExtension;
+import org.slf4j.LoggerFactory;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.collect.ImmutableMap;
+import com.linagora.tmail.dav.DavClient;
+import com.linagora.tmail.dav.DavClientException;
+import com.github.tomakehurst.wiremock.http.RequestMethod;
+import com.github.tomakehurst.wiremock.matching.RequestPatternBuilder;
+import com.linagora.tmail.dav.DavServerExtension;
+
+import ch.qos.logback.classic.Level;
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
+import reactor.core.publisher.Mono;
+
+class RestrictiveCalDavCollectTest {
+    private static final String ORGANIZER = "bob@james.org";
+    private static final String DELEGATE = "assistant@james.org";
+    private static final String STRANGER = "eve@james.org";
+    private static final String ICS = """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        PRODID:-//Twake Mail//EN
+        METHOD:REQUEST
+        BEGIN:VEVENT
+        UID:ab3db856-a866-4a91-99a3-c84372eaee87
+        DTSTAMP:20250101T100000Z
+        DTSTART:20250101T110000Z
+        DTEND:20250101T120000Z
+        SUMMARY:Sprint planning
+        ORGANIZER:mailto:%s
+        ATTENDEE:mailto:%s
+        END:VEVENT
+        END:VCALENDAR
+        """.formatted(ORGANIZER, ALICE);
+    private static final String ICS_SENT_BY_ORGANIZER_DELEGATE = """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        PRODID:-//Twake Mail//EN
+        METHOD:REQUEST
+        BEGIN:VEVENT
+        UID:ab3db856-a866-4a91-99a3-c84372eaee87
+        DTSTAMP:20250101T100000Z
+        DTSTART:20250101T110000Z
+        DTEND:20250101T120000Z
+        SUMMARY:Sprint planning
+        ORGANIZER;CN=Bob;SENT-BY="MAILTO:%s":MAILTO:%s
+        ATTENDEE:mailto:%s
+        END:VEVENT
+        END:VCALENDAR
+        """.formatted(DELEGATE, ORGANIZER, ALICE);
+    private static final String ICS_REPLY_SENT_BY_ATTENDEE_DELEGATE = """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        PRODID:-//Twake Mail//EN
+        METHOD:REPLY
+        BEGIN:VEVENT
+        UID:ab3db856-a866-4a91-99a3-c84372eaee87
+        DTSTAMP:20250101T100000Z
+        DTSTART:20250101T110000Z
+        DTEND:20250101T120000Z
+        SUMMARY:Sprint planning
+        ORGANIZER:mailto:%s
+        ATTENDEE;PARTSTAT=ACCEPTED;SENT-BY="MAILTO:%s":MAILTO:%s
+        END:VEVENT
+        END:VCALENDAR
+        """.formatted(ALICE, DELEGATE, ORGANIZER);
+    private static final String ICS_ONE_ALIGNED_ONE_FORGED = """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        PRODID:-//Twake Mail//EN
+        METHOD:REQUEST
+        BEGIN:VEVENT
+        UID:ab3db856-a866-4a91-99a3-c84372eaee87
+        DTSTAMP:20250101T100000Z
+        DTSTART:20250101T110000Z
+        DTEND:20250101T120000Z
+        ORGANIZER:mailto:%s
+        ATTENDEE:mailto:%s
+        END:VEVENT
+        BEGIN:VEVENT
+        UID:event-1
+        DTSTAMP:20250101T100000Z
+        DTSTART:20250101T110000Z
+        DTEND:20250101T120000Z
+        ORGANIZER:mailto:%s
+        ATTENDEE:mailto:%s
+        END:VEVENT
+        END:VCALENDAR
+        """.formatted(STRANGER, ALICE, ORGANIZER, ALICE);
+    private static final String ICS_ONE_ALIGNED_ONE_WITHOUT_ORGANIZER = """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        PRODID:-//Twake Mail//EN
+        METHOD:REQUEST
+        BEGIN:VEVENT
+        UID:ab3db856-a866-4a91-99a3-c84372eaee87
+        DTSTAMP:20250101T100000Z
+        DTSTART:20250101T110000Z
+        DTEND:20250101T120000Z
+        ORGANIZER:mailto:%s
+        ATTENDEE:mailto:%s
+        END:VEVENT
+        BEGIN:VEVENT
+        UID:event-1
+        DTSTAMP:20250101T100000Z
+        DTSTART:20250101T110000Z
+        DTEND:20250101T120000Z
+        ATTENDEE:mailto:%s
+        END:VEVENT
+        END:VCALENDAR
+        """.formatted(ORGANIZER, ALICE, ALICE);
+    private static final String ICS_REPLY_ONE_ALIGNED_ONE_FORGED = """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        PRODID:-//Twake Mail//EN
+        METHOD:REPLY
+        BEGIN:VEVENT
+        UID:event-0
+        DTSTAMP:20250101T100000Z
+        DTSTART:20250101T110000Z
+        DTEND:20250101T120000Z
+        ORGANIZER:mailto:%s
+        ATTENDEE;PARTSTAT=ACCEPTED:mailto:%s
+        END:VEVENT
+        BEGIN:VEVENT
+        UID:event-1
+        DTSTAMP:20250101T100000Z
+        DTSTART:20250101T110000Z
+        DTEND:20250101T120000Z
+        ORGANIZER:mailto:%s
+        ATTENDEE;PARTSTAT=DECLINED:mailto:%s
+        END:VEVENT
+        END:VCALENDAR
+        """.formatted(ALICE, STRANGER, ALICE, ORGANIZER);
+    private static final String ICS_RECURRING_WITH_EXCEPTION = """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        PRODID:-//Twake Mail//EN
+        METHOD:REQUEST
+        BEGIN:VEVENT
+        UID:ab3db856-a866-4a91-99a3-c84372eaee87
+        DTSTAMP:20250101T100000Z
+        DTSTART:20250101T110000Z
+        DTEND:20250101T120000Z
+        RRULE:FREQ=WEEKLY;COUNT=4
+        ORGANIZER:mailto:%s
+        ATTENDEE:mailto:%s
+        END:VEVENT
+        BEGIN:VEVENT
+        UID:ab3db856-a866-4a91-99a3-c84372eaee87
+        RECURRENCE-ID:20250108T110000Z
+        DTSTAMP:20250101T100000Z
+        DTSTART:20250108T130000Z
+        DTEND:20250108T140000Z
+        ORGANIZER:mailto:%s
+        ATTENDEE:mailto:%s
+        END:VEVENT
+        END:VCALENDAR
+        """.formatted(ORGANIZER, ALICE, ORGANIZER, ALICE);
+    private static final String ICS_WITHOUT_VEVENT = """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        PRODID:-//Twake Mail//EN
+        METHOD:REQUEST
+        BEGIN:VTODO
+        UID:todo-0
+        DTSTAMP:20250101T100000Z
+        ORGANIZER:mailto:%s
+        ATTENDEE:mailto:%s
+        END:VTODO
+        END:VCALENDAR
+        """.formatted(ORGANIZER, ALICE);
+    private static final String SABRE_ERROR_BODY = """
+        <?xml version="1.0" encoding="utf-8"?>
+        <d:error xmlns:d="DAV:" xmlns:s="http://sabredav.org/ns">
+          <s:exception>Sabre\\VObject\\ITip\\ITipException</s:exception>
+          <s:message>The supplied message must have a valid METHOD property</s:message>
+        </d:error>""";
+
+    @RegisterExtension
+    static DavServerExtension davServerExtension = new DavServerExtension();
+
+    private RestrictiveCalDavCollect mailet;
+    private ListAppender<ILoggingEvent> logAppender;
+    private Logger logger;
+
+    @BeforeEach
+    void setUp() throws Exception {
+        mailet = new RestrictiveCalDavCollect(new DavClient(davServerExtension.getDavConfiguration()), username -> Mono.just(ALICE_DAV_USER));
+        mailet.init(FakeMailetConfig.builder().mailetName("RestrictiveCalDavCollect").build());
+
+        logger = (Logger) LoggerFactory.getLogger(RestrictiveCalDavCollect.class);
+        logAppender = new ListAppender<>();
+        logAppender.start();
+        logger.addAppender(logAppender);
+    }
+
+    @AfterEach
+    void tearDown() {
+        logger.detachAppender(logAppender);
+    }
+
+    @Test
+    void serviceShouldLogSabreResponseAsMdcFieldWhenDavServerRejectsItipRequest() throws Exception {
+        davServerExtension.stubFor(
+            itip("/calendars/" + ALICE_ID)
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
+                .willReturn(badRequest().withBody(SABRE_ERROR_BODY)));
+
+        mailet.service(mailWithCalendar());
+
+        assertThat(errorLogs())
+            .hasSize(1)
+            .first()
+            .satisfies(event -> {
+                assertThat(event.getFormattedMessage()).isEqualTo("Error while handling calendar in mail mail1 with recipient " + ALICE);
+                assertThat(event.getMDCPropertyMap()).containsEntry(DavClientException.SABRE_RESPONSE_MDC_KEY, SABRE_ERROR_BODY);
+            });
+    }
+
+    @Test
+    void serviceShouldNotLeakSabreResponseMdcFieldAfterLogging() throws Exception {
+        davServerExtension.stubFor(
+            itip("/calendars/" + ALICE_ID)
+                .withHeader("Authorization", equalTo(createDelegatedBasicAuthenticationToken(ALICE)))
+                .willReturn(badRequest().withBody(SABRE_ERROR_BODY)));
+
+        mailet.service(mailWithCalendar());
+
+        assertThat(org.slf4j.MDC.get(DavClientException.SABRE_RESPONSE_MDC_KEY)).isNull();
+    }
+
+    @Test
+    void serviceShouldSendItipRequestWhenSenderIsTheOrganizerDelegate() throws Exception {
+        davServerExtension.stubFor(itip("/calendars/" + ALICE_ID).willReturn(noContent()));
+
+        mailet.service(mailWithCalendar(ICS_SENT_BY_ORGANIZER_DELEGATE, DELEGATE));
+
+        davServerExtension.verify(1, itipRequestPattern());
+    }
+
+    @Test
+    void serviceShouldSendItipRequestWhenReplySenderIsTheAttendeeDelegate() throws Exception {
+        davServerExtension.stubFor(itip("/calendars/" + ALICE_ID).willReturn(noContent()));
+
+        mailet.service(mailWithCalendar(ICS_REPLY_SENT_BY_ATTENDEE_DELEGATE, DELEGATE));
+
+        davServerExtension.verify(1, itipRequestPattern());
+    }
+
+    @Test
+    void serviceShouldNotSendItipRequestWhenSenderIsNeitherTheOrganizerNorItsDelegate() throws Exception {
+        davServerExtension.stubFor(itip("/calendars/" + ALICE_ID).willReturn(noContent()));
+
+        mailet.service(mailWithCalendar(ICS_SENT_BY_ORGANIZER_DELEGATE, STRANGER));
+
+        davServerExtension.verify(0, itipRequestPattern());
+    }
+
+    @Test
+    void serviceShouldNotSendItipRequestWhenOnlyOneVEventIsOrganizedByTheSender() throws Exception {
+        davServerExtension.stubFor(itip("/calendars/" + ALICE_ID).willReturn(noContent()));
+
+        mailet.service(mailWithCalendar(ICS_ONE_ALIGNED_ONE_FORGED, STRANGER));
+
+        davServerExtension.verify(0, itipRequestPattern());
+    }
+
+    @Test
+    void serviceShouldNotSendItipRequestWhenAVEventHasNoOrganizer() throws Exception {
+        davServerExtension.stubFor(itip("/calendars/" + ALICE_ID).willReturn(noContent()));
+
+        mailet.service(mailWithCalendar(ICS_ONE_ALIGNED_ONE_WITHOUT_ORGANIZER, ORGANIZER));
+
+        davServerExtension.verify(0, itipRequestPattern());
+    }
+
+    @Test
+    void serviceShouldNotSendItipRequestWhenReplySenderIsAttendeeOfOnlyOneVEvent() throws Exception {
+        davServerExtension.stubFor(itip("/calendars/" + ALICE_ID).willReturn(noContent()));
+
+        mailet.service(mailWithCalendar(ICS_REPLY_ONE_ALIGNED_ONE_FORGED, STRANGER));
+
+        davServerExtension.verify(0, itipRequestPattern());
+    }
+
+    @Test
+    void serviceShouldSendItipRequestWhenEveryVEventIsOrganizedByTheSender() throws Exception {
+        davServerExtension.stubFor(itip("/calendars/" + ALICE_ID).willReturn(noContent()));
+
+        mailet.service(mailWithCalendar(ICS_RECURRING_WITH_EXCEPTION, ORGANIZER));
+
+        davServerExtension.verify(1, itipRequestPattern());
+    }
+
+    @Test
+    void serviceShouldNotSendItipRequestWhenPayloadHasNoVEvent() throws Exception {
+        davServerExtension.stubFor(itip("/calendars/" + ALICE_ID).willReturn(noContent()));
+
+        mailet.service(mailWithCalendar(ICS_WITHOUT_VEVENT, ORGANIZER));
+
+        davServerExtension.verify(0, itipRequestPattern());
+    }
+
+    private static RequestPatternBuilder itipRequestPattern() {
+        return RequestPatternBuilder.newRequestPattern(RequestMethod.fromString("ITIP"), urlEqualTo("/calendars/" + ALICE_ID));
+    }
+
+    private List<ILoggingEvent> errorLogs() {
+        return logAppender.list.stream()
+            .filter(event -> event.getLevel() == Level.ERROR)
+            .toList();
+    }
+
+    private Mail mailWithCalendar() throws Exception {
+        return mailWithCalendar(ICS, ORGANIZER);
+    }
+
+    private Mail mailWithCalendar(String ics, String sender) throws Exception {
+        ObjectNode json = new ObjectMapper().createObjectNode();
+        json.put("ical", ics);
+        json.put("recipient", ALICE);
+        json.put("sender", sender);
+        byte[] jsonBytes = json.toString().getBytes(StandardCharsets.UTF_8);
+
+        return FakeMail.builder()
+            .name("mail1")
+            .attribute(new Attribute(
+                AttributeName.of(RestrictiveCalDavCollect.DEFAULT_SOURCE_ATTRIBUTE_NAME),
+                AttributeValue.of(ImmutableMap.<String, AttributeValue<?>>of("ics1", AttributeValue.of(jsonBytes)))))
+            .build();
+    }
+}

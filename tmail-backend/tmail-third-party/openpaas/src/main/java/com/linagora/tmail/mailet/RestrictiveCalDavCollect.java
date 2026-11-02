@@ -23,8 +23,10 @@ import static com.linagora.tmail.dav.CalDavClient.CALENDAR_PATH;
 import java.io.StringReader;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 import jakarta.inject.Inject;
@@ -34,6 +36,7 @@ import jakarta.mail.internet.MimeMessage;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
 import org.apache.james.util.AuditTrail;
+import org.apache.james.util.MDCBuilder;
 import org.apache.james.util.ReactorUtils;
 import org.apache.mailet.AttributeName;
 import org.apache.mailet.AttributeUtils;
@@ -48,6 +51,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.fge.lambdas.Throwing;
 import com.google.common.collect.ImmutableMap;
 import com.linagora.tmail.dav.DavClient;
+import com.linagora.tmail.dav.DavClientException;
 import com.linagora.tmail.dav.DavUid;
 import com.linagora.tmail.dav.DavUser;
 import com.linagora.tmail.dav.DavUserProvider;
@@ -142,7 +146,8 @@ public class RestrictiveCalDavCollect extends GenericMailet {
 
                 synchronizeIfEligible(mailAddress, calendar, json, senderAsString, mail);
             } catch (Exception e) {
-                LOGGER.error("Error while handling calendar in mail {} with recipient {}", mail.getName(), recipient, e);
+                MDCBuilder.withMdc(DavClientException.mdcOf(e),
+                    () -> LOGGER.error("Error while handling calendar in mail {} with recipient {}", mail.getName(), recipient, e));
             }
         }
     }
@@ -176,23 +181,30 @@ public class RestrictiveCalDavCollect extends GenericMailet {
     }
 
     private boolean isSenderAlignedWithOrganizer(MailAddress sender, Calendar calendar) {
-        return calendar.getComponents(Component.VEVENT).stream()
-            .filter(VEvent.class::isInstance)
-            .map(VEvent.class::cast)
-            .anyMatch(event -> Optional.ofNullable(event.getOrganizer())
-                .stream()
-                .flatMap(organizer -> actingAddresses(organizer, organizer.getCalAddress()))
-                .anyMatch(organizerAddress -> isSenderAlignedWith(sender, organizerAddress)));
+        return everyVEventMatches(calendar, event -> Optional.ofNullable(event.getOrganizer())
+            .stream()
+            .flatMap(organizer -> actingAddresses(organizer, organizer.getCalAddress()))
+            .anyMatch(organizerAddress -> isSenderAlignedWith(sender, organizerAddress)));
     }
 
     private boolean isSenderAlignedWithAnyAttendee(MailAddress sender, Calendar calendar) {
-        return calendar.getComponents(Component.VEVENT).stream()
+        return everyVEventMatches(calendar, event -> event.getProperties(Property.ATTENDEE).stream()
+            .map(attendee -> (Attendee) attendee)
+            .flatMap(attendee -> actingAddresses(attendee, attendee.getCalAddress()))
+            .anyMatch(attendeeAddress -> isSenderAlignedWith(sender, attendeeAddress)));
+    }
+
+    /**
+     * The alignment applies to the whole ITIP payload: every VEVENT must satisfy it, otherwise a sender could
+     * smuggle VEVENTs it is not entitled to send alongside a single aligned one. A payload without VEVENT is
+     * rejected.
+     */
+    private static boolean everyVEventMatches(Calendar calendar, Predicate<VEvent> alignment) {
+        List<VEvent> events = calendar.getComponents(Component.VEVENT).stream()
             .filter(VEvent.class::isInstance)
             .map(VEvent.class::cast)
-            .anyMatch(event -> event.getProperties(Property.ATTENDEE).stream()
-                .map(attendee -> (Attendee) attendee)
-                .flatMap(attendee -> actingAddresses(attendee, attendee.getCalAddress()))
-                .anyMatch(attendeeAddress -> isSenderAlignedWith(sender, attendeeAddress)));
+            .toList();
+        return !events.isEmpty() && events.stream().allMatch(alignment);
     }
 
     /**
