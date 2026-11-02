@@ -902,6 +902,85 @@ trait CalendarEventCounterAcceptMethodContract {
            |END:VCALENDAR""".stripMargin)
   }
 
+  @Test
+  def counterAcceptRecurrenceEventShouldReturnInvalidArgumentsWhenEmptyRecurrenceId(server: GuiceJamesServer): Unit = {
+    val eventUid: String = UUID.randomUUID().toString
+    val originalCalendar: Calendar =
+      s"""
+         |BEGIN:VCALENDAR
+         |VERSION:2.0
+         |BEGIN:VEVENT
+         |UID:$eventUid
+         |DTSTART;TZID=Europe/Paris:20250328T090000
+         |DTEND;TZID=Europe/Paris:20250328T100000
+         |RRULE:FREQ=WEEKLY;COUNT=4;BYDAY=WE
+         |ORGANIZER;CN=John1 Doe1:${bobCredential.username.asString()}
+         |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:${aliceCredential.username.asString()}
+         |END:VEVENT
+         |END:VCALENDAR""".stripMargin.asCalendar()
+
+    pushCalendarToDav(bobCredential, eventUid, originalCalendar)
+
+    val counterCalendarEvent: Calendar =
+      s"""BEGIN:VCALENDAR
+         |VERSION:2.0
+         |METHOD:COUNTER
+         |BEGIN:VEVENT
+         |UID:$eventUid
+         |RECURRENCE-ID:
+         |DTSTART;TZID=Europe/Paris:20250409T110000
+         |DTEND;TZID=Europe/Paris:20250409T120000
+         |ORGANIZER;CN=John1 Doe1:${bobCredential.username.asString()}
+         |ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:${aliceCredential.username.asString()}
+         |END:VEVENT
+         |END:VCALENDAR""".stripMargin.asCalendar()
+
+    val counterEventBlobId: String = createNewEmailWithCalendarAttachment(server, eventUid, counterCalendarEvent)
+
+    val response: String =
+      `given`
+        .body(
+          s"""{
+             |  "using": [
+             |    "urn:ietf:params:jmap:core",
+             |    "com:linagora:params:calendar:event"],
+             |  "methodCalls": [[
+             |    "CalendarEventCounter/accept",
+             |    {
+             |      "accountId": "$bobAccountId",
+             |      "blobIds": [ "$counterEventBlobId" ]
+             |    },
+             |    "c1"]]
+             |}""".stripMargin)
+      .when
+        .post
+      .`then`
+        .statusCode(SC_OK)
+        .contentType(JSON)
+        .extract
+        .body
+        .asString
+
+    assertThatJson(response)
+      .withOptions(IGNORING_ARRAY_ORDER)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |  "CalendarEventCounter/accept",
+           |  {
+           |    "accountId": "$bobAccountId",
+           |    "accepted": [],
+           |    "notAccepted": {
+           |      "$counterEventBlobId": {
+           |        "type": "invalidArguments",
+           |        "description": "$${json-unit.ignore}"
+           |      }
+           |    }
+           |  },
+           |  "c1"
+           |]""".stripMargin)
+  }
+
   private def createAndPushOriginalCalendarEvent(server: GuiceJamesServer,
                                                  eventUid: String,
                                                  originalStartDate: ZonedDateTime,
