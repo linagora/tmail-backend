@@ -36,6 +36,7 @@ import jakarta.mail.internet.MimeMessage;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
 import org.apache.james.util.AuditTrail;
+import org.apache.james.util.MDCBuilder;
 import org.apache.james.util.ReactorUtils;
 import org.apache.mailet.AttributeName;
 import org.apache.mailet.AttributeUtils;
@@ -50,6 +51,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.fge.lambdas.Throwing;
 import com.google.common.collect.ImmutableMap;
 import com.linagora.tmail.dav.DavClient;
+import com.linagora.tmail.dav.DavClientException;
 import com.linagora.tmail.dav.DavUid;
 import com.linagora.tmail.dav.DavUser;
 import com.linagora.tmail.dav.DavUserProvider;
@@ -144,7 +146,8 @@ public class RestrictiveCalDavCollect extends GenericMailet {
 
                 synchronizeIfEligible(mailAddress, calendar, json, senderAsString, mail);
             } catch (Exception e) {
-                LOGGER.error("Error while handling calendar in mail {} with recipient {}", mail.getName(), recipient, e);
+                MDCBuilder.withMdc(DavClientException.mdcOf(e),
+                    () -> LOGGER.error("Error while handling calendar in mail {} with recipient {}", mail.getName(), recipient, e));
             }
         }
     }
