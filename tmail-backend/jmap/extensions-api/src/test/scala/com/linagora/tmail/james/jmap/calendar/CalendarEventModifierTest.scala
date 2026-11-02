@@ -578,7 +578,7 @@ class CalendarEventModifierTest {
 
     assertThatThrownBy(() => testee.withPartStat("bob@james.org", PartStat.ACCEPTED, calendar).apply(calendar))
       .isInstanceOf(classOf[IllegalArgumentException])
-      .hasMessage("Invalid calendar property DTEND")
+      .hasMessageStartingWith("Invalidate calendar event: Invalid calendar property DTEND:")
       .hasCauseInstanceOf(classOf[DateTimeException])
   }
 
@@ -602,7 +602,7 @@ class CalendarEventModifierTest {
 
     assertThatThrownBy(() => testee.withPartStat("bob@james.org", PartStat.ACCEPTED, calendar).apply(calendar))
       .isInstanceOf(classOf[IllegalArgumentException])
-      .hasMessage("Invalid calendar property DTSTART")
+      .hasMessageStartingWith("Invalidate calendar event: Invalid calendar property DTSTART:")
       .hasCauseInstanceOf(classOf[DateTimeException])
   }
 
