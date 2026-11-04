@@ -198,6 +198,25 @@ trait UnauthenticatedBlobAccessSetMethodContract {
   }
 
   @Test
+  def shouldNotLetTheBrowserRenderActiveContentInline(server: GuiceJamesServer): Unit = {
+    val blobId: String = uploadBlob(server, bobUsername, BOB_PASSWORD, bobAccountId,
+      contentType = "text/html", content = "<html><script>alert(1)</script></html>")
+    val token: String = createdToken(createAccess(server, bobAccountId, blobId), blobId)
+
+    `given`()
+      .basePath("")
+      .auth().none()
+    .when()
+      .get(s"/unauthenticatedDownload/$bobAccountId/$blobId?token=$token")
+    .`then`()
+      .statusCode(SC_OK)
+      .header("content-type", containsString("text/html"))
+      .header("content-disposition", equalTo("attachment"))
+      .header("x-content-type-options", equalTo("nosniff"))
+      .header("content-security-policy", equalTo("sandbox"))
+  }
+
+  @Test
   def validUntilShouldAdvertiseTokenValidityPeriod(server: GuiceJamesServer): Unit = {
     val blobId: String = uploadBlob(server, bobUsername, BOB_PASSWORD, bobAccountId)
     val response: String = createAccess(server, bobAccountId, blobId)
