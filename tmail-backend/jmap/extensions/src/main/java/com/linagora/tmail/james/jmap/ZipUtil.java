@@ -144,7 +144,7 @@ public class ZipUtil {
             return "";
         }
         String extension = entryName.substring(dotIndex);
-        if (utf8Length(extension) > MAX_EXTENSION_BYTES) {
+        if (extension.equals(".") || utf8Length(extension) > MAX_EXTENSION_BYTES) {
             return "";
         }
         return extension;

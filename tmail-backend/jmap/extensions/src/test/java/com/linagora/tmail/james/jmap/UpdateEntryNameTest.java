@@ -101,6 +101,13 @@ public class UpdateEntryNameTest {
     }
 
     @Test
+    void sanitizeEntryNameShouldNotEndWithDotWhenTheExtensionIsOnlyADot() {
+        String name = "a".repeat(200) + ".";
+
+        assertThat(ZipUtil.sanitizeEntryName(name)).isEqualTo("a".repeat(200));
+    }
+
+    @Test
     void sanitizeEntryNameShouldNotLeaveWhitespaceBeforeAKeptExtension() {
         String name = "x ".repeat(150) + ".pdf";
 
