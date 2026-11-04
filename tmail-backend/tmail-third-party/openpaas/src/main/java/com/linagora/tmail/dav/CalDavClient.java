@@ -326,7 +326,8 @@ public class CalDavClient {
             .send(Mono.just(Unpooled.wrappedBuffer(request.serializeAsBytes())))
             .responseSingle((response, byteBufMono) -> {
                 if (response.status() == HttpResponseStatus.OK) {
-                    return byteBufMono.asByteArray().map(FreeBusyResponse::deserialize);
+                    return byteBufMono.asByteArray()
+                        .flatMap(bytes -> Mono.justOrEmpty(FreeBusyResponse.deserializeIfPresent(bytes)));
                 }
                 return DavClientHelper.unexpectedStatus(response, byteBufMono, "querying freebusy for user '%s'".formatted(user.userId().value()));
             });

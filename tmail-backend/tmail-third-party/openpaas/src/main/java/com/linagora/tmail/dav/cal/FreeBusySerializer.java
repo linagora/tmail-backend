@@ -22,11 +22,14 @@ import java.io.IOException;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import java.time.format.DateTimeFormatter;
+import java.util.Optional;
 
 import com.fasterxml.jackson.core.JsonGenerator;
 import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationContext;
+import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonDeserializer;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.JsonSerializer;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializerProvider;
@@ -41,7 +44,8 @@ public class FreeBusySerializer {
     private final ObjectMapper objectMapper;
 
     public FreeBusySerializer() {
-        this.objectMapper = new ObjectMapper();
+        this.objectMapper = new ObjectMapper()
+            .enable(DeserializationFeature.FAIL_ON_TRAILING_TOKENS);
         SimpleModule module = new SimpleModule();
         module.addSerializer(Instant.class, new InstantSerializer());
         module.addDeserializer(Instant.class, new InstantDeserializer());
@@ -61,11 +65,23 @@ public class FreeBusySerializer {
     }
 
     public FreeBusyResponse deserialize(String json) {
-        return Throwing.supplier(() -> objectMapper.readValue(json, FreeBusyResponse.class)).get();
+        return requireResponse(Throwing.supplier(() -> objectMapper.readValue(json, FreeBusyResponse.class)).get());
     }
 
     public FreeBusyResponse deserialize(byte[] json) {
-        return Throwing.supplier(() -> objectMapper.readValue(json, FreeBusyResponse.class)).get();
+        return requireResponse(Throwing.supplier(() -> objectMapper.readValue(json, FreeBusyResponse.class)).get());
+    }
+
+    public Optional<FreeBusyResponse> deserializeIfPresent(byte[] json) {
+        JsonNode root = Throwing.supplier(() -> objectMapper.readTree(json)).get();
+        return Optional.ofNullable(root)
+            .filter(node -> !node.isNull() && !node.isMissingNode())
+            .map(Throwing.function(node -> objectMapper.treeToValue(node, FreeBusyResponse.class)));
+    }
+
+    private FreeBusyResponse requireResponse(FreeBusyResponse response) {
+        return Optional.ofNullable(response)
+            .orElseThrow(() -> new IllegalArgumentException("Free/busy response must not be null"));
     }
 
     public static class InstantSerializer extends JsonSerializer<Instant> {

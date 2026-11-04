@@ -577,4 +577,24 @@ class DavClientTest {
                 Instant.parse("2025-03-08T02:30:00Z"),
                 Instant.parse("2025-03-08T03:00:00Z")));
     }
+
+    @Test
+    void freeBusyQueryShouldReturnEmptyWhenResponseBodyIsJsonNull() {
+        davServerExtension.stubFor(
+            post("/calendars/freebusy")
+                .willReturn(
+                    aResponse()
+                        .withResponseBody(new Body("null"))
+                        .withStatus(200)));
+
+        FreeBusyRequest freeBusyRequest = FreeBusyRequest.builder()
+            .start(Instant.parse("2025-03-08T02:35:00Z"))
+            .end(Instant.parse("2025-03-08T03:15:00Z"))
+            .user(new OpenPaaSUserId("67c913533f46f500576ed03e"))
+            .uid(new DavUid("b787cb16-fbe8-478f-8877-c699f9e314d8"))
+            .build();
+
+        assertThat(client.caldav(ALICE_DAV_USER.username()).freeBusyQuery(ALICE_DAV_USER, freeBusyRequest).blockOptional())
+            .isEmpty();
+    }
 }

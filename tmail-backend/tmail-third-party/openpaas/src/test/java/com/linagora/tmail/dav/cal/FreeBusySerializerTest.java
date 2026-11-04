@@ -20,7 +20,9 @@ package com.linagora.tmail.dav.cal;
 
 import static net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
+import static org.assertj.core.api.AssertionsForClassTypes.assertThatThrownBy;
 
+import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.List;
 
@@ -155,5 +157,54 @@ public class FreeBusySerializerTest {
         FreeBusyResponse response = serializer.deserialize(json);
 
         Assertions.assertThat(response.users().getFirst().calendars()).isEmpty();
+    }
+
+    @Test
+    void deserializeShouldRejectJsonNull() {
+        assertThatThrownBy(() -> FreeBusyResponse.deserialize("null".getBytes(StandardCharsets.UTF_8)))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void deserializeShouldRejectTrailingContent() {
+        assertThatThrownBy(() -> FreeBusyResponse.deserialize(
+                "null{\"start\":\"20250308T023500Z\"}".getBytes(StandardCharsets.UTF_8)))
+            .isInstanceOf(Exception.class);
+    }
+
+    @Test
+    void deserializeShouldRejectTrailingContentAfterValidResponse() {
+        assertThatThrownBy(() -> serializer.deserialize("{\"start\":\"20250308T023500Z\"}0"))
+            .isInstanceOf(Exception.class);
+    }
+
+    @Test
+    void deserializeIfPresentShouldReturnEmptyWhenJsonNull() {
+        Assertions.assertThat(serializer.deserializeIfPresent("null".getBytes(StandardCharsets.UTF_8)))
+            .isEmpty();
+    }
+
+    @Test
+    void deserializeIfPresentShouldReturnEmptyWhenNoContent() {
+        Assertions.assertThat(serializer.deserializeIfPresent(new byte[0]))
+            .isEmpty();
+    }
+
+    @Test
+    void deserializeIfPresentShouldRejectTrailingContent() {
+        assertThatThrownBy(() -> serializer.deserializeIfPresent("null0".getBytes(StandardCharsets.UTF_8)))
+            .isInstanceOf(Exception.class);
+    }
+
+    @Test
+    void deserializeIfPresentShouldReturnResponse() {
+        String json = """
+            {
+                "start": "20250308T023500Z",
+                "end": "20250310T031500Z"
+            }""";
+
+        Assertions.assertThat(serializer.deserializeIfPresent(json.getBytes(StandardCharsets.UTF_8)))
+            .hasValueSatisfying(response -> assertThat(response.start()).isEqualTo(Instant.parse("2025-03-08T02:35:00Z")));
     }
 }
