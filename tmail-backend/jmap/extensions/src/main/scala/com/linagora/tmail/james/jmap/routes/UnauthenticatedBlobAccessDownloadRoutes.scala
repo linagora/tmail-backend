@@ -22,7 +22,7 @@ import java.io.InputStream
 import java.util.concurrent.Callable
 import java.util.function.Consumer
 import java.util.stream.Stream
-import java.util.{UUID, stream}
+import java.util.{Locale, UUID, stream}
 
 import com.linagora.tmail.james.jmap.blob.{UnauthenticatedBlobDownloadToken, UnauthenticatedBlobDownloadTokenRepository}
 import io.netty.buffer.Unpooled
@@ -54,6 +54,18 @@ import scala.util.{Failure, Success, Try}
 
 object UnauthenticatedBlobAccessDownloadRoutes {
   val LOGGER: Logger = LoggerFactory.getLogger(classOf[UnauthenticatedBlobAccessDownloadRoutes])
+
+  // Media types a browser renders as an active document able to run scripts
+  private val ACTIVE_MIME_TYPES: Set[String] = Set(
+    "text/html",
+    "application/xhtml+xml",
+    "image/svg+xml",
+    "text/xml",
+    "application/xml",
+    "text/xsl")
+
+  def isActiveContent(contentType: String): Boolean =
+    ACTIVE_MIME_TYPES.contains(contentType.split(';').head.trim.toLowerCase(Locale.US))
 
   def respondDetails(httpServerResponse: HttpServerResponse, details: ProblemDetails): SMono[Unit] =
     DownloadResponseUtils.respondDetails(httpServerResponse, details)
@@ -143,10 +155,12 @@ class UnauthenticatedBlobAccessDownloadRoutes @Inject()(val tokenRepository: Una
 
   private def downloadBlob(response: HttpServerResponse, blob: Blob): SMono[Unit] = {
     val resourceSupplier: Callable[InputStream] = () => blob.content
+    val contentType = sanitizeHeaderValue(blob.contentType.asString)
     val sourceSupplier: java.util.function.Function[InputStream, Mono[Void]] = stream => SMono(addContentLengthHeader(blob.size)
       .compose(addCacheControlHeader())
+      .compose(addContentSecurityHeaders(contentType))
       .apply(response)
-      .header(CONTENT_TYPE, sanitizeHeaderValue(blob.contentType.asString))
+      .header(CONTENT_TYPE, contentType)
       .status(OK)
       .send(ReactorUtils.toChunks(stream, BUFFER_SIZE)
         .map(Unpooled.wrappedBuffer(_))
@@ -174,6 +188,18 @@ class UnauthenticatedBlobAccessDownloadRoutes @Inject()(val tokenRepository: Una
 
   private def addCacheControlHeader(): HttpServerResponse => HttpServerResponse =
     resp => resp.header(HttpHeaderNames.CACHE_CONTROL, "private, immutable, max-age=31536000")
+
+  // Blobs are user controlled content served from the JMAP origin: never let the browser sniff them, nor run them as an active document
+  private def addContentSecurityHeaders(contentType: String): HttpServerResponse => HttpServerResponse =
+    resp => {
+      val secured = resp.header("X-Content-Type-Options", "nosniff")
+        .header("Content-Security-Policy", "sandbox")
+      if (UnauthenticatedBlobAccessDownloadRoutes.isActiveContent(contentType)) {
+        secured.header("Content-Disposition", "attachment")
+      } else {
+        secured
+      }
+    }
 
   private def queryParam(httpRequest: HttpServerRequest, parameterName: String): Option[String] =
     Option(new QueryStringDecoder(httpRequest.uri).parameters.get(parameterName))
