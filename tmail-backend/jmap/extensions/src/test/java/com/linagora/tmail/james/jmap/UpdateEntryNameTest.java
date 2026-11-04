@@ -115,6 +115,13 @@ public class UpdateEntryNameTest {
     }
 
     @Test
+    void sanitizeEntryNameShouldNotLeaveDotsBeforeAKeptExtension() {
+        String name = "a".repeat(195) + "...pdf";
+
+        assertThat(ZipUtil.sanitizeEntryName(name)).isEqualTo("a".repeat(195) + ".pdf");
+    }
+
+    @Test
     void sanitizeEntryNameShouldFallbackToDefaultNameWhenTruncatedBaseNameIsOnlyDots() {
         String name = ".".repeat(300) + "x";
 
