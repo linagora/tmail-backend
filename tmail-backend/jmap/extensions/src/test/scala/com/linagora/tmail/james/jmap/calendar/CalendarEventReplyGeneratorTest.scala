@@ -276,6 +276,27 @@ class CalendarEventReplyGeneratorTest {
   }
 
   @Test
+  def generateShouldRejectCalendarWithoutMethod(): Unit = {
+    val withoutMethod: Calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+      """BEGIN:VCALENDAR
+        |VERSION:2.0
+        |PRODID:-//x//EN
+        |BEGIN:VEVENT
+        |UID:1
+        |DTSTAMP:20250101T000000Z
+        |DTSTART:20250101T100000Z
+        |ORGANIZER:mailto:alice@domain.tld
+        |ATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:bob@domain.tld
+        |END:VEVENT
+        |END:VCALENDAR
+        |""".stripMargin.replace("\n", "\r\n").getBytes(StandardCharsets.UTF_8)))
+
+    assertThatThrownBy(() => testee.generate(withoutMethod, AttendeeReply(new MailAddress("bob@domain.tld"), PartStat.ACCEPTED)))
+      .isInstanceOf(classOf[IllegalArgumentException])
+      .hasMessage("The method of the event request must be REQUEST")
+  }
+
+  @Test
   def shouldNotThrownWhenCalScaleAbsentInRequest(): Unit = {
 
     val requestDoesNotContainCalScale: String =
