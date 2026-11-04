@@ -31,8 +31,9 @@ import org.slf4j.LoggerFactory;
  * Turns an iCalendar cal-address (RFC 5545 section 3.3.3) into the {@link MailAddress} it designates.
  *
  * Only the {@code mailto} scheme (case-insensitive) and scheme-less addresses are accepted. Following RFC 6068
- * section 2, the hfields after the first {@code ?} are not part of the address and are dropped, then the
- * address is percent-decoded.
+ * section 2, the hfields after the first {@code ?} of a {@code mailto} URI are not part of the address and are
+ * dropped, then the address is percent-decoded. A scheme-less address is a bare address, not a {@code mailto}
+ * URI: it carries no hfields and a {@code ?} in it is kept as part of the address.
  */
 final class CalendarUserAddresses {
     private static final Logger LOGGER = LoggerFactory.getLogger(CalendarUserAddresses.class);
@@ -55,8 +56,7 @@ final class CalendarUserAddresses {
         try {
             return Optional.ofNullable(calAddress)
                 .filter(CalendarUserAddresses::isMailtoOrSchemeLess)
-                .map(URI::getRawSchemeSpecificPart)
-                .map(CalendarUserAddresses::withoutHfields)
+                .map(CalendarUserAddresses::rawAddress)
                 .map(CalendarUserAddresses::percentDecode)
                 .flatMap(CalendarUserAddresses::toMailAddressSilently);
         } catch (IllegalArgumentException e) {
@@ -66,7 +66,19 @@ final class CalendarUserAddresses {
     }
 
     private static boolean isMailtoOrSchemeLess(URI calAddress) {
-        return calAddress.getScheme() == null || MAILTO_SCHEME.equalsIgnoreCase(calAddress.getScheme());
+        return calAddress.getScheme() == null || isMailto(calAddress);
+    }
+
+    private static boolean isMailto(URI calAddress) {
+        return MAILTO_SCHEME.equalsIgnoreCase(calAddress.getScheme());
+    }
+
+    private static String rawAddress(URI calAddress) {
+        String schemeSpecificPart = calAddress.getRawSchemeSpecificPart();
+        if (isMailto(calAddress)) {
+            return withoutHfields(schemeSpecificPart);
+        }
+        return schemeSpecificPart;
     }
 
     private static String withoutHfields(String rawAddress) {

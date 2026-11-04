@@ -192,7 +192,7 @@ public class FreeBusySerializerTest {
 
     @Test
     void deserializeIfPresentShouldRejectTrailingContent() {
-        assertThatThrownBy(() -> serializer.deserializeIfPresent("null0".getBytes(StandardCharsets.UTF_8)))
+        assertThatThrownBy(() -> serializer.deserializeIfPresent("{\"start\":\"20250308T023500Z\"}0".getBytes(StandardCharsets.UTF_8)))
             .isInstanceOf(Exception.class);
     }
 

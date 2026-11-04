@@ -62,8 +62,15 @@ class CalendarUserAddressesTest {
             .hasValueSatisfying(address -> assertThat(address.getLocalPart()).isEqualTo("bob?subject=hi"));
     }
 
+    @Test
+    void toMailAddressShouldKeepQuestionMarkOfASchemeLessAddress() {
+        assertThat(CalendarUserAddresses.toMailAddress("bob?tag@domain.tld"))
+            .hasValueSatisfying(address -> assertThat(address.getLocalPart()).isEqualTo("bob?tag"));
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {
+        "bob@domain.tld?subject=hi",
         "http://domain.tld/bob@domain.tld",
         "urn:bob@domain.tld",
         "mailto:bob%zz@domain.tld",
