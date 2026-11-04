@@ -217,6 +217,22 @@ class RestrictiveCalDavCollectTest {
         END:VTODO
         END:VCALENDAR
         """.formatted(ORGANIZER, ALICE);
+    private static final String ICS_REPLY_RECIPIENT_ATTENDEE_WITH_QUERY = """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        PRODID:-//Twake Mail//EN
+        METHOD:REPLY
+        BEGIN:VEVENT
+        UID:reply-with-query
+        DTSTAMP:20250101T100000Z
+        DTSTART:20250101T110000Z
+        DTEND:20250101T120000Z
+        ORGANIZER:mailto:%s
+        ATTENDEE;PARTSTAT=ACCEPTED:mailto:%s?subject=hi
+        ATTENDEE;PARTSTAT=ACCEPTED:mailto:%s
+        END:VEVENT
+        END:VCALENDAR
+        """.formatted(ORGANIZER, ALICE, STRANGER);
     private static final String SABRE_ERROR_BODY = """
         <?xml version="1.0" encoding="utf-8"?>
         <d:error xmlns:d="DAV:" xmlns:s="http://sabredav.org/ns">
@@ -345,6 +361,15 @@ class RestrictiveCalDavCollectTest {
         davServerExtension.stubFor(itip("/calendars/" + ALICE_ID).willReturn(noContent()));
 
         mailet.service(mailWithCalendar(ICS_WITHOUT_VEVENT, ORGANIZER));
+
+        davServerExtension.verify(0, itipRequestPattern());
+    }
+
+    @Test
+    void serviceShouldNotSendItipReplyWhenRecipientIsAttendeeWrittenWithMailtoQuery() throws Exception {
+        davServerExtension.stubFor(itip("/calendars/" + ALICE_ID).willReturn(noContent()));
+
+        mailet.service(mailWithCalendar(ICS_REPLY_RECIPIENT_ATTENDEE_WITH_QUERY, STRANGER));
 
         davServerExtension.verify(0, itipRequestPattern());
     }

@@ -206,33 +206,14 @@ public class CalDavCollect extends GenericMailet {
      */
     private static Stream<MailAddress> actingAddresses(Property calendarUser, URI calAddress) {
         return Stream.concat(
-            toMailAddressSilently(calAddress.getSchemeSpecificPart()).stream(),
+            CalendarUserAddresses.toMailAddress(calAddress).stream(),
             sentBy(calendarUser).stream());
     }
 
     private static Optional<MailAddress> sentBy(Property calendarUser) {
         return calendarUser.getParameter(Parameter.SENT_BY)
             .map(Parameter::getValue)
-            .flatMap(CalDavCollect::toCalendarUserMailAddress);
-    }
-
-    private static Optional<MailAddress> toCalendarUserMailAddress(String calAddress) {
-        try {
-            return toMailAddressSilently(Optional.ofNullable(URI.create(calAddress).getSchemeSpecificPart())
-                .orElse(calAddress));
-        } catch (Exception e) {
-            LOGGER.info("Skipping invalid calendar user address in iCal payload: {}", calAddress);
-            return Optional.empty();
-        }
-    }
-
-    private static Optional<MailAddress> toMailAddressSilently(String address) {
-        try {
-            return Optional.of(new MailAddress(address));
-        } catch (Exception e) {
-            LOGGER.info("Skipping invalid mail address in iCal payload: {}", address);
-            return Optional.empty();
-        }
+            .flatMap(CalendarUserAddresses::toMailAddress);
     }
 
     private boolean isSenderAlignedWith(MailAddress sender, MailAddress address) {
@@ -328,8 +309,7 @@ public class CalDavCollect extends GenericMailet {
             .stream()
             .map(attendee -> (Attendee) attendee)
             .map(Attendee::getCalAddress)
-            .map(URI::getSchemeSpecificPart)
-            .flatMap(address -> toMailAddressSilently(address).stream())
+            .flatMap(calAddress -> CalendarUserAddresses.toMailAddress(calAddress).stream())
             .anyMatch(mailAddress::equals);
     }
 }
