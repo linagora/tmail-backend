@@ -66,4 +66,30 @@ public abstract class TeamMailboxPathConverterContract extends MailboxFolderDeli
         assertThat(teamMailboxPathConverter().mailboxName(!RELATIVE, new MailboxPath("#TeamMailbox", teamMailboxUsername(), "sale"), mailboxSession))
             .contains(adjustToActiveFolderDelimiter("#TeamMailbox.sale"));
     }
+
+    @Test
+    public void mailboxNameShouldRenderTeamMailboxOfTheSessionDomain() {
+        MailboxSession domainSession = MailboxSessionUtil.create(Username.of("user@domain.tld"), folderDelimiter());
+        MailboxPath sameDomainTeam = new MailboxPath("#TeamMailbox", Username.of("team-mailbox@domain.tld"), "sales");
+
+        assertThat(teamMailboxPathConverter().mailboxName(!RELATIVE, sameDomainTeam, domainSession))
+            .contains(adjustToActiveFolderDelimiter("#TeamMailbox.sales"));
+    }
+
+    @Test
+    public void mailboxNameOfATeamMailboxOfAnotherDomainShouldNotBeRendered() {
+        MailboxSession domainSession = MailboxSessionUtil.create(Username.of("user@domain.tld"), folderDelimiter());
+        MailboxPath otherDomainTeam = new MailboxPath("#TeamMailbox", Username.of("team-mailbox@other.tld"), "sales");
+
+        assertThat(teamMailboxPathConverter().mailboxName(!RELATIVE, otherDomainTeam, domainSession))
+            .isEmpty();
+    }
+
+    @Test
+    public void mailboxNameOfATeamMailboxWithADomainShouldNotBeRenderedForASessionWithoutDomain() {
+        MailboxPath otherDomainTeam = new MailboxPath("#TeamMailbox", Username.of("team-mailbox@other.tld"), "sales");
+
+        assertThat(teamMailboxPathConverter().mailboxName(!RELATIVE, otherDomainTeam, mailboxSession))
+            .isEmpty();
+    }
 }

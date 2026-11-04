@@ -58,10 +58,18 @@ public class TMailPathConverter implements PathConverter {
 
     public Optional<String> mailboxName(boolean relative, MailboxPath path, MailboxSession session) {
         if (path.getNamespace().equalsIgnoreCase(TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE())) {
-            return Optional.of(path.getNamespace() + session.getPathDelimiter() + path.getName());
+            return Optional.of(path)
+                .filter(teamPath -> belongsToSessionDomain(teamPath, session))
+                .map(teamPath -> teamPath.getNamespace() + session.getPathDelimiter() + teamPath.getName());
         } else {
             return defaultpathConverter.mailboxName(relative, path, session);
         }
+    }
+
+    // The regular naming scheme does not carry the team domain: buildFullPath always resolves it to the
+    // session domain. A team mailbox of another domain cannot be expressed and is thus not rendered.
+    private boolean belongsToSessionDomain(MailboxPath teamPath, MailboxSession session) {
+        return teamPath.getUser().getDomainPart().equals(session.getUser().getDomainPart());
     }
 
     @Override
