@@ -50,6 +50,10 @@ public record FreeBusyResponse(Instant start, Instant end, List<User> users) {
         return FreeBusySerializer.INSTANCE.deserialize(bytes);
     }
 
+    public static Optional<FreeBusyResponse> deserializeIfPresent(byte[] bytes) {
+        return FreeBusySerializer.INSTANCE.deserializeIfPresent(bytes);
+    }
+
     private static <T> List<T> emptyIfNull(List<T> list) {
         return Optional.ofNullable(list).orElse(List.of());
     }
