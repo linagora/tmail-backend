@@ -27,7 +27,7 @@ import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FILTER
 import com.linagora.tmail.james.jmap.model.{Condition, FilterSetError, FilterSetRequest, FilterSetResponse, FilterSetUpdateResponse, FilterState, FilterTypeName, RuleWithId, Update}
 import eu.timepit.refined.auto._
 import jakarta.inject.{Inject, Named}
-import org.apache.james.core.Username
+import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.events.Event.EventId
 import org.apache.james.events.EventBus
 import org.apache.james.jmap.InjectionKeys
@@ -50,6 +50,7 @@ import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
+import scala.util.Try
 
 
 class FilterSetMethodModule extends AbstractModule {
@@ -196,13 +197,17 @@ class FilterSetMethod @Inject()(@Named(InjectionKeys.JMAP) eventBus: EventBus,
       if (matchedForbiddenField.nonEmpty) {
         return Left(new IllegalArgumentException(s"Rules with field '${matchedForbiddenField.get.field.string}' are not supported"))
       }
-      if (rule.action.forwardTo.exists(forward => forward.addresses.map(_.string).contains(mailboxSession.getUser.asString))) {
+      if (rule.action.forwardTo.exists(forward => forward.addresses.map(_.string).exists(isAddressOfUser(_, mailboxSession)))) {
         return Left(new IllegalArgumentException("The mail address that are forwarded to could not be this mail address"))
       }
     }
 
     Right(update)
   }
+
+  // Compares parsed addresses, as they are once stored. An invalid address is left to the failure of RuleWithId.toJava
+  private def isAddressOfUser(address: String, mailboxSession: MailboxSession): Boolean =
+    Try(new MailAddress(address).equals(mailboxSession.getUser.asMailAddress())).getOrElse(false)
 
   def convertToOptionalVersion(ifInState: Option[FilterState]): Optional[Version] =
     ifInState.map(filterState => FilterState.toVersion(filterState)).toJava
