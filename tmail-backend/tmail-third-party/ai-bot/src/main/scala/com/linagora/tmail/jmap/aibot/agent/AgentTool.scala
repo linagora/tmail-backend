@@ -31,6 +31,7 @@ case class AgentToolName(nameAsString: String)
 trait AgentTool {
   def name: AgentToolName
   def definition: JsObject
+  def confirm: Boolean = true
   def execute(session: MailboxSession, arguments: JsObject): SMono[JsValue]
 }
 
@@ -75,7 +76,7 @@ class AgentToolRegistry @Inject()(val tools: java.util.Set[AgentTool]) {
 
   def definitions(): Seq[JsObject] = internalMap.values.toSeq
     .sortBy(_.name.nameAsString)
-    .map(tool => Json.obj("type" -> "function", "function" -> tool.definition))
+    .map(tool => Json.obj("type" -> "function", "function" -> tool.definition, "confirm" -> tool.confirm))
 
   def execute(session: MailboxSession, toolCall: ToolCall): SMono[ToolResult] =
     get(toolCall.name) match {

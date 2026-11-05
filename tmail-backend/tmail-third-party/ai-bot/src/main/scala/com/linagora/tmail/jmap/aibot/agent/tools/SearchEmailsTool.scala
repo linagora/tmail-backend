@@ -47,6 +47,7 @@ class SearchEmailsTool @Inject()(val mailboxManager: MailboxManager,
                                  val emailReader: ToolEmailReader) extends AgentTool {
 
   override val name: AgentToolName = AgentToolName("search_emails")
+  override val confirm: Boolean = false
 
   override val definition: JsObject = Json.obj(
     "name" -> name.nameAsString,

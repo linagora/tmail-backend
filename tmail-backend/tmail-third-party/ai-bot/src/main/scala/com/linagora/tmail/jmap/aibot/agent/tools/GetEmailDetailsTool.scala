@@ -33,6 +33,7 @@ class GetEmailDetailsTool @Inject()(val emailReader: ToolEmailReader,
                                     val messageIdFactory: MessageId.Factory) extends AgentTool {
 
   override val name: AgentToolName = AgentToolName("get_email_details")
+  override val confirm: Boolean = false
 
   override val definition: JsObject = Json.obj(
     "name" -> name.nameAsString,

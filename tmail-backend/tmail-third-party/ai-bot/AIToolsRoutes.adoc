@@ -21,14 +21,14 @@ paying users). Otherwise both endpoints answer `401` with the detail `User is no
 GET /ai/v1/tools
 ----
 
-Returns every tool, sorted by name, in the OpenAI function-calling format, so the assistant can pass the list
-to the LLM as is:
+Returns every tool, sorted by name, in the OpenAI function-calling format, with `confirm` next to `function`:
 
 ----
 {
   "tools": [
     {
       "type": "function",
+      "confirm": true,
       "function": {
         "name": "create_draft",
         "description": "Create an email draft in the user's **Drafts** folder. ...",
@@ -43,6 +43,10 @@ to the LLM as is:
   ]
 }
 ----
+
+`confirm` tells whether the assistant asks the user before it runs a call of the tool: `false` for the tools that
+only read the mailbox (`get_email_details`, `list_emails`, `search_emails`), `true` for the others, like
+`create_draft`. It is not part of the OpenAI format: give the LLM the `type` and the `function` of each tool.
 
 == Run a tool
 
