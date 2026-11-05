@@ -42,7 +42,7 @@ object CalendarEventReplyGenerator {
   val PRODID: String = "-//Linagora//TMail Calendar//EN"
 
   def generate(eventRequest: Calendar, attendeeReply: AttendeeReply): Calendar = {
-    Preconditions.checkArgument(Method.VALUE_REQUEST.equalsIgnoreCase(eventRequest.getMethod.getValue), "The method of the event request must be REQUEST".asInstanceOf[Object])
+    Preconditions.checkArgument(Option(eventRequest.getMethod).exists(method => Method.VALUE_REQUEST.equalsIgnoreCase(method.getValue)),"The method of the event request must be REQUEST".asInstanceOf[Object])
     val requestVEventOpt: Option[VEvent] = eventRequest.getComponents[VEvent](Component.VEVENT).asScala.headOption
     Preconditions.checkArgument(requestVEventOpt.isDefined, "The event request must be a VEVENT".asInstanceOf[Object])
 
