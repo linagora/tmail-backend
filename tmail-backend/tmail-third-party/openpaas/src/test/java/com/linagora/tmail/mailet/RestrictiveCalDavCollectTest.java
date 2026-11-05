@@ -239,7 +239,7 @@ class RestrictiveCalDavCollectTest {
         PRODID:-//Twake Mail//EN
         METHOD:REQUEST
         BEGIN:VEVENT
-        UID:request-with-query
+        UID:ab3db856-a866-4a91-99a3-c84372eaee87
         DTSTAMP:20250101T100000Z
         DTSTART:20250101T110000Z
         DTEND:20250101T120000Z
