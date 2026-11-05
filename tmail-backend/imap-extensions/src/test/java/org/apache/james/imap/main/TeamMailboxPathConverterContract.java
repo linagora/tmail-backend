@@ -66,4 +66,65 @@ public abstract class TeamMailboxPathConverterContract extends MailboxFolderDeli
         assertThat(teamMailboxPathConverter().mailboxName(!RELATIVE, new MailboxPath("#TeamMailbox", teamMailboxUsername(), "sale"), mailboxSession))
             .contains(adjustToActiveFolderDelimiter("#TeamMailbox.sale"));
     }
+
+    @Test
+    public void mailboxNameShouldRenderTeamMailboxOfTheSessionDomain() {
+        MailboxSession domainSession = MailboxSessionUtil.create(Username.of("user@domain.tld"), folderDelimiter());
+        MailboxPath sameDomainTeam = new MailboxPath("#TeamMailbox", Username.of("team-mailbox@domain.tld"), "sales");
+
+        assertThat(teamMailboxPathConverter().mailboxName(!RELATIVE, sameDomainTeam, domainSession))
+            .contains(adjustToActiveFolderDelimiter("#TeamMailbox.sales"));
+    }
+
+    @Test
+    public void mailboxNameOfATeamMailboxOfAnotherDomainShouldBeQualifiedWithItsDomain() {
+        MailboxSession domainSession = MailboxSessionUtil.create(Username.of("user@domain.tld"), folderDelimiter());
+        MailboxPath otherDomainTeam = new MailboxPath("#TeamMailbox", Username.of("team-mailbox@other.tld"), "sales");
+
+        assertThat(teamMailboxPathConverter().mailboxName(!RELATIVE, otherDomainTeam, domainSession))
+            .contains(adjustToActiveFolderDelimiter("#TeamMailbox.sales@") + escapedOtherDomain());
+    }
+
+    @Test
+    public void mailboxNameOfAFolderOfATeamMailboxOfAnotherDomainShouldBeQualifiedWithItsDomain() {
+        MailboxSession domainSession = MailboxSessionUtil.create(Username.of("user@domain.tld"), folderDelimiter());
+        MailboxPath otherDomainTeam = new MailboxPath("#TeamMailbox", Username.of("team-mailbox@other.tld"), adjustToActiveFolderDelimiter("sales.INBOX"));
+
+        assertThat(teamMailboxPathConverter().mailboxName(!RELATIVE, otherDomainTeam, domainSession))
+            .contains(adjustToActiveFolderDelimiter("#TeamMailbox.sales@") + escapedOtherDomain() + adjustToActiveFolderDelimiter(".INBOX"));
+    }
+
+    @Test
+    public void mailboxNameOfATeamMailboxWithADomainShouldBeQualifiedForASessionWithoutDomain() {
+        MailboxPath otherDomainTeam = new MailboxPath("#TeamMailbox", Username.of("team-mailbox@other.tld"), "sales");
+
+        assertThat(teamMailboxPathConverter().mailboxName(!RELATIVE, otherDomainTeam, mailboxSession))
+            .contains(adjustToActiveFolderDelimiter("#TeamMailbox.sales@") + escapedOtherDomain());
+    }
+
+    @Test
+    public void buildFullPathShouldResolveADomainQualifiedTeamMailboxName() {
+        assertThat(teamMailboxPathConverter().buildFullPath(adjustToActiveFolderDelimiter("#TeamMailbox.sales@") + escapedOtherDomain()))
+            .isEqualTo(new MailboxPath("#TeamMailbox", Username.of("team-mailbox@other.tld"), "sales"));
+    }
+
+    @Test
+    public void buildFullPathShouldResolveAFolderOfADomainQualifiedTeamMailboxName() {
+        assertThat(teamMailboxPathConverter().buildFullPath(adjustToActiveFolderDelimiter("#TeamMailbox.sales@") + escapedOtherDomain() + adjustToActiveFolderDelimiter(".INBOX")))
+            .isEqualTo(new MailboxPath("#TeamMailbox", Username.of("team-mailbox@other.tld"), adjustToActiveFolderDelimiter("sales.INBOX")));
+    }
+
+    @Test
+    public void teamMailboxOfAnotherDomainShouldRoundTrip() {
+        MailboxSession domainSession = MailboxSessionUtil.create(Username.of("user@domain.tld"), folderDelimiter());
+        MailboxPath otherDomainTeam = new MailboxPath("#TeamMailbox", Username.of("team-mailbox@other_domain.tld"), adjustToActiveFolderDelimiter("sales.INBOX"));
+
+        assertThat(teamMailboxPathConverter().mailboxName(!RELATIVE, otherDomainTeam, domainSession)
+                .map(teamMailboxPathConverter()::buildFullPath))
+            .contains(otherDomainTeam);
+    }
+
+    private String escapedOtherDomain() {
+        return "other.tld".replace(String.valueOf(folderDelimiter()), "__");
+    }
 }

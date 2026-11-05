@@ -25,26 +25,17 @@ import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.apache.james.imap.main.PathConverter;
 import org.apache.james.mailbox.MailboxSession;
-import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailbox.model.MailboxPath;
 
 import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.collect.Iterables;
-import com.google.common.escape.Escaper;
-import com.google.common.escape.Escapers;
 import com.linagora.tmail.team.TeamMailbox;
 import com.linagora.tmail.team.TeamMailboxNameSpace;
 
 public class TMailFullDomainPathConverter extends TMailPathConverter implements PathConverter {
-    protected final Escaper domainEscaper;
-
     protected TMailFullDomainPathConverter(MailboxSession mailboxSession) {
         super(mailboxSession);
-        this.domainEscaper = Escapers.builder()
-                .addEscape(mailboxSession.getPathDelimiter(), "__")
-                .addEscape('_', "_-")
-                .build();
     }
 
     public Optional<String> mailboxName(boolean relative, MailboxPath path, MailboxSession session) {
@@ -52,24 +43,9 @@ public class TMailFullDomainPathConverter extends TMailPathConverter implements 
             // Because internal and external representations of a team mailbox differ, we need to convert
             // the local path like MailboxPath(namespace="#Teammailbox", user="team-mailbox@<domain>", name="<teamXXX>/<folder>")
             // to the external representation '#TeamMailbox/<teamXXX>@<domain>/<folder>'.
-            List<String> mailboxNameParts = Splitter.on(session.getPathDelimiter()).splitToList(path.getName());
-            String team = mailboxNameParts.getFirst();
-
-            Optional<Domain> userDomain = path.getUser().getDomainPart();
-            if (userDomain.isEmpty()) {
-                throw new IllegalArgumentException("The full domain version of the path converter does not allow missing domains!");
-            }
-            String domain = domainEscaper.escape(
-                    path.getUser().getDomainPart().map(Domain::asString).get()
-            );
-
-            String folder = Joiner.on(session.getPathDelimiter()).join(Iterables.skip(mailboxNameParts, 1));
-
-            String externalMailboxName = path.getNamespace() + session.getPathDelimiter() + team + "@" + domain;
-            if (!folder.isEmpty()) {
-                externalMailboxName += session.getPathDelimiter() + folder;
-            }
-            return Optional.of(externalMailboxName);
+            Domain domain = path.getUser().getDomainPart()
+                .orElseThrow(() -> new IllegalArgumentException("The full domain version of the path converter does not allow missing domains!"));
+            return Optional.of(domainQualifiedTeamMailboxName(path, domain, session));
         } else {
             return defaultpathConverter.mailboxName(relative, path, session);
         }
@@ -95,8 +71,7 @@ public class TMailFullDomainPathConverter extends TMailPathConverter implements 
         }
 
         String escapedDomain = usernameDomain.get(1);
-        String domain = escapedDomain.replace("__", String.valueOf(MailboxConstants.FOLDER_DELIMITER))
-                .replace("_-", "_");
+        String domain = unescapeDomain(escapedDomain);
         String team = usernameDomain.getFirst();
         String folder = Joiner.on(mailboxSession.getPathDelimiter()).join(Iterables.skip(externalMailboxNameParts, 2));
 
