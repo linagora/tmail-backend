@@ -122,9 +122,8 @@ case class AttendeePartStatusUpdatePatch(targetAttendeeEmail: String, status: Pa
       .getOrElse(throw new IllegalArgumentException(s"The attendee is not found in the event. $targetAttendeeEmail"))
 }
 
-case class OrganizerValidator(requestUser: String) extends Consumer[Calendar] {
-  override def accept(calendar: Calendar): Unit = {
-    val vEvent = calendar.getFirstVEvent
+case class OrganizerValidator(requestUser: String) extends Consumer[VEvent] {
+  override def accept(vEvent: VEvent): Unit = {
     val organizerOpt: Option[String] = CalendarOrganizerField.from(vEvent)
       .flatMap(_.asMailAddressString())
     require(organizerOpt.isDefined, s"Can not update event, the organizer is not defined".asInstanceOf[Object])
@@ -134,7 +133,8 @@ case class OrganizerValidator(requestUser: String) extends Consumer[Calendar] {
 
 case class CalendarEventModifier(patches: Seq[CalendarEventUpdatePatch],
                                  recurrenceId: Option[RecurrenceId[Temporal]],
-                                 validator: Consumer[Calendar] = (_: Calendar) => {}) {
+                                 validator: Consumer[Calendar] = (_: Calendar) => {},
+                                 targetValidator: Consumer[VEvent] = (_: VEvent) => {}) {
 
   def apply(calendar: Calendar): Calendar =
     try {
@@ -151,6 +151,8 @@ case class CalendarEventModifier(patches: Seq[CalendarEventUpdatePatch],
 
     val vEVentNeedToUpdate: VEvent = recurrenceId.map(findVEventByRecurrenceId(newCalendar, _))
       .getOrElse(newCalendar.getFirstVEvent)
+
+    targetValidator.accept(vEVentNeedToUpdate)
 
     // apply every patch: Seq.exists would short-circuit and skip the patches following the first applied one
     val appliedPatches: Seq[Boolean] = patches.map(_.apply(vEVentNeedToUpdate))
@@ -349,7 +351,7 @@ object CalendarEventModifier {
 
     CalendarEventModifier(patches = patches,
       recurrenceId = Option(vEvent.getRecurrenceId[Temporal]).map(requireEvaluable),
-      validator = OrganizerValidator(userRequest.asString()))
+      targetValidator = OrganizerValidator(userRequest.asString()))
   }
 
   def withPartStat(targetAttendeeEmail: String,
