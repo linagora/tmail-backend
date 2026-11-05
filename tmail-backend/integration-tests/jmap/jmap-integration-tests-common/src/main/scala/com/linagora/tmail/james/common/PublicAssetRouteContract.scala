@@ -19,6 +19,7 @@
 package com.linagora.tmail.james.common
 
 import java.io.ByteArrayInputStream
+import java.nio.charset.StandardCharsets
 
 import com.google.common.net.HttpHeaders.{CACHE_CONTROL, CONTENT_LENGTH}
 import com.linagora.tmail.james.common.PublicAssetRouteContract.{ASSET_CONTENT, IMAGE_CONTENT_TYPE, SIZE}
@@ -38,7 +39,7 @@ import org.apache.james.mailbox.model.ContentType
 import org.apache.james.util.ClassLoaderUtils
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
-import org.hamcrest.Matchers.equalTo
+import org.hamcrest.Matchers.{equalTo, nullValue}
 import org.junit.jupiter.api.{BeforeEach, Test}
 
 object PublicAssetRouteContract {
@@ -89,6 +90,56 @@ trait PublicAssetRouteContract {
       .asByteArray()
 
     assertThat(responseAsByteArray).isEqualTo(ASSET_CONTENT)
+  }
+
+  @Test
+  def shouldNotLetTheBrowserSniffNorRunPublicAssets(server: GuiceJamesServer): Unit = {
+    val creationRequest: PublicAssetCreationRequest = PublicAssetCreationRequest(
+      size = SIZE,
+      contentType = IMAGE_CONTENT_TYPE,
+      content = () => new ByteArrayInputStream(ASSET_CONTENT),
+      identityIds = Seq.empty)
+
+    val publicAssetStorage = server.getProbe(classOf[JmapGuicePublicAssetProbe])
+      .addPublicAsset(BOB, creationRequest)
+
+    `given`
+      .basePath("")
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+    .when
+      .get(publicAssetStorage.publicURI.value.getPath)
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(IMAGE_CONTENT_TYPE.value)
+      .header("X-Content-Type-Options", equalTo("nosniff"))
+      .header("Content-Security-Policy", equalTo("sandbox"))
+      .header("Content-Disposition", nullValue())
+  }
+
+  @Test
+  def shouldNotLetTheBrowserRenderSvgPublicAssetsInline(server: GuiceJamesServer): Unit = {
+    val svgContent: Array[Byte] = """<svg xmlns="http://www.w3.org/2000/svg" width="1" height="1"/>""".getBytes(StandardCharsets.UTF_8)
+    val creationRequest: PublicAssetCreationRequest = PublicAssetCreationRequest(
+      size = Size.sanitizeSize(svgContent.length),
+      contentType = ImageContentType.from("image/svg+xml").toOption.get,
+      content = () => new ByteArrayInputStream(svgContent),
+      identityIds = Seq.empty)
+
+    val publicAssetStorage = server.getProbe(classOf[JmapGuicePublicAssetProbe])
+      .addPublicAsset(BOB, creationRequest)
+
+    `given`
+      .basePath("")
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+    .when
+      .get(publicAssetStorage.publicURI.value.getPath)
+    .`then`
+      .statusCode(SC_OK)
+      .contentType("image/svg+xml")
+      .header("Content-Disposition", equalTo("attachment"))
+      .header("X-Content-Type-Options", equalTo("nosniff"))
+      .header("Content-Security-Policy", equalTo("sandbox"))
+      .body(equalTo(new String(svgContent, StandardCharsets.UTF_8)))
   }
 
   @Test

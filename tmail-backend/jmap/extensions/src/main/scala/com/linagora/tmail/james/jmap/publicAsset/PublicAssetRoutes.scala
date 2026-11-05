@@ -26,6 +26,7 @@ import java.util.stream
 import java.util.stream.Stream
 
 import com.linagora.tmail.james.jmap.publicAsset.PublicAssetRoutes.{BUFFER_SIZE, LOGGER, ONE_YEAR_AS_SECONDS}
+import com.linagora.tmail.james.jmap.routes.UnauthenticatedBlobAccessDownloadRoutes
 import io.netty.buffer.Unpooled
 import io.netty.handler.codec.http.HttpHeaderNames.{CACHE_CONTROL, CONTENT_LENGTH, CONTENT_TYPE}
 import io.netty.handler.codec.http.HttpResponseStatus._
@@ -111,6 +112,7 @@ class PublicAssetRoutes @Inject()(val publicAssetRepository: PublicAssetReposito
                             size: Size): SMono[Unit] = {
     val resourceSupplier: Callable[InputStream] = () => content
     val sourceSupplier: java.util.function.Function[InputStream, Mono[Void]] = stream => SMono(addContentLengthHeader(size)
+      .compose(addContentSecurityHeaders(contentType.asString))
       .apply(response)
       .header(CONTENT_TYPE, contentType.asString)
       .header(CACHE_CONTROL, s"immutable, max-age=$ONE_YEAR_AS_SECONDS")
@@ -129,6 +131,19 @@ class PublicAssetRoutes @Inject()(val publicAssetRepository: PublicAssetReposito
 
   private def addContentLengthHeader(size: Size): HttpServerResponse => HttpServerResponse =
     resp => resp.header(CONTENT_LENGTH, size.value.toString)
+
+  // Public assets are user controlled content served without authentication from the JMAP origin: never let the
+  // browser sniff them, nor run them as an active document. Signatures embed them with <img>, which ignores these headers.
+  private def addContentSecurityHeaders(contentType: String): HttpServerResponse => HttpServerResponse =
+    resp => {
+      val secured = resp.header("X-Content-Type-Options", "nosniff")
+        .header("Content-Security-Policy", "sandbox")
+      if (UnauthenticatedBlobAccessDownloadRoutes.isActiveContent(contentType)) {
+        secured.header("Content-Disposition", "attachment")
+      } else {
+        secured
+      }
+    }
 
   private def respondDetails(httpServerResponse: HttpServerResponse, details: ProblemDetails, statusCode: HttpResponseStatus = BAD_REQUEST): SMono[Unit] =
     SMono.fromCallable(() => ResponseSerializer.serialize(details))
