@@ -378,5 +378,43 @@ class CalendarEventReplyGeneratorTest {
     assertThat(replyAttendee.get.getCalAddress.toASCIIString).isEqualTo("mailto:%22quoted%20local%22@domain.tld")
   }
 
+  private def requestWithProperty(calendarProperty: String): Calendar =
+    CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+      s"""BEGIN:VCALENDAR
+         |VERSION:2.0
+         |PRODID:x
+         |$calendarProperty
+         |METHOD:REQUEST
+         |BEGIN:VEVENT
+         |UID:1
+         |ATTENDEE:mailto:bob@domain.com
+         |END:VEVENT
+         |END:VCALENDAR
+         |""".stripMargin.getBytes(StandardCharsets.UTF_8)))
+
+  private def calendarScales(calendar: Calendar): Seq[String] =
+    calendar.toString.linesIterator.filter(_.startsWith("CALSCALE:")).toSeq
+
+  @Test
+  def replyShouldContainOnlyOneCalendarScale(): Unit = {
+    val reply: Calendar = testee.generate(calendarEventRequestTemplate, AttendeeReply(new MailAddress("bob@domain.com"), PartStat.DECLINED))
+
+    assertThat(calendarScales(reply).asJava).containsExactly("CALSCALE:GREGORIAN")
+  }
+
+  @Test
+  def replyShouldReplaceTheDefaultCalendarScaleByTheOneOfTheRequest(): Unit = {
+    val reply: Calendar = testee.generate(requestWithProperty("CALSCALE:CHINESE"), AttendeeReply(new MailAddress("bob@domain.com"), PartStat.ACCEPTED))
+
+    assertThat(calendarScales(reply).asJava).containsExactly("CALSCALE:CHINESE")
+  }
+
+  @Test
+  def replyShouldDefaultToGregorianWhenTheRequestHasNoCalendarScale(): Unit = {
+    val reply: Calendar = testee.generate(requestWithProperty("X-WR-CALNAME:x"), AttendeeReply(new MailAddress("bob@domain.com"), PartStat.ACCEPTED))
+
+    assertThat(calendarScales(reply).asJava).containsExactly("CALSCALE:GREGORIAN")
+  }
+
   private def getVEVENT(calendar: Calendar): VEvent = calendar.getComponents[VEvent](Component.VEVENT).asScala.head
 }
