@@ -1652,6 +1652,139 @@ class CalendarEventModifierTest {
     }
   }
 
+  @Nested
+  class OverrideListedBeforeMaster {
+    private def overrideBeforeMaster(masterStatus: String, overrideStatus: String = "CONFIRMED"): Calendar =
+      CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+        s"""BEGIN:VCALENDAR
+           |VERSION:2.0
+           |PRODID:-//x//EN
+           |BEGIN:VEVENT
+           |UID:abc
+           |DTSTAMP:20250101T000000Z
+           |RECURRENCE-ID:20250409T070000Z
+           |DTSTART:20250409T080000Z
+           |DTEND:20250409T090000Z
+           |STATUS:$overrideStatus
+           |ORGANIZER:mailto:organizer@open-paas.org
+           |ATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:bob@open-paas.org
+           |END:VEVENT
+           |BEGIN:VEVENT
+           |UID:abc
+           |DTSTAMP:20250101T000000Z
+           |DTSTART:20250402T070000Z
+           |DTEND:20250402T080000Z
+           |RRULE:FREQ=WEEKLY;COUNT=4
+           |STATUS:$masterStatus
+           |ORGANIZER:mailto:organizer@open-paas.org
+           |ATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:bob@open-paas.org
+           |END:VEVENT
+           |END:VCALENDAR
+           |""".stripMargin.getBytes(StandardCharsets.UTF_8)))
+
+    private def withoutRecurrenceId: CalendarEventModifier =
+      testee.withPartStat("bob@open-paas.org", PartStat.ACCEPTED, Option.empty[RecurrenceId[Temporal]])
+
+    private def vEvents(calendar: Calendar): Seq[VEvent] =
+      calendar.getComponents[VEvent](Component.VEVENT).asScala.toSeq
+
+    @Test
+    def targetedVEventShouldBeTheCancelledMasterWhenNoRecurrenceId(): Unit = {
+      val targeted = withoutRecurrenceId.targetedVEvent(overrideBeforeMaster(masterStatus = "CANCELLED"))
+
+      SoftAssertions.assertSoftly(softly => {
+        softly.assertThat(targeted.get.getRecurrenceId[Temporal]).isNull()
+        softly.assertThat(targeted.get.getStatus.getValue).isEqualTo("CANCELLED")
+      })
+    }
+
+    @Test
+    def targetedVEventShouldIgnoreACancelledOverrideWhenNoRecurrenceId(): Unit = {
+      val targeted = withoutRecurrenceId.targetedVEvent(overrideBeforeMaster(masterStatus = "CONFIRMED", overrideStatus = "CANCELLED"))
+
+      assertThat(targeted.get.getStatus.getValue).isEqualTo("CONFIRMED")
+    }
+
+    @Test
+    def applyShouldPatchTheMasterWhenNoRecurrenceId(): Unit = {
+      val events = vEvents(withoutRecurrenceId.apply(overrideBeforeMaster(masterStatus = "CONFIRMED")))
+
+      SoftAssertions.assertSoftly(softly => {
+        softly.assertThat(events.head.toString).contains("PARTSTAT=NEEDS-ACTION")
+        softly.assertThat(events(1).toString).contains("PARTSTAT=ACCEPTED")
+      })
+    }
+
+    @Test
+    def withPartStatShouldAnswerTheSeriesWhenTheInvitationListsAnOverrideFirst(): Unit = {
+      val calendar = overrideBeforeMaster(masterStatus = "CONFIRMED")
+
+      val events = vEvents(testee.withPartStat("bob@open-paas.org", PartStat.ACCEPTED, calendar).apply(calendar))
+
+      SoftAssertions.assertSoftly(softly => {
+        softly.assertThat(events.head.toString).contains("PARTSTAT=NEEDS-ACTION")
+        softly.assertThat(events(1).toString).contains("PARTSTAT=ACCEPTED")
+      })
+    }
+
+    @Test
+    def applyShouldCopyAMissingOccurrenceFromTheMaster(): Unit = {
+      val missingOccurrence = new RecurrenceId[Temporal]("20250416T070000Z")
+      val newStart = ZonedDateTime.parse("2025-04-16T10:00:00Z")
+
+      val events = vEvents(CalendarEventModifier(Seq(CalendarEventTimingUpdatePatch(newStart, newStart.plusHours(1))), Some(missingOccurrence))
+        .apply(overrideBeforeMaster(masterStatus = "CONFIRMED")))
+
+      SoftAssertions.assertSoftly(softly => {
+        softly.assertThat(events.size).isEqualTo(3)
+        softly.assertThat(events(2).getRecurrenceId[Temporal].getValue).isEqualTo("20250416T070000Z")
+        softly.assertThat(events(2).getDateTimeStart[Temporal].getValue).isEqualTo("20250416T100000")
+      })
+    }
+
+    @Test
+    def targetedVEventShouldBeTheMasterWhenTheOccurrenceHasNoOverride(): Unit = {
+      val missingOccurrence = new RecurrenceId[Temporal]("20250416T070000Z")
+
+      val targeted = CalendarEventModifier(Seq(), Some(missingOccurrence))
+        .targetedVEvent(overrideBeforeMaster(masterStatus = "CANCELLED"))
+
+      assertThat(targeted.get.getStatus.getValue).isEqualTo("CANCELLED")
+    }
+
+    @Test
+    def targetedVEventShouldBeTheFirstVEventWhenThereIsNoMaster(): Unit = {
+      val loneOverride = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+        """BEGIN:VCALENDAR
+          |VERSION:2.0
+          |PRODID:-//x//EN
+          |BEGIN:VEVENT
+          |UID:abc
+          |DTSTAMP:20250101T000000Z
+          |RECURRENCE-ID:20250409T070000Z
+          |DTSTART:20250409T080000Z
+          |DTEND:20250409T090000Z
+          |ORGANIZER:mailto:organizer@open-paas.org
+          |ATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:bob@open-paas.org
+          |END:VEVENT
+          |BEGIN:VEVENT
+          |UID:abc
+          |DTSTAMP:20250101T000000Z
+          |RECURRENCE-ID:20250416T070000Z
+          |DTSTART:20250416T080000Z
+          |DTEND:20250416T090000Z
+          |ORGANIZER:mailto:organizer@open-paas.org
+          |ATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:bob@open-paas.org
+          |END:VEVENT
+          |END:VCALENDAR
+          |""".stripMargin.getBytes(StandardCharsets.UTF_8)))
+
+      val targeted = withoutRecurrenceId.targetedVEvent(loneOverride)
+
+      assertThat(targeted.get.getRecurrenceId[Temporal].getValue).isEqualTo("20250409T070000Z")
+    }
+  }
+
   implicit class ImplicitCalendarString(value: String) {
     def removeDTSTAMPLines(): String =
       value.replaceAll("(?m)^DTSTAMP:.*\\R?", "").trim.stripMargin

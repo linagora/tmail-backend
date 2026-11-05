@@ -150,7 +150,7 @@ case class CalendarEventModifier(patches: Seq[CalendarEventUpdatePatch],
     validator.accept(newCalendar)
 
     val vEVentNeedToUpdate: VEvent = recurrenceId.map(findVEventByRecurrenceId(newCalendar, _))
-      .getOrElse(newCalendar.getFirstVEvent)
+      .getOrElse(newCalendar.getMasterOrFirstVEvent)
 
     targetValidator.accept(vEVentNeedToUpdate)
 
@@ -168,7 +168,7 @@ case class CalendarEventModifier(patches: Seq[CalendarEventUpdatePatch],
    */
   def targetedVEvent(calendar: Calendar): Option[VEvent] =
     recurrenceId.flatMap(findOverride(calendar, _))
-      .orElse(calendar.getComponents[VEvent](Component.VEVENT).asScala.headOption)
+      .orElse(calendar.masterOrFirstVEvent)
 
   private def findOverride(calendar: Calendar, recurrenceId: RecurrenceId[Temporal]): Option[VEvent] =
     calendar.getComponents[VEvent](Component.VEVENT).asScala
@@ -178,7 +178,7 @@ case class CalendarEventModifier(patches: Seq[CalendarEventUpdatePatch],
     // An existing override is used as is: it may come without master event, eg when invited to a single occurrence
     findOverride(calendar, recurrenceId)
       .getOrElse {
-        val baseVEvent = calendar.getFirstVEvent
+        val baseVEvent = calendar.getMasterOrFirstVEvent
         require(baseVEvent.getProperty(Property.RRULE).isPresent || baseVEvent.getProperty(Property.RDATE).isPresent,
           s"Can not find VEVENT with recurrenceId $recurrenceId, the event is not a recurring event".asInstanceOf[Object])
         require(Option(recurrenceId.getDate).isDefined,
@@ -359,7 +359,7 @@ object CalendarEventModifier {
                    requestCalendar: Calendar): CalendarEventModifier =
     withPartStat(targetAttendeeEmail = targetAttendeeEmail,
       status = status,
-      recurrenceId = Option(requestCalendar.getFirstVEvent.getRecurrenceId[Temporal]))
+      recurrenceId = Option(requestCalendar.getMasterOrFirstVEvent.getRecurrenceId[Temporal]))
 
   def withPartStat(targetAttendeeEmail: String,
                    status: PartStat,
@@ -384,6 +384,20 @@ object CalendarEventModifier {
         case Some(vEvent) => vEvent
         case _ => throw new IllegalArgumentException("The calendar file must contain at least one VEVENT component")
       }
+
+    /**
+     * The VEVENT standing for the series: the one without RECURRENCE-ID wherever it is listed, as RFC 5545 imposes no
+     * order, or the first one when there is no master, eg when invited to a single occurrence.
+     */
+    def masterOrFirstVEvent: Option[VEvent] = {
+      val vEvents = calendar.getComponents[VEvent](Component.VEVENT).asScala
+      vEvents.find(vEvent => Option(vEvent.getRecurrenceId[Temporal]).isEmpty)
+        .orElse(vEvents.headOption)
+    }
+
+    def getMasterOrFirstVEvent: VEvent =
+      masterOrFirstVEvent
+        .getOrElse(throw new IllegalArgumentException("The calendar file must contain at least one VEVENT component"))
   }
 
   implicit class ImplicitVEvent(vEvent: VEvent) {
