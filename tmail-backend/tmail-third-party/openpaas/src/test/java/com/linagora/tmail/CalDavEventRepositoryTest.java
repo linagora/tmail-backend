@@ -713,6 +713,7 @@ class CalDavEventRepositoryTest {
         CalendarEventModifier eventModifier = new CalendarEventModifier(
             CollectionConverters.asScala(List.<CalendarEventUpdatePatch>of(new CalendarEventTimingUpdatePatch(proposedStartDate, proposedEndDate))).toSeq(),
             OptionConverters.toScala(Optional.empty()),
+            calendar -> { },
             new OrganizerValidator(testUser.asString()));
 
         assertThatThrownBy(() -> testee.updateEvent(testUser, new CalendarUidField(eventUidA), eventModifier).block())

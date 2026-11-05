@@ -1568,6 +1568,90 @@ class CalendarEventModifierTest {
         |""".stripMargin.getBytes("UTF-8")))
   }
 
+  @Nested
+  class CounterOnAnOverride {
+    private def parse(ics: String): Calendar =
+      CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(ics.getBytes(StandardCharsets.UTF_8)))
+
+    private def stored(masterOrganizer: String, overrideOrganizer: String): Calendar = parse(
+      s"""BEGIN:VCALENDAR
+         |VERSION:2.0
+         |PRODID:-//x//EN
+         |BEGIN:VEVENT
+         |UID:rec-2
+         |DTSTAMP:20250401T090000Z
+         |DTSTART:20250402T070000Z
+         |DTEND:20250402T080000Z
+         |RRULE:FREQ=WEEKLY;COUNT=4
+         |$masterOrganizer
+         |ATTENDEE:mailto:bob@domain.tld
+         |END:VEVENT
+         |BEGIN:VEVENT
+         |UID:rec-2
+         |DTSTAMP:20250401T090000Z
+         |RECURRENCE-ID:20250409T070000Z
+         |DTSTART:20250409T070000Z
+         |DTEND:20250409T080000Z
+         |$overrideOrganizer
+         |ATTENDEE:mailto:bob@domain.tld
+         |END:VEVENT
+         |END:VCALENDAR
+         |""".stripMargin)
+
+    private def counter(recurrenceId: String): Calendar = parse(
+      s"""BEGIN:VCALENDAR
+         |VERSION:2.0
+         |PRODID:-//x//EN
+         |METHOD:COUNTER
+         |BEGIN:VEVENT
+         |UID:rec-2
+         |DTSTAMP:20250402T090000Z
+         |RECURRENCE-ID:$recurrenceId
+         |DTSTART:20250416T140000Z
+         |DTEND:20250416T150000Z
+         |END:VEVENT
+         |END:VCALENDAR
+         |""".stripMargin)
+
+    private val organizer = "ORGANIZER:mailto:organizer@domain.tld"
+    private val other = "ORGANIZER:mailto:other@domain.tld"
+
+    @ParameterizedTest
+    @ValueSource(strings = Array("ORGANIZER:mailto:other@domain.tld", "SUMMARY:no organizer"))
+    def shouldBeRejectedWhenTheTargetedOverrideIsNotOrganizedByTheUser(overrideOrganizer: String): Unit = {
+      val calendar = stored(organizer, overrideOrganizer)
+
+      assertThatThrownBy(() => testee.of(counter("20250409T070000Z"), Username.of("organizer@domain.tld")).apply(calendar))
+        .isInstanceOf(classOf[IllegalArgumentException])
+        .hasMessageContaining("Can not update event")
+    }
+
+    @Test
+    def shouldPatchTheOverrideOrganizedByTheUserWhateverTheMasterOrganizer(): Unit = {
+      val updated = testee.of(counter("20250409T070000Z"), Username.of("organizer@domain.tld")).apply(stored(other, organizer))
+
+      assertThat(updated.getComponents[VEvent](Component.VEVENT).asScala.last.getDateTimeStart[Temporal].getValue)
+        .isEqualTo("20250416T140000")
+    }
+
+    @Test
+    def shouldCreateTheMissingOverrideFromAMasterOrganizedByTheUser(): Unit = {
+      val updated = testee.of(counter("20250416T070000Z"), Username.of("organizer@domain.tld")).apply(stored(organizer, other))
+
+      assertThat(updated.getComponents[VEvent](Component.VEVENT).asScala.last.getRecurrenceId[Temporal].getValue)
+        .isEqualTo("20250416T070000Z")
+    }
+
+    @Test
+    def shouldBeRejectedWhenTheMissingOverrideIsCopiedFromAMasterOrganizedBySomeoneElse(): Unit = {
+      val calendar = stored(other, organizer)
+
+      assertThatThrownBy(() => testee.of(counter("20250416T070000Z"), Username.of("organizer@domain.tld")).apply(calendar))
+        .isInstanceOf(classOf[IllegalArgumentException])
+        .hasMessageContaining("Can not update event")
+    }
+  }
+
   implicit class ImplicitCalendarString(value: String) {
     def removeDTSTAMPLines(): String =
       value.replaceAll("(?m)^DTSTAMP:.*\\R?", "").trim.stripMargin
