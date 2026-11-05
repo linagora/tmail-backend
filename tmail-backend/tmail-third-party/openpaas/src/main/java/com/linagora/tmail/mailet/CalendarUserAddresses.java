@@ -54,6 +54,7 @@ final class CalendarUserAddresses {
     static Optional<MailAddress> toMailAddress(URI calAddress) {
         try {
             return Optional.ofNullable(calAddress)
+                .filter(CalendarUserAddresses::hasNoFragment)
                 .filter(CalendarUserAddresses::isMailtoOrSchemeLess)
                 .map(URI::getRawSchemeSpecificPart)
                 .map(CalendarUserAddresses::withoutHfields)
@@ -63,6 +64,12 @@ final class CalendarUserAddresses {
             LOGGER.info("Skipping invalid calendar user address in iCal payload: {}", calAddress);
             return Optional.empty();
         }
+    }
+
+    // RFC 6068 section 2 requires '#' to be percent-encoded in an address. URI excludes the fragment from the
+    // scheme-specific part: without this check the address validated would differ from the value written in the payload
+    private static boolean hasNoFragment(URI calAddress) {
+        return calAddress.getRawFragment() == null;
     }
 
     private static boolean isMailtoOrSchemeLess(URI calAddress) {
