@@ -84,6 +84,51 @@ public class UpdateEntryNameTest {
     }
 
     @Test
+    void sanitizeEntryNameShouldNotEndWithWhitespaceAfterTruncation() {
+        String name = "x ".repeat(150);
+
+        String sanitized = ZipUtil.sanitizeEntryName(name);
+
+        assertThat(sanitized).doesNotEndWith(" ");
+        assertThat(ZipUtil.sanitizeEntryName(sanitized)).isEqualTo(sanitized);
+    }
+
+    @Test
+    void sanitizeEntryNameShouldNotEndWithDotAfterTruncation() {
+        String name = "x.".repeat(150) + "y".repeat(40);
+
+        assertThat(ZipUtil.sanitizeEntryName(name)).doesNotEndWith(".");
+    }
+
+    @Test
+    void sanitizeEntryNameShouldNotEndWithDotWhenTheExtensionIsOnlyADot() {
+        String name = "a".repeat(200) + ".";
+
+        assertThat(ZipUtil.sanitizeEntryName(name)).isEqualTo("a".repeat(200));
+    }
+
+    @Test
+    void sanitizeEntryNameShouldNotLeaveWhitespaceBeforeAKeptExtension() {
+        String name = "x ".repeat(150) + ".pdf";
+
+        assertThat(ZipUtil.sanitizeEntryName(name)).isEqualTo("x ".repeat(97) + "x.pdf");
+    }
+
+    @Test
+    void sanitizeEntryNameShouldNotLeaveDotsBeforeAKeptExtension() {
+        String name = "a".repeat(195) + "...pdf";
+
+        assertThat(ZipUtil.sanitizeEntryName(name)).isEqualTo("a".repeat(195) + ".pdf");
+    }
+
+    @Test
+    void sanitizeEntryNameShouldFallbackToDefaultNameWhenTruncatedBaseNameIsOnlyDots() {
+        String name = ".".repeat(300) + "x";
+
+        assertThat(ZipUtil.sanitizeEntryName(name)).isEqualTo("noname.x");
+    }
+
+    @Test
     void updateEntryNameShouldDeduplicateTruncatedNames() {
         List<ZipUtil.ZipEntryStreamSource> streamSources = Stream.of("a".repeat(300) + "1.pdf", "a".repeat(300) + "2.pdf")
             .map(entryName -> new ZipUtil.ZipEntryStreamSource(InputStream.nullInputStream(), entryName))

@@ -48,6 +48,8 @@ public class ZipUtil {
     private static final Splitter PATH_SEPARATORS = Splitter.on(CharMatcher.anyOf("/\\"));
     private static final CharMatcher CONTROL_CHARACTERS = CharMatcher.javaIsoControl();
     private static final Pattern DRIVE_PREFIX = Pattern.compile("^([a-zA-Z]:\\s*)+");
+    // Windows silently drops trailing whitespace and dots from file names
+    private static final CharMatcher TRAILING_CHARACTERS_TO_STRIP = CharMatcher.whitespace().or(CharMatcher.is('.'));
     // Leaves room, under the usual 255 bytes file system limit, for the "_<n>" suffix added by updateEntryName
     private static final int MAX_ENTRY_NAME_BYTES = 200;
     private static final int MAX_EXTENSION_BYTES = 32;
@@ -131,7 +133,9 @@ public class ZipUtil {
         }
         String extension = boundedExtension(entryName);
         String baseName = entryName.substring(0, entryName.length() - extension.length());
-        return truncateToUtf8Bytes(baseName, MAX_ENTRY_NAME_BYTES - utf8Length(extension)) + extension;
+        String truncatedBaseName = TRAILING_CHARACTERS_TO_STRIP.trimTrailingFrom(
+            truncateToUtf8Bytes(baseName, MAX_ENTRY_NAME_BYTES - utf8Length(extension)));
+        return truncatedBaseName.isEmpty() ? DEFAULT_ENTRY_NAME + extension : truncatedBaseName + extension;
     }
 
     private static String boundedExtension(String entryName) {
@@ -140,7 +144,7 @@ public class ZipUtil {
             return "";
         }
         String extension = entryName.substring(dotIndex);
-        if (utf8Length(extension) > MAX_EXTENSION_BYTES) {
+        if (extension.equals(".") || utf8Length(extension) > MAX_EXTENSION_BYTES) {
             return "";
         }
         return extension;
