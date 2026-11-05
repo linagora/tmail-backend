@@ -50,6 +50,7 @@ class ListEmailsTool @Inject()(val mailboxManager: MailboxManager,
                                val emailReader: ToolEmailReader) extends AgentTool {
 
   override val name: AgentToolName = AgentToolName("list_emails")
+  override val confirm: Boolean = false
 
   override val definition: JsObject = Json.obj(
     "name" -> name.nameAsString,
