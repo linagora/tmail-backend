@@ -82,6 +82,24 @@ class CalendarUserAddressesTest {
         assertThat(CalendarUserAddresses.toMailAddress(calAddress)).isEmpty();
     }
 
+    @ParameterizedTest
+    @ValueSource(strings = {
+        "mailto:bob@domain.tld#frag",
+        "MAILTO:bob@domain.tld#frag",
+        "bob@domain.tld#frag",
+        "mailto:bob@domain.tld?subject=hi#frag",
+        "mailto:bob@domain.tld#"
+    })
+    void toMailAddressShouldRejectCalendarUserAddressesWithAFragment(String calAddress) {
+        assertThat(CalendarUserAddresses.toMailAddress(calAddress)).isEmpty();
+    }
+
+    @Test
+    void toMailAddressShouldNotTreatAnEncodedHashAsAFragment() {
+        assertThat(CalendarUserAddresses.toMailAddress("mailto:bob%23frag@domain.tld"))
+            .hasValueSatisfying(address -> assertThat(address.getLocalPart()).isEqualTo("bob#frag"));
+    }
+
     @Test
     void toMailAddressShouldRejectNullUri() {
         assertThat(CalendarUserAddresses.toMailAddress((URI) null)).isEmpty();

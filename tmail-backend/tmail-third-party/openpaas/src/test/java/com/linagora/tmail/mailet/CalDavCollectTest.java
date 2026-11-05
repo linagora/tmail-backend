@@ -217,6 +217,21 @@ class CalDavCollectTest {
         END:VTODO
         END:VCALENDAR
         """.formatted(ORGANIZER, ALICE);
+    private static final String ICS_REQUEST_ORGANIZER_WITH_FRAGMENT = """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        PRODID:-//Twake Mail//EN
+        METHOD:REQUEST
+        BEGIN:VEVENT
+        UID:request-with-fragment
+        DTSTAMP:20250101T100000Z
+        DTSTART:20250101T110000Z
+        DTEND:20250101T120000Z
+        ORGANIZER:mailto:%s#frag
+        ATTENDEE:mailto:%s
+        END:VEVENT
+        END:VCALENDAR
+        """.formatted(ORGANIZER, ALICE);
     private static final String ICS_REPLY_RECIPIENT_ATTENDEE_WITH_QUERY = """
         BEGIN:VCALENDAR
         VERSION:2.0
@@ -340,6 +355,15 @@ class CalDavCollectTest {
         davServerExtension.stubFor(itip("/calendars/" + ALICE_ID).willReturn(noContent()));
 
         mailet.service(mailWithCalendar(ICS_ONE_ALIGNED_ONE_FORGED, STRANGER));
+
+        davServerExtension.verify(0, itipRequestPattern());
+    }
+
+    @Test
+    void serviceShouldNotSendItipRequestWhenOrganizerHasAFragment() throws Exception {
+        davServerExtension.stubFor(itip("/calendars/" + ALICE_ID).willReturn(noContent()));
+
+        mailet.service(mailWithCalendar(ICS_REQUEST_ORGANIZER_WITH_FRAGMENT, ORGANIZER));
 
         davServerExtension.verify(0, itipRequestPattern());
     }
