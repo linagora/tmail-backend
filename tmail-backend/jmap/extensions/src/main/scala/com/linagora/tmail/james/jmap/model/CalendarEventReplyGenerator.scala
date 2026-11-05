@@ -75,7 +75,8 @@ object CalendarEventReplyGenerator {
       .withProdId(PRODID)
       .withProperty(ImmutableMethod.REPLY)
 
-    Option(eventRequest.getCalendarScale).map(calScale => calendar.withProperty(calScale))
+    // withDefaults() already sets CALSCALE, which RFC 5545 section 3.6 forbids to repeat
+    Option(eventRequest.getCalendarScale).foreach(calScale => calendar.getFluentTarget.replace[Calendar](calScale))
     timeZone.map(calendar.withComponent)
     calendar.getFluentTarget
   }
