@@ -101,10 +101,30 @@ public abstract class TeamMailboxFullDomainPathConverterContract extends Mailbox
     }
 
     @Test
-    public void buildFullPathShouldRefuseMissingTeamMailboxName() {
+    public void buildFullPathShouldNotRefuseMissingTeamMailboxName() {
+        assertThat(pathConverter()
+                .buildFullPath(adjustToActiveFolderDelimiter("#TeamMailbox")))
+                .isEqualTo(new MailboxPath(
+                        "#TeamMailbox",
+                        Username.of(TeamMailbox.TEAM_MAILBOX_LOCAL_PART()),
+                        ""));
+    }
+
+    @Test
+    public void buildFullPathListAsterisk() {
+        assertThat(pathConverter()
+                .buildFullPath(adjustToActiveFolderDelimiter("#TeamMailbox/*")))
+                .isEqualTo(new MailboxPath(
+                        "#TeamMailbox",
+                        Username.of(TeamMailbox.TEAM_MAILBOX_LOCAL_PART()),
+                        "*"));
+    }
+
+    @Test
+    public void buildFullPathListAsteriskFailsNested() {
         assertThatThrownBy(
                 () -> pathConverter()
-                        .buildFullPath(adjustToActiveFolderDelimiter("#TeamMailbox")))
+                        .buildFullPath(adjustToActiveFolderDelimiter("#TeamMailbox/*/nested")))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
