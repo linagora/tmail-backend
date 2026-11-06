@@ -40,6 +40,7 @@ services:
       - "8000:8000"
     volumes:
       - ./sample-configuration/distributed/opensearch.properties:/root/conf/opensearch.properties
+      - ./sample-configuration/distributed/search.properties:/root/conf/search.properties
       - ./sample-configuration/distributed/blob.properties:/root/conf/blob.properties
       - ./sample-configuration/distributed/rabbitmq.properties:/root/conf/rabbitmq.properties
       - ${RSA_PUBLICKEY_PATH}:/root/conf/jwt_publickey # Replace with absolute path to your RSA public key
