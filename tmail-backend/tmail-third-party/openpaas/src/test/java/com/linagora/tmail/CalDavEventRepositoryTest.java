@@ -731,7 +731,7 @@ class CalDavEventRepositoryTest {
             "DTSTART;TZID=Europe/Paris:20250328T090000\n" +
             "DTEND;TZID=Europe/Paris:20250328T100000\n" +
             "RRULE:FREQ=WEEKLY;COUNT=4;BYDAY=WE\n" +
-            "ORGANIZER;CN=John1 Doe1:" + openPaasUser.email().asString() +"\n" +
+            "ORGANIZER;CN=John1 Doe1:mailto:" + openPaasUser.email().asString() +"\n" +
             "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email().asString() +"\n" +
             "DTSTAMP:20250313T113032\n" +
             "END:VEVENT\n" +
@@ -750,7 +750,7 @@ class CalDavEventRepositoryTest {
             "RECURRENCE-ID;TZID=Europe/Paris:20250409T090000\n" +
             "DTSTART;TZID=Europe/Paris:20250409T110000\n" +
             "DTEND;TZID=Europe/Paris:20250409T120000\n" +
-            "ORGANIZER;CN=John1 Doe1:" + openPaasUser.email().asString() +"\n" +
+            "ORGANIZER;CN=John1 Doe1:mailto:" + openPaasUser.email().asString() +"\n" +
             "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email().asString() +"\n" +
             "DTSTAMP:20250313T113032\n" +
             "END:VEVENT\n" +
@@ -772,14 +772,14 @@ class CalDavEventRepositoryTest {
                 "DTSTART;TZID=Europe/Paris:20250328T090000\n" +
                 "DTEND;TZID=Europe/Paris:20250328T100000\n" +
                 "RRULE:FREQ=WEEKLY;COUNT=4;BYDAY=WE\n" +
-                "ORGANIZER;CN=John1 Doe1:" + openPaasUser.email().asString() +"\n" +
+                "ORGANIZER;CN=John1 Doe1:mailto:" + openPaasUser.email().asString() +"\n" +
                 "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2:mailto:" + openPaasUser.email().asString() +"\n" +
                 "END:VEVENT\n" +
                 "BEGIN:VEVENT\n" +
                 "UID:" + eventUidA + "\n" +
                 "DTSTART;TZID=Europe/Paris:20250409T110000\n" +
                 "DTEND;TZID=Europe/Paris:20250409T120000\n" +
-                "ORGANIZER;CN=John1 Doe1:" + openPaasUser.email().asString() +"\n" +
+                "ORGANIZER;CN=John1 Doe1:mailto:" + openPaasUser.email().asString() +"\n" +
                 "ATTENDEE;PARTSTAT=ACCEPTED;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2:mailto:" + openPaasUser.email().asString() +"\n" +
                 "RECURRENCE-ID;TZID=Europe/Paris:20250409T090000\n" +
                 "SEQUENCE:1\n" +
