@@ -39,9 +39,10 @@ import org.apache.james.core.Username
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture._
 import org.apache.james.mailbox.MessageManager.AppendCommand
-import org.apache.james.mailbox.model.{MailboxId, MailboxPath, MessageId, MultimailboxesSearchQuery, SearchQuery}
+import org.apache.james.mailbox.model.MailboxACL.Right
+import org.apache.james.mailbox.model.{MailboxACL, MailboxId, MailboxPath, MessageId, MultimailboxesSearchQuery, SearchQuery}
 import org.apache.james.mime4j.dom.Message
-import org.apache.james.modules.MailboxProbeImpl
+import org.apache.james.modules.{ACLProbeImpl, MailboxProbeImpl}
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.{await => awaitility}
@@ -544,6 +545,108 @@ trait MailboxClearContract {
         andreUsername.asString(),
         BIG_LIMIT)
       assertThat(andreTrashMessages).containsExactly(andreTrashMessageId)
+    })
+  }
+
+  @Test
+  def bobShouldNotBeAbleToClearAMailboxSharedWithoutDeleteMessagesRight(server: GuiceJamesServer): Unit = {
+    val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
+    val andreTrashMessageId: MessageId = mailboxProbe
+      .appendMessage(andreUsername.asString(), MailboxPath.forUser(andreUsername, "Trash"), AppendCommand.from(MESSAGE))
+      .getMessageId
+    server.getProbe(classOf[ACLProbeImpl])
+      .replaceRights(MailboxPath.forUser(andreUsername, "Trash"), bobUsername.asString(), new MailboxACL.Rfc4314Rights(Right.Lookup, Right.Read))
+
+    val response: String = `given`(bobBaseRequest)
+      .body(
+        s"""{
+           |    "using": [
+           |        "urn:ietf:params:jmap:core",
+           |        "urn:ietf:params:jmap:mail",
+           |        "urn:apache:james:params:jmap:mail:shares",
+           |        "com:linagora:params:jmap:mailbox:clear"
+           |    ],
+           |    "methodCalls": [
+           |        [
+           |            "Mailbox/clear",
+           |            {
+           |                "accountId": "$bobAccountId",
+           |                "mailboxId": "${andreTrashId.serialize()}"
+           |            },
+           |            "c1"
+           |        ]
+           |    ]
+           |}""".stripMargin)
+    .when()
+      .post()
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].notCleared.type")
+      .isEqualTo("forbidden")
+
+    await.untilAsserted(() => {
+      val andreTrashMessages = mailboxProbe.searchMessage(MultimailboxesSearchQuery.from(SearchQuery.matchAll)
+        .inMailboxes(andreTrashId).build,
+        andreUsername.asString(),
+        BIG_LIMIT)
+      assertThat(andreTrashMessages).containsExactly(andreTrashMessageId)
+    })
+  }
+
+  @Test
+  def bobShouldBeAbleToClearAMailboxSharedWithDeleteMessagesRight(server: GuiceJamesServer): Unit = {
+    val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
+    mailboxProbe
+      .appendMessage(andreUsername.asString(), MailboxPath.forUser(andreUsername, "Trash"), AppendCommand.from(MESSAGE))
+    server.getProbe(classOf[ACLProbeImpl])
+      .replaceRights(MailboxPath.forUser(andreUsername, "Trash"), bobUsername.asString(),
+        new MailboxACL.Rfc4314Rights(Right.Lookup, Right.Read, Right.DeleteMessages, Right.PerformExpunge))
+
+    val response: String = `given`(bobBaseRequest)
+      .body(
+        s"""{
+           |    "using": [
+           |        "urn:ietf:params:jmap:core",
+           |        "urn:ietf:params:jmap:mail",
+           |        "urn:apache:james:params:jmap:mail:shares",
+           |        "com:linagora:params:jmap:mailbox:clear"
+           |    ],
+           |    "methodCalls": [
+           |        [
+           |            "Mailbox/clear",
+           |            {
+           |                "accountId": "$bobAccountId",
+           |                "mailboxId": "${andreTrashId.serialize()}"
+           |            },
+           |            "c1"
+           |        ]
+           |    ]
+           |}""".stripMargin)
+    .when()
+      .post()
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].totalDeletedMessagesCount")
+      .isEqualTo(1)
+
+    await.untilAsserted(() => {
+      val andreTrashMessages = mailboxProbe.searchMessage(MultimailboxesSearchQuery.from(SearchQuery.matchAll)
+        .inMailboxes(andreTrashId).build,
+        andreUsername.asString(),
+        BIG_LIMIT)
+      assertThat(andreTrashMessages).isEmpty()
     })
   }
 
