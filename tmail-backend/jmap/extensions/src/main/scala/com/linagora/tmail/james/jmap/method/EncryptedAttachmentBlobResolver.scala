@@ -29,11 +29,12 @@ import org.apache.james.jmap.api.model.Size
 import org.apache.james.jmap.api.model.Size.Size
 import org.apache.james.jmap.mail.BlobId
 import org.apache.james.jmap.routes.{Applicable, Blob, BlobResolutionResult, BlobResolver, NonApplicable}
-import org.apache.james.mailbox.MailboxSession
 import org.apache.james.mailbox.model.{ContentType, MessageId}
+import org.apache.james.mailbox.{MailboxSession, MessageIdManager}
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.SMono
 
+import scala.jdk.CollectionConverters._
 import scala.util.{Success, Try}
 
 case class EncryptedAttachmentBlob(blobId: BlobId, bytes: Array[Byte]) extends Blob {
@@ -46,23 +47,36 @@ case class EncryptedAttachmentBlob(blobId: BlobId, bytes: Array[Byte]) extends B
 
 class EncryptedAttachmentBlobResolver @Inject()(encryptedEmailContentStore: EncryptedEmailContentStore,
                                      messageIdFactory: MessageId.Factory,
+                                     messageIdManager: MessageIdManager,
                                      blobStore: BlobStore) extends BlobResolver {
   override def resolve(blobId: BlobId, mailboxSession: MailboxSession): Publisher[BlobResolutionResult] =
     EncryptedAttachmentBlobId.parse(messageIdFactory, blobId.value.value)
       .fold(_ =>  SMono.just(NonApplicable),
-        encryptedId => SMono.just(Applicable(
-          SMono(encryptedEmailContentStore.retrieveAttachmentContent(encryptedId.messageId, encryptedId.position))
-            .flatMap((blobStoreId: org.apache.james.blob.api.BlobId) =>
-              SMono(blobStore.readBytes(blobStore.getDefaultBucketName, blobStoreId, StoragePolicy.LOW_COST)))
-            .map(bytes => EncryptedAttachmentBlob(blobId, bytes)))))
+        encryptedId => isAccessible(encryptedId.messageId, mailboxSession)
+          .map {
+            case true => Applicable(
+              SMono(encryptedEmailContentStore.retrieveAttachmentContent(encryptedId.messageId, encryptedId.position))
+                .flatMap((blobStoreId: org.apache.james.blob.api.BlobId) =>
+                  SMono(blobStore.readBytes(blobStore.getDefaultBucketName, blobStoreId, StoragePolicy.LOW_COST)))
+                .map(bytes => EncryptedAttachmentBlob(blobId, bytes)))
+            case false => NonApplicable
+          })
 
   override def validateAccess(blobId: BlobId, mailboxSession: MailboxSession): Publisher[java.lang.Boolean] =
     EncryptedAttachmentBlobId.parse(messageIdFactory, blobId.value.value)
       .fold(_ => SMono.just(FALSE),
-        encryptedId => SMono(encryptedEmailContentStore.retrieveAttachmentContent(encryptedId.messageId, encryptedId.position))
-          .map(_ => TRUE)
-          .onErrorResume {
-            case _: EncryptedAttachmentNotFoundException => SMono.just(FALSE)
-            case e => SMono.error[java.lang.Boolean](e)
+        encryptedId => isAccessible(encryptedId.messageId, mailboxSession)
+          .flatMap {
+            case true => SMono(encryptedEmailContentStore.retrieveAttachmentContent(encryptedId.messageId, encryptedId.position))
+              .map(_ => TRUE)
+              .onErrorResume {
+                case _: EncryptedAttachmentNotFoundException => SMono.just(FALSE)
+                case e => SMono.error[java.lang.Boolean](e)
+              }
+            case false => SMono.just(FALSE)
           })
+
+  private def isAccessible(messageId: MessageId, mailboxSession: MailboxSession): SMono[Boolean] =
+    SMono(messageIdManager.accessibleMessagesReactive(List(messageId).asJava, mailboxSession))
+      .map(accessible => accessible.contains(messageId))
 }
