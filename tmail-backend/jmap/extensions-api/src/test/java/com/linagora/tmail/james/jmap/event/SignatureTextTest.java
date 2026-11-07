@@ -70,6 +70,14 @@ class SignatureTextTest {
     }
 
     @Test
+    void interpolateShouldEscapeValuesSubstitutedInHtmlSignature() {
+        SignatureText signature = new SignatureText("{ldap:title}", "<p>{ldap:title}</p>");
+        assertThat(signature.interpolate(Map.of("title", "<img src=x onerror=alert(1)> & \"co\"")))
+            .isEqualTo(new SignatureText("<img src=x onerror=alert(1)> & \"co\"",
+                "<p>&lt;img src=x onerror=alert(1)&gt; &amp; &quot;co&quot;</p>"));
+    }
+
+    @Test
     void interpolateShouldHandleNullTextSignature() {
         SignatureText signature = new SignatureText(null, "<p>{ldap:givenName}</p>");
         assertThat(signature.interpolate(Map.of("givenName", "John")))

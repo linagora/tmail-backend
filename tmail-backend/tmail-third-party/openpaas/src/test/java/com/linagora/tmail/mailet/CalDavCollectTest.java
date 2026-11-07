@@ -63,6 +63,7 @@ class CalDavCollectTest {
     private static final String ORGANIZER = "bob@james.org";
     private static final String DELEGATE = "assistant@james.org";
     private static final String STRANGER = "eve@james.org";
+    private static final String EXTERNAL_DELEGATE = "attacker@evil.example";
     private static final String ICS = """
         BEGIN:VCALENDAR
         VERSION:2.0
@@ -111,6 +112,40 @@ class CalDavCollectTest {
         END:VEVENT
         END:VCALENDAR
         """.formatted(ALICE, DELEGATE, ORGANIZER);
+    private static final String MIXED_CASE_DELEGATE = "assistant@JAMES.ORG";
+    private static final String ICS_SENT_BY_MIXED_CASE_DELEGATE = ICS_SENT_BY_ORGANIZER_DELEGATE.replace(DELEGATE, MIXED_CASE_DELEGATE);
+    private static final String ICS_SENT_BY_EXTERNAL_DELEGATE = """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        PRODID:-//Twake Mail//EN
+        METHOD:REQUEST
+        BEGIN:VEVENT
+        UID:ab3db856-a866-4a91-99a3-c84372eaee87
+        DTSTAMP:20250101T100000Z
+        DTSTART:20250101T110000Z
+        DTEND:20250101T120000Z
+        SUMMARY:Sprint planning
+        ORGANIZER;CN=Bob;SENT-BY="MAILTO:%s":MAILTO:%s
+        ATTENDEE:mailto:%s
+        END:VEVENT
+        END:VCALENDAR
+        """.formatted(EXTERNAL_DELEGATE, ORGANIZER, ALICE);
+    private static final String ICS_REPLY_SENT_BY_EXTERNAL_DELEGATE = """
+        BEGIN:VCALENDAR
+        VERSION:2.0
+        PRODID:-//Twake Mail//EN
+        METHOD:REPLY
+        BEGIN:VEVENT
+        UID:ab3db856-a866-4a91-99a3-c84372eaee87
+        DTSTAMP:20250101T100000Z
+        DTSTART:20250101T110000Z
+        DTEND:20250101T120000Z
+        SUMMARY:Sprint planning
+        ORGANIZER:mailto:%s
+        ATTENDEE;PARTSTAT=ACCEPTED;SENT-BY="MAILTO:%s":MAILTO:%s
+        END:VEVENT
+        END:VCALENDAR
+        """.formatted(ALICE, EXTERNAL_DELEGATE, ORGANIZER);
     private static final String ICS_ONE_ALIGNED_ONE_FORGED = """
         BEGIN:VCALENDAR
         VERSION:2.0
@@ -331,6 +366,33 @@ class CalDavCollectTest {
         davServerExtension.stubFor(itip("/calendars/" + ALICE_ID).willReturn(noContent()));
 
         mailet.service(mailWithCalendar(ICS_SENT_BY_ORGANIZER_DELEGATE, STRANGER));
+
+        davServerExtension.verify(0, itipRequestPattern());
+    }
+
+    @Test
+    void serviceShouldSendItipRequestWhenOrganizerDelegateDomainDiffersOnlyByCase() throws Exception {
+        davServerExtension.stubFor(itip("/calendars/" + ALICE_ID).willReturn(noContent()));
+
+        mailet.service(mailWithCalendar(ICS_SENT_BY_MIXED_CASE_DELEGATE, MIXED_CASE_DELEGATE));
+
+        davServerExtension.verify(1, itipRequestPattern());
+    }
+
+    @Test
+    void serviceShouldNotSendItipRequestWhenSentByDelegateBelongsToAnotherDomainThanTheOrganizer() throws Exception {
+        davServerExtension.stubFor(itip("/calendars/" + ALICE_ID).willReturn(noContent()));
+
+        mailet.service(mailWithCalendar(ICS_SENT_BY_EXTERNAL_DELEGATE, EXTERNAL_DELEGATE));
+
+        davServerExtension.verify(0, itipRequestPattern());
+    }
+
+    @Test
+    void serviceShouldNotSendItipRequestWhenReplySentByDelegateBelongsToAnotherDomainThanTheAttendee() throws Exception {
+        davServerExtension.stubFor(itip("/calendars/" + ALICE_ID).willReturn(noContent()));
+
+        mailet.service(mailWithCalendar(ICS_REPLY_SENT_BY_EXTERNAL_DELEGATE, EXTERNAL_DELEGATE));
 
         davServerExtension.verify(0, itipRequestPattern());
     }

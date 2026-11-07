@@ -22,10 +22,14 @@ import java.net.URI;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import org.apache.james.core.MailAddress;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import net.fortuna.ical4j.model.Parameter;
+import net.fortuna.ical4j.model.Property;
 
 /**
  * Turns an iCalendar cal-address (RFC 5545 section 3.3.3) into the {@link MailAddress} it designates.
@@ -40,6 +44,30 @@ final class CalendarUserAddresses {
     private static final char HFIELDS_SEPARATOR = '?';
 
     private CalendarUserAddresses() {
+    }
+
+    /**
+     * The addresses allowed to send an ITIP message on behalf of a calendar user: its own address, and the
+     * delegate designated by the SENT-BY parameter (RFC 5545 section 3.2.18), used when an assistant sends
+     * the invitation for the organizer, or a reply for an attendee.
+     *
+     * SENT-BY is self-asserted by the very payload under check: nothing proves the calendar user delegated to
+     * that address. It is thus only honoured when the delegate belongs to the domain of the calendar user, so
+     * that a sender can not claim to act on behalf of a calendar user of another domain.
+     */
+    static Stream<MailAddress> actingAddresses(Property calendarUser, URI calAddress) {
+        Optional<MailAddress> calendarUserAddress = toMailAddress(calAddress);
+        return Stream.concat(
+            calendarUserAddress.stream(),
+            calendarUserAddress.flatMap(address -> sentBy(calendarUser)
+                .filter(delegate -> delegate.getDomain().equals(address.getDomain())))
+                .stream());
+    }
+
+    private static Optional<MailAddress> sentBy(Property calendarUser) {
+        return calendarUser.getParameter(Parameter.SENT_BY)
+            .map(Parameter::getValue)
+            .flatMap(CalendarUserAddresses::toMailAddress);
     }
 
     static Optional<MailAddress> toMailAddress(String calAddress) {

@@ -20,9 +20,11 @@ package com.linagora.tmail.james.jmap.domainsignature;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
+import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
 import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.plist.PropertyListConfiguration;
 import org.apache.commons.configuration2.tree.ImmutableNode;
@@ -57,6 +59,7 @@ import com.linagora.tmail.james.jmap.domainsignature.Options;
 import com.linagora.tmail.james.jmap.event.DomainBasedSignatureTextFactory;
 import com.linagora.tmail.james.jmap.event.DomainSignatureTemplate;
 import com.linagora.tmail.james.jmap.event.IdentityCreationRequestBuilder;
+import com.linagora.tmail.james.jmap.event.LdapSignatureAttributes;
 import com.linagora.tmail.james.jmap.event.MemoryDomainSignatureTemplateRepository;
 import com.linagora.tmail.james.jmap.event.SignatureTextFactory.SignatureText;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsKey;
@@ -134,7 +137,8 @@ class DomainSignatureTemplateApplyServiceTest {
 
         testee = new DomainSignatureTemplateApplyService(
             signatureRepo, usersRepository, signatureFactory,
-            identityRepository, ldapConnectionPool, ldapRepositoryConfiguration);
+            identityRepository, ldapConnectionPool, ldapRepositoryConfiguration,
+            LdapSignatureAttributes.from(ldapRepositoryConfiguration));
     }
 
     @Test
@@ -199,6 +203,90 @@ class DomainSignatureTemplateApplyServiceTest {
     }
 
     @Test
+    void applyShouldNotInterpolateUserPassword() throws Exception {
+        SignatureText template = new SignatureText(
+            "Regards, {ldap:givenName} {ldap:userPassword}",
+            "<p>Regards, {ldap:givenName} {ldap:userPassword}</p>");
+        signatureRepo.store(DOMAIN, new DomainSignatureTemplate(Map.of(Locale.ENGLISH, template))).block();
+        saveDefaultIdentity(BOB, "", "");
+
+        testee.apply(DOMAIN, Options.DEFAULT()).block();
+
+        assertThat(defaultIdentitySignatureText(BOB)).isEqualTo("Regards, John {ldap:userPassword}");
+        assertThat(defaultIdentitySignatureHtml(BOB)).isEqualTo("<p>Regards, John {ldap:userPassword}</p>");
+    }
+
+    @Test
+    void applyShouldNotInterpolateUserPasswordEvenWhenConfiguredAsExtraAttribute() throws Exception {
+        DomainSignatureTemplateApplyService testee = new DomainSignatureTemplateApplyService(
+            signatureRepo, usersRepository, signatureFactory, identityRepository, ldapConnectionPool, ldapRepositoryConfiguration,
+            LdapSignatureAttributes.from(ldapRepositoryConfiguration, List.of("userPassword", "*", "+")));
+        SignatureText template = new SignatureText("{ldap:userPassword} {ldap:mobile}", "<p>{ldap:userPassword} {ldap:mobile}</p>");
+        signatureRepo.store(DOMAIN, new DomainSignatureTemplate(Map.of(Locale.ENGLISH, template))).block();
+        saveDefaultIdentity(BOB, "", "");
+
+        testee.apply(DOMAIN, Options.DEFAULT()).block();
+
+        assertThat(defaultIdentitySignatureText(BOB)).isEqualTo("{ldap:userPassword} {ldap:mobile}");
+    }
+
+    @Test
+    void applyShouldNotInterpolateAttributesThatAreNotConfigured() throws Exception {
+        SignatureText template = new SignatureText("{ldap:mobile}", "<p>{ldap:mobile}</p>");
+        signatureRepo.store(DOMAIN, new DomainSignatureTemplate(Map.of(Locale.ENGLISH, template))).block();
+        saveDefaultIdentity(BOB, "", "");
+
+        testee.apply(DOMAIN, Options.DEFAULT()).block();
+
+        assertThat(defaultIdentitySignatureText(BOB)).isEqualTo("{ldap:mobile}");
+    }
+
+    @Test
+    void applyShouldInterpolateConfiguredExtraAttributesAndEscapeThemInHtml() throws Exception {
+        DomainSignatureTemplateApplyService testee = new DomainSignatureTemplateApplyService(
+            signatureRepo, usersRepository, signatureFactory, identityRepository, ldapConnectionPool, ldapRepositoryConfiguration,
+            LdapSignatureAttributes.from(ldapRepositoryConfiguration, List.of("title")));
+        SignatureText template = new SignatureText("{ldap:title}", "<p>{ldap:title}</p>");
+        signatureRepo.store(DOMAIN, new DomainSignatureTemplate(Map.of(Locale.ENGLISH, template))).block();
+        saveDefaultIdentity(BOB, "", "");
+
+        testee.apply(DOMAIN, Options.DEFAULT()).block();
+
+        assertThat(defaultIdentitySignatureText(BOB)).isEqualTo("<b>Boss</b> & co");
+        assertThat(defaultIdentitySignatureHtml(BOB)).isEqualTo("<p>&lt;b&gt;Boss&lt;/b&gt; &amp; co</p>");
+    }
+
+    @Test
+    void applyShouldSplitCommaSeparatedExtraAttributes() throws Exception {
+        BaseHierarchicalConfiguration listenerConfig = new BaseHierarchicalConfiguration();
+        listenerConfig.addProperty("extraAttributes", "title, mobile");
+        DomainSignatureTemplateApplyService testee = new DomainSignatureTemplateApplyService(
+            signatureRepo, usersRepository, signatureFactory, identityRepository, ldapConnectionPool, ldapRepositoryConfiguration,
+            LdapSignatureAttributes.from(ldapRepositoryConfiguration, listenerConfig));
+        SignatureText template = new SignatureText("{ldap:title} {ldap:mobile}", "<p>{ldap:mobile}</p>");
+        signatureRepo.store(DOMAIN, new DomainSignatureTemplate(Map.of(Locale.ENGLISH, template))).block();
+        saveDefaultIdentity(BOB, "", "");
+
+        testee.apply(DOMAIN, Options.DEFAULT()).block();
+
+        assertThat(defaultIdentitySignatureText(BOB)).isEqualTo("<b>Boss</b> & co +33600000000");
+    }
+
+    @Test
+    void applyShouldMatchConfiguredAttributesCaseInsensitively() throws Exception {
+        DomainSignatureTemplateApplyService testee = new DomainSignatureTemplateApplyService(
+            signatureRepo, usersRepository, signatureFactory, identityRepository, ldapConnectionPool, ldapRepositoryConfiguration,
+            LdapSignatureAttributes.from(ldapRepositoryConfiguration, List.of("MOBILE")));
+        SignatureText template = new SignatureText("{ldap:MOBILE}", "<p>{ldap:MOBILE}</p>");
+        signatureRepo.store(DOMAIN, new DomainSignatureTemplate(Map.of(Locale.ENGLISH, template))).block();
+        saveDefaultIdentity(BOB, "", "");
+
+        testee.apply(DOMAIN, Options.DEFAULT()).block();
+
+        assertThat(defaultIdentitySignatureText(BOB)).isEqualTo("+33600000000");
+    }
+
+    @Test
     void applyShouldCountErrorWithoutFailing() throws Exception {
         signatureRepo.store(DOMAIN, new DomainSignatureTemplate(Map.of(Locale.ENGLISH, EN_SIG))).block();
         saveDefaultIdentity(BOB, "", "");
@@ -207,7 +295,8 @@ class DomainSignatureTemplateApplyServiceTest {
         LDAPConnectionPool closedPool = new LDAPConnectionFactory(ldapRepositoryConfiguration).getLdapConnectionPool();
         closedPool.close();
         DomainSignatureTemplateApplyService brokenTestee = new DomainSignatureTemplateApplyService(
-            signatureRepo, usersRepository, signatureFactory, identityRepository, closedPool, ldapRepositoryConfiguration);
+            signatureRepo, usersRepository, signatureFactory, identityRepository, closedPool, ldapRepositoryConfiguration,
+            LdapSignatureAttributes.from(ldapRepositoryConfiguration));
 
         ApplyResult result = brokenTestee.apply(DOMAIN, Options.DEFAULT()).block();
 

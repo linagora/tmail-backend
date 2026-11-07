@@ -38,7 +38,8 @@ import org.apache.james.jmap.mail.{MailboxGet, UnparsedMailboxId}
 import org.apache.james.jmap.method.MailboxSetMethod.assertCapabilityIfSharedMailbox
 import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodRequiringAccountId}
 import org.apache.james.jmap.routes.SessionSupplier
-import org.apache.james.mailbox.exception.MailboxNotFoundException
+import org.apache.james.mailbox.exception.{InsufficientRightsException, MailboxNotFoundException}
+import org.apache.james.mailbox.model.MailboxACL.Right
 import org.apache.james.mailbox.model.{MailboxId, MessageRange}
 import org.apache.james.mailbox.{MailboxManager, MailboxSession, MessageManager, MessageUid}
 import org.apache.james.metrics.api.MetricFactory
@@ -91,6 +92,8 @@ case class MailboxClearFailure(mailboxId: UnparsedMailboxId, exception: Throwabl
   def asSetError: SetError = exception match {
     case e: MailboxNotFoundException =>
       SetError.notFound(SetErrorDescription(e.getMessage))
+    case e: InsufficientRightsException =>
+      SetError.forbidden(SetErrorDescription(e.getMessage))
     case e: IllegalArgumentException =>
       SetError.invalidArguments(SetErrorDescription(s"${mailboxId.id} is not a mailboxId: ${e.getMessage}"))
     case e =>
@@ -125,7 +128,8 @@ class MailboxClearMethod @Inject()(mailboxManager: MailboxManager,
         e => SMono.just(MailboxClearFailure(request.mailboxId, e)),
         parsedMailboxId => SMono(mailboxManager.getMailboxReactive(parsedMailboxId, mailboxSession))
           .filterWhen(assertCapabilityIfSharedMailbox(mailboxSession, parsedMailboxId, supportSharedMailbox))
-          .flatMap(mailbox => expungeAllMessages(mailbox, mailboxSession)
+          .flatMap(mailbox => assertCanClear(mailbox, mailboxSession)
+            .`then`(expungeAllMessages(mailbox, mailboxSession))
             .map(totalDeleted => MailboxClearSuccess(parsedMailboxId, UnsignedInt.liftOrThrow(totalDeleted))))
           .onErrorResume(e => SMono.just(MailboxClearFailure(request.mailboxId, e))))
       .map {
@@ -133,13 +137,27 @@ class MailboxClearMethod @Inject()(mailboxManager: MailboxManager,
         case failure: MailboxClearFailure => MailboxClearResponse(accountId = request.accountId, totalDeletedMessagesCount = None, notCleared = Some(failure.asSetError))
       }
 
+  // Owners may always clear their mailboxes. Checked again before each batch so that revoking the rights of a
+  // sharee stops an ongoing clear.
+  private def assertCanClear(mailbox: MessageManager, mailboxSession: MailboxSession): SMono[Unit] =
+    if (mailbox.getMailboxPath.belongsTo(mailboxSession)) {
+      SMono.empty
+    } else {
+      SMono(mailboxManager.myRights(mailbox.getId, mailboxSession))
+        .filter(rights => rights.contains(Right.DeleteMessages) && rights.contains(Right.PerformExpunge))
+        .switchIfEmpty(SMono.error(new InsufficientRightsException(s"${mailboxSession.getUser.asString()} is not allowed to clear mailbox ${mailbox.getId.serialize()}")))
+        .`then`()
+    }
+
   private def expungeAllMessages(mailbox: MessageManager, mailboxSession: MailboxSession): SMono[Int] =
     SFlux(Flux.from(mailbox.listMessagesMetadata(MessageRange.all(), mailboxSession))
       .map(_.getComposedMessageId.getUid)
       .window(DELETE_BATCH_SIZE)
       .concatMap(batch => batch.collectList()
-        .flatMap(uids => mailbox.deleteReactive(uids.asInstanceOf[java.util.List[MessageUid]], mailboxSession)
-          .thenReturn(uids.size()))))
+        .flatMap(uids => assertCanClear(mailbox, mailboxSession)
+          .`then`(SMono(mailbox.deleteReactive(uids.asInstanceOf[java.util.List[MessageUid]], mailboxSession)))
+          .`then`(SMono.just(uids.size()))
+          .asJava())))
       .reduce(0)((acc: Int, size: Int) => acc + size)
       .flatMap(totalDeleted => auditTrail(mailboxSession, mailbox.getId, totalDeleted)
         .`then`(SMono.just(totalDeleted)))
