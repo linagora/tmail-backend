@@ -55,12 +55,9 @@ import org.slf4j.LoggerFactory;
 
 import com.github.fge.lambdas.Throwing;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.collect.ImmutableMap;
-import com.google.common.collect.ImmutableSet;
 import com.linagora.tmail.james.jmap.event.SignatureTextFactory.SignatureText;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.team.TeamMailbox;
-import com.unboundid.ldap.sdk.Attribute;
 import com.unboundid.ldap.sdk.Filter;
 import com.unboundid.ldap.sdk.LDAPConnectionPool;
 import com.unboundid.ldap.sdk.LDAPException;
@@ -92,11 +89,8 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
     private final LdapRepositoryConfiguration ldapConfiguration;
     private final Filter objectClassFilter;
     private final Optional<Filter> userExtraFilter;
-    private final String firstnameAttribute;
-    private final String surnameAttribute;
-    private final String usernameAttribute;
     private final SignatureTextFactory signatureTextFactory;
-    private final Set<String> attributes;
+    private final LdapSignatureAttributes attributes;
 
     @Inject
     public IdentityProvisionListener(LDAPConnectionPool ldapConnectionPool,
@@ -112,15 +106,7 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
         this.objectClassFilter = Filter.createEqualityFilter("objectClass", ldapConfiguration.getUserObjectClass());
         this.userExtraFilter = Optional.ofNullable(ldapConfiguration.getFilter())
             .map(Throwing.function(Filter::create).sneakyThrow());
-        this.firstnameAttribute = listenerConfig.getString("firstnameAttribute", "givenName");
-        this.surnameAttribute = listenerConfig.getString("surnameAttribute", "sn");
-        this.usernameAttribute = ldapConfiguration.getUsernameAttribute().orElse(ldapConfiguration.getUserIdAttribute());
-        this.attributes = Optional.ofNullable(listenerConfig.getStringArray("extraAttributes")).map(values -> ImmutableSet.<String>builder().addAll(ImmutableSet.copyOf(values)))
-            .orElse(ImmutableSet.builder())
-            .add(firstnameAttribute)
-            .add(surnameAttribute)
-            .add(usernameAttribute)
-            .build();
+        this.attributes = LdapSignatureAttributes.from(ldapConfiguration, listenerConfig);
     }
 
     private SignatureTextFactory resolveSignatureTextFactory(JmapSettingsRepository jmapSettingsRepository,
@@ -169,15 +155,7 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
         this.objectClassFilter = Filter.createEqualityFilter("objectClass", ldapConfiguration.getUserObjectClass());
         this.userExtraFilter = Optional.ofNullable(ldapConfiguration.getFilter())
             .map(Throwing.function(Filter::create).sneakyThrow());
-        this.firstnameAttribute = "givenName";
-        this.surnameAttribute = "sn";
-        this.usernameAttribute = ldapConfiguration.getUsernameAttribute().orElse(ldapConfiguration.getUserIdAttribute());
-        this.attributes = ImmutableSet.<String>builder()
-            .add(firstnameAttribute)
-            .add(surnameAttribute)
-            .add(usernameAttribute)
-            .addAll(extraAttributes)
-            .build();
+        this.attributes = LdapSignatureAttributes.from(ldapConfiguration, extraAttributes);
     }
 
     @Override
@@ -318,7 +296,7 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
     private SearchResultEntry searchLdap(Username username) throws LDAPSearchException {
         Filter filter = createFilter(username.asString(), evaluateLdapUserRetrievalAttribute(username));
         SearchResult searchResult = ldapConnectionPool.search(userBase(username), SearchScope.SUB, filter,
-            attributes.toArray(new String[0]));
+            attributes.asSearchAttributes());
         SearchResultEntry searchResultEntry = searchResult.getSearchEntries()
             .stream()
             .findFirst()
@@ -332,16 +310,12 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
 
     private Mono<IdentityCreationRequest> asIdentityCreationRequest(Username username, SearchResultEntry ldapEntry) {
         try {
-            MailAddress mailAddress = Username.of(ldapEntry.getAttributeValue(usernameAttribute)).asMailAddress();
-            Optional<String> firstname = Optional.ofNullable(ldapEntry.getAttributeValue(firstnameAttribute));
-            Optional<String> surname = Optional.ofNullable(ldapEntry.getAttributeValue(surnameAttribute));
+            MailAddress mailAddress = Username.of(ldapEntry.getAttributeValue(attributes.usernameAttribute())).asMailAddress();
+            Optional<String> firstname = Optional.ofNullable(ldapEntry.getAttributeValue(attributes.firstnameAttribute()));
+            Optional<String> surname = Optional.ofNullable(ldapEntry.getAttributeValue(attributes.surnameAttribute()));
             String identityDisplayName = toDisplayName(firstname, surname, mailAddress.asString());
             return signatureTextFactory.forUser(username)
-                .map(signatureOptional -> signatureOptional.map(signature -> signature.interpolate(ldapEntry.getAttributes().stream()
-                    .filter(attribute -> attribute.getValue() != null)
-                    .collect(ImmutableMap.toImmutableMap(
-                        Attribute::getName,
-                        Attribute::getValue)))))
+                .map(signatureOptional -> signatureOptional.map(signature -> signature.interpolate(attributes.interpolationValues(ldapEntry))))
                 .map(signatureOptional -> IdentityCreationRequestBuilder.builder()
                     .email(mailAddress)
                     .name(identityDisplayName)
