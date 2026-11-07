@@ -18,9 +18,8 @@
 
 package com.linagora.tmail.james.jmap.domainsignature
 
-import com.google.common.collect.ImmutableMap
 import com.linagora.tmail.james.jmap.event.SignatureTextFactory.SignatureText
-import com.linagora.tmail.james.jmap.event.{DomainBasedSignatureTextFactory, DomainSignatureTemplateRepository}
+import com.linagora.tmail.james.jmap.event.{DomainBasedSignatureTextFactory, DomainSignatureTemplateRepository, LdapSignatureAttributes}
 import com.unboundid.ldap.sdk.{Filter, LDAPConnectionPool, SearchScope}
 import jakarta.inject.Inject
 import org.apache.james.core.{Domain, Username}
@@ -47,7 +46,8 @@ class DomainSignatureTemplateApplyService @Inject()(
     signatureTextFactory: DomainBasedSignatureTextFactory,
     identityRepository: IdentityRepository,
     ldapConnectionPool: LDAPConnectionPool,
-    ldapConfiguration: LdapRepositoryConfiguration) {
+    ldapConfiguration: LdapRepositoryConfiguration,
+    ldapSignatureAttributes: LdapSignatureAttributes) {
 
   private val logger = LoggerFactory.getLogger(classOf[DomainSignatureTemplateApplyService])
 
@@ -103,14 +103,10 @@ class DomainSignatureTemplateApplyService @Inject()(
     val ldapAttr = if (username.asString.contains("@")) ldapConfiguration.getUserIdAttribute
                    else ldapConfiguration.getResolveLocalPartAttribute.orElse(ldapConfiguration.getUserIdAttribute)
     val filter = Filter.createEqualityFilter(ldapAttr, username.asString)
-    val entries = ldapConnectionPool.search(userBase, SearchScope.SUB, filter).getSearchEntries.asScala
+    val entries = ldapConnectionPool.search(userBase, SearchScope.SUB, filter, ldapSignatureAttributes.asSearchAttributes(): _*).getSearchEntries.asScala
     entries.headOption match {
       case None => java.util.Collections.emptyMap()
-      case Some(entry) =>
-        entry.getAttributes.asScala
-          .filter(_.getValue != null)
-          .foldLeft(ImmutableMap.builder[String, String]())((builder, attr) => builder.put(attr.getName, attr.getValue))
-          .build()
+      case Some(entry) => ldapSignatureAttributes.interpolationValues(entry)
     }
   }
 }

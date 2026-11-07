@@ -20,10 +20,13 @@ package com.linagora.tmail.james.jmap.event;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import org.apache.james.core.Username;
+
+import com.google.common.html.HtmlEscapers;
 
 import reactor.core.publisher.Mono;
 
@@ -31,13 +34,16 @@ public interface SignatureTextFactory {
     record SignatureText(String textSignature, String htmlSignature) {
         private static final Pattern LDAP_PLACEHOLDER = Pattern.compile("\\{ldap:([^}]+)\\}");
 
+        /**
+         * Directory values are escaped when substituted into the HTML signature: they must not inject markup.
+         */
         public SignatureText interpolate(Map<String, String> ldapAttributes) {
             return new SignatureText(
-                interpolateSingle(textSignature, ldapAttributes),
-                interpolateSingle(htmlSignature, ldapAttributes));
+                interpolateSingle(textSignature, ldapAttributes, UnaryOperator.identity()),
+                interpolateSingle(htmlSignature, ldapAttributes, HtmlEscapers.htmlEscaper()::escape));
         }
 
-        private static String interpolateSingle(String template, Map<String, String> ldapAttributes) {
+        private static String interpolateSingle(String template, Map<String, String> ldapAttributes, UnaryOperator<String> escaper) {
             if (template == null) {
                 return null;
             }
@@ -48,7 +54,9 @@ public interface SignatureTextFactory {
             StringBuilder result = new StringBuilder();
             while (matcher.find()) {
                 String attributeName = matcher.group(1);
-                String replacement = ldapAttributes.getOrDefault(attributeName, matcher.group(0));
+                String replacement = Optional.ofNullable(ldapAttributes.get(attributeName))
+                    .map(escaper)
+                    .orElse(matcher.group(0));
                 matcher.appendReplacement(result, Matcher.quoteReplacement(replacement));
             }
             matcher.appendTail(result);

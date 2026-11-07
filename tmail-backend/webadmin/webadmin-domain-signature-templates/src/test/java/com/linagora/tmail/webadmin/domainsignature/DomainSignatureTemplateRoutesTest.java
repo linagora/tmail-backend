@@ -68,6 +68,7 @@ import com.linagora.tmail.james.jmap.domainsignature.DomainSignatureTemplateAppl
 import com.linagora.tmail.james.jmap.event.DomainBasedSignatureTextFactory;
 import com.linagora.tmail.james.jmap.event.DomainSignatureTemplate;
 import com.linagora.tmail.james.jmap.event.IdentityCreationRequestBuilder;
+import com.linagora.tmail.james.jmap.event.LdapSignatureAttributes;
 import com.linagora.tmail.james.jmap.event.MemoryDomainSignatureTemplateRepository;
 import com.linagora.tmail.james.jmap.event.SignatureTextFactory.SignatureText;
 import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
@@ -135,7 +136,8 @@ class DomainSignatureTemplateRoutesTest {
 
         DomainSignatureTemplateApplyService applyService = new DomainSignatureTemplateApplyService(
             repository, usersRepository, signatureFactory,
-            identityRepository, ldapConnectionPool, ldapRepositoryConfiguration);
+            identityRepository, ldapConnectionPool, ldapRepositoryConfiguration,
+            LdapSignatureAttributes.from(ldapRepositoryConfiguration));
 
         domainList = new SimpleDomainList();
         domainList.addDomain(DOMAIN);
