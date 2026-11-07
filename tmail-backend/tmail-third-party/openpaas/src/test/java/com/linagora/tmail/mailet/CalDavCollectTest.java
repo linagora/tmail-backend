@@ -63,6 +63,7 @@ class CalDavCollectTest {
     private static final String ORGANIZER = "bob@james.org";
     private static final String DELEGATE = "assistant@james.org";
     private static final String STRANGER = "eve@james.org";
+    private static final String EXTERNAL_DELEGATE = "assistant@evil.example";
     private static final String ICS = """
         BEGIN:VCALENDAR
         VERSION:2.0
@@ -324,6 +325,24 @@ class CalDavCollectTest {
         mailet.service(mailWithCalendar(ICS_REPLY_SENT_BY_ATTENDEE_DELEGATE, DELEGATE));
 
         davServerExtension.verify(1, itipRequestPattern());
+    }
+
+    @Test
+    void serviceShouldNotSendItipRequestWhenTheOrganizerDelegateIsOfAnotherDomain() throws Exception {
+        davServerExtension.stubFor(itip("/calendars/" + ALICE_ID).willReturn(noContent()));
+
+        mailet.service(mailWithCalendar(ICS_SENT_BY_ORGANIZER_DELEGATE.replace(DELEGATE, EXTERNAL_DELEGATE), EXTERNAL_DELEGATE));
+
+        davServerExtension.verify(0, itipRequestPattern());
+    }
+
+    @Test
+    void serviceShouldNotSendItipRequestWhenTheAttendeeDelegateIsOfAnotherDomain() throws Exception {
+        davServerExtension.stubFor(itip("/calendars/" + ALICE_ID).willReturn(noContent()));
+
+        mailet.service(mailWithCalendar(ICS_REPLY_SENT_BY_ATTENDEE_DELEGATE.replace(DELEGATE, EXTERNAL_DELEGATE), EXTERNAL_DELEGATE));
+
+        davServerExtension.verify(0, itipRequestPattern());
     }
 
     @Test
