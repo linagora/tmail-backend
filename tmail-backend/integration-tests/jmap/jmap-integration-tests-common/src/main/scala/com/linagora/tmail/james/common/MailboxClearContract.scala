@@ -39,9 +39,10 @@ import org.apache.james.core.Username
 import org.apache.james.jmap.http.UserCredential
 import org.apache.james.jmap.rfc8621.contract.Fixture._
 import org.apache.james.mailbox.MessageManager.AppendCommand
-import org.apache.james.mailbox.model.{MailboxId, MailboxPath, MessageId, MultimailboxesSearchQuery, SearchQuery}
+import org.apache.james.mailbox.model.MailboxACL.Right
+import org.apache.james.mailbox.model.{MailboxACL, MailboxId, MailboxPath, MessageId, MultimailboxesSearchQuery, SearchQuery}
 import org.apache.james.mime4j.dom.Message
-import org.apache.james.modules.MailboxProbeImpl
+import org.apache.james.modules.{ACLProbeImpl, MailboxProbeImpl}
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility.{await => awaitility}
@@ -675,4 +676,158 @@ trait MailboxClearContract {
     })
   }
 
+  @Test
+  def bobShouldNotBeAbleToClearAMailboxSharedWithReadOnlyRights(server: GuiceJamesServer): Unit = {
+    val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
+    val andreInboxMessageId: MessageId = mailboxProbe
+      .appendMessage(andreUsername.asString(), MailboxPath.inbox(andreUsername), AppendCommand.from(MESSAGE))
+      .getMessageId
+    server.getProbe(classOf[ACLProbeImpl])
+      .replaceRights(MailboxPath.inbox(andreUsername), bobUsername.asString, new MailboxACL.Rfc4314Rights(Right.Lookup, Right.Read))
+
+    val response: String = clearAsBobWithShares(andreInboxId)
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |    "Mailbox/clear",
+           |    {
+           |        "accountId": "$bobAccountId",
+           |        "notCleared": {
+           |            "type": "forbidden",
+           |            "description": "${bobUsername.asString()} is not allowed to clear mailbox ${andreInboxId.serialize()}"
+           |        }
+           |    },
+           |    "c1"
+           |]""".stripMargin)
+
+    await.untilAsserted(() => {
+      val andreInboxMessages = mailboxProbe.searchMessage(MultimailboxesSearchQuery.from(SearchQuery.matchAll)
+        .inMailboxes(andreInboxId).build,
+        andreUsername.asString(),
+        BIG_LIMIT)
+      assertThat(andreInboxMessages).containsExactly(andreInboxMessageId)
+    })
+  }
+
+  @Test
+  def bobShouldNotBeAbleToClearAMailboxSharedWithoutExpungeRight(server: GuiceJamesServer): Unit = {
+    val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
+    val andreInboxMessageId: MessageId = mailboxProbe
+      .appendMessage(andreUsername.asString(), MailboxPath.inbox(andreUsername), AppendCommand.from(MESSAGE))
+      .getMessageId
+    server.getProbe(classOf[ACLProbeImpl])
+      .replaceRights(MailboxPath.inbox(andreUsername), bobUsername.asString, new MailboxACL.Rfc4314Rights(Right.Lookup, Right.Read, Right.DeleteMessages))
+
+    val response: String = clearAsBobWithShares(andreInboxId)
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |    "Mailbox/clear",
+           |    {
+           |        "accountId": "$bobAccountId",
+           |        "notCleared": {
+           |            "type": "forbidden",
+           |            "description": "${bobUsername.asString()} is not allowed to clear mailbox ${andreInboxId.serialize()}"
+           |        }
+           |    },
+           |    "c1"
+           |]""".stripMargin)
+
+    await.untilAsserted(() => {
+      val andreInboxMessages = mailboxProbe.searchMessage(MultimailboxesSearchQuery.from(SearchQuery.matchAll)
+        .inMailboxes(andreInboxId).build,
+        andreUsername.asString(),
+        BIG_LIMIT)
+      assertThat(andreInboxMessages).containsExactly(andreInboxMessageId)
+    })
+  }
+
+  @Test
+  def bobShouldNotBeAbleToClearAMailboxSharedWithoutDeleteMessagesRight(server: GuiceJamesServer): Unit = {
+    val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
+    val andreInboxMessageId: MessageId = mailboxProbe
+      .appendMessage(andreUsername.asString(), MailboxPath.inbox(andreUsername), AppendCommand.from(MESSAGE))
+      .getMessageId
+    server.getProbe(classOf[ACLProbeImpl])
+      .replaceRights(MailboxPath.inbox(andreUsername), bobUsername.asString, new MailboxACL.Rfc4314Rights(Right.Lookup, Right.Read, Right.PerformExpunge))
+
+    val response: String = clearAsBobWithShares(andreInboxId)
+
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].notCleared.type")
+      .isEqualTo("forbidden")
+
+    await.untilAsserted(() => {
+      val andreInboxMessages = mailboxProbe.searchMessage(MultimailboxesSearchQuery.from(SearchQuery.matchAll)
+        .inMailboxes(andreInboxId).build,
+        andreUsername.asString(),
+        BIG_LIMIT)
+      assertThat(andreInboxMessages).containsExactly(andreInboxMessageId)
+    })
+  }
+
+  @Test
+  def bobShouldBeAbleToClearAMailboxSharedWithDeleteAndExpungeRights(server: GuiceJamesServer): Unit = {
+    val mailboxProbe: MailboxProbeImpl = server.getProbe(classOf[MailboxProbeImpl])
+    mailboxProbe.appendMessage(andreUsername.asString(), MailboxPath.inbox(andreUsername), AppendCommand.from(MESSAGE))
+    server.getProbe(classOf[ACLProbeImpl])
+      .replaceRights(MailboxPath.inbox(andreUsername), bobUsername.asString,
+        new MailboxACL.Rfc4314Rights(Right.Lookup, Right.Read, Right.DeleteMessages, Right.PerformExpunge))
+
+    val response: String = clearAsBobWithShares(andreInboxId)
+
+    assertThatJson(response)
+      .inPath("methodResponses[0]")
+      .isEqualTo(
+        s"""[
+           |    "Mailbox/clear",
+           |    {
+           |        "accountId": "$bobAccountId",
+           |        "totalDeletedMessagesCount": 1
+           |    },
+           |    "c1"
+           |]""".stripMargin)
+
+    await.untilAsserted(() => {
+      val andreInboxMessages = mailboxProbe.searchMessage(MultimailboxesSearchQuery.from(SearchQuery.matchAll)
+        .inMailboxes(andreInboxId).build,
+        andreUsername.asString(),
+        BIG_LIMIT)
+      assertThat(andreInboxMessages).isEmpty()
+    })
+  }
+
+  private def clearAsBobWithShares(mailboxId: MailboxId): String =
+    `given`(bobBaseRequest)
+      .body(
+        s"""{
+           |    "using": [
+           |        "urn:ietf:params:jmap:core",
+           |        "urn:ietf:params:jmap:mail",
+           |        "urn:apache:james:params:jmap:mail:shares",
+           |        "com:linagora:params:jmap:mailbox:clear"
+           |    ],
+           |    "methodCalls": [
+           |        [
+           |            "Mailbox/clear",
+           |            {
+           |                "accountId": "$bobAccountId",
+           |                "mailboxId": "${mailboxId.serialize()}"
+           |            },
+           |            "c1"
+           |        ]
+           |    ]
+           |}""".stripMargin)
+    .when()
+      .post()
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
 }
