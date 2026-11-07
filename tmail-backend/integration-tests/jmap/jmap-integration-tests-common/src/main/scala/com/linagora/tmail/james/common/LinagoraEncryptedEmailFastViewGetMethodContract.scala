@@ -522,6 +522,25 @@ trait LinagoraEncryptedEmailFastViewGetMethodContract {
   }
 
   @Test
+  def encryptedAttachmentsOfAnotherUserShouldNotBeDownloadable(server: GuiceJamesServer): Unit = {
+    val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessage(bobUsername.asString(),
+        BOB_INBOX_PATH,
+        AppendCommand.from(ClassLoaderUtils.getSystemResourceAsSharedStream("emailWithTextAttachment.eml")))
+      .getMessageId
+
+    `given`(baseRequestSpecBuilder(server)
+      .setAuth(authScheme(UserCredential(andreUsername, ANDRE_PASSWORD)))
+      .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .build)
+      .basePath("/download")
+    .when()
+      .get(s"$andreAccountId/encryptedAttachment_${messageId.serialize()}_0")
+    .`then`()
+      .statusCode(HttpStatus.SC_NOT_FOUND)
+  }
+
+  @Test
   def methodShouldAcceptSeveralIds(server: GuiceJamesServer): Unit = {
     val messageId1: MessageId = server.getProbe(classOf[MailboxProbeImpl])
       .appendMessage(bobUsername.asString(),
