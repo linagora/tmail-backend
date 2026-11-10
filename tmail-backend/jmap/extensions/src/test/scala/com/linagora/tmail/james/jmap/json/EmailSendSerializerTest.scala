@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.json
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.json.Fixture.{ACCOUNT_ID, MESSAGE_ID_FACTORY, STATE}
 import com.linagora.tmail.james.jmap.model.{EmailSendCreationId, EmailSendCreationResponse, EmailSendResponse}
 import eu.timepit.refined.auto._

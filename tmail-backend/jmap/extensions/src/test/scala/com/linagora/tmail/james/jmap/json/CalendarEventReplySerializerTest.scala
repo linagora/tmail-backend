@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.json
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.json.{CalendarEventReplySerializer => testee}
 import com.linagora.tmail.james.jmap.model.{CalendarEventNotDone, CalendarEventNotFound, CalendarEventReplyAcceptedResponse, CalendarEventReplyRequest, LanguageLocation}
 import eu.timepit.refined.auto._

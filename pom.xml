@@ -81,16 +81,22 @@
                 <plugin>
                     <groupId>net.alchim31.maven</groupId>
                     <artifactId>scala-maven-plugin</artifactId>
-                    <version>4.9.5</version>
+                    <version>4.9.10</version>
                     <configuration>
+                        <recompileMode>all</recompileMode>
+                        <source>${target.jdk}</source>
+                        <target>${target.jdk}</target>
                         <args>
-                            <arg>-Xlog-implicits</arg>
                             <arg>-feature</arg>
-                            <arg>-unchecked</arg>
                             <arg>-deprecation</arg>
-                            <arg>-explaintypes</arg>
-                            <arg>-Wconf:msg=Auto-application to \`\(\)\` is deprecated:s</arg>
+                            <arg>-explain-types</arg>
                         </args>
+                        <jvmArgs>
+                            <jvmArg>-Xss128m</jvmArg>
+                            <jvmArg>-Xms4g</jvmArg>
+                            <jvmArg>-Xmx4g</jvmArg>
+                            <jvmArg>-XX:MaxMetaspaceSize=2g</jvmArg>
+                        </jvmArgs>
                     </configuration>
                     <executions>
                         <execution>

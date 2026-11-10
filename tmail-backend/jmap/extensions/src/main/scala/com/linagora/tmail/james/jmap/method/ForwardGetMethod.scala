@@ -20,6 +20,7 @@ package com.linagora.tmail.james.jmap.method
 
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.json.ForwardSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FORWARD
 import com.linagora.tmail.james.jmap.model.Forwards.UNPARSED_SINGLETON
@@ -110,7 +111,7 @@ class ForwardGetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
           arguments = Arguments(ForwardSerializer.serializeForwardGetResponse(forwardGetResponse, requestedProperties).as[JsObject]),
           methodCallId = invocation.invocation.methodCallId))
       case invalidProperties: Properties => SMono.just(Invocation.error(errorCode = ErrorCode.InvalidArguments,
-        description = s"The following properties [${invalidProperties.format}] do not exist.",
+        description = s"The following properties [${invalidProperties.format()}] do not exist.",
         methodCallId = invocation.invocation.methodCallId))
     }).map(InvocationWithContext(_, invocation.processingContext))
       .onErrorResume{ case e: Exception => handleRequestValidationErrors(e, invocation.invocation.methodCallId)

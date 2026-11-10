@@ -21,6 +21,7 @@ package com.linagora.tmail.james.jmap.publicAsset
 import java.net.URI
 import java.util.UUID
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import eu.timepit.refined.auto._
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.AccountId

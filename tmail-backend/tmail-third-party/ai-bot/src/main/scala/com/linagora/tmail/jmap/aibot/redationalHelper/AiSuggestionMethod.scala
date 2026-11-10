@@ -17,6 +17,7 @@
  * ****************************************************************** */
 package com.linagora.tmail.jmap.aibot.redationalHelper
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.jmap.aibot.CapabilityIdentifier.LINAGORA_AIBOT
 import com.linagora.tmail.jmap.aibot.json.AiBotSerializer
 import com.linagora.tmail.redactionalhelper.AIRedactionalHelper

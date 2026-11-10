@@ -84,7 +84,7 @@ class TeamMailboxSubscriptionListener @Inject()(teamMailboxRepository: TeamMailb
 
             memberSubscriptions.mergeWith(extraAclSubscriptions)
           })
-          .`then`()
+          .thenMany(SMono.empty)
       case None => SMono.empty
     }
 
@@ -108,7 +108,7 @@ class TeamMailboxSubscriptionListener @Inject()(teamMailboxRepository: TeamMailb
               .map(e => Username.of(e.getKey.getName))
               .flatMap(username => subscribeUser(username, event.getMailboxPath))
           })
-          .`then`()
+          .thenMany(SMono.empty)
       case None => SMono.empty
     }
 

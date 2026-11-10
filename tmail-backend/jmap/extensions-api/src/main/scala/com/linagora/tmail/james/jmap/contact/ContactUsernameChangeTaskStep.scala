@@ -41,6 +41,6 @@ class ContactUsernameChangeTaskStep @Inject()(contactSearchEngine: EmailAddressC
       .distinct(_.fields.address)
       .flatMap(contact => SMono.fromPublisher(contactSearchEngine.index(newAccountId, contact.fields))
         .`then`(SMono.fromPublisher(contactSearchEngine.delete(oldAccountId, contact.fields.address))))
-      .`then`()
+      .thenMany(SMono.empty)
   }
 }

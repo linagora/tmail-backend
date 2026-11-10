@@ -20,6 +20,7 @@ package com.linagora.tmail.james.jmap.model
 
 import java.util.UUID
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import eu.timepit.refined
 import eu.timepit.refined.auto._
 import eu.timepit.refined.string.MatchesRegex

@@ -22,6 +22,7 @@ import java.time.Duration
 
 import org.apache.commons.configuration2.PropertiesConfiguration
 import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}
+import org.assertj.core.api.ThrowableAssert
 import org.junit.jupiter.api.Test
 
 import scala.jdk.CollectionConverters._
@@ -70,7 +71,7 @@ class UploadFromUrlConfigurationTest {
     val properties = new PropertiesConfiguration
     properties.setProperty(UploadFromUrlConfiguration.SOURCE_RESPONSE_TIMEOUT_PROPERTY, "0s")
 
-    assertThatThrownBy(() => UploadFromUrlConfiguration.from(properties))
+    assertThatThrownBy(() => UploadFromUrlConfiguration.from(properties)).asInstanceOf[ThrowableAssert[Throwable]]
       .isInstanceOf(classOf[IllegalArgumentException])
       .hasMessage("requirement failed: `upload.from.url.source.response.timeout` must be strictly positive")
   }
@@ -89,7 +90,7 @@ class UploadFromUrlConfigurationTest {
     val properties = new PropertiesConfiguration
     properties.setProperty(UploadFromUrlConfiguration.SOURCE_TRUST_ALL_SSL_CERTS_PROPERTY, true)
 
-    assertThatThrownBy(() => UploadFromUrlConfiguration.from(properties))
+    assertThatThrownBy(() => UploadFromUrlConfiguration.from(properties)).asInstanceOf[ThrowableAssert[Throwable]]
       .isInstanceOf(classOf[IllegalArgumentException])
       .hasMessage("requirement failed: `upload.from.url.source.trust.all.ssl.certs` requires `upload.from.url.allowed.sources`")
   }
@@ -100,7 +101,7 @@ class UploadFromUrlConfigurationTest {
     properties.setProperty(UploadFromUrlConfiguration.ALLOWED_SOURCES_PROPERTY,
       "https://drive.example.com/files/secret-token")
 
-    assertThatThrownBy(() => UploadFromUrlConfiguration.from(properties))
+    assertThatThrownBy(() => UploadFromUrlConfiguration.from(properties)).asInstanceOf[ThrowableAssert[Throwable]]
       .isInstanceOf(classOf[IllegalArgumentException])
       .hasMessage("Invalid `upload.from.url.allowed.sources` entry at index 0")
       .hasMessageNotContaining("secret-token")

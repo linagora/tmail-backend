@@ -20,6 +20,7 @@ package com.linagora.tmail.team
 
 import java.util.Optional
 
+import com.linagora.tmail.team.TeamMailboxNameLiterals.given
 import eu.timepit.refined.auto._
 import org.apache.james.core.{Domain, Username}
 import org.apache.james.mailbox.MailboxManager

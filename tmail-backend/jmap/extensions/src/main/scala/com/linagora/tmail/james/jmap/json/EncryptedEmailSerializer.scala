@@ -19,6 +19,7 @@
 package com.linagora.tmail.james.jmap.json
 
 import com.linagora.tmail.encrypted.{EncryptedAttachmentMetadata, EncryptedEmailDetailedView, EncryptedEmailFastView, EncryptedHtml, EncryptedPreview}
+import com.linagora.tmail.james.jmap.json.ValueCodecs.{valueFormat, valueReads, valueWrites}
 import com.linagora.tmail.james.jmap.model.{EncryptedEmailDetailedResponse, EncryptedEmailGetRequest, EncryptedEmailGetResponse}
 import org.apache.james.jmap.core.UuidState
 import org.apache.james.jmap.mail.{EmailIds, EmailNotFound, UnparsedEmailId}
@@ -26,12 +27,12 @@ import org.apache.james.mailbox.model.MessageId
 import play.api.libs.json.{JsResult, JsString, JsValue, Json, JsonConfiguration, OptionHandlers, Reads, Writes}
 
 object EncryptedEmailSerializer {
-  private implicit val unparsedMessageIdReads: Reads[UnparsedEmailId] = Json.valueReads[UnparsedEmailId]
-  private implicit val emailIdsReads: Reads[EmailIds] = Json.valueReads[EmailIds]
+  private implicit val unparsedMessageIdReads: Reads[UnparsedEmailId] = valueReads[UnparsedEmailId]
+  private implicit val emailIdsReads: Reads[EmailIds] = valueReads[EmailIds]
   private implicit val emailGetRequestReads: Reads[EncryptedEmailGetRequest] = Json.reads[EncryptedEmailGetRequest]
-  private implicit val unparsedMessageIdWrites: Writes[UnparsedEmailId] = Json.valueWrites[UnparsedEmailId]
-  private implicit val stateWrites: Writes[UuidState] = Json.valueWrites[UuidState]
-  private implicit val emailNotFoundWrites: Writes[EmailNotFound] = Json.valueWrites[EmailNotFound]
+  private implicit val unparsedMessageIdWrites: Writes[UnparsedEmailId] = valueWrites[UnparsedEmailId]
+  private implicit val stateWrites: Writes[UuidState] = valueWrites[UuidState]
+  private implicit val emailNotFoundWrites: Writes[EmailNotFound] = valueWrites[EmailNotFound]
   private implicit val messageIdWrites: Writes[MessageId] = id => JsString(id.serialize())
   private implicit val encryptedPreviewWrites: Writes[EncryptedPreview] = Json.valueWrites[EncryptedPreview]
   private implicit val encryptedEmailFastViewWrites: Writes[EncryptedEmailFastView] = Json.writes[EncryptedEmailFastView]

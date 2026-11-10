@@ -68,10 +68,10 @@ class CassandraPublicAssetRepository @Inject()(val dao: CassandraPublicAssetDAO,
       .`then`(SMono.empty)
 
   override def remove(username: Username, id: PublicAssetId): Publisher[Void] =
-    dao.deleteAsset(username, id)
+    dao.deleteAsset(username, id).`then`(SMono.empty)
 
   override def revoke(username: Username): Publisher[Void] =
-    dao.deleteAllAssets(username)
+    dao.deleteAllAssets(username).`then`(SMono.empty)
 
   override def get(username: Username, ids: Set[PublicAssetId]): Publisher[PublicAssetStorage] =
     dao.selectAssets(username, ids)

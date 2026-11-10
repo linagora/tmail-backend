@@ -20,6 +20,7 @@ package com.linagora.tmail.james.jmap.method
 
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
 import com.google.inject.{AbstractModule, Scopes}
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.json.CalendarEventSerializer
 import com.linagora.tmail.james.jmap.method.CalendarCapabilityProperties.CALENDAR_EVENT_VERSION
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_CALENDAR

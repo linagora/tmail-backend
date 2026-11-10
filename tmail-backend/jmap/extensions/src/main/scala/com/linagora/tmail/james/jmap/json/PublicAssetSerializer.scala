@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.json
 
+import com.linagora.tmail.james.jmap.json.ValueCodecs.{valueFormat, valueReads, valueWrites}
 import com.linagora.tmail.james.jmap.method.{JSON_CUSTOM_VALIDATION_ERROR, standardErrorMessage}
 import com.linagora.tmail.james.jmap.model.{PublicAssetDTO, PublicAssetGetRequest, PublicAssetGetResponse}
 import com.linagora.tmail.james.jmap.publicAsset.ImageContentType.ImageContentType
@@ -107,9 +108,9 @@ object PublicAssetSerializer {
     identityIdsMapReads.reads(jsValue).flatMap(
       map => JsSuccess(map.keys.toSeq))
 
-  private implicit val blobIdReads: Reads[JmapBlobId] = Json.valueReads[JmapBlobId]
-  private implicit val unparsedIdentityIdReads: Reads[UnparsedIdentityId] = Json.valueReads[UnparsedIdentityId]
-  private implicit val identityIdsReads: Reads[IdentityIds] = Json.valueReads[IdentityIds]
+  private implicit val blobIdReads: Reads[JmapBlobId] = valueReads[JmapBlobId]
+  private implicit val unparsedIdentityIdReads: Reads[UnparsedIdentityId] = valueReads[UnparsedIdentityId]
+  private implicit val identityIdsReads: Reads[IdentityIds] = valueReads[IdentityIds]
 
   private implicit val publicAssetCreationRequestStandardReads: Reads[PublicAssetSetCreationRequest] = Json.reads[PublicAssetSetCreationRequest]
   private implicit val publicAssetCreationRequestReads: Reads[PublicAssetSetCreationRequest] = new Reads[PublicAssetSetCreationRequest] {
@@ -128,12 +129,12 @@ object PublicAssetSerializer {
   }
 
   private implicit val publicAssetCreationIdReads: Reads[PublicAssetCreationId] = Json.reads[PublicAssetCreationId]
-  private implicit val unparsedPublicAssetIdReads: Reads[UnparsedPublicAssetId] = Json.valueReads[UnparsedPublicAssetId]
+  private implicit val unparsedPublicAssetIdReads: Reads[UnparsedPublicAssetId] = valueReads[UnparsedPublicAssetId]
 
   private implicit val mapCreateRequestByPublicAssetCreationId: Reads[Map[PublicAssetCreationId, JsObject]] =
-    Reads.mapReads[PublicAssetCreationId, JsObject] { string => Json.valueReads[PublicAssetCreationId].reads(JsString(string)) }
+    Reads.mapReads[PublicAssetCreationId, JsObject] { string => valueReads[PublicAssetCreationId].reads(JsString(string)) }
 
-  private implicit val publicAssetPatchObjectReads: Reads[PublicAssetPatchObject] = Json.valueReads[PublicAssetPatchObject]
+  private implicit val publicAssetPatchObjectReads: Reads[PublicAssetPatchObject] = valueReads[PublicAssetPatchObject]
   private implicit val mapUnparsedPublicAssetIdPatchObject: Reads[Map[UnparsedPublicAssetId, PublicAssetPatchObject]] =
     Reads.mapReads[UnparsedPublicAssetId, PublicAssetPatchObject] { string => unparsedPublicAssetIdReads.reads(JsString(string)) }
 
@@ -141,10 +142,10 @@ object PublicAssetSerializer {
 
   private implicit val publicAssetGetReads: Reads[PublicAssetGetRequest] = Json.reads[PublicAssetGetRequest]
 
-  private implicit val publicAssetIdWrites: Writes[PublicAssetId] = Json.valueWrites[PublicAssetId]
+  private implicit val publicAssetIdWrites: Writes[PublicAssetId] = valueWrites[PublicAssetId]
   private implicit val publicURIWrites: Writes[PublicURI] = Json.valueWrites[PublicURI]
   private implicit val imageContentTypeWrites: Writes[ImageContentType] = json => JsString(json.value)
-  private implicit val identityIdWrites: Writes[IdentityId] = Json.valueWrites[IdentityId]
+  private implicit val identityIdWrites: Writes[IdentityId] = valueWrites[IdentityId]
   private implicit val seqIdentityIdWrites: Writes[Seq[IdentityId]] = Writes.seq(identityIdWrites)
 
   private implicit val publicAssetCreationResponseWrites: Writes[PublicAssetCreationResponse] = Json.writes[PublicAssetCreationResponse]
@@ -157,7 +158,7 @@ object PublicAssetSerializer {
 
   implicit val mapPublicAssetCreationIdPublicAssetCreationResponseWrites: Writes[Map[PublicAssetCreationId, PublicAssetCreationResponse]] =
     mapWrites[PublicAssetCreationId, PublicAssetCreationResponse](_.id.value, publicAssetCreationResponseWrites)
-  private implicit val stateWrites: Writes[UuidState] = Json.valueWrites[UuidState]
+  private implicit val stateWrites: Writes[UuidState] = valueWrites[UuidState]
   private implicit val updateResponseWrites: Writes[PublicAssetUpdateResponse] = _ => JsNull
   private implicit val mapPublicAssetUpdateResponse: Writes[Map[PublicAssetId, PublicAssetUpdateResponse]] =
     mapWrites[PublicAssetId, PublicAssetUpdateResponse](_.value.toString, updateResponseWrites)

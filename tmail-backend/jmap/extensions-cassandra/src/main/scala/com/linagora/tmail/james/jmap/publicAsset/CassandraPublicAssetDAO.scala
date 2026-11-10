@@ -135,18 +135,18 @@ class CassandraPublicAssetDAO @Inject()(session: CqlSession,
   def selectAllAssets(username: Username): SFlux[PublicAssetMetadata] =
     SFlux(executor.executeRows(selectAll.bind()
         .set(USER, username.asString, TypeCodecs.TEXT))
-      .map(toPublicAssetMetadata))
+      .map[PublicAssetMetadata](toPublicAssetMetadata))
 
   def selectAllAssetsOrderByIdAsc(username: Username): SFlux[PublicAssetMetadata] =
     SFlux(executor.executeRows(selectOrderByIdAsc.bind()
         .set(USER, username.asString, TypeCodecs.TEXT))
-      .map(toPublicAssetMetadata))
+      .map[PublicAssetMetadata](toPublicAssetMetadata))
 
   def selectAsset(username: Username, assetId: PublicAssetId): SMono[PublicAssetMetadata] =
     SMono(executor.executeSingleRow(selectOne.bind()
         .set(USER, username.asString, TypeCodecs.TEXT)
         .set(ASSET_ID, assetId.value, TypeCodecs.TIMEUUID))
-      .map(toPublicAssetMetadata))
+      .map[PublicAssetMetadata](toPublicAssetMetadata))
 
   def selectAssets(username: Username, ids: Set[PublicAssetId]): SFlux[PublicAssetMetadata] = {
     val idsList: java.util.List[UUID] = CollectionConverters.asJava(ids)
@@ -168,7 +168,7 @@ class CassandraPublicAssetDAO @Inject()(session: CqlSession,
   def selectSize(username: Username): SFlux[Long] =
     SFlux(executor.executeRows(selectSize.bind()
         .set(USER, username.asString, TypeCodecs.TEXT))
-      .map(row => Size.sanitizeSize(row.get(SIZE, TypeCodecs.BIGINT)).value))
+      .map(row => Size.sanitizeSize(row.get[java.lang.Long](SIZE, TypeCodecs.BIGINT)).value))
 
   def deleteAsset(username: Username, assetId: PublicAssetId): SMono[Unit] =
     SMono(executor.executeVoid(deleteOne.bind()
@@ -184,7 +184,7 @@ class CassandraPublicAssetDAO @Inject()(session: CqlSession,
   private def toPublicAssetMetadata(row: Row) =
     PublicAssetMetadata(id = PublicAssetId(row.get(ASSET_ID, TypeCodecs.TIMEUUID)),
       publicURI = PublicURI.fromString(row.get(PUBLIC_URI, TypeCodecs.TEXT)).toOption.get,
-      size = Size.sanitizeSize(row.get(SIZE, TypeCodecs.BIGINT)),
+      size = Size.sanitizeSize(row.get[java.lang.Long](SIZE, TypeCodecs.BIGINT)),
       contentType = ImageContentType.from(row.get(CONTENT_TYPE, TypeCodecs.TEXT)).toOption.get,
       blobId = blobIdFactory.parse(row.get(BLOB_ID, TypeCodecs.TEXT)),
       identityIds = CollectionConverters.asScala(row.get(IDENTITY_IDS, FROZEN_OF_UUIDS_CODEC))

@@ -20,6 +20,7 @@ package com.linagora.tmail.james.jmap.method
 
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.json.FilterSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FILTER
 import com.linagora.tmail.james.jmap.model.{Filter, FilterGetNotFound, FilterGetRequest, FilterGetResponse, FilterState, FilterWithVersion, Rule}

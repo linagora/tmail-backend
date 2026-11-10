@@ -43,7 +43,7 @@ class EmailAddressContactListener @Inject()(contactSearchEngine: EmailAddressCon
   private def handlerContactUserAddedEvent(event: TmailContactUserAddedEvent): Publisher[Void] =
     SMono.fromPublisher(contactSearchEngine.index(AccountId.fromUsername(event.username), event.contact))
       .doOnError(error => LOGGER.error("Error when indexing the new contact.", error))
-      .`then`()
+      .`then`(SMono.empty)
 }
 
 case class EmailAddressContactListenerGroup() extends Group {}

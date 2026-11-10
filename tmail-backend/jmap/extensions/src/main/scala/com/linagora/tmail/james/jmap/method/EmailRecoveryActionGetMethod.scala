@@ -19,6 +19,7 @@
 package com.linagora.tmail.james.jmap.method
 
 import com.google.inject.Inject
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.json.EmailRecoveryActionSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_MESSAGE_VAULT
 import com.linagora.tmail.james.jmap.model.{EmailRecoveryAction, EmailRecoveryActionGetRequest, EmailRecoveryActionGetResponse, EmailRecoveryActionIds, ErrorRestoreCount, SuccessfulRestoreCount, TaskIdUtil}

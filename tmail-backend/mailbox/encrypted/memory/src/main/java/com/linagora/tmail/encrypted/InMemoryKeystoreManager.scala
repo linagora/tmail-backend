@@ -67,7 +67,7 @@ class InMemoryKeystoreManager (keystore: scala.collection.concurrent.Map[Usernam
       .fold(_ => SMono.empty, _ => deleteKey(username, keyId))
 
   override def deleteAll(username: Username): Publisher[Void] =
-    SMono.fromCallable(() => keystore.remove(username)).`then`()
+    SMono.fromCallable(() => keystore.remove(username)).`then`(SMono.empty)
 
   private def find(keyId: KeyId, keys: Set[PublicKey]): SMono[PublicKey] =
     keys.find(key => key.id.equals(keyId)).map(SMono.just)
@@ -107,6 +107,6 @@ class InMemoryKeystoreManager (keystore: scala.collection.concurrent.Map[Usernam
       .map(fingerprint => KeyId(BaseEncoding.base16().encode(fingerprint)))
 
   private def usernameExists(username: Username): Either[Unit, Unit] =
-    Option.when(keystore.contains(username))(Right())
-      .getOrElse(Left())
+    Option.when(keystore.contains(username))(Right(()))
+      .getOrElse(Left(()))
 }

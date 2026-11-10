@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.team
 
+import com.linagora.tmail.team.TeamMailboxNameLiterals.given
 import com.linagora.tmail.team.TeamMailboxSubscriptionListenerTest._
 import eu.timepit.refined.auto._
 import org.apache.james.core.{Domain, Username}

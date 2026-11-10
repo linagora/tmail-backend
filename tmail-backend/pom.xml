@@ -119,7 +119,9 @@
         <bouncycastle.version>1.82</bouncycastle.version>
         <mongodb.version>5.5.1</mongodb.version>
         <netty.tcnative.version>2.0.77.Final</netty.tcnative.version>
-        <scala.base>2.13</scala.base>
+        <scala.base>3.10</scala.base>
+        <scala.binary>3</scala.binary>
+        <scala.version>${scala.base}.0</scala.version>
     </properties>
 
     <dependencyManagement>

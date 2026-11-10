@@ -207,7 +207,7 @@
         </dependency>
         <dependency>
             <groupId>org.scalatest</groupId>
-            <artifactId>scalatest_${scala.base}</artifactId>
+            <artifactId>scalatest_${scala.binary}</artifactId>
             <scope>test</scope>
         </dependency>
         <dependency>

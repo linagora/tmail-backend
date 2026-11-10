@@ -26,6 +26,7 @@ import java.util.{Locale, Optional, TimeZone}
 import com.google.common.base.Preconditions
 import com.ibm.icu.util.{TimeZone => Icu4jTimeZone}
 import com.linagora.tmail.james.jmap.AttendanceStatus
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier.ImplicitCalendar
 import com.linagora.tmail.james.jmap.calendar.ICal4JTimeZoneRegistry
 import com.linagora.tmail.james.jmap.model.CalendarEventParse.UnparsedBlobId
@@ -380,7 +381,7 @@ case class CalendarAttendeeField(name: Option[CalendarAttendeeName] = None,
 
 object CalendarParticipantsField {
   def from(vevent: VEvent): CalendarParticipantsField =
-    CalendarParticipantsField(vevent.getProperties(Property.ATTENDEE)
+    CalendarParticipantsField(vevent.getProperties[Attendee](Property.ATTENDEE)
       .asScala
       .map(attendee => CalendarAttendeeField.from(attendee))
       .toSeq)

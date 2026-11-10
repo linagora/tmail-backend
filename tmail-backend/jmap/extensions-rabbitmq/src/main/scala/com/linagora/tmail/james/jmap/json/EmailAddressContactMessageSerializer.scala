@@ -19,6 +19,7 @@
 package com.linagora.tmail.james.jmap.json
 
 import com.linagora.tmail.james.jmap.contact.{ContactOwner, EmailAddressContactMessage, MessageEntry, TmailContactMessageScope, TmailContactMessageType}
+import com.linagora.tmail.james.jmap.json.ValueCodecs.{valueFormat, valueReads, valueWrites}
 import org.apache.james.core.MailAddress
 import play.api.libs.functional.syntax.toFunctionalBuilderOps
 import play.api.libs.json.{JsError, JsPath, JsResult, JsString, JsSuccess, JsValue, Json, Reads, Writes}
@@ -48,7 +49,7 @@ object EmailAddressContactMessageSerializer {
     case _ => JsError("`scope` needs to be represented by a string")
   }
 
-  private implicit val contactOwnerReads: Reads[ContactOwner] = Json.valueReads[ContactOwner]
+  private implicit val contactOwnerReads: Reads[ContactOwner] = valueReads[ContactOwner]
 
   private implicit val messageEntryReads: Reads[MessageEntry] = Json.reads[MessageEntry]
 

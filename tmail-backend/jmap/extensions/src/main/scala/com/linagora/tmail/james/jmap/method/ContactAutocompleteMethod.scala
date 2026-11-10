@@ -20,6 +20,7 @@ package com.linagora.tmail.james.jmap.method
 
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.contact.{EmailAddressContactSearchEngine, MinAutoCompleteInputLength}
 import com.linagora.tmail.james.jmap.json.ContactSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_CONTACT

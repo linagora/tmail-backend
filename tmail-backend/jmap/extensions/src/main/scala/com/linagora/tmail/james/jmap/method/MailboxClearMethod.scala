@@ -21,6 +21,7 @@ package com.linagora.tmail.james.jmap.method
 import com.google.common.collect.ImmutableMap
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.json.MailboxClearSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_MAILBOX_CLEAR
 import com.linagora.tmail.james.jmap.method.MailboxClearMethod.{DELETE_BATCH_SIZE, LOGGER}

@@ -267,7 +267,9 @@ trait LinagoraEchoMethodContract {
       .body()
       .asString()
 
-    assertThat(response).contains("\"com:linagora:params:jmap:firebase:push\":{\"apiKey\":\"key123\",\"appId\":\"firebase123\",\"messagingSenderId\":\"sender123\",\"projectId\":\"project123\",\"databaseUrl\":\"http://database.com\",\"storageBucket\":\"bucket123\",\"authDomain\":\"domain123\",\"vapidPublicKey\":\"vapidkey123\"}")
+    assertThatJson(response)
+      .inPath("capabilities.com:linagora:params:jmap:firebase:push")
+      .isEqualTo("""{"apiKey":"key123","appId":"firebase123","messagingSenderId":"sender123","projectId":"project123","databaseUrl":"http://database.com","storageBucket":"bucket123","authDomain":"domain123","vapidPublicKey":"vapidkey123"}""")
   }
 
   @Test

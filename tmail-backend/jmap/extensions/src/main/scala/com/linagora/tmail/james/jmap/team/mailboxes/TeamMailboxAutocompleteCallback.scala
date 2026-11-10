@@ -29,7 +29,7 @@ class TeamMailboxAutocompleteCallback @Inject()(contactSearchEngine: EmailAddres
   def teamMailboxAdded(teamMailbox: TeamMailbox): Publisher[Void] =
     SMono.fromPublisher(contactSearchEngine.index(teamMailbox.domain, ContactFields(address = teamMailbox.asMailAddress,
       firstname = teamMailbox.mailboxName.asString())))
-      .`then`()
+      .`then`(SMono.empty)
 
   def teamMailboxRemoved(teamMailbox: TeamMailbox): Publisher[Void] =
     SMono.fromPublisher(contactSearchEngine.delete(teamMailbox.domain, teamMailbox.asMailAddress))

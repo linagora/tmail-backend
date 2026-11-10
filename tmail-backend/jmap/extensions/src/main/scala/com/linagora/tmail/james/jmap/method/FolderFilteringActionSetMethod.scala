@@ -19,6 +19,7 @@
 package com.linagora.tmail.james.jmap.method
 
 import com.google.inject.Inject
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.json.FolderFilteringActionSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FILTER
 import com.linagora.tmail.james.jmap.model._

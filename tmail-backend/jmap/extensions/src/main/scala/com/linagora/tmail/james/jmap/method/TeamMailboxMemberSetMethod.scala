@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.method
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.json.{TeamMailboxMemberSerializer => Serializer}
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_TEAM_MAILBOXES
 import com.linagora.tmail.james.jmap.method.TeamMailboxMemberSetMethod.{InvalidSyntax, ManagerAuthorizationChanged, NonExistingUsers, NotAuthorized}
@@ -145,7 +146,7 @@ class TeamMailboxMemberSetMethod @Inject()(val teamMailboxRepository: TeamMailbo
       .`then`(addMembers(request.teamMailbox, request.membersUpdateToAdd))
       .`then`(SMono.just(TeamMailboxMemberSetResult(Option[TeamMailboxNameDTO](TeamMailboxNameDTO(request.teamMailbox.asString())), Option.empty)))
       .onErrorResume {
-        _: Throwable => SMono.just(TeamMailboxMemberSetResult.notUpdated(request.teamMailbox, SetErrorDescription("Internal error")))
+        (_: Throwable) => SMono.just(TeamMailboxMemberSetResult.notUpdated(request.teamMailbox, SetErrorDescription("Internal error")))
       }
 
   private def addMembers(teamMailbox: TeamMailbox, members: List[TeamMailboxMember]): SMono[Unit] =

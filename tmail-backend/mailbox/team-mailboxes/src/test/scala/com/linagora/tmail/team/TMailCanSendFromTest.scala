@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.team
 
+import com.linagora.tmail.team.TeamMailboxNameLiterals.given
 import eu.timepit.refined.auto._
 import org.apache.james.core.{Domain, MailAddress, Username}
 import org.apache.james.dnsservice.api.DNSService

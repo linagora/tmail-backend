@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.json
 
+import com.linagora.tmail.james.jmap.json.ValueCodecs.{valueFormat, valueReads, valueWrites}
 import com.linagora.tmail.james.jmap.model.{EmailSendCreationId, EmailSendCreationRequestRaw, EmailSendCreationResponse, EmailSendId, EmailSendRequest, EmailSendResponse, EmailSubmissionCreationRequest}
 import org.apache.james.jmap.core.{Id, SetError, UuidState}
 import org.apache.james.jmap.json.mapWrites
@@ -47,7 +48,7 @@ object EmailSendSerializer {
       (JsPath \ "emailSubmission/set").read[JsObject]
     ) (EmailSendCreationRequestRaw.apply _)
 
-  private implicit val creationIdFormat: Format[EmailSendCreationId] = Json.valueFormat[EmailSendCreationId]
+  private implicit val creationIdFormat: Format[EmailSendCreationId] = valueFormat[EmailSendCreationId]
 
   private implicit val mapEmailSendCreationIdAndObjectReads: Reads[Map[EmailSendCreationId, JsObject]] =
     Reads.mapReads[EmailSendCreationId, JsObject] {
@@ -56,11 +57,11 @@ object EmailSendSerializer {
 
   private implicit val emailSendRequestReads: Reads[EmailSendRequest] = Json.reads[EmailSendRequest]
 
-  private implicit val stateWrites: Writes[UuidState] = Json.valueWrites[UuidState]
-  private implicit val blobIdWrites: Writes[BlobId] = Json.valueWrites[BlobId]
+  private implicit val stateWrites: Writes[UuidState] = valueWrites[UuidState]
+  private implicit val blobIdWrites: Writes[BlobId] = valueWrites[BlobId]
   private implicit val threadIdWrites: Writes[ThreadId] = Json.valueWrites[ThreadId]
-  private implicit val emailSendIdWrites: Writes[EmailSendId] = Json.valueWrites[EmailSendId]
-  private implicit val emailSubmissionIdWrites: Writes[EmailSubmissionId] = Json.valueWrites[EmailSubmissionId]
+  private implicit val emailSendIdWrites: Writes[EmailSendId] = valueWrites[EmailSendId]
+  private implicit val emailSubmissionIdWrites: Writes[EmailSubmissionId] = valueWrites[EmailSubmissionId]
   private implicit val messageIdWrites: Writes[MessageId] = messageId => JsString(messageId.serialize)
   private implicit val emailSendCreationResponseWrites: Writes[EmailSendCreationResponse] = Json.writes[EmailSendCreationResponse]
 

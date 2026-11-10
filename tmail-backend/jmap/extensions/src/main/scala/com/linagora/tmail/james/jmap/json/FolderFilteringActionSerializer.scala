@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.json
 
+import com.linagora.tmail.james.jmap.json.ValueCodecs.{valueFormat, valueReads, valueWrites}
 import com.linagora.tmail.james.jmap.model._
 import eu.timepit.refined.refineV
 import org.apache.james.jmap.core.Id.IdConstraint
@@ -30,14 +31,14 @@ import play.api.libs.json._
 
 object FolderFilteringActionSerializer {
 
-  private implicit val idFormat: Format[UnparsedFolderFilteringActionId] = Json.valueFormat[UnparsedFolderFilteringActionId]
-  private implicit val folderFilteringActionIdsReads: Reads[FolderFilteringActionIds] = Json.valueReads[FolderFilteringActionIds]
+  private implicit val idFormat: Format[UnparsedFolderFilteringActionId] = valueFormat[UnparsedFolderFilteringActionId]
+  private implicit val folderFilteringActionIdsReads: Reads[FolderFilteringActionIds] = valueReads[FolderFilteringActionIds]
   private implicit val folderFilteringActionGetRequestReads: Reads[FolderFilteringActionGetRequest] = Json.reads[FolderFilteringActionGetRequest]
 
-  private implicit val creationIdReads: Reads[FolderFilteringActionCreationId] = Json.valueReads[FolderFilteringActionCreationId]
+  private implicit val creationIdReads: Reads[FolderFilteringActionCreationId] = valueReads[FolderFilteringActionCreationId]
   private implicit val mapCreationRequestReads: Reads[Map[FolderFilteringActionCreationId, JsObject]] =
     Reads.mapReads[FolderFilteringActionCreationId, JsObject](s => creationIdReads.reads(JsString(s)))
-  private implicit val unparsedMailboxIdReads: Reads[UnparsedMailboxId] = Json.valueReads[UnparsedMailboxId]
+  private implicit val unparsedMailboxIdReads: Reads[UnparsedMailboxId] = valueReads[UnparsedMailboxId]
   private implicit val folderFilteringActionCreationRequestReads: Reads[FolderFilteringActionCreationRequest] = Json.reads[FolderFilteringActionCreationRequest]
   private implicit val folderFilteringActionUpdatePatchObjectReads: Reads[FolderFilteringActionUpdatePatchObject] = {
     case jsObject: JsObject => JsSuccess(FolderFilteringActionUpdatePatchObject(jsObject))
@@ -56,9 +57,9 @@ object FolderFilteringActionSerializer {
 
   private implicit val taskIdWrites: Writes[TaskId] = value => JsString(value.asString())
   private implicit val statusWrites: Writes[Status] = status => JsString(status.getValue)
-  private implicit val processedMessageCountWrites: Writes[ProcessedMessageCount] = Json.valueWrites[ProcessedMessageCount]
-  private implicit val successfulActionsWrites: Writes[SuccessfulActions] = Json.valueWrites[SuccessfulActions]
-  private implicit val failedActionsWrites: Writes[FailedActions] = Json.valueWrites[FailedActions]
+  private implicit val processedMessageCountWrites: Writes[ProcessedMessageCount] = valueWrites[ProcessedMessageCount]
+  private implicit val successfulActionsWrites: Writes[SuccessfulActions] = valueWrites[SuccessfulActions]
+  private implicit val failedActionsWrites: Writes[FailedActions] = valueWrites[FailedActions]
   private implicit val folderFilteringActionWrites: Writes[FolderFilteringAction] = (ffa: FolderFilteringAction) =>
     Json.obj(
       "id" -> ffa.id,
@@ -78,7 +79,7 @@ object FolderFilteringActionSerializer {
     mapWrites[FolderFilteringActionCreationId, SetError](_.serialize, Json.writes[SetError])
   private implicit val mapSetErrorForUpdateWrites: Writes[Map[UnparsedFolderFilteringActionId, SetError]] =
     mapWrites[UnparsedFolderFilteringActionId, SetError](_.id.value, setErrorWrites)
-  private implicit val folderFilteringActionUpdateResponseWrites: Writes[FolderFilteringActionUpdateResponse] = Json.valueWrites[FolderFilteringActionUpdateResponse]
+  private implicit val folderFilteringActionUpdateResponseWrites: Writes[FolderFilteringActionUpdateResponse] = valueWrites[FolderFilteringActionUpdateResponse]
   private implicit def folderFilteringActionUpdateResponseMapWrites: Writes[Map[TaskId, FolderFilteringActionUpdateResponse]] =
     mapWrites[TaskId, FolderFilteringActionUpdateResponse](taskId => taskId.asString(), folderFilteringActionUpdateResponseWrites)
   private implicit val setResponseWrites: OWrites[FolderFilteringActionSetResponse] = Json.writes[FolderFilteringActionSetResponse]

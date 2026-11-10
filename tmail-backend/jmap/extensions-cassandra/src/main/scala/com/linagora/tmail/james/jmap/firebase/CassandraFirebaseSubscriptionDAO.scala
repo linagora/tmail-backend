@@ -92,7 +92,7 @@ class CassandraFirebaseSubscriptionDAO @Inject()(session: CqlSession, typeStateF
     .build())
 
   def insert(username: Username, subscription: FirebaseSubscription): SMono[FirebaseSubscription] = {
-    val typeNames = CollectionConverters.asJava(subscription.types.map(_.asString()).toSet)
+    val typeNames = CollectionConverters.asJava(subscription.types.map(_.asString).toSet)
     val utcInstant = subscription.expires.value.withZoneSameInstant(ZoneOffset.UTC).toInstant
 
     val insertSubscription = insert.bind()

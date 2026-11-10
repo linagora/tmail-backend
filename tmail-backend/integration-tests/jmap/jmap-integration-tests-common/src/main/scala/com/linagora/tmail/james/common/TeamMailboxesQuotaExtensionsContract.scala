@@ -20,6 +20,7 @@ package com.linagora.tmail.james.common
 
 import java.nio.charset.StandardCharsets
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.team.{TeamMailbox, TeamMailboxName, TeamMailboxProbe}
 import eu.timepit.refined.auto._
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT

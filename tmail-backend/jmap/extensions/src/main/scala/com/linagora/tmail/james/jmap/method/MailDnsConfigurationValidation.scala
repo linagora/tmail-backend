@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.method
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.saas.api.DomainSendingValidator
 import eu.timepit.refined.auto._
 import jakarta.inject.Inject

@@ -181,7 +181,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       .flatMapMany(_ => listMailboxPaths(teamMailbox))
       .flatMap(mailboxPath => addRightForMember(mailboxPath, teamMailboxMember.username, session, teamMailboxMember.role)
         .`then`(subscribeForMember(mailboxPath, memberSession)), ReactorUtils.DEFAULT_CONCURRENCY)
-      .`then`()
+      .thenMany(SMono.empty)
   }
 
   private def listMailboxPaths(teamMailbox: TeamMailbox): SFlux[MailboxPath] =
@@ -234,7 +234,7 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
         .flatMap(mailboxPath => removeRightForMember(mailboxPath, user, session)
           .`then`(unSubscribeForMember(mailboxPath, memberSession)))
         .`then`())
-      .`then`()
+      .`then`(SMono.empty)
   }
 
   override def listTeamMailboxes(): SFlux[TeamMailbox] = {

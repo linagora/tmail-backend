@@ -19,6 +19,7 @@
 package com.linagora.tmail.james.jmap.json
 
 import com.linagora.tmail.encrypted.{KeyId, PublicKey}
+import com.linagora.tmail.james.jmap.json.ValueCodecs.{valueFormat, valueReads, valueWrites}
 import com.linagora.tmail.james.jmap.model.{Key, KeystoreCreationId, KeystoreCreationRequest, KeystoreCreationResponse, KeystoreGetRequest, KeystoreGetResponse, KeystoreSetRequest, KeystoreSetResponse}
 import org.apache.james.jmap.core.{SetError, UuidState}
 import org.apache.james.jmap.json.mapWrites
@@ -27,12 +28,12 @@ import play.api.libs.json.{Format, JsObject, JsResult, JsString, JsValue, Json, 
 class KeystoreSerializer {
   private implicit val keyIdFormat: Format[KeyId] = Json.valueFormat[KeyId]
 
-  private implicit val keyReads: Reads[Key] = Json.valueReads[Key]
+  private implicit val keyReads: Reads[Key] = valueReads[Key]
 
   implicit val keystoreCreationRequest: Reads[KeystoreCreationRequest] = Json.reads[KeystoreCreationRequest]
 
   private implicit val mapCreationRequestByKeystoreCreationId: Reads[Map[KeystoreCreationId, JsObject]] =
-    Reads.mapReads[KeystoreCreationId, JsObject] {string => Json.valueReads[KeystoreCreationId].reads(JsString(string))}
+    Reads.mapReads[KeystoreCreationId, JsObject] {string => valueReads[KeystoreCreationId].reads(JsString(string))}
 
   implicit val keystoreCreationResponseWrites: Writes[KeystoreCreationResponse] = Json.writes[KeystoreCreationResponse]
 
@@ -43,11 +44,11 @@ class KeystoreSerializer {
     mapWrites[KeystoreCreationId, KeystoreCreationResponse](_.id.value, keystoreCreationResponseWrites)
 
   private implicit val payloadWrites: Writes[Array[Byte]] = (payload: Array[Byte]) => Json.toJson(new String(payload))
-  private implicit val stateWrites: Writes[UuidState] = Json.valueWrites[UuidState]
+  private implicit val stateWrites: Writes[UuidState] = valueWrites[UuidState]
   private implicit val publicKeyWrites: Writes[PublicKey] = Json.writes[PublicKey]
   private implicit val keystoreMapGetResponseWrites: Writes[Map[KeyId, PublicKey]] = mapWrites[KeyId, PublicKey](_.value, publicKeyWrites)
 
-  private implicit val keyIdReads: Format[KeystoreCreationId] = Json.valueFormat[KeystoreCreationId]
+  private implicit val keyIdReads: Format[KeystoreCreationId] = valueFormat[KeystoreCreationId]
   private implicit val keystoreDestroyReads: Reads[List[KeystoreCreationId]] = Reads.list[KeystoreCreationId]
   private implicit val keystoreSetRequestReads: Reads[KeystoreSetRequest] = Json.reads[KeystoreSetRequest]
   private implicit val keystoreSetResponseWrites: Writes[KeystoreSetResponse] = Json.writes[KeystoreSetResponse]

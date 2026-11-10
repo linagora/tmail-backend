@@ -20,6 +20,7 @@ package com.linagora.tmail.james.jmap.json
 
 import java.time.ZonedDateTime
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.model.{EmailRecoveryAction, EmailRecoveryActionCreationId, EmailRecoveryActionCreationRequest, EmailRecoveryActionCreationResponse, EmailRecoveryActionGetRequest, EmailRecoveryActionGetResponse, EmailRecoveryActionSetRequest, EmailRecoveryActionSetResponse, EmailRecoveryDeletedAfter, EmailRecoveryDeletedBefore, EmailRecoveryHasAttachment, EmailRecoveryReceivedAfter, EmailRecoveryReceivedBefore, EmailRecoveryRecipient, EmailRecoverySender, EmailRecoverySubject, ErrorRestoreCount, SuccessfulRestoreCount, UnparsedEmailRecoveryActionId}
 import eu.timepit.refined.auto._
 import org.apache.james.core.MailAddress

@@ -20,6 +20,7 @@ package com.linagora.tmail.james.jmap.method
 
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.json.KeystoreSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_PGP
 import com.linagora.tmail.james.jmap.model.{KeystoreSetRequest, KeystoreSetResponse}

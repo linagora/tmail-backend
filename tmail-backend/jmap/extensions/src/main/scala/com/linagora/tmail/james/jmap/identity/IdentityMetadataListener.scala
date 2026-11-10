@@ -56,13 +56,13 @@ class IdentityMetadataListener @Inject()(mailboxManager: MailboxManager,
   override def isHandling(event: Event): Boolean = event.isInstanceOf[IdentityEvent]
 
   override def reactiveEvent(event: Event): Publisher[Void] =
-    event match {
+    (event match {
       case e: CustomIdentityCreated => upsertIdentityAnnotations(e.username, e.identity)
       case e: CustomIdentityUpdated => upsertIdentityAnnotations(e.username, e.identity)
       case e: CustomIdentityDeleted => deleteIdentityAnnotations(e.username, e.identityIds)
       case e: AllCustomIdentitiesDeleted => deleteIdentityAnnotations(e.username, e.identityIds)
       case _ => SMono.empty[Unit]
-    }
+    }).`then`(SMono.empty)
 
   private def getOrProvisionInbox(username: Username, session: MailboxSession): SMono[MailboxId] =
     SMono.fromPublisher(mailboxManager.getMailboxReactive(MailboxPath.inbox(username), session))

@@ -52,7 +52,7 @@ case class MemoryLabelChangeRepository @Inject()(clock: Clock) extends LabelChan
 
   override def save(labelChange: LabelChange): Publisher[Void] =
     SMono.fromCallable(() => tableStore.put(labelChange.accountId, clock.instant(), labelChange))
-      .`then`()
+      .`then`(SMono.empty)
 
   override def getSinceState(accountId: AccountId, state: State, maxIdsToReturn: Option[Limit]): SMono[LabelChanges] = {
     val limit: Int = maxIdsToReturn.getOrElse(DEFAULT_MAX_IDS_TO_RETURN).getValue

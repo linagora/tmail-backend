@@ -35,7 +35,7 @@ import net.fortuna.ical4j.model.property.{Attendee, RecurrenceId}
 import net.fortuna.ical4j.model.{Calendar, Component, Property}
 import org.apache.james.core.Username
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
-import org.assertj.core.api.SoftAssertions
+import org.assertj.core.api.{SoftAssertions, ThrowableAssert}
 import org.junit.jupiter.api.{Nested, Test}
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
@@ -265,7 +265,7 @@ class CalendarEventModifierTest {
          |END:VCALENDAR
          |""".stripMargin.getBytes("UTF-8")))
 
-    assertThatThrownBy(() => testee.withPartStat("bob@james.org", PartStat.ACCEPTED, calendar).apply(calendar))
+    assertThatThrownBy(() => testee.withPartStat("bob@james.org", PartStat.ACCEPTED, calendar).apply(calendar)).asInstanceOf[ThrowableAssert[Throwable]]
       .isInstanceOf(classOf[IllegalArgumentException])
       .hasMessage("Invalid calendar property VERSION")
       .hasCauseInstanceOf(classOf[RuntimeException])
@@ -576,7 +576,7 @@ class CalendarEventModifierTest {
         |END:VCALENDAR
         |""".stripMargin.getBytes("UTF-8")))
 
-    assertThatThrownBy(() => testee.withPartStat("bob@james.org", PartStat.ACCEPTED, calendar).apply(calendar))
+    assertThatThrownBy(() => testee.withPartStat("bob@james.org", PartStat.ACCEPTED, calendar).apply(calendar)).asInstanceOf[ThrowableAssert[Throwable]]
       .isInstanceOf(classOf[IllegalArgumentException])
       .hasMessageStartingWith("Invalidate calendar event: Invalid calendar property DTEND:")
       .hasCauseInstanceOf(classOf[DateTimeException])
@@ -600,7 +600,7 @@ class CalendarEventModifierTest {
         |END:VCALENDAR
         |""".stripMargin.getBytes("UTF-8")))
 
-    assertThatThrownBy(() => testee.withPartStat("bob@james.org", PartStat.ACCEPTED, calendar).apply(calendar))
+    assertThatThrownBy(() => testee.withPartStat("bob@james.org", PartStat.ACCEPTED, calendar).apply(calendar)).asInstanceOf[ThrowableAssert[Throwable]]
       .isInstanceOf(classOf[IllegalArgumentException])
       .hasMessageStartingWith("Invalidate calendar event: Invalid calendar property DTSTART:")
       .hasCauseInstanceOf(classOf[DateTimeException])
@@ -1009,7 +1009,7 @@ class CalendarEventModifierTest {
       val recurrenceEvent = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(baseCalendar.stripMargin.getBytes("UTF-8")))
 
       assertThatThrownBy(() => testee(Seq(AttendeePartStatusUpdatePatch("user2@open-paas.org", PartStat.ACCEPTED)), Some(new RecurrenceId[Temporal]("20261014T080000Z")))
-        .apply(recurrenceEvent))
+        .apply(recurrenceEvent)).asInstanceOf[ThrowableAssert[Throwable]]
         .isInstanceOf(classOf[IllegalArgumentException])
         .hasMessageContaining("the event is not a recurring event")
     }
@@ -1045,7 +1045,7 @@ class CalendarEventModifierTest {
           |END:VCALENDAR
           |""".stripMargin.getBytes("UTF-8")))
 
-      assertThatThrownBy(() => testee.of(counter, Username.of("organizer@domain.tld")).apply(stored))
+      assertThatThrownBy(() => testee.of(counter, Username.of("organizer@domain.tld")).apply(stored)).asInstanceOf[ThrowableAssert[Throwable]]
         .isInstanceOf(classOf[IllegalArgumentException])
         .hasMessageContaining("the recurring event has no start date")
     }
@@ -1081,7 +1081,7 @@ class CalendarEventModifierTest {
           |END:VCALENDAR
           |""".stripMargin.getBytes("UTF-8")))
 
-      assertThatThrownBy(() => testee.of(counter, Username.of("organizer@domain.tld")).apply(stored))
+      assertThatThrownBy(() => testee.of(counter, Username.of("organizer@domain.tld")).apply(stored)).asInstanceOf[ThrowableAssert[Throwable]]
         .isInstanceOf(classOf[IllegalArgumentException])
         .hasMessageContaining("has no date")
     }
@@ -1181,7 +1181,7 @@ class CalendarEventModifierTest {
       val recurrenceId: RecurrenceId[Temporal] = recurrenceEvent.getComponents[VEvent](Component.VEVENT).get(1).getRecurrenceId[Temporal]
 
       assertThatThrownBy(() => testee.withPartStat("user2@open-paas.org", PartStat.ACCEPTED, Some(recurrenceId))
-        .apply(recurrenceEvent))
+        .apply(recurrenceEvent)).asInstanceOf[ThrowableAssert[Throwable]]
         .isInstanceOf(classOf[IllegalArgumentException])
         .hasMessageContaining("RECURRENCE-ID")
     }
@@ -1217,7 +1217,7 @@ class CalendarEventModifierTest {
         .getFirstVEvent.getRecurrenceId[Temporal]
 
       assertThatThrownBy(() => testee.withPartStat("user2@open-paas.org", PartStat.ACCEPTED, Some(requestedRecurrenceId))
-        .apply(recurringMasterCalendar))
+        .apply(recurringMasterCalendar)).asInstanceOf[ThrowableAssert[Throwable]]
         .isInstanceOf(classOf[IllegalArgumentException])
         .hasMessageContaining("RECURRENCE-ID")
     }
@@ -1228,7 +1228,7 @@ class CalendarEventModifierTest {
       "RECURRENCE-ID;TZID=Europe/Paris:20250402000"))
     def withPartStatShouldRejectARequestCalendarWithAnUnevaluableRecurrenceId(invalidRecurrenceId: String): Unit = {
       assertThatThrownBy(() => testee.withPartStat("user2@open-paas.org", PartStat.ACCEPTED, requestCalendarWithRecurrenceId(invalidRecurrenceId))
-        .apply(recurringMasterCalendar))
+        .apply(recurringMasterCalendar)).asInstanceOf[ThrowableAssert[Throwable]]
         .isInstanceOf(classOf[IllegalArgumentException])
         .hasMessageContaining("RECURRENCE-ID")
     }
@@ -1621,7 +1621,7 @@ class CalendarEventModifierTest {
     def shouldBeRejectedWhenTheTargetedOverrideIsNotOrganizedByTheUser(overrideOrganizer: String): Unit = {
       val calendar = stored(organizer, overrideOrganizer)
 
-      assertThatThrownBy(() => testee.of(counter("20250409T070000Z"), Username.of("organizer@domain.tld")).apply(calendar))
+      assertThatThrownBy(() => testee.of(counter("20250409T070000Z"), Username.of("organizer@domain.tld")).apply(calendar)).asInstanceOf[ThrowableAssert[Throwable]]
         .isInstanceOf(classOf[IllegalArgumentException])
         .hasMessageContaining("Can not update event")
     }
@@ -1646,7 +1646,7 @@ class CalendarEventModifierTest {
     def shouldBeRejectedWhenTheMissingOverrideIsCopiedFromAMasterOrganizedBySomeoneElse(): Unit = {
       val calendar = stored(other, organizer)
 
-      assertThatThrownBy(() => testee.of(counter("20250416T070000Z"), Username.of("organizer@domain.tld")).apply(calendar))
+      assertThatThrownBy(() => testee.of(counter("20250416T070000Z"), Username.of("organizer@domain.tld")).apply(calendar)).asInstanceOf[ThrowableAssert[Throwable]]
         .isInstanceOf(classOf[IllegalArgumentException])
         .hasMessageContaining("Can not update event")
     }

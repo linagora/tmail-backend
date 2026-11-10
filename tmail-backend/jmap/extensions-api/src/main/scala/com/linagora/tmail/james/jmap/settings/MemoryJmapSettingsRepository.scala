@@ -86,5 +86,5 @@ case class MemoryJmapSettingsRepository @Inject()() extends JmapSettingsReposito
       settingsStore.row(username).clear()
       stateStore.remove(username)
     })
-      .`then`()
+      .`then`(SMono.empty)
 }

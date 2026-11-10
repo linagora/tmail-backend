@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.json
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.json.{CalendarEventCounterSerializer => testee}
 import com.linagora.tmail.james.jmap.model._
 import eu.timepit.refined.auto._

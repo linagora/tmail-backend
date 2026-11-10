@@ -19,6 +19,7 @@ package com.linagora.tmail.jmap.aibot
 
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.event.ApplyWhenFilter
 import com.linagora.tmail.jmap.aibot.agent.AgentTool
 import com.linagora.tmail.jmap.aibot.agent.AIToolsRoutes

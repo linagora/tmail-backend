@@ -21,6 +21,7 @@ package com.linagora.tmail.james.jmap.model
 import java.time.ZonedDateTime
 import java.util.UUID
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import eu.timepit.refined.auto._
 import org.apache.james.jmap.api.model.ExpireTimeInvalidException.TIME_FORMATTER
 import org.apache.james.jmap.api.model.TypeName

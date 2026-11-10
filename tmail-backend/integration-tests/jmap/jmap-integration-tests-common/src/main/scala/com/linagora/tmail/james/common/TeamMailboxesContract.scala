@@ -29,6 +29,7 @@ import java.util.concurrent.atomic.AtomicReference
 
 import com.google.common.hash.Hashing
 import com.linagora.tmail.james.common.TeamMailboxesContract.webAdminApi
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
 import com.linagora.tmail.team.{TeamMailbox, TeamMailboxName, TeamMailboxProbe}
 import eu.timepit.refined.auto._
@@ -3605,7 +3606,7 @@ trait TeamMailboxesContract {
       .statusCode(SC_OK)
       .body("methodResponses[0][1].updated", hasKey(childMailboxId))
 
-    val response : String = given()
+    val response : String = `given`()
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(s"""{
                |  "using": [
@@ -3853,7 +3854,7 @@ trait TeamMailboxesContract {
       .statusCode(SC_OK)
       .body("methodResponses[0][1].updated", hasKey(childMarketingMailboxId))
 
-    given()
+    `given`()
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(s"""{
                |  "using": [
@@ -3922,7 +3923,7 @@ trait TeamMailboxesContract {
 
     Thread.sleep(2000)
 
-    given()
+    `given`()
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
       .body(s"""{
                |  "using": [

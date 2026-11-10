@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.json
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.model.{JmapSettingsGet, JmapSettingsObject, JmapSettingsResponse, SettingsSetError, SettingsSetRequest, SettingsSetResponse, SettingsSetUpdateRequest, SettingsUpdateResponse}
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryContract.SettingsKeyString
 import com.linagora.tmail.james.jmap.settings.{JmapSettingsKey, JmapSettingsPatch, JmapSettingsUpsertRequest, JmapSettingsValue}

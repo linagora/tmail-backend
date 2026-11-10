@@ -22,6 +22,7 @@ import java.time.Duration
 import java.time.temporal.ChronoUnit
 import java.util.Optional
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.mailets.TmailMailRateLimiter.createRateLimiter
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition
@@ -30,6 +31,7 @@ import eu.timepit.refined.auto._
 import jakarta.inject.Inject
 import org.apache.james.core.Username
 import org.apache.james.rate.limiter.api.Increment.Increment
+import org.apache.james.rate.limiter.api.Increment.given
 import org.apache.james.rate.limiter.api.{AcceptableRate, Increment, RateExceeded, RateLimiterFactory, RateLimitingResult}
 import org.apache.james.transport.mailets.ConfigurationOps.OptionOps
 import org.apache.james.transport.mailets.KeyPrefix

@@ -50,7 +50,7 @@ class CassandraLabelRepository @Inject()(dao: CassandraLabelDAO, @Named("TMAIL_E
   override def addLabel(username: Username, label: Label): Publisher[Void] =
     dao.insert(username, label)
       .`then`(dispatch(LabelCreated(Event.EventId.random(), username, label)))
-      .`then`()
+      .`then`(SMono.empty)
 
   override def addLabels(username: Username, labelCreationRequests: java.util.Collection[LabelCreationRequest]): Publisher[Label] =
     SFlux.fromIterable(labelCreationRequests.asScala)
@@ -72,7 +72,7 @@ class CassandraLabelRepository @Inject()(dao: CassandraLabelDAO, @Named("TMAIL_E
         dao.updateLabel(username, labelId.toKeyword, newDisplayName, newColor, newDescription)
           .`then`(dispatch(LabelUpdated(Event.EventId.random(), username, updatedLabel)))
       })
-      .`then`()
+      .`then`(SMono.empty)
 
   override def getLabels(username: Username, ids: java.util.Collection[LabelId]): Publisher[Label] =
     dao.selectSome(username = username,
@@ -87,13 +87,13 @@ class CassandraLabelRepository @Inject()(dao: CassandraLabelDAO, @Named("TMAIL_E
   override def deleteLabel(username: Username, labelId: LabelId): Publisher[Void] =
     dao.deleteOne(username, labelId.toKeyword)
       .`then`(dispatch(LabelDestroyed(Event.EventId.random(), username, labelId)))
-      .`then`()
+      .`then`(SMono.empty)
 
   override def deleteAllLabels(username: Username): Publisher[Void] =
     dao.selectAll(username)
       .map(label => LabelId.fromKeyword(label.keyword))
       .concatMap(labelId => deleteLabel(username, labelId))
-      .`then`()
+      .thenMany(SMono.empty)
 
   override def setLabelReadOnly(username: Username, labelId: LabelId, readOnly: Boolean): Publisher[Void] =
     dao.selectOne(username, labelId.toKeyword)

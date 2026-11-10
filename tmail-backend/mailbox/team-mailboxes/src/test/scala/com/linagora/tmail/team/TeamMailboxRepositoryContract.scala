@@ -20,6 +20,7 @@ package com.linagora.tmail.team
 
 import java.util.{Map => JavaMap, Set => JavaSet}
 
+import com.linagora.tmail.team.TeamMailboxNameLiterals.given
 import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
 import com.linagora.tmail.team.TeamMailboxRepositoryContract.{ANDRE, BOB, DOMAIN_1, DOMAIN_2, TEAM_MAILBOX_DOMAIN_1, TEAM_MAILBOX_DOMAIN_2, TEAM_MAILBOX_MARKETING, TEAM_MAILBOX_SALES}
 import eu.timepit.refined.auto._

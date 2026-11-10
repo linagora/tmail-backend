@@ -33,7 +33,7 @@ import org.apache.james.metrics.tests.RecordingMetricFactory
 import org.apache.james.user.api.DelegationStore
 import org.apache.james.user.memory.MemoryDelegationStore
 import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}
-import org.assertj.core.api.SoftAssertions
+import org.assertj.core.api.{SoftAssertions, ThrowableAssert}
 import org.junit.jupiter.api.{BeforeEach, Test}
 import org.mockito.ArgumentCaptor
 import org.mockito.ArgumentMatchers.any
@@ -215,7 +215,7 @@ class FirebasePushListenerTest {
       .isNotNull
 
     assertThatThrownBy(() => SMono(testee.reactiveEvent(StateChangeEvent(EventId.random(), bob,
-      Map(EmailTypeName -> UuidState(UUID.randomUUID()))))).block())
+      Map(EmailTypeName -> UuidState(UUID.randomUUID()))))).block()).asInstanceOf[ThrowableAssert[Throwable]]
       .isInstanceOf(classOf[RuntimeException])
       .hasMessageContaining("Unexpected error during push message to Firebase Cloud Messaging")
       .hasCause(firebaseException)

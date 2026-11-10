@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.mail
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import eu.timepit.refined.auto._
 import org.apache.james.jmap.mail.SortOrder.defaultSortOrder
 import org.apache.james.jmap.mail.{SortOrder, SortOrderProvider}

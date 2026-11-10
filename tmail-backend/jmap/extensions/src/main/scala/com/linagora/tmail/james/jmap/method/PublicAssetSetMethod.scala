@@ -20,6 +20,7 @@ package com.linagora.tmail.james.jmap.method
 
 import cats.implicits.toTraverseOps
 import com.google.common.base.Preconditions
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.json.PublicAssetSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_PUBLIC_ASSETS
 import com.linagora.tmail.james.jmap.publicAsset.{ImageContentType, PublicAssetBlobIdNotFoundException, PublicAssetCreationFailure, PublicAssetCreationId, PublicAssetCreationParseException, PublicAssetCreationRequest, PublicAssetCreationResponse, PublicAssetCreationResult, PublicAssetCreationResults, PublicAssetCreationSuccess, PublicAssetDeletionFailure, PublicAssetDeletionResult, PublicAssetDeletionResults, PublicAssetDeletionSuccess, PublicAssetException, PublicAssetId, PublicAssetInvalidBlobIdException, PublicAssetPatchObject, PublicAssetRepository, PublicAssetSetCreationRequest, PublicAssetSetRequest, PublicAssetSetResponse, PublicAssetSetService, PublicAssetStorage, PublicAssetUpdateFailure, PublicAssetUpdateResult, PublicAssetUpdateResults, PublicAssetUpdateSuccess, UnparsedPublicAssetId, ValidatedPublicAssetPatchObject}

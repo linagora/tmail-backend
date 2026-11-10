@@ -23,6 +23,7 @@ import java.util.Date
 
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
 import com.google.inject.{AbstractModule, Scopes}
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.json.EmailSendSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_PGP
 import com.linagora.tmail.james.jmap.model.EmailSubmissionHelper.resolveEnvelope
@@ -148,7 +149,7 @@ class EmailSendMethod @Inject()(emailSetSerializer: EmailSetSerializer,
                      mailboxSession: MailboxSession,
                      processingContext: ProcessingContext): SMono[(EmailSendResults, ProcessingContext)] =
     SFlux.fromIterable(request.create.view)
-      .fold[SMono[(EmailSendResults, ProcessingContext)]](SMono.just(EmailSendResults.empty -> processingContext)) {
+      .fold[SMono[(EmailSendResults, ProcessingContext)]](SMono.just(EmailSendResults.empty() -> processingContext)) {
         (acc: SMono[(EmailSendResults, ProcessingContext)], elem: (EmailSendCreationId, JsObject)) => {
           val (emailSendCreationId, jsObject) = elem
           acc.flatMap {
