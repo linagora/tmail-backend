@@ -26,13 +26,13 @@ import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.json.EmailSendSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_PGP
-import com.linagora.tmail.james.jmap.model.EmailSubmissionHelper.resolveEnvelope
+import com.linagora.tmail.james.jmap.model.EmailSubmissionHelper.{resolveEnvelope, senderAddresses}
 import com.linagora.tmail.james.jmap.model.{EmailSendCreationId, EmailSendCreationRequest, EmailSendCreationRequestInvalidException, EmailSendCreationResponse, EmailSendRequest, EmailSendResults, EmailSetCreationFailure, EmailSetCreationResult, EmailSetCreationSuccess, EmailSubmissionCreationRequest, MimeMessageSourceImpl}
 import eu.timepit.refined.auto._
 import jakarta.annotation.PreDestroy
 import jakarta.inject.Inject
 import jakarta.mail.Flags
-import jakarta.mail.internet.{InternetAddress, MimeMessage}
+import jakarta.mail.internet.MimeMessage
 import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.jmap.JMAPConfiguration
 import org.apache.james.jmap.api.model.Size
@@ -250,13 +250,15 @@ class EmailSendMethod @Inject()(emailSetSerializer: EmailSetSerializer,
       })
   }
 
+  // Checks the From and Sender addresses as both jakarta.mail and mime4j read them
   private def validate(session: MailboxSession)(mimeMessage: MimeMessage, envelope: Envelope): SMono[MimeMessage] =
-    SFlux.fromIterable(Option(mimeMessage.getSender).toList.map("sender" -> _) ++
-        mimeMessage.getFrom.toList.map("from" -> _))
-      .map { case (header, address) => header -> address.asInstanceOf[InternetAddress].getAddress }
-      .filterWhen({ case (_, address) =>
-        isForbiddenSender(session, new MailAddress(address))
+    SFlux.fromIterable(senderAddresses(mimeMessage))
+      .filterWhen({
+        // A field that does not parse cannot be allowed
+        case (_, Left(_)) => SMono.just(true)
+        case (_, Right(address)) => isForbiddenHeaderAddress(session, address)
       }, Queues.SMALL_BUFFER_SIZE)
+      .map { case (header, address) => header -> address.merge }
       .collectSeq()
       .flatMap { forbiddenHeaders =>
         if (forbiddenHeaders.nonEmpty) {
@@ -271,6 +273,11 @@ class EmailSendMethod @Inject()(emailSetSerializer: EmailSetSerializer,
             .switchIfEmpty(SMono.just(mimeMessage))
         }
       }
+
+  // A header address that is not a valid mail address cannot be allowed
+  private def isForbiddenHeaderAddress(session: MailboxSession, address: String): SMono[Boolean] =
+    Try(new MailAddress(address))
+      .fold(_ => SMono.just(true), mailAddress => isForbiddenSender(session, mailAddress))
 
   private def isForbiddenSender(session: MailboxSession, address: MailAddress): SMono[Boolean] =
     SMono.fromPublisher(canSendFrom.userCanSendFromReactive(session.getUser, Username.fromMailAddress(address)))
