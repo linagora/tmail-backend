@@ -57,13 +57,21 @@ object EmailSubmissionHelper {
     }
   }
 
-  // The From field defaults to the Sender field, as for MimeMessage::getFrom
-  def senderAddresses(mimeMessage: MimeMessage): List[(String, String)] = {
+  // The From field defaults to the Sender field, as for MimeMessage::getFrom.
+  // Left holds a field that cannot be parsed, as is.
+  def senderAddresses(mimeMessage: MimeMessage): List[(String, Either[String, String])] = {
     val sender: Option[String] = Option(mimeMessage.getHeader("Sender", ","))
     val from: Option[String] = Option(mimeMessage.getHeader("From", ",")).orElse(sender)
-    sender.toList.flatMap(addresses).map("sender" -> _) ++
-      from.toList.flatMap(addresses).map("from" -> _)
+    sender.toList.flatMap(fieldAddresses).map("sender" -> _) ++
+      from.toList.flatMap(fieldAddresses).map("from" -> _)
   }
+
+  private def fieldAddresses(field: String): List[Either[String, String]] =
+    try {
+      addresses(field).map(Right(_))
+    } catch {
+      case _: AddressException => List(Left(field))
+    }
 
   /**
    * Reads an address field (From, Sender...) for an authorization check.

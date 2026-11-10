@@ -252,9 +252,12 @@ class EmailSendMethod @Inject()(emailSetSerializer: EmailSetSerializer,
   // Checks the From and Sender addresses as both jakarta.mail and mime4j read them
   private def validate(session: MailboxSession)(mimeMessage: MimeMessage, envelope: Envelope): SMono[MimeMessage] =
     SFlux.fromIterable(senderAddresses(mimeMessage))
-      .filterWhen({ case (_, address) =>
-        isForbiddenHeaderAddress(session, address)
+      .filterWhen({
+        // A field that does not parse cannot be allowed
+        case (_, Left(_)) => SMono.just(true)
+        case (_, Right(address)) => isForbiddenHeaderAddress(session, address)
       }, Queues.SMALL_BUFFER_SIZE)
+      .map { case (header, address) => header -> address.merge }
       .collectSeq()
       .flatMap { forbiddenHeaders =>
         if (forbiddenHeaders.nonEmpty) {

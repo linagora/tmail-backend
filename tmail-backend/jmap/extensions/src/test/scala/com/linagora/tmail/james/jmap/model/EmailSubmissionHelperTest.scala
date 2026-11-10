@@ -90,27 +90,34 @@ class EmailSubmissionHelperTest {
   def senderAddressesShouldReadBothFields(): Unit =
     assertThat(senderAddresses(rawEightBitMessage("From: <alice@domain.tld> bob@domain.tld\r\nSender: carol@domain.tld(c).evil")).asJava)
       .containsExactly(
-        "sender" -> "carol@domain.tld",
-        "sender" -> "carol@domain.tld.evil",
-        "from" -> "alice@domain.tld",
-        "from" -> "bob@domain.tld")
+        "sender" -> Right("carol@domain.tld"),
+        "sender" -> Right("carol@domain.tld.evil"),
+        "from" -> Right("alice@domain.tld"),
+        "from" -> Right("bob@domain.tld"))
 
   @Test
   def senderAddressesShouldReadEverySenderField(): Unit =
     assertThat(senderAddresses(rawEightBitMessage("From: alice@domain.tld\r\nSender: alice@domain.tld\r\nSender: bob@domain.tld")).asJava)
       .containsExactly(
-        "sender" -> "alice@domain.tld",
-        "sender" -> "bob@domain.tld",
-        "from" -> "alice@domain.tld")
+        "sender" -> Right("alice@domain.tld"),
+        "sender" -> Right("bob@domain.tld"),
+        "from" -> Right("alice@domain.tld"))
 
   @Test
   def senderAddressesShouldReadTheSenderAsFromWhenFromIsMissing(): Unit =
     assertThat(senderAddresses(rawEightBitMessage("Sender: <alice@domain.tld> bob@domain.tld")).asJava)
       .containsExactly(
-        "sender" -> "alice@domain.tld",
-        "sender" -> "bob@domain.tld",
-        "from" -> "alice@domain.tld",
-        "from" -> "bob@domain.tld")
+        "sender" -> Right("alice@domain.tld"),
+        "sender" -> Right("bob@domain.tld"),
+        "from" -> Right("alice@domain.tld"),
+        "from" -> Right("bob@domain.tld"))
+
+  @Test
+  def senderAddressesShouldReturnAFieldThatDoesNotParse(): Unit =
+    assertThat(senderAddresses(rawEightBitMessage("From: alice@domain.tld\r\nSender: alice@domain.tld>")).asJava)
+      .containsExactly(
+        "sender" -> Left("alice@domain.tld>"),
+        "from" -> Right("alice@domain.tld"))
 
   // Jakarta Mail reads a raw 8-bit header as one char per byte
   private def rawEightBitMessage(headers: String): MimeMessage =

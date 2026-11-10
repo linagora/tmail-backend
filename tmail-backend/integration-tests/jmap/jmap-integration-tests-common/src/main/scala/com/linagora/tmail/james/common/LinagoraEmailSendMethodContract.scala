@@ -1139,6 +1139,13 @@ trait LinagoraEmailSendMethodContract {
     assertSendRejected(server, Json.obj("from" -> Json.arr(Json.obj("email" -> s"<${bobUsername.asString}> ${andreUsername.asString}"))),
       Some(validSenderEnvelope), "forbiddenFrom", Seq("from"))
 
+  @Test
+  def emailSendShouldRejectASenderThatDoesNotParse(server: GuiceJamesServer): Unit =
+    assertSendRejected(server, Json.obj(
+      "from" -> Json.arr(Json.obj("email" -> bobUsername.asString)),
+      "sender" -> Json.arr(Json.obj("email" -> s"${bobUsername.asString}>"))),
+      Some(validSenderEnvelope), "forbiddenFrom", Seq("sender"))
+
   private def assertMissingFromRejected(server: GuiceJamesServer, headers: JsObject, envelope: scala.Option[JsObject]): Unit = {
     assertSendRejected(server, headers, envelope, "invalidEmail", Seq("from"))
 
