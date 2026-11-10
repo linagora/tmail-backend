@@ -116,7 +116,7 @@ and the LLM is told to try it first.
 |===
 | Argument | Type | Description
 
-| `mailboxId` | string | Mailbox to list. The Inbox by default.
+| `mailboxId` | string | Mailbox to list, as `list_mailboxes` gives it. The Inbox when empty.
 | `page` | integer | Page to return, from 1 (default) to 50.
 | `limit` | integer | Emails per page: 10 by default, at most 20.
 |===
