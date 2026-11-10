@@ -47,7 +47,9 @@ public class ZipUtil {
     private static final String DEFAULT_ENTRY_NAME = "noname";
     private static final Splitter PATH_SEPARATORS = Splitter.on(CharMatcher.anyOf("/\\"));
     private static final CharMatcher CONTROL_CHARACTERS = CharMatcher.javaIsoControl();
-    private static final Pattern DRIVE_PREFIX = Pattern.compile("^([a-zA-Z]:\\s*)+");
+    // possessive: each repetition is deterministic, so it strips the same prefix without the recursion per
+    // repetition that overflows the stack on a long one
+    private static final Pattern DRIVE_PREFIX = Pattern.compile("^(?:[a-zA-Z]:\\s*+)++");
     // Windows silently drops trailing whitespace and dots from file names
     private static final CharMatcher TRAILING_CHARACTERS_TO_STRIP = CharMatcher.whitespace().or(CharMatcher.is('.'));
     // Leaves room, under the usual 255 bytes file system limit, for the "_<n>" suffix added by updateEntryName

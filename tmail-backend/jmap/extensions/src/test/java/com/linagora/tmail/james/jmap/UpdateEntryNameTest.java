@@ -61,6 +61,11 @@ public class UpdateEntryNameTest {
     }
 
     @Test
+    void sanitizeEntryNameShouldStripALongDrivePrefix() {
+        assertThat(ZipUtil.sanitizeEntryName("C: ".repeat(100_000) + "a.pdf")).isEqualTo("a.pdf");
+    }
+
+    @Test
     void sanitizeEntryNameShouldNotSplitSurrogatePairs() {
         String sanitized = ZipUtil.sanitizeEntryName("😀".repeat(1_000) + ".pdf");
 
