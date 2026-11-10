@@ -93,7 +93,7 @@ class DomainSignatureTemplateApplyService @Inject()(
           textSignature = Some(IdentityTextSignatureUpdate(TextSignature(interpolated.textSignature()))),
           htmlSignature = Some(IdentityHtmlSignatureUpdate(HtmlSignature(interpolated.htmlSignature()))))
         Mono.from(identityRepository.update(user, identity.id, updateRequest))
-          .then(Mono.just(ApplyResult.APPLIED))
+          .`then`(Mono.just(ApplyResult.APPLIED))
       }
 
   private def fetchLdapAttributes(username: Username): java.util.Map[String, String] = {

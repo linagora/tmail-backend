@@ -20,6 +20,7 @@ package com.linagora.tmail.team
 
 import java.util.stream.Stream
 
+import com.linagora.tmail.team.TeamMailboxNameLiterals.given
 import com.linagora.tmail.team.TeamMailboxRepositoryContract.DOMAIN_1
 import com.linagora.tmail.team.TeamMemberRole.ManagerRole
 import eu.timepit.refined.auto._

@@ -82,7 +82,7 @@ trait LinagoraFilterStateChangeTest {
                  |	"using": ["com:linagora:params:jmap:filter"],
                  |	"methodCalls": [
                  |		["Filter/set", {
-                 |			"accountId": "$generateAccountIdAsString",
+                 |			"accountId": "${generateAccountIdAsString()}",
                  |			"update": {
                  |				"singleton": [{
                  |					"id": "1",
@@ -94,7 +94,7 @@ trait LinagoraFilterStateChangeTest {
                  |					},
                  |					"action": {
                  |						"appendIn": {
-                 |							"mailboxIds": ["$generateMailboxIdForUser"]
+                 |							"mailboxIds": ["${generateMailboxIdForUser()}"]
                  |						}
                  |					}
                  |				}]
@@ -138,7 +138,7 @@ trait LinagoraFilterStateChangeTest {
                  |	"using": ["com:linagora:params:jmap:filter"],
                  |	"methodCalls": [
                  |		["Filter/set", {
-                 |			"accountId": "$generateAccountIdAsString",
+                 |			"accountId": "${generateAccountIdAsString()}",
                  |			"update": {
                  |				"singleton": [{
                  |					"id": "1",
@@ -150,7 +150,7 @@ trait LinagoraFilterStateChangeTest {
                  |					},
                  |					"action": {
                  |						"appendIn": {
-                 |							"mailboxIds": ["$generateMailboxIdForUser"]
+                 |							"mailboxIds": ["${generateMailboxIdForUser()}"]
                  |						}
                  |					}
                  |				}]

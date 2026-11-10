@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.json
 
+import com.linagora.tmail.james.jmap.json.ValueCodecs.{valueFormat, valueReads, valueWrites}
 import com.linagora.tmail.james.jmap.model.{MailboxClearRequest, MailboxClearResponse}
 import org.apache.james.jmap.core.SetError
 import org.apache.james.jmap.core.SetError.SetErrorDescription
@@ -25,7 +26,7 @@ import org.apache.james.jmap.mail.UnparsedMailboxId
 import play.api.libs.json._
 
 class MailboxClearSerializer {
-  private implicit val unparsedMailboxIdReads: Reads[UnparsedMailboxId] = Json.valueReads[UnparsedMailboxId]
+  private implicit val unparsedMailboxIdReads: Reads[UnparsedMailboxId] = valueReads[UnparsedMailboxId]
   private implicit val mailboxClearRequestReads: Reads[MailboxClearRequest] = Json.reads[MailboxClearRequest]
 
   private implicit val setErrorDescriptionWrites: Writes[SetErrorDescription] = Json.valueWrites[SetErrorDescription]

@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.method
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.json.LabelSerializer
 import com.linagora.tmail.james.jmap.label.LabelChangesPopulate
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_LABEL

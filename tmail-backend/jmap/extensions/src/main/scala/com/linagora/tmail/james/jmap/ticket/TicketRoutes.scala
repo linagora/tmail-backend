@@ -25,6 +25,7 @@ import java.util.stream
 
 import com.google.inject.multibindings.{Multibinder, ProvidesIntoSet}
 import com.google.inject.{AbstractModule, Provides, Scopes, Singleton}
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration
 import com.linagora.tmail.james.jmap.json.TicketSerializer
 import com.linagora.tmail.james.jmap.ticket.TicketRoutes.{ENDPOINT, LOGGER, TICKET_PARAM}

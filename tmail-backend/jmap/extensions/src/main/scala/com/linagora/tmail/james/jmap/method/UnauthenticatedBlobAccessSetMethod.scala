@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.method
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.blob.UnauthenticatedBlobDownloadTokenRepository
 import com.linagora.tmail.james.jmap.json.UnauthenticatedBlobAccessSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_UNAUTHENTICATED_BLOB_ACCESS

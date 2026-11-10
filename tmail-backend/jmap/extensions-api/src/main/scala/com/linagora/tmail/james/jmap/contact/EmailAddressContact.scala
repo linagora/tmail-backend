@@ -211,17 +211,17 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
     userContactEntries(accountId)
       .filter { case (_, contact) => contact.fields.address == mailAddress }
       .doOnNext { case (key, _) => userContactList.remove(accountId, key) }
-      .`then`()
+      .thenMany(SMono.empty)
 
   override def delete(accountId: AccountId, mailAddress: MailAddress, addressBookId: String): Publisher[Void] =
     userContactEntries(accountId)
       .filter { case (pair, contact) => contact.fields.address == mailAddress && pair.getValue.contains(addressBookId) }
       .doOnNext { case (key, _) => userContactList.remove(accountId, key) }
-      .`then`()
+      .thenMany(SMono.empty)
 
   override def delete(domain: Domain, mailAddress: MailAddress): Publisher[Void] =
     SMono.fromCallable(() => domainContactList.remove(domain, mailAddress))
-      .`then`()
+      .`then`(SMono.empty)
 
   override def autoComplete(accountId: AccountId, part: String, limit: Int): Publisher[EmailAddressContact] = {
     val maybeDomain: Option[Domain] = Username.of(accountId.getIdentifier).getDomainPart.toScala

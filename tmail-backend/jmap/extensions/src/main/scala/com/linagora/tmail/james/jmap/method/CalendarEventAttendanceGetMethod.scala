@@ -1,5 +1,6 @@
 package com.linagora.tmail.james.jmap.method
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.json.CalendarEventAttendanceSerializer
 import com.linagora.tmail.james.jmap.method.CalendarEventAttendanceGetRequest.MAXIMUM_NUMBER_OF_BLOB_IDS
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_CALENDAR

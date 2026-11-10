@@ -26,6 +26,7 @@ import java.util.concurrent.atomic.AtomicReference
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Inject}
 import com.linagora.tmail.james.common.probe.JmapGuiceCustomProbe
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.team.TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE
 import com.linagora.tmail.team.{TeamMailbox, TeamMailboxName, TeamMailboxProbe}
 import eu.timepit.refined.auto._

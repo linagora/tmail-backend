@@ -38,8 +38,8 @@ class UploadFromUrlCapabilityTest {
     val capability = new UploadFromUrlCapabilityFactory(configuration)
       .create(UrlPrefixes(new URI("https://jmap.example.com"), new URI("wss://jmap.example.com")), Username.of("bob@example.com"))
 
-    assertThat(capability.identifier()).isEqualTo(LINAGORA_UPLOAD_FROM_URL)
-    assertThat(capability.properties().jsonify().toString())
+    assertThat(capability.identifier).isEqualTo(LINAGORA_UPLOAD_FROM_URL)
+    assertThat(capability.properties.jsonify().toString())
       .isEqualTo("{\"uploadUrl\":\"https://jmap.example.com/upload-from-url/{accountId}\",\"allowedSources\":[\"https://drive.example.com\",\"https://%-drive.twake.example.com\"]}")
   }
 
@@ -48,7 +48,7 @@ class UploadFromUrlCapabilityTest {
     val capability = new UploadFromUrlCapabilityFactory(UploadFromUrlConfiguration.DISABLED.copy(enabled = true))
       .create(UrlPrefixes(new URI("https://jmap.example.com"), new URI("wss://jmap.example.com")), Username.of("bob@example.com"))
 
-    assertThat(capability.properties().jsonify().toString())
+    assertThat(capability.properties.jsonify().toString())
       .isEqualTo("{\"uploadUrl\":\"https://jmap.example.com/upload-from-url/{accountId}\"}")
   }
 

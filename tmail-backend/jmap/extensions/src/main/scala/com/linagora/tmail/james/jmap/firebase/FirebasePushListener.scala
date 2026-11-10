@@ -128,7 +128,7 @@ class FirebasePushListener @Inject()(subscriptionRepository: FirebaseSubscriptio
       urgency(stateChange))
 
   private def evaluateKey(accountId: AccountId, typeName: TypeName): String =
-    accountId.id.value + ":" + typeName.asString()
+    accountId.id.value + ":" + typeName.asString
 
   private def urgency(filterStateChange: StateChange): FirebasePushUrgency =
     if (containsEmailDelivery(filterStateChange)) {

@@ -21,6 +21,7 @@ package com.linagora.tmail.james.jmap.method
 import java.time.Clock
 
 import com.google.inject.Inject
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionHelper.isInThePast
 import com.linagora.tmail.james.jmap.firebase.FirebaseSubscriptionRepository
 import com.linagora.tmail.james.jmap.json.FirebaseSubscriptionSerializer

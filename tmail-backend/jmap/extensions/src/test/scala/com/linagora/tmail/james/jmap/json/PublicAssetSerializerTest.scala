@@ -20,6 +20,7 @@ package com.linagora.tmail.james.jmap.json
 
 import java.util.UUID
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.json.PublicAssetSerializer.PublicAssetSetUpdateReads
 import com.linagora.tmail.james.jmap.publicAsset.{ImageContentType, PublicAssetCreationId, PublicAssetCreationResponse, PublicAssetId, PublicAssetSetCreationRequest, PublicAssetSetRequest, PublicAssetSetResponse, PublicAssetUpdateResponse, PublicURI, UnparsedPublicAssetId, ValidatedPublicAssetPatchObject}
 import eu.timepit.refined.auto._

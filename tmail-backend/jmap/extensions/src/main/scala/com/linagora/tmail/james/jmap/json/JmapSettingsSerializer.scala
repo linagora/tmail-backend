@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.json
 
+import com.linagora.tmail.james.jmap.json.ValueCodecs.{valueFormat, valueReads, valueWrites}
 import com.linagora.tmail.james.jmap.model.JmapSettingsObject.JmapSettingsId
 import com.linagora.tmail.james.jmap.model.{JmapSettingsGet, JmapSettingsObject, JmapSettingsResponse, SettingsSetError, SettingsSetRequest, SettingsSetResponse, SettingsSetUpdateRequest, SettingsUpdateResponse}
 import com.linagora.tmail.james.jmap.settings.{JmapSettingsKey, JmapSettingsUpsertRequest, JmapSettingsValue}
@@ -28,7 +29,7 @@ import play.api.libs.json.{JsError, JsPath, JsResult, JsString, JsSuccess, JsVal
 
 object JmapSettingsSerializer {
 
-  private implicit val stateWrites: Writes[UuidState] = Json.valueWrites[UuidState]
+  private implicit val stateWrites: Writes[UuidState] = valueWrites[UuidState]
 
   private implicit val jmapSettingsValueWrites: Writes[JmapSettingsValue] = json => Json.toJson(json.value)
   private implicit val mapSettings: Writes[Map[JmapSettingsKey, JmapSettingsValue]] =
@@ -53,14 +54,14 @@ object JmapSettingsSerializer {
   private implicit val settingsMapUpdateRequestReads: Reads[Map[JmapSettingsKey, JmapSettingsValue]] =
     Reads.mapReads[JmapSettingsKey, JmapSettingsValue] {keyString => jmapSettingsKeyReads.reads(JsString(keyString))}
   private implicit val jmapSettingsUpsertRequestReads: Reads[JmapSettingsUpsertRequest] = Json.reads[JmapSettingsUpsertRequest]
-  private implicit val settingsSetUpdateRequestReads: Reads[SettingsSetUpdateRequest] = Json.valueReads[SettingsSetUpdateRequest]
+  private implicit val settingsSetUpdateRequestReads: Reads[SettingsSetUpdateRequest] = valueReads[SettingsSetUpdateRequest]
   private implicit val settingsSetRequestReads: Reads[SettingsSetRequest] = Json.reads[SettingsSetRequest]
 
-  private implicit val settingsSetUpdateResponseWrites: Writes[SettingsUpdateResponse] = Json.valueWrites[SettingsUpdateResponse]
+  private implicit val settingsSetUpdateResponseWrites: Writes[SettingsUpdateResponse] = valueWrites[SettingsUpdateResponse]
   private implicit val settingsSetErrorWrites: Writes[SettingsSetError] = Json.writes[SettingsSetError]
   private implicit val settingsSetResponseWrites: Writes[SettingsSetResponse] = Json.writes[SettingsSetResponse]
 
-  val upsertRequestValueReads: Reads[JmapSettingsUpsertRequest] = Json.valueReads[JmapSettingsUpsertRequest]
+  val upsertRequestValueReads: Reads[JmapSettingsUpsertRequest] = valueReads[JmapSettingsUpsertRequest]
 
   def deserializeGetRequest(input: JsValue): JsResult[JmapSettingsGet] = Json.fromJson[JmapSettingsGet](input)
   def deserializeSetRequest(input: JsValue): JsResult[SettingsSetRequest] = Json.fromJson[SettingsSetRequest](input)

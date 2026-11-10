@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.json
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import eu.timepit.refined.auto._
 import org.apache.james.jmap.core.{AccountId, UuidState}
 import org.apache.james.mailbox.inmemory.{InMemoryId, InMemoryMessageId}

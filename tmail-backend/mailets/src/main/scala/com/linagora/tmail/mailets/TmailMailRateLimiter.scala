@@ -20,11 +20,13 @@ package com.linagora.tmail.mailets
 
 import java.time.Duration
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.mailets.MailLimit.UNLIMITED
 import eu.timepit.refined.auto._
 import org.apache.james.core.Username
 import org.apache.james.rate.limiter.api.AllowedQuantity.AllowedQuantity
 import org.apache.james.rate.limiter.api.Increment.Increment
+import org.apache.james.rate.limiter.api.Increment.given
 import org.apache.james.rate.limiter.api.{AllowedQuantity, RateLimiter, RateLimiterFactory, RateLimitingKey, RateLimitingResult, Rule, Rules}
 import org.apache.james.transport.mailets.KeyPrefix
 import org.reactivestreams.Publisher

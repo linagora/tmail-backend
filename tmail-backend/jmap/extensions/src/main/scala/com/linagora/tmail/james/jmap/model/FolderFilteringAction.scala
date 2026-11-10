@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.model
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.json.FolderFilteringActionSerializer
 import com.linagora.tmail.james.jmap.method.AsEitherRequest
 import eu.timepit.refined.auto._

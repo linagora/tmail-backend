@@ -24,6 +24,7 @@ import java.time.{Duration, ZonedDateTime}
 import com.google.common.collect.ImmutableList
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Provides, Singleton}
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.json.EmailRecoveryActionSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_MESSAGE_VAULT
 import com.linagora.tmail.james.jmap.method.EmailRecoveryActionConfiguration.{DEFAULT_MAX_EMAIL_RECOVERY_PER_REQUEST, DEFAULT_RESTORATION_HORIZON}

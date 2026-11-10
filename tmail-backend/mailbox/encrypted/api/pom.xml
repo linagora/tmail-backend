@@ -85,11 +85,11 @@
         </dependency>
         <dependency>
             <groupId>com.typesafe.play</groupId>
-            <artifactId>play-json_${scala.base}</artifactId>
+            <artifactId>play-json_${scala.binary}</artifactId>
         </dependency>
         <dependency>
             <groupId>io.projectreactor</groupId>
-            <artifactId>reactor-scala-extensions_${scala.base}</artifactId>
+            <artifactId>reactor-scala-extensions_2.13</artifactId>
         </dependency>
         <dependency>
             <groupId>net.javacrumbs.json-unit</groupId>

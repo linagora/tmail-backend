@@ -18,29 +18,30 @@
 
 package com.linagora.tmail.james.jmap.json
 
+import com.linagora.tmail.james.jmap.json.ValueCodecs.{valueFormat, valueReads, valueWrites}
 import com.linagora.tmail.james.jmap.model.{Forward, ForwardGetRequest, ForwardId, ForwardGetResponse, ForwardIds, ForwardNotFound, ForwardSetError, ForwardSetPatchObject, ForwardSetRequest, ForwardSetResponse, ForwardSetUpdateResponse, ForwardUpdateRequest, Forwards, LocalCopy, UnparsedForwardId}
 import org.apache.james.jmap.core.{Properties, UuidState}
 import play.api.libs.json._
 
 object ForwardSerializer {
-  private implicit val unparsedForwardIdWrites: Writes[UnparsedForwardId] = Json.valueWrites[UnparsedForwardId]
-  private implicit val unparsedForwardIdReads: Reads[UnparsedForwardId] = Json.valueReads[UnparsedForwardId]
-  private implicit val forwardIdsReads: Reads[ForwardIds] = Json.valueReads[ForwardIds]
+  private implicit val unparsedForwardIdWrites: Writes[UnparsedForwardId] = valueWrites[UnparsedForwardId]
+  private implicit val unparsedForwardIdReads: Reads[UnparsedForwardId] = valueReads[UnparsedForwardId]
+  private implicit val forwardIdsReads: Reads[ForwardIds] = valueReads[ForwardIds]
 
   private implicit val forwardGetRequestReads: Reads[ForwardGetRequest] = Json.reads[ForwardGetRequest]
 
   private implicit val localCopyFormats: Format[LocalCopy] = Json.valueFormat[LocalCopy]
-  private implicit val forwardWrites: Writes[Forward] = Json.valueWrites[Forward]
+  private implicit val forwardWrites: Writes[Forward] = valueWrites[Forward]
   private implicit val forwardsWrites: Writes[Forwards] = Json.writes[Forwards]
 
   private implicit val forwardNotFoundWrites: Writes[ForwardNotFound] =
     notFound => JsArray(notFound.value.toList.map(id => JsString(id.id.value)))
 
-  private implicit val stateWrites: Writes[UuidState] = Json.valueWrites[UuidState]
+  private implicit val stateWrites: Writes[UuidState] = valueWrites[UuidState]
 
   private implicit val forwardGetResponseWrites: Writes[ForwardGetResponse] = Json.writes[ForwardGetResponse]
 
-  private implicit val forwardReads: Reads[Forward] = Json.valueReads[Forward]
+  private implicit val forwardReads: Reads[Forward] = valueReads[Forward]
   private implicit val forwardSetPatchObjectReads: Reads[ForwardSetPatchObject] = {
     case jsObject: JsObject => JsSuccess(ForwardSetPatchObject(jsObject))
     case _ => JsError("ForwardSetPatchObject needs to be represented by a JsObject")
@@ -52,7 +53,7 @@ object ForwardSerializer {
       .flatMap(forwardUpdateRequestPropertiesReads.reads)
     case _ => JsError("ForwardUpdateRequest needs to be represented by a JsObject")
   }
-  private implicit val forwardSetUpdateResponseWrites: Writes[ForwardSetUpdateResponse] = Json.valueWrites[ForwardSetUpdateResponse]
+  private implicit val forwardSetUpdateResponseWrites: Writes[ForwardSetUpdateResponse] = valueWrites[ForwardSetUpdateResponse]
   private implicit val forwardSetErrorWrites: Writes[ForwardSetError] = Json.writes[ForwardSetError]
   private implicit val forwardSetResponseWrites: Writes[ForwardSetResponse] = Json.writes[ForwardSetResponse]
 

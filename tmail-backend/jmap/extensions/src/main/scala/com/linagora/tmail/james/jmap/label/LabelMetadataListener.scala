@@ -54,12 +54,12 @@ class LabelMetadataListener @Inject()(mailboxManager: MailboxManager,
   override def isHandling(event: Event): Boolean = event.isInstanceOf[TmailLabelEvent]
 
   override def reactiveEvent(event: Event): Publisher[Void] =
-    event match {
+    (event match {
       case e: LabelCreated => upsertLabelAnnotations(e.username, e.label)
       case e: LabelUpdated => upsertLabelAnnotations(e.username, e.updatedLabel)
       case e: LabelDestroyed => deleteLabelAnnotations(e.username, e.labelId)
       case _ => SMono.empty[Unit]
-    }
+    }).`then`(SMono.empty)
 
   private def getOrProvisionInbox(username: Username, session: MailboxSession): SMono[MailboxId] =
     SMono.fromPublisher(mailboxManager.getMailboxReactive(MailboxPath.inbox(username), session))

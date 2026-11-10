@@ -19,6 +19,7 @@
 package com.linagora.tmail.james.jmap.method
 
 import com.google.inject.Inject
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.json.{LabelChangesSerializer => Serializer}
 import com.linagora.tmail.james.jmap.label.LabelChangeRepository
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_LABEL

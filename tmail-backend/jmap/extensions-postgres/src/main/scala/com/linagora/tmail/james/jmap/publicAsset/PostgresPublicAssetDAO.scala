@@ -94,25 +94,25 @@ class PostgresPublicAssetDAO(postgresExecutor: PostgresExecutor, blobIdFactory: 
   def selectAllAssets(username: Username): SFlux[PublicAssetMetadata] =
     SFlux(postgresExecutor.executeRows(dslContext => Flux.from(dslContext.selectFrom(TABLE_NAME)
         .where(USER.eq(username.asString()))))
-      .map(toMetadata(_)))
+      .map[PublicAssetMetadata](toMetadata(_)))
 
   def selectAllAssetsOrderByIdAsc(username: Username): SFlux[PublicAssetMetadata] =
     SFlux(postgresExecutor.executeRows(dslContext => Flux.from(dslContext.selectFrom(TABLE_NAME)
         .where(USER.eq(username.asString()))
         .orderBy(ASSET_ID.asc())))
-      .map(toMetadata(_)))
+      .map[PublicAssetMetadata](toMetadata(_)))
 
   def selectAsset(username: Username, assetId: PublicAssetId): SMono[PublicAssetMetadata] =
     SMono(postgresExecutor.executeRow(dslContext => Mono.from(dslContext.selectFrom(TABLE_NAME)
         .where(USER.eq(username.asString()))
         .and(ASSET_ID.eq(assetId.value))))
-      .map(toMetadata(_)))
+      .map[PublicAssetMetadata](toMetadata(_)))
 
   def selectAssets(username: Username, ids: Set[PublicAssetId]): SFlux[PublicAssetMetadata] =
     SFlux(postgresExecutor.executeRows(dslContext => Flux.from(dslContext.selectFrom(TABLE_NAME)
         .where(USER.eq(username.asString()))
         .and(ASSET_ID.in(CollectionConverters.asJava(ids.map(_.value))))))
-      .map(toMetadata(_)))
+      .map[PublicAssetMetadata](toMetadata(_)))
 
   def selectAllBlobIds(): SFlux[BlobId] =
     SFlux(postgresExecutor.executeRows(dslContext => Flux.from(dslContext.select(BLOB_ID)
@@ -137,7 +137,7 @@ class PostgresPublicAssetDAO(postgresExecutor: PostgresExecutor, blobIdFactory: 
   private def toMetadata(record: jooq.Record) =
     PublicAssetMetadata(id = PublicAssetId(record.get(ASSET_ID)),
       publicURI = PublicURI.fromString(record.get(PUBLIC_URI)).toOption.get,
-      size = Size.sanitizeSize(record.get(SIZE)),
+      size = Size.sanitizeSize(record.get[java.lang.Long](SIZE)),
       contentType = ImageContentType.from(record.get(CONTENT_TYPE)).toOption.get,
       blobId = blobIdFactory.parse(record.get(BLOB_ID)),
       identityIds = record.get(IDENTITIES_IDS)

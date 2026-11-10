@@ -31,6 +31,7 @@ import net.fortuna.ical4j.model.{Calendar, Component}
 import org.apache.james.core.MailAddress
 import org.assertj.core.api.Assertions.{assertThat, assertThatCode, assertThatThrownBy}
 import org.assertj.core.api.SoftAssertions.assertSoftly
+import org.assertj.core.api.ThrowableAssert
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.{Arguments, MethodSource, ValueSource}
@@ -291,7 +292,7 @@ class CalendarEventReplyGeneratorTest {
         |END:VCALENDAR
         |""".stripMargin.replace("\n", "\r\n").getBytes(StandardCharsets.UTF_8)))
 
-    assertThatThrownBy(() => testee.generate(withoutMethod, AttendeeReply(new MailAddress("bob@domain.tld"), PartStat.ACCEPTED)))
+    assertThatThrownBy(() => testee.generate(withoutMethod, AttendeeReply(new MailAddress("bob@domain.tld"), PartStat.ACCEPTED))).asInstanceOf[ThrowableAssert[Throwable]]
       .isInstanceOf(classOf[IllegalArgumentException])
       .hasMessage("The method of the event request must be REQUEST")
   }

@@ -133,7 +133,7 @@ class ReceivedRateLimiting @Inject()(val rateLimitingRepository: RateLimitingRep
         Using(mail.duplicate())(newMail => {
           newMail.setRecipients(ImmutableList.copyOf(rateLimitedRecipients.asJava))
           getMailetContext.sendMail(newMail, exceededProcessor)
-        })(LifecycleUtil.dispose(_))
+        })(using (duplicate: Mail) => LifecycleUtil.dispose(duplicate))
     }
   }
 

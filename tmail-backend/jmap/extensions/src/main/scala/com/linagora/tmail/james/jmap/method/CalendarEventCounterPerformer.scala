@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.method
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier.{ImplicitCalendar, NoUpdateRequiredException}
 import com.linagora.tmail.james.jmap.calendar._
 import com.linagora.tmail.james.jmap.model._

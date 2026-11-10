@@ -90,16 +90,16 @@ class CassandraFirebaseSubscriptionRepository @Inject()(dao: CassandraFirebaseSu
       .switchIfEmpty(SMono.error(FirebaseSubscriptionNotFoundException(id)))
       .map(_.withTypes(CollectionConverters.asScala(types).toSeq))
       .flatMap(dao.insert(username, _))
-      .`then`()
+      .`then`(SMono.empty)
 
   override def revoke(username: Username, id: FirebaseSubscriptionId): Publisher[Void] =
     SMono.fromPublisher(retrieveByFirebaseSubscriptionId(username, id))
       .flatMap(subscription => dao.deleteOne(username, subscription.deviceClientId.value))
-      .`then`()
+      .`then`(SMono.empty)
 
   override def revoke(username: Username): Publisher[Void] =
     SMono.fromPublisher(dao.deleteAllSubscriptions(username))
-      .`then`()
+      .`then`(SMono.empty)
 
   override def get(username: Username, ids: util.Set[FirebaseSubscriptionId]): Publisher[FirebaseSubscription] =
     dao.selectAll(username)

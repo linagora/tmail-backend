@@ -21,10 +21,12 @@ package com.linagora.tmail.james.jmap.ticket
 import org.junit.jupiter.api.BeforeEach
 
 class MemoryTicketStoreTest extends TicketStoreContract {
-  var testee: MemoryTicketStore = null;
+  var store: MemoryTicketStore = null;
+
+  override def testee(): TicketStore = store
 
   @BeforeEach
   def setUp(): Unit = {
-    testee = new MemoryTicketStore()
+    store = new MemoryTicketStore()
   }
 }

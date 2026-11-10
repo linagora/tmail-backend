@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.json
 
+import com.linagora.tmail.james.jmap.json.ValueCodecs.{valueFormat, valueReads, valueWrites}
 import com.linagora.tmail.james.jmap.method.{ApiKey, AppId, AuthDomain, DatabaseUrl, FirebaseCapabilityProperties, MessagingSenderId, ProjectId, StorageBucket, VapidPublicKey}
 import com.linagora.tmail.james.jmap.model.{DeviceClientId, FirebaseSubscription, FirebaseSubscriptionCreation, FirebaseSubscriptionCreationId, FirebaseSubscriptionCreationParseException, FirebaseSubscriptionCreationRequest, FirebaseSubscriptionCreationResponse, FirebaseSubscriptionExpiredTime, FirebaseSubscriptionGetRequest, FirebaseSubscriptionGetResponse, FirebaseSubscriptionId, FirebaseSubscriptionIds, FirebaseSubscriptionPatchObject, FirebaseSubscriptionSetRequest, FirebaseSubscriptionSetResponse, FirebaseSubscriptionUpdateResponse, FirebaseToken, UnparsedFirebaseSubscriptionId}
 import eu.timepit.refined.collection.NonEmpty
@@ -32,25 +33,25 @@ import org.apache.james.jmap.json.mapWrites
 import play.api.libs.json._
 
 object FirebaseSubscriptionSerializer {
-  private implicit val apiKeyWrites: Writes[ApiKey] = Json.valueWrites[ApiKey]
-  private implicit val apiIdWrites: Writes[AppId] = Json.valueWrites[AppId]
-  private implicit val messagingSenderIdWrites: Writes[MessagingSenderId] = Json.valueWrites[MessagingSenderId]
-  private implicit val projectIdWrites: Writes[ProjectId] = Json.valueWrites[ProjectId]
-  private implicit val databaseUrlWrites: Writes[DatabaseUrl] = Json.valueWrites[DatabaseUrl]
-  private implicit val storageBucketWrites: Writes[StorageBucket] = Json.valueWrites[StorageBucket]
-  private implicit val authDomainWrites: Writes[AuthDomain] = Json.valueWrites[AuthDomain]
-  private implicit val vapidPublicKeyWrites: Writes[VapidPublicKey] = Json.valueWrites[VapidPublicKey]
+  private implicit val apiKeyWrites: Writes[ApiKey] = valueWrites[ApiKey]
+  private implicit val apiIdWrites: Writes[AppId] = valueWrites[AppId]
+  private implicit val messagingSenderIdWrites: Writes[MessagingSenderId] = valueWrites[MessagingSenderId]
+  private implicit val projectIdWrites: Writes[ProjectId] = valueWrites[ProjectId]
+  private implicit val databaseUrlWrites: Writes[DatabaseUrl] = valueWrites[DatabaseUrl]
+  private implicit val storageBucketWrites: Writes[StorageBucket] = valueWrites[StorageBucket]
+  private implicit val authDomainWrites: Writes[AuthDomain] = valueWrites[AuthDomain]
+  private implicit val vapidPublicKeyWrites: Writes[VapidPublicKey] = valueWrites[VapidPublicKey]
   val firebaseCapabilityWrites: OWrites[FirebaseCapabilityProperties] = Json.writes[FirebaseCapabilityProperties]
 }
 
 class FirebaseSubscriptionSerializer @Inject()(typeStateFactory: TypeStateFactory) {
-  private implicit val unparsedFirebaseSubscriptionIdReads: Reads[UnparsedFirebaseSubscriptionId] = Json.valueReads[UnparsedFirebaseSubscriptionId]
+  private implicit val unparsedFirebaseSubscriptionIdReads: Reads[UnparsedFirebaseSubscriptionId] = valueReads[UnparsedFirebaseSubscriptionId]
 
   private implicit val deviceClientIdFormat: Format[DeviceClientId] = Json.valueFormat[DeviceClientId]
   private implicit val firebaseDeviceTokenFormat: Format[FirebaseToken] = Json.valueFormat[FirebaseToken]
   private implicit val firebaseSubscriptionExpiredTimeWrites: Writes[FirebaseSubscriptionExpiredTime] = expiredTime => JsString(UTCDate(expiredTime.value)
     .asUTC.format(dateTimeUTCFormatter))
-  private implicit val typeNameWrites: Writes[TypeName] = typeName => JsString(typeName.asString())
+  private implicit val typeNameWrites: Writes[TypeName] = typeName => JsString(typeName.asString)
 
   private implicit val firebaseSubscriptionIdWrites: Writes[FirebaseSubscriptionId] = value => JsString(value.serialize)
 
@@ -64,10 +65,10 @@ class FirebaseSubscriptionSerializer @Inject()(typeStateFactory: TypeStateFactor
 
   private implicit val mapCreationRequestBySubscriptionCreationId: Reads[Map[FirebaseSubscriptionCreationId, JsObject]] =
     Reads.mapReads[FirebaseSubscriptionCreationId, JsObject] { string =>
-      Json.valueReads[FirebaseSubscriptionCreationId].reads(JsString(string))
+      valueReads[FirebaseSubscriptionCreationId].reads(JsString(string))
     }
 
-  private implicit val patchObject: Reads[FirebaseSubscriptionPatchObject] = Json.valueReads[FirebaseSubscriptionPatchObject]
+  private implicit val patchObject: Reads[FirebaseSubscriptionPatchObject] = valueReads[FirebaseSubscriptionPatchObject]
 
   private implicit val mapUpdateRequestBySubscriptionCreationId: Reads[Map[UnparsedFirebaseSubscriptionId, FirebaseSubscriptionPatchObject]] =
     Reads.mapReads[UnparsedFirebaseSubscriptionId, FirebaseSubscriptionPatchObject] { string =>
@@ -78,8 +79,8 @@ class FirebaseSubscriptionSerializer @Inject()(typeStateFactory: TypeStateFactor
   private implicit val subscriptionMapUpdateResponseWrites: Writes[Map[FirebaseSubscriptionId, FirebaseSubscriptionUpdateResponse]] =
     mapWrites[FirebaseSubscriptionId, FirebaseSubscriptionUpdateResponse](_.serialize, firebaseSubscriptionUpdateResponseWrites)
 
-  private implicit val idFormat: Format[UnparsedFirebaseSubscriptionId] = Json.valueFormat[UnparsedFirebaseSubscriptionId]
-  private implicit val firebaseSubscriptionIdsReads: Reads[FirebaseSubscriptionIds] = Json.valueReads[FirebaseSubscriptionIds]
+  private implicit val idFormat: Format[UnparsedFirebaseSubscriptionId] = valueFormat[UnparsedFirebaseSubscriptionId]
+  private implicit val firebaseSubscriptionIdsReads: Reads[FirebaseSubscriptionIds] = valueReads[FirebaseSubscriptionIds]
   private implicit val firebaseSubscriptionGetResponseWrites: Writes[FirebaseSubscriptionGetResponse] = Json.writes[FirebaseSubscriptionGetResponse]
   private implicit val firebaseSubscriptionIdsWrites: Writes[FirebaseSubscriptionIds] = Json.writes[FirebaseSubscriptionIds]
 
@@ -94,7 +95,7 @@ class FirebaseSubscriptionSerializer @Inject()(typeStateFactory: TypeStateFactor
     mapWrites[FirebaseSubscriptionCreationId, FirebaseSubscriptionCreationResponse](_.serialise, firebaseSubscriptionCreationResponseWrites)
 
   private implicit val firebaseSubscriptionSetResponseWrites: OWrites[FirebaseSubscriptionSetResponse] = Json.writes[FirebaseSubscriptionSetResponse]
-  private implicit val subscriptionExpiredTimeReads: Reads[FirebaseSubscriptionExpiredTime] = Json.valueReads[FirebaseSubscriptionExpiredTime]
+  private implicit val subscriptionExpiredTimeReads: Reads[FirebaseSubscriptionExpiredTime] = valueReads[FirebaseSubscriptionExpiredTime]
 
   private implicit val typeNameReads: Reads[TypeName] = {
     case JsString(serializeValue) => typeStateFactory.strictParse(serializeValue)

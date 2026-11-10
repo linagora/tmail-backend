@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.model
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier.NoUpdateRequiredException
 import com.linagora.tmail.james.jmap.{CalendarEventCancelledException, CalendarEventNotFoundException}
 import eu.timepit.refined.auto._

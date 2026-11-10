@@ -17,6 +17,7 @@
  * ****************************************************************** */
 package com.linagora.tmail.jmap.aibot
 
+import com.linagora.tmail.james.jmap.json.ValueCodecs.{valueFormat, valueReads, valueWrites}
 import eu.timepit.refined.api.{RefType, Validate}
 import org.apache.james.jmap.core.AccountId
 import play.api.libs.json.{Format, JsError, JsSuccess, Json, Reads, Writes}
@@ -42,5 +43,5 @@ package object json {
         }
       })
 
-  private[json] implicit val accountIdWrites: Format[AccountId] = Json.valueFormat[AccountId]
+  private[json] implicit val accountIdWrites: Format[AccountId] = valueFormat[AccountId]
 }

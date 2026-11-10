@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.json
 
+import com.linagora.tmail.james.jmap.json.ValueCodecs.{valueFormat, valueReads, valueWrites}
 import com.linagora.tmail.james.jmap.model.{TeamMailboxMemberDTO, TeamMailboxMemberGetRequest, TeamMailboxMemberGetResponse, TeamMailboxMemberName, TeamMailboxMemberRoleDTO, TeamMailboxMemberSetRequest, TeamMailboxMemberSetResponse, TeamMailboxNameDTO}
 import org.apache.james.jmap.core.SetError
 import org.apache.james.jmap.json.mapWrites
@@ -34,15 +35,15 @@ object TeamMailboxMemberSerializer {
 
   private implicit val teamMailboxMemberRoleReads: Reads[TeamMailboxMemberRoleDTO] = Json.reads[TeamMailboxMemberRoleDTO]
   private implicit val teamMailboxMemberRoleOptionReads: Reads[Option[TeamMailboxMemberRoleDTO]] = Reads.optionWithNull[TeamMailboxMemberRoleDTO]
-  private implicit val teamMailboxMemberNameReads: Reads[TeamMailboxMemberName] = Json.valueReads[TeamMailboxMemberName]
+  private implicit val teamMailboxMemberNameReads: Reads[TeamMailboxMemberName] = valueReads[TeamMailboxMemberName]
   private implicit val mapTeamMailboxMemberNameReads: Reads[Map[TeamMailboxMemberName, Option[TeamMailboxMemberRoleDTO]]] =
     Reads.mapReads[TeamMailboxMemberName, Option[TeamMailboxMemberRoleDTO]] { string => teamMailboxMemberNameReads.reads(JsString(string)) }
-  private implicit val teamMailboxNameReads: Reads[TeamMailboxNameDTO] = Json.valueReads[TeamMailboxNameDTO]
+  private implicit val teamMailboxNameReads: Reads[TeamMailboxNameDTO] = valueReads[TeamMailboxNameDTO]
   private implicit val mapTeamMailboxNameToMapReads: Reads[Map[TeamMailboxNameDTO, Map[TeamMailboxMemberName, Option[TeamMailboxMemberRoleDTO]]]] =
     Reads.mapReads[TeamMailboxNameDTO, Map[TeamMailboxMemberName, Option[TeamMailboxMemberRoleDTO]]] { string => teamMailboxNameReads.reads(JsString(string)) }
   private implicit val teamMailboxMemberSetReads: Reads[TeamMailboxMemberSetRequest] = Json.reads[TeamMailboxMemberSetRequest]
 
-  private implicit val teamMailboxNameWrites: Writes[TeamMailboxNameDTO] = Json.valueWrites[TeamMailboxNameDTO]
+  private implicit val teamMailboxNameWrites: Writes[TeamMailboxNameDTO] = valueWrites[TeamMailboxNameDTO]
   private implicit val mapTeamMailboxNameWrites: Writes[Map[TeamMailboxNameDTO, String]] =
     mapWrites[TeamMailboxNameDTO, String](teamMailboxName => teamMailboxNameWrites.writes(teamMailboxName).as[String], _ => JsNull)
   private implicit val mapTeamMailboxNameToSetErrorWrites: Writes[Map[TeamMailboxNameDTO, SetError]] =

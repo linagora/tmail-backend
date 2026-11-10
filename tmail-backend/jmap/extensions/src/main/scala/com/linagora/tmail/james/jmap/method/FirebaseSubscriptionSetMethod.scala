@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.method
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.json.FirebaseSubscriptionSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FIREBASE
 import com.linagora.tmail.james.jmap.method.FirebaseSubscriptionSetCreatePerformer.CreationResults

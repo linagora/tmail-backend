@@ -346,21 +346,21 @@ trait LinagoraEmailSendMethodContract {
           .body()
           .asString()
 
-        assertThatJson(andreResponse)
-          .inPath("methodResponses[0][1].list[0].bodyValues")
-          .isEqualTo(
-            s"""{
-               |    "2": {
-               |        "value": "I have the most brilliant plan. Let me tell you all about it. What we do is, we",
-               |        "isEncodingProblem": false,
-               |        "isTruncated": false
-               |    },
-               |    "3": {
-               |        "value": "$HTML_BODY",
-               |        "isEncodingProblem": false,
-               |        "isTruncated": false
-               |    }
-               |}""".stripMargin)
+      assertThatJson(andreResponse)
+        .inPath("methodResponses[0][1].list[0].bodyValues")
+        .isEqualTo(
+          s"""{
+             |    "2": {
+             |        "value": "I have the most brilliant plan. Let me tell you all about it. What we do is, we",
+             |        "isEncodingProblem": false,
+             |        "isTruncated": false
+             |    },
+             |    "3": {
+             |        "value": "$HTML_BODY",
+             |        "isEncodingProblem": false,
+             |        "isTruncated": false
+             |    }
+             |}""".stripMargin)
       }
   }
 

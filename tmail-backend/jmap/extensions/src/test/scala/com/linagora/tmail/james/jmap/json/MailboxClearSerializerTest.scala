@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.json
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.model.{MailboxClearRequest, MailboxClearResponse}
 import eu.timepit.refined.auto._
 import org.apache.james.jmap.core.SetError.SetErrorDescription

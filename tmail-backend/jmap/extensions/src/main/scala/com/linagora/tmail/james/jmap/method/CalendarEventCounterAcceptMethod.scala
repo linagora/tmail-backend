@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.method
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.json.{CalendarEventCounterSerializer => Serializer}
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_CALENDAR
 import com.linagora.tmail.james.jmap.model.{CalendarEventNotParsable, CalendarEventCounterAcceptRequest => CounterAcceptRequest, CalendarEventCounterAcceptedResponse => Response}

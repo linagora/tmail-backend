@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.json
 
+import com.linagora.tmail.james.jmap.json.ValueCodecs.{valueFormat, valueReads, valueWrites}
 import com.linagora.tmail.james.jmap.model.{EmailRecoveryAction, EmailRecoveryActionCreationId, EmailRecoveryActionCreationRequest, EmailRecoveryActionCreationResponse, EmailRecoveryActionGetRequest, EmailRecoveryActionGetResponse, EmailRecoveryActionIds, EmailRecoveryActionSetRequest, EmailRecoveryActionSetResponse, EmailRecoveryActionUpdatePatchObject, EmailRecoveryActionUpdateRequest, EmailRecoveryActionUpdateResponse, EmailRecoveryActionUpdateStatus, EmailRecoveryDeletedAfter, EmailRecoveryDeletedBefore, EmailRecoveryHasAttachment, EmailRecoveryReceivedAfter, EmailRecoveryReceivedBefore, EmailRecoveryRecipient, EmailRecoverySender, EmailRecoverySubject, ErrorRestoreCount, SuccessfulRestoreCount, UnparsedEmailRecoveryActionId}
 import org.apache.james.jmap.core.{Properties, SetError}
 import org.apache.james.jmap.json.{jsObjectReads, mapWrites}
@@ -27,7 +28,7 @@ import play.api.libs.json._
 
 object EmailRecoveryActionSerializer {
 
-  private implicit val creationIdReads: Reads[EmailRecoveryActionCreationId] = Json.valueReads[EmailRecoveryActionCreationId]
+  private implicit val creationIdReads: Reads[EmailRecoveryActionCreationId] = valueReads[EmailRecoveryActionCreationId]
 
   private implicit val creationIdWrite: Writes[EmailRecoveryActionCreationId] = value => JsString(value.id.value)
 
@@ -43,18 +44,18 @@ object EmailRecoveryActionSerializer {
 
   private implicit val mapUpdateRequest: Reads[Map[UnparsedEmailRecoveryActionId, EmailRecoveryActionUpdatePatchObject]] =
     Reads.mapReads[UnparsedEmailRecoveryActionId, EmailRecoveryActionUpdatePatchObject](
-      string => Json.valueReads[UnparsedEmailRecoveryActionId].reads(JsString(string))) {
+      string => valueReads[UnparsedEmailRecoveryActionId].reads(JsString(string))) {
       emailRecoveryActionUpdatePatchObjectReads
     }
 
-  private implicit val emailRecoveryDeletedBeforeReads: Reads[EmailRecoveryDeletedBefore] = Json.valueReads[EmailRecoveryDeletedBefore]
-  private implicit val emailRecoveryDeletedAfterReads: Reads[EmailRecoveryDeletedAfter] = Json.valueReads[EmailRecoveryDeletedAfter]
-  private implicit val emailRecoveryReceivedBeforeReads: Reads[EmailRecoveryReceivedBefore] = Json.valueReads[EmailRecoveryReceivedBefore]
-  private implicit val emailRecoveryReceivedAfterReads: Reads[EmailRecoveryReceivedAfter] = Json.valueReads[EmailRecoveryReceivedAfter]
+  private implicit val emailRecoveryDeletedBeforeReads: Reads[EmailRecoveryDeletedBefore] = valueReads[EmailRecoveryDeletedBefore]
+  private implicit val emailRecoveryDeletedAfterReads: Reads[EmailRecoveryDeletedAfter] = valueReads[EmailRecoveryDeletedAfter]
+  private implicit val emailRecoveryReceivedBeforeReads: Reads[EmailRecoveryReceivedBefore] = valueReads[EmailRecoveryReceivedBefore]
+  private implicit val emailRecoveryReceivedAfterReads: Reads[EmailRecoveryReceivedAfter] = valueReads[EmailRecoveryReceivedAfter]
   private implicit val emailRecoveryHasAttachmentReads: Reads[EmailRecoveryHasAttachment] = Json.valueReads[EmailRecoveryHasAttachment]
   private implicit val emailRecoverySubjectReads: Reads[EmailRecoverySubject] = Json.valueReads[EmailRecoverySubject]
   private implicit val emailRecoverySenderReads: Reads[EmailRecoverySender] = mailAddressReads.map(EmailRecoverySender)
-  private implicit val emailRecoveryRecipientReads: Reads[EmailRecoveryRecipient] = Json.valueReads[EmailRecoveryRecipient]
+  private implicit val emailRecoveryRecipientReads: Reads[EmailRecoveryRecipient] = valueReads[EmailRecoveryRecipient]
   private implicit val emailRecoveryActionCreationRequestReads: Reads[EmailRecoveryActionCreationRequest] = Json.reads[EmailRecoveryActionCreationRequest]
 
   private implicit val emailRecoveryActionUpdateStatusReads: Reads[EmailRecoveryActionUpdateStatus] = Json.valueReads[EmailRecoveryActionUpdateStatus]
@@ -69,7 +70,7 @@ object EmailRecoveryActionSerializer {
   private implicit def emailRecoveryActionCreationResponseMapWrites(implicit emailRecoveryActionCreationResponseWrites: Writes[EmailRecoveryActionCreationResponse]): Writes[Map[EmailRecoveryActionCreationId, EmailRecoveryActionCreationResponse]] =
     mapWrites[EmailRecoveryActionCreationId, EmailRecoveryActionCreationResponse](_.id.value, emailRecoveryActionCreationResponseWrites)
 
-  private implicit val emailRecoveryActionUpdateResponseWrites: Writes[EmailRecoveryActionUpdateResponse] = Json.valueWrites[EmailRecoveryActionUpdateResponse]
+  private implicit val emailRecoveryActionUpdateResponseWrites: Writes[EmailRecoveryActionUpdateResponse] = valueWrites[EmailRecoveryActionUpdateResponse]
 
   private implicit def emailRecoveryActionUpdateResponseMapWrites: Writes[Map[TaskId, EmailRecoveryActionUpdateResponse]] =
     mapWrites[TaskId, EmailRecoveryActionUpdateResponse](taskId => taskId.asString(), emailRecoveryActionUpdateResponseWrites)
@@ -79,12 +80,12 @@ object EmailRecoveryActionSerializer {
 
   private implicit val emailRecoveryActionSetRequestReads: Reads[EmailRecoveryActionSetRequest] = Json.reads[EmailRecoveryActionSetRequest]
 
-  private implicit val idFormat: Format[UnparsedEmailRecoveryActionId] = Json.valueFormat[UnparsedEmailRecoveryActionId]
-  private implicit val emailRecoveryActionIdsReads: Reads[EmailRecoveryActionIds] = Json.valueReads[EmailRecoveryActionIds]
+  private implicit val idFormat: Format[UnparsedEmailRecoveryActionId] = valueFormat[UnparsedEmailRecoveryActionId]
+  private implicit val emailRecoveryActionIdsReads: Reads[EmailRecoveryActionIds] = valueReads[EmailRecoveryActionIds]
   private implicit val emailRecoveryActionGetRequestReads: Reads[EmailRecoveryActionGetRequest] = Json.reads[EmailRecoveryActionGetRequest]
 
-  private implicit val successfulRestoreCountWrites: Writes[SuccessfulRestoreCount] = Json.valueWrites[SuccessfulRestoreCount]
-  private implicit val errorRestoreCountWrites: Writes[ErrorRestoreCount] = Json.valueWrites[ErrorRestoreCount]
+  private implicit val successfulRestoreCountWrites: Writes[SuccessfulRestoreCount] = valueWrites[SuccessfulRestoreCount]
+  private implicit val errorRestoreCountWrites: Writes[ErrorRestoreCount] = valueWrites[ErrorRestoreCount]
   private implicit val statusWrites: Writes[Status] = status => JsString(status.getValue)
   private implicit val emailRecoveryActionWrites: Writes[EmailRecoveryAction] = Json.writes[EmailRecoveryAction]
   private implicit val emailRecoveryActionIdsWrites: Writes[EmailRecoveryActionIds] = Json.writes[EmailRecoveryActionIds]

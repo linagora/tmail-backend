@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.james.jmap.model
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import eu.timepit.refined.auto._
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.{Properties, SetError}

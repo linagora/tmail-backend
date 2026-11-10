@@ -23,6 +23,7 @@ import java.util.UUID
 import java.util.concurrent.atomic.AtomicReference
 
 import com.google.common.hash.Hashing
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.team.{TeamMailbox, TeamMailboxName, TeamMailboxProbe}
 import eu.timepit.refined.auto._
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT

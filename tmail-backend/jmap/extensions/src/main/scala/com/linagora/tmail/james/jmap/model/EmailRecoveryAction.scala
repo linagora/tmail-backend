@@ -21,6 +21,7 @@ package com.linagora.tmail.james.jmap.model
 import java.time.ZonedDateTime
 import java.util
 
+import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.json.EmailRecoveryActionSerializer
 import com.linagora.tmail.james.jmap.method.AsEitherRequest
 import eu.timepit.refined.auto._

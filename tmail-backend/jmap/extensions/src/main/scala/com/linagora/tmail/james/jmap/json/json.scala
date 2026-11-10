@@ -29,6 +29,7 @@ package com.linagora.tmail.james.jmap
 import java.time.ZonedDateTime
 import java.time.format.DateTimeFormatter
 
+import com.linagora.tmail.james.jmap.json.ValueCodecs.{valueFormat, valueReads, valueWrites}
 import eu.timepit.refined.api.{RefType, Validate}
 import org.apache.james.core.MailAddress
 import org.apache.james.jmap.core.SetError.SetErrorDescription
@@ -55,8 +56,8 @@ package object json {
         }
       })
 
-  implicit val accountId: Format[AccountId] = Json.valueFormat[AccountId]
-  implicit val propertiesFormat: Format[Properties] = Json.valueFormat[Properties]
+  implicit val accountId: Format[AccountId] = valueFormat[AccountId]
+  implicit val propertiesFormat: Format[Properties] = valueFormat[Properties]
   implicit val setErrorDescriptionWrites: Writes[SetErrorDescription] = Json.valueWrites[SetErrorDescription]
   implicit val setErrorWrites: Writes[SetError] = Json.writes[SetError]
 
