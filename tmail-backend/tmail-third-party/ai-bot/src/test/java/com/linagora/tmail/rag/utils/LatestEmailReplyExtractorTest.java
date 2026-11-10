@@ -19,8 +19,11 @@ package com.linagora.tmail.rag.utils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.util.concurrent.TimeUnit;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.Timeout;
 
 class LatestEmailReplyExtractorTest {
 
@@ -215,6 +218,21 @@ class LatestEmailReplyExtractorTest {
             Sam
             """.trim();
         assertThat(latestEmailReplyExtractor.cleanQuotedContent(content)).isEqualTo(expected);
+    }
+
+    @Test
+    @Timeout(value = 10, unit = TimeUnit.SECONDS)
+    void shouldNotBacktrackOnALongAttributionLikeLine() {
+        String content = "hello\n" + "On " + "from <".repeat(20_000) + "\n" + "Le " + "de <".repeat(20_000);
+
+        assertThat(latestEmailReplyExtractor.cleanQuotedContent(content)).startsWith("hello");
+    }
+
+    @Test
+    void shouldStopAtAnAttributionLineWithAnAddress() {
+        String content = "Hi\nOn Monday, John from Linagora <john@example.com>\n> quoted";
+
+        assertThat(latestEmailReplyExtractor.cleanQuotedContent(content)).isEqualTo("Hi");
     }
 
 }
