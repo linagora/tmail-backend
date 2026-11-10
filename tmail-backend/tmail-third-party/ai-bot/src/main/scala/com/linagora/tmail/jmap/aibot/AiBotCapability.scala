@@ -22,7 +22,7 @@ import com.google.inject.multibindings.Multibinder
 import com.linagora.tmail.james.jmap.event.ApplyWhenFilter
 import com.linagora.tmail.jmap.aibot.agent.AgentTool
 import com.linagora.tmail.jmap.aibot.agent.AIToolsRoutes
-import com.linagora.tmail.jmap.aibot.agent.tools.{CreateDraftTool, GetEmailDetailsTool, ListEmailsTool, SearchEmailsTool}
+import com.linagora.tmail.jmap.aibot.agent.tools.{CreateDraftTool, GetEmailDetailsTool, ListEmailsTool, ListMailboxesTool, SearchEmailsTool}
 import com.linagora.tmail.jmap.aibot.CapabilityIdentifier.LINAGORA_AIBOT
 import com.linagora.tmail.jmap.aibot.redationalHelper.AiSuggestionMethod
 import com.linagora.tmail.jmap.aibot.scribe.AIChatCompletionRoutes
@@ -84,5 +84,6 @@ class AiMethodModule extends AbstractModule {
     agentToolBinder.addBinding().to(classOf[CreateDraftTool])
     agentToolBinder.addBinding().to(classOf[ListEmailsTool])
     agentToolBinder.addBinding().to(classOf[GetEmailDetailsTool])
+    agentToolBinder.addBinding().to(classOf[ListMailboxesTool])
   }
 }

@@ -84,6 +84,19 @@
       "type": "function",
       "confirm": false,
       "function": {
+        "name": "list_mailboxes",
+        "description": "List the user's mailboxes (folders): id, name, role (inbox, sent, drafts, trash, spam, archive... or none for a folder of the user), number of emails and of unread emails. Use it to find the id of a mailbox for list_emails or search_emails, when the user names a folder, or to tell how many emails or unread emails a folder holds.",
+        "parameters": {
+          "type": "object",
+          "properties": {},
+          "required": []
+        }
+      }
+    },
+    {
+      "type": "function",
+      "confirm": false,
+      "function": {
         "name": "search_emails",
         "description": "Search the user's emails with filters. All filters are optional and combined with AND. Returns matching emails, most recent first, with id, sender, subject, date and a short preview. This is more expensive than list_emails: prefer list_emails first and use this tool only when filtering is needed. Use the returned id with create_draft to reply to an email.",
         "parameters": {

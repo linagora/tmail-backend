@@ -45,7 +45,7 @@ Returns every tool, sorted by name, in the OpenAI function-calling format, with 
 ----
 
 `confirm` tells whether the assistant asks the user before it runs a call of the tool: `false` for the tools that
-only read the mailbox (`get_email_details`, `list_emails`, `search_emails`), `true` for the others, like
+only read the mailbox (`get_email_details`, `list_emails`, `list_mailboxes`, `search_emails`), `true` for the others, like
 `create_draft`. It is not part of the OpenAI format: give the LLM the `type` and the `function` of each tool.
 
 == Run a tool
@@ -139,6 +139,26 @@ A user without an Inbox gets an empty list (`"mailboxId": null`). The preview is
 
 When `view.email.query.enabled` is `true` in `jmap.properties`, the emails are read from the email query view,
 as JMAP `Email/query` does for a mailbox sorted by `receivedAt`. Otherwise they are read from the search index.
+
+=== list_mailboxes
+
+Lists the mailboxes of the user, sorted by name, so that the LLM finds the id of a mailbox the user names
+("my Projects folder", "the trash") for `list_emails` or `search_emails`. It takes no argument.
+
+Result:
+
+----
+{
+  "mailboxes": [
+    { "id": "...", "name": "Archive", "role": "archive", "totalEmails": 12, "unreadEmails": 0 },
+    { "id": "...", "name": "INBOX", "role": "inbox", "totalEmails": 42, "unreadEmails": 3 },
+    { "id": "...", "name": "Projects", "role": null, "totalEmails": 5, "unreadEmails": 1 }
+  ]
+}
+----
+
+`role` is the one JMAP gives a mailbox of the user (`inbox`, `sent`, `drafts`, `trash`, `spam`, `archive`...),
+`null` for a folder the user created. The mailboxes shared with the user are not listed.
 
 === search_emails
 
