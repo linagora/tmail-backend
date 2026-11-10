@@ -1127,6 +1127,18 @@ trait LinagoraEmailSendMethodContract {
     assertSendRejected(server, Json.obj("from" -> Json.arr(Json.obj("email" -> bobUsername.asString))),
       Some(validSenderEnvelope ++ Json.obj("rcptTo" -> Json.arr())), "noRecipients", Seq.empty)
 
+  @Test
+  def emailSendShouldRejectADomainFollowingACommentInFrom(server: GuiceJamesServer): Unit =
+    // The domain is written as given: mime4j reads bob@domain.tld.evil while jakarta.mail reads bob@domain.tld
+    assertSendRejected(server, Json.obj("from" -> Json.arr(Json.obj("email" -> s"${bobUsername.asString}(c).evil"))),
+      Some(validSenderEnvelope), "forbiddenFrom", Seq("from"))
+
+  @Test
+  def emailSendShouldRejectALocalPartHoldingAnotherAddress(server: GuiceJamesServer): Unit =
+    // mime4j reads '<bob@domain.tld> andre@domain.tld', which is not a valid address
+    assertSendRejected(server, Json.obj("from" -> Json.arr(Json.obj("email" -> s"<${bobUsername.asString}> ${andreUsername.asString}"))),
+      Some(validSenderEnvelope), "forbiddenFrom", Seq("from"))
+
   private def assertMissingFromRejected(server: GuiceJamesServer, headers: JsObject, envelope: scala.Option[JsObject]): Unit = {
     assertSendRejected(server, headers, envelope, "invalidEmail", Seq("from"))
 
