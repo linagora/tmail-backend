@@ -32,8 +32,10 @@ import scala.util.Success;
 import scala.util.Try;
 
 public final class MessagePartBlobId {
+    // possessive: each repetition is deterministic, so it matches the same ids without the recursion per
+    // repetition that overflows the stack on a long id
     private static final Pattern MESSAGE_PART_BLOB_ID_PATTERN =
-        Pattern.compile("^[^_]+_\\d+(_\\d+)*$");
+        Pattern.compile("^[^_]++_\\d++(?:_\\d++)*+$");
 
     private final String value;
     private final MessageId messageId;
