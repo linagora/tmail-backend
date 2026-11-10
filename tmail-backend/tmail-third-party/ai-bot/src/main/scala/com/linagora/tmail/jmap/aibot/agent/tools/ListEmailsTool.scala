@@ -63,7 +63,7 @@ class ListEmailsTool @Inject()(val mailboxManager: MailboxManager,
       "properties" -> Json.obj(
         ListEmailsTool.MAILBOX_ID.value -> Json.obj(
           "type" -> "string",
-          "description" -> "Id of the mailbox to list emails from. Defaults to the Inbox."),
+          "description" -> "Id of the mailbox to list emails from, as returned by list_mailboxes. Leave it empty for the Inbox."),
         ListEmailsTool.PAGE.value -> Json.obj(
           "type" -> "integer",
           "description" -> "Page number to retrieve, starting at 1, default 1, max 50"),

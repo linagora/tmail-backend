@@ -76,7 +76,7 @@ class SearchEmailsTool @Inject()(val mailboxManager: MailboxManager,
         SearchEmailsTool.IN_MAILBOXES.value -> Json.obj(
           "type" -> "array",
           "items" -> Json.obj("type" -> "string"),
-          "description" -> "Only emails in one of these mailbox ids. Searches all mailboxes if omitted"),
+          "description" -> "Only emails in one of these mailbox ids, as returned by list_mailboxes. Searches all mailboxes if empty"),
         SearchEmailsTool.UNREAD.value -> Json.obj(
           "type" -> "boolean",
           "description" -> "Only return unread emails"),

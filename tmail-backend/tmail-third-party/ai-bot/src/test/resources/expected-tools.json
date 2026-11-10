@@ -65,7 +65,7 @@
           "properties": {
             "mailboxId": {
               "type": "string",
-              "description": "Id of the mailbox to list emails from. Defaults to the Inbox."
+              "description": "Id of the mailbox to list emails from, as returned by list_mailboxes. Leave it empty for the Inbox."
             },
             "page": {
               "type": "integer",
@@ -125,7 +125,7 @@
             "inMailboxes": {
               "type": "array",
               "items": { "type": "string" },
-              "description": "Only emails in one of these mailbox ids. Searches all mailboxes if omitted"
+              "description": "Only emails in one of these mailbox ids, as returned by list_mailboxes. Searches all mailboxes if empty"
             },
             "unread": {
               "type": "boolean",
