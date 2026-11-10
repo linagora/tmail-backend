@@ -25,6 +25,10 @@ public interface LatestEmailReplyExtractor {
 
     class RegexBased implements LatestEmailReplyExtractor {
 
+        // The "On/Le ... from/de ... <...>" branches commit, with atomic groups, to the first "from "/"de " then to the
+        // first '<' after it: the earliest positions leave the most room to what follows, so they match the same
+        // lines without the polynomial backtracking of chained wildcards on a long line.
+        // "On ... , at ... <...> wrote:" and "Le ... à ... <...> a écrit" are implied by "On .+wrote:" and "Le .+a écrit".
         private static final Pattern QUOTE_PATTERNS = Pattern.compile(
             "(?mi)" +
                 "^\\s*>.*$|" +
@@ -38,10 +42,8 @@ public interface LatestEmailReplyExtractor {
                 "^Sent:.*$|" +
                 "^To:.*$|" +
                 "^Subject:.*$|" +
-                "^On .+from .+<.*>.*$|" +
-                "^Le .+de .+<.*>.*$|" +
-                "^On .+, at .+<.*> wrote:.*$|" +
-                "^Le .+à .+<.*> a écrit.*$"
+                "^On (?>.+?from ).(?>.*?<).*>.*$|" +
+                "^Le (?>.+?de ).(?>.*?<).*>.*$"
         );
 
         @Override
