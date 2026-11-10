@@ -77,6 +77,7 @@ abstract class AiToolsTestBase {
     static final AgentToolName SEARCH_EMAILS = new AgentToolName("search_emails");
     static final AgentToolName GET_EMAIL_DETAILS = new AgentToolName("get_email_details");
     static final AgentToolName CREATE_DRAFT = new AgentToolName("create_draft");
+    static final AgentToolName LIST_MAILBOXES = new AgentToolName("list_mailboxes");
     static final MemorySaaSAccountRepository SAAS_REPOSITORY = new MemorySaaSAccountRepository();
 
     static JamesServerExtension server(Module... overrides) {
