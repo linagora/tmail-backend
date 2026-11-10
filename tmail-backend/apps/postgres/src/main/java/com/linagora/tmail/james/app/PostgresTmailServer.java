@@ -76,7 +76,6 @@ import org.apache.james.modules.event.MailboxEventBusModule;
 import org.apache.james.modules.events.PostgresDeadLetterModule;
 import org.apache.james.modules.mailbox.DefaultEventModule;
 import org.apache.james.modules.mailbox.LuceneSearchMailboxModule;
-import org.apache.james.modules.mailbox.LuceneVarStoreDirectoryModule;
 import org.apache.james.modules.mailbox.OpenSearchClientModule;
 import org.apache.james.modules.mailbox.OpenSearchDisabledModule;
 import org.apache.james.modules.mailbox.OpenSearchMailboxModule;
@@ -592,7 +591,7 @@ public class PostgresTmailServer {
             case Lucene:
                 return List.of(
                     new InMemoryEmailAddressContactSearchEngineModule(),
-                    Modules.override(new LuceneSearchMailboxModule()).with(new LuceneVarStoreDirectoryModule()),
+                    new LuceneSearchMailboxModule(),
                     new ReIndexingModule(),
                     SCANNING_QUOTA_SEARCH_MODULE);
             default:
