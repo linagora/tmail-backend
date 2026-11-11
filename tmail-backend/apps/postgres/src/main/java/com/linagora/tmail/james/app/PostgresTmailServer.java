@@ -75,6 +75,7 @@ import org.apache.james.modules.event.JMAPEventBusModule;
 import org.apache.james.modules.event.MailboxEventBusModule;
 import org.apache.james.modules.events.PostgresDeadLetterModule;
 import org.apache.james.modules.mailbox.DefaultEventModule;
+import org.apache.james.modules.mailbox.LuceneSearchMailboxModule;
 import org.apache.james.modules.mailbox.OpenSearchClientModule;
 import org.apache.james.modules.mailbox.OpenSearchDisabledModule;
 import org.apache.james.modules.mailbox.OpenSearchMailboxModule;
@@ -587,6 +588,12 @@ public class PostgresTmailServer {
                     new OpenSearchDisabledModule(),
                     SCANNING_QUOTA_SEARCH_MODULE,
                     new FakeSearchHighlightModule());
+            case Lucene:
+                return List.of(
+                    new InMemoryEmailAddressContactSearchEngineModule(),
+                    new LuceneSearchMailboxModule(),
+                    new ReIndexingModule(),
+                    SCANNING_QUOTA_SEARCH_MODULE);
             default:
                 throw new RuntimeException("Unsupported search implementation " + configuration.searchConfiguration().getImplementation());
         }
