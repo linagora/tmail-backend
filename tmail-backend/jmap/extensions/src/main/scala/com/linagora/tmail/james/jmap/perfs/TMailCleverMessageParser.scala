@@ -18,7 +18,7 @@
 
 package com.linagora.tmail.james.jmap.perfs
 
-import java.io.InputStream
+import java.io.{ByteArrayInputStream, InputStream}
 import java.util
 
 import com.google.common.io.ByteSource
@@ -39,15 +39,22 @@ import scala.jdk.OptionConverters._
 
 
 case class EmailBodyPartContent(part: EmailBodyPart) extends ByteSource {
-  override def size: Long = part.size.value
+  // Nested bodies (eg message/rfc822) are re-written, which re-encodes their Content-Transfer-Encoding:
+  // their size is the written length, not the decoded one reported by part.size
+  private lazy val writtenBody: Array[Byte] = {
+    val outputStream = new UnsynchronizedByteArrayOutputStream()
+    new DefaultMessageWriter().writeBody(part.entity.getBody, outputStream)
+    outputStream.toByteArray
+  }
+
+  override def size: Long = part.entity.getBody match {
+    case _: SingleBody => part.size.value
+    case _ => writtenBody.length
+  }
 
   override def openStream: InputStream = part.entity.getBody match {
     case body: SingleBody => body.getInputStream
-    case body =>
-      val writer = new DefaultMessageWriter
-      val outputStream = new UnsynchronizedByteArrayOutputStream()
-      writer.writeBody(body, outputStream)
-      outputStream.toInputStream
+    case _ => new ByteArrayInputStream(writtenBody)
   }
 }
 
