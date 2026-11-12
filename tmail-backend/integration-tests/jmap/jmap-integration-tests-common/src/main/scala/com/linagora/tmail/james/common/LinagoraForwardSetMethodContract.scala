@@ -644,6 +644,22 @@ trait LinagoraForwardSetMethodContract {
       expectedPatchFailureResponse("'/localCopy' property is not valid: null is not allowed"))
   }
 
+  @Test
+  def updateShouldRejectOwnAddressInForwardsWhenLocalCopyIsFalse(): Unit = {
+    val response: String = patchAfterInitialForward(s"""{ "localCopy": false, "forwards": [ "${bobUsername.asString()}" ] }""")
+
+    assertThatJson(response).isEqualTo(
+      expectedPatchFailureResponse("'/forwards' property is not valid: the account owner address can not be part of forwards when localCopy is false"))
+  }
+
+  @Test
+  def updateShouldRejectOwnAddressInForwardsWhenLocalCopyIsFalseRegardlessOfCase(): Unit = {
+    val response: String = patchAfterInitialForward(s"""{ "localCopy": false, "forwards": [ "${bobUsername.asString().toUpperCase}" ] }""")
+
+    assertThatJson(response).isEqualTo(
+      expectedPatchFailureResponse("'/forwards' property is not valid: the account owner address can not be part of forwards when localCopy is false"))
+  }
+
   private def patchAfterInitialForward(patch: String): String = {
     val request: String =
       s"""{

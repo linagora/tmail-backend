@@ -91,10 +91,19 @@ class ForwardSetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
     retrieveMappings(mappingSource)
       .flatMap(currentForwards => {
         val currentState: Forwards = Forwards.asRfc8621(currentForwards.toList, username.asMailAddress())
-        update(mappingSource, currentForwards, getForwardDestinations(updateRequest.applyTo(currentState), username))
+        validate(updateRequest.applyTo(currentState), username)
+          .fold(error => SMono.just[ForwardSetUpdateResult](ForwardSetUpdateFailure(ForwardId.asString, error)),
+            forwards => update(mappingSource, currentForwards, getForwardDestinations(forwards, username)))
       })
       .onErrorResume(error => SMono.just[ForwardSetUpdateResult](ForwardSetUpdateFailure(ForwardId.asString, error)))
   }
+
+  private def validate(forwards: Forwards, currentUser: Username): Either[IllegalArgumentException, Forwards] =
+    if (!forwards.localCopy.value && forwards.forwards.exists(_.value.equals(currentUser.asMailAddress()))) {
+      Left(new IllegalArgumentException("'/forwards' property is not valid: the account owner address can not be part of forwards when localCopy is false"))
+    } else {
+      Right(forwards)
+    }
 
   // MailAddress equality ignores case: distinct prevents storing the same destination twice (eg ALICE@domain.tld, alice@domain.tld)
   private def getForwardDestinations(forwards: Forwards, currentUser: Username): Seq[MailAddress] = {
