@@ -30,7 +30,6 @@ import org.apache.james.mailbox.model.{ComposedMessageIdWithMetaData, FetchGroup
 import org.apache.james.mailbox.{MailboxManager, MailboxSession, MessageManager, MessageUid}
 import org.apache.james.mime4j.codec.DecodeMonitor
 import org.apache.james.mime4j.dom.Message
-import org.apache.james.mime4j.dom.field.ContentTypeField
 import org.apache.james.mime4j.message.DefaultMessageBuilder
 import org.apache.james.mime4j.stream.MimeConfig
 import org.bouncycastle.openpgp.PGPPublicKey
@@ -115,9 +114,10 @@ class EncryptedMessageManager @Inject()(messageManager: MessageManager,
         }
       })
 
+  // Rely on mime4j's resolution of the type: a multipart Content-Type without boundary is not usable,
+  // mime4j then falls back to text/plain: such a message is clear and must be encrypted
   private def isMessageEncrypted(message: Message): Boolean =
-    Option(message.getHeader.getField("Content-Type").asInstanceOf[ContentTypeField])
-      .exists(field => "multipart".equalsIgnoreCase(field.getMediaType) && "encrypted".equalsIgnoreCase(field.getSubType))
+    message.isMultipart && "multipart/encrypted".equalsIgnoreCase(message.getMimeType)
 
   private def storeEncryptedMessage(session: MailboxSession,
                                     keys: Seq[PublicKey],
