@@ -68,6 +68,76 @@ public class SabreContactMessageParseTest {
     }
 
     @Test
+    void parsePayloadWithOldCardDataShouldExposeThePreviousAddresses() {
+        String amqpMessage = """
+            {
+                "path": "addressbooks\\/67e26ebbecd9f300255a9f80\\/domain-members\\/3ffe56cc-9196-4266-bf17-4894d00350d4.vcf",
+                "owner": "principals\\/domains\\/67e26ebbecd9f300255a9f80",
+                "carddata": "BEGIN:VCARD\\r\\nVERSION:4.0\\r\\nUID:3ffe56cc-9196-4266-bf17-4894d00350d4\\r\\nFN:Tran Tung\\r\\nEMAIL:toto@tutu.com\\r\\nEND:VCARD\\r\\n",
+                "oldcarddata": "BEGIN:VCARD\\r\\nVERSION:4.0\\r\\nUID:3ffe56cc-9196-4266-bf17-4894d00350d4\\r\\nFN:Tran Tung\\r\\nEMAIL:toto@tutu.com\\r\\nEMAIL:mailto:old@tutu.com\\r\\nEND:VCARD\\r\\n"
+            }""";
+
+        assertThat(SabreContactMessage.parseAMQPMessage(amqpMessage))
+            .isPresent()
+            .get()
+            .satisfies(message -> {
+                assertThat(message.getMailAddresses()).containsExactly(new MailAddress("toto@tutu.com"));
+                assertThat(message.getPreviousMailAddresses())
+                    .containsExactly(new MailAddress("toto@tutu.com"), new MailAddress("old@tutu.com"));
+            });
+    }
+
+    @Test
+    void parsePayloadWithoutOldCardDataShouldHaveNoPreviousAddresses() {
+        String amqpMessage = """
+            {
+                "path": "addressbooks\\/67e26ebbecd9f300255a9f80\\/domain-members\\/3ffe56cc-9196-4266-bf17-4894d00350d4.vcf",
+                "owner": "principals\\/domains\\/67e26ebbecd9f300255a9f80",
+                "carddata": "BEGIN:VCARD\\r\\nVERSION:4.0\\r\\nUID:3ffe56cc-9196-4266-bf17-4894d00350d4\\r\\nFN:Tran Tung\\r\\nEMAIL:toto@tutu.com\\r\\nEND:VCARD\\r\\n"
+            }""";
+
+        assertThat(SabreContactMessage.parseAMQPMessage(amqpMessage))
+            .isPresent()
+            .get()
+            .satisfies(message -> assertThat(message.getPreviousMailAddresses()).isEmpty());
+    }
+
+    @Test
+    void parsePayloadWithUnreadableOldCardDataShouldIgnoreIt() {
+        String amqpMessage = """
+            {
+                "path": "addressbooks\\/67e26ebbecd9f300255a9f80\\/domain-members\\/3ffe56cc-9196-4266-bf17-4894d00350d4.vcf",
+                "owner": "principals\\/domains\\/67e26ebbecd9f300255a9f80",
+                "carddata": "BEGIN:VCARD\\r\\nVERSION:4.0\\r\\nUID:3ffe56cc-9196-4266-bf17-4894d00350d4\\r\\nFN:Tran Tung\\r\\nEMAIL:toto@tutu.com\\r\\nEND:VCARD\\r\\n",
+                "oldcarddata": "not a vcard"
+            }""";
+
+        assertThat(SabreContactMessage.parseAMQPMessage(amqpMessage))
+            .isPresent()
+            .get()
+            .satisfies(message -> {
+                assertThat(message.getMailAddresses()).containsExactly(new MailAddress("toto@tutu.com"));
+                assertThat(message.getPreviousMailAddresses()).isEmpty();
+            });
+    }
+
+    @Test
+    void parsePayloadShouldSkipInvalidPreviousAddresses() {
+        String amqpMessage = """
+            {
+                "path": "addressbooks\\/67e26ebbecd9f300255a9f80\\/domain-members\\/3ffe56cc-9196-4266-bf17-4894d00350d4.vcf",
+                "owner": "principals\\/domains\\/67e26ebbecd9f300255a9f80",
+                "carddata": "BEGIN:VCARD\\r\\nVERSION:4.0\\r\\nUID:3ffe56cc-9196-4266-bf17-4894d00350d4\\r\\nFN:Tran Tung\\r\\nEMAIL:toto@tutu.com\\r\\nEND:VCARD\\r\\n",
+                "oldcarddata": "BEGIN:VCARD\\r\\nVERSION:4.0\\r\\nUID:3ffe56cc-9196-4266-bf17-4894d00350d4\\r\\nEMAIL:not an address\\r\\nEMAIL:old@tutu.com\\r\\nEND:VCARD\\r\\n"
+            }""";
+
+        assertThat(SabreContactMessage.parseAMQPMessage(amqpMessage))
+            .isPresent()
+            .get()
+            .satisfies(message -> assertThat(message.getPreviousMailAddresses()).containsExactly(new MailAddress("old@tutu.com")));
+    }
+
+    @Test
     void parsePayloadWithUnknownOwnerTypeShouldReturnEmpty() {
         String amqpMessage = """
             {

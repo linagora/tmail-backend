@@ -24,6 +24,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 import java.util.Optional;
+import java.util.stream.Stream;
 
 import org.apache.commons.lang3.StringUtils;
 import org.apache.james.core.MailAddress;
@@ -43,8 +44,13 @@ import ezvcard.Ezvcard;
 import ezvcard.VCard;
 import ezvcard.property.SimpleProperty;
 
+/**
+ * @param previousVcard the card before an update, when the publisher sends it (`oldcarddata`). Optional: absent
+ *                      from older publishers, and an unreadable one is ignored rather than failing the message.
+ */
 public record SabreContactMessage(Owner owner,
-                                  VCard vcard) {
+                                  VCard vcard,
+                                  Optional<VCard> previousVcard) {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SabreContactMessage.class);
 
@@ -78,7 +84,8 @@ public record SabreContactMessage(Owner owner,
 
     public record AMQPMessage(@JsonProperty("path") String path,
                               @JsonProperty("owner") Optional<String> owner,
-                              @JsonProperty("carddata") Optional<String> cardData) {
+                              @JsonProperty("carddata") Optional<String> cardData,
+                              @JsonProperty("oldcarddata") Optional<String> oldCardData) {
 
         public static final Deserializer DESERIALIZER = new Deserializer();
 
@@ -105,6 +112,11 @@ public record SabreContactMessage(Owner owner,
     public SabreContactMessage {
         Preconditions.checkNotNull(vcard);
         Preconditions.checkNotNull(owner);
+        Preconditions.checkNotNull(previousVcard);
+    }
+
+    public SabreContactMessage(Owner owner, VCard vcard) {
+        this(owner, vcard, Optional.empty());
     }
 
     public static Optional<SabreContactMessage> parseAMQPMessage(String messagePayload) {
@@ -128,7 +140,7 @@ public record SabreContactMessage(Owner owner,
                 VCard vCard = Ezvcard.parse(contactMessage.cardData().get()).first();
                 Preconditions.checkArgument(vCard != null, "Can not parse vCard from %s", contactMessage.cardData().get());
                 Preconditions.checkArgument(vCard.getUid() != null, "Can not parse vCard uid from %s", contactMessage.cardData().get());
-                return Optional.of(new SabreContactMessage(owner, vCard));
+                return Optional.of(new SabreContactMessage(owner, vCard, parsePreviousVCard(contactMessage.oldCardData())));
             }
             return Optional.empty();
         } catch (Exception e) {
@@ -137,10 +149,42 @@ public record SabreContactMessage(Owner owner,
         }
     }
 
+    private static Optional<VCard> parsePreviousVCard(Optional<String> oldCardData) {
+        return oldCardData
+            .filter(StringUtils::isNotBlank)
+            .flatMap(cardData -> {
+                try {
+                    return Optional.ofNullable(Ezvcard.parse(cardData).first());
+                } catch (Exception e) {
+                    LOGGER.warn("Ignoring unreadable previous card data in contact message", e);
+                    return Optional.empty();
+                }
+            });
+    }
+
     public List<MailAddress> getMailAddresses() {
         return vcard.getEmails().stream()
             .map(email -> StringUtils.replace(email.getValue(), "mailto:", StringUtils.EMPTY))
             .map(Throwing.function(MailAddress::new))
+            .distinct()
+            .toList();
+    }
+
+    /**
+     * The valid email addresses of the card before the update, empty when unknown. Invalid ones are skipped: the
+     * previous card only serves to find addresses to remove, it must not fail the message.
+     */
+    public List<MailAddress> getPreviousMailAddresses() {
+        return previousVcard.stream()
+            .flatMap(previous -> previous.getEmails().stream())
+            .map(email -> StringUtils.replace(email.getValue(), "mailto:", StringUtils.EMPTY))
+            .flatMap(address -> {
+                try {
+                    return Stream.of(new MailAddress(address));
+                } catch (Exception e) {
+                    return Stream.empty();
+                }
+            })
             .distinct()
             .toList();
     }

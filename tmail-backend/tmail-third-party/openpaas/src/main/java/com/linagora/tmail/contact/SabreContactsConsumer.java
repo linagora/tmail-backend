@@ -22,6 +22,7 @@ import static com.linagora.tmail.OpenPaasModule.OPENPAAS_INJECTION_KEY;
 import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
 import java.io.Closeable;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
@@ -211,13 +212,25 @@ public class SabreContactsConsumer implements Closeable {
             .then();
     }
 
-    // The domain contact index does not record which vCard an address comes from, so an update can not
-    // tell the addresses dropped from this card apart from the other domain members: only upsert the
-    // addresses the card carries, and leave the rest of the domain untouched.
+    // The domain contact index does not record which card an address comes from: the addresses this update removed
+    // are the ones of the previous card (`oldcarddata`) the new card no longer has. When the publisher does not send
+    // the previous card, nothing is removed, the other domain members must never be.
     private Mono<Void> handleUpdateDomainContact(Domain domain, SabreContactMessage sabreContactMessage) {
-        return Flux.fromIterable(sabreContactMessage.getContactFields())
-            .flatMap(contactFields -> Mono.from(contactSearchEngine.update(domain, contactFields)))
+        List<ContactFields> contactFields = sabreContactMessage.getContactFields();
+        Set<MailAddress> currentAddresses = contactFields.stream()
+            .map(ContactFields::address)
+            .collect(Collectors.toSet());
+
+        Mono<Void> upsertOp = Flux.fromIterable(contactFields)
+            .flatMap(fields -> Mono.from(contactSearchEngine.update(domain, fields)))
             .then();
+
+        Mono<Void> removeOp = Flux.fromIterable(sabreContactMessage.getPreviousMailAddresses())
+            .filter(previousAddress -> !currentAddresses.contains(previousAddress))
+            .flatMap(removedAddress -> Mono.from(contactSearchEngine.delete(domain, removedAddress)))
+            .then();
+
+        return Mono.when(upsertOp, removeOp);
     }
 
     private Mono<Void> handleDeleteDomainContact(Domain domain, SabreContactMessage sabreContactMessage) {
