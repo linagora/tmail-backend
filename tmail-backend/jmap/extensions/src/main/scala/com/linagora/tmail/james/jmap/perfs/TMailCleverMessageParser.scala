@@ -29,7 +29,7 @@ import org.apache.james.jmap.method.ZoneIdProvider
 import org.apache.james.lifecycle.api.Disposable
 import org.apache.james.mailbox.model.{Cid, MessageId, ParsedAttachment}
 import org.apache.james.mailbox.store.mail.model.impl.{FileBufferedBodyFactory, MessageParser}
-import org.apache.james.mime4j.codec.DecodeMonitor
+import org.apache.james.mime4j.codec.{DecodeMonitor, EncoderUtil}
 import org.apache.james.mime4j.dom.{Message, SingleBody}
 import org.apache.james.mime4j.message.{DefaultMessageBuilder, DefaultMessageWriter}
 import org.apache.james.mime4j.stream.MimeConfig
@@ -101,7 +101,7 @@ class TMailCleverMessageParser @Inject() (zoneIdProvider: ZoneIdProvider) extend
       .map(attachment => {
         val isInline = attachment.disposition.contains(Disposition.INLINE) && attachment.cid.isDefined
         TMailCleverParsedAttachment(ParsedAttachment.builder
-          .contentType(attachment.`type`.value + attachment.charset.map(charset => "; charset=" + charset.value).getOrElse(""))
+          .contentType(contentType(attachment))
           .content(EmailBodyPartContent(attachment))
           .name(attachment.name.map(_.value).toJava)
           .cid(attachment.cid.map(_.getValue).map(Cid.from).toJava)
@@ -109,4 +109,10 @@ class TMailCleverMessageParser @Inject() (zoneIdProvider: ZoneIdProvider) extend
           .asInstanceOf[ParsedAttachment]
       }).asJava
   }
+
+  // The charset comes unquoted from mime4j lenient parsing: quote it when it is not an RFC 2045 token
+  private def contentType(attachment: EmailBodyPart): String =
+    attachment.`type`.value + attachment.charset
+      .map(charset => "; " + EncoderUtil.encodeHeaderParameter("charset", charset.value))
+      .getOrElse("")
 }

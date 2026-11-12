@@ -25,6 +25,7 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 import org.apache.james.jmap.method.SystemZoneIdProvider;
+import org.apache.james.mailbox.model.ContentType;
 import org.apache.james.mailbox.store.mail.model.impl.MessageParser;
 import org.apache.james.mime4j.dom.Message;
 import org.apache.james.mime4j.dom.Multipart;
@@ -151,6 +152,45 @@ public class TMailCleverMessageParserTest {
         try {
             ByteSource content = result.getAttachments().get(0).getContent();
             assertThat(content.size()).isEqualTo(content.read().length);
+        } finally {
+            result.dispose();
+        }
+    }
+
+    @Test
+    void attachmentContentTypeShouldPreserveTheCharset() throws Exception {
+        assertThat(attachmentContentType("utf-8").asMime4J().getCharset())
+            .isEqualTo("UTF-8");
+    }
+
+    @Test
+    void attachmentContentTypeShouldPreserveACharsetHoldingAComment() throws Exception {
+        assertThat(attachmentContentType("utf-8 (x").asMime4J().getCharset())
+            .isEqualTo("UTF-8 (X");
+    }
+
+    @Test
+    void attachmentContentTypeShouldNotGainParametersFromTheCharset() throws Exception {
+        ContentType contentType = attachmentContentType("utf-8; name=other.exe");
+
+        assertThat(contentType.asMime4J().getParameters())
+            .containsOnlyKeys("charset")
+            .containsEntry("charset", "UTF-8; NAME=OTHER.EXE");
+    }
+
+    @Test
+    void attachmentContentTypeShouldPreserveTheMimeType() throws Exception {
+        assertThat(attachmentContentType("utf-8 (x").asMime4J().getMimeType())
+            .isEqualTo("text/plain");
+    }
+
+    private ContentType attachmentContentType(String charset) throws Exception {
+        String eml = "Content-Type: multipart/mixed; boundary=b\r\n\r\n"
+            + "--b\r\nContent-Type: text/plain; charset=\"" + charset + "\"\r\n"
+            + "Content-Disposition: attachment; filename=\"a.txt\"\r\n\r\nabs\r\n--b--\r\n";
+        MessageParser.ParsingResult result = testee.retrieveAttachments(new ByteArrayInputStream(eml.getBytes(StandardCharsets.US_ASCII)));
+        try {
+            return ContentType.of(result.getAttachments().get(0).getContentType().asString());
         } finally {
             result.dispose();
         }
