@@ -514,7 +514,7 @@ class SabreContactsConsumerTest {
     }
 
     @Test
-    void domainContactUpdateShouldNotRemoveTheOtherDomainMembers() throws Exception {
+    void domainContactUpdateWithoutPreviousCardShouldNotRemoveTheOtherDomainMembers() throws Exception {
         String domainId = dockerOpenPaasExtension.dockerOpenPaasSetup().getOpenPaaSProvisioningService().openPaasDomainId();
         Domain domain = new OpenPaasRestClient(dockerOpenPaasExtension.dockerOpenPaasSetup().openPaasConfiguration())
             .retrieveDomainName(domainId).block();
@@ -546,6 +546,44 @@ class SabreContactsConsumerTest {
                 ContactFields.of(otherMember, "Other Member"),
                 ContactFields.of(updatedMember, "New Name"),
                 ContactFields.of(addedAddress, "New Name")));
+    }
+
+    @Test
+    void domainContactUpdateShouldRemoveTheAddressesDroppedFromTheCard() throws Exception {
+        String domainId = dockerOpenPaasExtension.dockerOpenPaasSetup().getOpenPaaSProvisioningService().openPaasDomainId();
+        Domain domain = new OpenPaasRestClient(dockerOpenPaasExtension.dockerOpenPaasSetup().openPaasConfiguration())
+            .retrieveDomainName(domainId).block();
+        MailAddress otherMember = new MailAddress("other-member@" + OpenPaaSProvisioningService.DOMAIN);
+        MailAddress keptAddress = new MailAddress("member@" + OpenPaaSProvisioningService.DOMAIN);
+        MailAddress droppedAddress = new MailAddress("member-old-alias@" + OpenPaaSProvisioningService.DOMAIN);
+        Mono.from(emailAddressContactSearchEngine.index(domain, ContactFields.of(otherMember, "Other Member"))).block();
+        Mono.from(emailAddressContactSearchEngine.index(domain, ContactFields.of(keptAddress, "Member"))).block();
+        Mono.from(emailAddressContactSearchEngine.index(domain, ContactFields.of(droppedAddress, "Member"))).block();
+
+        String uid = UUID.randomUUID().toString();
+        String oldVcard = "BEGIN:VCARD\r\nVERSION:4.0\r\nUID:%s\r\nFN:Member\r\nEMAIL:%s\r\nEMAIL:%s\r\nEND:VCARD\r\n"
+            .formatted(uid, keptAddress.asString(), droppedAddress.asString());
+        String newVcard = "BEGIN:VCARD\r\nVERSION:4.0\r\nUID:%s\r\nFN:Member\r\nEMAIL:%s\r\nEND:VCARD\r\n"
+            .formatted(uid, keptAddress.asString());
+        String amqpMessage = OBJECT_MAPPER.writeValueAsString(Map.of(
+            "path", "addressbooks/%s/domain-members/%s.vcf".formatted(domainId, uid),
+            "owner", "principals/domains/" + domainId,
+            "carddata", newVcard,
+            "oldcarddata", oldVcard));
+
+        channelPool.getSender()
+            .send(Mono.just(new OutboundMessage(
+                SabreContactsOperator.EXCHANGE_NAME_UPDATE,
+                EMPTY_ROUTING_KEY,
+                amqpMessage.getBytes(UTF_8))))
+            .block();
+
+        awaitAtMost.untilAsserted(() -> assertThat(Flux.from(emailAddressContactSearchEngine.list(domain))
+                .map(EmailAddressContact::fields)
+                .collectList().block())
+            .containsExactlyInAnyOrder(
+                ContactFields.of(otherMember, "Other Member"),
+                ContactFields.of(keptAddress, "Member")));
     }
 
     private void awaitConsumersRegistered() {
