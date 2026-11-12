@@ -51,6 +51,7 @@ import org.assertj.core.api.Assertions.assertThat
 import org.awaitility.Awaitility
 import org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS
 import org.awaitility.core.ConditionFactory
+import org.hamcrest.Matchers.hasSize
 import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.ValueSource
@@ -358,6 +359,28 @@ trait LinagoraForwardSetMethodContract {
          |    }, "c2" ]
          |  ]
          |}""".stripMargin)
+  }
+
+  @Test
+  def updateShouldNotStoreTheSameForwardTwiceWhenOnlyCaseDiffers(): Unit = {
+    val andreAddress: String = andreUsername.asMailAddress().asString()
+    val request: String =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:forward"],
+         |  "methodCalls": [
+         |    ["Forward/set", {"accountId": "$bobAccountId",
+         |      "update": {"singleton": {"localCopy": true, "forwards": ["${andreAddress.toUpperCase}", "$andreAddress"]}}}, "c1"],
+         |    ["Forward/get", {"accountId": "$bobAccountId", "ids": null}, "c2"]
+         |  ]
+         |}""".stripMargin
+
+    `given`
+      .body(request)
+    .when
+      .post
+    .`then`
+      .statusCode(SC_OK)
+      .body("methodResponses[1][1].list[0].forwards", hasSize(1))
   }
 
   @Test
