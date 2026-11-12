@@ -20,6 +20,7 @@ package com.linagora.tmail.james.jmap.event;
 
 import java.util.Map;
 import java.util.Optional;
+import java.util.TreeMap;
 import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -36,11 +37,19 @@ public interface SignatureTextFactory {
 
         /**
          * Directory values are escaped when substituted into the HTML signature: they must not inject markup.
+         * Placeholders match attribute names case-insensitively, as LDAP attribute descriptions are (RFC 4512 §2.5).
          */
         public SignatureText interpolate(Map<String, String> ldapAttributes) {
+            Map<String, String> caseInsensitiveAttributes = caseInsensitive(ldapAttributes);
             return new SignatureText(
-                interpolateSingle(textSignature, ldapAttributes, UnaryOperator.identity()),
-                interpolateSingle(htmlSignature, ldapAttributes, HtmlEscapers.htmlEscaper()::escape));
+                interpolateSingle(textSignature, caseInsensitiveAttributes, UnaryOperator.identity()),
+                interpolateSingle(htmlSignature, caseInsensitiveAttributes, HtmlEscapers.htmlEscaper()::escape));
+        }
+
+        private static Map<String, String> caseInsensitive(Map<String, String> ldapAttributes) {
+            Map<String, String> result = new TreeMap<>(String.CASE_INSENSITIVE_ORDER);
+            result.putAll(ldapAttributes);
+            return result;
         }
 
         private static String interpolateSingle(String template, Map<String, String> ldapAttributes, UnaryOperator<String> escaper) {
