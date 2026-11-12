@@ -96,12 +96,13 @@ class ForwardSetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
       .onErrorResume(error => SMono.just[ForwardSetUpdateResult](ForwardSetUpdateFailure(ForwardId.asString, error)))
   }
 
+  // MailAddress equality ignores case: distinct prevents storing the same destination twice (eg ALICE@domain.tld, alice@domain.tld)
   private def getForwardDestinations(forwards: Forwards, currentUser: Username): Seq[MailAddress] = {
     val destinations: Seq[MailAddress] = forwards.forwards.map(_.value)
     if (forwards.localCopy.value && destinations.nonEmpty) {
-      destinations :+ currentUser.asMailAddress()
+      (destinations :+ currentUser.asMailAddress()).distinct
     } else {
-      destinations
+      destinations.distinct
     }
   }
 
