@@ -24,6 +24,7 @@ import com.google.inject.multibindings.Multibinder
 import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.json.ForwardSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FORWARD
+import com.linagora.tmail.james.jmap.method.ForwardSetMethod.LOGGER
 import com.linagora.tmail.james.jmap.model.{ForwardId, ForwardSetError, Forwards, ForwardSetRequest, ForwardSetResponse, ForwardSetUpdateFailure, ForwardSetUpdateResult, ForwardSetUpdateResults, ForwardSetUpdateSuccess, ForwardUpdateRequest}
 import eu.timepit.refined.auto._
 import jakarta.inject.Inject
@@ -41,6 +42,7 @@ import org.apache.james.rrt.lib.Mapping.Type
 import org.apache.james.rrt.lib.MappingSource
 import org.apache.james.util.{AuditTrail, ReactorUtils}
 import org.reactivestreams.Publisher
+import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.JsObject
 import reactor.core.scala.publisher.{SFlux, SMono}
 
@@ -53,6 +55,10 @@ class ForwardSetMethodModule extends AbstractModule {
       .addBinding()
       .to(classOf[ForwardSetMethod])
   }
+}
+
+object ForwardSetMethod {
+  private val LOGGER: Logger = LoggerFactory.getLogger(classOf[ForwardSetMethod])
 }
 
 class ForwardSetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
@@ -98,12 +104,12 @@ class ForwardSetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
 
   // MailAddress equality ignores case: distinct prevents storing the same destination twice (eg ALICE@domain.tld, alice@domain.tld)
   private def getForwardDestinations(forwards: Forwards, currentUser: Username): Seq[MailAddress] = {
+    val self: MailAddress = currentUser.asMailAddress()
     val destinations: Seq[MailAddress] = forwards.forwards.map(_.value)
-    if (forwards.localCopy.value && destinations.nonEmpty) {
-      (destinations :+ currentUser.asMailAddress()).distinct
-    } else {
-      destinations.distinct
-    }
+      .filterNot(_.equals(self))
+      .distinct
+    val localCopy: Option[MailAddress] = Option.when(forwards.localCopy.value && destinations.nonEmpty)(self)
+    destinations ++ localCopy
   }
 
   private def createResponse(invocation: Invocation,
@@ -134,7 +140,18 @@ class ForwardSetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
           "forwardList", forwardDestinations.map(_.asString).mkString(",")))
         .log("Update forward."))
       .`then`(SMono.just[ForwardSetUpdateResult](ForwardSetUpdateSuccess))
-      .onErrorResume(error => SMono.just[ForwardSetUpdateResult](ForwardSetUpdateFailure(ForwardId.asString, error)))
+      .onErrorResume(error => restoreMappings(mappingSource, currentForwards)
+        .`then`(SMono.just[ForwardSetUpdateResult](ForwardSetUpdateFailure(ForwardId.asString, error))))
+
+  private def restoreMappings(mappingSource: MappingSource, previousForwards: Seq[MailAddress]): SMono[Unit] =
+    retrieveMappings(mappingSource)
+      .flatMapMany(storedForwards => deleteMappings(mappingSource, storedForwards.diff(previousForwards))
+        .thenMany(addMappings(mappingSource, previousForwards.diff(storedForwards))))
+      .`then`()
+      .onErrorResume(error => {
+        LOGGER.error("Failed to restore forwards of {} after a failed Forward/set", mappingSource.asString(), error)
+        SMono.empty
+      })
 
   private def retrieveMappings(mappingSource: MappingSource): SMono[Seq[MailAddress]] =
     SMono.fromCallable(() => recipientRewriteTable.getStoredMappings(mappingSource)
