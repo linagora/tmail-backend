@@ -39,9 +39,9 @@ import org.apache.james.jmap.method.{InvocationWithContext, Method, MethodRequir
 import org.apache.james.jmap.routes.SessionSupplier
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.metrics.api.MetricFactory
-import org.apache.james.rrt.api.RecipientRewriteTable
+import org.apache.james.rrt.api.{MappingAlreadyExistsException, RecipientRewriteTable}
 import org.apache.james.rrt.lib.Mapping.Type
-import org.apache.james.rrt.lib.MappingSource
+import org.apache.james.rrt.lib.{Mapping, MappingSource, Mappings}
 import org.apache.james.util.{AuditTrail, ReactorUtils}
 import org.reactivestreams.Publisher
 import org.slf4j.{Logger, LoggerFactory}
@@ -64,9 +64,16 @@ object ForwardSetMethod {
   private val LOGGER: Logger = LoggerFactory.getLogger(classOf[ForwardSetMethod])
 
   private sealed trait ForwardChange {
+    def destination: MailAddress
+
     def perform(recipientRewriteTable: RecipientRewriteTable, source: MappingSource): Unit
 
+    // Undo must be idempotent: the change may have failed before, or after, being (partially) stored
     def undo(recipientRewriteTable: RecipientRewriteTable, source: MappingSource): Unit
+
+    def modifies(storedMappings: Mappings): Boolean
+
+    protected def mapping: Mapping = Mapping.forward(destination.asString())
   }
 
   private case class ForwardAddition(destination: MailAddress) extends ForwardChange {
@@ -75,6 +82,8 @@ object ForwardSetMethod {
 
     override def undo(recipientRewriteTable: RecipientRewriteTable, source: MappingSource): Unit =
       recipientRewriteTable.removeForwardMapping(source, destination.asString())
+
+    override def modifies(storedMappings: Mappings): Boolean = !storedMappings.contains(mapping)
   }
 
   private case class ForwardRemoval(destination: MailAddress) extends ForwardChange {
@@ -82,7 +91,13 @@ object ForwardSetMethod {
       recipientRewriteTable.removeForwardMapping(source, destination.asString())
 
     override def undo(recipientRewriteTable: RecipientRewriteTable, source: MappingSource): Unit =
-      recipientRewriteTable.addForwardMapping(source, destination.asString())
+      try {
+        recipientRewriteTable.addForwardMapping(source, destination.asString())
+      } catch {
+        case _: MappingAlreadyExistsException => () // the removal did not take effect: nothing to restore
+      }
+
+    override def modifies(storedMappings: Mappings): Boolean = storedMappings.contains(mapping)
   }
 }
 
@@ -156,11 +171,10 @@ class ForwardSetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
   private def update(mappingSource: MappingSource, currentForwards: Seq[MailAddress], forwardDestinations: Seq[MailAddress]): SMono[ForwardSetUpdateResult] = {
     val changes: Seq[ForwardChange] = currentForwards.diff(forwardDestinations).map(ForwardRemoval(_)) ++
       forwardDestinations.diff(currentForwards).map(ForwardAddition(_))
-    val appliedChanges: ConcurrentLinkedDeque[ForwardChange] = new ConcurrentLinkedDeque()
+    val attemptedChanges: ConcurrentLinkedDeque[ForwardChange] = new ConcurrentLinkedDeque()
 
     SFlux.fromIterable(changes)
-      .concatMap(change => SMono.fromCallable(() => change.perform(recipientRewriteTable, mappingSource))
-        .doOnSuccess(_ => appliedChanges.push(change)))
+      .concatMap(change => SMono.fromCallable(() => attempt(change, mappingSource, attemptedChanges)))
       .`then`()
       .doOnSuccess(_ -> AuditTrail.entry()
         .username(() => mappingSource.asUsername().toScala.map(_.asString()).getOrElse(""))
@@ -170,13 +184,22 @@ class ForwardSetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
           "forwardList", forwardDestinations.map(_.asString).mkString(",")))
         .log("Update forward."))
       .`then`(SMono.just[ForwardSetUpdateResult](ForwardSetUpdateSuccess))
-      .onErrorResume(error => revert(mappingSource, appliedChanges.asScala.toSeq, error)
+      .onErrorResume(error => revert(mappingSource, attemptedChanges.asScala.toSeq, error)
         .`then`(SMono.just[ForwardSetUpdateResult](ForwardSetUpdateFailure(ForwardId.asString, error))))
   }
 
-  // Undo only the changes this request applied, most recent first: changes made concurrently by other requests are kept
-  private def revert(mappingSource: MappingSource, appliedChanges: Seq[ForwardChange], updateError: Throwable): SMono[Unit] =
-    SFlux.fromIterable(appliedChanges)
+  // The change is journaled before being performed, so that a failing change, which may be partially stored, is reverted too.
+  // It is journaled only if it modifies the stored forwards, so that a revert never undoes a concurrent request.
+  private def attempt(change: ForwardChange, mappingSource: MappingSource, attemptedChanges: ConcurrentLinkedDeque[ForwardChange]): Unit = {
+    if (change.modifies(recipientRewriteTable.getStoredMappings(mappingSource))) {
+      attemptedChanges.push(change)
+    }
+    change.perform(recipientRewriteTable, mappingSource)
+  }
+
+  // Undo only the changes this request attempted, most recent first: changes made concurrently by other requests are kept
+  private def revert(mappingSource: MappingSource, attemptedChanges: Seq[ForwardChange], updateError: Throwable): SMono[Unit] =
+    SFlux.fromIterable(attemptedChanges)
       .concatMap(change => SMono.fromCallable(() => change.undo(recipientRewriteTable, mappingSource))
         .onErrorResume(revertError => {
           LOGGER.error("Failed to revert {} of {} after a failed Forward/set: forwards are left partially updated",
