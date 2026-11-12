@@ -57,7 +57,7 @@ object CalendarEventReplyGenerator {
         requestVEvent.getProperties[Property]
           .stream()
           .filter(notProperties(Property.ATTENDEE, Property.DTSTAMP, Property.LAST_MODIFIED))
-          .filter(hasValue)
+          .filter(isOptionalDatePropertyWithoutValue.negate())
           .forEach(e => propertyList.add(e))
 
         propertyList.add(buildReplyAttendee(attendeeReply))
@@ -85,9 +85,11 @@ object CalendarEventReplyGenerator {
 
   // ical4j can parse a malformed date property (eg. CREATED followed by a control character instead of ':')
   // without assigning its date, which then fails serialization with a NullPointerException: drop it from the reply.
-  private val hasValue: Predicate[Property] = property => property match {
-    case dateProperty: DateProperty[_] => Try(dateProperty.getDate).toOption.exists(_ != null)
-    case _ => true
+  // DTSTART is required: it is kept so that a malformed value is rejected by validation.
+  private val isOptionalDatePropertyWithoutValue: Predicate[Property] = property => property match {
+    case dateProperty: DateProperty[_] if dateProperty.getName != Property.DTSTART =>
+      Try(dateProperty.getDate).toOption.forall(_ == null)
+    case _ => false
   }
 
   private def buildReplyAttendee(attendeeReply: AttendeeReply): Attendee =
