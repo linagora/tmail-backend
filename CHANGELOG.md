@@ -5,6 +5,19 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### TMail
+
+#### Changes
+
+- ISSUE-2920 `SignatureText`: `{ldap:NAME}` placeholders are matched case-insensitively, so `{ldap:SN}` and `{ldap:givenname}` resolve against the configured `sn` and `givenName`.
+
+#### Fixes
+
+- ISSUE-2917 JMAP `Forward/set` no longer stores forwards differing only by case: `ALICE@domain.tld` and `alice@domain.tld` were both stored and `Forward/get` listed the address twice.
+- ISSUE-2919 JMAP settings: a non-boolean value (`""`, `yes`, `1`) of `trash.cleanup.enabled` or `spam.cleanup.enabled` is read as disabled instead of reporting the user as failed on every WebAdmin cleanup task run.
+- ISSUE-2916 Encrypted attachment blob ids are only accepted in their canonical form: ids with leading zeros or a sign no longer resolve to the same attachment.
+- ISSUE-2912 A mail with a `Content-Type: multipart/encrypted` and no boundary is no longer stored in clear in the encrypted mailbox.
+
 ## [1.0.23] - 2026-11-11
 
 Changes since 1.0.22, including the 1.0.22.1 and 1.0.22.2 tags.
