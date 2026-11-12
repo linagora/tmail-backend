@@ -211,46 +211,13 @@ public class SabreContactsConsumer implements Closeable {
             .then();
     }
 
+    // The domain contact index does not record which vCard an address comes from, so an update can not
+    // tell the addresses dropped from this card apart from the other domain members: only upsert the
+    // addresses the card carries, and leave the rest of the domain untouched.
     private Mono<Void> handleUpdateDomainContact(Domain domain, SabreContactMessage sabreContactMessage) {
-        Mono<Map<MailAddress, ContactFields>> existingContacts = Flux.from(contactSearchEngine.list(domain))
-            .collectList()
-            .map(list -> list.stream()
-                .collect(Collectors.toMap(addressContact -> addressContact.fields().address(), EmailAddressContact::fields, KEEP_FIRST)));
-
-        Mono<Map<MailAddress, ContactFields>> incomingContacts = Mono.fromCallable(() -> sabreContactMessage.getContactFields()
-            .stream()
-            .collect(Collectors.toMap(ContactFields::address, Function.identity(), KEEP_FIRST)));
-
-        return Mono.zip(incomingContacts, existingContacts)
-            .flatMap(tuple -> applyDomainContactDiff(domain, tuple.getT1(), tuple.getT2()));
-    }
-
-    private Mono<Void> applyDomainContactDiff(Domain domain,
-                                              Map<MailAddress, ContactFields> newContacts,
-                                              Map<MailAddress, ContactFields> oldContacts) {
-        Set<MailAddress> newAddresses = newContacts.keySet();
-        Set<MailAddress> oldAddresses = oldContacts.keySet();
-
-        Set<MailAddress> toAdd = Sets.difference(newAddresses, oldAddresses);
-        Set<MailAddress> toDelete = Sets.difference(oldAddresses, newAddresses);
-        Set<MailAddress> toUpdate = Sets.intersection(oldAddresses, newAddresses)
-            .stream()
-            .filter(address -> !(oldContacts.get(address).identifier().equals(newContacts.get(address).identifier())))
-            .collect(Collectors.toSet());
-
-        Mono<Void> addOp = Flux.fromIterable(toAdd)
-            .flatMap(address -> Mono.from(contactSearchEngine.index(domain, newContacts.get(address))))
+        return Flux.fromIterable(sabreContactMessage.getContactFields())
+            .flatMap(contactFields -> Mono.from(contactSearchEngine.update(domain, contactFields)))
             .then();
-
-        Mono<Void> updateOp = Flux.fromIterable(toUpdate)
-            .flatMap(address -> Mono.from(contactSearchEngine.update(domain, newContacts.get(address))))
-            .then();
-
-        Mono<Void> deleteOp = Flux.fromIterable(toDelete)
-            .flatMap(address -> Mono.from(contactSearchEngine.delete(domain, address)))
-            .then();
-
-        return Mono.when(addOp, updateOp, deleteOp);
     }
 
     private Mono<Void> handleDeleteDomainContact(Domain domain, SabreContactMessage sabreContactMessage) {

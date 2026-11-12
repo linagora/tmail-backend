@@ -53,6 +53,10 @@ public class OpenPaaSProvisioningService {
             .first()).block();
     }
 
+    public String openPaasDomainId() {
+        return openPaasDomain().getObjectId("_id").toHexString();
+    }
+
     public Mono<OpenPaasUser> createUser() {
         UUID randomUUID = UUID.randomUUID();
         Document userToSave = new Document()
