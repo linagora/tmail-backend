@@ -20,10 +20,12 @@ package com.linagora.tmail.james.jmap.perfs;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 
 import org.apache.james.jmap.method.SystemZoneIdProvider;
+import org.apache.james.mailbox.store.mail.model.impl.MessageParser;
 import org.apache.james.mime4j.dom.Message;
 import org.apache.james.mime4j.dom.Multipart;
 import org.apache.james.mime4j.message.BodyPart;
@@ -31,6 +33,8 @@ import org.apache.james.mime4j.message.BodyPartBuilder;
 import org.apache.james.mime4j.message.MultipartBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+
+import com.google.common.io.ByteSource;
 
 public class TMailCleverMessageParserTest {
     private static final String TEXT_CONTENT = "text content";
@@ -134,5 +138,21 @@ public class TMailCleverMessageParserTest {
 
         assertThat(testee.retrieveAttachments(message))
             .hasSize(2);
+    }
+
+    @Test
+    void attachedMessageSizeShouldMatchItsContent() throws Exception {
+        String eml = "From: alice@domain.tld\r\nContent-Type: multipart/mixed; boundary=outer\r\n\r\n"
+            + "--outer\r\nContent-Type: text/plain\r\n\r\nsee attached\r\n"
+            + "--outer\r\nContent-Type: message/rfc822\r\nContent-Disposition: attachment; filename=\"fwd.eml\"\r\n\r\n"
+            + "From: carol@other.tld\r\nSubject: inner\r\nContent-Type: text/plain\r\nContent-Transfer-Encoding: base64\r\n\r\n"
+            + "aGVsbG8gd29ybGQ=\r\n--outer--\r\n";
+        MessageParser.ParsingResult result = testee.retrieveAttachments(new ByteArrayInputStream(eml.getBytes(StandardCharsets.US_ASCII)));
+        try {
+            ByteSource content = result.getAttachments().get(0).getContent();
+            assertThat(content.size()).isEqualTo(content.read().length);
+        } finally {
+            result.dispose();
+        }
     }
 }
