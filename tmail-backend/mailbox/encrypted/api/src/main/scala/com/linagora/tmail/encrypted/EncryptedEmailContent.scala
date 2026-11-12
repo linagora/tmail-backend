@@ -107,6 +107,8 @@ object EncryptedAttachmentBlobId {
       }
       aTry.toEither
         .left.map(new IllegalArgumentException(_))
+        .filterOrElse(_.serialize == string,
+          new IllegalArgumentException(s"'$string' is not a canonical encrypted attachment blob id"))
     } else {
       Left(new IllegalArgumentException(s"Must start with $prefix"))
     }
