@@ -46,13 +46,13 @@
 # it are owned by james:james and readable by it; the name is kept for layout
 # compatibility (it is just a directory here, not the root home).
 #
-# PORTS: the container runs as a non-root user, so privileged ports (<1024)
-# such as 80 (JMAP) and 25 (SMTP) cannot be bound. The shipped configuration
-# still binds 0.0.0.0:25 and 0.0.0.0:80 by default; operators must either run
-# the container with port mapping (e.g. -p 8025:25 -p 8080:80) and update
-# /root/conf/smtpserver.xml + jmap settings accordingly, or override the binds
-# in the conf files. The EXPOSE statements below are metadata only; they
-# mirror the jib configuration for documentation purposes.
+# PORTS: the container runs as a non-root user. The shipped configuration binds
+# ports below 1024: 25, 465 and 587 (SMTP), 143 and 993 (IMAP) and 80 (JMAP).
+# A non-root process binds them only when the container runtime allows
+# unprivileged ports (net.ipv4.ip_unprivileged_port_start, 0 by default since
+# Docker 20.10); otherwise move the binds of the conf files above 1024 and map
+# the ports. The EXPOSE statements below are metadata only; they mirror the
+# jib configuration for documentation purposes.
 
 # Base image: hardcoded copy of the `jib.base.image` property in the root
 # pom.xml — keep it in sync with that property when it changes.
@@ -123,18 +123,22 @@ USER ${JAMES_USER}
 # Exposed ports (metadata only, mirrors the jib config):
 #   80 JMAP, 143 IMAP, 993 IMAPS, 25 SMTP, 465 SMTP+STARTTLS, 587 SMTPS,
 #   4000 GLOWROOT, 4190 ManageSieve, 8000 WEBADMIN
-# Note: 80 and 25 are privileged (<1024) and CANNOT be bound by the non-root
-# user running this container. Map them to high ports via docker -p / k8s
-# port mapping and adapt the conf files, or change the binds in the conf.
+# Note: all of them but 4000, 4190 and 8000 are below 1024, see PORTS above.
 EXPOSE 80 143 993 25 465 587 4000 4190 8000
 
-# JVM flags mirror the jib configuration (root pom pluginManagement).
-ENV JAVA_TOOL_OPTIONS="-XX:+ExitOnOutOfMemoryError -Dlogback.configurationFile=/root/conf/logback.xml -Dworking.directory=/root/ -Dextra.props=/root/conf/jvm.properties"
-
+# JVM flags mirror the jvmFlags of the jib configuration (root pom
+# pluginManagement), on the java command line like jib does: JAVA_TOOL_OPTIONS
+# is left to deployments (heap sizing, agents...), which would otherwise
+# replace these flags, and the server needs working.directory to start.
+#
 # Same classpath semantics as jib: /root/libs/* (dependencies, recursively)
 # + /root/libs (extension jars) + /root/resources + /root/classes.
 # The classpath wildcard ordering mirrors jib's (dependencies first, then
 # resources, then classes) via the wildcard-expansion ordering of the JVM.
 ENTRYPOINT ["java", \
+    "-XX:+ExitOnOutOfMemoryError", \
+    "-Dlogback.configurationFile=/root/conf/logback.xml", \
+    "-Dworking.directory=/root/", \
+    "-Dextra.props=/root/conf/jvm.properties", \
     "-cp", "/root/libs/*:/root/libs:/root/resources:/root/classes", \
     "com.linagora.tmail.james.app.DistributedServer"]
