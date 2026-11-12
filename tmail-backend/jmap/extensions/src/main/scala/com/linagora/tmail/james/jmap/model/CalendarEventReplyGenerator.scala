@@ -28,12 +28,13 @@ import com.linagora.tmail.james.jmap.calendar.CalendarValidation
 import net.fortuna.ical4j.model.component.{VEvent, VTimeZone}
 import net.fortuna.ical4j.model.parameter.{Cn, CuType, PartStat, Role}
 import net.fortuna.ical4j.model.property.immutable.ImmutableMethod
-import net.fortuna.ical4j.model.property.{Attendee, DtStamp, LastModified, Method}
+import net.fortuna.ical4j.model.property.{Attendee, DateProperty, DtStamp, LastModified, Method}
 import net.fortuna.ical4j.model.{Calendar, Component, Property, PropertyList}
 import org.apache.james.core.MailAddress
 
 import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
+import scala.util.Try
 
 case class AttendeeReply(attendee: MailAddress, partStat: PartStat, cn: Option[Cn] = None)
 
@@ -56,6 +57,7 @@ object CalendarEventReplyGenerator {
         requestVEvent.getProperties[Property]
           .stream()
           .filter(notProperties(Property.ATTENDEE, Property.DTSTAMP, Property.LAST_MODIFIED))
+          .filter(hasValue)
           .forEach(e => propertyList.add(e))
 
         propertyList.add(buildReplyAttendee(attendeeReply))
@@ -79,6 +81,13 @@ object CalendarEventReplyGenerator {
     Option(eventRequest.getCalendarScale).foreach(calScale => calendar.getFluentTarget.replace[Calendar](calScale))
     timeZone.map(calendar.withComponent)
     calendar.getFluentTarget
+  }
+
+  // ical4j can parse a malformed date property (eg. CREATED followed by a control character instead of ':')
+  // without assigning its date, which then fails serialization with a NullPointerException: drop it from the reply.
+  private val hasValue: Predicate[Property] = property => property match {
+    case dateProperty: DateProperty[_] => Try(dateProperty.getDate).toOption.exists(_ != null)
+    case _ => true
   }
 
   private def buildReplyAttendee(attendeeReply: AttendeeReply): Attendee =
