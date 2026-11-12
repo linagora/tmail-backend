@@ -5,16 +5,120 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+## [1.0.23] - 2026-11-11
+
+Changes since 1.0.22, including the 1.0.22.1 and 1.0.22.2 tags.
+
+### James
+
+#### Added
+
+- JAMES-4133 Internationalized email (RFC 6531, 6532, 6533 and 6855): SMTP and LMTP accept `SMTPUTF8`, UTF-8 addresses are normalized to NFC, DSN and MDN support UTF-8, `RemoteDelivery` uses `SMTPUTF8` when the remote server offers it, and IMAP advertises `UTF8=ACCEPT`.
+- [ENHANCEMENT] JMAP Web Push: optional VAPID (RFC 8292) with `webpush.vapid.public.key`, `webpush.vapid.private.key` and `webpush.vapid.subject` in `jmap.properties`, advertised as `urn:ietf:params:jmap:webpush-vapid`. Pushes ask for a one week `TTL`.
+- [ENHANCEMENT] Optional `Sender` header checks: the `SenderHeaderVerificationHook` SMTP hook and the `SenderHeaderEmailSubmissionSetValidation` JMAP validation (for `send.extra.validations`).
+- [ENHANCEMENT] JMAP `Email/query` accepts an `OR` of `inMailbox` conditions.
+
+#### Changes
+
+- [ENHANCEMENT] Regex mappings are evaluated with RE2J: at most 500 characters, no `{` nor `}`, no lookaround, backreferences, possessive quantifiers nor atomic groups. Stored mappings breaking these rules are no longer applied. `james.rrt.regex.safe=false` restores `java.util.regex`.
+- [ENHANCEMENT] JAMES-4236 WebAdmin `populateEmailQueryView` processes every mailbox of the registered domains rather than every user, and reports `processedMailboxCount` and `failedMailboxCount`.
+- JAMES-4236 Delayed sends: the server refuses to start when `delay.sends.enabled` or SMTP `FUTURERELEASE` is configured with the RabbitMQ mail queue, which ignores delays; when delayed sends are disabled (the default), `EmailSubmission/set` rejects a non-zero `holdFor` or `holdUntil` with `invalidArguments` instead of sending at once; `EmailSubmission/set` answers `update` and `destroy` (`cannotUnsend`, `notFound`).
+- JAMES-4236 JMAP RFC 8621 alignment: requested nullable properties are returned as `null`, `EmailSubmission/set` reports `forbiddenFrom`, `forbiddenMailFrom` and `invalidEmail`, a property sent both as `foo` and `#foo` is `invalidArguments`, `x-` mailbox names get no role, `null` resets an `Identity/set` property.
+- [ENHANCEMENT] JMAP filtering rules: subject, header and starts-with conditions ignore case.
+- JAMES-4238 Embedded Artemis mail queue: one JMS session per operation; messages without payload are discarded instead of blocking the queue.
+- [ENHANCEMENT] RabbitMQ mail queue: missing dead letter exchanges, queues and bindings are recreated on startup.
+- [ENHANCEMENT] LDAP: an empty password is rejected without querying the directory.
+
+#### Fixes
+
+- [FIX] JAMES-4236 `EmailSubmission/set` rejects an `identityId` that is not one of the user's identities with `invalidProperties`. A missing `identityId` is still accepted unless `james.jmap.email.submission.missing.identity.compatibility=false`.
+- [FIX] JMAP `Email/query` date filters follow RFC 8621: `before` is exclusive and `after` inclusive. `james.jmap.email.query.date.boundary.backward.compatibility=true` restores the former boundaries.
+- [FIX] Domains: A-labels (`xn--`) are read in their Unicode form; domains that IDNA2003 and IDNA2008 resolve differently (`ß`, `ς`, ZWJ, ZWNJ) and A-labels decoding to a capital unknown to IDNA2003 are rejected. Usernames can no longer start with `-` nor `$`.
+- [FIX] OpenSearch: `hasAttachment` no longer depends on `indexAttachments`. Messages indexed with `indexAttachments=false` need a reindexing.
+- [FIX] IMAP robustness: bounded `SEARCH` nesting, `BAD`/`NO` instead of a closed connection on malformed `SETACL`, `ENABLE`, `ID`, `PARTIAL` and mailbox names, stricter modified UTF-7, sequence sets above 2^31, pipelined commands after a large `APPEND`, ordered responses.
+- [FIX] IMAP `QRESYNC` `VANISHED (EARLIER)` reports the expunged UIDs outside the remaining range, and no longer reports unassigned UIDs.
+- [FIX] SMTP robustness: duplicated `RCPT` parameters answer `501`, `Received` header with an empty header block. JAMES-4239 `postmaster` is always a valid recipient.
+- [FIX] MIME and mailets: unmodified messages are written byte for byte; `StripAttachment` keeps every part when attachment names are duplicated; `AddFooter`, `DSNBounce`, `ICALToHeader`, DKIM and MDN parsing handle malformed input.
+- [FIX] Addresses and storage: `MailAddress` parsing is stricter, non-ASCII `From` and `Sender` are read entirely, `Content-Type` without subtype is stored, control characters in attachment names are replaced, `RemoteDelivery` no longer drops IDN recipients.
+- [FIX] Unreadable mailbox events and some mail attributes no longer block event processing or requeue mails forever; interleaved per-recipient headers keep their order through the RabbitMQ mail queue.
+- [FIX] JMAP: invalid JWTs answer `401`, Web Push accepts browser `p256dh` keys, `Email/set` handles empty raw headers, `Mailbox/set` creation references and the first `Identity/set` update are fixed.
+- [FIX] Search: RFC 5256 base subject, UTF-8 safe subject truncation, quote markers of the first line.
+
+#### Security
+
+- [FIX] JAMES-4210 SMTP `AUTH PLAIN` and `AUTH LOGIN` honour `auth.requireSSL` (SMTP default `false`): when it is `true`, they answer `504` over a clear-text connection. See the release instructions.
+- [FIX] Mailbox rights: renaming a mailbox into another owner's namespace requires the `x` right on every moved mailbox, deleting messages requires `t`, IMAP `REPLACE` requires `e` and a read-write selection.
+- [FIX] JMAP `Mailbox/set` sharing: only `p` can be granted to `authenticated`, group identifiers are rejected, `sharedWith` updates are applied atomically.
+- [FIX] SMTP `verifyIdentity` and `EmailSubmission/set` check the `From` and `Sender` addresses as both jakarta.mail and mime4j read them.
+- [FIX] IMAP responses never carry raw line breaks from message values.
+- [FIX] JMAP `/download` never renders active content inline.
+- [FIX] Bounded recursion and cost on crafted input: IMAP `SEARCH`, MDN reports, `AddFooter`, calendar time zones, regex mappings (RE2J).
+- [FIX] Remote values are sanitized before being written in headers and SMTP replies (`ICALToHeader`, DSN, DKIM result, HELO/EHLO validated before being stored, no control characters echoed in replies).
+- [FIX] PROXY protocol: bytes buffered while waiting for the header are bounded, on every protocol with `proxyRequired` (CVE-2026-55851).
+- [FIX] SMTP `DATA` end detection stays in sync after the size limit is exceeded.
+- [FIX] DKIM body hash covers the whole body.
+
+#### Upgrades
+
+- [UPGRADE] Scala 2.13 → 3.10.
+- [UPGRADE] Guava 33.7.2 (CVE-2026-102554), Spring 6.2.19 (CVE-2025-41249, CVE-2026-41848), SCRAM 3.3 (CVE-2026-53712).
+- [UPGRADE] RE2J 1.8, ical4j 4.4.0, Jackson 2.22.4, jjwt 0.13.0, amqp-client 5.37.0, Artemis 2.57.0, BouncyCastle 1.86, log4j2 2.26.1, logback 1.6.6, SLF4J 2.0.20, Postgres JDBC 42.7.14 and Micrometer 1.17.2.
+
 ### TMail
 
 #### Added
 
-- Twake Space extension (`space.properties`): gives each TwakeSpace space a team mailbox from the `space` and `admin-panel` events, reports its mail on `activity`, with no table of its own.
+- Twake Space extension (`space.properties`, disabled by default, requires RabbitMQ): gives each TwakeSpace space a team mailbox from the `space` and `admin-panel` events, reports its mail on `activity`, with no table of its own. WebAdmin `POST /spaces?action=sync|purge|reindex` and `GET`/`PUT /domains/{domain}/team-mailboxes/{name}/space`; purging the team mailboxes of deleted spaces needs an external cron.
+- AI: `GET /ai/v1/tools` lists mailbox tools for an AI assistant (`list_emails`, `search_emails`, `get_email_details`, `create_draft`) in the OpenAI function-calling format, and `POST /ai/v1/tools` runs a tool call as the authenticated user. Each tool carries a `confirm` flag (`true` for `create_draft`) telling the assistant to ask the user before running it.
 
 #### Changes
 
-- [UPGRADE] `TeamMailboxEventsListener` moves to the Twake Space extension and is configured in `space.properties` instead of `listeners.xml`.
-- [UPGRADE] Migrating from `twake-mail-side-service`: bind its team mailboxes to their spaces, see `upgrade-instructions.md`.
+- [ENHANCEMENT] The distributed Docker images (`distributed-*`, `distributed-ai-*`) are built from a Dockerfile instead of jib (since 1.0.22.2): they run as the non-root user `james` (uid 1000) and are published for amd64 only. See the release instructions.
+- [ENHANCEMENT] `TeamMailboxEventsListener` moves to the Twake Space extension and is configured in `space.properties` instead of `listeners.xml`.
+- [ENHANCEMENT] Twake Space replaces `twake-mail-side-service`: bind its team mailboxes to their spaces, see `upgrade-instructions.md`.
+- ISSUE-5605 `Email/send` requires a non-empty `From` header (`invalidEmail` otherwise) and answers `forbiddenFrom`, `forbiddenMailFrom` and `noRecipients` instead of `serverFail`.
+- ISSUE-5608 JMAP: nullable TMail properties are returned as `null` instead of being left out (`Label/get` `color` and `description`, `CalendarEvent/parse` fields, the encrypted email detailed view).
+- ISSUE-2862 IMAP: with the regular path converter, team mailboxes of another domain are listed as `#TeamMailbox.<team>@<domain>`.
+- ISSUE-2792 PGP keystore: keys that cannot encrypt and ElGamal keys above 4096 bits are rejected.
+- ISSUE-2793 PGP: messages are encrypted with the valid, encryption-flagged keys or subkeys of the user (GnuPG default keys with an encryption subkey are accepted); sign-only, expired and revoked keys are skipped.
+
+#### Fixes
+
+- [FIX] Distributed Docker image: the JVM flags are on the `java` command line again, as with jib, so that a custom `JAVA_TOOL_OPTIONS` no longer prevents the server from starting (1.0.22.2 regression).
+- ISSUE-2788, ISSUE-2796, ISSUE-2801, ISSUE-2802, ISSUE-2803, ISSUE-2804 `CalendarEvent/parse`: day and week based `DURATION` is supported; unparsable `DTSTART`, `DTEND` or `RECURRENCE-ID` and unknown `CLASS`, `STATUS`, `TRANSP` or `PARTSTAT` values are ignored instead of failing the whole invitation.
+- ISSUE-2795, ISSUE-2797, ISSUE-2798, ISSUE-2799, ISSUE-2800, ISSUE-2805, ISSUE-2806, ISSUE-2843, ISSUE-2865, ISSUE-2882 Calendar replies and COUNTER acceptance: invalid calendars are an `invalidArguments` error instead of `serverFail`, a missing `DTSTAMP` is added, non-standard components are copied, attendee addresses are percent-encoded and `CALSCALE` is written once.
+- ISSUE-2779, ISSUE-2787, ISSUE-2876 `CalendarEvent/reply` leaves cancelled events untouched and targets the master `VEVENT` wherever it is listed.
+- ISSUE-2841, ISSUE-2842 Accepting a COUNTER applies all its changes and no longer duplicates attendees differing by case.
+- ISSUE-2847, ISSUE-2848, ISSUE-2851, ISSUE-2852, ISSUE-2853, ISSUE-2864 CalDAV client: incomplete DAV answers no longer fail `CalendarEventAttendance/get` or event lookups; zero-length events count as free.
+- ISSUE-2863 DAV collect mailets read `mailto:` calendar addresses carrying header fields.
+- [FIX] Calendar parsing no longer fails after processing many invitations carrying time zone definitions.
+- ISSUE-2790 Mails with a `Content-Type` without subtype are delivered to users having a PGP key.
+- ISSUE-2810 The in-memory keystore stores a key uploaded twice only once.
+- ISSUE-2789, ISSUE-2866 JMAP Download All truncates long attachment names to 200 bytes, without trailing dots or spaces.
+- ISSUE-2791 The Sabre contact consumer tolerates vCards listing the same email address twice.
+- ISSUE-2746, ISSUE-2747, ISSUE-2748, ISSUE-2749, ISSUE-2755 WebAdmin answers `400` with the reason instead of `500` for invalid team mailbox folder names, invalid or other-domain extra senders and team mailbox members, contacts without `emailAddress` and invalid labels.
+- ISSUE-2808, ISSUE-2809 JMAP: an unknown calendar reply language or an invalid `Filter/set` `appendIn` mailbox id is an `invalidArguments` error of that method call instead of failing the whole request.
+- ISSUE-2883 `Filter/set`: the self-forward check compares parsed addresses.
+- ISSUE-2794 WebFinger accepts any absolute URI resource and answers `400` instead of `500` for invalid ones.
+
+#### Security
+
+- [FIX] `Mailbox/clear` requires the `DeleteMessages` and `PerformExpunge` rights.
+- [FIX] `Email/send` checks the `From` and `Sender` addresses as both jakarta.mail and mime4j read them.
+- [FIX] Domain signature templates only resolve the `{ldap:…}` attributes read for identities (`extraAttributes` of `IdentityProvisionListener`), never credentials, and HTML-escape them. See the release instructions.
+- [FIX] Unauthenticated downloads and public assets are served with `X-Content-Type-Options: nosniff` and `Content-Security-Policy: sandbox`; active content (HTML, SVG, XML) is served as an attachment.
+- [FIX] Downloading an encrypted attachment checks that the message is accessible.
+- [FIX] `CalDavCollect` and `RestrictiveCalDavCollect` (`strict` and `sameDomain` modes) check the sender alignment of every `VEVENT`, honour `SENT-BY` delegates of the calendar user's domain only, and reject calendar addresses with a fragment. See the release instructions.
+- [FIX] Calendar replies select the calendar object whose `VEVENT` `UID` is exactly the requested one; ISSUE-2878 `CalendarEventCounter/accept` checks the organizer of the `VEVENT` it patches.
+- ISSUE-2760 JMAP Download All sanitizes ZIP entry names.
+- [FIX] Parsing long blob ids and attachment names no longer overflows the stack.
+- [FIX] RAG: extracting the latest reply of an email runs in linear time.
+- [FIX] PGP keystore: malformed keys are rejected, key packet lengths are validated, and keys are limited to 1 MiB before decoding.
+
+#### Upgrades
+
+- [UPGRADE] Scala 2.13 → 3.10: custom extensions built against TMail Scala classes must be rebuilt; the key order of some JMAP JSON objects changes.
+- [UPGRADE] FreeMarker is no longer shipped: it came with ez-vcard and was unused.
 
 ## [1.0.22] - 2026-10-14
 
