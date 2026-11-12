@@ -138,7 +138,7 @@ case class JmapSettings(settings: Map[JmapSettingsKey, JmapSettingsValue], state
   }
 
   def trashCleanupEnabled(): Boolean =
-    settings.get(trashCleanupEnabledSetting).exists(trashCleanupEnabled => trashCleanupEnabled.value.toBoolean)
+    booleanSetting(trashCleanupEnabledSetting)
 
   def trashCleanupPeriod(): Period =
     settings.get(trashCleanupPeriodSetting)
@@ -146,7 +146,7 @@ case class JmapSettings(settings: Map[JmapSettingsKey, JmapSettingsValue], state
       .getOrElse(cleanupDefaultPeriod)
 
   def spamCleanupEnabled(): Boolean =
-    settings.get(spamCleanupEnabledSetting).exists(spamCleanupEnabled => spamCleanupEnabled.value.toBoolean)
+    booleanSetting(spamCleanupEnabledSetting)
 
   def spamCleanupPeriod(): Period =
     settings.get(spamCleanupPeriodSetting)
@@ -185,6 +185,10 @@ case class JmapSettings(settings: Map[JmapSettingsKey, JmapSettingsValue], state
       .map(value => Try(value.value.toBoolean)
         .getOrElse(AI_RAG_DISABLE_DEFAULT_VALUE))
       .getOrElse(AI_RAG_DISABLE_DEFAULT_VALUE)
+
+  // Settings/set stores free-form values: anything not parsable as a boolean is read as disabled
+  private def booleanSetting(key: JmapSettingsKey): Boolean =
+    settings.get(key).exists(_.value.toBooleanOption.getOrElse(false))
 }
 
 case class JmapSettingsUpsertRequest(settings: Map[JmapSettingsKey, JmapSettingsValue])
