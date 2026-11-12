@@ -243,6 +243,33 @@ class EncryptedEmailContentTest {
   }
 
   @Test
+  def parseShouldRejectLeadingZeroPosition(): Unit = {
+    assertThat(EncryptedAttachmentBlobId.parse(new InMemoryMessageId.Factory(), "encryptedAttachment_1_01").toOption.toJava)
+      .isEmpty
+  }
+
+  @Test
+  def parseShouldRejectSignedPosition(): Unit = {
+    assertThat(EncryptedAttachmentBlobId.parse(new InMemoryMessageId.Factory(), "encryptedAttachment_1_-0").toOption.toJava)
+      .isEmpty
+    assertThat(EncryptedAttachmentBlobId.parse(new InMemoryMessageId.Factory(), "encryptedAttachment_1_+1").toOption.toJava)
+      .isEmpty
+  }
+
+  @Test
+  def parseShouldRejectNonCanonicalMessageId(): Unit = {
+    assertThat(EncryptedAttachmentBlobId.parse(new InMemoryMessageId.Factory(), "encryptedAttachment_01_1").toOption.toJava)
+      .isEmpty
+  }
+
+  @Test
+  def parseShouldRoundTrip(): Unit = {
+    val raw = "encryptedAttachment_1_2"
+    assertThat(EncryptedAttachmentBlobId.parse(new InMemoryMessageId.Factory(), raw).map(_.serialize))
+      .isEqualTo(Right(raw))
+  }
+
+  @Test
   def positionShouldPreserveOrdering(): Unit = {
     val clearEmailContent: ClearEmailContent = ClearEmailContent(
       preview = Preview.from("preview 123321"),
