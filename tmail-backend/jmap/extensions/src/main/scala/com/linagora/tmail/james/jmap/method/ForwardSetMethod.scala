@@ -18,13 +18,15 @@
 
 package com.linagora.tmail.james.jmap.method
 
+import java.util.concurrent.ConcurrentLinkedDeque
+
 import com.google.common.collect.ImmutableMap
 import com.google.inject.AbstractModule
 import com.google.inject.multibindings.Multibinder
 import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.json.ForwardSerializer
 import com.linagora.tmail.james.jmap.method.CapabilityIdentifier.LINAGORA_FORWARD
-import com.linagora.tmail.james.jmap.method.ForwardSetMethod.LOGGER
+import com.linagora.tmail.james.jmap.method.ForwardSetMethod.{ForwardAddition, ForwardChange, ForwardRemoval, LOGGER}
 import com.linagora.tmail.james.jmap.model.{ForwardId, ForwardSetError, Forwards, ForwardSetRequest, ForwardSetResponse, ForwardSetUpdateFailure, ForwardSetUpdateResult, ForwardSetUpdateResults, ForwardSetUpdateSuccess, ForwardUpdateRequest}
 import eu.timepit.refined.auto._
 import jakarta.inject.Inject
@@ -46,6 +48,7 @@ import org.slf4j.{Logger, LoggerFactory}
 import play.api.libs.json.JsObject
 import reactor.core.scala.publisher.{SFlux, SMono}
 
+import scala.jdk.CollectionConverters._
 import scala.jdk.OptionConverters._
 import scala.jdk.StreamConverters.StreamHasToScala
 
@@ -59,6 +62,28 @@ class ForwardSetMethodModule extends AbstractModule {
 
 object ForwardSetMethod {
   private val LOGGER: Logger = LoggerFactory.getLogger(classOf[ForwardSetMethod])
+
+  private sealed trait ForwardChange {
+    def perform(recipientRewriteTable: RecipientRewriteTable, source: MappingSource): Unit
+
+    def undo(recipientRewriteTable: RecipientRewriteTable, source: MappingSource): Unit
+  }
+
+  private case class ForwardAddition(destination: MailAddress) extends ForwardChange {
+    override def perform(recipientRewriteTable: RecipientRewriteTable, source: MappingSource): Unit =
+      recipientRewriteTable.addForwardMapping(source, destination.asString())
+
+    override def undo(recipientRewriteTable: RecipientRewriteTable, source: MappingSource): Unit =
+      recipientRewriteTable.removeForwardMapping(source, destination.asString())
+  }
+
+  private case class ForwardRemoval(destination: MailAddress) extends ForwardChange {
+    override def perform(recipientRewriteTable: RecipientRewriteTable, source: MappingSource): Unit =
+      recipientRewriteTable.removeForwardMapping(source, destination.asString())
+
+    override def undo(recipientRewriteTable: RecipientRewriteTable, source: MappingSource): Unit =
+      recipientRewriteTable.addForwardMapping(source, destination.asString())
+  }
 }
 
 class ForwardSetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
@@ -128,9 +153,14 @@ class ForwardSetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
       invocation.methodCallId)
   }
 
-  private def update(mappingSource: MappingSource, currentForwards: Seq[MailAddress], forwardDestinations: Seq[MailAddress]): SMono[ForwardSetUpdateResult] =
-    deleteMappings(mappingSource, currentForwards.diff(forwardDestinations))
-      .thenMany(addMappings(mappingSource, forwardDestinations.diff(currentForwards)))
+  private def update(mappingSource: MappingSource, currentForwards: Seq[MailAddress], forwardDestinations: Seq[MailAddress]): SMono[ForwardSetUpdateResult] = {
+    val changes: Seq[ForwardChange] = currentForwards.diff(forwardDestinations).map(ForwardRemoval(_)) ++
+      forwardDestinations.diff(currentForwards).map(ForwardAddition(_))
+    val appliedChanges: ConcurrentLinkedDeque[ForwardChange] = new ConcurrentLinkedDeque()
+
+    SFlux.fromIterable(changes)
+      .concatMap(change => SMono.fromCallable(() => change.perform(recipientRewriteTable, mappingSource))
+        .doOnSuccess(_ => appliedChanges.push(change)))
       .`then`()
       .doOnSuccess(_ -> AuditTrail.entry()
         .username(() => mappingSource.asUsername().toScala.map(_.asString()).getOrElse(""))
@@ -140,18 +170,21 @@ class ForwardSetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
           "forwardList", forwardDestinations.map(_.asString).mkString(",")))
         .log("Update forward."))
       .`then`(SMono.just[ForwardSetUpdateResult](ForwardSetUpdateSuccess))
-      .onErrorResume(error => restoreMappings(mappingSource, currentForwards)
+      .onErrorResume(error => revert(mappingSource, appliedChanges.asScala.toSeq, error)
         .`then`(SMono.just[ForwardSetUpdateResult](ForwardSetUpdateFailure(ForwardId.asString, error))))
+  }
 
-  private def restoreMappings(mappingSource: MappingSource, previousForwards: Seq[MailAddress]): SMono[Unit] =
-    retrieveMappings(mappingSource)
-      .flatMapMany(storedForwards => deleteMappings(mappingSource, storedForwards.diff(previousForwards))
-        .thenMany(addMappings(mappingSource, previousForwards.diff(storedForwards))))
+  // Undo only the changes this request applied, most recent first: changes made concurrently by other requests are kept
+  private def revert(mappingSource: MappingSource, appliedChanges: Seq[ForwardChange], updateError: Throwable): SMono[Unit] =
+    SFlux.fromIterable(appliedChanges)
+      .concatMap(change => SMono.fromCallable(() => change.undo(recipientRewriteTable, mappingSource))
+        .onErrorResume(revertError => {
+          LOGGER.error("Failed to revert {} of {} after a failed Forward/set: forwards are left partially updated",
+            change, mappingSource.asString(), revertError)
+          updateError.addSuppressed(revertError)
+          SMono.empty
+        }))
       .`then`()
-      .onErrorResume(error => {
-        LOGGER.error("Failed to restore forwards of {} after a failed Forward/set", mappingSource.asString(), error)
-        SMono.empty
-      })
 
   private def retrieveMappings(mappingSource: MappingSource): SMono[Seq[MailAddress]] =
     SMono.fromCallable(() => recipientRewriteTable.getStoredMappings(mappingSource)
@@ -161,20 +194,6 @@ class ForwardSetMethod @Inject()(recipientRewriteTable: RecipientRewriteTable,
         .orElseThrow(() => new IllegalStateException(s"Can not compute address for mapping ${mapping.asString}")))
       .toScala(Seq))
       .subscribeOn(ReactorUtils.BLOCKING_CALL_WRAPPER)
-
-  private def deleteMappings(source: MappingSource, forwards: Seq[MailAddress]): SFlux[MailAddress] =
-    SFlux.fromIterable(forwards)
-      .map(forwardDestination => {
-        recipientRewriteTable.removeForwardMapping(source, forwardDestination.asString())
-        forwardDestination
-      })
-
-  private def addMappings(source: MappingSource, forwards: Seq[MailAddress]): SFlux[MailAddress] =
-    SFlux.fromIterable(forwards)
-      .map(forwardDestination => {
-        recipientRewriteTable.addForwardMapping(source, forwardDestination.asString())
-        forwardDestination
-      })
 
   private def validateNoCreate(forwardSetRequest: ForwardSetRequest): Option[Map[String, ForwardSetError]] =
     forwardSetRequest.create.map(aMap => aMap
