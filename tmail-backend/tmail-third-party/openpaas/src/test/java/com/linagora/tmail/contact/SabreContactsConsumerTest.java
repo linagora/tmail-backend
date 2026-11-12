@@ -26,6 +26,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
@@ -35,6 +36,7 @@ import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.backends.rabbitmq.RabbitMQConnectionFactory;
 import org.apache.james.backends.rabbitmq.ReactorRabbitMQChannelPool;
 import org.apache.james.backends.rabbitmq.SimpleConnectionPool;
+import org.apache.james.core.Domain;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
 import org.apache.james.jmap.api.model.AccountId;
@@ -50,10 +52,12 @@ import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.fge.lambdas.Throwing;
 import com.linagora.tmail.DockerOpenPaasExtension;
 import com.linagora.tmail.DockerOpenPaasSetup;
 import com.linagora.tmail.HttpUtils;
+import com.linagora.tmail.OpenPaaSProvisioningService;
 import com.linagora.tmail.OpenPaasUser;
 import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.dav.CardDavUtils;
@@ -80,6 +84,8 @@ import reactor.rabbitmq.QueueSpecification;
 import reactor.rabbitmq.Sender;
 
 class SabreContactsConsumerTest {
+    private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+
     private final ConditionFactory calmlyAwait = Awaitility.with()
         .pollInterval(Duration.ofMillis(500))
         .and()
@@ -505,6 +511,41 @@ class SabreContactsConsumerTest {
         awaitAtMost.untilAsserted(() -> assertThat(Flux.from(emailAddressContactSearchEngine.autoComplete(getAccountId(),
                 emailAddress, 255)).map(EmailAddressContact::fields)
             .collectList().block()).containsExactly(ContactFields.of(new MailAddress(emailAddress), "Java Member")));
+    }
+
+    @Test
+    void domainContactUpdateShouldNotRemoveTheOtherDomainMembers() throws Exception {
+        String domainId = dockerOpenPaasExtension.dockerOpenPaasSetup().getOpenPaaSProvisioningService().openPaasDomainId();
+        Domain domain = new OpenPaasRestClient(dockerOpenPaasExtension.dockerOpenPaasSetup().openPaasConfiguration())
+            .retrieveDomainName(domainId).block();
+        MailAddress otherMember = new MailAddress("other-member@" + OpenPaaSProvisioningService.DOMAIN);
+        MailAddress updatedMember = new MailAddress("updated-member@" + OpenPaaSProvisioningService.DOMAIN);
+        MailAddress addedAddress = new MailAddress("updated-member-alias@" + OpenPaaSProvisioningService.DOMAIN);
+        Mono.from(emailAddressContactSearchEngine.index(domain, ContactFields.of(otherMember, "Other Member"))).block();
+        Mono.from(emailAddressContactSearchEngine.index(domain, ContactFields.of(updatedMember, "Old Name"))).block();
+
+        String uid = UUID.randomUUID().toString();
+        String vcard = "BEGIN:VCARD\r\nVERSION:4.0\r\nUID:%s\r\nFN:New Name\r\nEMAIL:%s\r\nEMAIL:%s\r\nEND:VCARD\r\n"
+            .formatted(uid, updatedMember.asString(), addedAddress.asString());
+        String amqpMessage = OBJECT_MAPPER.writeValueAsString(Map.of(
+            "path", "addressbooks/%s/domain-members/%s.vcf".formatted(domainId, uid),
+            "owner", "principals/domains/" + domainId,
+            "carddata", vcard));
+
+        channelPool.getSender()
+            .send(Mono.just(new OutboundMessage(
+                SabreContactsOperator.EXCHANGE_NAME_UPDATE,
+                EMPTY_ROUTING_KEY,
+                amqpMessage.getBytes(UTF_8))))
+            .block();
+
+        awaitAtMost.untilAsserted(() -> assertThat(Flux.from(emailAddressContactSearchEngine.list(domain))
+                .map(EmailAddressContact::fields)
+                .collectList().block())
+            .containsExactlyInAnyOrder(
+                ContactFields.of(otherMember, "Other Member"),
+                ContactFields.of(updatedMember, "New Name"),
+                ContactFields.of(addedAddress, "New Name")));
     }
 
     private void awaitConsumersRegistered() {
