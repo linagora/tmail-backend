@@ -465,6 +465,109 @@ trait LinagoraForwardSetMethodContract {
   }
 
   @Test
+  def updateWithOwnAddressInAnotherCaseShouldBeTheLocalCopy(): Unit = {
+    val request: String =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:forward"],
+         |  "methodCalls": [
+         |    ["Forward/set", {"accountId": "$bobAccountId",
+         |      "update": {"singleton": {"forwards": ["${bobUsername.asString().toUpperCase}"]}}}, "c1"],
+         |    ["Forward/get", {"accountId": "$bobAccountId", "ids": null}, "c2"]
+         |  ]
+         |}""".stripMargin
+
+    val response: String = `given`
+      .body(request)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+    assertThatJson(response)
+      .inPath("methodResponses[0][1]")
+      .isEqualTo(
+        s"""{
+           |  "accountId": "$bobAccountId",
+           |  "newState": "${INSTANCE.value}",
+           |  "updated": {"singleton": {}}
+           |}""".stripMargin)
+    assertThatJson(response)
+      .inPath("methodResponses[1][1].list")
+      .isEqualTo("""[{"id": "singleton", "localCopy": true, "forwards": []}]""")
+  }
+
+  @Test
+  def failedUpdateShouldNotAddTheForwardsPrecedingTheFailure(guiceJamesServer: GuiceJamesServer): Unit = {
+    // GIVEN Andre forwards mails to Bob
+    guiceJamesServer.getProbe(classOf[DataProbeImpl])
+      .addMapping(MappingSource.fromUser(andreUsername), Mapping.forward(bobUsername.asString()))
+
+    // WHEN Bob forwards to Cedric then to Andre (a loop)
+    val response: String = setForwardsThenGet(localCopy = true,
+      forwards = Seq(cedricUsername.asString(), andreUsername.asString()))
+
+    // THEN nothing is stored
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].updated")
+      .isAbsent()
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].notUpdated.singleton")
+      .isObject()
+    assertThatJson(response)
+      .inPath("methodResponses[1][1].list")
+      .isEqualTo("""[{"id": "singleton", "localCopy": true, "forwards": []}]""")
+  }
+
+  @Test
+  def failedUpdateShouldRestoreThePreviousForwards(guiceJamesServer: GuiceJamesServer): Unit = {
+    // GIVEN Bob forwards to Cedric and keeps a local copy
+    setForwardsThenGet(localCopy = true, forwards = Seq(cedricUsername.asString()))
+    // AND Andre forwards mails to Bob
+    guiceJamesServer.getProbe(classOf[DataProbeImpl])
+      .addMapping(MappingSource.fromUser(andreUsername), Mapping.forward(bobUsername.asString()))
+
+    // WHEN Bob replaces Cedric by Andre (a loop)
+    val response: String = setForwardsThenGet(localCopy = false, forwards = Seq(andreUsername.asString()))
+
+    // THEN the previous forwards are kept
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].updated")
+      .isAbsent()
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].notUpdated.singleton")
+      .isObject()
+    assertThatJson(response)
+      .inPath("methodResponses[1][1].list")
+      .isEqualTo(s"""[{"id": "singleton", "localCopy": true, "forwards": ["${cedricUsername.asString()}"]}]""")
+  }
+
+  private def setForwardsThenGet(localCopy: Boolean, forwards: Seq[String]): String =
+    `given`
+      .body(
+        s"""{
+           |  "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:forward"],
+           |  "methodCalls": [
+           |    ["Forward/set", {"accountId": "$bobAccountId",
+           |      "update": {"singleton": {"localCopy": $localCopy, "forwards": [${forwards.map(forward => s"\"$forward\"").mkString(", ")}]}}}, "c1"],
+           |    ["Forward/get", {"accountId": "$bobAccountId", "ids": null}, "c2"]
+           |  ]
+           |}""".stripMargin)
+    .when
+      .post
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract
+      .body
+      .asString
+
+  @Test
   def updateShouldReturnSuccessWhenForwardsIsEmpty(): Unit = {
     val request: String =
       s"""{
