@@ -400,6 +400,21 @@ class CalendarEventReplyGeneratorTest {
     assertThat(replyAttendee.get.getCalAddress.toASCIIString).isEqualTo("mailto:%22quoted%20local%22@domain.tld")
   }
 
+  @Test
+  def replyShouldOmitDatePropertiesWithoutValue(): Unit = {
+    val request: Calendar = CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+      ("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//x//EN\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\n" +
+        "CREATED\u000b20170136Z\r\nDTSTART:20170111T090000Z\r\nORGANIZER:mailto:alice@james.org\r\n" +
+        "END:VEVENT\r\nEND:VCALENDAR\r\n").getBytes(StandardCharsets.UTF_8)))
+
+    val reply: String = testee.generate(request, AttendeeReply(new MailAddress("bob@james.org"), PartStat.ACCEPTED)).toString
+
+    assertSoftly(softly => {
+      softly.assertThat(reply).contains("DTSTART:20170111T090000Z")
+      softly.assertThat(reply).doesNotContain("CREATED")
+    })
+  }
+
   private def requestWithProperty(calendarProperty: String): Calendar =
     CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
       s"""BEGIN:VCALENDAR
