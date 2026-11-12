@@ -111,4 +111,12 @@ class SignatureTextTest {
         assertThat(signature.interpolate(Map.of("sn", "Doe", "givenName", "John")))
             .isEqualTo(new SignatureText("plain: Doe", "html: John"));
     }
+
+    @Test
+    void interpolateShouldMatchAttributeNamesCaseInsensitively() {
+        SignatureText signature = new SignatureText("{ldap:givenname} {ldap:SN}", "<p>{ldap:GIVENNAME} {ldap:Sn}</p>");
+
+        assertThat(signature.interpolate(Map.of("givenName", "John", "sn", "Doe")))
+            .isEqualTo(new SignatureText("John Doe", "<p>John Doe</p>"));
+    }
 }
