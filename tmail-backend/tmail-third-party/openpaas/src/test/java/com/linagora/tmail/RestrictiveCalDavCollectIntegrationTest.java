@@ -416,8 +416,10 @@ public class RestrictiveCalDavCollectIntegrationTest {
             .isEqualTo("NEEDS-ACTION");
     }
 
+    // alignmentMode only gates what the mailet forwards: since esn-sabre 2.5.0.2 (sabre/vobject ebffa3c4)
+    // the CalDAV server itself refuses a REQUEST whose ORGANIZER is not its sender, whatever the mode.
     @Test
-    void alignmentModeSameDomainShouldAllowRequestUpdateWhenOrganizerHasSameDomain(@TempDir File altDir) throws Exception {
+    void alignmentModeSameDomainShouldNotUpdateWhenOrganizerIsNotTheSender(@TempDir File altDir) throws Exception {
         jamesServer.shutdown();
         startServer(altDir, "sameDomain");
 
@@ -443,11 +445,11 @@ public class RestrictiveCalDavCollectIntegrationTest {
             .getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(calendarUid)).block();
         assertThat(result.calendarData().getComponent(Component.VEVENT).get()
             .getProperty(Property.LOCATION).get().getValue())
-            .isEqualTo("office2");
+            .isEqualTo("office");
     }
 
     @Test
-    void alignmentModeNoneShouldAllowRequestUpdateWithAnyOrganizer(@TempDir File altDir) throws Exception {
+    void alignmentModeNoneShouldNotUpdateWhenOrganizerIsNotTheSender(@TempDir File altDir) throws Exception {
         jamesServer.shutdown();
         startServer(altDir, "none");
 
@@ -473,12 +475,43 @@ public class RestrictiveCalDavCollectIntegrationTest {
             .getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(calendarUid)).block();
         assertThat(result.calendarData().getComponent(Component.VEVENT).get()
             .getProperty(Property.LOCATION).get().getValue())
-            .isEqualTo("office2");
+            .isEqualTo("office");
     }
 
     // ---- end alignmentMode tests ----
 
+    @Test
+    void mailetShouldUpdateCalDAVWhenTheSenderTakesOverTheEventFromItsFormerOrganizer() throws Exception {
+        // RFC 5546 2.1.5: a new organizer may send a REQUEST that keeps the former one as an attendee.
+        // another@domain.tld is an attendee in emailWithAliceInviteBob.eml.mustache.
+        String calendarUid = UUID.randomUUID().toString();
+        pushCalendarToDav(receiver, calendarUid, "office", "another@domain.tld");
+
+        String mimeMessageId = UUID.randomUUID().toString();
+        String mail = generateMail("template/emailWithAliceInviteBob.eml.mustache",
+            EmailTemplateData.builder()
+                .sender(toTemplateUser(sender))
+                .receiver(toTemplateUser(receiver))
+                .mimeMessageId(mimeMessageId)
+                .calendarUid(calendarUid)
+                .sequence("1")
+                .location("office2")
+                .build());
+
+        sendMessage(sender, receiver, mail, mimeMessageId);
+
+        DavCalendarObject result = davClient.caldav(receiver.email())
+            .getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(calendarUid)).block();
+        assertThat(result.calendarData().getComponent(Component.VEVENT).get()
+            .getProperty(Property.LOCATION).get().getValue())
+            .isEqualTo("office2");
+    }
+
     private void pushCalendarToDav(OpenPaasUser user, String calendarUid, String location) {
+        pushCalendarToDav(user, calendarUid, location, sender.email().asString());
+    }
+
+    private void pushCalendarToDav(OpenPaasUser user, String calendarUid, String location, String organizer) {
         String ics = "BEGIN:VCALENDAR\r\n" +
             "VERSION:2.0\r\n" +
             "BEGIN:VEVENT\r\n" +
@@ -486,7 +519,7 @@ public class RestrictiveCalDavCollectIntegrationTest {
             "DTSTART:20170111T090000Z\r\n" +
             "DTEND:20170111T100000Z\r\n" +
             "LOCATION:" + location + "\r\n" +
-            "ORGANIZER:mailto:" + sender.email().asString() + "\r\n" +
+            "ORGANIZER:mailto:" + organizer + "\r\n" +
             "ATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:" + receiver.email().asString() + "\r\n" +
             "END:VEVENT\r\n" +
             "END:VCALENDAR\r\n";
