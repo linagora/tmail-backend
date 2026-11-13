@@ -214,4 +214,4 @@ should use `linagora/tmail-backend:distributed-ai-1.0.23`. If running the migrat
 ## References
 
 * Official Twake Mail release notes: https://github.com/linagora/tmail-backend/releases/tag/1.0.23
-* James upgrade instructions: https://github.com/apache/james-project/blob/c4e8abb7f6e19dafc765e1398c2b4ad00ace865b/upgrade-instructions.md
+* James upgrade instructions: https://github.com/apache/james-project/blob/6073e0b4da9a7c287254ca6757b3f551c137089b/upgrade-instructions.md

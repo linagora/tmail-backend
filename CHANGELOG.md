@@ -5,20 +5,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
-### TMail
-
-#### Changes
-
-- ISSUE-2920 `SignatureText`: `{ldap:NAME}` placeholders are matched case-insensitively, so `{ldap:SN}` and `{ldap:givenname}` resolve against the configured `sn` and `givenName`.
-
-#### Fixes
-
-- ISSUE-2917 JMAP `Forward/set` no longer stores forwards differing only by case: `ALICE@domain.tld` and `alice@domain.tld` were both stored and `Forward/get` listed the address twice.
-- ISSUE-2919 JMAP settings: a non-boolean value (`""`, `yes`, `1`) of `trash.cleanup.enabled` or `spam.cleanup.enabled` is read as disabled instead of reporting the user as failed on every WebAdmin cleanup task run.
-- ISSUE-2916 Encrypted attachment blob ids are only accepted in their canonical form: ids with leading zeros or a sign no longer resolve to the same attachment.
-- ISSUE-2912 A mail with a `Content-Type: multipart/encrypted` and no boundary is no longer stored in clear in the encrypted mailbox.
-
-## [1.0.23] - 2026-11-11
+## [1.0.23] - 2026-11-13
 
 Changes since 1.0.22, including the 1.0.22.1 and 1.0.22.2 tags.
 
@@ -41,6 +28,7 @@ Changes since 1.0.22, including the 1.0.22.1 and 1.0.22.2 tags.
 - JAMES-4238 Embedded Artemis mail queue: one JMS session per operation; messages without payload are discarded instead of blocking the queue.
 - [ENHANCEMENT] RabbitMQ mail queue: missing dead letter exchanges, queues and bindings are recreated on startup.
 - [ENHANCEMENT] LDAP: an empty password is rejected without querying the directory.
+- JAMES-4236 JMAP `Mailbox/query`: an empty or missing filter matches every mailbox, a `null` `role` matches the mailboxes without a role, and `filter.role` accepts the roles `Mailbox/get` returns.
 
 #### Fixes
 
@@ -56,6 +44,13 @@ Changes since 1.0.22, including the 1.0.22.1 and 1.0.22.2 tags.
 - [FIX] Unreadable mailbox events and some mail attributes no longer block event processing or requeue mails forever; interleaved per-recipient headers keep their order through the RabbitMQ mail queue.
 - [FIX] JMAP: invalid JWTs answer `401`, Web Push accepts browser `p256dh` keys, `Email/set` handles empty raw headers, `Mailbox/set` creation references and the first `Identity/set` update are fixed.
 - [FIX] Search: RFC 5256 base subject, UTF-8 safe subject truncation, quote markers of the first line.
+- [FIX] JAMES-4236 `Mailbox/set` resolves the parents created in the same call, including long chains, and reports unknown references, failed parents and cycles separately.
+- [FIX] Sieve `vacation` follows RFC 5230 and RFC 3834: the reply is marked `Auto-Submitted: auto-replied`, automatic mails and the user's own mails are not answered, and a sender is answered once per `:days`, tracked in the vacation `NotificationRegistry` shared by all nodes instead of a per-node cache.
+- [FIX] Vacation `NotificationRegistry`: registering a sender again replaces its entry, the Postgres registry drops expired entries, and the memory one is bounded.
+- [FIX] `MailAddress`: addresses differing only by case have the same hash code, as they are equal.
+- [FIX] IMAP: a literal followed by a bare LF as the last bytes received is decoded, so the next `APPEND` is answered.
+- [FIX] OIDC userinfo: claims compared with configured values (webadmin-proxy restrictions, expected claims, session ids) must be JSON strings.
+- [FIX] A mailbox event date without offset is reported as invalid instead of failing the deserialization.
 
 #### Security
 
@@ -70,12 +65,14 @@ Changes since 1.0.22, including the 1.0.22.1 and 1.0.22.2 tags.
 - [FIX] PROXY protocol: bytes buffered while waiting for the header are bounded, on every protocol with `proxyRequired` (CVE-2026-55851).
 - [FIX] SMTP `DATA` end detection stays in sync after the size limit is exceeded.
 - [FIX] DKIM body hash covers the whole body.
+- [FIX] `DKIMHook` checks every `From` mailbox, in every `From` field, and malformed `From` headers, against the protected domain.
+- [FIX] Sieve `vacation` ignores a `:from` other than the user's address, and Sieve `reject` sends its MDN to the envelope sender only (RFC 5429).
 
 #### Upgrades
 
 - [UPGRADE] Scala 2.13 → 3.10.
 - [UPGRADE] Guava 33.7.2 (CVE-2026-102554), Spring 6.2.19 (CVE-2025-41249, CVE-2026-41848), SCRAM 3.3 (CVE-2026-53712).
-- [UPGRADE] RE2J 1.8, ical4j 4.4.0, Jackson 2.22.4, jjwt 0.13.0, amqp-client 5.37.0, Artemis 2.57.0, BouncyCastle 1.86, log4j2 2.26.1, logback 1.6.6, SLF4J 2.0.20, Postgres JDBC 42.7.14 and Micrometer 1.17.2.
+- [UPGRADE] RE2J 1.8, ical4j 4.4.0, Jackson 2.23.0, Lucene 10.6.0, jakarta.activation-api 2.1.4, jjwt 0.13.0, amqp-client 5.37.0, Artemis 2.57.0, BouncyCastle 1.86, log4j2 2.26.1, logback 1.6.6, SLF4J 2.0.20, Postgres JDBC 42.7.14 and Micrometer 1.17.2.
 
 ### TMail
 
@@ -93,6 +90,7 @@ Changes since 1.0.22, including the 1.0.22.1 and 1.0.22.2 tags.
 - ISSUE-5608 JMAP: nullable TMail properties are returned as `null` instead of being left out (`Label/get` `color` and `description`, `CalendarEvent/parse` fields, the encrypted email detailed view).
 - ISSUE-2862 IMAP: with the regular path converter, team mailboxes of another domain are listed as `#TeamMailbox.<team>@<domain>`.
 - ISSUE-2792 PGP keystore: keys that cannot encrypt and ElGamal keys above 4096 bits are rejected.
+- ISSUE-2920 `SignatureText`: `{ldap:NAME}` placeholders are matched case-insensitively, so `{ldap:SN}` and `{ldap:givenname}` resolve against the configured `sn` and `givenName`.
 - ISSUE-2793 PGP: messages are encrypted with the valid, encryption-flagged keys or subkeys of the user (GnuPG default keys with an encryption subkey are accepted); sign-only, expired and revoked keys are skipped.
 
 #### Fixes
@@ -109,10 +107,19 @@ Changes since 1.0.22, including the 1.0.22.1 and 1.0.22.2 tags.
 - ISSUE-2810 The in-memory keystore stores a key uploaded twice only once.
 - ISSUE-2789, ISSUE-2866 JMAP Download All truncates long attachment names to 200 bytes, without trailing dots or spaces.
 - ISSUE-2791 The Sabre contact consumer tolerates vCards listing the same email address twice.
+- [FIX] Sabre contact consumer: updating a domain member's card no longer removes the other domain members from the domain contacts. The addresses dropped from the card are removed when esn-sabre sends the previous card (`oldcarddata`).
 - ISSUE-2746, ISSUE-2747, ISSUE-2748, ISSUE-2749, ISSUE-2755 WebAdmin answers `400` with the reason instead of `500` for invalid team mailbox folder names, invalid or other-domain extra senders and team mailbox members, contacts without `emailAddress` and invalid labels.
 - ISSUE-2808, ISSUE-2809 JMAP: an unknown calendar reply language or an invalid `Filter/set` `appendIn` mailbox id is an `invalidArguments` error of that method call instead of failing the whole request.
 - ISSUE-2883 `Filter/set`: the self-forward check compares parsed addresses.
 - ISSUE-2794 WebFinger accepts any absolute URI resource and answers `400` instead of `500` for invalid ones.
+- ISSUE-2917 JMAP `Forward/set` no longer stores forwards differing only by case: `ALICE@domain.tld` and `alice@domain.tld` were both stored and `Forward/get` listed the address twice.
+- ISSUE-2918 JMAP `Forward/set` rejects the user's own address in `forwards` when `localCopy` is `false` (`invalidArguments`): it was accepted, then read back as `localCopy: true` without forward.
+- ISSUE-2913 JMAP `Forward/set` updates are atomic: a failed update leaves the stored forwards unchanged, and the user's own address, in any case, is the local copy instead of a second forward.
+- ISSUE-2919 JMAP settings: a non-boolean value (`""`, `yes`, `1`) of `trash.cleanup.enabled` or `spam.cleanup.enabled` is read as disabled instead of reporting the user as failed on every WebAdmin cleanup task run.
+- ISSUE-2914 `CalendarEvent/reply` drops the date properties without value (a malformed `CREATED`) instead of failing to send the reply.
+- ISSUE-2911, ISSUE-2915 JMAP attachments: an attached message reports the size of its downloaded content, and a `charset` parameter is quoted when needed instead of re-parsing to another charset.
+- ISSUE-2912 A mail with a `Content-Type: multipart/encrypted` and no boundary is no longer stored in clear in the encrypted mailbox.
+- ISSUE-2916 Encrypted attachment blob ids are only accepted in their canonical form: ids with leading zeros or a sign no longer resolve to the same attachment.
 
 #### Security
 
