@@ -1014,7 +1014,7 @@ class IMAPTeamMailboxIntegrationTest {
     }
 
     @Test
-    void canMoveCustomTeamMailboxToOwner() throws Exception {
+    void canNotMoveCustomTeamMailboxToOwner() throws Exception {
         TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
             .login(MINISTER, MINISTER_PASSWORD);
 
@@ -1024,9 +1024,15 @@ class IMAPTeamMailboxIntegrationTest {
 
         awaitToUpdateRightsByListener(imapClient, "#TeamMailbox.marketing.new1");
 
+        // That would make the member owner of the team folder: the "x" right allows renaming, not taking ownership
         assertThat(imapClient
             .sendCommand("RENAME #TeamMailbox.marketing.new1 marketingOwner"))
-            .contains("OK RENAME completed");
+            .contains("NO RENAME failed. Insufficient rights.");
+
+        assertThat(imapClient
+            .sendCommand("LIST \"\" \"*\""))
+            .contains("* LIST (\\HasNoChildren) \".\" \"#TeamMailbox.marketing.new1\"")
+            .doesNotContain("marketingOwner");
     }
 
     @Test

@@ -3815,12 +3815,28 @@ trait TeamMailboxesContract {
   }
 
   @Test
-  def shouldMoveCustomFolderFromTeamMailboxToOwnerMailbox(server: GuiceJamesServer): Unit = {
+  def shouldNotMoveCustomFolderFromTeamMailboxToOwnerMailbox(server: GuiceJamesServer): Unit = {
     val marketingMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
     server.getProbe(classOf[TeamMailboxProbe])
       .create(marketingMailbox)
       .addMember(marketingMailbox, bobUsername)
 
+    assertCustomFolderCanNotBeMovedToBobPersonalFolders(server, marketingMailbox)
+  }
+
+  @Test
+  def managerShouldNotMoveCustomFolderFromTeamMailboxToOwnerMailbox(server: GuiceJamesServer): Unit = {
+    val marketingMailbox = TeamMailbox(domain, TeamMailboxName("marketing"))
+    server.getProbe(classOf[TeamMailboxProbe])
+      .create(marketingMailbox)
+      .addManager(marketingMailbox, bobUsername)
+
+    assertCustomFolderCanNotBeMovedToBobPersonalFolders(server, marketingMailbox)
+  }
+
+  // Moving a team folder into Bob's personal folders would make Bob its owner, with every right on it:
+  // the DeleteMailbox right (RFC 4314) allows renaming a mailbox, not taking its ownership.
+  private def assertCustomFolderCanNotBeMovedToBobPersonalFolders(server: GuiceJamesServer, marketingMailbox: TeamMailbox): Unit = {
     val marketingMailboxId: String = mailboxId(server, marketingMailbox.mailboxPath)
     val childMarketingMailboxId: String = createTeamMailbox(marketingMailboxId, "child1")
 
@@ -3852,7 +3868,8 @@ trait TeamMailboxesContract {
       .post()
     .`then`
       .statusCode(SC_OK)
-      .body("methodResponses[0][1].updated", hasKey(childMarketingMailboxId))
+      .body("methodResponses[0][1].notUpdated", hasKey(childMarketingMailboxId))
+      .body(s"methodResponses[0][1].notUpdated.$childMarketingMailboxId.type", equalTo("forbidden"))
 
     `given`()
       .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
@@ -3875,9 +3892,9 @@ trait TeamMailboxesContract {
       .`then`
       .statusCode(SC_OK)
       .contentType(JSON)
-      .body("methodResponses[0][1].list[0].name", equalTo("newName1"))
-      .body("methodResponses[0][1].list[0].namespace", equalTo("Personal"))
-      .body("methodResponses[0][1].list[0].parentId", equalTo(inboxId))
+      .body("methodResponses[0][1].list[0].name", equalTo("child1"))
+      .body("methodResponses[0][1].list[0].namespace", equalTo(s"TeamMailbox[${marketingMailbox.asString()}]"))
+      .body("methodResponses[0][1].list[0].parentId", equalTo(marketingMailboxId))
   }
 
   @Test
