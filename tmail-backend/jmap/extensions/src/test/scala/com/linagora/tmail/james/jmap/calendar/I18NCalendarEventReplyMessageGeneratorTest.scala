@@ -19,6 +19,7 @@
 package com.linagora.tmail.james.jmap.calendar
 
 import java.io.ByteArrayInputStream
+import java.nio.charset.StandardCharsets
 import java.util.Locale
 import java.util.stream.Stream
 
@@ -88,7 +89,7 @@ class I18NCalendarEventReplyMessageGeneratorTest {
                    |    <title>Example Email</title>
                    |</head>
                    |<body>
-                   |    <h1>Hello, Taylor Swift <comptetest15.linagora@example.com>!</h1>
+                   |    <h1>Hello, Taylor Swift &lt;comptetest15.linagora@example.com&gt;!</h1>
                    |    <p>This is an example HTML email.</p>
                    |    <p>For more information, visit <a href="https://example.com">example.com</a>.</p>
                    |</body>
@@ -110,13 +111,47 @@ class I18NCalendarEventReplyMessageGeneratorTest {
                    |    <title>Example HTML Email</title>
                    |</head>
                    |<body>
-                   |    <h1>Hello, Taylor Swift <comptetest15.linagora@example.com>!</h1>
+                   |    <h1>Hello, Taylor Swift &lt;comptetest15.linagora@example.com&gt;!</h1>
                    |    <p>This is an example HTML email.</p>
                    |    <p>For more information, visit <a href="https://example.com">example.com</a>.</p>
                    |</body>
                    |</html>
                    |""".stripMargin)
   }
+
+  @Test
+  def htmlTemplateShouldEscapeOrganizerSuppliedValues(): Unit = {
+    val decoratedMessage: MimeMessage = testee.getBasedMimeMessage(attendeeReply, calendarWithMarkup, "singlepart_html.eml").block()
+
+    assertThat(decoratedMessage.getContent.asInstanceOf[String])
+      .contains("Doe, Jo&lt;b&gt;hn &lt;organizer@example.com&gt;")
+      .doesNotContain("Jo<b>hn")
+  }
+
+  @Test
+  def htmlPartShouldEscapeOrganizerSuppliedValuesWhenMultipart(): Unit = {
+    val decoratedMessage: MimeMessage = testee.getBasedMimeMessage(attendeeReply, calendarWithMarkup, "multipart_html.eml").block()
+
+    assertThat(decoratedMessage.getContent.asInstanceOf[MimeMultipart].getBodyPart(0).getContent.asInstanceOf[String])
+      .contains("Doe, Jo&lt;b&gt;hn &lt;organizer@example.com&gt;")
+      .doesNotContain("Jo<b>hn")
+  }
+
+  @Test
+  def textPlainTemplateShouldNotEscapeValues(): Unit = {
+    val decoratedMessage: MimeMessage = testee.getBasedMimeMessage(attendeeReply, calendarWithMarkup, "mustache_show.eml").block()
+
+    assertThat(decoratedMessage.getContent.asInstanceOf[String])
+      .contains("ORGANIZER: Doe, Jo<b>hn <organizer@example.com>")
+      .contains("EVENT_TITLE: <i>title</i> & co")
+  }
+
+  private def calendarWithMarkup: Calendar =
+    CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(
+      ("BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//x//EN\r\nMETHOD:REQUEST\r\nBEGIN:VEVENT\r\nUID:1\r\n" +
+        "DTSTAMP:20240223T000000Z\r\nDTSTART:20240223T100000Z\r\nSUMMARY:<i>title</i> & co\r\n" +
+        "ORGANIZER;CN=\"Doe, Jo<b>hn\":mailto:organizer@example.com\r\n" +
+        "ATTENDEE;PARTSTAT=NEEDS-ACTION:mailto:bob@domain.com\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n").getBytes(StandardCharsets.UTF_8)))
 
   @Test
   def shouldDecoratedMessagesWhenSinglePart(): Unit = {
