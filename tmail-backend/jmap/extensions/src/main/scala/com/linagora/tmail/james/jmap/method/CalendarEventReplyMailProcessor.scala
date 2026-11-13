@@ -29,7 +29,7 @@ import com.google.common.base.Preconditions
 import com.google.common.collect.ImmutableMap
 import com.linagora.tmail.james.jmap.JMAPExtensionConfiguration
 import com.linagora.tmail.james.jmap.method.CalendarEventReplyMailProcessor.{I18N_MAIL_TEMPLATE_LOCATION_DEFAULT, I18N_MAIL_TEMPLATE_LOCATION_PROPERTY, LOGGER}
-import com.linagora.tmail.james.jmap.method.CalendarEventReplyMustacheFactory.MUSTACHE_FACTORY
+import com.linagora.tmail.james.jmap.method.CalendarEventReplyMustacheFactory.{HTML_ESCAPING_MUSTACHE_FACTORY, MUSTACHE_FACTORY}
 import com.linagora.tmail.james.jmap.model._
 import jakarta.annotation.PreDestroy
 import jakarta.inject.{Inject, Named}
@@ -235,7 +235,7 @@ class I18NCalendarEventReplyMessageGenerator(fileSystem: FileSystem, i18nEmlDire
     originalMimeMessage.loadMessage()
     originalMimeMessage.getContent match {
       case textBody: String =>
-        val decoratedBody = decorateTextBodyMessage(textBody, mustacheDataMap)
+        val decoratedBody = decorateTextBodyMessage(textBody, mustacheDataMap, originalMimeMessage)
         originalMimeMessage.setContent(decoratedBody, originalMimeMessage.getContentType)
       case mimeMultipart: MimeMultipart =>
         val partNumber = mimeMultipart.getCount
@@ -243,7 +243,7 @@ class I18NCalendarEventReplyMessageGenerator(fileSystem: FileSystem, i18nEmlDire
           val bodyPart = mimeMultipart.getBodyPart(i)
           if (bodyPart.getDisposition == null || bodyPart.getDisposition.equalsIgnoreCase(Part.INLINE)) {
             if (bodyPart.isMimeType("text/plain") || bodyPart.isMimeType("text/html")) {
-              val decoratedBody = decorateTextBodyMessage(bodyPart.getContent.asInstanceOf[String], mustacheDataMap)
+              val decoratedBody = decorateTextBodyMessage(bodyPart.getContent.asInstanceOf[String], mustacheDataMap, bodyPart)
               bodyPart.setContent(decoratedBody, bodyPart.getContentType)
             }
           }
@@ -312,13 +312,21 @@ class I18NCalendarEventReplyMessageGenerator(fileSystem: FileSystem, i18nEmlDire
   }
 
   private def decorateSubjectMessage(mustacheSubject: String, dataMap: JavaMap[String, String]): String =
-    replaceMustache(mustacheSubject, dataMap)
+    replaceMustache(mustacheSubject, dataMap, MUSTACHE_FACTORY)
 
-  private def decorateTextBodyMessage(mustacheTextBody: String, dataMap: JavaMap[String, String]): String =
-    replaceMustache(mustacheTextBody, dataMap)
+  private def decorateTextBodyMessage(mustacheTextBody: String, dataMap: JavaMap[String, String], part: Part): String =
+    replaceMustache(mustacheTextBody, dataMap, mustacheFactoryFor(part))
 
-  private def replaceMustache(input: String, dataMap: JavaMap[String, String]): String = {
-    val mustache = MUSTACHE_FACTORY.compile(new StringReader(input), "example")
+  // Values come from the invitation: they must be HTML-escaped in text/html parts so that they render as text
+  private def mustacheFactoryFor(part: Part): MustacheFactory =
+    if (part.isMimeType("text/html")) {
+      HTML_ESCAPING_MUSTACHE_FACTORY
+    } else {
+      MUSTACHE_FACTORY
+    }
+
+  private def replaceMustache(input: String, dataMap: JavaMap[String, String], mustacheFactory: MustacheFactory): String = {
+    val mustache = mustacheFactory.compile(new StringReader(input), "example")
     val writer = new StringWriter
     mustache.execute(writer, dataMap)
     writer.flush()
@@ -328,6 +336,7 @@ class I18NCalendarEventReplyMessageGenerator(fileSystem: FileSystem, i18nEmlDire
 
 object CalendarEventReplyMustacheFactory {
   val MUSTACHE_FACTORY: MustacheFactory = new CalendarEventReplyMustacheFactory
+  val HTML_ESCAPING_MUSTACHE_FACTORY: MustacheFactory = new DefaultMustacheFactory
 }
 
 // To avoid HTML escaping
