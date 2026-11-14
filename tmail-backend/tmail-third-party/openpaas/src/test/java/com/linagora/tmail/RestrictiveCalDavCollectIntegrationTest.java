@@ -481,9 +481,11 @@ public class RestrictiveCalDavCollectIntegrationTest {
     // ---- end alignmentMode tests ----
 
     @Test
-    void mailetShouldUpdateCalDAVWhenTheSenderTakesOverTheEventFromItsFormerOrganizer() throws Exception {
-        // RFC 5546 2.1.5: a new organizer may send a REQUEST that keeps the former one as an attendee.
-        // another@domain.tld is an attendee in emailWithAliceInviteBob.eml.mustache.
+    void mailetShouldNotUpdateCalDAVWhenTheSenderClaimsToTakeOverTheEventOfAnotherOrganizer() throws Exception {
+        // Since esn-sabre 2.5.0.3 (#812), keeping the former organizer as an attendee no longer hands the event
+        // over (RFC 5546 2.1.5): the sender writes that attendee list, so it proves nothing. esn-sabre only
+        // authorizes a handover between write-enabled members of a team calendar, which an external former
+        // organizer is not. another@domain.tld is an attendee in emailWithAliceInviteBob.eml.mustache.
         String calendarUid = UUID.randomUUID().toString();
         pushCalendarToDav(receiver, calendarUid, "office", "another@domain.tld");
 
@@ -504,7 +506,7 @@ public class RestrictiveCalDavCollectIntegrationTest {
             .getCalendarObject(new DavUser(receiver.id(), receiver.email()), new DavUid(calendarUid)).block();
         assertThat(result.calendarData().getComponent(Component.VEVENT).get()
             .getProperty(Property.LOCATION).get().getValue())
-            .isEqualTo("office2");
+            .isEqualTo("office");
     }
 
     private void pushCalendarToDav(OpenPaasUser user, String calendarUid, String location) {
