@@ -5,6 +5,39 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 
 ## [Unreleased]
 
+### James
+
+#### Added
+
+- JAMES-4235 Lucene as a search implementation for the Postgres app (the distributed apps refuse it), the default of the Postgres single node sample. The index is stored under `var/store/lucene`, or in the folder set by the `james.lucene.index.folder` JVM property.
+
+#### Fixes
+
+- [FIX] JAMES-4240 Per-recipient headers are kept when recipients are rewritten.
+- [FIX] JMAP `Email/set` validates the fine-grained rights needed to update flags more strictly.
+
+#### Security
+
+- [FIX] Mailbox rename: a caller who does not own a mailbox can no longer move it out of its owner's namespace (the `x` right allows renaming and deleting, not taking ownership). JMAP `Mailbox/set` refuses to move another user's shared mailbox under the caller's mailbox.
+
+### TMail
+
+#### Added
+
+- AI: `list_mailboxes` tool for `GET`/`POST /ai/v1/tools`, listing the user's mailboxes sorted by name with their id, name, JMAP role and email counts, so an assistant can find the mailbox ids that `list_emails` and `search_emails` take. It only reads, so it needs no confirmation.
+
+#### Changes
+
+- `RestrictiveCalDavCollect` with `alignmentMode` `none` or `sameDomain` only forwards a calendar `REQUEST` or `CANCEL`: esn-sabre 2.5.0.3 refuses it unless its `ORGANIZER` is its sender, and refuses an organizer takeover that the sender only claims.
+
+#### Fixes
+
+- [FIX] Team mailboxes: a custom folder can no longer be moved into a member's personal folders, which made that member its owner and let them revoke the other members.
+
+#### Security
+
+- ISSUE-2940 Calendar `REPLY` mails: the organizer and attendee names, summary and location of the invitation are HTML-escaped in `text/html` template parts, so an external organizer can no longer inject markup.
+
 ## [1.0.23] - 2026-11-13
 
 Changes since 1.0.22, including the 1.0.22.1 and 1.0.22.2 tags.
