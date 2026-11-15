@@ -104,6 +104,18 @@ public class TeamMailboxScopedPathConverterTest {
     }
 
     @Test
+    void buildFullPathShouldScopeANameThatOnlyStartsLikeTheTeamNamespace() {
+        assertThat(pathConverter.buildFullPath("#TeamMailboxes"))
+            .isEqualTo(new MailboxPath("#TeamMailbox", TEAM_MAILBOX_OWNER, "marketing.#TeamMailboxes"));
+    }
+
+    @Test
+    void buildFullPathShouldScopeANameThatOnlyStartsLikeTheUserNamespace() {
+        assertThat(pathConverter.buildFullPath("#users"))
+            .isEqualTo(new MailboxPath("#TeamMailbox", TEAM_MAILBOX_OWNER, "marketing.#users"));
+    }
+
+    @Test
     void mailboxNameShouldEchoScopedFolderRelativeToRoot() {
         assertThat(pathConverter.mailboxName(RELATIVE,
                 new MailboxPath("#TeamMailbox", TEAM_MAILBOX_OWNER, "marketing.INBOX"), mailboxSession))

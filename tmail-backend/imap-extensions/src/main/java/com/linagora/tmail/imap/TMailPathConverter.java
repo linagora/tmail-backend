@@ -59,7 +59,7 @@ public class TMailPathConverter implements PathConverter {
     }
 
     public MailboxPath buildFullPath(String mailboxName) {
-        if (StringUtils.startsWithIgnoreCase(mailboxName, TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE())) {
+        if (isInTeamMailboxNamespace(mailboxName)) {
             return getTeamMailboxPath(mailboxName);
         } else {
             return defaultpathConverter.buildFullPath(mailboxName);
@@ -110,7 +110,7 @@ public class TMailPathConverter implements PathConverter {
         MailboxSession mailboxSession = session.getMailboxSession();
         String decodedMailboxName = ModifiedUtf7.decodeModifiedUTF7(mailboxName);
 
-        if (StringUtils.startsWithIgnoreCase(finalReferencename, TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE())) {
+        if (isInTeamMailboxNamespace(finalReferencename)) {
             MailboxPath teamMailboxPath = getTeamMailboxPath(finalReferencename);
 
             return MailboxQuery.builder()
@@ -122,7 +122,7 @@ public class TMailPathConverter implements PathConverter {
                 .build();
         }
 
-        if (StringUtils.isEmpty(finalReferencename) && StringUtils.startsWithIgnoreCase(mailboxName, TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE())) {
+        if (StringUtils.isEmpty(finalReferencename) && isInTeamMailboxNamespace(mailboxName)) {
             MailboxPath teamMailboxPath = getTeamMailboxPath(mailboxName);
 
             if (StringUtils.equals(teamMailboxPath.getName(), "*")) {
@@ -138,6 +138,16 @@ public class TMailPathConverter implements PathConverter {
         }
 
         return defaultpathConverter.mailboxQuery(finalReferencename, mailboxName, session);
+    }
+
+    private boolean isInTeamMailboxNamespace(String mailboxName) {
+        return startsWithNamespace(mailboxName, TeamMailboxNameSpace.TEAM_MAILBOX_NAMESPACE(), mailboxSession.getPathDelimiter());
+    }
+
+    // A name belongs to a namespace only when its first segment is that namespace: "#TeamMailboxes" is a personal folder.
+    static boolean startsWithNamespace(String mailboxName, String namespace, char delimiter) {
+        return StringUtils.equalsIgnoreCase(mailboxName, namespace)
+            || StringUtils.startsWithIgnoreCase(mailboxName, namespace + delimiter);
     }
 
     protected MailboxPath getTeamMailboxPath(String absolutePath) {
