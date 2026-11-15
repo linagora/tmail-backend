@@ -1,0 +1,36 @@
+<?xml version="1.0"?>
+<!-- POP3 of the QA environment: TLS on 995, STARTTLS (STLS) on 110, the keystore of the image -->
+<pop3servers>
+    <pop3server enabled="true">
+        <jmxName>pop3server-ssl</jmxName>
+        <bind>0.0.0.0:995</bind>
+        <connectionBacklog>200</connectionBacklog>
+        <tls socketTLS="true" startTLS="false">
+            <keystore>file://conf/keystore</keystore>
+            <secret>james72laBalle</secret>
+            <provider>org.bouncycastle.jce.provider.BouncyCastleProvider</provider>
+        </tls>
+        <connectiontimeout>1200</connectiontimeout>
+        <connectionLimit>0</connectionLimit>
+        <connectionLimitPerIP>0</connectionLimitPerIP>
+        <handlerchain>
+            <handler class="org.apache.james.pop3server.core.CoreCmdHandlerLoader"/>
+        </handlerchain>
+    </pop3server>
+    <pop3server enabled="true">
+        <jmxName>pop3server</jmxName>
+        <bind>0.0.0.0:110</bind>
+        <connectionBacklog>200</connectionBacklog>
+        <tls socketTLS="false" startTLS="true">
+            <keystore>file://conf/keystore</keystore>
+            <secret>james72laBalle</secret>
+            <provider>org.bouncycastle.jce.provider.BouncyCastleProvider</provider>
+        </tls>
+        <connectiontimeout>1200</connectiontimeout>
+        <connectionLimit>0</connectionLimit>
+        <connectionLimitPerIP>0</connectionLimitPerIP>
+        <handlerchain>
+            <handler class="org.apache.james.pop3server.core.CoreCmdHandlerLoader"/>
+        </handlerchain>
+    </pop3server>
+</pop3servers>

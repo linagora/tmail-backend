@@ -1,0 +1,20 @@
+<?xml version="1.0"?>
+<!-- ManageSieve of the QA environment: TLS on 4190, the keystore of the image -->
+<managesieveservers>
+   <managesieveserver enabled="true">
+     <jmxName>managesieveserver</jmxName>
+     <bind>0.0.0.0:4190</bind>
+     <connectionBacklog>200</connectionBacklog>
+     <tls socketTLS="true" startTLS="false">
+       <keystore>file://conf/keystore</keystore>
+       <secret>james72laBalle</secret>
+       <provider>org.bouncycastle.jce.provider.BouncyCastleProvider</provider>
+       <algorithm>SunX509</algorithm>
+     </tls>
+     <connectiontimeout>360</connectiontimeout>
+     <connectionLimit>0</connectionLimit>
+     <connectionLimitPerIP>0</connectionLimitPerIP>
+     <maxmessagesize>0</maxmessagesize>
+     <addressBracketsEnforcement>true</addressBracketsEnforcement>
+   </managesieveserver>
+</managesieveservers>

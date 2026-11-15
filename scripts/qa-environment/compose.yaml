@@ -1,0 +1,88 @@
+# The distributed stack of Twake Mail (tmail-backend), as its tmail-backend/apps/distributed/docker-compose.yml, and the
+# MPT MCP server (chibenwa/mcp-mpt) the agents drive the mail protocols with: SMTPS 465, IMAPS 993, POP3S 995,
+# ManageSieve 4190 over TLS, and SMTP 25, submission 587, IMAP 143, POP3 110 in plain text with STARTTLS, the server
+# reached by its service name. Nothing published but on 127.0.0.1: the MCP server
+# (QA_MPT_PORT) and WebAdmin (QA_WEBADMIN_PORT).
+services:
+  tmail:
+    image: ${TMAIL_IMAGE:?}
+    hostname: tmail.local
+    depends_on:
+      cassandra: {condition: service_healthy}
+      opensearch: {condition: service_started}
+      rabbitmq: {condition: service_started}
+      redis: {condition: service_started}
+      s3: {condition: service_started}
+      tika: {condition: service_started}
+    volumes:
+      - ${QA_RUN:?}/jwt_publickey:/root/conf/jwt_publickey:ro
+      - ${QA_RUN:?}/jwt_privatekey:/root/conf/jwt_privatekey:ro
+      - ./conf/redis.properties:/root/conf/redis.properties:ro
+      - ./conf/pop3server.xml:/root/conf/pop3server.xml:ro
+      - ./conf/managesieveserver.xml:/root/conf/managesieveserver.xml:ro
+    ports:
+      - "127.0.0.1:${QA_WEBADMIN_PORT:?}:8000"
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f -s -o /dev/null 'http://localhost:8000/healthcheck?check=IMAPHealthCheck&check=Cassandra%20backend&strict'"]
+      interval: 10s
+      timeout: 10s
+      retries: 60
+      start_period: 60s
+
+  mcp-mpt:
+    image: ${MPT_IMAGE:-chibenwa/mcp-mpt:beta4}
+    user: "${QA_UID:?}:${QA_GID:?}"  # what it archives, the run's to remove once compacted
+    environment:
+      MPT_MCP_TRANSPORT: http
+      MPT_MCP_HOST: tmail
+      MPT_MCP_VARIABLES: ${MPT_VARIABLES:?}
+      MPT_MCP_TRUST_ALL: "true"
+      # every run_script (its label: the test case or the issue), script, transcript and status, in the run's folder
+      MPT_MCP_ARCHIVE_DIR: /archive
+      # create_account / delete_account: isolated accounts, through WebAdmin
+      MPT_MCP_WEBADMIN_URL: http://tmail:8000
+      MPT_MCP_ACCOUNT_DOMAIN: ${QA_DOMAIN:?}
+    volumes:
+      - ${MPT_ARCHIVE:?}:/archive
+    ports:
+      - "127.0.0.1:${QA_MPT_PORT:?}:8080"
+
+  cassandra:
+    image: cassandra:4.1.9
+    environment:
+      JVM_OPTS: -Dcassandra.skip_wait_for_gossip_to_settle=0 -Dcassandra.initial_token=1
+      MAX_HEAP_SIZE: 1G
+      HEAP_NEWSIZE: 200M
+    healthcheck:
+      test: ["CMD", "cqlsh", "-e", "describe keyspaces"]
+      interval: 5s
+      timeout: 20s
+      retries: 60
+
+  opensearch:
+    image: opensearchproject/opensearch:2.19.2
+    environment:
+      discovery.type: single-node
+      DISABLE_INSTALL_DEMO_CONFIG: "true"
+      DISABLE_SECURITY_PLUGIN: "true"
+      OPENSEARCH_JAVA_OPTS: -Xms1g -Xmx1g
+
+  tika:
+    image: apache/tika:3.2.0.0
+
+  rabbitmq:
+    image: rabbitmq:4.0.9-management
+
+  s3:
+    image: ghcr.io/scality/cloudserver:c1ba296859690c1cbbec609aaae430f6b04b4745
+    environment:
+      SCALITY_ACCESS_KEY_ID: accessKey1
+      SCALITY_SECRET_ACCESS_KEY: secretKey1
+      S3BACKEND: mem
+      REMOTE_MANAGEMENT_DISABLE: "1"
+    networks:
+      default:
+        aliases: [s3.docker.test]
+
+  redis:
+    image: redis:8.0.2
