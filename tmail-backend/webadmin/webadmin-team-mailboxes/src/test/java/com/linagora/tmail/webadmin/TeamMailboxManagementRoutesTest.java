@@ -1631,6 +1631,58 @@ public class TeamMailboxManagementRoutesTest {
                 .containsEntry("type", "InvalidArgument")
                 .containsEntry("message", ownerUsername + " is a system user and cannot be managed via extraAcl");
         }
+
+        @Test
+        void setExtraAclUserShouldReturn400WhenUserBelongsToAnotherDomain() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            Map<String, Object> errors = given()
+                .body("lr")
+                .put("/extraAcl/olivia@example.org")
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", "olivia@example.org does not belong to the domain of the team mailbox " + TEAM_MAILBOX.self().asString());
+        }
+
+        @Test
+        void setExtraAclUserShouldReturn400WhenUserHasNoDomain() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            Map<String, Object> errors = given()
+                .body("lr")
+                .put("/extraAcl/olivia")
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", "olivia does not belong to the domain of the team mailbox " + TEAM_MAILBOX.self().asString());
+        }
+
+        @Test
+        void setExtraAclUserShouldNotAddUserOfAnotherDomain() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given().body("lr").put("/extraAcl/olivia@example.org");
+
+            Map<String, Object> body = given()
+                .get("/extraAcl")
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(body).isEmpty();
+        }
     }
 
     @Nested

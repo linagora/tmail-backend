@@ -33,6 +33,7 @@ import org.apache.james.domainlist.api.DomainList;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.exception.DifferentDomainException;
+import org.apache.james.mailbox.exception.MailboxException;
 import org.apache.james.mailbox.exception.MailboxExistsException;
 import org.apache.james.mailbox.exception.MailboxNameException;
 import org.apache.james.mailbox.exception.MailboxNotFoundException;
@@ -527,6 +528,11 @@ public class TeamMailboxManagementRoutes implements Routes {
                     .message("The requested mailbox folder does not exist")
                     .cause(e)
                     .haltError();
+            } catch (MailboxException | RuntimeException e) {
+                if (isCausedByDifferentDomain(e)) {
+                    throw userOfDifferentDomainException(teamMailbox, aclUser);
+                }
+                throw e;
             }
             return Responses.returnNoContent(response);
         };
@@ -706,7 +712,7 @@ public class TeamMailboxManagementRoutes implements Routes {
             TeamMemberRole role = extractRole(request);
             Mono.from(teamMailboxRepository.addMember(teamMailbox, TeamMailboxMember.of(addUser, role)))
                 .onErrorMap(TeamMailboxNotFoundException.class, e -> teamMailboxNotFoundException(teamMailbox, e))
-                .onErrorMap(TeamMailboxManagementRoutes::isCausedByDifferentDomain, e -> memberOfDifferentDomainException(teamMailbox, addUser))
+                .onErrorMap(TeamMailboxManagementRoutes::isCausedByDifferentDomain, e -> userOfDifferentDomainException(teamMailbox, addUser))
                 .block();
             return Responses.returnNoContent(response);
         };
@@ -717,11 +723,11 @@ public class TeamMailboxManagementRoutes implements Routes {
             .anyMatch(DifferentDomainException.class::isInstance);
     }
 
-    private HaltException memberOfDifferentDomainException(TeamMailbox teamMailbox, Username member) {
+    private HaltException userOfDifferentDomainException(TeamMailbox teamMailbox, Username user) {
         return ErrorResponder.builder()
             .statusCode(HttpStatus.BAD_REQUEST_400)
             .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
-            .message(member.asString() + " does not belong to the domain of the team mailbox " + teamMailbox.self().asString())
+            .message(user.asString() + " does not belong to the domain of the team mailbox " + teamMailbox.self().asString())
             .haltError();
     }
 
