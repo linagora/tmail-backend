@@ -263,7 +263,7 @@ class KeywordEmailQueryViewListenerTest {
             // Owner shares the mailbox with the sharee and appends a message with a concerned keyword.
             resources.getStoreRightManager().applyRightsCommand(mailboxId,
                 MailboxACL.command().forUser(SHAREE)
-                    .rights(MailboxACL.Right.Read, MailboxACL.Right.Lookup, MailboxACL.Right.PerformExpunge)
+                    .rights(MailboxACL.Right.Read, MailboxACL.Right.Lookup, MailboxACL.Right.PerformExpunge, MailboxACL.Right.DeleteMessages)
                     .asAddition(),
                 ownerSession);
             MessageManager.AppendResult appendResult = appendMessage(asFlags(List.of(Flags.Flag.FLAGGED)));
