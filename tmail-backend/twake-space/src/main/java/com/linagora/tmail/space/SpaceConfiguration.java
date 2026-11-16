@@ -24,6 +24,7 @@ import java.util.Optional;
 import java.util.regex.Pattern;
 
 import org.apache.commons.configuration2.Configuration;
+import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.util.DurationParser;
 
 import com.google.common.base.Preconditions;
@@ -69,6 +70,16 @@ public record SpaceConfiguration(Optional<AmqpUri> rabbitMQUri,
         Preconditions.checkArgument(teamMailboxPrefix.length() <= PREFIX_MAX_LENGTH,
             "'teamMailbox.prefix' must be at most %s characters", PREFIX_MAX_LENGTH);
         Preconditions.checkArgument(!retention.isNegative(), "'retention' must not be negative");
+    }
+
+    /**
+     * The RabbitMQ server of the extension: the one of {@code rabbitmq.uri}, its vhost included, with the other
+     * settings of {@code rabbitmq.properties}. Without {@code rabbitmq.uri}, the server of {@code rabbitmq.properties}.
+     */
+    public RabbitMQConfiguration rabbitMQConfiguration(RabbitMQConfiguration tmailRabbitMQConfiguration) {
+        return rabbitMQUri
+            .map(amqpUri -> amqpUri.toRabbitMqConfiguration(tmailRabbitMQConfiguration).build())
+            .orElse(tmailRabbitMQConfiguration);
     }
 
     private static Optional<String> optional(Configuration configuration, String parameter) {
