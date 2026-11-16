@@ -300,9 +300,10 @@ public class CardDavCollectedContactIntegrationTest {
     @Test
     void aliceShouldHaveCollectedContactAddedWhenAliceUsesAliasToSendMail() throws Exception {
         // add an alias for Alice
-        String aliceAlias = "alice-alias@" + DEFAULT_DOMAIN;
+        String aliceAliasLocalPart = "alice-alias";
+        String aliceAlias = aliceAliasLocalPart + "@" + DEFAULT_DOMAIN;
         jamesServer.getProbe(DataProbeImpl.class)
-            .addUserAliasMapping(ALICE.getLocalPart(), DEFAULT_DOMAIN, aliceAlias);
+            .addUserAliasMapping(aliceAliasLocalPart, DEFAULT_DOMAIN, ALICE.asString());
 
         // Setup mock server
         DavUid bobContactUid = CardDavUtils.createContactUid(BOB.asMailAddress());
