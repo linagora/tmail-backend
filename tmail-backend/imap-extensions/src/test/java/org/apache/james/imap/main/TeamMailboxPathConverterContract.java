@@ -19,8 +19,13 @@
 package org.apache.james.imap.main;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+
+import java.util.Optional;
 
 import org.apache.james.core.Username;
+import org.apache.james.imap.api.process.ImapSession;
+import org.apache.james.imapserver.netty.NettyImapSession;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MailboxSessionUtil;
 import org.apache.james.mailbox.model.MailboxFolderDelimiterAwareTest;
@@ -112,6 +117,43 @@ public abstract class TeamMailboxPathConverterContract extends MailboxFolderDeli
     public void buildFullPathShouldResolveAFolderOfADomainQualifiedTeamMailboxName() {
         assertThat(teamMailboxPathConverter().buildFullPath(adjustToActiveFolderDelimiter("#TeamMailbox.sales@") + escapedOtherDomain() + adjustToActiveFolderDelimiter(".INBOX")))
             .isEqualTo(new MailboxPath("#TeamMailbox", Username.of("team-mailbox@other.tld"), adjustToActiveFolderDelimiter("sales.INBOX")));
+    }
+
+    // Such names go to James' default converter, which denies any '#' namespace but #private and #user.
+    @Test
+    public void buildFullPathShouldNotMapANameThatOnlyStartsLikeTheTeamNamespace() {
+        assertThatThrownBy(() -> teamMailboxPathConverter().buildFullPath("#TeamMailboxes"))
+            .isInstanceOf(DeniedAccessOnSharedMailboxException.class);
+    }
+
+    @Test
+    public void buildFullPathShouldNotMapAFolderWhoseFirstSegmentOnlyStartsLikeTheTeamNamespace() {
+        assertThatThrownBy(() -> teamMailboxPathConverter().buildFullPath(adjustToActiveFolderDelimiter("#TeamMailboxX.sales")))
+            .isInstanceOf(DeniedAccessOnSharedMailboxException.class);
+    }
+
+    @Test
+    public void buildFullPathShouldMapTheBareTeamNamespace() {
+        assertThat(teamMailboxPathConverter().buildFullPath("#TeamMailbox").getNamespace())
+            .isEqualTo("#TeamMailbox");
+    }
+
+    @Test
+    public void mailboxQueryShouldNotMapAReferenceThatOnlyStartsLikeTheTeamNamespace() {
+        ImapSession imapSession = new NettyImapSession(null, null, false, null);
+        imapSession.setMailboxSession(mailboxSession);
+
+        assertThatThrownBy(() -> teamMailboxPathConverter().mailboxQuery("#teammailbox\u000b", "*", imapSession))
+            .isInstanceOf(DeniedAccessOnSharedMailboxException.class);
+    }
+
+    @Test
+    public void mailboxQueryShouldNotMapAPatternThatOnlyStartsLikeTheTeamNamespace() {
+        ImapSession imapSession = new NettyImapSession(null, null, false, null);
+        imapSession.setMailboxSession(mailboxSession);
+
+        assertThat(teamMailboxPathConverter().mailboxQuery("", "#TeamMailboxes", imapSession).getNamespace())
+            .isNotEqualTo(Optional.of("#TeamMailbox"));
     }
 
     @Test

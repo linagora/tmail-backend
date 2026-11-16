@@ -109,8 +109,9 @@ public class TeamMailboxScopedPathConverter implements PathConverter {
     }
 
     private boolean referencesOtherNamespace(String mailboxName) {
-        return StringUtils.startsWithIgnoreCase(mailboxName, TEAM_MAILBOX_NAMESPACE)
-            || StringUtils.startsWithIgnoreCase(mailboxName, USER_NAMESPACE);
+        char delimiter = mailboxSession.getPathDelimiter();
+        return TMailPathConverter.startsWithNamespace(mailboxName, TEAM_MAILBOX_NAMESPACE, delimiter)
+            || TMailPathConverter.startsWithNamespace(mailboxName, USER_NAMESPACE, delimiter);
     }
 
     private String stripPrivateNamespace(String mailboxName) {
