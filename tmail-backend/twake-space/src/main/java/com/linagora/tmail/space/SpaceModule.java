@@ -151,9 +151,10 @@ public class SpaceModule extends AbstractModule {
             connection -> Mono.fromRunnable(consumer::restart));
     }
 
+    // Read where the consumer declared it: on the server and vhost of rabbitmq.uri, which may not be TMail's
     @ProvidesIntoSet
     MonitoredDeadLetterQueue spaceDeadLetterQueue(RabbitMQConfiguration rabbitMQConfiguration, SpaceConfiguration configuration) {
-        return new MonitoredDeadLetterQueue(rabbitMQConfiguration, configuration.deadLetterQueue());
+        return new MonitoredDeadLetterQueue(configuration.rabbitMQConfiguration(rabbitMQConfiguration), configuration.deadLetterQueue());
     }
 
     @ProvidesIntoSet

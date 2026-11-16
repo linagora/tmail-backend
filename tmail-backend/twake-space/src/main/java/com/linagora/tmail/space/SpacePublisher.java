@@ -119,9 +119,7 @@ public class SpacePublisher {
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     public static SpacePublisher create(SpaceConfiguration configuration, RabbitMQConfiguration tmailRabbitMQConfiguration, Clock clock) {
-        RabbitMQConfiguration rabbitMQConfiguration = configuration.rabbitMQUri()
-            .map(amqpUri -> amqpUri.toRabbitMqConfiguration(tmailRabbitMQConfiguration).build())
-            .orElse(tmailRabbitMQConfiguration);
+        RabbitMQConfiguration rabbitMQConfiguration = configuration.rabbitMQConfiguration(tmailRabbitMQConfiguration);
         SimpleConnectionPool connectionPool = new SimpleConnectionPool(new RabbitMQConnectionFactory(rabbitMQConfiguration),
             SimpleConnectionPool.Configuration.DEFAULT);
         return new SpacePublisher(connectionPool, configuration, clock);

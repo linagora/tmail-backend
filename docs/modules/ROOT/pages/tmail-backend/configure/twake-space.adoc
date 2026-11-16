@@ -117,6 +117,8 @@ The RabbitMQ user needs:
 `tmail-space-dead-letter` exchange.
 - `configure` and `read` on the `space` and `admin-panel` exchanges, plus `write` on `space` for the sync requests.
 - `configure` and `write` on the `activity` exchange, and on `tmail` when the team mailbox events are enabled.
+- With `rabbitmq.uri`, the `management` tag: the `RabbitMQDeadLetterQueues` health check reads the length of
+`tmail-space-dead-letter` with this user, through the management API of `rabbitmq.properties`.
 
 === Failures
 
