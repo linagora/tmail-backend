@@ -5,6 +5,7 @@
 #   downImpact         what stops working while the whole component is down; every other feature keeps working
 #   accidentRecovery   live: once the component is back, everything works again without restarting tmail
 #   requiredOnStartup  true: tmail may refuse to start without it; false: tmail starts, degraded as downImpact says
+#   failFast           true: while it is down, what downImpact names fails fast with a clear error (no request hanging)
 components:
   cassandra:
     faultTolerance: 1
@@ -28,6 +29,7 @@ components:
   redis:
     faultTolerance: 1
     downImpact: "No realtime (IMAP session update, IDLE, JMAP push), no IMAP SELECT, no write operations (sending, receiving, drafts, flags, moves, deletions)"
+    failFast: true
     accidentRecovery: live
     requiredOnStartup: true
   rspamd:
