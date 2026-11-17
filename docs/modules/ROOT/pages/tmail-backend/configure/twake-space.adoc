@@ -36,8 +36,13 @@ link:https://github.com/linagora/tmail-backend/blob/master/tmail-backend/apps/di
 | `rabbitmq.uri`
 | the server of `rabbitmq.properties`
 | AMQP URI of the RabbitMQ server holding the exchanges below, vhost included, like
-`amqp://user:password@rabbitmq:5672/twake`. SSL and management settings come from `rabbitmq.properties`. One
+`amqp://user:password@rabbitmq:5672/twake`. SSL settings come from `rabbitmq.properties`. One
 connection serves every component of the extension.
+
+| `rabbitmq.management.uri`
+| the management URI of `rabbitmq.properties`, on the host of `rabbitmq.uri`
+| Management API of the server of `rabbitmq.uri`, like `http://rabbitmq:15672`. Only read with `rabbitmq.uri`: the
+health check calls it with the credentials of `rabbitmq.uri`.
 
 | `space.exchange`
 | `space`
@@ -118,7 +123,7 @@ The RabbitMQ user needs:
 - `configure` and `read` on the `space` and `admin-panel` exchanges, plus `write` on `space` for the sync requests.
 - `configure` and `write` on the `activity` exchange, and on `tmail` when the team mailbox events are enabled.
 - With `rabbitmq.uri`, the `management` tag: the `RabbitMQDeadLetterQueues` health check reads the length of
-`tmail-space-dead-letter` with this user, through the management API of `rabbitmq.properties`.
+`tmail-space-dead-letter` with this user, through `rabbitmq.management.uri`.
 
 === Failures
 

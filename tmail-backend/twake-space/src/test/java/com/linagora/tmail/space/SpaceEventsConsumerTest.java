@@ -150,7 +150,7 @@ class SpaceEventsConsumerTest {
         MemoryDomainList domainList = domainListWith(DOMAIN);
 
         String suffix = UUID.randomUUID().toString();
-        configuration = new SpaceConfiguration(Optional.empty(), "tmail-space-" + suffix, "tmail-space-dead-letter-" + suffix,
+        configuration = new SpaceConfiguration(Optional.empty(), Optional.empty(), "tmail-space-" + suffix, "tmail-space-dead-letter-" + suffix,
             "space-" + suffix, DNS_EXCHANGE, "dns.validated", "activity-" + suffix, "", Duration.ofDays(30));
         clock = new UpdatableTickingClock(NOW);
         mailingLists = new HashSet<>();
@@ -226,7 +226,7 @@ class SpaceEventsConsumerTest {
 
     @Test
     void createdShouldUseTheTeamMailboxPrefix() {
-        configuration = new SpaceConfiguration(Optional.empty(), configuration.queue(), configuration.deadLetterQueue(),
+        configuration = new SpaceConfiguration(Optional.empty(), Optional.empty(), configuration.queue(), configuration.deadLetterQueue(),
             configuration.spaceExchange(), configuration.dnsExchange(), configuration.dnsRoutingKey(), configuration.activityExchange(),
             "space-", configuration.retention());
         reconciler = reconciler(SpaceAddresses.MailingLists.NONE);
