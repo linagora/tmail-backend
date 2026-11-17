@@ -17,6 +17,9 @@ protocols with AI agents; it serves as well for any manual or scripted protocol 
 POP3 and ManageSieve are configured here (`conf/`), the image having none; the other protocols keep the configuration
 of the image, TLS with its own self-signed keystore.
 
+`conf/jvm.properties` is the one of the distributed app plus `james.mailbox.handleRecent=false`, the QA environment
+dropping the legacy IMAP `\Recent` handling.
+
 ## Usage
 
 ```bash

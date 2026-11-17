@@ -20,6 +20,7 @@ services:
       - ./conf/redis.properties:/root/conf/redis.properties:ro
       - ./conf/pop3server.xml:/root/conf/pop3server.xml:ro
       - ./conf/managesieveserver.xml:/root/conf/managesieveserver.xml:ro
+      - ./conf/jvm.properties:/root/conf/jvm.properties:ro
     ports:
       - "127.0.0.1:${QA_WEBADMIN_PORT:?}:8000"
     healthcheck:
