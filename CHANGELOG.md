@@ -33,6 +33,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 #### Fixes
 
 - [FIX] Team mailboxes: a custom folder can no longer be moved into a member's personal folders, which made that member its owner and let them revoke the other members.
+- [FIX] ISSUE-3018 Postgres app: Lucene search is refused at startup when a `rabbitmq.properties` is present (RabbitMQ or Redis event bus). The Lucene index is local to each node, so it is restricted to single node deployments using the in memory event bus.
 
 #### Security
 
