@@ -18,13 +18,16 @@
 
 package com.linagora.tmail.space;
 
+import static org.apache.james.backends.rabbitmq.RabbitMQFixture.DEFAULT_MANAGEMENT_CREDENTIAL;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.net.URI;
 import java.time.Duration;
 import java.util.Optional;
 
 import org.apache.commons.configuration2.BaseHierarchicalConfiguration;
+import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
@@ -33,6 +36,12 @@ import org.junit.jupiter.params.provider.ValueSource;
 import com.linagora.tmail.AmqpUri;
 
 class SpaceConfigurationTest {
+    private static final RabbitMQConfiguration TMAIL_RABBITMQ = RabbitMQConfiguration.builder()
+        .amqpUri(URI.create("amqp://tmail-rabbitmq:5672"))
+        .managementUri(URI.create("https://admin:admin@tmail-rabbitmq:15672/api"))
+        .managementCredentials(DEFAULT_MANAGEMENT_CREDENTIAL)
+        .build();
+
     @Test
     void fromShouldApplyDefaults() {
         assertThat(SpaceConfiguration.from(new BaseHierarchicalConfiguration()))
@@ -43,6 +52,7 @@ class SpaceConfigurationTest {
     void fromShouldReadAllParameters() {
         BaseHierarchicalConfiguration configuration = new BaseHierarchicalConfiguration();
         configuration.addProperty("rabbitmq.uri", "amqp://user:pass@rabbitmq.example.com:5672/twake");
+        configuration.addProperty("rabbitmq.management.uri", "http://rabbitmq.example.com:15672");
         configuration.addProperty("queue", "q");
         configuration.addProperty("deadLetterQueue", "dlq");
         configuration.addProperty("space.exchange", "spaces");
@@ -54,7 +64,45 @@ class SpaceConfigurationTest {
 
         assertThat(SpaceConfiguration.from(configuration))
             .isEqualTo(new SpaceConfiguration(Optional.of(AmqpUri.from("amqp://user:pass@rabbitmq.example.com:5672/twake")),
+                Optional.of(URI.create("http://rabbitmq.example.com:15672")),
                 "q", "dlq", "spaces", "admin", "dns.ok", "feed", "space-", Duration.ofDays(7)));
+    }
+
+    @Test
+    void rabbitMQConfigurationShouldBeTheOneOfTMailWithoutRabbitMQUri() {
+        assertThat(SpaceConfiguration.DEFAULT.rabbitMQConfiguration(TMAIL_RABBITMQ))
+            .isEqualTo(TMAIL_RABBITMQ);
+    }
+
+    @Test
+    void managementUriShouldBeOnTheHostOfRabbitMQUri() {
+        BaseHierarchicalConfiguration configuration = new BaseHierarchicalConfiguration();
+        configuration.addProperty("rabbitmq.uri", "amqp://space:secret@space-rabbitmq:5672/twake");
+
+        RabbitMQConfiguration spaceRabbitMQ = SpaceConfiguration.from(configuration).rabbitMQConfiguration(TMAIL_RABBITMQ);
+
+        assertThat(spaceRabbitMQ.getManagementUri()).isEqualTo(URI.create("https://space-rabbitmq:15672/api"));
+        assertThat(spaceRabbitMQ.getManagementCredentials().getUser()).isEqualTo("space");
+    }
+
+    @Test
+    void managementUriShouldBeTheConfiguredOne() {
+        BaseHierarchicalConfiguration configuration = new BaseHierarchicalConfiguration();
+        configuration.addProperty("rabbitmq.uri", "amqp://space:secret@space-rabbitmq:5672/twake");
+        configuration.addProperty("rabbitmq.management.uri", "http://space-management:8080");
+
+        RabbitMQConfiguration spaceRabbitMQ = SpaceConfiguration.from(configuration).rabbitMQConfiguration(TMAIL_RABBITMQ);
+
+        assertThat(spaceRabbitMQ.getManagementUri()).isEqualTo(URI.create("http://space-management:8080"));
+    }
+
+    @Test
+    void fromShouldRejectABlankManagementUri() {
+        BaseHierarchicalConfiguration configuration = new BaseHierarchicalConfiguration();
+        configuration.addProperty("rabbitmq.management.uri", " ");
+
+        assertThatThrownBy(() -> SpaceConfiguration.from(configuration))
+            .isInstanceOf(IllegalArgumentException.class);
     }
 
     @ParameterizedTest

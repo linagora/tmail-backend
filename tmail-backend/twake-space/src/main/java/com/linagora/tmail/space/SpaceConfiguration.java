@@ -18,6 +18,8 @@
 
 package com.linagora.tmail.space;
 
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
@@ -35,6 +37,7 @@ import com.linagora.tmail.AmqpUri;
  * setting has a default.
  */
 public record SpaceConfiguration(Optional<AmqpUri> rabbitMQUri,
+                                 Optional<URI> rabbitMQManagementUri,
                                  String queue,
                                  String deadLetterQueue,
                                  String spaceExchange,
@@ -47,13 +50,14 @@ public record SpaceConfiguration(Optional<AmqpUri> rabbitMQUri,
     // As the Twake Mail side service: leaves room in the 64 characters of a team mailbox name
     private static final int PREFIX_MAX_LENGTH = 32;
 
-    public static final SpaceConfiguration DEFAULT = new SpaceConfiguration(Optional.empty(),
+    public static final SpaceConfiguration DEFAULT = new SpaceConfiguration(Optional.empty(), Optional.empty(),
         "tmail-space", "tmail-space-dead-letter", "space", "admin-panel", "dns.validated", "activity", "",
         Duration.ofDays(30));
 
     public static SpaceConfiguration from(Configuration configuration) {
         return new SpaceConfiguration(
             optional(configuration, "rabbitmq.uri").map(AmqpUri::from),
+            optional(configuration, "rabbitmq.management.uri").map(URI::create),
             optional(configuration, "queue").orElse(DEFAULT.queue()),
             optional(configuration, "deadLetterQueue").orElse(DEFAULT.deadLetterQueue()),
             optional(configuration, "space.exchange").orElse(DEFAULT.spaceExchange()),
@@ -78,8 +82,26 @@ public record SpaceConfiguration(Optional<AmqpUri> rabbitMQUri,
      */
     public RabbitMQConfiguration rabbitMQConfiguration(RabbitMQConfiguration tmailRabbitMQConfiguration) {
         return rabbitMQUri
-            .map(amqpUri -> amqpUri.toRabbitMqConfiguration(tmailRabbitMQConfiguration).build())
+            .map(amqpUri -> amqpUri.toRabbitMqConfiguration(tmailRabbitMQConfiguration,
+                    Optional.of(managementUri(amqpUri, tmailRabbitMQConfiguration)))
+                .build())
             .orElse(tmailRabbitMQConfiguration);
+    }
+
+    // The management API is called with the credentials of rabbitmq.uri: it must be the one of that server. Without
+    // rabbitmq.management.uri, the management URI of rabbitmq.properties moved to the host of rabbitmq.uri.
+    private URI managementUri(AmqpUri amqpUri, RabbitMQConfiguration tmailRabbitMQConfiguration) {
+        return rabbitMQManagementUri
+            .orElseGet(() -> withHost(tmailRabbitMQConfiguration.getManagementUri(), amqpUri.getUri().getHost()));
+    }
+
+    // Drops the user information, which would belong to the server of rabbitmq.properties
+    private static URI withHost(URI uri, String host) {
+        try {
+            return new URI(uri.getScheme(), null, host, uri.getPort(), uri.getPath(), uri.getQuery(), uri.getFragment());
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException("Cannot build the management URI of host " + host, e);
+        }
     }
 
     private static Optional<String> optional(Configuration configuration, String parameter) {
