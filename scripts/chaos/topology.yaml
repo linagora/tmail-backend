@@ -1,0 +1,28 @@
+# What twake-chaos acts on: each component of claims.yaml and the compose services that are its nodes, the application.
+# `healthy`: a command (run on the host, common.sh sourced) that succeeds once the component has recovered by itself
+# (its cluster whole again), before the next scenario starts.
+project: tmail-chaos
+app:
+  services: [tmail]
+  healthcheck: "curl -sf -o /dev/null http://127.0.0.1:$CHAOS_WEBADMIN_PORT/healthcheck?check=IMAPHealthCheck"
+components:
+  cassandra:
+    services: [cassandra1, cassandra2, cassandra3]
+    healthy: "compose exec -T cassandra1 nodetool status | grep -c '^UN' | grep -qx 3"
+  s3:
+    services: [s3]
+  opensearch:
+    services: [opensearch1, opensearch2, opensearch3]
+    healthy: "compose exec -T opensearch1 curl -s localhost:9200/_cluster/health | grep -q '\"number_of_nodes\":3'"
+  rabbitMQ:
+    services: [rabbitmq1, rabbitmq2, rabbitmq3]
+    healthy: "compose exec -T rabbitmq1 rabbitmqctl -q cluster_status --formatter json | python3 -c 'import json,sys; sys.exit(len(json.load(sys.stdin)[\"running_nodes\"])!=3)'"
+  redis:
+    services: [redis1, redis2, redis3]
+    healthy: "compose exec -T redis1 redis-cli -p 6379 cluster info | grep -q cluster_state:ok"
+  rspamd:
+    services: [rspamd]
+  ldap:
+    services: [ldap]
+# not claimed, part of the stack: never faulted
+support: [rspamd-redis, sso]
