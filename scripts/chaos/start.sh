@@ -26,6 +26,16 @@ if ! compose exec -T redis1 redis-cli -p 6379 cluster info 2>/dev/null | grep -q
   compose exec -T redis1 redis-cli --cluster create redis1:6379 redis2:6379 redis3:6379 --cluster-yes >/dev/null
   sleep 2
 fi
+# a restarted stack may have a 6379 left as a replica by a failover: its slots back first, every 6379 a master (bounded)
+redis_rebalance
+for i in $(seq 1 30); do
+  masters=0
+  for n in $REDIS_NODES; do [ "$(redis_role "$n" 6379)" = master ] && masters=$((masters + 1)); done
+  [ "$masters" = 3 ] && break
+  [ "$i" = 30 ] && { echo "the 6379 of every Redis node is not a master" >&2; compose exec -T redis1 redis-cli -p 6379 cluster nodes >&2; exit 1; }
+  redis_rebalance
+  sleep 2
+done
 for replica in $REDIS_NODES; do
   master="${REDIS_REPLICA_OF[$replica]}"
   [ "$(redis_role "$replica" 6380)" = slave ] && continue
@@ -36,7 +46,6 @@ for replica in $REDIS_NODES; do
     compose exec -T redis1 redis-cli --cluster add-node "$replica:6380" redis1:6379 --cluster-slave --cluster-master-id "$id" >/dev/null
   fi
 done
-redis_rebalance
 for i in $(seq 1 30); do
   redis_healthy && break
   [ "$i" = 30 ] && { echo "the Redis Cluster is not in its layout" >&2; compose exec -T redis1 redis-cli -p 6379 cluster nodes >&2; exit 1; }
