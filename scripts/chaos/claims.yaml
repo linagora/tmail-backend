@@ -14,6 +14,7 @@ components:
     requiredOnStartup: true
   s3:
     downImpact: "Cannot send, cannot receive, cannot open mail, cannot upload / download, cannot save draft"
+    failFast: true
     accidentRecovery: live
     requiredOnStartup: false
   opensearch:
@@ -24,6 +25,7 @@ components:
   rabbitMQ:
     faultTolerance: 1
     downImpact: "Cannot send / receive mails"
+    failFast: true
     accidentRecovery: live
     requiredOnStartup: true
   redis:
