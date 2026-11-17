@@ -54,6 +54,18 @@ RabbitMQ+Redis event bus implementation.
   - the pure RabbitMQ event bus implementation
   - James mail queue
 
+== Lucene search and the event bus (Postgres app)
+
+The Postgres app can use Lucene as its search implementation (`implementation=lucene` in `search.properties`).
+The Lucene index is stored locally on each node, whereas the RabbitMQ event bus dispatches each group event
+(such as the indexing listener) to a single node: other nodes would keep serving stale results, for instance
+expunged or moved messages.
+
+Lucene search is thus restricted to single-node deployments using the in-memory event bus, which is used
+when no `rabbitmq.properties` file is present. When a `rabbitmq.properties` file is present (RabbitMQ or
+RabbitMQ+Redis event bus), the Postgres app refuses to start with Lucene search. Use OpenSearch for
+multi-node deployments.
+
 == Twake Workplace Settings Configuration
 
 The Twake Workplace settings module may require RabbitMQ configuration to function properly. The following properties should be added to `rabbitmq.properties`:

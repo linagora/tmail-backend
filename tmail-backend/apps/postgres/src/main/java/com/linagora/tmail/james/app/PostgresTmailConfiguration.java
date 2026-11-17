@@ -43,6 +43,7 @@ import org.apache.james.utils.ExtensionConfiguration;
 import org.apache.james.utils.PropertiesProvider;
 
 import com.github.fge.lambdas.Throwing;
+import com.google.common.base.Preconditions;
 import com.linagora.tmail.OpenPaasModuleChooserConfiguration;
 import com.linagora.tmail.UsersRepositoryModuleChooser;
 import com.linagora.tmail.blob.guice.BlobStoreConfiguration;
@@ -321,6 +322,7 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
             boolean rlsEnabled = this.rlsEnabled.orElse(readRLSEnabledFromFile(propertiesProvider));
 
             EventBusImpl eventBusImpl = this.eventBusImpl.orElseGet(() -> EventBusImpl.from(propertiesProvider));
+            checkLuceneIsUsedWithInMemoryEventBus(searchConfiguration, eventBusImpl);
 
             boolean oidcEnabled = this.oidcEnabled.orElseGet(() -> {
                 try {
@@ -368,6 +370,12 @@ public record PostgresTmailConfiguration(ConfigurationPath configurationPath, Ja
                 oidcTokenCacheImplementation,
                 unauthenticatedBlobAccessChoice,
                 keywordEmailQueryViewEnabled);
+        }
+
+        private void checkLuceneIsUsedWithInMemoryEventBus(SearchConfiguration searchConfiguration, EventBusImpl eventBusImpl) {
+            Preconditions.checkState(searchConfiguration.getImplementation() != SearchConfiguration.Implementation.Lucene
+                    || eventBusImpl == EventBusImpl.IN_MEMORY,
+                "Lucene search is not supported by the postgres app with the RabbitMQ event bus: its index is local to each node.");
         }
 
         private boolean readRLSEnabledFromFile(PropertiesProvider propertiesProvider) {
