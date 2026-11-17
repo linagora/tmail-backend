@@ -30,7 +30,7 @@ components:
     requiredOnStartup: true
   redis:
     faultTolerance: 1
-    downImpact: "No realtime (IMAP session update, IDLE, JMAP push), no IMAP SELECT, no write operations (sending, receiving, drafts, flags, moves, deletions)"
+    downImpact: "No realtime (IMAP session update, IDLE, JMAP push), no IMAP SELECT, no write operations (sending, drafts, flags, moves, deletions); receiving keeps working"
     failFast: true
     accidentRecovery: live
     requiredOnStartup: true
