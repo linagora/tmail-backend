@@ -86,6 +86,32 @@ class SpaceConfigurationTest {
     }
 
     @Test
+    void fromShouldRejectARabbitMQUriWithoutHost() {
+        BaseHierarchicalConfiguration configuration = new BaseHierarchicalConfiguration();
+        configuration.addProperty("rabbitmq.uri", "amqp:///twake");
+
+        assertThatThrownBy(() -> SpaceConfiguration.from(configuration))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("rabbitmq.uri");
+    }
+
+    @Test
+    void managementUriShouldPreserveEscapedCharacters() {
+        RabbitMQConfiguration tmailRabbitMQ = RabbitMQConfiguration.builder()
+            .amqpUri(URI.create("amqp://tmail-rabbitmq:5672"))
+            .managementUri(URI.create("https://tmail-rabbitmq:15672/team%2Fops/api?a=b%26c#frag%23ment"))
+            .managementCredentials(DEFAULT_MANAGEMENT_CREDENTIAL)
+            .build();
+        BaseHierarchicalConfiguration configuration = new BaseHierarchicalConfiguration();
+        configuration.addProperty("rabbitmq.uri", "amqp://space:secret@space-rabbitmq:5672/twake");
+
+        RabbitMQConfiguration spaceRabbitMQ = SpaceConfiguration.from(configuration).rabbitMQConfiguration(tmailRabbitMQ);
+
+        assertThat(spaceRabbitMQ.getManagementUri())
+            .isEqualTo(URI.create("https://space-rabbitmq:15672/team%2Fops/api?a=b%26c#frag%23ment"));
+    }
+
+    @Test
     void managementUriShouldBeTheConfiguredOne() {
         BaseHierarchicalConfiguration configuration = new BaseHierarchicalConfiguration();
         configuration.addProperty("rabbitmq.uri", "amqp://space:secret@space-rabbitmq:5672/twake");

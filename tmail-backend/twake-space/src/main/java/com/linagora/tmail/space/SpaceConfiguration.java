@@ -74,6 +74,8 @@ public record SpaceConfiguration(Optional<AmqpUri> rabbitMQUri,
         Preconditions.checkArgument(teamMailboxPrefix.length() <= PREFIX_MAX_LENGTH,
             "'teamMailbox.prefix' must be at most %s characters", PREFIX_MAX_LENGTH);
         Preconditions.checkArgument(!retention.isNegative(), "'retention' must not be negative");
+        Preconditions.checkArgument(rabbitMQUri.map(amqpUri -> amqpUri.getUri().getHost() != null).orElse(true),
+            "'rabbitmq.uri' must specify a host");
     }
 
     /**
@@ -95,10 +97,15 @@ public record SpaceConfiguration(Optional<AmqpUri> rabbitMQUri,
             .orElseGet(() -> withHost(tmailRabbitMQConfiguration.getManagementUri(), amqpUri.getUri().getHost()));
     }
 
-    // Drops the user information, which would belong to the server of rabbitmq.properties
+    // Drops the user information, which would belong to the server of rabbitmq.properties. Keeps the raw path, query
+    // and fragment, so that their escaped characters stay escaped.
     private static URI withHost(URI uri, String host) {
+        String port = uri.getPort() == -1 ? "" : ":" + uri.getPort();
+        String path = Optional.ofNullable(uri.getRawPath()).orElse("");
+        String query = Optional.ofNullable(uri.getRawQuery()).map(rawQuery -> "?" + rawQuery).orElse("");
+        String fragment = Optional.ofNullable(uri.getRawFragment()).map(rawFragment -> "#" + rawFragment).orElse("");
         try {
-            return new URI(uri.getScheme(), null, host, uri.getPort(), uri.getPath(), uri.getQuery(), uri.getFragment());
+            return new URI(uri.getScheme() + "://" + host + port + path + query + fragment);
         } catch (URISyntaxException e) {
             throw new IllegalArgumentException("Cannot build the management URI of host " + host, e);
         }
