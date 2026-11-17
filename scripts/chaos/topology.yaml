@@ -31,5 +31,6 @@ components:
     services: [rspamd]
   ldap:
     services: [ldap]
+    healthy: "compose exec -T ldap ldapwhoami -x -H ldap://localhost -D cn=admin,dc=tmail,dc=com -w admin"
 # not claimed, part of the stack: never faulted
 support: [rspamd-redis, sso]

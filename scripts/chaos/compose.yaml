@@ -157,9 +157,11 @@ services:
   rspamd:
     image: rspamd/rspamd:3.14.3
     mem_limit: 512m
+    # the image passes only RSPAMD_* variables to the configuration (env.PASSWORD reads RSPAMD_PASSWORD): without the prefix
+    # the controller has no password, tmail is refused (Unauthorized) and, onMailetException ignore, nothing is checked
     environment:
-      PASSWORD: admin
-      REDIS_SERVERS: rspamd-redis:6379
+      RSPAMD_PASSWORD: admin
+      RSPAMD_REDIS_SERVERS: rspamd-redis:6379
     volumes:
       - ./conf/rspamd/actions.conf:/etc/rspamd/local.d/actions.conf:ro
       - ./conf/rspamd/redis.conf:/etc/rspamd/local.d/redis.conf:ro

@@ -1,0 +1,94 @@
+# The main features of Twake Mail, one control script each (exit 0: works, 1: does not, 2: the probe is broken).
+# The JMAP probes authenticate as the web client does: an SSO bearer token (LemonLDAP, introspected by tmail), held while
+# valid (120 s) and renewed when it nears its end (lib.sh `token`). Only sso_sign_in and basic_sign_in sign in anew.
+# A slow answer is still an answer (the web client sets no timeout): one call may take 45 s, a script stops polling at
+# 80 s and says why. On the healthy stack each takes a few seconds.
+timeout_seconds: 90
+# async: the control waits for an effect (a notification, a mail filed by the spam check): it fails at the end of its wait,
+# never fast, so a component's failFast does not judge it. Sending and receiving are judged: their request must fail fast
+# (the analysis reads in the output whether the time went to the request or to the wait for the delivery).
+features:
+  sso_sign_in:
+    script: sso_sign_in.sh
+    description: a user signs in through the SSO (new LemonLDAP token, password checked in LDAP) and gets the JMAP session with it (introspected by tmail)
+  basic_sign_in:
+    script: basic_sign_in.sh
+    description: a client signs in with Basic auth (password checked in LDAP by tmail) and gets the JMAP session
+  mailbox_list:
+    script: mailbox_list.sh
+    description: the web client lists the mailboxes (Mailbox/get) with their counters, the system ones there
+  read_mail:
+    script: read_mail.sh
+    description: a user opens a mail of the Inbox (Email/get of its body) and downloads its attachment
+  upload_download:
+    script: upload_download.sh
+    description: a user uploads an attachment (JMAP upload) and downloads it back, the same bytes
+  save_draft:
+    script: save_draft.sh
+    description: a user saves a draft in Drafts (Email/set, $draft) and reads it back
+  send_mail:
+    script: send_mail.sh
+    description: a user sends a mail by JMAP (Email/set + EmailSubmission/set, moved to Sent); the colleague receives it in their Inbox
+  smtp_submission:
+    script: smtp_submission.sh
+    description: a mail client submits a mail on a new SMTP connection (587, STARTTLS, AUTH); the colleague receives it in their Inbox
+  receive_mail:
+    script: receive_mail.sh
+    description: a mail from the outside arrives on a new SMTP connection (25) and is delivered in the user's Inbox
+  spam_check:
+    script: spam_check.sh
+    description: a spam from the outside (GTUBE, SMTP 25) is scanned by Rspamd and filed in the user's Spam mailbox
+    async: true
+  search:
+    script: search.sh
+    description: a user searches their mails by a word (Email/query text, OpenSearch) and finds the mail
+  quick_filters:
+    script: quick_filters.sh
+    description: the quick filters of a mailbox (unread, with attachments, starred; Email/query, OpenSearch) list the right mails
+  flagged_view:
+    script: flagged_view.sh
+    description: a user stars / unstars a mail and the Starred section (Email/query hasKeyword $flagged, OpenSearch) follows
+  imap_connection:
+    script: imap_connection.sh
+    description: a mail client opens a new IMAP connection (STARTTLS, LOGIN), lists the mailboxes, selects the INBOX, fetches flags
+  imap_idle:
+    script: imap_idle.sh
+    description: an IMAP session in IDLE is notified when another client (JMAP) stars a mail of its mailbox
+    async: true
+  imap_session_update:
+    script: imap_session_update.sh
+    description: a selected IMAP session sees (NOOP) that another client (JMAP) starred a mail of its mailbox
+    async: true
+  jmap_push:
+    script: jmap_push.sh
+    description: the web client's JMAP WebSocket push receives a StateChange when a mail of the user changes
+    async: true
+  admin_users:
+    script: admin_users.sh
+    description: an administrator lists the domains and the users through WebAdmin
+
+impacts:
+  # "No Service"
+  cassandra: all
+  # "Cannot send, cannot receive, cannot open mail, cannot upload / download, cannot save draft"
+  # send: both ways of sending (JMAP, SMTP submission); receive: receive_mail, spam_check (its spam is received first)
+  s3: [send_mail, smtp_submission, receive_mail, spam_check, read_mail, upload_download, save_draft]
+  # "No search, no quick filters, no flagged section"
+  opensearch: [search, quick_filters, flagged_view]
+  # "Cannot send / receive mails". spam_check: its spam has to be received first (a receiving probe).
+  rabbitMQ: [send_mail, smtp_submission, receive_mail, spam_check]
+  # "No realtime (IMAP session update, IDLE, JMAP push), no IMAP SELECT, no write operations (sending, receiving, drafts,
+  # flags, moves, deletions)"
+  # realtime: imap_session_update, imap_idle, jmap_push; IMAP SELECT: every IMAP probe selects (imap_connection too);
+  # writes: sending (send_mail, smtp_submission), receiving (receive_mail, spam_check), drafts (save_draft), flags
+  # (flagged_view stars a mail). Not claimed: reading (mailbox_list, read_mail), upload / download, search, the sign-ins.
+  redis: [imap_session_update, imap_idle, jmap_push, imap_connection, send_mail, smtp_submission, receive_mail, spam_check, save_draft, flagged_view]
+  # "No spam check done"
+  rspamd: [spam_check]
+  # "Mail receival and sending, new IMAP / SMTP connections, new token introspection fails"
+  # receival: receive_mail, spam_check (received first); sending: send_mail, smtp_submission; new IMAP connections: every
+  # IMAP probe opens one (imap_connection, imap_idle, imap_session_update); new SMTP connections: smtp_submission,
+  # receive_mail, spam_check; new token introspection: sso_sign_in (a token never seen by tmail).
+  # Not claimed: basic_sign_in (Basic auth checks the password in LDAP), admin_users (the users are LDAP's). Note that the
+  # JMAP probes hold a token valid 120 s: an LDAP outage longer than that leaves no token to hold (see NOTES.md).
+  ldap: [receive_mail, spam_check, send_mail, smtp_submission, imap_connection, imap_idle, imap_session_update, sso_sign_in]
