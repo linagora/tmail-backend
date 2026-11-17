@@ -51,7 +51,9 @@ redis_healthy() {
     compose exec -T "$n" redis-cli -p 6379 info replication 2>/dev/null | grep -q '^connected_slaves:1' || return 1
     [ "$(redis_role "$n" 6380)" = slave ] || return 1
     compose exec -T "$n" redis-cli -p 6380 info replication 2>/dev/null | grep -q '^master_link_status:up' || return 1
-    [ "$(compose exec -T "$n" redis-cli -p 6380 info replication 2>/dev/null | sed -n 's/^master_host:\(.*\)\r*$/\1/p' | tr -d '\r')" = "${REDIS_REPLICA_OF[$n]}" ] || return 1
+    # the replica copies the intended neighbour's master (by node id: master_host is an IP)
+    [ "$(compose exec -T "$n" redis-cli -p 6380 cluster nodes 2>/dev/null | awk '/myself,slave/ {print $4}')" = \
+      "$(compose exec -T "${REDIS_REPLICA_OF[$n]}" redis-cli -p 6379 cluster myid 2>/dev/null | tr -d '\r')" ] || return 1
   done
 }
 
