@@ -17,7 +17,7 @@ control scripts check the features. `topology.yaml` maps each component of `clai
 |---|---|---|
 | Cassandra 4.1 | `cassandra1..3` | keyspace RF 3, QUORUM reads / writes, SERIAL LWT |
 | OpenSearch 2.19 | `opensearch1..3` | 3 shards, 1 replica |
-| RabbitMQ 4.0 | `rabbitmq1..3` | quorum queues, replication factor 3, `pause_minority` |
+| RabbitMQ 4.0 | `rabbitmq1..3` | quorum queues, replication factor 3, `autoheal` |
 | Redis 8.0 | `redis1..3` | a Redis Cluster: each node the master of a third of the slots (6379) and the replica of a neighbour's (6380) |
 | S3 (Scality, file backend on volumes) | `s3` | |
 | Rspamd 3.14 | `rspamd` (its own standalone Redis: `rspamd-redis`) | |
