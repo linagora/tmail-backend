@@ -66,7 +66,25 @@ EOF
 
 echo "==> tmail ($TMAIL_IMAGE)"
 compose up -d tmail
-wait_healthy 600 tmail
+# On a fresh 3 node cluster, tmail's first start creates the keyspaces and tables: a schema change slower than the driver's
+# request timeout (10 s) makes it exit (DriverTimeoutException in CassandraSessionModule), the tables half created. It is
+# restarted (twice at most) and said loudly: a finding about the first start on a replicated cluster, not hidden here.
+for attempt in 1 2 3; do
+  deadline=$((SECONDS + 600))
+  until [ "$(service_state tmail)" = healthy ] || [ $SECONDS -ge $deadline ]; do
+    case "$(docker inspect -f '{{.State.Status}}' "$(compose ps -aq tmail)" 2>/dev/null)" in exited|dead) break ;; esac
+    sleep 3
+  done
+  [ "$(service_state tmail)" = healthy ] && break
+  if [ "$attempt" = 3 ] || [ $SECONDS -ge $deadline ]; then
+    echo "tmail is not healthy ($(service_state tmail))" >&2
+    compose logs --tail 120 tmail >&2
+    exit 1
+  fi
+  echo "!!! tmail exited during its start (attempt $attempt): $(compose logs --tail 400 tmail 2>&1 | grep -oE '[A-Za-z]+(Exception|Error): [^|]{0,160}' | tail -1)"
+  echo "!!! restarting it (FINDING: tmail's first start on a fresh replicated cluster is not resilient)"
+  compose start tmail >/dev/null
+done
 
 
 echo "==> An account signs in (SSO, password grant) and reaches JMAP"
