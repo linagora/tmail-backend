@@ -77,13 +77,13 @@ impacts:
   opensearch: [search, quick_filters, flagged_view]
   # "Cannot send / receive mails". spam_check: its spam has to be received first (a receiving probe).
   rabbitMQ: [send_mail, smtp_submission, receive_mail, spam_check]
-  # "No realtime (IMAP session update, IDLE, JMAP push), no IMAP SELECT, no write operations (sending, drafts, flags, moves,
-  # deletions); receiving keeps working"
+  # "No realtime (IMAP session update, IDLE, JMAP push), no IMAP SELECT, no write operations (sending by JMAP, drafts,
+  # flags, moves, deletions); receiving and sending by SMTP keep working"
   # realtime: imap_session_update, imap_idle, jmap_push; IMAP SELECT: every IMAP probe selects (imap_connection too);
-  # writes: sending (send_mail, smtp_submission), drafts (save_draft), flags (flagged_view stars a mail). Receiving
-  # (receive_mail, spam_check) must keep working. Not claimed: reading (mailbox_list, read_mail), upload / download,
-  # search, the sign-ins.
-  redis: [imap_session_update, imap_idle, jmap_push, imap_connection, send_mail, smtp_submission, save_draft, flagged_view]
+  # writes: sending by JMAP (send_mail), drafts (save_draft), flags (flagged_view stars a mail). Receiving (receive_mail,
+  # spam_check) and SMTP submission (smtp_submission) must keep working. Not claimed: reading (mailbox_list, read_mail),
+  # upload / download, search, the sign-ins.
+  redis: [imap_session_update, imap_idle, jmap_push, imap_connection, send_mail, save_draft, flagged_view]
   # "No spam check done"
   rspamd: [spam_check]
   # "Mail receival and sending, new IMAP / SMTP connections, new token introspection fails"
