@@ -29,9 +29,15 @@ def get(path):
             return json.loads(r.read() or "null")
     except urllib.error.HTTPError as e:
         try:
-            return json.loads(e.read() or "null")
+            body = e.read()
+        except Exception as read_error:  # the error body itself could not be read
+            return {"unreachable": f"HTTP {e.code}, body unreadable: {type(read_error).__name__}"[:200]}
+        if not body:
+            return {"unreachable": f"HTTP {e.code}, empty body"}
+        try:
+            return json.loads(body)
         except ValueError:
-            return {"unreachable": f"HTTP {e.code}"}
+            return {"unreachable": f"HTTP {e.code}: {body[:150]!r}"}
     except Exception as e:
         return {"unreachable": f"{type(e).__name__}: {e}"[:200]}
 def count(answer):
@@ -45,7 +51,10 @@ repos = get("/mailRepositories")
 out["mail_repositories"] = {r["repository"]: count(get(f"/mailRepositories/{r['path']}/mails"))
                             for r in repos} if isinstance(repos, list) else repos
 queues = get("/mailQueues")
-out["mail_queues"] = {q: (get(f"/mailQueues/{q}") or {}).get("size") for q in queues} if isinstance(queues, list) else queues
+def size(answer):
+    """The size of a queue's detail; the error object of a failed request kept as it is."""
+    return answer["size"] if isinstance(answer, dict) and "size" in answer else (answer or {"unreachable": "no answer"})
+out["mail_queues"] = {q: size(get(f"/mailQueues/{q}")) for q in queues} if isinstance(queues, list) else queues
 failed = get("/tasks?status=failed")
 out["failed_tasks"] = len(failed) if isinstance(failed, list) else failed
 try:
