@@ -12,7 +12,7 @@ components:
     accidentRecovery: live
     requiredOnStartup: true
   s3:
-    downImpact: "Cannot send, cannot open mail, cannot upload / download, cannot save draft"
+    downImpact: "Cannot send, cannot receive, cannot open mail, cannot upload / download, cannot save draft"
     accidentRecovery: live
     requiredOnStartup: false
   opensearch:
@@ -27,7 +27,7 @@ components:
     requiredOnStartup: true
   redis:
     faultTolerance: 1
-    downImpact: "No realtime (IMAP session update, IDLE, "
+    downImpact: "No realtime (IMAP session update, IDLE, JMAP push), no IMAP SELECT, no write operations (sending, receiving, drafts, flags, moves, deletions)"
     accidentRecovery: live
     requiredOnStartup: true
   rspamd:
