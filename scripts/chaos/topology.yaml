@@ -1,0 +1,36 @@
+# What twake-chaos acts on: each component of claims.yaml and the compose services that are its nodes, the application.
+# `healthy`: a command (run on the host, common.sh sourced) that succeeds once the component has recovered by itself
+# (its cluster whole again), before the next scenario starts; `repair`: a command that brings it back when it does not by
+# itself (twake-chaos runs it while `healthy` fails).
+project: tmail-chaos
+app:
+  services: [tmail]
+  healthcheck: "curl -sf -o /dev/null http://127.0.0.1:$CHAOS_WEBADMIN_PORT/healthcheck?check=IMAPHealthCheck"
+  # what the asynchronous work leaves behind (dead letters, mails in error, queues, failed tasks): before each fault and after it
+  observe: "bash observe.sh"
+components:
+  cassandra:
+    services: [cassandra1, cassandra2, cassandra3]
+    healthy: "compose exec -T cassandra1 nodetool status | grep -c '^UN' | grep -qx 3"
+  s3:
+    services: [s3]
+  opensearch:
+    services: [opensearch1, opensearch2, opensearch3]
+    # the 3 nodes, green, no shard initializing or relocating: a node back is not enough, its shards must have recovered
+    healthy: "compose exec -T opensearch1 curl -s 'localhost:9200/_cluster/health?wait_for_status=green&timeout=5s' | python3 -c 'import json,sys; h=json.load(sys.stdin); sys.exit(not (h[\"number_of_nodes\"]==3 and h[\"status\"]==\"green\" and not h[\"timed_out\"] and h[\"initializing_shards\"]==0 and h[\"relocating_shards\"]==0))'"
+  rabbitMQ:
+    services: [rabbitmq1, rabbitmq2, rabbitmq3]
+    healthy: "compose exec -T rabbitmq1 rabbitmqctl -q cluster_status --formatter json | python3 -c 'import json,sys; sys.exit(len(json.load(sys.stdin)[\"running_nodes\"])!=3)'"
+  redis:
+    services: [redis1, redis2, redis3]
+    # its layout back (common.sh): one master owning slots per node, each with its replica online; after a failover the
+    # promoted replica keeps the slots until `repair` gives them back
+    healthy: "redis_healthy"
+    repair: "redis_rebalance"
+  rspamd:
+    services: [rspamd]
+  ldap:
+    services: [ldap]
+    healthy: "compose exec -T ldap ldapwhoami -x -H ldap://localhost -D cn=admin,dc=tmail,dc=com -w admin"
+# not claimed, part of the stack: never faulted
+support: [rspamd-redis, sso]

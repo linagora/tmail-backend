@@ -1,0 +1,44 @@
+# What Twake Mail claims when one of the services it relies on fails. twake-chaos checks each claim on the chaos stack
+# (compose.yaml) and records what does not hold.
+#
+#   faultTolerance     nodes of the component that can be lost with no impact at all (absent: a single node, none)
+#   downImpact         what stops working while the whole component is down; every other feature keeps working
+#   accidentRecovery   live: once the component is back, everything works again without restarting tmail
+#   requiredOnStartup  true: tmail may refuse to start without it; false: tmail starts, degraded as downImpact says
+#   failFast           true: while it is down, what downImpact names fails fast with a clear error (no request hanging)
+components:
+  cassandra:
+    faultTolerance: 1
+    downImpact: "No Service"
+    accidentRecovery: live
+    requiredOnStartup: true
+  s3:
+    downImpact: "Cannot send, cannot receive, cannot open mail, cannot upload / download, cannot save draft"
+    failFast: true
+    accidentRecovery: live
+    requiredOnStartup: false
+  opensearch:
+    faultTolerance: 1
+    downImpact: "No search, no quick filters, no flagged section"
+    accidentRecovery: live
+    requiredOnStartup: true
+  rabbitMQ:
+    faultTolerance: 1
+    downImpact: "Cannot send / receive mails"
+    failFast: true
+    accidentRecovery: live
+    requiredOnStartup: true
+  redis:
+    faultTolerance: 1
+    downImpact: "No realtime (IMAP session update, IDLE, JMAP push), no IMAP SELECT, no write operations (sending, receiving, drafts, flags, moves, deletions)"
+    failFast: true
+    accidentRecovery: live
+    requiredOnStartup: true
+  rspamd:
+    downImpact: "No spam check done"
+    accidentRecovery: live
+    requiredOnStartup: false
+  ldap:
+    downImpact: "Mail receival and sending, new IMAP / SMTP connections, new token introspection fails"
+    accidentRecovery: live
+    requiredOnStartup: false

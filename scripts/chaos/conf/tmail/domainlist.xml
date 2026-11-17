@@ -1,0 +1,9 @@
+<?xml version="1.0"?>
+<domainlist class="org.apache.james.domainlist.cassandra.CassandraDomainList">
+    <autodetect>false</autodetect>
+    <autodetectIP>false</autodetectIP>
+    <defaultDomain>tmail.com</defaultDomain>
+    <domainnames>
+        <domainname>tmail.com</domainname>
+    </domainnames>
+</domainlist>
