@@ -144,8 +144,12 @@ services:
     environment:
       SCALITY_ACCESS_KEY_ID: accessKey1
       SCALITY_SECRET_ACCESS_KEY: secretKey1
-      S3BACKEND: mem
+      # file, not mem: a stopped S3 must come back with its objects (an outage, not a loss of the data)
+      S3BACKEND: file
       REMOTE_MANAGEMENT_DISABLE: "1"
+    volumes:
+      - s3-data:/usr/src/app/localData
+      - s3-metadata:/usr/src/app/localMetadata
     networks:
       default:
         aliases: [s3.docker.test]
@@ -200,3 +204,7 @@ services:
     networks:
       default:
         aliases: [sso.example.com]
+
+volumes:
+  s3-data:
+  s3-metadata:

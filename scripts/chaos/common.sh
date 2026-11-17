@@ -31,6 +31,41 @@ service_state() {
   docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$id" 2>/dev/null || echo missing
 }
 
+# The Redis Cluster's intended layout: on each node redisN, 6379 is the master of a third of the slots and 6380 the replica
+# of the next node's master (REDIS_REPLICA_OF: redis1:6380 copies redis2's master...).
+REDIS_NODES="redis1 redis2 redis3"
+declare -A REDIS_REPLICA_OF=([redis1]=redis2 [redis2]=redis3 [redis3]=redis1)
+
+redis_role() {  # redis_role <node> <port>: master / slave / nothing when unreachable
+  compose exec -T "$1" redis-cli -p "$2" role 2>/dev/null | head -1 | tr -d '\r'
+}
+
+# The layout restored and whole: every 6379 a master owning slots with its replica online, every 6380 a replica whose
+# link is up, the cluster ok. After a failover (a node stopped, its replica promoted) this fails until redis_rebalance.
+redis_healthy() {
+  local n
+  compose exec -T redis1 redis-cli -p 6379 cluster info 2>/dev/null | grep -q 'cluster_state:ok' || return 1
+  for n in $REDIS_NODES; do
+    [ "$(redis_role "$n" 6379)" = master ] || return 1
+    compose exec -T "$n" redis-cli -p 6379 cluster nodes 2>/dev/null | grep 'myself,master' | grep -qE ' [0-9]+-[0-9]+' || return 1
+    compose exec -T "$n" redis-cli -p 6379 info replication 2>/dev/null | grep -q '^connected_slaves:1' || return 1
+    [ "$(redis_role "$n" 6380)" = slave ] || return 1
+    compose exec -T "$n" redis-cli -p 6380 info replication 2>/dev/null | grep -q '^master_link_status:up' || return 1
+    [ "$(compose exec -T "$n" redis-cli -p 6380 info replication 2>/dev/null | sed -n 's/^master_host:\(.*\)\r*$/\1/p' | tr -d '\r')" = "${REDIS_REPLICA_OF[$n]}" ] || return 1
+  done
+}
+
+# Back to the intended layout after failovers: a 6379 that came back as a replica takes its slots back (CLUSTER FAILOVER,
+# with its master's agreement, no data lost). Idempotent.
+redis_rebalance() {
+  local n
+  for n in $REDIS_NODES; do
+    if [ "$(redis_role "$n" 6379)" = slave ]; then
+      compose exec -T "$n" redis-cli -p 6379 cluster failover >/dev/null 2>&1 || true
+    fi
+  done
+}
+
 wait_healthy() {  # wait_healthy <seconds> <service>...
   local timeout="$1"; shift
   local deadline=$((SECONDS + timeout)) s

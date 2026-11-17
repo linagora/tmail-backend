@@ -19,7 +19,7 @@ control scripts check the features. `topology.yaml` maps each component of `clai
 | OpenSearch 2.19 | `opensearch1..3` | 3 shards, 1 replica |
 | RabbitMQ 4.0 | `rabbitmq1..3` | quorum queues, replication factor 3, `pause_minority` |
 | Redis 8.0 | `redis1..3` | a Redis Cluster: each node the master of a third of the slots (6379) and the replica of a neighbour's (6380) |
-| S3 (Scality, in memory) | `s3` | |
+| S3 (Scality, file backend on volumes) | `s3` | |
 | Rspamd 3.14 | `rspamd` (its own standalone Redis: `rspamd-redis`) | |
 | OpenLDAP | `ldap` (the users: the demo's schema and seed) | |
 | LemonLDAP::NG | `sso` (OIDC; JMAP bearer tokens are introspected) | |
@@ -42,6 +42,7 @@ Published on 127.0.0.1: JMAP 19700, WebAdmin 19701, SMTP 19702, submission 19703
 accounts to `~/.cache/twake-chaos/tmail-chaos/env`. A fault by hand:
 
 ```bash
-docker compose -p tmail-chaos pause cassandra2     # a hung node; `stop` for a crashed one
-docker compose -p tmail-chaos unpause cassandra2
+. scripts/chaos/common.sh
+compose pause cassandra2     # a hung node; `stop` for a crashed one
+compose unpause cassandra2
 ```

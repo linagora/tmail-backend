@@ -20,25 +20,32 @@ compose up -d $INFRA
 wait_healthy 600 cassandra1 cassandra2 cassandra3 rabbitmq1 rabbitmq2 rabbitmq3 redis1 redis2 redis3
 
 echo "==> The Redis Cluster"
-if ! compose exec -T redis1 redis-cli -p 6379 cluster info 2>/dev/null | grep -q 'cluster_state:ok'; then
+# the masters once (no slot assigned yet), then the replicas reconciled on every start: a start interrupted between the two
+# leaves the cluster `ok` without its replicas
+if ! compose exec -T redis1 redis-cli -p 6379 cluster info 2>/dev/null | grep -q 'cluster_slots_assigned:16384'; then
   compose exec -T redis1 redis-cli --cluster create redis1:6379 redis2:6379 redis3:6379 --cluster-yes >/dev/null
   sleep 2
-  for pair in redis1:redis2 redis2:redis3 redis3:redis1; do  # <replica node>:<the node whose master it copies>
-    replica="${pair%%:*}" master="${pair#*:}"
-    id="$(compose exec -T "$master" redis-cli -p 6379 cluster myid | tr -d '\r')"
-    compose exec -T redis1 redis-cli --cluster add-node "$replica:6380" redis1:6379 --cluster-slave --cluster-master-id "$id" >/dev/null
-  done
-  for i in $(seq 1 30); do
-    [ "$(compose exec -T redis1 redis-cli -p 6379 cluster nodes | grep -c slave)" = 3 ] && \
-      compose exec -T redis1 redis-cli -p 6379 cluster info | grep -q 'cluster_state:ok' && break
-    [ "$i" = 30 ] && { echo "the Redis Cluster is not ok" >&2; compose exec -T redis1 redis-cli -p 6379 cluster nodes >&2; exit 1; }
-    sleep 2
-  done
 fi
+for replica in $REDIS_NODES; do
+  master="${REDIS_REPLICA_OF[$replica]}"
+  [ "$(redis_role "$replica" 6380)" = slave ] && continue
+  id="$(compose exec -T "$master" redis-cli -p 6379 cluster myid | tr -d '\r')"
+  if compose exec -T redis1 redis-cli -p 6379 cluster nodes | grep -q "^[0-9a-f]* $replica:6380"; then
+    compose exec -T "$replica" redis-cli -p 6380 cluster replicate "$id" >/dev/null   # known, not a replica yet
+  else
+    compose exec -T redis1 redis-cli --cluster add-node "$replica:6380" redis1:6379 --cluster-slave --cluster-master-id "$id" >/dev/null
+  fi
+done
+redis_rebalance
+for i in $(seq 1 30); do
+  redis_healthy && break
+  [ "$i" = 30 ] && { echo "the Redis Cluster is not in its layout" >&2; compose exec -T redis1 redis-cli -p 6379 cluster nodes >&2; exit 1; }
+  sleep 2
+done
 
 echo "==> OpenSearch: the 3 nodes in the cluster"
 for i in $(seq 1 120); do
-  n="$(compose exec -T opensearch1 curl -s 'http://localhost:9200/_cluster/health' 2>/dev/null | sed -n 's/.*"number_of_nodes":\([0-9]*\).*/\1/p')"
+  n="$(compose exec -T opensearch1 curl -s 'http://localhost:9200/_cluster/health' 2>/dev/null | sed -n 's/.*"number_of_nodes":\([0-9]*\).*/\1/p' || true)"
   [ "$n" = 3 ] && break
   [ "$i" = 120 ] && { echo "OpenSearch has ${n:-no} node(s)" >&2; compose logs --tail 60 opensearch1 >&2; exit 1; }
   sleep 3
@@ -91,7 +98,7 @@ echo "==> An account signs in (SSO, password grant) and reaches JMAP"
 for i in $(seq 1 40); do
   token="$(curl -s -H "Host: $CHAOS_SSO_HOST" -u "$CHAOS_OIDC_CLIENT:$CHAOS_OIDC_SECRET" \
     -d grant_type=password -d "username=$CHAOS_USER" -d "password=$CHAOS_PASSWORD" -d 'scope=openid email profile' \
-    "http://127.0.0.1:$CHAOS_SSO_PORT/oauth2/token" | sed -n 's/.*"access_token" *: *"\([^"]*\)".*/\1/p')"
+    "http://127.0.0.1:$CHAOS_SSO_PORT/oauth2/token" | sed -n 's/.*"access_token" *: *"\([^"]*\)".*/\1/p' || true)"
   [ -n "$token" ] && curl -sf -o /dev/null -H "Authorization: Bearer $token" -H 'Accept: application/json; jmapVersion=rfc-8621' \
     "http://127.0.0.1:$CHAOS_JMAP_PORT/jmap/session" && break
   [ "$i" = 40 ] && { echo "$CHAOS_USER cannot reach JMAP through the SSO" >&2; exit 1; }

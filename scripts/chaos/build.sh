@@ -15,7 +15,7 @@ else
   git -C "$REPO_DIR" submodule update --init --depth 1 james-project
   M2="${MAVEN_REPOSITORY:-$HOME/.m2}"
   JIB_DIR="$CHAOS_RUN/jib"
-  mkdir -p "$JIB_DIR"
+  mkdir -p "$JIB_DIR" "$M2"  # created as the caller: a missing directory bind-mounted by docker would be root's
   maven() {
     docker run --rm -u "$(id -u):$(id -g)" -v "$REPO_DIR:/src" -w /src -v "$M2:/var/maven/.m2" -v "$JIB_DIR:/jib" \
       -e MAVEN_CONFIG=/var/maven/.m2 -e HOME=/var/maven -e XDG_CONFIG_HOME=/jib/config -e XDG_CACHE_HOME=/jib/cache \
