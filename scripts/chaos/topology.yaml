@@ -6,6 +6,8 @@ project: tmail-chaos
 app:
   services: [tmail]
   healthcheck: "curl -sf -o /dev/null http://127.0.0.1:$CHAOS_WEBADMIN_PORT/healthcheck?check=IMAPHealthCheck"
+  # what the asynchronous work leaves behind (dead letters, mails in error, queues, failed tasks): before each fault and after it
+  observe: "bash observe.sh"
 components:
   cassandra:
     services: [cassandra1, cassandra2, cassandra3]
