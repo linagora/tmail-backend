@@ -84,6 +84,7 @@ import com.rabbitmq.client.ConnectionFactory;
 import com.rabbitmq.client.GetResponse;
 
 import io.netty.handler.codec.http.HttpHeaderNames;
+import io.netty.handler.codec.http.HttpMethod;
 import net.fortuna.ical4j.model.Calendar;
 import net.fortuna.ical4j.model.parameter.PartStat;
 import reactor.core.publisher.Mono;
@@ -950,6 +951,87 @@ class CalDavEventRepositoryTest {
 
         assertThat(davCalendarObject).isNotNull();
         assertThat(davCalendarObject.calendarData().toString()).contains("PARTSTAT=ACCEPTED");
+    }
+
+    @Test
+    void setAttendanceStatusShouldImportEventWhenOnlyHeldByASubscribedCalendarTheUserDoesNotAttend() {
+        // Some organizers (eg Webex) send each invitee its own copy of the event, listing that invitee as the sole attendee:
+        // Alice's copy does not list the user, yet the user sees it through its subscription to Alice's calendar
+        String eventUid = UUID.randomUUID().toString();
+        String aliceCalendar = "BEGIN:VCALENDAR\n" +
+            "VERSION:2.0\n" +
+            "PRODID:-//Sabre//Sabre VObject 4.5.7//EN\n" +
+            "BEGIN:VEVENT\n" +
+            "UID:" + eventUid + "\n" +
+            "DTSTART;TZID=Europe/Paris:20250409T110000\n" +
+            "DTEND;TZID=Europe/Paris:20250409T120000\n" +
+            "ORGANIZER;CN=John1 Doe1:mailto:organizer@external.org\n" +
+            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:" + aliceOpenPaasUser.email().asString() + "\n" +
+            "DTSTAMP:20250331T083652Z\n" +
+            "SEQUENCE:1\n" +
+            "END:VEVENT\n" +
+            "END:VCALENDAR\n";
+        davClient.caldav(aliceOpenPaasUser.email()).createCalendar(
+                URI.create("/calendars/" + aliceOpenPaasUser.id().value() + "/" + aliceOpenPaasUser.id().value() + "/" + eventUid + ".ics"),
+                CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(aliceCalendar.getBytes(StandardCharsets.UTF_8))))
+            .block();
+        subscribeToDefaultCalendar(openPaasUser, aliceOpenPaasUser);
+        DavUser davUser = new DavUser(openPaasUser.id(), openPaasUser.email());
+        assertThat(davClient.caldav(openPaasUser.email()).getCalendarObjects(davUser, new DavUid(eventUid)).collectList().block())
+            .as("the user sees Alice's copy through its subscription")
+            .isNotEmpty();
+        BlobId blobId = setupCalendarResolver(eventUid);
+
+        assertThatCode(() -> testee.setAttendanceStatus(testUser, AttendanceStatus.Accepted, blobId).block())
+            .doesNotThrowAnyException();
+
+        String ownCalendarPath = "/calendars/" + openPaasUser.id().value() + "/" + openPaasUser.id().value() + "/";
+        List<DavCalendarObject> calendarObjects = davClient.caldav(openPaasUser.email()).getCalendarObjects(davUser, new DavUid(eventUid)).collectList().block();
+        SoftAssertions.assertSoftly(softly -> {
+            softly.assertThat(calendarObjects)
+                .filteredOn(calendarObject -> calendarObject.uri().getPath().startsWith(ownCalendarPath))
+                .singleElement()
+                .satisfies(calendarObject -> assertThat(calendarObject.calendarData().toString())
+                    .contains("PARTSTAT=ACCEPTED")
+                    .contains("mailto:" + openPaasUser.email().asString()));
+            softly.assertThat(davClient.caldav(aliceOpenPaasUser.email())
+                    .getCalendarObject(new DavUser(aliceOpenPaasUser.id(), aliceOpenPaasUser.email()), new DavUid(eventUid)).block()
+                    .calendarData().toString())
+                .doesNotContain(openPaasUser.email().asString())
+                .doesNotContain("PARTSTAT=ACCEPTED");
+        });
+    }
+
+    // The owner publishes its default calendar, which the subscriber then subscribes to, as Twake Calendar does
+    private void subscribeToDefaultCalendar(OpenPaasUser subscriber, OpenPaasUser owner) {
+        String ownerCalendar = "/calendars/" + owner.id().value() + "/" + owner.id().value() + ".json";
+        assertThat(sendDavJsonRequest(owner, HttpMethod.valueOf("ACL"), ownerCalendar, """
+            {"public_right": "{DAV:}read"}"""))
+            .isEqualTo(200);
+
+        assertThat(sendDavJsonRequest(subscriber, HttpMethod.POST, "/calendars/" + subscriber.id().value() + ".json", """
+            {
+              "id": "%s",
+              "dav:name": "Owner calendar",
+              "calendarserver:source": { "href": "%s" }
+            }""".formatted(UUID.randomUUID(), ownerCalendar)))
+            .isEqualTo(201);
+    }
+
+    private int sendDavJsonRequest(OpenPaasUser user, HttpMethod method, String uri, String body) {
+        DavConfiguration davConfiguration = dockerOpenPaasExtension.dockerOpenPaasSetup().davConfiguration();
+
+        return HttpClient.create()
+            .baseUrl(davConfiguration.baseUrl().toString())
+            .headers(headers -> headers.add(HttpHeaderNames.AUTHORIZATION, davConfiguration.authenticationToken(user.email().asString()))
+                .add(HttpHeaderNames.CONTENT_TYPE, "application/json")
+                .add(HttpHeaderNames.ACCEPT, "application/json"))
+            .request(method)
+            .uri(uri)
+            .send(ByteBufFlux.fromString(Mono.just(body)))
+            .response()
+            .map(response -> response.status().code())
+            .block();
     }
 
     @Test

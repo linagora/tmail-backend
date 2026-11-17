@@ -46,6 +46,7 @@ import com.linagora.tmail.james.jmap.CalendarEventCancelledException;
 import com.linagora.tmail.james.jmap.CalendarEventNotFoundException;
 import com.linagora.tmail.james.jmap.CalendarEventRepository;
 import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier;
+import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier.AttendeeNotFoundException;
 import com.linagora.tmail.james.jmap.calendar.CalendarResolver;
 import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults;
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
@@ -84,6 +85,8 @@ public class CalDavEventRepository implements CalendarEventRepository {
     private enum UpdateOutcome {
         UPDATED,
         CANCELLED,
+        // The user does not attend this copy of the event, eg one held by the calendar of a colleague the user subscribed to
+        NOT_ATTENDEE,
         SKIPPED;
 
         static UpdateOutcome mostRelevant(UpdateOutcome outcome1, UpdateOutcome outcome2) {
@@ -97,6 +100,7 @@ public class CalDavEventRepository implements CalendarEventRepository {
             return switch (this) {
                 case UPDATED -> Mono.empty();
                 case CANCELLED -> Mono.error(new CalendarEventCancelledException(username, eventUid));
+                case NOT_ATTENDEE -> Mono.error(new AttendeeNotFoundException(username.asString()));
                 case SKIPPED -> Mono.error(new CalendarEventNotFoundException(username, eventUid));
             };
         }
@@ -174,9 +178,11 @@ public class CalDavEventRepository implements CalendarEventRepository {
             .flatMap(calendar -> {
                 CalendarUidField eventUid = CalendarUidField.getEventUidFromCalendar(calendar);
                 CalendarEventModifier eventModifier = CalendarEventModifier.withPartStat(username.asString(), attendanceStatus.toPartStat(), calendar);
+                // The event may only be held by calendars the user does not attend, eg the one of a colleague the user subscribed to:
+                // the event is then imported in the user calendar, as when it is missing
                 return updateEvent(username, eventUid, eventModifier)
-                    .onErrorResume(CalendarEventNotFoundException.class, notFound ->
-                        importEventViaITIP(username, calendar)
+                    .onErrorResume(error -> error instanceof CalendarEventNotFoundException || error instanceof AttendeeNotFoundException,
+                        notInUserCalendar -> importEventViaITIP(username, calendar)
                             .then(updateEvent(username, eventUid, eventModifier)));
             });
     }
@@ -239,6 +245,10 @@ public class CalDavEventRepository implements CalendarEventRepository {
             .onErrorResume(CancelledCalendarObjectException.class, e -> {
                 LOGGER.debug("Skipping calendar object '{}': event is cancelled", calendarObject.uri());
                 return Mono.just(UpdateOutcome.CANCELLED);
+            })
+            .onErrorResume(AttendeeNotFoundException.class, e -> {
+                LOGGER.debug("Skipping calendar object '{}': the user does not attend this event", calendarObject.uri());
+                return Mono.just(UpdateOutcome.NOT_ATTENDEE);
             })
             .onErrorResume(DavClientException.PermissionDenied.class, e -> {
                 LOGGER.debug("Skipping calendar object '{}': permission denied, likely a delegated calendar", calendarObject.uri());
