@@ -78,6 +78,7 @@ services:
       - ./conf/tmail/tika.properties:/root/conf/tika.properties:ro
       - ./conf/tmail/domainlist.xml:/root/conf/domainlist.xml:ro
       - ./conf/tmail/jmap.properties:/root/conf/jmap.properties:ro
+      - ./conf/tmail/blob.properties:/root/conf/blob.properties:ro
       - ./conf/tmail/usersrepository.xml:/root/conf/usersrepository.xml:ro
       - ./conf/tmail/mailetcontainer.xml:/root/conf/mailetcontainer.xml:ro
     ports:
