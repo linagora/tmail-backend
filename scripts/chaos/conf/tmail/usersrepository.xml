@@ -32,6 +32,8 @@
                  userBase="ou=users,dc=tmail,dc=com"
                  userIdAttribute="mail"
                  userObjectClass="twakeAccount"
+                 connectionTimeout="2000"
+                 readTimeout="3000"
                  filter="(!(|(twakeAccountStatus=cn=disabled,ou=twakeAccountStatus,ou=nomenclature,dc=tmail,dc=com)(twakeAccountStatus=cn=todelete,ou=twakeAccountStatus,ou=nomenclature,dc=tmail,dc=com)))">
     <supportsVirtualHosting>true</supportsVirtualHosting>
 </usersrepository>
