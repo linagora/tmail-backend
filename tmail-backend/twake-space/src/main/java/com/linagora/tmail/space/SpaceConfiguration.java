@@ -19,7 +19,6 @@
 package com.linagora.tmail.space;
 
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
 import java.util.Optional;
@@ -84,31 +83,8 @@ public record SpaceConfiguration(Optional<AmqpUri> rabbitMQUri,
      */
     public RabbitMQConfiguration rabbitMQConfiguration(RabbitMQConfiguration tmailRabbitMQConfiguration) {
         return rabbitMQUri
-            .map(amqpUri -> amqpUri.toRabbitMqConfiguration(tmailRabbitMQConfiguration,
-                    Optional.of(managementUri(amqpUri, tmailRabbitMQConfiguration)))
-                .build())
+            .map(amqpUri -> amqpUri.toRabbitMqConfiguration(tmailRabbitMQConfiguration, rabbitMQManagementUri).build())
             .orElse(tmailRabbitMQConfiguration);
-    }
-
-    // The management API is called with the credentials of rabbitmq.uri: it must be the one of that server. Without
-    // rabbitmq.management.uri, the management URI of rabbitmq.properties moved to the host of rabbitmq.uri.
-    private URI managementUri(AmqpUri amqpUri, RabbitMQConfiguration tmailRabbitMQConfiguration) {
-        return rabbitMQManagementUri
-            .orElseGet(() -> withHost(tmailRabbitMQConfiguration.getManagementUri(), amqpUri.getUri().getHost()));
-    }
-
-    // Drops the user information, which would belong to the server of rabbitmq.properties. Keeps the raw path, query
-    // and fragment, so that their escaped characters stay escaped.
-    private static URI withHost(URI uri, String host) {
-        String port = uri.getPort() == -1 ? "" : ":" + uri.getPort();
-        String path = Optional.ofNullable(uri.getRawPath()).orElse("");
-        String query = Optional.ofNullable(uri.getRawQuery()).map(rawQuery -> "?" + rawQuery).orElse("");
-        String fragment = Optional.ofNullable(uri.getRawFragment()).map(rawFragment -> "#" + rawFragment).orElse("");
-        try {
-            return new URI(uri.getScheme() + "://" + host + port + path + query + fragment);
-        } catch (URISyntaxException e) {
-            throw new IllegalArgumentException("Cannot build the management URI of host " + host, e);
-        }
     }
 
     private static Optional<String> optional(Configuration configuration, String parameter) {
