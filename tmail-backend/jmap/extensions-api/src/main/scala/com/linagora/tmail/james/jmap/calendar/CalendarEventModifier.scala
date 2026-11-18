@@ -119,7 +119,7 @@ case class AttendeePartStatusUpdatePatch(targetAttendeeEmail: String, status: Pa
           case _ => vEvent.`with`(RelationshipPropertyModifiers.ATTENDEE, attendee.replace(status)); true
         }
       }
-      .getOrElse(throw new IllegalArgumentException(s"The attendee is not found in the event. $targetAttendeeEmail"))
+      .getOrElse(throw AttendeeNotFoundException(targetAttendeeEmail))
 }
 
 case class OrganizerValidator(requestUser: String) extends Consumer[VEvent] {
@@ -377,6 +377,9 @@ object CalendarEventModifier {
   }
 
   case class NoUpdateRequiredException() extends RuntimeException
+
+  // An IllegalArgumentException: a reply on an event the user does not attend remains an invalid patch
+  case class AttendeeNotFoundException(attendeeEmail: String) extends IllegalArgumentException(s"The attendee is not found in the event. $attendeeEmail")
 
   implicit class ImplicitCalendar(calendar: Calendar) {
     def getFirstVEvent: VEvent =
