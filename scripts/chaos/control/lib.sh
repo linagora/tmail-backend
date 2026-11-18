@@ -50,8 +50,11 @@ sso_token_fresh() {
   printf '%s %s\n' "$(( $(date +%s) + $(jq -r '.expires_in // 120' <<<"$body") ))" "$token"
 }
 
-# token <user>: a bearer token, as a signed-in web client holds one: reused while valid (LemonLDAP's live 120 s),
-# renewed when it has less than a minute left; the renewal failing, the one held is used until it expires.
+# token <user>: a bearer token, as a signed-in web client holds one: reused while valid, renewed when it has less than a
+# minute left; the renewal failing, the one held is used until it expires. The chaos stack's LemonLDAP issues them for
+# 1 h and twake-chaos fetches fresh ones just before every fault (prepare.sh, topology.yaml app.prepare): during a
+# fault the controls use a token taken before it, so what does not need the SSO or LDAP is really measured. Only
+# sso_sign_in asks for a new one (sso_token_fresh): that is its feature.
 token() {
   local user="$1" file="$STATE_DIR/token.$1" now exp tok fresh
   now=$(date +%s)

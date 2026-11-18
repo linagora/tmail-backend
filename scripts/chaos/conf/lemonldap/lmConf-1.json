@@ -397,7 +397,7 @@
  "oidcRPMetaDataOptions": {
   "james": {
    "oidcRPMetaDataOptionsAccessTokenClaims": 1,
-   "oidcRPMetaDataOptionsAccessTokenExpiration": 120,
+   "oidcRPMetaDataOptionsAccessTokenExpiration": 3600,
    "oidcRPMetaDataOptionsAccessTokenJWT": 1,
    "oidcRPMetaDataOptionsAccessTokenSignAlg": "RS512",
    "oidcRPMetaDataOptionsAllowClientCredentialsGrant": 0,
