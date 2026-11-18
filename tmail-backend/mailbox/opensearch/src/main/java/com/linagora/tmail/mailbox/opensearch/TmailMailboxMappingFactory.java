@@ -372,8 +372,8 @@ public class TmailMailboxMappingFactory implements MailboxMappingFactory {
     @Override
     public Optional<IndexSettings> getIndexSettings() {
         return Optional.of(new IndexSettings.Builder()
-            .numberOfShards(Integer.toString(openSearchConfiguration.getNbShards()))
-            .numberOfReplicas(Integer.toString(openSearchConfiguration.getNbReplica()))
+            .numberOfShards(openSearchConfiguration.getNbShards())
+            .numberOfReplicas(openSearchConfiguration.getNbReplica())
             .index(new IndexSettings.Builder()
                 .maxNgramDiff(DEFAULT_MAX_NGRAM_DIFF)
                 .build())
