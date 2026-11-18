@@ -140,7 +140,7 @@ class TMailAuthenticateIntegrationTest {
         assertThat(client.getReplyString()).contains("334 UGFzc3dvcmQ6");
         client.sendCommand(base64(SECRETARY_PASSWORD));
 
-        assertThat(client.getReplyString()).contains("235 Authentication Successful");
+        assertThat(client.getReplyString()).contains("235 2.7.0 Authentication Successful");
         client.quit();
         client.disconnect();
     }
@@ -151,7 +151,7 @@ class TMailAuthenticateIntegrationTest {
         String invalidPassword = "invalid";
         assertThatThrownBy(() -> new SMTPMessageSender(DOMAIN)
             .connect("127.0.0.1", smtpAuthRequiredPort).authenticate(secretaryDelegateUser.asString(), invalidPassword))
-            .hasMessageContaining("535 Authentication Failed");
+            .hasMessageContaining("535 5.7.8 Authentication Failed");
     }
 
     @Test
@@ -159,7 +159,7 @@ class TMailAuthenticateIntegrationTest {
         Username secretaryDelegateUser = Username.fromLocalPartWithDomain("secretary+other3", DOMAIN);
         assertThatThrownBy(() -> new SMTPMessageSender(DOMAIN)
             .connect("127.0.0.1", smtpAuthRequiredPort).authenticate(secretaryDelegateUser.asString(), SECRETARY_PASSWORD))
-            .hasMessageContaining("535 Authentication Failed");
+            .hasMessageContaining("535 5.7.8 Authentication Failed");
     }
 
     // when invalid domain
@@ -168,7 +168,7 @@ class TMailAuthenticateIntegrationTest {
         Username secretaryDelegateUser = Username.fromLocalPartWithDomain("secretary+other3", "invalidDomain");
         assertThatThrownBy(() -> new SMTPMessageSender(DOMAIN)
             .connect("127.0.0.1", smtpAuthRequiredPort).authenticate(secretaryDelegateUser.asString(), SECRETARY_PASSWORD))
-            .hasMessageContaining("535 Authentication Failed");
+            .hasMessageContaining("535 5.7.8 Authentication Failed");
     }
 
     @Test
@@ -176,7 +176,7 @@ class TMailAuthenticateIntegrationTest {
         Username secretaryDelegateUser = Username.fromLocalPartWithDomain("secretary+", DOMAIN);
         assertThatThrownBy(() -> new SMTPMessageSender(DOMAIN)
             .connect("127.0.0.1", smtpAuthRequiredPort).authenticate(secretaryDelegateUser.asString(), SECRETARY_PASSWORD))
-            .hasMessageContaining("501 Could not decode parameters for AUTH PLAIN");
+            .hasMessageContaining("501 5.5.2 Could not decode parameters for AUTH PLAIN");
     }
 
     @Test
@@ -184,7 +184,7 @@ class TMailAuthenticateIntegrationTest {
         Username secretaryDelegateUser = Username.fromLocalPartWithDomain("invalidUser+minister", DOMAIN);
         assertThatThrownBy(() -> new SMTPMessageSender(DOMAIN)
             .connect("127.0.0.1", smtpAuthRequiredPort).authenticate(secretaryDelegateUser.asString(), SECRETARY_PASSWORD))
-            .hasMessageContaining("535 Authentication Failed");
+            .hasMessageContaining("535 5.7.8 Authentication Failed");
     }
 
 
@@ -193,14 +193,14 @@ class TMailAuthenticateIntegrationTest {
         Username secretaryDelegateUser = Username.fromLocalPartWithDomain("secretary+invalidUser", DOMAIN);
         assertThatThrownBy(() -> new SMTPMessageSender(DOMAIN)
             .connect("127.0.0.1", smtpAuthRequiredPort).authenticate(secretaryDelegateUser.asString(), SECRETARY_PASSWORD))
-            .hasMessageContaining("535 Authentication Failed");
+            .hasMessageContaining("535 5.7.8 Authentication Failed");
     }
 
     @Test
     void secretaryShouldAuthenticateFailedWhenInvalidCredential() {
         assertThatThrownBy(() -> new SMTPMessageSender(DOMAIN)
             .connect("127.0.0.1", smtpAuthRequiredPort).authenticate(SECRETARY.asString(), "invalidPass"))
-            .hasMessageContaining("535 Authentication Failed");
+            .hasMessageContaining("535 5.7.8 Authentication Failed");
     }
 
     // must be set verifyIdentity to false in smtpserver.xml
