@@ -28,6 +28,10 @@ Each container has a memory limit (~12 GB in all). Tika is left out (not a claim
 The configuration of tmail is the image's, with the files of `conf/tmail/` mounted over it: the nodes' lists, the
 replication and consistency above, LDAP users, OIDC, Rspamd in `local-delivery` (`onMailetException: ignore`: Rspamd
 down, the mail is delivered unchecked, as claimed).
+`jmap.properties` answers simple `Email/query` calls from the Cassandra projection (`view.email.query.enabled`), and
+`blob.properties` caches the small blobs in Cassandra (`cache.enable`), as the QA environment. The cache's keyspace has a
+replication factor of 1 whatever `cassandra.replication.factor` says: with a node down, the blobs it held are read from S3
+after the cache's timeout (100 ms).
 
 ## Usage
 

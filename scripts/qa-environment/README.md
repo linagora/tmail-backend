@@ -20,6 +20,12 @@ of the image, TLS with its own self-signed keystore.
 `conf/jvm.properties` is the one of the distributed app plus `james.mailbox.handleRecent=false`, the QA environment
 dropping the legacy IMAP `\Recent` handling.
 
+`conf/jmap.properties` and `conf/blob.properties` are the distributed app's with the read paths it ships disabled turned on:
+- `view.email.query.enabled=true`: simple `Email/query` calls (a folder list, sorted by date) are answered by the Cassandra
+  projection the app maintains on every write anyway, instead of OpenSearch;
+- `cache.enable=true`: small blobs (the headers read by every row of a mail list) are cached in Cassandra
+  (`apache_james_cache`) instead of read from S3 each time.
+
 ## Usage
 
 ```bash
