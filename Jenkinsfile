@@ -358,12 +358,12 @@ Please drop these changes from the pull request, or ask a linagora member to car
                   sh 'mvn -f apps/distributed/pom.xml package -DskipTests -T1C'
                   sh 'mvn -f apps/distributed/pom.xml dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=target/dependency'
                   sh 'echo "$DOCKER_HUB_CREDENTIAL_PSW" | docker login -u "$DOCKER_HUB_CREDENTIAL_USR" --password-stdin'
-                  sh 'docker build -f dockerfiles/distributed/Dockerfile -t linagora/tmail-backend-pr:$CHANGE_ID apps/distributed'
+                  sh 'docker build --pull -f dockerfiles/distributed/Dockerfile -t linagora/tmail-backend-pr:$CHANGE_ID apps/distributed'
                   sh 'docker push linagora/tmail-backend-pr:$CHANGE_ID'
                   // Build tmail distributed AI PR image: same Dockerfile with the
                   // AI bot extension jar placed in extensions-jars before the build.
                   sh 'cp tmail-third-party/ai-bot/target/tmail-ai-bot-jar-with-dependencies.jar apps/distributed/src/main/extensions-jars'
-                  sh 'docker build -f dockerfiles/distributed/Dockerfile -t linagora/tmail-backend-distributed-pr:ai-$CHANGE_ID apps/distributed'
+                  sh 'docker build --pull -f dockerfiles/distributed/Dockerfile -t linagora/tmail-backend-distributed-pr:ai-$CHANGE_ID apps/distributed'
                   sh 'docker push linagora/tmail-backend-distributed-pr:ai-$CHANGE_ID'
                   sh 'rm -f apps/distributed/src/main/extensions-jars/tmail-ai-bot-jar-with-dependencies.jar'
                   // migration-proxy still builds via jib, also for PRs.
@@ -428,7 +428,7 @@ Please drop these changes from the pull request, or ask a linagora member to car
                   sh 'mvn -f apps/distributed/pom.xml package -DskipTests -T1C'
                   sh 'mvn -f apps/distributed/pom.xml dependency:copy-dependencies -DincludeScope=runtime -DoutputDirectory=target/dependency'
                   sh 'echo "$DOCKER_HUB_CREDENTIAL_PSW" | docker login -u "$DOCKER_HUB_CREDENTIAL_USR" --password-stdin'
-                  sh 'docker build -f dockerfiles/distributed/Dockerfile -t linagora/tmail-backend:distributed-$DOCKER_TAG apps/distributed'
+                  sh 'docker build --pull -f dockerfiles/distributed/Dockerfile -t linagora/tmail-backend:distributed-$DOCKER_TAG apps/distributed'
                   sh 'docker push linagora/tmail-backend:distributed-$DOCKER_TAG'
                   sh 'mvn -Pci jib:build -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -Djib.to.tags=memory-$DOCKER_TAG -pl apps/memory -X'
                   sh 'mvn -Pci jib:build -Djib.to.auth.username=$DOCKER_HUB_CREDENTIAL_USR -Djib.to.auth.password=$DOCKER_HUB_CREDENTIAL_PSW -Djib.to.tags=postgresql-$DOCKER_TAG -pl apps/postgres -X'
@@ -437,7 +437,7 @@ Please drop these changes from the pull request, or ask a linagora member to car
                   // Build tmail distributed AI image: same Dockerfile with the
                   // AI bot extension jar placed in extensions-jars before the build.
                   sh 'cp tmail-third-party/ai-bot/target/tmail-ai-bot-jar-with-dependencies.jar apps/distributed/src/main/extensions-jars'
-                  sh 'docker build -f dockerfiles/distributed/Dockerfile -t linagora/tmail-backend:distributed-ai-$DOCKER_TAG apps/distributed'
+                  sh 'docker build --pull -f dockerfiles/distributed/Dockerfile -t linagora/tmail-backend:distributed-ai-$DOCKER_TAG apps/distributed'
                   sh 'docker push linagora/tmail-backend:distributed-ai-$DOCKER_TAG'
                   sh 'rm -f apps/distributed/src/main/extensions-jars/tmail-ai-bot-jar-with-dependencies.jar'
                   } finally {
