@@ -67,7 +67,8 @@ class CalendarEventReplyMailProcessor @Inject()(mailQueueFactory: MailQueueFacto
                                                 fileSystem: FileSystem,
                                                 @Named("jmap") jmapConfiguration: Configuration,
                                                 supportedLanguage: CalendarEventReplySupportedLanguage,
-                                                usersRepository: UsersRepository) extends Startable {
+                                                usersRepository: UsersRepository,
+                                                submissionValidations: SubmissionValidations) extends Startable {
 
   private val mailReplyGenerator: CalendarEventMailReplyGenerator = Try(jmapConfiguration.getString(I18N_MAIL_TEMPLATE_LOCATION_PROPERTY, I18N_MAIL_TEMPLATE_LOCATION_DEFAULT))
     .map(i18nEmlDirectory => new I18NCalendarEventReplyMessageGenerator(fileSystem, i18nEmlDirectory)) match {
@@ -92,13 +93,15 @@ class CalendarEventReplyMailProcessor @Inject()(mailQueueFactory: MailQueueFacto
 
     SMono.fromCallable(() => usersRepository.getMailAddressFor(mailboxSession.getUser))
       .map(mailAddress => AttendeeReply(mailAddress, partStat))
-      .flatMap(attendeeReply => generateReplyMailAndTryEnqueue(attendeeReply, language, calendarRequest))
+      .flatMap(attendeeReply => generateReplyMailAndTryEnqueue(attendeeReply, language, calendarRequest, mailboxSession))
   }
 
   private def generateReplyMailAndTryEnqueue(attendeeReply: AttendeeReply,
                                              language: Locale,
-                                             calendarRequest: Calendar): SMono[Unit] =
+                                             calendarRequest: Calendar,
+                                             mailboxSession: MailboxSession): SMono[Unit] =
     mailReplyGenerator.generateMail(calendarRequest, attendeeReply, language)
+      .flatMap(replyMail => submissionValidations(replyMail, mailboxSession))
       .flatMap(replyMail => SMono(queue.enqueueReactive(replyMail))
         .`then`(SMono.fromCallable(() => LifecycleUtil.dispose(replyMail))
           .subscribeOn(Schedulers.boundedElastic())))

@@ -96,6 +96,7 @@ class EmailSendMethod @Inject()(emailSetSerializer: EmailSetSerializer,
                                 mailboxManager: MailboxManager,
                                 emailSetMethod: EmailSetMethod,
                                 configuration: JMAPConfiguration,
+                                submissionValidations: SubmissionValidations,
                                 val metricFactory: MetricFactory,
                                 val sessionTranslator: SessionTranslator,
                                 val sessionSupplier: SessionSupplier) extends MethodRequiringAccountId[EmailSendRequest] with Startable {
@@ -227,6 +228,7 @@ class EmailSendMethod @Inject()(emailSetSerializer: EmailSetSerializer,
         mailImpl.setMessageNoCopy(message)
         mailImpl
       })
+      _ <- submissionValidations(mail, mailboxSession)
       _ <- SMono(queue.enqueueReactive(mail))
         .`then`(SMono.fromCallable(() => LifecycleUtil.dispose(mail))
           .subscribeOn(Schedulers.boundedElastic()))

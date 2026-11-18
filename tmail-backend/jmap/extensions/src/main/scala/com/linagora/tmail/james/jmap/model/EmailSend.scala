@@ -33,7 +33,7 @@ import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.{AccountId, Id, Properties, SetError, UuidState}
 import org.apache.james.jmap.json.EmailSetSerializer
 import org.apache.james.jmap.mail.{BlobId, DestroyIds, EmailCreationRequest, EmailCreationResponse, EmailSet, EmailSetRequest, EmailSubmissionId, Envelope, ThreadId, UnparsedMessageId}
-import org.apache.james.jmap.method.{EmailSubmissionException, SizeExceededException, WithAccountId}
+import org.apache.james.jmap.method.{EmailSubmissionException, EmailSubmissionSetValidationException, SizeExceededException, WithAccountId}
 import org.apache.james.mailbox.model.MessageId
 import org.apache.james.server.core.MimeMessageSource
 import play.api.libs.json.{JsError, JsObject, JsPath, JsSuccess, JsonValidationError}
@@ -222,6 +222,7 @@ object EmailSendResults {
       case invalidException: EmailSendCreationRequestInvalidException => invalidException.error
       case exceededException: SizeExceededException => SetError.tooLarge(SetErrorDescription(exceededException.getMessage))
       case submissionException: EmailSubmissionException => submissionException.asSetError
+      case validationException: EmailSubmissionSetValidationException => validationException.setError
       case error: Throwable => SetError.serverFail(SetErrorDescription(error.getMessage))
     }
     EmailSendResults(None, Some(Map(emailSendCreationId -> setError)), Map.empty)
