@@ -75,7 +75,9 @@ The Twake Workplace settings module may require RabbitMQ configuration to functi
 - `twp.rabbitmq.management.uri`: Optional. The URI for the RabbitMQ management API.
   If not specified, defaults to the TMail RabbitMQ management URI moved to the host of `twp.rabbitmq.uri` (its user
   information dropped): the management API is called with the credentials of `twp.rabbitmq.uri`, so it must be the
-  one of the TWP RabbitMQ server.
+  one of the TWP RabbitMQ server. When `twp.rabbitmq.uri` lists several URIs, the host and the credentials of the first
+  one are used: the other URIs only supply additional AMQP hosts.
+  Without `twp.rabbitmq.uri`, the TMail RabbitMQ configuration is used unchanged and this property has no effect.
 - `twp.queues.quorum.bypass`: Optional. Boolean, default to false. Whether to bypass quorum queues.
 - `twp.settings.exchange`: Optional. The exchange name for TWP settings. Default to `settings`.
 - `twp.settings.routingKey`: Optional. The routing key for TWP settings. Default to `user.settings.updated`.
