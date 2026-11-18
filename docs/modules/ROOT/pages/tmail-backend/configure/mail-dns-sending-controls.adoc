@@ -20,8 +20,15 @@ existing validators:
 send.extra.validations=com.linagora.tmail.james.jmap.method.MailDnsConfigurationValidation
 ----
 
-Pending domains receive `forbiddenToSend` from `EmailSubmission/set` before the message
-is queued.
+Pending domains receive `forbiddenToSend` from `EmailSubmission/set` and from `Email/send`
+before the message is queued. Calendar event replies (`CalendarEvent/accept`, `CalendarEvent/maybe`,
+`CalendarEvent/reject`) for which TMail generates a reply email on behalf of a pending domain are
+not queued either: the blob is reported with the `forbiddenToSend` error under `notAccepted`,
+`notMaybe` or `notRejected`, depending on the method.
+
+These JMAP paths run the validations configured with `send.validate.rcpt` and
+`send.extra.validations` until one of them rejects the message: later validations do not run, so
+an earlier validation's error may be returned instead of `forbiddenToSend`.
 
 == SMTP
 

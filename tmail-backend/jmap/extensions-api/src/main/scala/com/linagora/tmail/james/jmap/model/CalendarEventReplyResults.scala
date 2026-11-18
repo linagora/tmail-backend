@@ -25,6 +25,7 @@ import eu.timepit.refined.auto._
 import org.apache.james.jmap.core.SetError
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.mail.{BlobId, BlobIds}
+import org.apache.james.jmap.method.EmailSubmissionSetValidationException
 import org.slf4j.{Logger, LoggerFactory}
 
 object CalendarEventReplyResults {
@@ -64,6 +65,9 @@ object CalendarEventReplyResults {
     case _: CalendarEventCancelledException =>
       LOGGER.info("Error when replying to event invitation for {}: {}", username, throwable.getMessage)
       SetError("eventCancelled", SetErrorDescription("The event you reply to has been cancelled"), None)
+    case validationException: EmailSubmissionSetValidationException =>
+      LOGGER.info("Reply to event invitation for {} rejected by submission validations: {}", username, validationException.setError.description)
+      validationException.setError
     case _ =>
       LOGGER.error("serverFail to reply event invitation for {}", username, throwable)
       SetError.serverFail(SetErrorDescription(throwable.getMessage))
