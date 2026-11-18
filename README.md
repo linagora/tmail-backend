@@ -109,7 +109,7 @@ To launch it you need to have docker installed. From the root of this project, y
 Jenkins runner locally yourself:
 
 ```
-docker build -t local-jenkins-runner dockerfiles/jenkins-runner
+docker build --pull -t local-jenkins-runner dockerfiles/jenkins-runner
 ```
 
 And then you need to launch it with the Jenkinsfile:
