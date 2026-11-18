@@ -123,6 +123,7 @@ trait DownloadAllContract {
       .statusCode(SC_OK)
       .contentType("application/zip")
       .header("cache-control", "private, immutable, max-age=31536000")
+      .header("vary", "authorization")
       .extract
       .body
       .asInputStream()
