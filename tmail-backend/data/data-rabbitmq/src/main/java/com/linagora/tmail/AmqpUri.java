@@ -19,6 +19,7 @@
 package com.linagora.tmail;
 
 import java.net.URI;
+import java.net.URISyntaxException;
 import java.security.KeyManagementException;
 import java.security.NoSuchAlgorithmException;
 import java.util.Objects;
@@ -145,11 +146,15 @@ public final class AmqpUri {
         return toRabbitMqConfiguration(commonRabbitMQConfiguration, Optional.empty());
     }
 
+    /**
+     * The management API is called with the credentials of this AMQP URI: it must be the one of this server. Without
+     * an explicit management URI, the management URI of the common configuration is moved to the host of this AMQP URI.
+     */
     public RabbitMQConfiguration.Builder toRabbitMqConfiguration(RabbitMQConfiguration commonRabbitMQConfiguration,
                                                                  Optional<URI> managementUri) {
         return RabbitMQConfiguration.builder()
             .amqpUri(uri)
-            .managementUri(managementUri.orElse(commonRabbitMQConfiguration.getManagementUri()))
+            .managementUri(managementUri.orElseGet(() -> withHost(commonRabbitMQConfiguration.getManagementUri(), getHost())))
             .managementCredentials(userInfo.asManagementCredentials())
             .vhost(getVhost())
             .useSsl(commonRabbitMQConfiguration.useSsl())
@@ -172,6 +177,27 @@ public final class AmqpUri {
 
     public URI getUri() {
         return uri;
+    }
+
+    /**
+     * Returns the host of the AMQP URI, defaulting as the RabbitMQ client does when it is not specified.
+     */
+    public String getHost() {
+        return Optional.ofNullable(uri.getHost()).orElse(ConnectionFactory.DEFAULT_HOST);
+    }
+
+    // Drops the user information, which would belong to another server. Keeps the raw path, query and fragment, so
+    // that their escaped characters stay escaped.
+    private static URI withHost(URI uri, String host) {
+        String port = uri.getPort() == -1 ? "" : ":" + uri.getPort();
+        String path = Optional.ofNullable(uri.getRawPath()).orElse("");
+        String query = Optional.ofNullable(uri.getRawQuery()).map(rawQuery -> "?" + rawQuery).orElse("");
+        String fragment = Optional.ofNullable(uri.getRawFragment()).map(rawFragment -> "#" + rawFragment).orElse("");
+        try {
+            return new URI(uri.getScheme() + "://" + host + port + path + query + fragment);
+        } catch (URISyntaxException e) {
+            throw new IllegalArgumentException("Cannot build the management URI of host " + host, e);
+        }
     }
 
     @Override
