@@ -26,6 +26,11 @@ dropping the legacy IMAP `\Recent` handling.
 - `cache.enable=true`: small blobs (the headers read by every row of a mail list) are cached in Cassandra
   (`apache_james_cache`) instead of read from S3 each time.
 
+`conf/opensearch.properties` is the distributed app's plus `opensearch.indexHeaders=false` and `opensearch.nb.replica=1`: the headers of a
+mail are not indexed (they took the bulk of the index: each one a nested document and again in `_source`), so the JMAP `header` filter and the
+IMAP `SEARCH HEADER` on headers other than From, To, Cc, Subject and the dates find nothing here, which no client of these tests uses. One replica,
+as in production: on one node it stays unassigned and takes no disk.
+
 ## Usage
 
 ```bash

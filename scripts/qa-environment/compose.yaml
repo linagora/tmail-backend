@@ -23,6 +23,7 @@ services:
       - ./conf/jvm.properties:/root/conf/jvm.properties:ro
       - ./conf/jmap.properties:/root/conf/jmap.properties:ro
       - ./conf/blob.properties:/root/conf/blob.properties:ro
+      - ./conf/opensearch.properties:/root/conf/opensearch.properties:ro
     ports:
       - "127.0.0.1:${QA_WEBADMIN_PORT:?}:8000"
     healthcheck:
