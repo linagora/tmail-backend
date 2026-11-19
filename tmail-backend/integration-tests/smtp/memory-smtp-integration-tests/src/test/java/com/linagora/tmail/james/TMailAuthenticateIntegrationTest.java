@@ -47,6 +47,8 @@ import org.apache.james.utils.TestIMAPClient;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import com.google.inject.multibindings.Multibinder;
 import com.linagora.tmail.encrypted.MailboxManagerClassProbe;
@@ -64,6 +66,7 @@ class TMailAuthenticateIntegrationTest {
     static final String IMAP_HOST = "127.0.0.1";
     static int imapPort;
     static Port smtpAuthRequiredPort;
+    static Port smtpStartTlsPort;
 
     @RegisterExtension
     static JamesServerExtension jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->
@@ -108,8 +111,36 @@ class TMailAuthenticateIntegrationTest {
 
         imapPort = server.getProbe(ImapGuiceProbe.class).getImapPort();
         smtpAuthRequiredPort = server.getProbe(SmtpGuiceProbe.class).getSmtpAuthRequiredPort();
+        smtpStartTlsPort = server.getProbe(SmtpGuiceProbe.class).getSmtpStartTlsPort();
         System.out.println("Imap port: " + imapPort);
         System.out.println("Smtp port: " + smtpAuthRequiredPort.getValue());
+    }
+
+    @Test
+    void authShouldNotBeAnnouncedBeforeStartTlsByDefault() throws Exception {
+        SMTPClient client = new SMTPClient();
+        client.connect("127.0.0.1", smtpStartTlsPort.getValue());
+
+        client.sendCommand("EHLO domain.tld");
+
+        assertThat(client.getReplyString())
+            .contains("STARTTLS")
+            .doesNotContain("AUTH");
+        client.disconnect();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"AUTH PLAIN", "AUTH LOGIN"})
+    void authShouldRequireEncryptionBeforeStartTlsByDefault(String authCommand) throws Exception {
+        SMTPClient client = new SMTPClient();
+        client.connect("127.0.0.1", smtpStartTlsPort.getValue());
+
+        client.sendCommand("EHLO domain.tld");
+        client.sendCommand(authCommand);
+
+        assertThat(client.getReplyString())
+            .isEqualTo("538 5.7.11 Encryption required for requested authentication mechanism\r\n");
+        client.disconnect();
     }
 
     @Test

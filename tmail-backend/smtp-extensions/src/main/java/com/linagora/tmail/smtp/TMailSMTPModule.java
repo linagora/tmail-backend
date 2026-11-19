@@ -25,6 +25,7 @@ import org.apache.james.protocols.api.sasl.SaslMechanismFactory;
 import org.apache.james.protocols.sasl.OauthBearerSaslMechanismFactory;
 import org.apache.james.protocols.sasl.XOauth2SaslMechanismFactory;
 import org.apache.james.protocols.smtp.core.esmtp.LoginSaslMechanismFactory;
+import org.apache.james.smtpserver.netty.SMTPServer.AuthAnnouncementConfiguration;
 
 import com.google.common.collect.ImmutableList;
 import com.google.inject.AbstractModule;
@@ -35,9 +36,10 @@ public class TMailSMTPModule extends AbstractModule {
     @Provides
     @Singleton
     @SmtpDefaultSaslMechanismFactories
-    ImmutableList<SaslMechanismFactory> provideDefaultSmtpSaslMechanismFactories(OauthBearerSaslMechanismFactory oauthBearer,
-                                                                                 XOauth2SaslMechanismFactory xoauth2) {
-        TMailPlainSaslMechanismFactory plain = new TMailPlainSaslMechanismFactory(false);
-        return ImmutableList.of(new LoginSaslMechanismFactory(plain), plain, oauthBearer, xoauth2);
+    ImmutableList<SaslMechanismFactory> provideDefaultSmtpSaslMechanismFactories() {
+        TMailPlainSaslMechanismFactory plain = new TMailPlainSaslMechanismFactory(AuthAnnouncementConfiguration.REQUIRE_SSL_DEFAULT);
+        return ImmutableList.of(new LoginSaslMechanismFactory(plain), plain,
+            new OauthBearerSaslMechanismFactory(AuthAnnouncementConfiguration.REQUIRE_SSL_DEFAULT),
+            new XOauth2SaslMechanismFactory(AuthAnnouncementConfiguration.REQUIRE_SSL_DEFAULT));
     }
 }
