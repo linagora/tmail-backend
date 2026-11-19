@@ -69,4 +69,11 @@ Optional. Defaults to `0.5`.
 Use `multiply` (default) to scale relevance proportionally by recency. Use `sum` to add a recency bonus without suppressing old-but-relevant results.
 Optional. Defaults to `multiply`.
 
+| opensearch.mailbox.index.codec
+| Codec compressing the stored fields (`_source`) of the mailbox index, which keeps the full text of every mail (bodies, attachment text, headers).
+Accepted values: `default` (LZ4, faster but larger), `best_compression` (DEFLATE, smaller), and on OpenSearch 2.9+ `zstd` and `zstd_no_dict` (compress about as well as DEFLATE, faster).
+Search results are not affected, only the disk footprint and the CPU spent on indexing and on reading `_source` (highlights, flag updates).
+Optional. Defaults to `best_compression`.
+*`index.codec` is a static setting: it applies to newly created indices only. Existing indices keep their codec until they are reindexed (or closed, updated, reopened and force-merged).*
+
 |===
