@@ -38,6 +38,26 @@ Deployments that intentionally allow clear-text SMTP authentication must add the
 </auth>
 ```
 
+### SMTP authentication is only accepted when announced
+
+Concerned products: SMTP servers whose `smtpserver.xml` entries set `authRequired` to `true` with `authorizedAddresses`
+listing networks your clients authenticate from (the former sample configuration used `127.0.0.0/8` on the submission
+ports)
+
+Twake Mail now refuses `AUTH` on connections it was not announced to: `502 5.5.1 Authentication not available` (or
+`538 5.7.11` before `STARTTLS` when `auth.requireSSL` is set). With `authRequired` set to `true`, authentication is not
+announced to clients within `authorizedAddresses`, hence such clients, which could authenticate before the upgrade, are
+now refused.
+
+The sample configurations were updated, but this does not change already deployed configurations. On each concerned
+`smtpserver.xml` entry, announce authentication to every client:
+
+```xml
+<authRequired>announce</authRequired>
+```
+
+Relaying rules are unchanged.
+
 ### Team mailbox events move to space.properties
 
 `com.linagora.tmail.team.events.TeamMailboxEventsListener` is now part of the Twake Space extension. Remove it from
