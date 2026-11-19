@@ -40,17 +40,29 @@ Deployments that intentionally allow clear-text SMTP authentication must add the
 
 ### SMTP authentication is only accepted when announced
 
-Concerned products: SMTP servers whose `smtpserver.xml` entries set `authRequired` to `true` with `authorizedAddresses`
-listing networks your clients authenticate from (the former sample configuration used `127.0.0.0/8` on the submission
-ports)
+Concerned products: SMTP servers with `smtpserver.xml` entries on which clients authenticate while authentication is
+not announced to them:
+
+- `auth.announce` set to `forUnauthorizedAddresses`, or, when `auth.announce` is absent, `authRequired` set to `true`,
+  with `authorizedAddresses` listing networks your clients authenticate from (the former sample configuration used
+  `127.0.0.0/8` on the submission ports)
+- `auth.announce` set to `never`, or, when `auth.announce` is absent, `authRequired` absent or set to `false`
 
 Twake Mail now refuses `AUTH` on connections it was not announced to: `502 5.5.1 Authentication not available` (or
-`538 5.7.11` before `STARTTLS` when `auth.requireSSL` is set). With `authRequired` set to `true`, authentication is not
-announced to clients within `authorizedAddresses`, hence such clients, which could authenticate before the upgrade, are
-now refused.
+`538 5.7.11` before `STARTTLS` when `auth.requireSSL` is set). Clients that authenticated without the announcement before
+the upgrade are now refused.
 
 The sample configurations were updated, but this does not change already deployed configurations. On each concerned
-`smtpserver.xml` entry, announce authentication to every client:
+`smtpserver.xml` entry, announce authentication to every client. When the entry sets `auth.announce`, which takes
+precedence over `authRequired`:
+
+```xml
+<auth>
+    <announce>always</announce>
+</auth>
+```
+
+Otherwise:
 
 ```xml
 <authRequired>announce</authRequired>
