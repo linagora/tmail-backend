@@ -36,7 +36,8 @@
         <authRequired>false</authRequired>
         <verifyIdentity>false</verifyIdentity>
         <auth>
-            <announce>never</announce>
+            <!-- Tests authenticate on this server, and AUTH is only accepted when announced -->
+            <announce>always</announce>
             <requireSSL>false</requireSSL>
             <plainAuthEnabled>true</plainAuthEnabled>
         </auth>
