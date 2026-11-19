@@ -16,6 +16,28 @@ You can also find more detailed instructions for releases under the respective s
 
 Note: this section is in progress. It will be updated during all the development process until the release.
 
+### SMTP authentication requires TLS by default
+
+Concerned products: SMTP servers whose `smtpserver.xml` entries do not set `auth.requireSSL`
+
+Twake Mail now follows the James default: `auth.requireSSL` defaults to `true` for SMTP, as it already did for IMAP
+and POP3. Unless a server entry sets it, authentication is no longer announced on clear-text connections, and the
+`PLAIN`, `LOGIN`, `XOAUTH2` and `OAUTHBEARER` mechanisms are refused with
+`538 5.7.11 Encryption required for requested authentication mechanism` until `STARTTLS` succeeded. Implicit TLS
+entries (`socketTLS="true"`, typically port 465) are not impacted.
+
+Previously, Twake Mail kept accepting these mechanisms over clear text, exposing the password (or the OIDC access
+token) of the users to network observers.
+
+Deployments that intentionally allow clear-text SMTP authentication must add the following to each concerned
+`smtpserver.xml` entry:
+
+```xml
+<auth>
+    <requireSSL>false</requireSSL>
+</auth>
+```
+
 ### Team mailbox events move to space.properties
 
 `com.linagora.tmail.team.events.TeamMailboxEventsListener` is now part of the Twake Space extension. Remove it from

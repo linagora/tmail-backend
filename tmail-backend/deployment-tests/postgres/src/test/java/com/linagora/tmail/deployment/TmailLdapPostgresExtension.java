@@ -48,6 +48,7 @@ public class TmailLdapPostgresExtension extends TmailPostgresExtension {
             .withNetwork(network)
             .dependsOn(postgres, opensearch, s3, rabbitmq, ldap)
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/imapserver.xml"), "/root/conf/")
+            .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/smtpserver.xml"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/usersrepository.xml"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_privatekey"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_publickey"), "/root/conf/")

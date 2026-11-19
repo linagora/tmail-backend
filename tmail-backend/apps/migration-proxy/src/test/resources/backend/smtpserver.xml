@@ -11,6 +11,9 @@
         <connectionBacklog>200</connectionBacklog>
         <tls socketTLS="false" startTLS="false"/>
         <authRequired>false</authRequired>
+        <auth>
+            <requireSSL>false</requireSSL>
+        </auth>
         <verifyIdentity>false</verifyIdentity>
         <maxmessagesize>0</maxmessagesize>
         <addressBracketsEnforcement>true</addressBracketsEnforcement>
@@ -24,6 +27,9 @@
         <connectionBacklog>200</connectionBacklog>
         <tls socketTLS="false" startTLS="false"/>
         <authRequired>true</authRequired>
+        <auth>
+            <requireSSL>false</requireSSL>
+        </auth>
         <verifyIdentity>false</verifyIdentity>
         <maxmessagesize>0</maxmessagesize>
         <addressBracketsEnforcement>true</addressBracketsEnforcement>
