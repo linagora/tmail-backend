@@ -44,6 +44,7 @@ public class TmailOpenSearchMailboxConfiguration {
         private Optional<String> decayScale;
         private Optional<Double> decayFactor;
         private Optional<FunctionBoostMode> decayBoostMode;
+        private Optional<String> indexCodec;
 
         Builder() {
             subjectNgramEnabled = Optional.empty();
@@ -55,6 +56,7 @@ public class TmailOpenSearchMailboxConfiguration {
             decayScale = Optional.empty();
             decayFactor = Optional.empty();
             decayBoostMode = Optional.empty();
+            indexCodec = Optional.empty();
         }
 
         public Builder subjectNgramEnabled(Boolean subjectNgramEnabled) {
@@ -102,6 +104,11 @@ public class TmailOpenSearchMailboxConfiguration {
             return this;
         }
 
+        public Builder indexCodec(String indexCodec) {
+            this.indexCodec = Optional.ofNullable(indexCodec);
+            return this;
+        }
+
         public TmailOpenSearchMailboxConfiguration build() {
             return new TmailOpenSearchMailboxConfiguration(
                 subjectNgramEnabled.orElse(DEFAULT_SUBJECT_NGRAM_DISABLED),
@@ -112,7 +119,8 @@ public class TmailOpenSearchMailboxConfiguration {
                 dateBasedDecayEnabled.orElse(DEFAULT_DATE_BASED_DECAY_DISABLED),
                 decayScale.orElse(DEFAULT_DECAY_SCALE),
                 decayFactor.orElse(DEFAULT_DECAY_FACTOR),
-                decayBoostMode.orElse(DEFAULT_DECAY_BOOST_MODE)
+                decayBoostMode.orElse(DEFAULT_DECAY_BOOST_MODE),
+                indexCodec.orElse(DEFAULT_INDEX_CODEC)
             );
         }
     }
@@ -134,6 +142,7 @@ public class TmailOpenSearchMailboxConfiguration {
             .decayBoostMode(Optional.ofNullable(configuration.getString(DECAY_BOOST_MODE, null))
                 .map(TmailOpenSearchMailboxConfiguration::parseBoostMode)
                 .orElse(null))
+            .indexCodec(configuration.getString(INDEX_CODEC, null))
             .build();
     }
 
@@ -154,6 +163,7 @@ public class TmailOpenSearchMailboxConfiguration {
     public static final String DECAY_SCALE = "opensearch.mailbox.score.date.based.decay.scale";
     public static final String DECAY_FACTOR = "opensearch.mailbox.score.date.based.decay.factor";
     public static final String DECAY_BOOST_MODE = "opensearch.mailbox.score.date.based.decay.boost.mode";
+    public static final String INDEX_CODEC = "opensearch.mailbox.index.codec";
 
     private static final boolean DEFAULT_SUBJECT_NGRAM_DISABLED = false;
     private static final boolean DEFAULT_SUBJECT_NGRAM_HEURISTIC_DISABLED = false;
@@ -164,6 +174,7 @@ public class TmailOpenSearchMailboxConfiguration {
     public static final String DEFAULT_DECAY_SCALE = "365d";
     public static final double DEFAULT_DECAY_FACTOR = 0.5;
     public static final FunctionBoostMode DEFAULT_DECAY_BOOST_MODE = FunctionBoostMode.Multiply;
+    public static final String DEFAULT_INDEX_CODEC = "best_compression";
 
     public static final TmailOpenSearchMailboxConfiguration DEFAULT_CONFIGURATION = builder().build();
 
@@ -176,11 +187,13 @@ public class TmailOpenSearchMailboxConfiguration {
     private final String decayScale;
     private final double decayFactor;
     private final FunctionBoostMode decayBoostMode;
+    private final String indexCodec;
 
     private TmailOpenSearchMailboxConfiguration(boolean subjectNgramEnabled, boolean subjectNgramHeuristicEnabled,
                                                 boolean attachmentFilenameNgramEnabled, boolean attachmentFilenameNgramHeuristicEnabled,
                                                 Optional<String> bodyLanguage, boolean dateBasedDecayEnabled,
-                                                String decayScale, double decayFactor, FunctionBoostMode decayBoostMode) {
+                                                String decayScale, double decayFactor, FunctionBoostMode decayBoostMode,
+                                                String indexCodec) {
         this.subjectNgramEnabled = subjectNgramEnabled;
         this.subjectNgramHeuristicEnabled = subjectNgramHeuristicEnabled;
         this.attachmentFilenameNgramEnabled = attachmentFilenameNgramEnabled;
@@ -190,6 +203,7 @@ public class TmailOpenSearchMailboxConfiguration {
         this.decayScale = decayScale;
         this.decayFactor = decayFactor;
         this.decayBoostMode = decayBoostMode;
+        this.indexCodec = indexCodec;
     }
 
     public boolean subjectNgramEnabled() {
@@ -228,6 +242,10 @@ public class TmailOpenSearchMailboxConfiguration {
         return decayBoostMode;
     }
 
+    public String indexCodec() {
+        return indexCodec;
+    }
+
     @Override
     public final boolean equals(Object o) {
         if (o instanceof TmailOpenSearchMailboxConfiguration) {
@@ -241,7 +259,8 @@ public class TmailOpenSearchMailboxConfiguration {
                 && Objects.equals(this.dateBasedDecayEnabled, that.dateBasedDecayEnabled)
                 && Objects.equals(this.decayScale, that.decayScale)
                 && Objects.equals(this.decayFactor, that.decayFactor)
-                && Objects.equals(this.decayBoostMode, that.decayBoostMode);
+                && Objects.equals(this.decayBoostMode, that.decayBoostMode)
+                && Objects.equals(this.indexCodec, that.indexCodec);
         }
         return false;
     }
@@ -249,6 +268,6 @@ public class TmailOpenSearchMailboxConfiguration {
     @Override
     public final int hashCode() {
         return Objects.hash(subjectNgramEnabled, subjectNgramHeuristicEnabled, attachmentFilenameNgramEnabled,
-            attachmentFilenameNgramHeuristicEnabled, bodyLanguage, dateBasedDecayEnabled, decayScale, decayFactor, decayBoostMode);
+            attachmentFilenameNgramHeuristicEnabled, bodyLanguage, dateBasedDecayEnabled, decayScale, decayFactor, decayBoostMode, indexCodec);
     }
 }
