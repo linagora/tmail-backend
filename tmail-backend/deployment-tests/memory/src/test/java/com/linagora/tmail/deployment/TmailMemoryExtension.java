@@ -37,6 +37,7 @@ public class TmailMemoryExtension implements BeforeAllCallback, AfterAllCallback
 
     private final GenericContainer<?> container = new GenericContainer<>("linagora/tmail-backend-memory:latest")
         .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/imapserver.xml"), "/root/conf/")
+        .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/smtpserver.xml"), "/root/conf/")
         .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_privatekey"), "/root/conf/")
         .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_publickey"), "/root/conf/")
         .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jmxremote.password"), "/root/conf/")

@@ -66,6 +66,7 @@ public class TmailPostgresExtension implements BeforeAllCallback, AfterAllCallba
             .withNetwork(network)
             .dependsOn(postgres, opensearch, s3, rabbitmq)
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/imapserver.xml"), "/root/conf/")
+            .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/smtpserver.xml"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_privatekey"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/jwt_publickey"), "/root/conf/")
             .withCopyFileToContainer(MountableFile.forClasspathResource("james-conf/keystore"), "/root/conf/")
