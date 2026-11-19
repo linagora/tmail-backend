@@ -33,7 +33,8 @@
         <connectiontimeout>360</connectiontimeout>
         <connectionLimit>0</connectionLimit>
         <connectionLimitPerIP>0</connectionLimitPerIP>
-        <authRequired>false</authRequired>
+        <!-- Tests authenticate on this server, and AUTH is only accepted when announced -->
+        <authRequired>announce</authRequired>
         <auth>
             <requireSSL>false</requireSSL>
         </auth>

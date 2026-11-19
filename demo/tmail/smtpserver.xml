@@ -58,10 +58,8 @@
         <connectiontimeout>360</connectiontimeout>
         <connectionLimit>0</connectionLimit>
         <connectionLimitPerIP>0</connectionLimitPerIP>
-        <!--
-           Authorize only local users
-        -->
-        <authRequired>true</authRequired>
+        <!-- AUTH is only accepted when announced: announce it to every client, authorizedAddresses included -->
+        <authRequired>announce</authRequired>
         <authorizedAddresses>127.0.0.0/8</authorizedAddresses>
         <!-- Trust authenticated users -->
         <verifyIdentity>false</verifyIdentity>
@@ -86,10 +84,8 @@
         <connectiontimeout>360</connectiontimeout>
         <connectionLimit>0</connectionLimit>
         <connectionLimitPerIP>0</connectionLimitPerIP>
-        <!--
-           Authorize only local users
-        -->
-        <authRequired>true</authRequired>
+        <!-- AUTH is only accepted when announced: announce it to every client, authorizedAddresses included -->
+        <authRequired>announce</authRequired>
         <authorizedAddresses>127.0.0.0/8</authorizedAddresses>
         <!-- Trust authenticated users -->
         <verifyIdentity>false</verifyIdentity>
