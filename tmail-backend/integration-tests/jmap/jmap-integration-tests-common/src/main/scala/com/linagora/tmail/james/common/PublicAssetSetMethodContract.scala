@@ -49,7 +49,7 @@ import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.Assertions.assertThat
 import org.hamcrest.Matchers.{contains, containsString, hasItem, hasKey, is, notNullValue}
 import org.junit.jupiter.api.{BeforeEach, Tag, Test}
-import play.api.libs.json.{JsString, Json}
+import play.api.libs.json.Json
 import reactor.core.scala.publisher.SMono
 
 import scala.annotation.tailrec
@@ -677,8 +677,8 @@ trait PublicAssetSetMethodContract {
          |      }, "c1"
          |    ],
          |    [
-         |      "Core/echo",
-         |      { "arg1": "#clientId1" },
+         |      "PublicAsset/get",
+         |      { "accountId": "$bobAccountId", "ids": ["#clientId1"] },
          |      "c2"
          |    ]
          |  ]
@@ -696,43 +696,29 @@ trait PublicAssetSetMethodContract {
       .asString()
 
     assertThatJson(response)
-      .inPath("methodResponses")
+      .inPath("methodResponses[0]")
       .isEqualTo(
         s"""[
-           |    [
-           |        "PublicAsset/set",
-           |        {
-           |            "accountId": "$bobAccountId",
-           |            "oldState": "$${json-unit.ignore}",
-           |            "newState": "$${json-unit.ignore}",
-           |            "created": {
-           |                "clientId1": {
-           |                    "id": "$${json-unit.ignore}",
-           |                    "publicURI": "$${json-unit.ignore}",
-           |                    "size": ${uploadResponse.size},
-           |                    "contentType": "$${json-unit.ignore}"
-           |                }
+           |    "PublicAsset/set",
+           |    {
+           |        "accountId": "$bobAccountId",
+           |        "oldState": "$${json-unit.ignore}",
+           |        "newState": "$${json-unit.ignore}",
+           |        "created": {
+           |            "clientId1": {
+           |                "id": "$${json-unit.ignore}",
+           |                "publicURI": "$${json-unit.ignore}",
+           |                "size": ${uploadResponse.size},
+           |                "contentType": "$${json-unit.ignore}"
            |            }
-           |        },
-           |        "c1"
-           |    ],
-           |    [
-           |        "Core/echo",
-           |        {
-           |            "arg1": "$${json-unit.ignore}"
-           |        },
-           |        "c2"
-           |    ]
+           |        }
+           |    },
+           |    "c1"
            |]""".stripMargin)
 
-    val taskId: String = (((Json.parse(response) \\ "methodResponses")
-      .head \\ "created")
-      .head \\ "id")
-      .head.asInstanceOf[JsString].value
+    val taskId: String = (Json.parse(response) \ "methodResponses" \ 0 \ 1 \ "created" \ "clientId1" \ "id").as[String]
 
-    val backReferenceValue: String = ((Json.parse(response) \\ "methodResponses")
-      .head \\ "arg1")
-      .head.asInstanceOf[JsString].value
+    val backReferenceValue: String = (Json.parse(response) \ "methodResponses" \ 1 \ 1 \ "list" \ 0 \ "id").as[String]
 
     assertThat(taskId)
       .isEqualTo(backReferenceValue)

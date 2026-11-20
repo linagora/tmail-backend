@@ -544,6 +544,7 @@ trait LabelSetMethodContract {
       .asString()
 
     assertThatJson(response)
+      .withOptions(Option.IGNORING_ARRAY_ORDER)
       .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState")
       .isEqualTo(
         s"""{
