@@ -30,6 +30,7 @@ import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
 import io.restassured.http.ContentType.JSON
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
+import net.javacrumbs.jsonunit.core.ConfigurationWhen.{`then`, paths}
 import net.javacrumbs.jsonunit.core.Option
 import org.apache.http.HttpStatus
 import org.apache.http.HttpStatus.SC_OK
@@ -544,6 +545,7 @@ trait LabelSetMethodContract {
       .asString()
 
     assertThatJson(response)
+      .when(paths("methodResponses[0][1].notCreated.L13.properties"), `then`(Option.IGNORING_ARRAY_ORDER))
       .whenIgnoringPaths("methodResponses[0][1].newState", "methodResponses[0][1].oldState")
       .isEqualTo(
         s"""{

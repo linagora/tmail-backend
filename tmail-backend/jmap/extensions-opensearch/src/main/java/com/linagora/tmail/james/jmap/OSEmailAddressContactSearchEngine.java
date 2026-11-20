@@ -46,7 +46,6 @@ import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
 import org.apache.james.jmap.api.model.AccountId;
 import org.apache.james.util.FunctionalUtils;
-import org.opensearch.client.ResponseException;
 import org.opensearch.client.opensearch._types.FieldValue;
 import org.opensearch.client.opensearch._types.Time;
 import org.opensearch.client.opensearch._types.query_dsl.BoolQuery;
@@ -57,6 +56,7 @@ import org.opensearch.client.opensearch.core.GetRequest;
 import org.opensearch.client.opensearch.core.GetResponse;
 import org.opensearch.client.opensearch.core.SearchRequest;
 import org.opensearch.client.opensearch.core.search.Hit;
+import org.opensearch.client.transport.httpclient5.ResponseException;
 import org.reactivestreams.Publisher;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -184,7 +184,7 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
     // replaying the query then sees a refreshed snapshot and completes.
     private static boolean isVersionConflict(Throwable throwable) {
         return throwable instanceof ResponseException responseException
-            && responseException.getResponse().getStatusLine().getStatusCode() == HTTP_CONFLICT;
+            && responseException.status() == HTTP_CONFLICT;
     }
 
     @Override

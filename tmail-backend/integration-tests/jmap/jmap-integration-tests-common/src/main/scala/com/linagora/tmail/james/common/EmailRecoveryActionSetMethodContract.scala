@@ -60,7 +60,7 @@ import org.hamcrest.Matchers
 import org.junit.jupiter.api.{AfterEach, BeforeEach, Nested, Tag, Test}
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.{Arguments, MethodSource}
-import play.api.libs.json.{JsString, Json}
+import play.api.libs.json.Json
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.CollectionConverters._
@@ -1620,8 +1620,8 @@ trait EmailRecoveryActionSetMethodContract {
            |			"c1"
            |		],
            |		[
-           |			"Core/echo",
-           |			{ "arg1": "#clientId1" },
+           |			"EmailRecoveryAction/get",
+           |			{ "ids": ["#clientId1"] },
            |			"c2"
            |		]
            |	]
@@ -1634,36 +1634,22 @@ trait EmailRecoveryActionSetMethodContract {
       .asString()
 
     assertThatJson(response)
-      .inPath("methodResponses")
+      .inPath("methodResponses[0]")
       .isEqualTo(s"""[
-                   |	[
-                   |		"EmailRecoveryAction/set",
-                   |		{
-                   |			"created": {
-                   |				"clientId1": {
-                   |					"id": "$${json-unit.ignore}"
-                   |				}
+                   |	"EmailRecoveryAction/set",
+                   |	{
+                   |		"created": {
+                   |			"clientId1": {
+                   |				"id": "$${json-unit.ignore}"
                    |			}
-                   |		},
-                   |		"c1"
-                   |	],
-                   |	[
-                   |		"Core/echo",
-                   |		{
-                   |			"arg1": "$${json-unit.ignore}"
-                   |		},
-                   |		"c2"
-                   |	]
+                   |		}
+                   |	},
+                   |	"c1"
                    |]""".stripMargin)
 
-    val taskId: String = (((Json.parse(response) \\ "methodResponses")
-      .head \\ "created")
-      .head \\ "id")
-      .head.asInstanceOf[JsString].value
+    val taskId: String = (Json.parse(response) \ "methodResponses" \ 0 \ 1 \ "created" \ "clientId1" \ "id").as[String]
 
-    val backReferenceValue: String = ((Json.parse(response) \\ "methodResponses")
-      .head \\ "arg1")
-      .head.asInstanceOf[JsString].value
+    val backReferenceValue: String = (Json.parse(response) \ "methodResponses" \ 1 \ 1 \ "list" \ 0 \ "id").as[String]
 
     assertThat(taskId)
       .isEqualTo(backReferenceValue)

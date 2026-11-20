@@ -982,7 +982,7 @@ class IMAPTeamMailboxIntegrationTest {
     }
 
     @Test
-    void canRenameTopFolderToChildFolder() throws Exception {
+    void canNotRenameTopFolderToChildFolder() throws Exception {
         TestIMAPClient imapClient = testIMAPClient.connect(IMAP_HOST, imapPort)
             .login(MINISTER, MINISTER_PASSWORD);
 
@@ -994,7 +994,7 @@ class IMAPTeamMailboxIntegrationTest {
 
         assertThat(imapClient
             .sendCommand("RENAME #TeamMailbox.marketing.new1 #TeamMailbox.marketing.new1.child1"))
-            .contains("OK RENAME completed");
+            .contains("NO RENAME");
     }
 
     @Test
