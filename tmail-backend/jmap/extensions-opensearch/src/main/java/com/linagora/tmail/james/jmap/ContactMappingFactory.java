@@ -65,8 +65,8 @@ public class ContactMappingFactory {
 
     public IndexSettings generalContactIndicesSetting() {
         return new IndexSettings.Builder()
-            .numberOfShards(Integer.toString(openSearchConfiguration.getNbShards()))
-            .numberOfReplicas(Integer.toString(openSearchConfiguration.getNbReplica()))
+            .numberOfShards(openSearchConfiguration.getNbShards())
+            .numberOfReplicas(openSearchConfiguration.getNbReplica())
             .index(new IndexSettings.Builder()
                 .maxNgramDiff(contactConfiguration.getMaxNgramDiff())
                 .build())
