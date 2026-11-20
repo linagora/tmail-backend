@@ -64,8 +64,20 @@ class SubmissionProxyConfigurationTest {
         assertThat(configuration.backend(Target.NEW).host().getHostName()).isEqualTo("new-backend");
         assertThat(configuration.backend(Target.NEW).host().getPort()).isEqualTo(587);
         assertThat(configuration.handshakeTimeout()).isEqualTo(Duration.ofSeconds(30));
-        assertThat(configuration.requireSSL()).isFalse();
         assertThat(configuration.ehloExtensions()).isEmpty();
+    }
+
+    @Test
+    void requireSSLShouldDefaultToTrue() {
+        assertThat(SubmissionProxyConfiguration.from(backends()).requireSSL()).isTrue();
+    }
+
+    @Test
+    void requireSSLCanBeDisabled() {
+        Configuration properties = backends();
+        properties.addProperty("submission.auth.requireSSL", "false");
+
+        assertThat(SubmissionProxyConfiguration.from(properties).requireSSL()).isFalse();
     }
 
     @Test
@@ -76,7 +88,7 @@ class SubmissionProxyConfigurationTest {
         properties.addProperty("submission.old.ssl.ignoreCertificates", "true");
         properties.addProperty("submission.new.forwardProxyInfo", "true");
         properties.addProperty("submission.handshakeTimeout", "5s");
-        properties.addProperty("submission.auth.requireSSL", "true");
+        properties.addProperty("submission.auth.requireSSL", "false");
 
         SubmissionProxyConfiguration configuration = SubmissionProxyConfiguration.from(properties);
 
@@ -85,7 +97,7 @@ class SubmissionProxyConfigurationTest {
         assertThat(configuration.backend(Target.OLD).sslIgnoreCertificates()).isTrue();
         assertThat(configuration.backend(Target.NEW).forwardProxyInfo()).isTrue();
         assertThat(configuration.handshakeTimeout()).isEqualTo(Duration.ofSeconds(5));
-        assertThat(configuration.requireSSL()).isTrue();
+        assertThat(configuration.requireSSL()).isFalse();
     }
 
     @Test

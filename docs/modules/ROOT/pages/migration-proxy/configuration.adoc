@@ -120,7 +120,7 @@ the backend is the only authority on the password, so the proxy needs no users r
 | `submission.<target>.ssl.ignoreCertificates` | do not validate the backend certificate and hostname (default `false`)
 | `submission.<target>.forwardProxyInfo` | forward the inbound PROXY protocol information to the backend (default `false`)
 | `submission.handshakeTimeout` | how long the proxy waits while connecting to and authenticating against a backend before failing an `AUTH` with `454` (default `30s`)
-| `submission.auth.requireSSL` | only announce and accept `AUTH` over an encrypted client connection (default `false`)
+| `submission.auth.requireSSL` | only announce and accept `AUTH` over an encrypted client connection (default `true`, which requires `socketTLS` or `startTLS` in `submissionproxy.xml`). Set it to `false` to accept passwords in clear text
 | `submission.ehlo.extensions` | comma separated extra ESMTP keywords to announce, e.g. `SIZE 52428800, SMTPUTF8`. The client never sees the backend EHLO reply, so list only what *both* backends support. `AUTH` and `STARTTLS` are managed by the proxy and cannot be listed
 |===
 

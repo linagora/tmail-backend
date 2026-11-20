@@ -31,4 +31,24 @@
             <handler class="org.apache.james.smtpserver.CoreCmdHandlerLoader"/>
         </handlerchain>
     </smtpserver>
+    <!-- Implicit TLS submission, used by the submission proxy (submission.<target>.ssl=true): AUTH
+         requires TLS by default, and the proxy does not negotiate STARTTLS with backends. -->
+    <smtpserver enabled="true">
+        <jmxName>smtpserver-submission-tls</jmxName>
+        <bind>0.0.0.0:465</bind>
+        <connectionBacklog>200</connectionBacklog>
+        <tls socketTLS="true" startTLS="false">
+            <keystore>file://conf/keystore</keystore>
+            <secret>james72laBalle</secret>
+            <provider>org.bouncycastle.jce.provider.BouncyCastleProvider</provider>
+            <algorithm>SunX509</algorithm>
+        </tls>
+        <authRequired>announce</authRequired>
+        <verifyIdentity>false</verifyIdentity>
+        <maxmessagesize>0</maxmessagesize>
+        <addressBracketsEnforcement>true</addressBracketsEnforcement>
+        <handlerchain>
+            <handler class="org.apache.james.smtpserver.CoreCmdHandlerLoader"/>
+        </handlerchain>
+    </smtpserver>
 </smtpservers>

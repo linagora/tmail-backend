@@ -38,6 +38,11 @@ Deployments that intentionally allow clear-text SMTP authentication must add the
 </auth>
 ```
 
+The same applies to the SMTP submission listeners of the migration proxy: `submission.auth.requireSSL` now defaults to
+`true`, so `submissionproxy.xml` listeners need `startTLS="true"` or `socketTLS="true"` for clients to authenticate.
+Deployments that intentionally allow clear-text authentication on the migration proxy must set
+`submission.auth.requireSSL=false` in `migrationproxy.properties`.
+
 ### SMTP authentication is only accepted when announced
 
 Concerned products: SMTP servers with `smtpserver.xml` entries on which clients authenticate while authentication is
