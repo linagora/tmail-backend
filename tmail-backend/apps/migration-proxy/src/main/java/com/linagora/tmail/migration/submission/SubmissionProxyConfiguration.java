@@ -51,8 +51,9 @@ import com.linagora.tmail.migration.core.MigrationProxyConfiguration.Target;
  * <ul>
  *   <li>{@code submission.handshakeTimeout} (default {@code 30s}) bounds how long the proxy waits while
  *   connecting to and authenticating against a backend before failing an {@code AUTH};</li>
- *   <li>{@code submission.auth.requireSSL} (default {@code false}) only offers and accepts {@code AUTH}
- *   over an encrypted client connection;</li>
+ *   <li>{@code submission.auth.requireSSL} (default {@code true}) only offers and accepts {@code AUTH}
+ *   over an encrypted client connection: set it to {@code false} to let clients send their password in
+ *   clear text;</li>
  *   <li>{@code submission.ehlo.extensions} is a comma separated list of extra ESMTP keywords to
  *   advertise, e.g. {@code SIZE 52428800, SMTPUTF8}. The client never sees the backend's own EHLO
  *   response, so these must be supported by both backends.</li>
@@ -63,7 +64,7 @@ public record SubmissionProxyConfiguration(Backend submissionOld, Backend submis
     public static final String PROTOCOL = "submission";
     public static final String ENABLED_PROPERTY = PROTOCOL + ".enabled";
     public static final boolean ENABLED_DEFAULT = false;
-    public static final boolean REQUIRE_SSL_DEFAULT = false;
+    public static final boolean REQUIRE_SSL_DEFAULT = true;
     private static final int DEFAULT_PORT = 587;
     // Keywords whose announcement depends on the proxy session state rather than on a static list.
     private static final ImmutableList<String> RESERVED_KEYWORDS = ImmutableList.of("AUTH", "STARTTLS");

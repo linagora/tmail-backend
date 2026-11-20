@@ -3,8 +3,10 @@
 <!-- Listeners of the optional SMTP submission proxy (submission.enabled=true in                       -->
 <!-- migrationproxy.properties). Same syntax as smtpserver.xml, but the command set is fixed: EHLO,    -->
 <!-- HELO, STARTTLS, AUTH, NOOP, RSET, QUIT. Once authenticated against its backend, the connection is -->
-<!-- relayed raw. To enable STARTTLS (587) or implicit TLS (465), set <tls startTLS|socketTLS="true">  -->
-<!-- with a keystore. helloName is the name the proxy uses in its own EHLO to the backends.           -->
+<!-- relayed raw. AUTH is only announced and accepted over TLS (submission.auth.requireSSL defaults  -->
+<!-- to true), hence STARTTLS is enabled below: provide the keystore at conf/keystore. Use             -->
+<!-- socketTLS="true" for implicit TLS (465) instead. helloName is the name the proxy uses in its own  -->
+<!-- EHLO to the backends.                                                                             -->
 
 <smtpservers>
     <smtpserver enabled="true">
@@ -13,7 +15,7 @@
         <connectionBacklog>200</connectionBacklog>
         <!-- Set to true to accept the HAProxy PROXY protocol from an upstream load balancer -->
         <proxyRequired>false</proxyRequired>
-        <tls socketTLS="false" startTLS="false">
+        <tls socketTLS="false" startTLS="true">
             <keystore>file://conf/keystore</keystore>
             <secret>migrationproxy</secret>
             <provider>org.bouncycastle.jce.provider.BouncyCastleProvider</provider>

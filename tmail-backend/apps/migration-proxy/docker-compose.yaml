@@ -55,6 +55,7 @@ services:
       - "1993:993"   # IMAPS
       - "1025:25"    # SMTP
       - "1587:587"   # SMTP submission
+      - "1465:465"   # SMTP submission, implicit TLS (used by the submission proxy)
       - "8001:8000"  # webadmin
 
   new-backend:
@@ -79,6 +80,7 @@ services:
       - "2993:993"   # IMAPS
       - "2025:25"    # SMTP
       - "2587:587"   # SMTP submission
+      - "2465:465"   # SMTP submission, implicit TLS (used by the submission proxy)
       - "8002:8000"  # webadmin
 
   postgres:
