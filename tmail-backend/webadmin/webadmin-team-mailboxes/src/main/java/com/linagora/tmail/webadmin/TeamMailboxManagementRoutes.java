@@ -431,12 +431,20 @@ public class TeamMailboxManagementRoutes implements Routes {
     }
 
     private void assertNotProtectedAclUser(Username aclUser, TeamMailbox teamMailbox) {
+        assertNotProtectedUser(aclUser, teamMailbox, "managed via extraAcl");
+    }
+
+    private void assertNotProtectedExtraSender(Username sender, TeamMailbox teamMailbox) {
+        assertNotProtectedUser(sender, teamMailbox, "managed as an extra sender");
+    }
+
+    private void assertNotProtectedUser(Username aclUser, TeamMailbox teamMailbox, String action) {
         Set<String> systemUsernames = Set.of(teamMailbox.owner().asString(), teamMailbox.admin().asString(), teamMailbox.self().asString());
         if (systemUsernames.contains(aclUser.asString())) {
             throw ErrorResponder.builder()
                 .statusCode(HttpStatus.BAD_REQUEST_400)
                 .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
-                .message(aclUser.asString() + " is a system user and cannot be managed via extraAcl")
+                .message(aclUser.asString() + " is a system user and cannot be " + action)
                 .haltError();
         }
         boolean isMember = Flux.from(teamMailboxRepository.listMembers(teamMailbox))
@@ -447,7 +455,7 @@ public class TeamMailboxManagementRoutes implements Routes {
             throw ErrorResponder.builder()
                 .statusCode(HttpStatus.BAD_REQUEST_400)
                 .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
-                .message(aclUser.asString() + " is a team mailbox member and cannot be managed via extraAcl")
+                .message(aclUser.asString() + " is a team mailbox member and cannot be " + action)
                 .haltError();
         }
     }
@@ -785,7 +793,7 @@ public class TeamMailboxManagementRoutes implements Routes {
             }
 
             Username senderUser = extractExtraSender(request);
-            assertNotProtectedAclUser(senderUser, teamMailbox);
+            assertNotProtectedExtraSender(senderUser, teamMailbox);
 
             MailboxSession session = mailboxManager.createSystemSession(teamMailbox.admin());
             try {
@@ -810,7 +818,7 @@ public class TeamMailboxManagementRoutes implements Routes {
             }
 
             Username senderUser = extractExtraSender(request);
-            assertNotProtectedAclUser(senderUser, teamMailbox);
+            assertNotProtectedExtraSender(senderUser, teamMailbox);
 
             MailboxSession session = mailboxManager.createSystemSession(teamMailbox.admin());
             try {

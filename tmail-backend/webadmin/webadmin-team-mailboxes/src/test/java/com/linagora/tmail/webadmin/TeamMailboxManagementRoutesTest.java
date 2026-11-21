@@ -2252,7 +2252,7 @@ public class TeamMailboxManagementRoutesTest {
             assertThat(errors)
                 .containsEntry("statusCode", BAD_REQUEST_400)
                 .containsEntry("type", "InvalidArgument")
-                .containsEntry("message", ownerUsername + " is a system user and cannot be managed via extraAcl");
+                .containsEntry("message", ownerUsername + " is a system user and cannot be managed as an extra sender");
         }
 
         @Test
@@ -2270,7 +2270,7 @@ public class TeamMailboxManagementRoutesTest {
             assertThat(errors)
                 .containsEntry("statusCode", BAD_REQUEST_400)
                 .containsEntry("type", "InvalidArgument")
-                .containsEntry("message", BOB.asString() + " is a team mailbox member and cannot be managed via extraAcl");
+                .containsEntry("message", BOB.asString() + " is a team mailbox member and cannot be managed as an extra sender");
         }
 
         @Test
@@ -2421,7 +2421,7 @@ public class TeamMailboxManagementRoutesTest {
             assertThat(errors)
                 .containsEntry("statusCode", BAD_REQUEST_400)
                 .containsEntry("type", "InvalidArgument")
-                .containsEntry("message", adminUsername + " is a system user and cannot be managed via extraAcl");
+                .containsEntry("message", adminUsername + " is a system user and cannot be managed as an extra sender");
         }
 
         @Test
@@ -2439,7 +2439,7 @@ public class TeamMailboxManagementRoutesTest {
             assertThat(errors)
                 .containsEntry("statusCode", BAD_REQUEST_400)
                 .containsEntry("type", "InvalidArgument")
-                .containsEntry("message", BOB.asString() + " is a team mailbox member and cannot be managed via extraAcl");
+                .containsEntry("message", BOB.asString() + " is a team mailbox member and cannot be managed as an extra sender");
         }
     }
 
