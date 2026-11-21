@@ -1780,7 +1780,7 @@ curl -XPOST http://ip:port/users/{username}/data?tiering={duration}
 
 Query parameters:
 
-- `tiering` (required): retention period expressed as an ISO-8601 duration or a shorthand such as
+- `tiering` (required): strictly positive retention period expressed as an ISO-8601 duration or a shorthand such as
   `30d`, `12h`, `1w`. Messages older than this period have their cached data evicted.
 - `messagesPerSecond` (optional, default: 50): maximum number of messages processed per second.
   Lower values reduce pressure on Cassandra and the blob store during large accounts.
@@ -1790,7 +1790,8 @@ Return codes:
 - `201` Task created — response body contains `{"taskId": "<id>"}`.
   Use `GET /tasks/{taskId}/await` to wait for completion and inspect metrics
   (`tieredMessageCount`, `failedMessageCount`) in the task's `additionalInformation`.
-- `400` Invalid username, missing / unparseable `tiering`, or invalid `messagesPerSecond`
+- `400` Invalid username, missing / unparseable / zero or negative `tiering`, or invalid `messagesPerSecond`
+- `404` The user does not exist
 
 == User Mails Search
 
