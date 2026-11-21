@@ -67,9 +67,15 @@ public class TMailSubAdressing extends SubAddressing {
     protected Optional<MailboxPath> getPathWithCorrectCase(MailAddress recipient, String encodedTargetFolder) throws UsersRepositoryException, MailboxException {
         MailAddress strippedRecipient = recipient.stripDetails(UsersRepository.LOCALPART_DETAIL_DELIMITER);
 
-        return OptionConverters.toJava(TeamMailbox.asTeamMailbox(strippedRecipient))
-            .flatMap(teamMailbox -> findTeamMailboxFolder(teamMailbox, encodedTargetFolder))
-            .or(Throwing.supplier(() -> super.getPathWithCorrectCase(recipient, encodedTargetFolder)).sneakyThrow());
+        try {
+            return OptionConverters.toJava(TeamMailbox.asTeamMailbox(strippedRecipient))
+                .flatMap(teamMailbox -> findTeamMailboxFolder(teamMailbox, encodedTargetFolder))
+                .or(Throwing.supplier(() -> super.getPathWithCorrectCase(recipient, encodedTargetFolder)).sneakyThrow());
+        } catch (IllegalArgumentException e) {
+            // An undecodable detail (eg: an incomplete '%' escape) addresses no folder: the mail is delivered to the INBOX
+            LOGGER.info("{}'s subfolder `{}` was tried to be addressed but it can not be decoded", strippedRecipient, encodedTargetFolder);
+            return Optional.empty();
+        }
     }
 
     private Optional<MailboxPath> findTeamMailboxFolder(TeamMailbox teamMailbox, String encodedTargetFolder) {

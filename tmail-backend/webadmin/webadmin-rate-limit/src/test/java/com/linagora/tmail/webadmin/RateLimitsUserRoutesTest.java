@@ -214,6 +214,16 @@ public class RateLimitsUserRoutesTest {
         }
 
         @Test
+        void nonObjectBodyErrorShouldNotExposeJavaClassNames() {
+            given()
+                .body("[]")
+                .put(String.format(PUT_RATE_LIMITS_TO_USER_PATH, BOB.asString()))
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .body("details", is("The request body must be a JSON object"));
+        }
+
+        @Test
         void invalidLimitErrorShouldNameTheField() {
             given()
                 .body("{\"mailsSentPerMinute\": -5}")
@@ -440,7 +450,7 @@ public class RateLimitsUserRoutesTest {
         }
 
         @ParameterizedTest
-        @ValueSource(strings = {"-5", "-9223372036854775808", "1.5", "\"\"", "\"5\"", "true"})
+        @ValueSource(strings = {"-5", "-9223372036854775808", "1.5", "1.0", "1e0", "\"\"", "\"5\"", "true"})
         void invalidLimitShouldBeRejected(String value) {
             given()
                 .body("{\"mailsSentPerMinute\": " + value + ", \"recipientsSentPerDays\": 1}")
@@ -453,7 +463,7 @@ public class RateLimitsUserRoutesTest {
         }
 
         @ParameterizedTest
-        @ValueSource(strings = {"-5", "1.5"})
+        @ValueSource(strings = {"-5", "1.5", "1.0", "1e0"})
         void invalidRecipientsLimitValueShouldBeRejected(String value) {
             given()
                 .body("{\"recipientsSentPerDays\": " + value + "}")
