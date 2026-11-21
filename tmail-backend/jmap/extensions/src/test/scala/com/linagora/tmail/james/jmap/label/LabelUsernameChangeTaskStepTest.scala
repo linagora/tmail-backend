@@ -77,4 +77,20 @@ class LabelUsernameChangeTaskStepTest {
     assertThat(SFlux(labelRepository.listLabels(BOB)).collectSeq().block().asJava)
       .containsExactlyInAnyOrder(LABEL_1, LABEL_2)
   }
+
+  @Test
+  def shouldKeepTheLabelOfNewAccountOnKeywordCollision(): Unit = {
+    val oldUserLabel: Label = LABEL_1.copy(displayName = DisplayName("From old"))
+    val newUserLabel: Label = LABEL_1.copy(displayName = DisplayName("From new"), description = Some("new user's own"))
+    SMono(labelRepository.addLabel(ALICE, oldUserLabel)).block()
+    SMono(labelRepository.addLabel(ALICE, LABEL_2)).block()
+    SMono(labelRepository.addLabel(BOB, newUserLabel)).block()
+
+    SMono(testee.changeUsername(oldUsername = ALICE, newUsername = BOB)).block()
+
+    assertThat(SFlux(labelRepository.listLabels(BOB)).collectSeq().block().asJava)
+      .containsExactlyInAnyOrder(newUserLabel, LABEL_2)
+    assertThat(SFlux(labelRepository.listLabels(ALICE)).collectSeq().block().asJava)
+      .isEmpty()
+  }
 }

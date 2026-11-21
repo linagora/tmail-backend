@@ -18,8 +18,10 @@
 
 package com.linagora.tmail.james.jmap.label
 
+import com.linagora.tmail.james.jmap.model.Label
 import jakarta.inject.Inject
 import org.apache.james.core.Username
+import org.apache.james.jmap.mail.Keyword
 import org.apache.james.user.api.UsernameChangeTaskStep
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
@@ -29,8 +31,20 @@ class LabelUsernameChangeTaskStep @Inject() (labelRepository: LabelRepository) e
 
   override def priority(): Int = 8
 
+  // On a keyword collision the label of the new user is kept, as RateLimitingUsernameChangeTaskStep keeps its limits
   override def changeUsername(oldUsername: Username, newUsername: Username): Publisher[Void] =
-    SFlux(labelRepository.listLabels(oldUsername))
-      .flatMap(label => SMono(labelRepository.addLabel(newUsername, label))
-        .`then`(SMono(labelRepository.deleteLabel(oldUsername, label.id))))
+    SFlux(labelRepository.listLabels(newUsername))
+      .map(_.keyword)
+      .collectSeq()
+      .map(_.toSet)
+      .flatMapMany(newUserKeywords => SFlux(labelRepository.listLabels(oldUsername))
+        .flatMap(label => migrateIfAbsent(newUsername, label, newUserKeywords)
+          .`then`(SMono(labelRepository.deleteLabel(oldUsername, label.id)))))
+
+  private def migrateIfAbsent(newUsername: Username, label: Label, newUserKeywords: Set[Keyword]): SMono[Unit] =
+    if (newUserKeywords.contains(label.keyword)) {
+      SMono.empty
+    } else {
+      SMono(labelRepository.addLabel(newUsername, label)).`then`()
+    }
 }
