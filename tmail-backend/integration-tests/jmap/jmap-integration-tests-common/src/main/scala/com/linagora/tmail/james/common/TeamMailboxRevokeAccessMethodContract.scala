@@ -280,7 +280,7 @@ trait TeamMailboxRevokeAccessMethodContract {
          |                "notRevoked": {
          |                    "nonExistTeamMailbox@${domain.asString}": {
          |                        "type": "notFound",
-         |                        "description": "#TeamMailbox:team-mailbox@${domain.asString}:nonExistTeamMailbox can not be found"
+         |                        "description": "#TeamMailbox:team-mailbox@${domain.asString}:nonexistteammailbox can not be found"
          |                    }
          |                }
          |            },
@@ -586,7 +586,7 @@ trait TeamMailboxRevokeAccessMethodContract {
          |				"notRevoked": {
          |					"nonExistTeamMailbox@${domain.asString}": {
          |						"type": "notFound",
-         |						"description": "#TeamMailbox:team-mailbox@${domain.asString}:nonExistTeamMailbox can not be found"
+         |						"description": "#TeamMailbox:team-mailbox@${domain.asString}:nonexistteammailbox can not be found"
          |					},
          |					"invalid": {
          |						"type": "invalidArguments",
