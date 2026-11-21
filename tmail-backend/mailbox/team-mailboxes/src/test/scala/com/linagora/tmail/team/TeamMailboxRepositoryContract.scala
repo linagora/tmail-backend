@@ -681,6 +681,19 @@ trait TeamMailboxRepositoryContract {
   }
 
   @Test
+  def listTeamMailboxesByUserShouldSkipATeamMailboxWhoseRootFolderIsGone(): Unit = {
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_SALES)).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_SALES, TeamMailboxMember.asMember(BOB))).block()
+    // Dangling membership: the root folder is deleted while sub-folders granting BOB rights remain
+    mailboxManager.deleteMailbox(TEAM_MAILBOX_MARKETING.mailboxPath, mailboxManager.createSystemSession(TEAM_MAILBOX_MARKETING.owner))
+
+    assertThat(SFlux.fromPublisher(testee.listTeamMailboxes(BOB)).collectSeq().block().asJava)
+      .containsExactly(TEAM_MAILBOX_SALES)
+  }
+
+  @Test
   def listTeamMailboxesByUserShouldNotReturnTeamMailboxesWhichUserIsNotMemberOf(): Unit = {
     SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
     SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(ANDRE))).block()
