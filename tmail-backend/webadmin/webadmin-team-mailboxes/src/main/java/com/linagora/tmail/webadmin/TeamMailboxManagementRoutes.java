@@ -40,6 +40,7 @@ import org.apache.james.mailbox.exception.MailboxNotFoundException;
 import org.apache.james.mailbox.exception.UnsupportedRightException;
 import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.james.mailbox.model.MailboxConstants;
+import org.apache.james.mailbox.model.MailboxPath;
 import org.apache.james.mailbox.model.search.MailboxQuery;
 import org.apache.james.mailbox.model.search.PrefixedWildcard;
 import org.apache.james.webadmin.Constants;
@@ -338,6 +339,13 @@ public class TeamMailboxManagementRoutes implements Routes {
             }
 
             String folderName = request.params(FOLDER_NAME_PARAM);
+            if (folderName.startsWith(String.valueOf(MailboxConstants.NAMESPACE_PREFIX_CHAR))) {
+                throw ErrorResponder.builder()
+                    .statusCode(HttpStatus.BAD_REQUEST_400)
+                    .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+                    .message("Attempt to create an invalid mailbox: a folder name can not start with the namespace prefix '#'")
+                    .haltError();
+            }
             MailboxSession session = mailboxManager.createSystemSession(teamMailbox.owner());
             try {
                 mailboxManager.createMailbox(teamMailbox.mailboxPath(folderName), session);
@@ -365,9 +373,27 @@ public class TeamMailboxManagementRoutes implements Routes {
             }
 
             String folderName = request.params(FOLDER_NAME_PARAM);
+            MailboxPath folderPath = teamMailbox.mailboxPath(folderName);
+            try {
+                folderPath.assertAcceptable(MailboxConstants.FOLDER_DELIMITER);
+            } catch (MailboxNameException e) {
+                throw ErrorResponder.builder()
+                    .statusCode(HttpStatus.BAD_REQUEST_400)
+                    .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+                    .message("Attempt to delete an invalid mailbox")
+                    .cause(e)
+                    .haltError();
+            }
+            if (teamMailbox.defaultMailboxPaths().contains(folderPath)) {
+                throw ErrorResponder.builder()
+                    .statusCode(HttpStatus.BAD_REQUEST_400)
+                    .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+                    .message("'" + folderName + "' is a system folder of the team mailbox and can not be deleted")
+                    .haltError();
+            }
             MailboxSession session = mailboxManager.createSystemSession(teamMailbox.owner());
             try {
-                mailboxManager.deleteMailbox(teamMailbox.mailboxPath(folderName), session);
+                mailboxManager.deleteMailbox(folderPath, session);
             } catch (MailboxNotFoundException e) {
                 // Idempotent - folder does not exist
             }

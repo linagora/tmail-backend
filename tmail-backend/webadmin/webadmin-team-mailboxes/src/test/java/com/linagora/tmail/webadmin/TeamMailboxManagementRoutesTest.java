@@ -34,6 +34,7 @@ import static org.eclipse.jetty.http.HttpStatus.BAD_REQUEST_400;
 import static org.eclipse.jetty.http.HttpStatus.NOT_FOUND_404;
 import static org.eclipse.jetty.http.HttpStatus.NO_CONTENT_204;
 import static org.eclipse.jetty.http.HttpStatus.OK_200;
+import static org.hamcrest.Matchers.is;
 import static org.mockito.Mockito.mock;
 
 import java.util.List;
@@ -73,6 +74,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxAutocompleteCallback;
@@ -1058,6 +1060,28 @@ public class TeamMailboxManagementRoutesTest {
                 .containsEntry("type", "InvalidArgument")
                 .containsEntry("message", "Attempt to create an invalid mailbox");
         }
+
+        @Test
+        void createMailboxFolderShouldReturn400WhenFolderNameStartsWithNamespacePrefix() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given()
+                .put("/{folder}", "#user")
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .body("type", is("InvalidArgument"));
+
+            List<String> mailboxNames = given()
+                .get()
+            .then()
+                .statusCode(OK_200)
+                .extract()
+                .body()
+                .jsonPath()
+                .getList("mailboxName");
+
+            assertThat(mailboxNames).doesNotContain("#user");
+        }
     }
 
     @Nested
@@ -1135,6 +1159,41 @@ public class TeamMailboxManagementRoutesTest {
                 .getList("mailboxName");
 
             assertThat(mailboxNames).doesNotContain("MyFolder");
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"INBOX", "Sent", "Trash", "Outbox", "Drafts", "Templates"})
+        void deleteMailboxFolderShouldRefuseSystemFolders(String systemFolder) {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given()
+                .delete("/" + systemFolder)
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .body("type", is("InvalidArgument"))
+                .body("message", is("'" + systemFolder + "' is a system folder of the team mailbox and can not be deleted"));
+
+            List<String> mailboxNames = given()
+                .get()
+            .then()
+                .statusCode(OK_200)
+                .extract()
+                .body()
+                .jsonPath()
+                .getList("mailboxName");
+
+            assertThat(mailboxNames).contains(systemFolder);
+        }
+
+        @Test
+        void deleteMailboxFolderShouldReturn400WhenFolderNameIsInvalid() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given()
+                .delete("/.")
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .body("message", is("Attempt to delete an invalid mailbox"));
         }
 
         @Test
