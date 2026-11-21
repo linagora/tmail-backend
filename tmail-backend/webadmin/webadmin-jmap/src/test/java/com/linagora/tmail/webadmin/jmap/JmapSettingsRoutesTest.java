@@ -26,6 +26,7 @@ import static org.eclipse.jetty.http.HttpStatus.BAD_REQUEST_400;
 import static org.eclipse.jetty.http.HttpStatus.NOT_FOUND_404;
 import static org.eclipse.jetty.http.HttpStatus.NO_CONTENT_204;
 import static org.eclipse.jetty.http.HttpStatus.OK_200;
+import static org.hamcrest.Matchers.is;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -179,6 +180,30 @@ class JmapSettingsRoutesTest {
             given()
                 .contentType(JSON)
                 .body("{\"invalid key with spaces\": \"value\"}")
+            .when()
+                .put(BOB_SETTINGS_PATH)
+            .then()
+                .statusCode(BAD_REQUEST_400);
+        }
+
+        @Test
+        void shouldReturn400ForNullSettingValue() {
+            given()
+                .contentType(JSON)
+                .body("{\"language\":null}")
+            .when()
+                .put(BOB_SETTINGS_PATH)
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .body("type", is("InvalidArgument"))
+                .body("message", is("The value of setting 'language' must be a string, not null"));
+        }
+
+        @Test
+        void shouldReturn400ForNullBody() {
+            given()
+                .contentType(JSON)
+                .body("null")
             .when()
                 .put(BOB_SETTINGS_PATH)
             .then()
