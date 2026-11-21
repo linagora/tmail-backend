@@ -20,10 +20,16 @@
 package com.linagora.tmail.webadmin.model;
 
 import java.util.Optional;
+import java.util.stream.Collectors;
+
+import org.apache.james.webadmin.utils.JsonExtractException;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
 import com.google.common.base.Preconditions;
 import com.linagora.tmail.rate.limiter.api.model.LimitUpdate;
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition;
@@ -63,6 +69,32 @@ public record RateLimitsUpdateDTO(Optional<Long> mailsSentPerMinute,
             asLimitUpdate("recipientsSentPerMinute", recipientsSentPerMinute),
             asLimitUpdate("recipientsSentPerHours", recipientsSentPerHours),
             asLimitUpdate("recipientsSentPerDays", recipientsSentPerDays));
+    }
+
+    /**
+     * Describes a payload error without the Jackson internals (class names, source location).
+     */
+    public static String describe(JsonExtractException e) {
+        Throwable cause = e.getCause();
+        if (cause instanceof UnrecognizedPropertyException unrecognized) {
+            return String.format("Unknown field '%s'", unrecognized.getPropertyName());
+        }
+        if (cause instanceof JsonMappingException mappingException && mappingException.getCause() instanceof IllegalArgumentException validationError) {
+            return validationError.getMessage();
+        }
+        if (cause instanceof JsonMappingException mappingException && !mappingException.getPath().isEmpty()) {
+            return String.format("Invalid field '%s': %s", fieldPath(mappingException), mappingException.getOriginalMessage());
+        }
+        if (cause instanceof JsonProcessingException processingException) {
+            return processingException.getOriginalMessage();
+        }
+        return e.getMessage();
+    }
+
+    private static String fieldPath(JsonMappingException e) {
+        return e.getPath().stream()
+            .map(reference -> Optional.ofNullable(reference.getFieldName()).orElse(String.valueOf(reference.getIndex())))
+            .collect(Collectors.joining("."));
     }
 
     private static Optional<Long> asLimit(String field, JsonNode node) {

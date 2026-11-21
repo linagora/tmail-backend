@@ -94,7 +94,7 @@ public class RateLimitsDomainRoutes implements Routes {
                     .statusCode(HttpStatus.BAD_REQUEST_400)
                     .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
                     .message("Error while deserializing applyRateLimitsToDomain request")
-                    .cause(e)
+                    .cause(new IllegalArgumentException(RateLimitsUpdateDTO.describe(e)))
                     .haltError();
             }
         };

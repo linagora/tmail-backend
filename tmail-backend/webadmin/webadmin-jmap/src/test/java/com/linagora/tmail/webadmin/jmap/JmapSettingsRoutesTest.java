@@ -187,7 +187,8 @@ class JmapSettingsRoutesTest {
             .when()
                 .put(BOB_SETTINGS_PATH)
             .then()
-                .statusCode(BAD_REQUEST_400);
+                .statusCode(BAD_REQUEST_400)
+                .body("message", is("Invalid setting key 'invalid key with spaces': it must be non-empty, at most 255 characters long and only contain [a-zA-Z0-9._#-]"));
         }
 
         @Test
