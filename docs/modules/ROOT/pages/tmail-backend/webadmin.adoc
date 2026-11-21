@@ -962,7 +962,7 @@ curl -XPUT http://ip:port/users/{username}/ratelimits
 
 `recipientsSent*` limits count each recipient of a sent email, where `mailsSent*` limits count the email once.
 
-Note: null values are allowed (means no limit set). `-1` means unlimited.
+Note: null values are allowed (means no limit set). `-1` means unlimited. Other values must be integers greater than or equal to 0: other negative values, decimals and strings are rejected.
 
 Omitted `mails*` values are unset. Omitted `recipientsSent*` values are left unchanged, so that clients unaware of
 them do not erase them: set them explicitly to `null` to unset them.
@@ -970,7 +970,7 @@ them do not erase them: set them explicitly to `null` to unset them.
 Return codes:
 
 - `204` The user rate limits updated successfully
-- `400` Invalid request
+- `400` Invalid request (including an invalid limit value)
 - `404` User does not exist
 
 === Get rate limits of a user
@@ -1024,7 +1024,7 @@ curl -XPUT http://ip:port/domains/{domain}/ratelimits
 
 `recipientsSent*` limits count each recipient of a sent email, where `mailsSent*` limits count the email once.
 
-Note: null values are allowed (means no limit set). `-1` means unlimited.
+Note: null values are allowed (means no limit set). `-1` means unlimited. Other values must be integers greater than or equal to 0: other negative values, decimals and strings are rejected.
 
 Omitted `mails*` values are unset. Omitted `recipientsSent*` values are left unchanged, so that clients unaware of
 them do not erase them: set them explicitly to `null` to unset them.
@@ -1032,7 +1032,7 @@ them do not erase them: set them explicitly to `null` to unset them.
 Return codes:
 
 - `204` The domain rate limits updated successfully
-- `400` Invalid request
+- `400` Invalid request (including an invalid limit value)
 - `404` Domain does not exist
 
 === Get rate limits of a domain

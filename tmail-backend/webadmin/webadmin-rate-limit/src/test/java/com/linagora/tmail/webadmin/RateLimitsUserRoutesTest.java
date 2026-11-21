@@ -55,6 +55,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import com.linagora.tmail.rate.limiter.api.RateLimitingRepository;
 import com.linagora.tmail.rate.limiter.api.memory.MemoryRateLimitingRepository;
@@ -415,6 +416,44 @@ public class RateLimitsUserRoutesTest {
                     .recipientsSentPerMinute(30L)
                     .recipientsSentPerDays(4000L)
                     .build());
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"-5", "-9223372036854775808", "1.5", "\"\"", "\"5\"", "true"})
+        void invalidLimitShouldBeRejected(String value) {
+            given()
+                .body("{\"mailsSentPerMinute\": " + value + ", \"recipientsSentPerDays\": 1}")
+                .put(String.format(PUT_RATE_LIMITS_TO_USER_PATH, BOB.asString()))
+            .then()
+                .statusCode(BAD_REQUEST_400);
+
+            assertThat(Mono.from(rateLimitingRepository.getRateLimiting(BOB)).block())
+                .isEqualTo(EMPTY_RATE_LIMIT);
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"-5", "1.5"})
+        void invalidRecipientsLimitValueShouldBeRejected(String value) {
+            given()
+                .body("{\"recipientsSentPerDays\": " + value + "}")
+                .put(String.format(PUT_RATE_LIMITS_TO_USER_PATH, BOB.asString()))
+            .then()
+                .statusCode(BAD_REQUEST_400);
+
+            assertThat(Mono.from(rateLimitingRepository.getRateLimiting(BOB)).block())
+                .isEqualTo(EMPTY_RATE_LIMIT);
+        }
+
+        @Test
+        void zeroLimitShouldBeAllowed() {
+            given()
+                .body("{\"mailsSentPerMinute\": 0}")
+                .put(String.format(PUT_RATE_LIMITS_TO_USER_PATH, BOB.asString()))
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(Mono.from(rateLimitingRepository.getRateLimiting(BOB)).block())
+                .isEqualTo(RateLimitingDefinition.builder().mailsSentPerMinute(0L).build());
         }
 
         @Test
