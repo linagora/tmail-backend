@@ -61,6 +61,8 @@ import org.eclipse.jetty.http.HttpStatus;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxAutocompleteCallback;
@@ -174,6 +176,25 @@ public class TeamMailboxDeletedMessagesVaultRoutesTest {
 
         given()
             .queryParam("action", "invalid")
+        .when()
+            .post("/" + TEAM_MAILBOX_ADDRESS)
+        .then()
+            .statusCode(HttpStatus.BAD_REQUEST_400)
+            .contentType(JSON)
+            .body("statusCode", is(HttpStatus.BAD_REQUEST_400))
+            .body("type", is("InvalidArgument"));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"null", "{}", "{\"combinator\":\"and\"}", "{\"combinator\":\"and\",\"criteria\":[null]}",
+        "{\"combinator\":\"and\",\"criteria\":[]}",
+        "{\"combinator\":\"and\",\"criteria\":[{\"fieldName\":\"subject\",\"operator\":\"equals\",\"value\":\"x\"}]}"})
+    void restoreShouldReturn400WhenABodyIsSupplied(String body) {
+        Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+        given()
+            .queryParam("action", "restore")
+            .body(body)
         .when()
             .post("/" + TEAM_MAILBOX_ADDRESS)
         .then()

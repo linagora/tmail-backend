@@ -636,6 +636,9 @@ curl -XPOST 'http://ip:port/deletedMessages/teamMailbox/sales@domain.tld?action=
 
 Schedules a task that restores all deleted messages from the vault for the given team mailbox into its restore mailbox folder.
 
+This route takes no body: query filtering is not supported, and a request carrying a body is rejected rather than
+silently restoring every deleted message.
+
 Response:
 
 ....
@@ -657,7 +660,7 @@ The scheduled task has type `team-mailbox-deleted-messages-restore` and the foll
 Return codes:
 
 - `201` the task has been scheduled, a `taskId` is returned
-- `400` the team mailbox address is invalid
+- `400` the team mailbox address is invalid, or a body was supplied
 - `404` the team mailbox does not exist
 
 == Twake Space

@@ -22,6 +22,7 @@ import static org.apache.james.webadmin.Constants.SEPARATOR;
 
 import jakarta.inject.Inject;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.james.task.Task;
 import org.apache.james.task.TaskManager;
 import org.apache.james.webadmin.Routes;
@@ -77,6 +78,7 @@ public class TeamMailboxDeletedMessagesVaultRoutes implements Routes {
 
     private Task restore(Request request) {
         TeamMailbox teamMailbox = extractTeamMailbox(request);
+        rejectBody(request);
         validateTeamMailboxExists(teamMailbox);
         return new TeamMailboxVaultRestoreTask(restoreService, teamMailbox);
     }
@@ -91,6 +93,17 @@ public class TeamMailboxDeletedMessagesVaultRoutes implements Routes {
                     .message("Invalid team mailbox address '%s': %s", address, e.getMessage())
                     .haltError();
             }, x -> x);
+    }
+
+    private void rejectBody(Request request) {
+        // The restore always covers every deleted message: silently ignoring a query would restore more than asked
+        if (!StringUtils.isBlank(request.body())) {
+            throw ErrorResponder.builder()
+                .statusCode(HttpStatus.BAD_REQUEST_400)
+                .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+                .message("This route restores all the deleted messages of the team mailbox and takes no body: query filtering is not supported")
+                .haltError();
+        }
     }
 
     private void validateTeamMailboxExists(TeamMailbox teamMailbox) {
