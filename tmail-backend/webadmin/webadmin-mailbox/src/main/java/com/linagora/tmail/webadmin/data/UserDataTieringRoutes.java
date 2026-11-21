@@ -25,6 +25,8 @@ import jakarta.inject.Inject;
 
 import org.apache.james.core.Username;
 import org.apache.james.task.TaskManager;
+import org.apache.james.user.api.UsersRepository;
+import org.apache.james.user.api.UsersRepositoryException;
 import org.apache.james.util.DurationParser;
 import org.apache.james.webadmin.Routes;
 import org.apache.james.webadmin.tasks.TaskFromRequest;
@@ -47,12 +49,14 @@ public class UserDataTieringRoutes implements Routes {
 
     private final UserDataTieringService tieringService;
     private final TaskManager taskManager;
+    private final UsersRepository usersRepository;
     private final JsonTransformer jsonTransformer;
 
     @Inject
-    public UserDataTieringRoutes(UserDataTieringService tieringService, TaskManager taskManager, JsonTransformer jsonTransformer) {
+    public UserDataTieringRoutes(UserDataTieringService tieringService, TaskManager taskManager, UsersRepository usersRepository, JsonTransformer jsonTransformer) {
         this.tieringService = tieringService;
         this.taskManager = taskManager;
+        this.usersRepository = usersRepository;
         this.jsonTransformer = jsonTransformer;
     }
 
@@ -67,8 +71,9 @@ public class UserDataTieringRoutes implements Routes {
         service.post(DATA_PATH, taskFromRequest.asRoute(taskManager), jsonTransformer);
     }
 
-    private UserDataTieringTask createTask(Request request) {
+    private UserDataTieringTask createTask(Request request) throws UsersRepositoryException {
         Username username = parseUsername(request.params(USERNAME_PARAM));
+        assertUserExists(username);
         Duration tiering = parseTiering(request.queryParams(TIERING_PARAM));
         RunningOptions runningOptions = parseMessagesPerSecond(request.queryParams(MESSAGES_PER_SECOND_PARAM));
         return new UserDataTieringTask(tieringService, username, tiering, runningOptions);
@@ -101,6 +106,16 @@ public class UserDataTieringRoutes implements Routes {
         }
     }
 
+    private void assertUserExists(Username username) throws UsersRepositoryException {
+        if (!usersRepository.contains(username)) {
+            throw ErrorResponder.builder()
+                .statusCode(HttpStatus.NOT_FOUND_404)
+                .type(ErrorResponder.ErrorType.NOT_FOUND)
+                .message("User '%s' does not exist", username.asString())
+                .haltError();
+        }
+    }
+
     private Duration parseTiering(String rawTiering) {
         if (rawTiering == null || rawTiering.isBlank()) {
             throw ErrorResponder.builder()
@@ -109,14 +124,23 @@ public class UserDataTieringRoutes implements Routes {
                 .message("'tiering' query parameter is required (e.g. tiering=30d)")
                 .haltError();
         }
+        Duration tiering;
         try {
-            return DurationParser.parse(rawTiering, ChronoUnit.DAYS);
-        } catch (NumberFormatException e) {
-            throw ErrorResponder.builder()
-                .statusCode(HttpStatus.BAD_REQUEST_400)
-                .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
-                .message("Invalid tiering value '" + rawTiering + "'. Expected a duration like '30d', '7d', '24h'.")
-                .haltError();
+            tiering = DurationParser.parse(rawTiering, ChronoUnit.DAYS);
+        } catch (IllegalArgumentException e) {
+            throw invalidTiering(rawTiering);
         }
+        if (tiering.isZero() || tiering.isNegative()) {
+            throw invalidTiering(rawTiering);
+        }
+        return tiering;
+    }
+
+    private RuntimeException invalidTiering(String rawTiering) {
+        return ErrorResponder.builder()
+            .statusCode(HttpStatus.BAD_REQUEST_400)
+            .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+            .message("Invalid tiering value '" + rawTiering + "'. Expected a strictly positive duration like '30d', '7d', '24h'.")
+            .haltError();
     }
 }

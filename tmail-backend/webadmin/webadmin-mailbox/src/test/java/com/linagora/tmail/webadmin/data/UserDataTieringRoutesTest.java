@@ -27,9 +27,11 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 
+import org.apache.james.core.Username;
 import org.apache.james.json.DTOConverter;
 import org.apache.james.task.Hostname;
 import org.apache.james.task.MemoryTaskManager;
+import org.apache.james.user.api.UsersRepository;
 import org.apache.james.webadmin.WebAdminServer;
 import org.apache.james.webadmin.WebAdminUtils;
 import org.apache.james.webadmin.routes.TasksRoutes;
@@ -52,14 +54,16 @@ class UserDataTieringRoutesTest {
     private MemoryTaskManager taskManager;
 
     @BeforeEach
-    void setUp() {
+    void setUp() throws Exception {
         tieringService = mock(UserDataTieringService.class);
         org.mockito.Mockito.when(tieringService.tierUserData(any(), any(), any(), org.mockito.ArgumentMatchers.anyInt())).thenReturn(Mono.empty());
 
         taskManager = new MemoryTaskManager(new Hostname("foo"));
+        UsersRepository usersRepository = mock(UsersRepository.class);
+        org.mockito.Mockito.when(usersRepository.contains(Username.of("bob@example.com"))).thenReturn(true);
 
         webAdminServer = WebAdminUtils.createWebAdminServer(
-                new UserDataTieringRoutes(tieringService, taskManager, new JsonTransformer()),
+                new UserDataTieringRoutes(tieringService, taskManager, usersRepository, new JsonTransformer()),
                 new TasksRoutes(taskManager, new JsonTransformer(),
                     DTOConverter.of(UserDataTieringTaskAdditionalInformationDTO.module())))
             .start();
@@ -171,6 +175,33 @@ class UserDataTieringRoutesTest {
         .then()
             .statusCode(HttpStatus.BAD_REQUEST_400)
             .body("message", containsString("notaduration"));
+
+        verifyNoInteractions(tieringService);
+    }
+
+    @Test
+    void postShouldReturn404WhenUserDoesNotExist() {
+        given()
+            .queryParam("tiering", "30d")
+        .when()
+            .post("/users/nobody@example.com/data")
+        .then()
+            .statusCode(HttpStatus.NOT_FOUND_404)
+            .body("type", Matchers.is("notFound"))
+            .body("message", Matchers.is("User 'nobody@example.com' does not exist"));
+
+        verifyNoInteractions(tieringService);
+    }
+
+    @Test
+    void postShouldReturn400WhenTieringIsZero() {
+        given()
+            .queryParam("tiering", "0d")
+        .when()
+            .post("/users/bob@example.com/data")
+        .then()
+            .statusCode(HttpStatus.BAD_REQUEST_400)
+            .body("message", containsString("strictly positive"));
 
         verifyNoInteractions(tieringService);
     }
