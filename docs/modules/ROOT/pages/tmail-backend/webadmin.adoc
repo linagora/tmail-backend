@@ -48,6 +48,9 @@ curl -XPUT http://ip:port/domains/domain.tld/team-mailboxes/marketting
 
 Allows to create a team mailbox.
 
+Team mailbox names are case-insensitive: they are normalized to lower case on every endpoint
+(`MARKETING`, `Marketing` and `marketing` designate the same `marketing@domain.tld` team mailbox).
+
 Return codes:
 
  - `204` the team mailbox now exists (existed before or was created)

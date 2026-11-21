@@ -75,6 +75,30 @@ class TeamMailboxTest {
   }
 
   @Test
+  def asTeamMailboxMailAddressShouldLowerCaseTheName(): Unit = {
+    assertThat(TeamMailbox.asTeamMailbox(new MailAddress("SaLeS@linagora.com")).toJava)
+      .contains(TeamMailbox(Domain.of("linagora.com"), TeamMailboxName("sales")))
+  }
+
+  @Test
+  def teamMailboxNameFromStringShouldLowerCaseTheName(): Unit = {
+    assertThat(TeamMailboxName.fromString("SHOUT").toOption.toJava)
+      .contains(TeamMailboxName("shout"))
+  }
+
+  @Test
+  def teamMailboxFromStringShouldLowerCaseTheName(): Unit = {
+    assertThat(TeamMailbox.fromString("SHOUT@linagora.com").toOption.toJava)
+      .contains(TeamMailbox(Domain.of("linagora.com"), TeamMailboxName("shout")))
+  }
+
+  @Test
+  def fromJavaShouldLowerCaseTheName(): Unit = {
+    assertThat(TeamMailbox.fromJava(Domain.of("linagora.com"), "Shout").toJava)
+      .contains(TeamMailbox(Domain.of("linagora.com"), TeamMailboxName("shout")))
+  }
+
+  @Test
   def mailboxPathTeamMailboxShouldRespectAsStringMethod(): Unit = {
     val teamMailbox: TeamMailbox = TeamMailbox.from(new MailboxPath("#TeamMailbox", TEAM_MAILBOX_DOMAIN_1, "sales")).get
     assertThat(teamMailbox.mailboxPath.asString())

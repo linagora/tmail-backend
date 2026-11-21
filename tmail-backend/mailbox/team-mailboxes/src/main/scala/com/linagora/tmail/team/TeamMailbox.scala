@@ -18,6 +18,8 @@
 
 package com.linagora.tmail.team
 
+import java.util.Locale
+
 import com.google.common.base.CharMatcher
 import com.linagora.tmail.team.TeamMailbox.{TEAM_MAILBOX_ADMIN_LOCAL_PART, TEAM_MAILBOX_LOCAL_PART}
 import com.linagora.tmail.team.TeamMailboxName.TeamMailboxNameType
@@ -60,8 +62,10 @@ object TeamMailboxName {
       .left
       .map(new IllegalArgumentException(_))
 
+  // Team mailbox names are case-insensitive, like usernames and mail addresses local parts handled by James:
+  // they are normalized to lower case so that delivery and user / team mailbox collision checks do match.
   def fromString(value: String): Either[IllegalArgumentException, TeamMailboxName] =
-    validate(value)
+    validate(value.toLowerCase(Locale.US))
       .map(TeamMailboxName(_))
 }
 
@@ -135,14 +139,10 @@ object TeamMailbox {
       .map(teamMailboxName => TeamMailbox(domain, teamMailboxName))
       .toOption
 
-  def asTeamMailbox(mailAddress: MailAddress): Option[TeamMailbox] = for {
-    name <- TeamMailboxName.validate(mailAddress.getLocalPart)
-      .map(nameValue => TeamMailboxName(nameValue))
+  def asTeamMailbox(mailAddress: MailAddress): Option[TeamMailbox] =
+    TeamMailboxName.fromString(mailAddress.getLocalPart)
+      .map(name => TeamMailbox(mailAddress.getDomain, name))
       .toOption
-    domain = mailAddress.getDomain
-  } yield {
-    TeamMailbox(domain, name)
-  }
 }
 
 case class TeamMailbox(domain: Domain, mailboxName: TeamMailboxName) {

@@ -285,6 +285,17 @@ public class TeamMailboxManagementRoutesTest {
         }
 
         @Test
+        void createTeamMailboxShouldLowerCaseTheName() {
+            given()
+                .put("/MarKeting")
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThat(Flux.from(teamMailboxRepository.listTeamMailboxes(Domain.of("linagora.com"))).collectList().block())
+                .containsExactlyInAnyOrder(TEAM_MAILBOX);
+        }
+
+        @Test
         void createTeamMailboxShouldIndexDomainContact() {
             given()
                 .put("/marketing")
@@ -396,6 +407,28 @@ public class TeamMailboxManagementRoutesTest {
             assertThatThrownBy(() -> usersRepository.addUser(BOB, "whatever"))
                 .isInstanceOf(AlreadyExistInUsersRepositoryException.class)
                 .hasMessage("'bob@linagora.com' team-mailbox already exists");
+        }
+
+        @Test
+        void createUserShouldNotConflictWithUpperCaseTeamMailbox() {
+            when()
+                .put("/BOB")
+            .then()
+                .statusCode(NO_CONTENT_204);
+
+            assertThatThrownBy(() -> usersRepository.addUser(BOB, "whatever"))
+                .isInstanceOf(AlreadyExistInUsersRepositoryException.class)
+                .hasMessage("'bob@linagora.com' team-mailbox already exists");
+        }
+
+        @Test
+        void createUpperCaseTeamMailboxShouldNotConflictWithUser() throws UsersRepositoryException {
+            usersRepository.addUser(BOB, "whatever");
+
+            when()
+                .put("/BOB")
+            .then()
+                .statusCode(HttpStatus.CONFLICT_409);
         }
 
         @Test
