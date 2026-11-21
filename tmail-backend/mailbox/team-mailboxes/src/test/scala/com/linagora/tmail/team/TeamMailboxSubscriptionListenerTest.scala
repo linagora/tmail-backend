@@ -260,6 +260,9 @@ class TeamMailboxSubscriptionListenerTest {
 
     assertThatCode(() => SMono(listener.reactiveEvent(aclUpdated)).block()).doesNotThrowAnyException()
     assertThatCode(() => SMono(listener.reactiveEvent(mailboxAdded)).block()).doesNotThrowAnyException()
+    val extraSession = mailboxManager.createSystemSession(EXTRA_USER)
+    assertThat(SFlux(subscriptionManager.subscriptionsReactive(extraSession)).collectSeq().block().asJava)
+      .doesNotContain(MARKETING.mailboxPath("A"))
   }
 
   @Test

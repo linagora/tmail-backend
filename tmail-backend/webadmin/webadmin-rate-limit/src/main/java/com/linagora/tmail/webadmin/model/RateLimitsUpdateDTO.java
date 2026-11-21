@@ -26,7 +26,7 @@ import org.apache.james.webadmin.utils.JsonExtractException;
 
 import com.fasterxml.jackson.annotation.JsonCreator;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.JsonParseException;
 import com.fasterxml.jackson.databind.JsonMappingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.exc.UnrecognizedPropertyException;
@@ -85,10 +85,10 @@ public record RateLimitsUpdateDTO(Optional<Long> mailsSentPerMinute,
         if (cause instanceof JsonMappingException mappingException && !mappingException.getPath().isEmpty()) {
             return String.format("Invalid field '%s': %s", fieldPath(mappingException), mappingException.getOriginalMessage());
         }
-        if (cause instanceof JsonProcessingException processingException) {
-            return processingException.getOriginalMessage();
+        if (cause instanceof JsonParseException parseException) {
+            return String.format("Malformed JSON: %s", parseException.getOriginalMessage());
         }
-        return e.getMessage();
+        return "The request body must be a JSON object";
     }
 
     private static String fieldPath(JsonMappingException e) {
@@ -115,7 +115,7 @@ public record RateLimitsUpdateDTO(Optional<Long> mailsSentPerMinute,
     }
 
     private static long validatedLimit(String field, JsonNode node) {
-        Preconditions.checkArgument(node.isNumber() && node.canConvertToExactIntegral() && node.canConvertToLong(), "%s must be an integer", field);
+        Preconditions.checkArgument(node.isIntegralNumber() && node.canConvertToLong(), "%s must be an integer", field);
         long value = node.asLong();
         Preconditions.checkArgument(value >= UNLIMITED, "%s must be -1 (unlimited) or a positive or zero integer", field);
         return value;

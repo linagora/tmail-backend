@@ -165,6 +165,27 @@ class TMailSubAdressingTest {
             .containsOnly(Pair.of(RECIPIENT_ATTRIBUTE, EXPECTED_FOLDER_NAME));
     }
 
+    @Test
+    void shouldNotAddStorageDirectiveWhenTeamMailboxDetailCanNotBeDecoded() throws Exception {
+        givePostRightForKey(MailboxACL.ANYONE_KEY);
+
+        Mail mail = mailBuilder("bad%").sender(SENDER).build();
+        testee.service(mail);
+
+        assertThat(mail.attributes()).isEmpty();
+    }
+
+    @Test
+    void shouldNotAddStorageDirectiveWhenUserDetailCanNotBeDecoded() throws Exception {
+        Mail mail = FakeMail.builder()
+            .name("name")
+            .recipient("bob+bad%@linagora.com")
+            .sender(SENDER).build();
+        testee.service(mail);
+
+        assertThat(mail.attributes()).isEmpty();
+    }
+
     private FakeMail.Builder mailBuilder(String targetFolder) throws MessagingException {
         return FakeMail.builder()
             .name("name")

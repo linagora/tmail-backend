@@ -66,8 +66,6 @@ class TeamMailboxSubscriptionListener @Inject()(teamMailboxRepository: TeamMailb
         val ownerSession = mailboxManager.createSystemSession(teamMailbox.owner)
 
         membersOf(teamMailbox)
-          .map(_.username)
-          .collectSeq()
           .flatMapMany(members => {
             val memberUsernames = members.map(_.asString()).toSet
 
@@ -102,10 +100,8 @@ class TeamMailboxSubscriptionListener @Inject()(teamMailboxRepository: TeamMailb
         val oldEntries = event.getAclDiff.getOldACL.getEntries.asScala
 
         membersOf(teamMailbox)
-          .map(_.username.asString())
-          .collectSeq()
-          .flatMapMany(memberSeq => {
-            val memberUsernames = memberSeq.toSet
+          .flatMapMany(members => {
+            val memberUsernames = members.map(_.asString()).toSet
             val addedEntries = event.getAclDiff.getNewACL.getEntries.entrySet().asScala.toSeq
               .filter(e => !e.getKey.isNegative)
               .filter(e => NameType.user.equals(e.getKey.getNameType))
@@ -164,12 +160,15 @@ class TeamMailboxSubscriptionListener @Inject()(teamMailboxRepository: TeamMailb
   private def isInheritedExtraSenderEntry(extraSenderEntries: Map[EntryKey, Rfc4314Rights], key: EntryKey, rights: Rfc4314Rights): Boolean =
     extraSenderEntries.get(key).contains(rights)
 
-  // The team mailbox may have been deleted since the event was emitted (eg: events of its own deletion): nothing to do then
-  private def membersOf(teamMailbox: TeamMailbox): SFlux[TeamMailboxMember] =
+  // The team mailbox may have been deleted since the event was emitted (eg: events of its own deletion): the
+  // returned SMono is then empty so that nothing is done, unlike an existing team mailbox without members.
+  private def membersOf(teamMailbox: TeamMailbox): SMono[Seq[Username]] =
     SFlux(teamMailboxRepository.listMembers(teamMailbox))
+      .map(_.username)
+      .collectSeq()
       .onErrorResume {
-        case _: TeamMailboxNotFoundException => SFlux.empty
-        case e => SFlux.error(e)
+        case _: TeamMailboxNotFoundException => SMono.empty
+        case e => SMono.error(e)
       }
 
   private def subscribeUser(username: Username, path: MailboxPath): SMono[Unit] = {
