@@ -169,7 +169,12 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       .distinct()
       .filterWhen(teamMailbox => SMono.fromPublisher(mailboxManager.listRightsReactive(teamMailbox.mailboxPath, createSession(teamMailbox)))
         .map(acl => Option(acl.getEntries.get(userKey))
-          .exists(rights => rights.list().containsAll(BASIC_TEAM_MAILBOX_RIGHTS))))
+          .exists(rights => rights.list().containsAll(BASIC_TEAM_MAILBOX_RIGHTS)))
+        // A folder left behind by a deleted team mailbox (eg: member added while deleting it) is not a membership
+        .onErrorResume {
+          case _: MailboxNotFoundException => SMono.just(false)
+          case e => SMono.error(e)
+        })
   }
 
   override def addMember(teamMailbox: TeamMailbox, teamMailboxMember: TeamMailboxMember): Publisher[Void] = {
