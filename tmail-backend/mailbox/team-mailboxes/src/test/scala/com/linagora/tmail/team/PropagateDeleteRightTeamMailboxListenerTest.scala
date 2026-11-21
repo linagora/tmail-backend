@@ -109,6 +109,22 @@ class PropagateDeleteRightTeamMailboxListenerTest {
     verify(mailboxManager, never()).applyRightsCommandReactive(any(), any(), any())
   }
 
+  @Test
+  def shouldNotFailWhenTheTeamMailboxNoLongerExists(): Unit = {
+    when(teamMailboxRepository.listMembers(TEAM_MAILBOX_MARKETING)).thenReturn(SFlux.error(TeamMailboxNotFoundException(TEAM_MAILBOX_MARKETING)))
+    val mailboxACLUpdated = new MailboxACLUpdated(
+      MailboxSession.SessionId.of(42),
+      TEAM_MAILBOX_MARKETING.owner, TEAM_MAILBOX_MARKETING.mailboxPath("sub1"),
+      ACLDiff.computeDiff(new MailboxACL,
+        new MailboxACL(Pair.of(BOB_ENTRY_KEY, FIT_NEW_ACL_RIGHTS))),
+      TestId.of(18),
+      Event.EventId.random)
+
+    SMono(testee.reactiveEvent(mailboxACLUpdated)).block()
+
+    verify(mailboxManager, never()).applyRightsCommandReactive(any(), any(), any())
+  }
+
   @ParameterizedTest
   @MethodSource(value = Array("aclDiffNotMatchingCondition"))
   def shouldNotPropagateDeleteMailboxRightWhenACLDiffIsNotMatch(aclDiff: ACLDiff, member: Username): Unit = {

@@ -24,6 +24,7 @@ import org.apache.james.core.Username
 import org.apache.james.events.EventListener.ReactiveGroupEventListener
 import org.apache.james.events.{Event, Group}
 import org.apache.james.mailbox.events.MailboxEvents.{MailboxACLUpdated, MailboxAdded}
+import org.apache.james.mailbox.exception.MailboxNotFoundException
 import org.apache.james.mailbox.model.MailboxACL.NameType
 import org.apache.james.mailbox.model.MailboxPath
 import org.apache.james.mailbox.{MailboxManager, SubscriptionManager}
@@ -64,7 +65,7 @@ class TeamMailboxSubscriptionListener @Inject()(teamMailboxRepository: TeamMailb
         val systemUsernames = Set(teamMailbox.owner.asString(), teamMailbox.admin.asString(), teamMailbox.self.asString())
         val ownerSession = mailboxManager.createSystemSession(teamMailbox.owner)
 
-        SFlux(teamMailboxRepository.listMembers(teamMailbox))
+        membersOf(teamMailbox)
           .map(_.username)
           .collectSeq()
           .flatMapMany(members => {
@@ -74,6 +75,10 @@ class TeamMailboxSubscriptionListener @Inject()(teamMailboxRepository: TeamMailb
               .flatMap(username => subscribeUser(username, event.getMailboxPath))
 
             val extraAclSubscriptions = SMono(mailboxManager.listRightsReactive(event.getMailboxPath, ownerSession))
+              .onErrorResume {
+                case _: MailboxNotFoundException => SMono.empty
+                case e => SMono.error(e)
+              }
               .flatMapMany(acl => SFlux.fromIterable(acl.getEntries.entrySet().asScala))
               .filter(e => !e.getKey.isNegative)
               .filter(e => NameType.user.equals(e.getKey.getNameType))
@@ -94,7 +99,7 @@ class TeamMailboxSubscriptionListener @Inject()(teamMailboxRepository: TeamMailb
         val systemUsernames = Set(teamMailbox.owner.asString(), teamMailbox.admin.asString(), teamMailbox.self.asString())
         val oldEntries = event.getAclDiff.getOldACL.getEntries.asScala
 
-        SFlux(teamMailboxRepository.listMembers(teamMailbox))
+        membersOf(teamMailbox)
           .map(_.username.asString())
           .collectSeq()
           .flatMapMany(memberSeq => {
@@ -111,6 +116,14 @@ class TeamMailboxSubscriptionListener @Inject()(teamMailboxRepository: TeamMailb
           .thenMany(SMono.empty)
       case None => SMono.empty
     }
+
+  // The team mailbox may have been deleted since the event was emitted (eg: events of its own deletion): nothing to do then
+  private def membersOf(teamMailbox: TeamMailbox): SFlux[TeamMailboxMember] =
+    SFlux(teamMailboxRepository.listMembers(teamMailbox))
+      .onErrorResume {
+        case _: TeamMailboxNotFoundException => SFlux.empty
+        case e => SFlux.error(e)
+      }
 
   private def subscribeUser(username: Username, path: MailboxPath): SMono[Unit] = {
     val session = mailboxManager.createSystemSession(username)

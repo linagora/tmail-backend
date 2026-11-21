@@ -21,13 +21,19 @@ package com.linagora.tmail.team
 import com.linagora.tmail.team.TeamMailboxNameLiterals.given
 import com.linagora.tmail.team.TeamMailboxSubscriptionListenerTest._
 import eu.timepit.refined.auto._
+import org.apache.commons.lang3.tuple.Pair
 import org.apache.james.core.{Domain, Username}
+import org.apache.james.events.Event
+import org.apache.james.mailbox.MailboxSession
 import org.apache.james.mailbox.SubscriptionManager
+import org.apache.james.mailbox.acl.ACLDiff
+import org.apache.james.mailbox.events.MailboxEvents.{MailboxACLUpdated, MailboxAdded}
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources
+import org.apache.james.mailbox.model.MailboxACL.{EntryKey, Right}
 import org.apache.james.mailbox.model.{MailboxACL, MailboxPath}
 import org.apache.james.mailbox.store.StoreSubscriptionManager
-import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.{assertThat, assertThatCode}
 import org.junit.jupiter.api.{BeforeEach, Test}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
@@ -206,6 +212,22 @@ class TeamMailboxSubscriptionListenerTest {
     // so we just verify the handler doesn't blow up and the grant subscription still stands
     assertThat(SFlux(subscriptionManager.subscriptionsReactive(extraSession)).collectSeq().block().asJava)
       .contains(MARKETING.mailboxPath("custom"))
+  }
+
+  @Test
+  def eventsOfADeletedTeamMailboxShouldBeIgnored(): Unit = {
+    SMono.fromPublisher(teamMailboxRepository.createTeamMailbox(MARKETING)).block()
+    val ownerSession = mailboxManager.createSystemSession(MARKETING.owner)
+    val folderId = mailboxManager.createMailbox(MARKETING.mailboxPath("A"), ownerSession).get()
+    SMono.fromPublisher(teamMailboxRepository.deleteTeamMailbox(MARKETING)).block()
+
+    val aclUpdated = new MailboxACLUpdated(MailboxSession.SessionId.of(42), MARKETING.owner, MARKETING.mailboxPath("A"),
+      ACLDiff.computeDiff(new MailboxACL(), new MailboxACL(Pair.of(EntryKey.createUserEntryKey(EXTRA_USER), new MailboxACL.Rfc4314Rights(Right.Lookup)))),
+      folderId, Event.EventId.random())
+    val mailboxAdded = new MailboxAdded(MailboxSession.SessionId.of(42), MARKETING.owner, MARKETING.mailboxPath("A"), folderId, Event.EventId.random())
+
+    assertThatCode(() => SMono(listener.reactiveEvent(aclUpdated)).block()).doesNotThrowAnyException()
+    assertThatCode(() => SMono(listener.reactiveEvent(mailboxAdded)).block()).doesNotThrowAnyException()
   }
 
   @Test
