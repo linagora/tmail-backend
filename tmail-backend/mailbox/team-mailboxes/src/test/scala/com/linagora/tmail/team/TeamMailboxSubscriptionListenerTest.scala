@@ -215,6 +215,38 @@ class TeamMailboxSubscriptionListenerTest {
   }
 
   @Test
+  def newFolderShouldNotInheritTheRightsOfAnExtraSender(): Unit = {
+    SMono.fromPublisher(teamMailboxRepository.createTeamMailbox(MARKETING)).block()
+    val adminSession = mailboxManager.createSystemSession(MARKETING.admin)
+    mailboxManager.applyRightsCommand(MARKETING.mailboxPath,
+      MailboxACL.command().forUser(EXTRA_USER).rights(Right.Lookup, Right.Post).asAddition(),
+      adminSession)
+
+    val ownerSession = mailboxManager.createSystemSession(MARKETING.owner)
+    mailboxManager.createMailbox(MARKETING.mailboxPath("Fresh"), ownerSession)
+    mailboxManager.createMailbox(MARKETING.mailboxPath("Proj.Sub.Deep"), ownerSession)
+
+    Seq(MARKETING.mailboxPath("Fresh"), MARKETING.mailboxPath("Proj"), MARKETING.mailboxPath("Proj.Sub"), MARKETING.mailboxPath("Proj.Sub.Deep"))
+      .foreach(path => assertThat(mailboxManager.listRights(path, ownerSession).getEntries)
+        .doesNotContainKey(EntryKey.createUserEntryKey(EXTRA_USER)))
+    val extraSession = mailboxManager.createSystemSession(EXTRA_USER)
+    assertThat(SFlux(subscriptionManager.subscriptionsReactive(extraSession)).collectSeq().block().asJava)
+      .doesNotContain(MARKETING.mailboxPath("Fresh"))
+  }
+
+  @Test
+  def newFolderShouldStillInheritTheRightsOfAMember(): Unit = {
+    SMono.fromPublisher(teamMailboxRepository.createTeamMailbox(MARKETING)).block()
+    SMono.fromPublisher(teamMailboxRepository.addMember(MARKETING, TeamMailboxMember.asMember(BOB))).block()
+
+    val ownerSession = mailboxManager.createSystemSession(MARKETING.owner)
+    mailboxManager.createMailbox(MARKETING.mailboxPath("Fresh"), ownerSession)
+
+    assertThat(mailboxManager.listRights(MARKETING.mailboxPath("Fresh"), ownerSession).getEntries)
+      .containsKey(EntryKey.createUserEntryKey(BOB))
+  }
+
+  @Test
   def eventsOfADeletedTeamMailboxShouldBeIgnored(): Unit = {
     SMono.fromPublisher(teamMailboxRepository.createTeamMailbox(MARKETING)).block()
     val ownerSession = mailboxManager.createSystemSession(MARKETING.owner)
