@@ -75,6 +75,16 @@ class TeamMailboxTest {
   }
 
   @Test
+  def teamMailboxNameShouldRejectALeadingHash(): Unit = {
+    assertThat(TeamMailboxName.fromString("#hash").isLeft).isTrue
+  }
+
+  @Test
+  def teamMailboxNameShouldAcceptAHashAfterTheFirstCharacter(): Unit = {
+    assertThat(TeamMailboxName.fromString("sales#1").isRight).isTrue
+  }
+
+  @Test
   def mailboxPathTeamMailboxShouldRespectAsStringMethod(): Unit = {
     val teamMailbox: TeamMailbox = TeamMailbox.from(new MailboxPath("#TeamMailbox", TEAM_MAILBOX_DOMAIN_1, "sales")).get
     assertThat(teamMailbox.mailboxPath.asString())
