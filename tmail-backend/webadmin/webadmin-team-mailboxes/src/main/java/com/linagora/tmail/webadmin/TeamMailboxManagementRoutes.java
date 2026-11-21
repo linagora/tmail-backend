@@ -42,6 +42,8 @@ import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailbox.model.search.MailboxQuery;
 import org.apache.james.mailbox.model.search.PrefixedWildcard;
+import org.apache.james.user.api.UsersRepository;
+import org.apache.james.user.api.UsersRepositoryException;
 import org.apache.james.webadmin.Constants;
 import org.apache.james.webadmin.Routes;
 import org.apache.james.webadmin.utils.ErrorResponder;
@@ -126,6 +128,8 @@ public class TeamMailboxManagementRoutes implements Routes {
     private static final String ACL_USER_PARAM = ":aclUser";
     private static final String EXTRA_SENDER_USERNAME_PARAM = ":senderUsername";
     private static final String ROLE_PARAM = "role";
+    private static final String EXTRA_ACL_FEATURE = "extraAcl";
+    private static final String EXTRA_SENDERS_FEATURE = "extraSenders";
     public static final String TEAM_MAILBOXES_BASE_PATH = "/team-mailboxes";
     public static final String BASE_PATH = Constants.SEPARATOR + "domains" + Constants.SEPARATOR + TEAM_MAILBOX_DOMAIN_PARAM + Constants.SEPARATOR + "team-mailboxes";
     public static final String MEMBER_BASE_PATH = BASE_PATH + Constants.SEPARATOR + TEAM_MAILBOX_NAME_PARAM + Constants.SEPARATOR + "members";
@@ -138,16 +142,19 @@ public class TeamMailboxManagementRoutes implements Routes {
     private final TeamMailboxRepository teamMailboxRepository;
     private final DomainList domainList;
     private final MailboxManager mailboxManager;
+    private final UsersRepository usersRepository;
     private final JsonTransformer jsonTransformer;
 
     @Inject
     public TeamMailboxManagementRoutes(TeamMailboxRepository teamMailboxRepository,
                                        DomainList domainList,
                                        MailboxManager mailboxManager,
+                                       UsersRepository usersRepository,
                                        JsonTransformer jsonTransformer) {
         this.teamMailboxRepository = teamMailboxRepository;
         this.domainList = domainList;
         this.mailboxManager = mailboxManager;
+        this.usersRepository = usersRepository;
         this.jsonTransformer = jsonTransformer;
     }
 
@@ -430,13 +437,13 @@ public class TeamMailboxManagementRoutes implements Routes {
         return Username.of(request.params(ACL_USER_PARAM));
     }
 
-    private void assertNotProtectedAclUser(Username aclUser, TeamMailbox teamMailbox) {
+    private void assertNotProtectedAclUser(Username aclUser, TeamMailbox teamMailbox, String feature) {
         Set<String> systemUsernames = Set.of(teamMailbox.owner().asString(), teamMailbox.admin().asString(), teamMailbox.self().asString());
         if (systemUsernames.contains(aclUser.asString())) {
             throw ErrorResponder.builder()
                 .statusCode(HttpStatus.BAD_REQUEST_400)
                 .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
-                .message(aclUser.asString() + " is a system user and cannot be managed via extraAcl")
+                .message(aclUser.asString() + " is a system user and cannot be managed via " + feature)
                 .haltError();
         }
         boolean isMember = Flux.from(teamMailboxRepository.listMembers(teamMailbox))
@@ -447,7 +454,7 @@ public class TeamMailboxManagementRoutes implements Routes {
             throw ErrorResponder.builder()
                 .statusCode(HttpStatus.BAD_REQUEST_400)
                 .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
-                .message(aclUser.asString() + " is a team mailbox member and cannot be managed via extraAcl")
+                .message(aclUser.asString() + " is a team mailbox member and cannot be managed via " + feature)
                 .haltError();
         }
     }
@@ -500,7 +507,7 @@ public class TeamMailboxManagementRoutes implements Routes {
 
             String folderName = request.params(FOLDER_NAME_PARAM);
             Username aclUser = extractAclUser(request);
-            assertNotProtectedAclUser(aclUser, teamMailbox);
+            assertNotProtectedAclUser(aclUser, teamMailbox, EXTRA_ACL_FEATURE);
 
             MailboxACL.Rfc4314Rights rights;
             try {
@@ -549,7 +556,7 @@ public class TeamMailboxManagementRoutes implements Routes {
 
             String folderName = request.params(FOLDER_NAME_PARAM);
             Username aclUser = extractAclUser(request);
-            assertNotProtectedAclUser(aclUser, teamMailbox);
+            assertNotProtectedAclUser(aclUser, teamMailbox, EXTRA_ACL_FEATURE);
             MailboxSession session = mailboxManager.createSystemSession(teamMailbox.admin());
 
             try {
@@ -785,7 +792,8 @@ public class TeamMailboxManagementRoutes implements Routes {
             }
 
             Username senderUser = extractExtraSender(request);
-            assertNotProtectedAclUser(senderUser, teamMailbox);
+            assertNotProtectedAclUser(senderUser, teamMailbox, EXTRA_SENDERS_FEATURE);
+            assertUserExists(senderUser);
 
             MailboxSession session = mailboxManager.createSystemSession(teamMailbox.admin());
             try {
@@ -810,7 +818,7 @@ public class TeamMailboxManagementRoutes implements Routes {
             }
 
             Username senderUser = extractExtraSender(request);
-            assertNotProtectedAclUser(senderUser, teamMailbox);
+            assertNotProtectedAclUser(senderUser, teamMailbox, EXTRA_SENDERS_FEATURE);
 
             MailboxSession session = mailboxManager.createSystemSession(teamMailbox.admin());
             try {
@@ -840,6 +848,16 @@ public class TeamMailboxManagementRoutes implements Routes {
                 .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
                 .message(rawSender + " is not a valid mail address")
                 .cause(e)
+                .haltError();
+        }
+    }
+
+    private void assertUserExists(Username username) throws UsersRepositoryException {
+        if (!usersRepository.contains(username)) {
+            throw ErrorResponder.builder()
+                .statusCode(HttpStatus.NOT_FOUND_404)
+                .type(ErrorResponder.ErrorType.NOT_FOUND)
+                .message("User " + username.asString() + " does not exist")
                 .haltError();
         }
     }

@@ -23,6 +23,7 @@ import static com.linagora.tmail.webadmin.TeamMailboxFixture.BOB;
 import static com.linagora.tmail.webadmin.TeamMailboxFixture.TEAM_MAILBOX;
 import static com.linagora.tmail.webadmin.TeamMailboxFixture.TEAM_MAILBOX_2;
 import static com.linagora.tmail.webadmin.TeamMailboxFixture.TEAM_MAILBOX_DOMAIN;
+import static com.linagora.tmail.webadmin.TeamMailboxFixture.TEAM_MAILBOX_DOMAIN_2;
 import static io.restassured.RestAssured.given;
 import static io.restassured.RestAssured.when;
 import static io.restassured.http.ContentType.JSON;
@@ -120,6 +121,7 @@ public class TeamMailboxManagementRoutesTest {
     private TeamMailboxRepositoryImpl teamMailboxRepository;
     private InMemoryMailboxManager mailboxManager;
     private MemoryUsersRepository usersRepository;
+    private MemoryDomainList domainList;
     private MemoryRecipientRewriteTable recipientRewriteTable;
     private InMemoryEmailAddressContactSearchEngine emailAddressContactSearchEngine;
 
@@ -127,7 +129,7 @@ public class TeamMailboxManagementRoutesTest {
     void setUp() throws Exception {
         recipientRewriteTable = new MemoryRecipientRewriteTable();
         DNSService dnsService = mock(DNSService.class);
-        MemoryDomainList domainList = new MemoryDomainList(dnsService);
+        domainList = new MemoryDomainList(dnsService);
         domainList.configure(DomainListConfiguration.DEFAULT);
         domainList.addDomain(TEAM_MAILBOX_DOMAIN);
         recipientRewriteTable.setDomainList(domainList);
@@ -153,7 +155,7 @@ public class TeamMailboxManagementRoutesTest {
         teamMailboxRepository.setValidator(validator);
 
         TeamMailboxManagementRoutes teamMailboxManagementRoutes = new TeamMailboxManagementRoutes(teamMailboxRepository,
-            domainList, mailboxManager, new JsonTransformer());
+            domainList, mailboxManager, usersRepository, new JsonTransformer());
         webAdminServer = WebAdminUtils.createWebAdminServer(teamMailboxManagementRoutes).start();
 
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
@@ -2132,7 +2134,8 @@ public class TeamMailboxManagementRoutesTest {
     class GetExtraSendersTest {
 
         @BeforeEach
-        void setUp() {
+        void setUp() throws Exception {
+            usersRepository.addUser(ANDRE, "secret");
             RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
                 .setBasePath(String.format(TEAM_MAILBOX_EXTRA_SENDERS_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString()))
                 .build();
@@ -2206,7 +2209,8 @@ public class TeamMailboxManagementRoutesTest {
     class AddExtraSenderTest {
 
         @BeforeEach
-        void setUp() {
+        void setUp() throws Exception {
+            usersRepository.addUser(ANDRE, "secret");
             RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
                 .setBasePath(String.format(TEAM_MAILBOX_EXTRA_SENDERS_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString()))
                 .build();
@@ -2252,7 +2256,7 @@ public class TeamMailboxManagementRoutesTest {
             assertThat(errors)
                 .containsEntry("statusCode", BAD_REQUEST_400)
                 .containsEntry("type", "InvalidArgument")
-                .containsEntry("message", ownerUsername + " is a system user and cannot be managed via extraAcl");
+                .containsEntry("message", ownerUsername + " is a system user and cannot be managed via extraSenders");
         }
 
         @Test
@@ -2270,7 +2274,7 @@ public class TeamMailboxManagementRoutesTest {
             assertThat(errors)
                 .containsEntry("statusCode", BAD_REQUEST_400)
                 .containsEntry("type", "InvalidArgument")
-                .containsEntry("message", BOB.asString() + " is a team mailbox member and cannot be managed via extraAcl");
+                .containsEntry("message", BOB.asString() + " is a team mailbox member and cannot be managed via extraSenders");
         }
 
         @Test
@@ -2291,11 +2295,49 @@ public class TeamMailboxManagementRoutesTest {
         }
 
         @Test
-        void addExtraSenderShouldReturn400WhenTargetBelongsToAnotherDomain() {
+        void addExtraSenderShouldReturn404WhenTargetUserDoesNotExist() {
             Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
 
+            String ghost = "ghost@" + TEAM_MAILBOX_DOMAIN.asString();
             Map<String, Object> errors = given()
-                .put("/ghost@nowhere.test")
+                .put("/" + ghost)
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "User " + ghost + " does not exist");
+        }
+
+        @Test
+        void addExtraSenderShouldNotGrantRightWhenTargetUserDoesNotExist() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given()
+                .put("/ghost@" + TEAM_MAILBOX_DOMAIN.asString());
+
+            List<String> senders = given()
+                .get()
+            .then()
+                .statusCode(OK_200)
+                .contentType(JSON)
+                .extract().jsonPath().getList(".");
+
+            assertThat(senders).isEmpty();
+        }
+
+        @Test
+        void addExtraSenderShouldReturn400WhenTargetBelongsToAnotherDomain() throws Exception {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            domainList.addDomain(TEAM_MAILBOX_DOMAIN_2);
+            Username foreignUser = Username.fromLocalPartWithDomain("ghost", TEAM_MAILBOX_DOMAIN_2);
+            usersRepository.addUser(foreignUser, "secret");
+
+            Map<String, Object> errors = given()
+                .put("/" + foreignUser.asString())
             .then()
                 .statusCode(BAD_REQUEST_400)
                 .contentType(JSON)
@@ -2320,7 +2362,8 @@ public class TeamMailboxManagementRoutesTest {
     class DeleteExtraSenderTest {
 
         @BeforeEach
-        void setUp() {
+        void setUp() throws Exception {
+            usersRepository.addUser(ANDRE, "secret");
             RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
                 .setBasePath(String.format(TEAM_MAILBOX_EXTRA_SENDERS_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString()))
                 .build();
@@ -2421,7 +2464,7 @@ public class TeamMailboxManagementRoutesTest {
             assertThat(errors)
                 .containsEntry("statusCode", BAD_REQUEST_400)
                 .containsEntry("type", "InvalidArgument")
-                .containsEntry("message", adminUsername + " is a system user and cannot be managed via extraAcl");
+                .containsEntry("message", adminUsername + " is a system user and cannot be managed via extraSenders");
         }
 
         @Test
@@ -2439,7 +2482,7 @@ public class TeamMailboxManagementRoutesTest {
             assertThat(errors)
                 .containsEntry("statusCode", BAD_REQUEST_400)
                 .containsEntry("type", "InvalidArgument")
-                .containsEntry("message", BOB.asString() + " is a team mailbox member and cannot be managed via extraAcl");
+                .containsEntry("message", BOB.asString() + " is a team mailbox member and cannot be managed via extraSenders");
         }
     }
 
