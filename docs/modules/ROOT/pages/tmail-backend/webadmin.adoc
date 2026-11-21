@@ -1118,10 +1118,13 @@ curl -XDELETE http://ip:port/domains/{domain}/contacts/{username}
 
 Deletes a contact.
 
+The contact of an existing team mailbox is created and removed together with the team mailbox, and can not be deleted with this route.
+
 Return codes:
 
 - `204` Deleted contact successfully
 - `400` Invalid domain or mail address
+- `409` The contact is the one of an existing team mailbox
 
 === Get a contact
 
