@@ -1208,9 +1208,9 @@ Implemented extra steps for TMail are:
 
 - `ContactUsernameChangeTaskStep`: migrates contacts from old user to new user
 - `PGPKeysUsernameChangeTaskStep`: migrates PGP public keys from old user to new user
-- `LabelUsernameChangeTaskStep`: migrates JMAP labels from old to new user
+- `LabelUsernameChangeTaskStep`: migrates JMAP labels from old to new user. When the new user already has a label with the same keyword, its own label is kept (like rate limits) and the old user's one is dropped
 - `JmapSettingsUsernameChangeTaskStep`: migrates JMAP settings from old to new user
-- `RateLimitingUsernameChangeTaskStep`: migrates rate limiting from old to new user
+- `RateLimitingUsernameChangeTaskStep`: migrates rate limiting from old to new user, unless the new user already has rate limits
 - `SaaSAccountUsernameChangeTaskStep` (only if the SaaS module is enabled): migrates SaaS account information from old to new user
 
 Response codes:
