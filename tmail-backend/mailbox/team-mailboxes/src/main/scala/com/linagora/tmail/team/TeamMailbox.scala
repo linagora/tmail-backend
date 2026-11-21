@@ -51,8 +51,12 @@ object TeamMailboxName {
   case class TeamMailboxNameConstraint()
 
   implicit val validateTeamMailboxName: Validate.Plain[String, TeamMailboxNameConstraint] =
-    Validate.fromPredicate(s => s.nonEmpty && s.length < 256 && charMatcher.matchesAllOf(s),
-      s => s"'$s' contains some invalid characters. Should be [#a-zA-Z0-9-_] and no longer than 255 chars",
+    Validate.fromPredicate(s => s.nonEmpty && s.length < 256 && charMatcher.matchesAllOf(s) && !s.startsWith("#"),
+      s => if (s.startsWith("#")) {
+        s"'$s' should not start with '#', which is the mailbox namespace prefix"
+      } else {
+        s"'$s' contains some invalid characters. Should be [#a-zA-Z0-9-_] and no longer than 255 chars"
+      },
       TeamMailboxNameConstraint())
 
   def validate(string: String): Either[IllegalArgumentException, TeamMailboxNameType] =

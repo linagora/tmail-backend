@@ -274,6 +274,23 @@ public class TeamMailboxManagementRoutesTest {
         }
 
         @Test
+        void createTeamMailboxShouldReturnBadRequestWhenNameStartsWithHash() {
+            Map<String, Object> errors = given()
+                .put("/{name}", "#hash")
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("details", "Predicate failed: '#hash' should not start with '#', which is the mailbox namespace prefix.");
+        }
+
+        @Test
         void createTeamMailboxShouldStoreAssignEntry() {
             given()
                 .put("/marketing")
