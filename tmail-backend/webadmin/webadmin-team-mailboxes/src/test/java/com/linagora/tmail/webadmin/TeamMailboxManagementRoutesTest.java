@@ -73,6 +73,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxAutocompleteCallback;
@@ -426,6 +427,41 @@ public class TeamMailboxManagementRoutesTest {
         void teamMailboxUserEntityValidatorShouldNotThrowWhenNameWithDot() {
             assertThatCode(() -> usersRepository.addUser(Username.of("bob.by@linagora.com"), "whatever"))
                 .doesNotThrowAnyException();
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"team-mailbox", "team-mailbox-admin", "Team-Mailbox-Admin"})
+        void createUserShouldBeRejectedWhenReservedTeamMailboxPrincipal(String localPart) {
+            assertThatThrownBy(() -> usersRepository.addUser(Username.of(localPart + "@linagora.com"), "whatever"))
+                .isInstanceOf(AlreadyExistInUsersRepositoryException.class)
+                .hasMessageContaining("is reserved for team-mailbox internal usage");
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"team-mailbox", "team-mailbox-admin"})
+        void createAliasShouldBeRejectedWhenReservedTeamMailboxPrincipal(String localPart) {
+            assertThatThrownBy(() -> recipientRewriteTable.addAliasMapping(MappingSource.fromUser(Username.of(localPart + "@linagora.com")), ANDRE.asString()))
+                .isInstanceOf(MappingConflictException.class)
+                .hasMessageContaining("is reserved for team-mailbox internal usage");
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"team-mailbox", "team-mailbox-admin"})
+        void createTeamMailboxShouldBeRejectedWhenReservedTeamMailboxPrincipal(String name) {
+            Map<String, Object> errors = when()
+                .put("/" + name)
+            .then()
+                .statusCode(HttpStatus.CONFLICT_409)
+                .contentType(ContentType.JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", HttpStatus.CONFLICT_409)
+                .containsEntry("type", "WrongState")
+                .containsEntry("message", "'" + name + "@linagora.com' is reserved for team-mailbox internal usage");
         }
     }
 

@@ -21,7 +21,8 @@ package com.linagora.tmail.team
 import java.util
 import java.util.Optional
 
-import com.linagora.tmail.team.TeamMailboxUserEntityValidator.TEAM_MAILBOX
+import com.linagora.tmail.team.TeamMailbox.{TEAM_MAILBOX_ADMIN_LOCAL_PART, TEAM_MAILBOX_LOCAL_PART}
+import com.linagora.tmail.team.TeamMailboxUserEntityValidator.{TEAM_MAILBOX, isReserved}
 import jakarta.inject.Inject
 import org.apache.james.UserEntityValidator
 import org.apache.james.UserEntityValidator.{EntityType, ValidationFailure}
@@ -32,16 +33,24 @@ import scala.jdk.OptionConverters._
 
 object TeamMailboxUserEntityValidator {
   val TEAM_MAILBOX: EntityType = new EntityType("team-mailbox")
+  val RESERVED_LOCAL_PARTS: Set[String] = Set(TEAM_MAILBOX_LOCAL_PART, TEAM_MAILBOX_ADMIN_LOCAL_PART)
+
+  def isReserved(username: Username): Boolean =
+    RESERVED_LOCAL_PARTS.exists(_.equalsIgnoreCase(username.getLocalPart))
 }
 
 class TeamMailboxUserEntityValidator @Inject()(teamMailboxRepository: TeamMailboxRepository) extends UserEntityValidator {
   override def canCreate(username: Username, ignoredTypes: util.Set[EntityType]): Optional[UserEntityValidator.ValidationFailure] =
-    if (ignoredTypes.contains(TEAM_MAILBOX)) {
-      Optional.empty
-    } else {
-      check(username)
-        .toJava
-    }
+    checkReserved(username)
+      .orElse(checkExistingTeamMailbox(username, ignoredTypes))
+      .toJava
+
+  private def checkReserved(username: Username): Option[UserEntityValidator.ValidationFailure] =
+    Option.when(isReserved(username))(new ValidationFailure(s"'${username.asString}' is reserved for team-mailbox internal usage"))
+
+  private def checkExistingTeamMailbox(username: Username, ignoredTypes: util.Set[EntityType]): Option[UserEntityValidator.ValidationFailure] =
+    Option.unless(ignoredTypes.contains(TEAM_MAILBOX))(username)
+      .flatMap(check)
 
   private def check(username: Username): Option[UserEntityValidator.ValidationFailure] =
     username.getDomainPart
