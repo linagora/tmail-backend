@@ -275,6 +275,26 @@ public class TeamMailboxManagementRoutesTest {
                 .containsEntry("details", String.format("Predicate failed: '%s' contains some invalid characters. Should be [#a-zA-Z0-9-_] and no longer than 255 chars.", teamMailboxName));
         }
 
+        @ParameterizedTest
+        @ValueSource(strings = {"SHOUT", "Marketing", "markeTing"})
+        void createTeamMailboxShouldRejectUpperCaseNames(String teamMailboxName) {
+            Map<String, Object> errors = given()
+                .put("/" + teamMailboxName)
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", BAD_REQUEST_400)
+                .containsEntry("type", "InvalidArgument")
+                .containsEntry("message", "Team mailbox name must be lower case: '" + teamMailboxName + "'");
+            assertThat(Flux.from(teamMailboxRepository.listTeamMailboxes(TEAM_MAILBOX_DOMAIN)).collectList().block())
+                .isEmpty();
+        }
+
         @Test
         void createTeamMailboxShouldStoreAssignEntry() {
             given()

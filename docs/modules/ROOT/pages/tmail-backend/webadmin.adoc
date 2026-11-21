@@ -51,7 +51,7 @@ Allows to create a team mailbox.
 Return codes:
 
  - `204` the team mailbox now exists (existed before or was created)
- - `400` invalid alias or name
+ - `400` invalid alias or name. The name must be lower case: mail addresses are lower-cased upon delivery.
  - `404` the domain was not found
  - `409` the team mailbox uses an email address used by another entity (user, group, or an alias)
 

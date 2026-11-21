@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.webadmin;
 
+import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
@@ -275,6 +276,7 @@ public class TeamMailboxManagementRoutes implements Routes {
         return (request, response) -> {
             Domain domain = extractDomain(request);
             TeamMailboxName teamMailboxName = extractName(request);
+            assertLowerCase(teamMailboxName);
             if (!domainList.containsDomain(domain)) {
                 throw ErrorResponder.builder()
                     .statusCode(HttpStatus.NOT_FOUND_404)
@@ -296,6 +298,19 @@ public class TeamMailboxManagementRoutes implements Routes {
                 })
                 .block();
         };
+    }
+
+    // Mail addresses are lower-cased upon delivery and user creation: a team mailbox with upper case letters
+    // would never receive mail and could be shadowed by a user with the lower-cased address.
+    private void assertLowerCase(TeamMailboxName teamMailboxName) {
+        String name = teamMailboxName.asString();
+        if (!name.equals(name.toLowerCase(Locale.US))) {
+            throw ErrorResponder.builder()
+                .statusCode(HttpStatus.BAD_REQUEST_400)
+                .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+                .message("Team mailbox name must be lower case: '" + name + "'")
+                .haltError();
+        }
     }
 
     public Route getMailboxFolders() {
