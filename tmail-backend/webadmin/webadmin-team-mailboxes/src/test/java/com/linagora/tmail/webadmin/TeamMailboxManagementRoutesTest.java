@@ -37,6 +37,7 @@ import static org.eclipse.jetty.http.HttpStatus.OK_200;
 import static org.mockito.Mockito.mock;
 
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Stream;
 
@@ -73,6 +74,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxAutocompleteCallback;
@@ -420,6 +422,40 @@ public class TeamMailboxManagementRoutesTest {
             assertThatThrownBy(() -> recipientRewriteTable.addAliasMapping(MappingSource.fromUser(BOB), ANDRE.asString()))
                 .isInstanceOf(MappingConflictException.class)
                 .hasMessage("'bob@linagora.com' team-mailbox already exists");
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"team-mailbox@linagora.com", "team-mailbox-admin@linagora.com", "Team-Mailbox-Admin@linagora.com"})
+        void createUserShouldRejectReservedTeamMailboxPrincipals(String username) {
+            assertThatThrownBy(() -> usersRepository.addUser(Username.of(username), "whatever"))
+                .isInstanceOf(AlreadyExistInUsersRepositoryException.class)
+                .hasMessage("'" + username.toLowerCase(Locale.US) + "' is a reserved team-mailbox system address");
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"team-mailbox", "team-mailbox-admin"})
+        void createAliasShouldRejectReservedTeamMailboxPrincipals(String localPart) {
+            assertThatThrownBy(() -> recipientRewriteTable.addAliasMapping(MappingSource.fromUser(Username.of(localPart + "@linagora.com")), ANDRE.asString()))
+                .isInstanceOf(MappingConflictException.class);
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"team-mailbox", "team-mailbox-admin"})
+        void createTeamMailboxShouldRejectReservedTeamMailboxPrincipals(String name) {
+            Map<String, Object> errors = when()
+                .put("/" + name)
+            .then()
+                .statusCode(HttpStatus.CONFLICT_409)
+                .contentType(ContentType.JSON)
+                .extract()
+                .body()
+                .jsonPath()
+                .getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", HttpStatus.CONFLICT_409)
+                .containsEntry("type", "WrongState")
+                .containsEntry("message", "'" + name + "@linagora.com' is a reserved team-mailbox system address");
         }
 
         @Test
