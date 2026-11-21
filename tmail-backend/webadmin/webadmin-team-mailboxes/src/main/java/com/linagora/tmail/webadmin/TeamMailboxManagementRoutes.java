@@ -43,6 +43,8 @@ import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailbox.model.search.MailboxQuery;
 import org.apache.james.mailbox.model.search.PrefixedWildcard;
+import org.apache.james.user.api.UsersRepository;
+import org.apache.james.user.api.UsersRepositoryException;
 import org.apache.james.webadmin.Constants;
 import org.apache.james.webadmin.Routes;
 import org.apache.james.webadmin.utils.ErrorResponder;
@@ -139,16 +141,19 @@ public class TeamMailboxManagementRoutes implements Routes {
     private final TeamMailboxRepository teamMailboxRepository;
     private final DomainList domainList;
     private final MailboxManager mailboxManager;
+    private final UsersRepository usersRepository;
     private final JsonTransformer jsonTransformer;
 
     @Inject
     public TeamMailboxManagementRoutes(TeamMailboxRepository teamMailboxRepository,
                                        DomainList domainList,
                                        MailboxManager mailboxManager,
+                                       UsersRepository usersRepository,
                                        JsonTransformer jsonTransformer) {
         this.teamMailboxRepository = teamMailboxRepository;
         this.domainList = domainList;
         this.mailboxManager = mailboxManager;
+        this.usersRepository = usersRepository;
         this.jsonTransformer = jsonTransformer;
     }
 
@@ -801,6 +806,7 @@ public class TeamMailboxManagementRoutes implements Routes {
 
             Username senderUser = extractExtraSender(request);
             assertNotProtectedAclUser(senderUser, teamMailbox);
+            assertUserExists(senderUser);
 
             MailboxSession session = mailboxManager.createSystemSession(teamMailbox.admin());
             try {
@@ -840,6 +846,17 @@ public class TeamMailboxManagementRoutes implements Routes {
             }
             return Responses.returnNoContent(response);
         };
+    }
+
+    // A grant to a missing user would be inherited by whoever is later created with that name
+    private void assertUserExists(Username user) throws UsersRepositoryException {
+        if (!usersRepository.contains(user)) {
+            throw ErrorResponder.builder()
+                .statusCode(HttpStatus.NOT_FOUND_404)
+                .type(ErrorResponder.ErrorType.NOT_FOUND)
+                .message("The user " + user.asString() + " does not exist")
+                .haltError();
+        }
     }
 
     private Username extractExtraSender(Request request) {

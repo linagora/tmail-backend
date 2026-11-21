@@ -572,7 +572,7 @@ Return codes:
 
 - `204` the extra sender has been added successfully
 - `400` the target user is not a valid mail address, belongs to another domain (when cross-domain sharing is disabled), is a system user or a team mailbox member
-- `404` the team mailbox does not exist
+- `404` the team mailbox or the target user does not exist
 
 === Removing an extra sender from a Team Mailbox
 

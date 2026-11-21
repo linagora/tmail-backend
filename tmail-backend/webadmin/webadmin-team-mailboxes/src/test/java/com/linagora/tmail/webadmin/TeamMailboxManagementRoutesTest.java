@@ -122,6 +122,7 @@ public class TeamMailboxManagementRoutesTest {
     private TeamMailboxRepositoryImpl teamMailboxRepository;
     private InMemoryMailboxManager mailboxManager;
     private MemoryUsersRepository usersRepository;
+    private MemoryDomainList domainList;
     private MemoryRecipientRewriteTable recipientRewriteTable;
     private InMemoryEmailAddressContactSearchEngine emailAddressContactSearchEngine;
 
@@ -129,7 +130,7 @@ public class TeamMailboxManagementRoutesTest {
     void setUp() throws Exception {
         recipientRewriteTable = new MemoryRecipientRewriteTable();
         DNSService dnsService = mock(DNSService.class);
-        MemoryDomainList domainList = new MemoryDomainList(dnsService);
+        domainList = new MemoryDomainList(dnsService);
         domainList.configure(DomainListConfiguration.DEFAULT);
         domainList.addDomain(TEAM_MAILBOX_DOMAIN);
         recipientRewriteTable.setDomainList(domainList);
@@ -155,7 +156,7 @@ public class TeamMailboxManagementRoutesTest {
         teamMailboxRepository.setValidator(validator);
 
         TeamMailboxManagementRoutes teamMailboxManagementRoutes = new TeamMailboxManagementRoutes(teamMailboxRepository,
-            domainList, mailboxManager, new JsonTransformer());
+            domainList, mailboxManager, usersRepository, new JsonTransformer());
         webAdminServer = WebAdminUtils.createWebAdminServer(teamMailboxManagementRoutes).start();
 
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
@@ -2188,7 +2189,8 @@ public class TeamMailboxManagementRoutesTest {
     class GetExtraSendersTest {
 
         @BeforeEach
-        void setUp() {
+        void setUp() throws UsersRepositoryException {
+            usersRepository.addUser(ANDRE, "whatever");
             RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
                 .setBasePath(String.format(TEAM_MAILBOX_EXTRA_SENDERS_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString()))
                 .build();
@@ -2262,7 +2264,8 @@ public class TeamMailboxManagementRoutesTest {
     class AddExtraSenderTest {
 
         @BeforeEach
-        void setUp() {
+        void setUp() throws UsersRepositoryException {
+            usersRepository.addUser(ANDRE, "whatever");
             RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
                 .setBasePath(String.format(TEAM_MAILBOX_EXTRA_SENDERS_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString()))
                 .build();
@@ -2347,8 +2350,10 @@ public class TeamMailboxManagementRoutesTest {
         }
 
         @Test
-        void addExtraSenderShouldReturn400WhenTargetBelongsToAnotherDomain() {
+        void addExtraSenderShouldReturn400WhenTargetBelongsToAnotherDomain() throws Exception {
             Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            domainList.addDomain(Domain.of("nowhere.test"));
+            usersRepository.addUser(Username.of("ghost@nowhere.test"), "whatever");
 
             Map<String, Object> errors = given()
                 .put("/ghost@nowhere.test")
@@ -2364,6 +2369,39 @@ public class TeamMailboxManagementRoutesTest {
         }
 
         @Test
+        void addExtraSenderShouldReturn404WhenUserDoesNotExist() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            Map<String, Object> errors = given()
+                .put("/ghost@" + TEAM_MAILBOX_DOMAIN.asString())
+            .then()
+                .statusCode(NOT_FOUND_404)
+                .contentType(JSON)
+                .extract().body().jsonPath().getMap(".");
+
+            assertThat(errors)
+                .containsEntry("statusCode", NOT_FOUND_404)
+                .containsEntry("type", "notFound")
+                .containsEntry("message", "The user ghost@" + TEAM_MAILBOX_DOMAIN.asString() + " does not exist");
+        }
+
+        @Test
+        void addExtraSenderShouldNotGrantRightsWhenUserDoesNotExist() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+
+            given().put("/ghost@" + TEAM_MAILBOX_DOMAIN.asString());
+
+            List<String> senders = given()
+                .basePath(String.format(TEAM_MAILBOX_EXTRA_SENDERS_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString()))
+                .get()
+            .then()
+                .statusCode(OK_200)
+                .extract().body().jsonPath().getList(".");
+
+            assertThat(senders).isEmpty();
+        }
+
+        @Test
         void addExtraSenderShouldBeIdempotent() {
             Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
 
@@ -2376,7 +2414,8 @@ public class TeamMailboxManagementRoutesTest {
     class DeleteExtraSenderTest {
 
         @BeforeEach
-        void setUp() {
+        void setUp() throws UsersRepositoryException {
+            usersRepository.addUser(ANDRE, "whatever");
             RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
                 .setBasePath(String.format(TEAM_MAILBOX_EXTRA_SENDERS_BASE_PATH, TEAM_MAILBOX_DOMAIN.asString(), TEAM_MAILBOX.mailboxName().asString()))
                 .build();
