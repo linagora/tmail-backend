@@ -115,6 +115,9 @@ public class JmapSettingsRoutes implements Routes {
         assertUserExists(username);
 
         SettingsMap body = bodyExtractor.parse(request.body());
+        if (body == null) {
+            throw badRequest("The settings payload must be a JSON object");
+        }
         JmapSettingsUpsertRequest upsertRequest = toUpsertRequest(body.entries());
         Mono.from(jmapSettingsRepository.reset(username, upsertRequest)).block();
     }
@@ -124,6 +127,9 @@ public class JmapSettingsRoutes implements Routes {
         try {
             scala.collection.immutable.Map scalaMap = scala.collection.immutable.Map$.MODULE$.empty();
             for (Map.Entry<String, String> entry : settings.entrySet()) {
+                if (entry.getValue() == null) {
+                    throw badRequest(String.format("The value of setting '%s' must be a string, not null", entry.getKey()));
+                }
                 scalaMap = (scala.collection.immutable.Map) scalaMap.updated(
                     JmapSettingsKey.liftOrThrow(entry.getKey()),
                     new JmapSettingsValue(entry.getValue()));
@@ -136,6 +142,14 @@ public class JmapSettingsRoutes implements Routes {
                 .message(e.getMessage())
                 .haltError();
         }
+    }
+
+    private static RuntimeException badRequest(String message) {
+        return ErrorResponder.builder()
+            .statusCode(HttpStatus.BAD_REQUEST_400)
+            .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+            .message(message)
+            .haltError();
     }
 
     private Username extractUsername(Request request) {
