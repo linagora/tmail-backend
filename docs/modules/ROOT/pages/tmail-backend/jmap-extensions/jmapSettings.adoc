@@ -58,6 +58,9 @@ This is a standard `/set` method for the Settings object:
 
 - As this is a singleton object, `create` and `destroy` are not supported.
 - Attempts to modify read-only settings (as listed in the `readOnlyProperties` capability property) will be rejected.
+- A setting value is at most 16384 characters long and a user has at most 1000 settings. An update exceeding these
+limits, including a partial update that would bring the settings count above 1000, is rejected with an
+`invalidArguments` error and nothing is stored. The same limits apply to the WebAdmin JMAP settings API.
 
 === Examples
 

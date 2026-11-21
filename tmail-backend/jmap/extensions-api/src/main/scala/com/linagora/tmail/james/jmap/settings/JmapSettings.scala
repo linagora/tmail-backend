@@ -69,7 +69,23 @@ case class JmapSettingsKey(value: SettingKeyType) {
   def asString(): String = value.value
 }
 
+object JmapSettingsValue {
+  val MAX_LENGTH: Int = 16384
+
+  def validate(value: String): Either[IllegalArgumentException, JmapSettingsValue] =
+    if (value == null) {
+      Left(new IllegalArgumentException("A setting value must be a string, not null"))
+    } else if (value.length > MAX_LENGTH) {
+      Left(new IllegalArgumentException(s"A setting value must not be longer than $MAX_LENGTH characters"))
+    } else {
+      Right(JmapSettingsValue(value))
+    }
+}
+
 case class JmapSettingsValue(value: String) extends AnyVal
+
+case class TooManySettingsException(count: Int)
+  extends IllegalArgumentException(s"A user can not have more than ${JmapSettings.MAX_SETTINGS_COUNT} settings")
 
 trait JmapSettingEntry
 
@@ -98,6 +114,15 @@ object InboxArchivalFormat extends Enumeration {
 }
 
 object JmapSettings {
+  val MAX_SETTINGS_COUNT: Int = 1000
+
+  def validateSettingsCount(settings: Map[JmapSettingsKey, JmapSettingsValue]): Either[TooManySettingsException, Map[JmapSettingsKey, JmapSettingsValue]] =
+    if (settings.size > MAX_SETTINGS_COUNT) {
+      Left(TooManySettingsException(settings.size))
+    } else {
+      Right(settings)
+    }
+
   val trashCleanupEnabledSetting: JmapSettingsKey = JmapSettingsKey.liftOrThrow("trash.cleanup.enabled")
   val trashCleanupPeriodSetting: JmapSettingsKey = JmapSettingsKey.liftOrThrow("trash.cleanup.period")
 
@@ -202,6 +227,9 @@ object JmapSettingsPatch {
 }
 
 case class JmapSettingsPatch(toUpsert: JmapSettingsUpsertRequest, toRemove: Seq[JmapSettingsKey]) {
+  def applyTo(current: Map[JmapSettingsKey, JmapSettingsValue]): Map[JmapSettingsKey, JmapSettingsValue] =
+    (current ++ toUpsert.settings) -- toRemove
+
   def isEmpty: Boolean = toUpsert.settings.isEmpty && toRemove.isEmpty
 
   def isConflict: Boolean = {

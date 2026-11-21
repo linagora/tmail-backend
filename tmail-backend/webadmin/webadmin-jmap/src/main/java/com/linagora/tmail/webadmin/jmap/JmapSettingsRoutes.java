@@ -42,6 +42,7 @@ import com.linagora.tmail.james.jmap.settings.JmapSettingsKey;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepository;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsUpsertRequest;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsValue;
+import com.linagora.tmail.james.jmap.settings.TooManySettingsException;
 
 import reactor.core.publisher.Mono;
 import scala.jdk.javaapi.CollectionConverters;
@@ -119,7 +120,11 @@ public class JmapSettingsRoutes implements Routes {
             throw badRequest("The settings payload must be a JSON object");
         }
         JmapSettingsUpsertRequest upsertRequest = toUpsertRequest(body.entries());
-        Mono.from(jmapSettingsRepository.reset(username, upsertRequest)).block();
+        try {
+            Mono.from(jmapSettingsRepository.reset(username, upsertRequest)).block();
+        } catch (TooManySettingsException e) {
+            throw badRequest(e.getMessage());
+        }
     }
 
     @SuppressWarnings({"unchecked", "rawtypes"})
@@ -132,7 +137,7 @@ public class JmapSettingsRoutes implements Routes {
                 }
                 scalaMap = (scala.collection.immutable.Map) scalaMap.updated(
                     JmapSettingsKey.liftOrThrow(entry.getKey()),
-                    new JmapSettingsValue(entry.getValue()));
+                    toSettingsValue(entry.getKey(), entry.getValue()));
             }
             return new JmapSettingsUpsertRequest(scalaMap);
         } catch (IllegalArgumentException e) {
@@ -142,6 +147,14 @@ public class JmapSettingsRoutes implements Routes {
                 .message(e.getMessage())
                 .haltError();
         }
+    }
+
+    private static JmapSettingsValue toSettingsValue(String key, String value) {
+        scala.util.Either<IllegalArgumentException, JmapSettingsValue> result = JmapSettingsValue.validate(value);
+        if (result.isLeft()) {
+            throw badRequest(String.format("The value of setting '%s' must not be longer than %d characters", key, JmapSettingsValue.MAX_LENGTH()));
+        }
+        return result.toOption().get();
     }
 
     private static RuntimeException badRequest(String message) {

@@ -20,7 +20,7 @@ package com.linagora.tmail.james.jmap.json
 
 import com.linagora.tmail.james.jmap.json.ValueCodecs.{valueFormat, valueReads, valueWrites}
 import com.linagora.tmail.james.jmap.method.JSON_CUSTOM_VALIDATION_ERROR
-import com.linagora.tmail.james.jmap.model.{Color, DisplayName, Label, LabelCreationId, LabelCreationParseException, LabelCreationRequest, LabelCreationResponse, LabelGetRequest, LabelGetResponse, LabelId, LabelIds, LabelPatchObject, LabelSetRequest, LabelSetResponse, LabelUpdateResponse, UnparsedLabelId}
+import com.linagora.tmail.james.jmap.model.{Color, DisplayName, Label, LabelCreationId, LabelCreationParseException, LabelCreationRequest, LabelCreationResponse, LabelDescription, LabelGetRequest, LabelGetResponse, LabelId, LabelIds, LabelPatchObject, LabelSetRequest, LabelSetResponse, LabelUpdateResponse, UnparsedLabelId}
 import eu.timepit.refined.collection.NonEmpty
 import eu.timepit.refined.refineV
 import eu.timepit.refined.types.string.NonEmptyString
@@ -50,7 +50,19 @@ object LabelSerializer {
   }
 
   private implicit val keywordWrites: Writes[Keyword] = Json.valueWrites[Keyword]
-  private implicit val displayNameFormat: Format[DisplayName] = valueFormat[DisplayName]
+  private implicit val displayNameWrites: Writes[DisplayName] = valueWrites[DisplayName]
+  private implicit val displayNameReads: Reads[DisplayName] = {
+    case jsString: JsString => DisplayName.validate(jsString.value)
+      .fold(e => JsError(e.getMessage),
+        displayName => JsSuccess(displayName))
+    case _ => JsError("error.expected.jsstring")
+  }
+  private val descriptionReads: Reads[String] = {
+    case jsString: JsString => LabelDescription.validate(jsString.value)
+      .fold(e => JsError(e.getMessage),
+        description => JsSuccess(description))
+    case _ => JsError("error.expected.jsstring")
+  }
   private implicit val labelWrites: Writes[Label] = Json.configured(JsonConfiguration(optionHandlers = OptionHandlers.WritesNull)).writes[Label]
   private implicit val stateWrites: Writes[UuidState] = valueWrites[UuidState]
   private implicit val labelGetResponseWrites: Writes[LabelGetResponse] = Json.writes[LabelGetResponse]
@@ -78,7 +90,7 @@ object LabelSerializer {
   private val labelCreationRequestStandardReads: Reads[LabelCreationRequest] = (
     (__ \ "displayName").read[DisplayName] and
     (__ \ "color").readNullable[Color] and
-    (__ \ "description").readNullable[String] and
+    (__ \ "description").readNullable[String](descriptionReads) and
     (__ \ "readOnly").readNullable[Boolean].map(_.getOrElse(false))
   )(LabelCreationRequest.apply _)
 

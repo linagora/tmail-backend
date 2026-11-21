@@ -51,7 +51,8 @@ public class PostgresJmapSettingsRepository implements JmapSettingsRepository {
     @Override
     public Publisher<SettingsStateUpdate> reset(Username username, JmapSettingsUpsertRequest settings) {
         UuidState newState = JmapSettingsStateFactory.generateState();
-        return jmapSettingsDAO.getState(username)
+        return checkSettingsCount(settings.settings())
+            .then(jmapSettingsDAO.getState(username))
             .flatMap(oldState -> jmapSettingsDAO.updateFullSettings(username,
                     newState,
                     CollectionConverters.asJava(settings.settings()))
@@ -65,14 +66,23 @@ public class PostgresJmapSettingsRepository implements JmapSettingsRepository {
         Preconditions.checkArgument(!settingsPatch.isEmpty(), "Cannot update when upsert and remove is empty");
         Preconditions.checkArgument(!settingsPatch.isConflict(), "Cannot update and remove the same setting key");
         UuidState newState = JmapSettingsStateFactory.generateState();
-        return jmapSettingsDAO.getState(username)
+        // Read-check-write: like the state computation, the settings count check is not atomic with the update.
+        return jmapSettingsDAO.getJmapSettings(username)
+            .flatMap(currentSettings -> checkSettingsCount(settingsPatch.applyTo(currentSettings.settings()))
+                .thenReturn(currentSettings.state()))
             .flatMap(oldState -> jmapSettingsDAO.updateSettings(username,
                     newState,
                     CollectionConverters.asJava(settingsPatch.toUpsert().settings()),
                     CollectionConverters.asJava(settingsPatch.toRemove()))
                 .then(Mono.just(new SettingsStateUpdate(oldState, newState))))
-            .switchIfEmpty(jmapSettingsDAO.saveSettings(username, newState, CollectionConverters.asJava(settingsPatch.toUpsert().settings()))
+            .switchIfEmpty(Mono.defer(() -> checkSettingsCount(settingsPatch.toUpsert().settings()))
+                .then(jmapSettingsDAO.saveSettings(username, newState, CollectionConverters.asJava(settingsPatch.toUpsert().settings())))
                 .then(Mono.just(new SettingsStateUpdate(JmapSettingsStateFactory.INITIAL(), newState))));
+    }
+
+    private Mono<Void> checkSettingsCount(scala.collection.immutable.Map<JmapSettingsKey, JmapSettingsValue> settings) {
+        return JmapSettings.validateSettingsCount(settings)
+            .<Mono<Void>>fold(Mono::error, any -> Mono.empty());
     }
 
     @Override

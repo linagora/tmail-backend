@@ -66,4 +66,44 @@ class JmapSettingsTest {
     assertThat(settings.trashCleanupEnabled()).isFalse
     assertThat(settings.spamCleanupEnabled()).isFalse
   }
+
+  @Test
+  def settingsValueShouldAcceptTheMaximumLength(): Unit =
+    assertThat(JmapSettingsValue.validate("x".repeat(JmapSettingsValue.MAX_LENGTH)).isRight).isTrue
+
+  @Test
+  def settingsValueShouldAcceptEmptyString(): Unit =
+    assertThat(JmapSettingsValue.validate("").isRight).isTrue
+
+  @Test
+  def settingsValueShouldRejectTooLongValue(): Unit =
+    assertThat(JmapSettingsValue.validate("x".repeat(JmapSettingsValue.MAX_LENGTH + 1)).left.toOption.get.getMessage)
+      .isEqualTo("A setting value must not be longer than 16384 characters")
+
+  @Test
+  def settingsValueShouldRejectNull(): Unit =
+    assertThat(JmapSettingsValue.validate(null).isLeft).isTrue
+
+  @Test
+  def validateSettingsCountShouldAcceptTheMaximum(): Unit =
+    assertThat(JmapSettings.validateSettingsCount(settingsOfSize(JmapSettings.MAX_SETTINGS_COUNT)).isRight).isTrue
+
+  @Test
+  def validateSettingsCountShouldRejectAboveTheMaximum(): Unit =
+    assertThat(JmapSettings.validateSettingsCount(settingsOfSize(JmapSettings.MAX_SETTINGS_COUNT + 1)).left.toOption.get)
+      .isInstanceOf(classOf[TooManySettingsException])
+
+  @Test
+  def patchApplyToShouldUpsertAndRemove(): Unit = {
+    val key1 = JmapSettingsKey.liftOrThrow("key1")
+    val key2 = JmapSettingsKey.liftOrThrow("key2")
+    val key3 = JmapSettingsKey.liftOrThrow("key3")
+    val patch = JmapSettingsPatch(JmapSettingsUpsertRequest(Map(key1 -> JmapSettingsValue("new"), key3 -> JmapSettingsValue("v3"))), Seq(key2))
+
+    assertThat(patch.applyTo(Map(key1 -> JmapSettingsValue("old"), key2 -> JmapSettingsValue("v2"))) ==
+      Map(key1 -> JmapSettingsValue("new"), key3 -> JmapSettingsValue("v3"))).isTrue
+  }
+
+  private def settingsOfSize(size: Int): Map[JmapSettingsKey, JmapSettingsValue] =
+    (1 to size).map(i => JmapSettingsKey.liftOrThrow(s"key$i") -> JmapSettingsValue("value")).toMap
 }

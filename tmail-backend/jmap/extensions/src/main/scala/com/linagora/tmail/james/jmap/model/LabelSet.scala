@@ -84,7 +84,10 @@ case class LabelPatchObject(value: Map[String, JsValue]) {
   private def validateDescription: Either[LabelPatchUpdateValidationException, Option[DescriptionUpdate]] =
     value.get(descriptionProperty) match {
       case Some(jsValue) => jsValue match {
-        case JsString(aString) => Right(Some(DescriptionUpdate(Some(aString))))
+        case JsString(aString) => LabelDescription.validate(aString) match {
+          case Right(description) => Right(Some(DescriptionUpdate(Some(description))))
+          case Left(e: IllegalArgumentException) => Left(LabelPatchUpdateValidationException(e.getMessage, Some(descriptionProperty)))
+        }
         case JsNull => Right(Some(DescriptionUpdate(None)))
         case _ => Left(LabelPatchUpdateValidationException("Expecting a JSON string as an argument", Some(descriptionProperty)))
       }
@@ -94,7 +97,10 @@ case class LabelPatchObject(value: Map[String, JsValue]) {
   private def validateDisplayName: Either[LabelPatchUpdateValidationException, Option[DisplayName]] =
     value.get(displayNameProperty) match {
       case Some(jsValue) => jsValue match {
-        case JsString(aString) => Right(Some(DisplayName(aString)))
+        case JsString(aString) => DisplayName.validate(aString) match {
+          case Right(displayName) => Right(Some(displayName))
+          case Left(e: IllegalArgumentException) => Left(LabelPatchUpdateValidationException(e.getMessage, Some(displayNameProperty)))
+        }
         case _ => Left(LabelPatchUpdateValidationException("Expecting a JSON string as an argument", Some(displayNameProperty)))
       }
       case None => Right(None)

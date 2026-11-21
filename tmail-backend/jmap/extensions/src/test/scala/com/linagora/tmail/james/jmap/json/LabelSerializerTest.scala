@@ -19,10 +19,10 @@
 package com.linagora.tmail.james.jmap.json
 
 import com.linagora.tmail.james.jmap.label.LabelRepositoryContract.RED
-import com.linagora.tmail.james.jmap.model.{DisplayName, LabelCreationRequest}
+import com.linagora.tmail.james.jmap.model.{DisplayName, LabelCreationRequest, LabelDescription, LabelPatchObject, LabelPatchUpdateValidationException}
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
-import play.api.libs.json.{JsResult, Json}
+import play.api.libs.json.{JsError, JsResult, JsString, Json}
 
 class LabelSerializerTest {
 
@@ -82,4 +82,56 @@ class LabelSerializerTest {
     assertThat(deserializeResult.isError)
       .isTrue
   }
+
+  private def creationErrorMessage(deserializeResult: JsResult[LabelCreationRequest]): String =
+    com.linagora.tmail.james.jmap.method.standardErrorMessage(deserializeResult.asInstanceOf[JsError].errors)
+
+  @Test
+  def deserializeCreationRequestShouldRejectTooLongDisplayName(): Unit = {
+    val jsInput = Json.obj("displayName" -> "x".repeat(DisplayName.MAX_LENGTH + 1))
+
+    val deserializeResult: JsResult[LabelCreationRequest] = LabelSerializer.deserializeLabelCreationRequest(jsInput)
+
+    assertThat(creationErrorMessage(deserializeResult))
+      .isEqualTo("'/displayName' property is not valid: 'displayName' must not be longer than 255 characters")
+  }
+
+  @Test
+  def deserializeCreationRequestShouldRejectBlankDisplayName(): Unit = {
+    val jsInput = Json.obj("displayName" -> " ")
+
+    assertThat(LabelSerializer.deserializeLabelCreationRequest(jsInput).isError).isTrue
+  }
+
+  @Test
+  def deserializeCreationRequestShouldRejectTooLongDescription(): Unit = {
+    val jsInput = Json.obj("displayName" -> "Label 1", "description" -> "x".repeat(LabelDescription.MAX_LENGTH + 1))
+
+    val deserializeResult: JsResult[LabelCreationRequest] = LabelSerializer.deserializeLabelCreationRequest(jsInput)
+
+    assertThat(creationErrorMessage(deserializeResult))
+      .isEqualTo("'/description' property is not valid: 'description' must not be longer than 4096 characters")
+  }
+
+  @Test
+  def deserializeCreationRequestShouldAcceptMaximumLengths(): Unit = {
+    val jsInput = Json.obj("displayName" -> "x".repeat(DisplayName.MAX_LENGTH), "description" -> "y".repeat(LabelDescription.MAX_LENGTH))
+
+    assertThat(LabelSerializer.deserializeLabelCreationRequest(jsInput).isSuccess).isTrue
+  }
+
+  @Test
+  def patchShouldRejectTooLongDisplayName(): Unit =
+    assertThat(LabelPatchObject(Map("displayName" -> JsString("x".repeat(DisplayName.MAX_LENGTH + 1)))).validate().left.toOption.get)
+      .isEqualTo(LabelPatchUpdateValidationException("'displayName' must not be longer than 255 characters", Some("displayName")))
+
+  @Test
+  def patchShouldRejectBlankDisplayName(): Unit =
+    assertThat(LabelPatchObject(Map("displayName" -> JsString(""))).validate().left.toOption.get)
+      .isEqualTo(LabelPatchUpdateValidationException("'displayName' is required and must not be empty", Some("displayName")))
+
+  @Test
+  def patchShouldRejectTooLongDescription(): Unit =
+    assertThat(LabelPatchObject(Map("description" -> JsString("x".repeat(LabelDescription.MAX_LENGTH + 1)))).validate().left.toOption.get)
+      .isEqualTo(LabelPatchUpdateValidationException("'description' must not be longer than 4096 characters", Some("description")))
 }

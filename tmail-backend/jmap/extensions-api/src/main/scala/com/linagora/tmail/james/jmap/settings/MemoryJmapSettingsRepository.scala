@@ -53,7 +53,8 @@ case class MemoryJmapSettingsRepository @Inject()() extends JmapSettingsReposito
       .defaultIfEmpty(INITIAL)
 
   override def reset(username: Username, settings: JmapSettingsUpsertRequest): SMono[SettingsStateUpdate] =
-    SMono.fromCallable(() => this.settingsStore.row(username).clear())
+    SMono.fromCallable(() => JmapSettings.validateSettingsCount(settings.settings).fold(e => throw e, identity))
+      .`then`(SMono.fromCallable(() => this.settingsStore.row(username).clear()))
       .`then`(SMono.fromCallable(() => {
         settings.settings.foreach {
           case (key: JmapSettingsKey, value: JmapSettingsValue) => Option(this.settingsStore.put(username, key, value))
@@ -65,7 +66,10 @@ case class MemoryJmapSettingsRepository @Inject()() extends JmapSettingsReposito
     Preconditions.checkArgument(!settingsPatch.isEmpty, "Cannot update when upsert and remove is empty".asInstanceOf[Object])
     Preconditions.checkArgument(!settingsPatch.isConflict, "Cannot update and remove the same setting key".asInstanceOf[Object])
 
-    SMono.fromCallable(() => {
+    // The synchronized table is its own mutex: the count check and the write are atomic
+    SMono.fromCallable(() => settingsStore.synchronized {
+      JmapSettings.validateSettingsCount(settingsPatch.applyTo(settingsStore.row(username).asScala.toMap))
+        .fold(e => throw e, identity)
       settingsPatch.toUpsert.settings.foreach {
         case (key, value) => Option(this.settingsStore.put(username, key, value))
       }

@@ -19,14 +19,15 @@
 package com.linagora.tmail.james.jmap.json
 
 import com.linagora.tmail.james.jmap.CheckedRefined.given
-import com.linagora.tmail.james.jmap.model.{JmapSettingsGet, JmapSettingsObject, JmapSettingsResponse, SettingsSetError, SettingsSetRequest, SettingsSetResponse, SettingsSetUpdateRequest, SettingsUpdateResponse}
+import com.linagora.tmail.james.jmap.method.SettingsUpdateFailure
+import com.linagora.tmail.james.jmap.model.{JmapSettingsGet, JmapSettingsObject, JmapSettingsResponse, SettingsSetError, SettingsSetParseException, SettingsSetRequest, SettingsSetResponse, SettingsSetUpdateRequest, SettingsUpdateResponse}
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryContract.SettingsKeyString
-import com.linagora.tmail.james.jmap.settings.{JmapSettingsKey, JmapSettingsPatch, JmapSettingsUpsertRequest, JmapSettingsValue}
+import com.linagora.tmail.james.jmap.settings.{JmapSettingsKey, JmapSettingsPatch, JmapSettingsUpsertRequest, JmapSettingsValue, TooManySettingsException}
 import eu.timepit.refined.auto._
 import org.apache.james.core.Username
-import org.apache.james.jmap.core.SetError.SetErrorDescription
+import org.apache.james.jmap.core.SetError.{SetErrorDescription, invalidArgumentValue}
 import org.apache.james.jmap.core.{AccountId, UuidState}
-import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}
 import org.junit.jupiter.api.Test
 import play.api.libs.json.{JsObject, JsResult, JsValue, Json}
 
@@ -238,4 +239,46 @@ class JmapSettingsSerializerTest {
           |	}
           |}""".stripMargin))
   }
+
+  private def singletonUpdate(singleton: String): SettingsSetUpdateRequest =
+    JmapSettingsSerializer.deserializeSetRequest(Json.parse(
+      s"""{
+        |	"accountId": "29883977c13473ae7cb7678ef767cbfbaffc8a44a6e463d971d23a65c1dc4af6",
+        |	"update": {
+        |		"singleton": $singleton
+        |	}
+        |}""".stripMargin)).get.update.get("singleton")
+
+  @Test
+  def resetRequestShouldRejectTooLongValue(): Unit = {
+    val tooLong = "x".repeat(JmapSettingsValue.MAX_LENGTH + 1)
+    val setUpdateRequest = singletonUpdate(s"""{"settings": {"language": "$tooLong"}}""")
+
+    assertThatThrownBy(() => setUpdateRequest.getResetRequest)
+      .hasMessage("'/language' property is not valid: A setting value must not be longer than 16384 characters")
+      .isInstanceOf(classOf[SettingsSetParseException])
+  }
+
+  @Test
+  def resetRequestShouldAcceptValueOfTheMaximumLength(): Unit = {
+    val value = "x".repeat(JmapSettingsValue.MAX_LENGTH)
+    val setUpdateRequest = singletonUpdate(s"""{"settings": {"language": "$value"}}""")
+
+    assertThat(setUpdateRequest.getResetRequest.get.settings("language".asSettingKey).value).isEqualTo(value)
+  }
+
+  @Test
+  def updatePartialRequestShouldRejectTooLongValue(): Unit = {
+    val tooLong = "x".repeat(JmapSettingsValue.MAX_LENGTH + 1)
+    val setUpdateRequest = singletonUpdate(s"""{"settings/language": "$tooLong"}""")
+
+    assertThatThrownBy(() => setUpdateRequest.getUpdatePartialRequest)
+      .hasMessage("settings/language is not a valid partial update request: A setting value must not be longer than 16384 characters")
+      .isInstanceOf(classOf[SettingsSetParseException])
+  }
+
+  @Test
+  def tooManySettingsShouldBeReportedAsInvalidArguments(): Unit =
+    assertThat(SettingsUpdateFailure("singleton", TooManySettingsException(1001)).asSetError(TooManySettingsException(1001)))
+      .isEqualTo(SettingsSetError(invalidArgumentValue, Some(SetErrorDescription("A user can not have more than 1000 settings"))))
 }

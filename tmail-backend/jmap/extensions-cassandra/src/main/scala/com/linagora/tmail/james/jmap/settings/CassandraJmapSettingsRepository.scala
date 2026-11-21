@@ -33,7 +33,8 @@ class CassandraJmapSettingsRepository @Inject()(dao: CassandraJmapSettingsDAO) e
   override def get(username: Username): Publisher[JmapSettings] = dao.selectOne(username)
 
   override def reset(username: Username, settings: JmapSettingsUpsertRequest): Publisher[SettingsStateUpdate] =
-    dao.selectState(username)
+    SMono.fromCallable(() => JmapSettings.validateSettingsCount(settings.settings).fold(e => throw e, identity))
+      .`then`(dao.selectState(username))
       .defaultIfEmpty(INITIAL)
       .flatMap(oldState => {
         val newState: UuidState = JmapSettingsStateFactory.generateState()
@@ -46,8 +47,12 @@ class CassandraJmapSettingsRepository @Inject()(dao: CassandraJmapSettingsDAO) e
     Preconditions.checkArgument(!settingsPatch.isConflict, "Cannot update and remove the same setting key".asInstanceOf[Object])
 
     val newState: UuidState = JmapSettingsStateFactory.generateState()
-    dao.selectState(username)
-      .defaultIfEmpty(INITIAL)
+    // Read-check-write: like the state computation, the settings count check is not atomic with the update.
+    dao.selectOne(username)
+      .map(settings => (settings.state, settings.settings))
+      .defaultIfEmpty((INITIAL, Map[JmapSettingsKey, JmapSettingsValue]()))
+      .flatMap { case (oldState, currentSettings) => JmapSettings.validateSettingsCount(settingsPatch.applyTo(currentSettings))
+        .fold(e => SMono.error(e), _ => SMono.just(oldState)) }
       .flatMap(oldState => dao.updateSetting(username, newState, settingsPatch.toUpsert.settings, settingsPatch.toRemove)
           .`then`(SMono.just(SettingsStateUpdate(oldState, newState))))
   }

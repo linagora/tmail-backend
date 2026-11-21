@@ -54,7 +54,31 @@ object KeywordUtil {
     Keyword.of(UUID.randomUUID().toString).get
 }
 
+object DisplayName {
+  val MAX_LENGTH: Int = 255
+
+  def validate(value: String): Either[IllegalArgumentException, DisplayName] =
+    if (value == null || value.isBlank) {
+      scala.Left(new IllegalArgumentException("'displayName' is required and must not be empty"))
+    } else if (value.length > MAX_LENGTH) {
+      scala.Left(new IllegalArgumentException(s"'displayName' must not be longer than $MAX_LENGTH characters"))
+    } else {
+      scala.Right(DisplayName(value))
+    }
+}
+
 case class DisplayName(value: String)
+
+object LabelDescription {
+  val MAX_LENGTH: Int = 4096
+
+  def validate(value: String): Either[IllegalArgumentException, String] =
+    if (value != null && value.length > MAX_LENGTH) {
+      scala.Left(new IllegalArgumentException(s"'description' must not be longer than $MAX_LENGTH characters"))
+    } else {
+      scala.Right(value)
+    }
+}
 
 object Color {
   private type ColorRegex = MatchesRegex["^#[a-fA-F0-9]{6}$"]

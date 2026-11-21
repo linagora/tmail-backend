@@ -43,14 +43,11 @@ public record UpdateLabelRequest(String displayName, Optional<String> color, Opt
     }
 
     public DisplayName validatedDisplayName() {
-        if (displayName == null || displayName.isBlank()) {
-            throw ErrorResponder.builder()
-                .statusCode(HttpStatus.BAD_REQUEST_400)
-                .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
-                .message("'displayName' is required and must not be empty")
-                .haltError();
-        }
-        return new DisplayName(displayName);
+        return CreateLabelRequest.validateDisplayName(displayName);
+    }
+
+    public Optional<String> validatedDescription() {
+        return CreateLabelRequest.validateDescription(description);
     }
 
     public Optional<Color> validatedColor() {

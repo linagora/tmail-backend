@@ -50,7 +50,12 @@ object JmapSettingsSerializer {
         settingsKey => JsSuccess(settingsKey))
     case _ => JsError("Expecting a string as a Settings key")
   }
-  private implicit val jmapSettingsValueReads: Reads[JmapSettingsValue] = Json.valueReads[JmapSettingsValue]
+  private implicit val jmapSettingsValueReads: Reads[JmapSettingsValue] = {
+    case jsString: JsString => JmapSettingsValue.validate(jsString.value)
+      .fold(e => JsError(e.getMessage),
+        settingsValue => JsSuccess(settingsValue))
+    case _ => JsError("error.expected.jsstring")
+  }
   private implicit val settingsMapUpdateRequestReads: Reads[Map[JmapSettingsKey, JmapSettingsValue]] =
     Reads.mapReads[JmapSettingsKey, JmapSettingsValue] {keyString => jmapSettingsKeyReads.reads(JsString(keyString))}
   private implicit val jmapSettingsUpsertRequestReads: Reads[JmapSettingsUpsertRequest] = Json.reads[JmapSettingsUpsertRequest]

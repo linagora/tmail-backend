@@ -31,6 +31,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.util.Map;
+import java.util.stream.Collectors;
+import java.util.stream.IntStream;
 
 import org.apache.james.core.Username;
 import org.apache.james.user.api.UsersRepository;
@@ -42,7 +44,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
 
+import com.linagora.tmail.james.jmap.settings.JmapSettings;
 import com.linagora.tmail.james.jmap.settings.JmapSettingsRepositoryJavaUtils;
+import com.linagora.tmail.james.jmap.settings.JmapSettingsValue;
 import com.linagora.tmail.james.jmap.settings.MemoryJmapSettingsRepository;
 
 import io.restassured.RestAssured;
@@ -197,6 +201,34 @@ class JmapSettingsRoutesTest {
                 .statusCode(BAD_REQUEST_400)
                 .body("type", is("InvalidArgument"))
                 .body("message", is("The value of setting 'language' must be a string, not null"));
+        }
+
+        @Test
+        void shouldReturn400WhenTooManySettings() {
+            String body = IntStream.rangeClosed(0, JmapSettings.MAX_SETTINGS_COUNT())
+                .mapToObj(i -> "\"key" + i + "\":\"v\"")
+                .collect(Collectors.joining(",", "{", "}"));
+
+            given()
+                .contentType(JSON)
+                .body(body)
+            .when()
+                .put(BOB_SETTINGS_PATH)
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .body("message", is("A user can not have more than 1000 settings"));
+        }
+
+        @Test
+        void shouldReturn400WhenSettingValueTooLong() {
+            given()
+                .contentType(JSON)
+                .body("{\"language\":\"" + "x".repeat(JmapSettingsValue.MAX_LENGTH() + 1) + "\"}")
+            .when()
+                .put(BOB_SETTINGS_PATH)
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .body("message", is("The value of setting 'language' must not be longer than 16384 characters"));
         }
 
         @Test
