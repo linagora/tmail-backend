@@ -126,6 +126,8 @@ public class TeamMailboxManagementRoutes implements Routes {
     private static final String ACL_USER_PARAM = ":aclUser";
     private static final String EXTRA_SENDER_USERNAME_PARAM = ":senderUsername";
     private static final String ROLE_PARAM = "role";
+    private static final String EXTRA_ACL_SCOPE = "via extraAcl";
+    private static final String EXTRA_SENDER_SCOPE = "as an extra sender";
     public static final String TEAM_MAILBOXES_BASE_PATH = "/team-mailboxes";
     public static final String BASE_PATH = Constants.SEPARATOR + "domains" + Constants.SEPARATOR + TEAM_MAILBOX_DOMAIN_PARAM + Constants.SEPARATOR + "team-mailboxes";
     public static final String MEMBER_BASE_PATH = BASE_PATH + Constants.SEPARATOR + TEAM_MAILBOX_NAME_PARAM + Constants.SEPARATOR + "members";
@@ -430,13 +432,13 @@ public class TeamMailboxManagementRoutes implements Routes {
         return Username.of(request.params(ACL_USER_PARAM));
     }
 
-    private void assertNotProtectedAclUser(Username aclUser, TeamMailbox teamMailbox) {
+    private void assertNotProtectedAclUser(Username aclUser, TeamMailbox teamMailbox, String managementScope) {
         Set<String> systemUsernames = Set.of(teamMailbox.owner().asString(), teamMailbox.admin().asString(), teamMailbox.self().asString());
         if (systemUsernames.contains(aclUser.asString())) {
             throw ErrorResponder.builder()
                 .statusCode(HttpStatus.BAD_REQUEST_400)
                 .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
-                .message(aclUser.asString() + " is a system user and cannot be managed via extraAcl")
+                .message(aclUser.asString() + " is a system user and cannot be managed " + managementScope)
                 .haltError();
         }
         boolean isMember = Flux.from(teamMailboxRepository.listMembers(teamMailbox))
@@ -447,7 +449,7 @@ public class TeamMailboxManagementRoutes implements Routes {
             throw ErrorResponder.builder()
                 .statusCode(HttpStatus.BAD_REQUEST_400)
                 .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
-                .message(aclUser.asString() + " is a team mailbox member and cannot be managed via extraAcl")
+                .message(aclUser.asString() + " is a team mailbox member and cannot be managed " + managementScope)
                 .haltError();
         }
     }
@@ -500,7 +502,7 @@ public class TeamMailboxManagementRoutes implements Routes {
 
             String folderName = request.params(FOLDER_NAME_PARAM);
             Username aclUser = extractAclUser(request);
-            assertNotProtectedAclUser(aclUser, teamMailbox);
+            assertNotProtectedAclUser(aclUser, teamMailbox, EXTRA_ACL_SCOPE);
 
             MailboxACL.Rfc4314Rights rights;
             try {
@@ -549,7 +551,7 @@ public class TeamMailboxManagementRoutes implements Routes {
 
             String folderName = request.params(FOLDER_NAME_PARAM);
             Username aclUser = extractAclUser(request);
-            assertNotProtectedAclUser(aclUser, teamMailbox);
+            assertNotProtectedAclUser(aclUser, teamMailbox, EXTRA_ACL_SCOPE);
             MailboxSession session = mailboxManager.createSystemSession(teamMailbox.admin());
 
             try {
@@ -785,7 +787,7 @@ public class TeamMailboxManagementRoutes implements Routes {
             }
 
             Username senderUser = extractExtraSender(request);
-            assertNotProtectedAclUser(senderUser, teamMailbox);
+            assertNotProtectedAclUser(senderUser, teamMailbox, EXTRA_SENDER_SCOPE);
 
             MailboxSession session = mailboxManager.createSystemSession(teamMailbox.admin());
             try {
@@ -810,7 +812,7 @@ public class TeamMailboxManagementRoutes implements Routes {
             }
 
             Username senderUser = extractExtraSender(request);
-            assertNotProtectedAclUser(senderUser, teamMailbox);
+            assertNotProtectedAclUser(senderUser, teamMailbox, EXTRA_SENDER_SCOPE);
 
             MailboxSession session = mailboxManager.createSystemSession(teamMailbox.admin());
             try {
