@@ -41,21 +41,35 @@ public record RateLimitsUpdateDTO(Optional<Long> mailsSentPerMinute,
                                   LimitUpdate recipientsSentPerMinute,
                                   LimitUpdate recipientsSentPerHours,
                                   LimitUpdate recipientsSentPerDays) {
+    private static final long UNLIMITED = -1L;
+
     @JsonCreator
-    public static RateLimitsUpdateDTO fromJson(@JsonProperty("mailsSentPerMinute") Optional<Long> mailsSentPerMinute,
-                                               @JsonProperty("mailsSentPerHours") Optional<Long> mailsSentPerHours,
-                                               @JsonProperty("mailsSentPerDays") Optional<Long> mailsSentPerDays,
-                                               @JsonProperty("mailsReceivedPerMinute") Optional<Long> mailsReceivedPerMinute,
-                                               @JsonProperty("mailsReceivedPerHours") Optional<Long> mailsReceivedPerHours,
-                                               @JsonProperty("mailsReceivedPerDays") Optional<Long> mailsReceivedPerDays,
+    public static RateLimitsUpdateDTO fromJson(@JsonProperty("mailsSentPerMinute") JsonNode mailsSentPerMinute,
+                                               @JsonProperty("mailsSentPerHours") JsonNode mailsSentPerHours,
+                                               @JsonProperty("mailsSentPerDays") JsonNode mailsSentPerDays,
+                                               @JsonProperty("mailsReceivedPerMinute") JsonNode mailsReceivedPerMinute,
+                                               @JsonProperty("mailsReceivedPerHours") JsonNode mailsReceivedPerHours,
+                                               @JsonProperty("mailsReceivedPerDays") JsonNode mailsReceivedPerDays,
                                                @JsonProperty("recipientsSentPerMinute") JsonNode recipientsSentPerMinute,
                                                @JsonProperty("recipientsSentPerHours") JsonNode recipientsSentPerHours,
                                                @JsonProperty("recipientsSentPerDays") JsonNode recipientsSentPerDays) {
-        return new RateLimitsUpdateDTO(mailsSentPerMinute, mailsSentPerHours, mailsSentPerDays,
-            mailsReceivedPerMinute, mailsReceivedPerHours, mailsReceivedPerDays,
+        return new RateLimitsUpdateDTO(
+            asLimit("mailsSentPerMinute", mailsSentPerMinute),
+            asLimit("mailsSentPerHours", mailsSentPerHours),
+            asLimit("mailsSentPerDays", mailsSentPerDays),
+            asLimit("mailsReceivedPerMinute", mailsReceivedPerMinute),
+            asLimit("mailsReceivedPerHours", mailsReceivedPerHours),
+            asLimit("mailsReceivedPerDays", mailsReceivedPerDays),
             asLimitUpdate("recipientsSentPerMinute", recipientsSentPerMinute),
             asLimitUpdate("recipientsSentPerHours", recipientsSentPerHours),
             asLimitUpdate("recipientsSentPerDays", recipientsSentPerDays));
+    }
+
+    private static Optional<Long> asLimit(String field, JsonNode node) {
+        if (node == null || node.isNull()) {
+            return Optional.empty();
+        }
+        return Optional.of(validatedLimit(field, node));
     }
 
     private static LimitUpdate asLimitUpdate(String field, JsonNode node) {
@@ -65,8 +79,14 @@ public record RateLimitsUpdateDTO(Optional<Long> mailsSentPerMinute,
         if (node.isNull()) {
             return LimitUpdate.clear();
         }
-        Preconditions.checkArgument(node.canConvertToExactIntegral() && node.canConvertToLong(), "%s must be an integer", field);
-        return LimitUpdate.replace(node.asLong());
+        return LimitUpdate.replace(validatedLimit(field, node));
+    }
+
+    private static long validatedLimit(String field, JsonNode node) {
+        Preconditions.checkArgument(node.isNumber() && node.canConvertToExactIntegral() && node.canConvertToLong(), "%s must be an integer", field);
+        long value = node.asLong();
+        Preconditions.checkArgument(value >= UNLIMITED, "%s must be -1 (unlimited) or a positive or zero integer", field);
+        return value;
     }
 
     public RateLimitingDefinition toRateLimitingDefinition(RateLimitingDefinition current) {
