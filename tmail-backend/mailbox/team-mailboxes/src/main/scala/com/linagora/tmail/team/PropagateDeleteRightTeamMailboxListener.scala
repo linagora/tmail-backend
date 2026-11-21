@@ -55,6 +55,11 @@ class PropagateDeleteRightTeamMailboxListener @Inject()(teamMailboxRepository: T
         TeamMailbox.from(mailboxACLUpdated.getMailboxPath) match {
           case Some(teamMailbox) if !teamMailbox.defaultMailboxPaths.contains(mailboxACLUpdated.getMailboxPath) =>
             SFlux(teamMailboxRepository.listMembers(teamMailbox))
+              .onErrorResume {
+                // The team mailbox may have been deleted since the event was emitted: nothing to propagate then
+                case _: TeamMailboxNotFoundException => SFlux.empty
+                case e => SFlux.error(e)
+              }
               .filter(member => needsToAddRight(mailboxACLUpdated.getAclDiff, member.username))
               .flatMap(teamMailboxMember => applyRightsCommand(teamMailboxMember.username, mailboxACLUpdated.getMailboxPath))
           case _ => SMono.empty
