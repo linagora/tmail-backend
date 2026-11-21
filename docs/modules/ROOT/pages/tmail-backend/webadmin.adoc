@@ -188,7 +188,7 @@ Creates the `MyFolder` folder inside the `marketing@domain.tld` team mailbox.
 Return codes:
 
 - `204` the folder now exists (was already present or was created)
-- `400` invalid domain, team mailbox name or folder name (eg: empty hierarchy part, too long name)
+- `400` invalid domain, team mailbox name or folder name (eg: empty hierarchy part, too long name, name starting with the namespace prefix `#`)
 - `404` the domain was not found, the team mailbox cannot be found
 
 === Deleting a folder in a Team Mailbox
@@ -199,10 +199,12 @@ curl -XDELETE http://ip:port/domains/domain.tld/team-mailboxes/marketing/mailbox
 
 Deletes the `MyFolder` folder from the `marketing@domain.tld` team mailbox.
 
+The system folders provisioned with the team mailbox (`INBOX`, `Sent`, `Trash`, `Outbox`, `Drafts`, `Templates`) can not be deleted.
+
 Return codes:
 
 - `204` the folder no longer exists (was already absent or was deleted)
-- `400` invalid domain or team mailbox name
+- `400` invalid domain, team mailbox name or folder name, or the folder is a system folder of the team mailbox
 - `404` the domain was not found, the team mailbox cannot be found
 
 === Getting the message count of a Team Mailbox folder
