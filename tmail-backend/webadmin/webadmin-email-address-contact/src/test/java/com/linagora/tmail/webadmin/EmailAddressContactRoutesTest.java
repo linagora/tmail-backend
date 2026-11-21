@@ -25,10 +25,14 @@ import static net.javacrumbs.jsonunit.core.Option.IGNORING_ARRAY_ORDER;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.eclipse.jetty.http.HttpHeader.LOCATION;
 import static org.eclipse.jetty.http.HttpStatus.BAD_REQUEST_400;
+import static org.eclipse.jetty.http.HttpStatus.CONFLICT_409;
 import static org.eclipse.jetty.http.HttpStatus.CREATED_201;
 import static org.eclipse.jetty.http.HttpStatus.NOT_FOUND_404;
 import static org.eclipse.jetty.http.HttpStatus.NO_CONTENT_204;
 import static org.eclipse.jetty.http.HttpStatus.OK_200;
+import static org.hamcrest.Matchers.is;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
 
 import java.util.List;
@@ -54,6 +58,8 @@ import org.junit.jupiter.params.provider.MethodSource;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContact;
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngine;
+import com.linagora.tmail.team.TeamMailbox;
+import com.linagora.tmail.team.TeamMailboxRepository;
 
 import io.restassured.RestAssured;
 import reactor.core.publisher.Flux;
@@ -81,6 +87,7 @@ class EmailAddressContactRoutesTest {
 
     private WebAdminServer webAdminServer;
     private InMemoryEmailAddressContactSearchEngine emailAddressContactSearchEngine;
+    private TeamMailboxRepository teamMailboxRepository;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -91,7 +98,10 @@ class EmailAddressContactRoutesTest {
 
         emailAddressContactSearchEngine = new InMemoryEmailAddressContactSearchEngine();
 
-        EmailAddressContactRoutes routes = new EmailAddressContactRoutes(emailAddressContactSearchEngine, domainList, new JsonTransformer());
+        teamMailboxRepository = mock(TeamMailboxRepository.class);
+        doReturn(Mono.just(false)).when(teamMailboxRepository).exists(any());
+
+        EmailAddressContactRoutes routes = new EmailAddressContactRoutes(emailAddressContactSearchEngine, domainList, teamMailboxRepository, new JsonTransformer());
         webAdminServer = WebAdminUtils.createWebAdminServer(routes).start();
 
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
@@ -535,6 +545,25 @@ class EmailAddressContactRoutesTest {
                     .collectList()
                     .block())
                 .doesNotContain(contactFields);
+        }
+
+        @Test
+        void deleteContactShouldRefuseTheContactOfAnExistingTeamMailbox() throws Exception {
+            ContactFields contactFields = new ContactFields(new MailAddress("support@" + CONTACT_DOMAIN.asString()), "support", "");
+            Mono.from(emailAddressContactSearchEngine.index(CONTACT_DOMAIN, contactFields)).block();
+            doReturn(Mono.just(true)).when(teamMailboxRepository).exists(TeamMailbox.fromJava(CONTACT_DOMAIN, "support").get());
+
+            given()
+                .delete("/support")
+            .then()
+                .statusCode(CONFLICT_409)
+                .body("type", is("WrongState"));
+
+            assertThat(Flux.from(emailAddressContactSearchEngine.list(CONTACT_DOMAIN))
+                    .map(EmailAddressContact::fields)
+                    .collectList()
+                    .block())
+                .contains(contactFields);
         }
 
         @Test

@@ -38,6 +38,8 @@ import org.eclipse.jetty.http.HttpStatus;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.contact.ContactNotFoundException;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
+import com.linagora.tmail.team.TeamMailbox;
+import com.linagora.tmail.team.TeamMailboxRepository;
 import com.linagora.tmail.webadmin.model.ContactNameUpdateDTO;
 import com.linagora.tmail.webadmin.model.EmailAddressContactDTO;
 import com.linagora.tmail.webadmin.model.EmailAddressContactIdResponse;
@@ -45,6 +47,7 @@ import com.linagora.tmail.webadmin.model.EmailAddressContactResponse;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import scala.jdk.javaapi.OptionConverters;
 import spark.Request;
 import spark.Route;
 import spark.Service;
@@ -59,6 +62,7 @@ public class EmailAddressContactRoutes implements Routes {
 
     private final EmailAddressContactSearchEngine emailAddressContactSearchEngine;
     private final DomainList domainList;
+    private final TeamMailboxRepository teamMailboxRepository;
     private final JsonTransformer jsonTransformer;
 
     private final JsonExtractor<EmailAddressContactDTO> jsonExtractorContact;
@@ -66,9 +70,11 @@ public class EmailAddressContactRoutes implements Routes {
 
     @Inject
     public EmailAddressContactRoutes(EmailAddressContactSearchEngine emailAddressContactSearchEngine,
-                                     DomainList domainList, JsonTransformer jsonTransformer) {
+                                     DomainList domainList, TeamMailboxRepository teamMailboxRepository,
+                                     JsonTransformer jsonTransformer) {
         this.emailAddressContactSearchEngine = emailAddressContactSearchEngine;
         this.domainList = domainList;
+        this.teamMailboxRepository = teamMailboxRepository;
         this.jsonTransformer = jsonTransformer;
         this.jsonExtractorContact = new JsonExtractor<>(EmailAddressContactDTO.class);
         this.jsonExtractorName = new JsonExtractor<>(ContactNameUpdateDTO.class);
@@ -184,6 +190,7 @@ public class EmailAddressContactRoutes implements Routes {
 
             try {
                 MailAddress mailAddress = MailAddress.of(extractAddressLocalPart(request), domain);
+                assertNotATeamMailboxContact(mailAddress);
 
                 return Mono.from(emailAddressContactSearchEngine.delete(domain, mailAddress))
                     .then(Mono.just(Responses.returnNoContent(response)))
@@ -192,6 +199,20 @@ public class EmailAddressContactRoutes implements Routes {
                 return throwAddressException();
             }
         });
+    }
+
+    // The contact of a team mailbox is provisioned and removed with the team mailbox itself
+    private void assertNotATeamMailboxContact(MailAddress mailAddress) {
+        boolean isTeamMailbox = OptionConverters.toJava(TeamMailbox.asTeamMailbox(mailAddress))
+            .map(teamMailbox -> Mono.from(teamMailboxRepository.exists(teamMailbox)).map(Boolean.TRUE::equals).block())
+            .orElse(false);
+        if (isTeamMailbox) {
+            throw ErrorResponder.builder()
+                .statusCode(HttpStatus.CONFLICT_409)
+                .type(ErrorResponder.ErrorType.WRONG_STATE)
+                .message(mailAddress.asString() + " is the contact of an existing team mailbox and can not be deleted")
+                .haltError();
+        }
     }
 
     public Route updateContact() {
