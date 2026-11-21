@@ -140,6 +140,7 @@ import com.google.inject.name.Names;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.DatabaseCombinedUserRequireModule;
 import com.linagora.tmail.ExtensionModuleProvider;
+import com.linagora.tmail.LocalPartValidationModule;
 import com.linagora.tmail.NoopGuiceLoader;
 import com.linagora.tmail.OpenPaasContactsConsumerModule;
 import com.linagora.tmail.OpenPaasModule;
@@ -420,6 +421,7 @@ public class PostgresTmailServer {
             PLUGINS))
         .with(WebAdminServerModule.defaultPasswordGenerationModule(false),
             new TeamMailboxModule(),
+            new LocalPartValidationModule(),
             new TMailMailboxSortOrderProviderModule(),
             new PostgresRateLimitingModule(),
             new PostgresUserQuotaReporterModule(),

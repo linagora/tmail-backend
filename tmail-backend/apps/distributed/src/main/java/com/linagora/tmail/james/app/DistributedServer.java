@@ -152,6 +152,7 @@ import com.google.inject.name.Names;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.DatabaseCombinedUserRequireModule;
 import com.linagora.tmail.ExtensionModuleProvider;
+import com.linagora.tmail.LocalPartValidationModule;
 import com.linagora.tmail.NoopGuiceLoader;
 import com.linagora.tmail.OpenPaasContactsConsumerModule;
 import com.linagora.tmail.OpenPaasModule;
@@ -424,6 +425,7 @@ public class DistributedServer {
             new ScheduledReconnectionHandler.Module(),
             new TasksHeathCheckModule(),
             new TeamMailboxModule(),
+            new LocalPartValidationModule(),
             new TMailMailboxSortOrderProviderModule(),
             new TMailIMAPModule(),
             new TMailSMTPModule(),

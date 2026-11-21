@@ -74,6 +74,7 @@ import com.google.inject.Singleton;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.AmqpUri;
 import com.linagora.tmail.ExtensionModuleProvider;
+import com.linagora.tmail.LocalPartValidationModule;
 import com.linagora.tmail.NoopGuiceLoader;
 import com.linagora.tmail.OpenPaasContactsConsumerModule;
 import com.linagora.tmail.OpenPaasModule;
@@ -213,6 +214,7 @@ public class MemoryServer {
           new DKIMMailetModule())
         .with(WebAdminServerModule.defaultPasswordGenerationModule(false),
             new TeamMailboxModule(),
+            new LocalPartValidationModule(),
             new TMailScanningQuotaSearcherModule(),
             new MemoryRateLimiterModule(),
             new MemoryRateLimitingModule(),
