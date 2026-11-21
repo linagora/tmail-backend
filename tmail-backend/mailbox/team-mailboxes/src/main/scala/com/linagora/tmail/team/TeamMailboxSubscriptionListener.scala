@@ -25,8 +25,8 @@ import org.apache.james.events.EventListener.ReactiveGroupEventListener
 import org.apache.james.events.{Event, Group}
 import org.apache.james.mailbox.events.MailboxEvents.{MailboxACLUpdated, MailboxAdded}
 import org.apache.james.mailbox.exception.MailboxNotFoundException
-import org.apache.james.mailbox.model.MailboxACL.NameType
-import org.apache.james.mailbox.model.MailboxPath
+import org.apache.james.mailbox.model.MailboxACL.{EntryKey, NameType, Rfc4314Rights, Right}
+import org.apache.james.mailbox.model.{MailboxACL, MailboxPath}
 import org.apache.james.mailbox.{MailboxManager, SubscriptionManager}
 import org.reactivestreams.Publisher
 import org.slf4j.LoggerFactory
@@ -79,7 +79,9 @@ class TeamMailboxSubscriptionListener @Inject()(teamMailboxRepository: TeamMailb
                 case _: MailboxNotFoundException => SMono.empty
                 case e => SMono.error(e)
               }
-              .flatMapMany(acl => SFlux.fromIterable(acl.getEntries.entrySet().asScala))
+              .flatMapMany(acl => rootExtraSenderEntries(teamMailbox, event.getMailboxPath)
+                .flatMapMany(extraSenderEntries => SFlux.fromIterable(acl.getEntries.entrySet().asScala)
+                  .filter(e => !isInheritedExtraSenderEntry(extraSenderEntries, e.getKey, e.getValue))))
               .filter(e => !e.getKey.isNegative)
               .filter(e => NameType.user.equals(e.getKey.getNameType))
               .filter(e => !systemUsernames.contains(e.getKey.getName))
@@ -104,18 +106,63 @@ class TeamMailboxSubscriptionListener @Inject()(teamMailboxRepository: TeamMailb
           .collectSeq()
           .flatMapMany(memberSeq => {
             val memberUsernames = memberSeq.toSet
-            SFlux.fromIterable(event.getAclDiff.getNewACL.getEntries.entrySet().asScala)
+            val addedEntries = event.getAclDiff.getNewACL.getEntries.entrySet().asScala.toSeq
               .filter(e => !e.getKey.isNegative)
               .filter(e => NameType.user.equals(e.getKey.getNameType))
               .filter(e => !systemUsernames.contains(e.getKey.getName))
               .filter(e => !memberUsernames.contains(e.getKey.getName))
               .filter(e => !oldEntries.contains(e.getKey))
-              .map(e => Username.of(e.getKey.getName))
-              .flatMap(username => subscribeUser(username, event.getMailboxPath))
+              .map(e => e.getKey -> e.getValue)
+
+            stripInheritedExtraSenderEntries(teamMailbox, event, addedEntries)
+              .flatMapMany(stripped => SFlux.fromIterable(addedEntries)
+                .filter(entry => !stripped.contains(entry._1))
+                .map(entry => Username.of(entry._1.getName))
+                .flatMap(username => subscribeUser(username, event.getMailboxPath)))
           })
           .thenMany(SMono.empty)
       case None => SMono.empty
     }
+
+  // Extra senders are granted rights (Post) on the team mailbox root folder only. Upon creation, a folder inherits
+  // the ACL of its parent: such inherited extra sender entries are removed, as they would outlive the extra sender.
+  private def stripInheritedExtraSenderEntries(teamMailbox: TeamMailbox, event: MailboxACLUpdated,
+                                               addedEntries: Seq[(EntryKey, Rfc4314Rights)]): SMono[Set[EntryKey]] =
+    if (!event.getAclDiff.getOldACL.getEntries.isEmpty || addedEntries.isEmpty) {
+      SMono.just(Set.empty)
+    } else {
+      val ownerSession = mailboxManager.createSystemSession(teamMailbox.owner)
+      rootExtraSenderEntries(teamMailbox, event.getMailboxPath)
+        .map(extraSenderEntries => addedEntries.filter(entry => isInheritedExtraSenderEntry(extraSenderEntries, entry._1, entry._2)))
+        .flatMap(toStrip => {
+          val strippedKeys: Set[EntryKey] = toStrip.map(_._1).toSet
+          SFlux.fromIterable(toStrip)
+            .concatMap(entry => SMono(mailboxManager.applyRightsCommandReactive(event.getMailboxPath,
+              MailboxACL.command().key(entry._1).rights(entry._2).asRemoval(), ownerSession)))
+            .onErrorResume {
+              case _: MailboxNotFoundException => SFlux.empty
+              case e => SFlux.error(e)
+            }
+            .collectSeq()
+            .map(_ => strippedKeys)
+        })
+    }
+
+  private def rootExtraSenderEntries(teamMailbox: TeamMailbox, path: MailboxPath): SMono[Map[EntryKey, Rfc4314Rights]] =
+    if (path.equals(teamMailbox.mailboxPath)) {
+      SMono.just(Map.empty)
+    } else {
+      SMono(mailboxManager.listRightsReactive(teamMailbox.mailboxPath, mailboxManager.createSystemSession(teamMailbox.owner)))
+        .map(acl => acl.getEntries.asScala.toMap
+          .filter(entry => entry._2.contains(Right.Post)))
+        .onErrorResume {
+          case _: MailboxNotFoundException => SMono.just(Map.empty)
+          case e => SMono.error(e)
+        }
+    }
+
+  private def isInheritedExtraSenderEntry(extraSenderEntries: Map[EntryKey, Rfc4314Rights], key: EntryKey, rights: Rfc4314Rights): Boolean =
+    extraSenderEntries.get(key).contains(rights)
 
   // The team mailbox may have been deleted since the event was emitted (eg: events of its own deletion): nothing to do then
   private def membersOf(teamMailbox: TeamMailbox): SFlux[TeamMailboxMember] =

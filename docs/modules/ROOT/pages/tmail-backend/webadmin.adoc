@@ -573,6 +573,8 @@ curl -XPUT http://ip:port/domains/domain.tld/team-mailboxes/marketing/extraSende
 
 Grants the given non-member user the right to send emails as the team mailbox address. Idempotent.
 
+The right is granted on the root folder of the team mailbox only: folders created afterwards do not inherit it.
+
 Return codes:
 
 - `204` the extra sender has been added successfully
