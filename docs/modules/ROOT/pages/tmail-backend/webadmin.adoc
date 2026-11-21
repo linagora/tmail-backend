@@ -354,6 +354,9 @@ Enables or disables sub-addressing for the `INBOX` folder of the `marketing@doma
 - `enabled: false` removes the `Post` right from the `anyone` ACL entry, preventing sub-addressing delivery
   to that folder.
 
+The delivery into the folder is done by the `com.linagora.tmail.mailet.TMailSubAdressing` mailet, which must run
+in the `local-delivery` processor before `TmailLocalDelivery` (as in the default `mailetcontainer.xml`).
+
 Return codes:
 
 - `204` the sub-addressing status was updated successfully
