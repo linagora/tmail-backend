@@ -31,6 +31,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Named;
+import com.linagora.tmail.webadmin.data.TaskBelongsToDomainPredicate;
 import com.linagora.tmail.webadmin.vault.TeamMailboxDeletedMessagesVaultRoutes;
 import com.linagora.tmail.webadmin.vault.TeamMailboxRestoreService;
 import com.linagora.tmail.webadmin.vault.TeamMailboxVaultRestoreTaskAdditionalInformationDTO;
@@ -41,6 +42,9 @@ public class TeamMailboxVaultRoutesModule extends AbstractModule {
     protected void configure() {
         Multibinder<Routes> routesMultibinder = Multibinder.newSetBinder(binder(), Routes.class);
         routesMultibinder.addBinding().to(TeamMailboxDeletedMessagesVaultRoutes.class);
+
+        Multibinder.newSetBinder(binder(), TaskBelongsToDomainPredicate.class)
+            .addBinding().toInstance(TeamMailboxTasksBelongsToDomainPredicates.VAULT_RESTORE);
     }
 
     @ProvidesIntoSet

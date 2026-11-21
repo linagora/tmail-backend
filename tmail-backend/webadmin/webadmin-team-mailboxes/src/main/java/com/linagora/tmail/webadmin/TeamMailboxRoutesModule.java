@@ -31,6 +31,7 @@ import com.google.inject.AbstractModule;
 import com.google.inject.multibindings.Multibinder;
 import com.google.inject.multibindings.ProvidesIntoSet;
 import com.google.inject.name.Named;
+import com.linagora.tmail.webadmin.data.TaskBelongsToDomainPredicate;
 import com.linagora.tmail.webadmin.quota.recompute.RecomputeQuotaTeamMailboxesRoutes;
 import com.linagora.tmail.webadmin.quota.recompute.RecomputeQuotaTeamMailboxesService;
 import com.linagora.tmail.webadmin.quota.recompute.RecomputeQuotaTeamMailboxesTaskAdditionalInformationDTO;
@@ -44,6 +45,9 @@ public class TeamMailboxRoutesModule extends AbstractModule {
         routesMultibinder.addBinding().to(UserTeamMailboxRoutes.class);
         routesMultibinder.addBinding().to(TeamMailboxQuotaRoutes.class);
         routesMultibinder.addBinding().to(RecomputeQuotaTeamMailboxesRoutes.class);
+
+        Multibinder.newSetBinder(binder(), TaskBelongsToDomainPredicate.class)
+            .addBinding().toInstance(TeamMailboxTasksBelongsToDomainPredicates.RECOMPUTE_QUOTA);
     }
 
     @ProvidesIntoSet
