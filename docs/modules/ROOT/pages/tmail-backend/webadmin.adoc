@@ -843,6 +843,7 @@ curl -XPOST http://ip:port/users/user@domain.tld/labels \
 ....
 
 Creates a new label for the user. The `color`, `description`, and `keyword` fields are optional.
+`displayName` is limited to 255 characters and `description` to 4096 characters. These limits belong to the label model and apply to JMAP `Label/set` too.
 
 If `keyword` is omitted, a random value is generated. If provided, it must be both a valid JMAP keyword (RFC 8621) and a valid JMAP id (alphanumeric and hyphens only — no `$` prefix).
 
@@ -862,7 +863,7 @@ Returns the created label:
 Return codes:
 
 - `201` The label was successfully created
-- `400` `displayName` is missing, empty, or the `color` has an invalid format
+- `400` `displayName` is missing, empty or too long, `description` is too long, or the `color` has an invalid format
 - `404` The user does not exist
 
 === Update a label
@@ -878,7 +879,7 @@ Fully replaces `displayName`, `color`, and `description` on a label. `color` and
 Return codes:
 
 - `204` The label was successfully updated
-- `400` `displayName` is missing, null, or empty, or the `color` has an invalid format
+- `400` `displayName` is missing, null, empty or too long, `description` is too long, or the `color` has an invalid format
 - `404` The user or the label does not exist
 
 === Delete a label
@@ -896,7 +897,7 @@ Return codes:
 
 == JMAP Settings
 
-JMAP settings are user-level key/value preferences stored server-side and accessible via the JMAP protocol. Each key must be non-empty, at most 255 characters, and composed only of alphanumeric characters plus `.`, `-`, `_`, and `#`. Values are plain strings.
+JMAP settings are user-level key/value preferences stored server-side and accessible via the JMAP protocol. Each key must be non-empty, at most 255 characters, and composed only of alphanumeric characters plus `.`, `-`, `_`, and `#`. Values are plain strings (not `null`) of at most 16384 characters. A user has at most 1000 settings. These limits belong to the settings model and apply to JMAP `Settings/set` too.
 
 === Get JMAP settings of a user
 
@@ -934,7 +935,7 @@ Fully replaces the user's settings with the provided map. Omitted keys are remov
 Return codes:
 
 - `204` The settings were successfully stored
-- `400` One or more keys are invalid (too long, empty, or contain disallowed characters)
+- `400` One or more keys are invalid (too long, empty, or contain disallowed characters), a value is `null` or too long, or there are more than 1000 settings
 - `404` The user does not exist
 
 == Rate limiting

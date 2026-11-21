@@ -31,6 +31,7 @@ import com.linagora.tmail.james.jmap.model.Color;
 import com.linagora.tmail.james.jmap.model.DisplayName;
 import com.linagora.tmail.james.jmap.model.Label;
 import com.linagora.tmail.james.jmap.model.LabelCreationRequest;
+import com.linagora.tmail.james.jmap.model.LabelDescription;
 import com.linagora.tmail.james.jmap.model.LabelId;
 
 import scala.Option;
@@ -51,15 +52,34 @@ public record CreateLabelRequest(String displayName, String color, Optional<Bool
         this.readOnly = readOnly;
     }
 
-    private DisplayName validateDisplayName() {
-        if (displayName == null || displayName.isBlank()) {
-            throw ErrorResponder.builder()
-                .statusCode(HttpStatus.BAD_REQUEST_400)
-                .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
-                .message("'displayName' is required and must not be empty")
-                .haltError();
+    static DisplayName validateDisplayName(String displayName) {
+        scala.util.Either<IllegalArgumentException, DisplayName> result = DisplayName.validate(displayName);
+        if (result.isLeft()) {
+            throw invalidArgument(result.left().get().getMessage());
         }
-        return new DisplayName(displayName);
+        return result.toOption().get();
+    }
+
+    static Optional<String> validateDescription(Optional<String> description) {
+        description.ifPresent(value -> {
+            scala.util.Either<IllegalArgumentException, String> result = LabelDescription.validate(value);
+            if (result.isLeft()) {
+                throw invalidArgument(result.left().get().getMessage());
+            }
+        });
+        return description;
+    }
+
+    private static RuntimeException invalidArgument(String message) {
+        return ErrorResponder.builder()
+            .statusCode(HttpStatus.BAD_REQUEST_400)
+            .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+            .message(message)
+            .haltError();
+    }
+
+    private DisplayName validateDisplayName() {
+        return validateDisplayName(displayName);
     }
 
     private Option<Color> toScalaColor() {
@@ -78,7 +98,7 @@ public record CreateLabelRequest(String displayName, String color, Optional<Bool
     }
 
     private Option<String> toScalaDescription() {
-        return OptionConverters.toScala(description);
+        return OptionConverters.toScala(validateDescription(description));
     }
 
     public Optional<String> validatedKeyword() {

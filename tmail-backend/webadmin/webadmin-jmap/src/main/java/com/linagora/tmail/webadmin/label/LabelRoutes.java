@@ -127,6 +127,7 @@ public class LabelRoutes implements Routes {
         UpdateLabelRequest body = updateExtractor.parse(request.body());
         DisplayName displayName = body.validatedDisplayName();
         Optional<Color> validatedColor = body.validatedColor();
+        Optional<String> validatedDescription = body.validatedDescription();
 
         try {
             Mono.from(labelRepository.updateLabel(
@@ -134,7 +135,7 @@ public class LabelRoutes implements Routes {
                     OptionConverters.toScala(Optional.of(displayName)),
                     OptionConverters.toScala(validatedColor
                         .map(color -> new ColorUpdate(OptionConverters.toScala(Optional.of(color))))),
-                    OptionConverters.toScala(Optional.of(new DescriptionUpdate(OptionConverters.toScala(body.description()))))))
+                    OptionConverters.toScala(Optional.of(new DescriptionUpdate(OptionConverters.toScala(validatedDescription))))))
                 .block();
             body.readOnly().ifPresent(readOnly ->
                 Mono.from(labelRepository.setLabelReadOnly(username, labelId, readOnly))

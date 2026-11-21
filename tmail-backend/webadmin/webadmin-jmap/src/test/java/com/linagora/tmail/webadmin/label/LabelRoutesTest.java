@@ -55,6 +55,7 @@ import com.linagora.tmail.james.jmap.model.Color;
 import com.linagora.tmail.james.jmap.model.DisplayName;
 import com.linagora.tmail.james.jmap.model.Label;
 import com.linagora.tmail.james.jmap.model.LabelCreationRequest;
+import com.linagora.tmail.james.jmap.model.LabelDescription;
 
 import io.restassured.RestAssured;
 import reactor.core.publisher.Mono;
@@ -235,6 +236,30 @@ class LabelRoutesTest {
         }
 
         @Test
+        void createLabelReturns400WhenDisplayNameTooLong() {
+            given()
+                .contentType(JSON)
+                .body("{\"displayName\":\"" + "x".repeat(DisplayName.MAX_LENGTH() + 1) + "\"}")
+            .when()
+                .post(BOB_LABELS_PATH)
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .body("message", is("'displayName' must not be longer than 255 characters"));
+        }
+
+        @Test
+        void createLabelReturns400WhenDescriptionTooLong() {
+            given()
+                .contentType(JSON)
+                .body("{\"displayName\":\"Work\",\"description\":\"" + "x".repeat(LabelDescription.MAX_LENGTH() + 1) + "\"}")
+            .when()
+                .post(BOB_LABELS_PATH)
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .body("message", is("'description' must not be longer than 4096 characters"));
+        }
+
+        @Test
         void createLabelReturns400WhenColorInvalid() {
             given()
                 .contentType(JSON)
@@ -382,6 +407,22 @@ class LabelRoutesTest {
 
             assertThatJson(response).isArray().first()
                 .satisfies(node -> assertThatJson(node).node("color").isEqualTo("\"#abcdef\""));
+        }
+
+        @Test
+        void updateLabelReturns400WhenDescriptionTooLong() {
+            LabelCreationRequest req = new LabelCreationRequest(
+                new DisplayName("Work"), noColor(), noDescription(), false);
+            Label created = Mono.from(labelRepository.addLabel(BOB, req)).block();
+
+            given()
+                .contentType(JSON)
+                .body("{\"displayName\":\"Work\",\"description\":\"" + "x".repeat(LabelDescription.MAX_LENGTH() + 1) + "\"}")
+            .when()
+                .patch(BOB_LABELS_PATH + "/" + created.id().serialize())
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .body("message", is("'description' must not be longer than 4096 characters"));
         }
 
         @Test

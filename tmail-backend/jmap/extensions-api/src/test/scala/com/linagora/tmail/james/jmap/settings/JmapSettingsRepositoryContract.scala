@@ -231,6 +231,68 @@ trait JmapSettingsRepositoryContract {
       .containsExactly(entry("key1".asSettingKey, JmapSettingsValue("value1")))
   }
 
+  private def settingsOfSize(size: Int, prefix: String = "key"): Map[String, String] =
+    (1 to size).map(i => s"$prefix$i" -> "value").toMap
+
+  @Test
+  def resetShouldAcceptTheMaximumSettingsCount(): Unit = {
+    SMono(testee.reset(BOB, settingsOfSize(JmapSettings.MAX_SETTINGS_COUNT).asUpsertRequest)).block()
+
+    assertThat(SMono(testee.get(BOB)).block().settings.size).isEqualTo(JmapSettings.MAX_SETTINGS_COUNT)
+  }
+
+  @Test
+  def resetShouldRejectTooManySettingsAndStoreNothing(): Unit = {
+    val stateUpdate = SMono(testee.reset(BOB, SAMPLE_UPSERT_REQUEST)).block()
+
+    assertThatThrownBy(() => SMono(testee.reset(BOB, settingsOfSize(JmapSettings.MAX_SETTINGS_COUNT + 1).asUpsertRequest)).block())
+      .isInstanceOf(classOf[TooManySettingsException])
+
+    val jmapSettings = SMono(testee.get(BOB)).block()
+    assertThat(jmapSettings.settings.asJava)
+      .containsExactly(entry("key1".asSettingKey, JmapSettingsValue("value1")))
+    assertThat(jmapSettings.state).isEqualTo(stateUpdate.newState)
+  }
+
+  @Test
+  def updatePartialShouldRejectWhenTheResultingSettingsAreTooManyAndStoreNothing(): Unit = {
+    val stateUpdate = SMono(testee.reset(BOB, settingsOfSize(JmapSettings.MAX_SETTINGS_COUNT).asUpsertRequest)).block()
+
+    assertThatThrownBy(() => SMono(testee.updatePartial(BOB, JmapSettingsPatch(
+      JmapSettingsUpsertRequest(Map("other".asSettingKey -> JmapSettingsValue("value"))),
+      Seq()))).block())
+      .isInstanceOf(classOf[TooManySettingsException])
+
+    val jmapSettings = SMono(testee.get(BOB)).block()
+    assertThat(jmapSettings.settings.size).isEqualTo(JmapSettings.MAX_SETTINGS_COUNT)
+    assertThat(jmapSettings.settings.contains("other".asSettingKey)).isFalse
+    assertThat(jmapSettings.state).isEqualTo(stateUpdate.newState)
+  }
+
+  @Test
+  def updatePartialShouldRejectTooManySettingsWhenNoPreviousSettings(): Unit = {
+    assertThatThrownBy(() => SMono(testee.updatePartial(BOB, JmapSettingsPatch(
+      settingsOfSize(JmapSettings.MAX_SETTINGS_COUNT + 1).asUpsertRequest,
+      Seq()))).block())
+      .isInstanceOf(classOf[TooManySettingsException])
+
+    assertThat(SMono(testee.get(BOB)).block()).isNull()
+  }
+
+  @Test
+  def updatePartialShouldAcceptUpdatesKeepingTheMaximumSettingsCount(): Unit = {
+    SMono(testee.reset(BOB, settingsOfSize(JmapSettings.MAX_SETTINGS_COUNT).asUpsertRequest)).block()
+
+    SMono(testee.updatePartial(BOB, JmapSettingsPatch(
+      JmapSettingsUpsertRequest(Map("key1".asSettingKey -> JmapSettingsValue("updated"), "other".asSettingKey -> JmapSettingsValue("value"))),
+      Seq("key2".asSettingKey)))).block()
+
+    val settings = SMono(testee.get(BOB)).block().settings
+    assertThat(settings.size).isEqualTo(JmapSettings.MAX_SETTINGS_COUNT)
+    assertThat(settings.get("key1".asSettingKey).map(_.value).orNull).isEqualTo("updated")
+    assertThat(settings.contains("other".asSettingKey)).isTrue
+  }
+
   @Test
   def deleteShouldRemoveUserSettings(): Unit = {
     SMono(testee.reset(BOB, Map(("key1", "value1"), ("key2", "value2")).asUpsertRequest)).block()

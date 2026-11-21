@@ -85,7 +85,9 @@ case class SettingsSetUpdateRequest(json: JsObject) {
         settingsKey => settingsKey)
     value match {
       case JsNull => JmapSettingsPatch.toRemove(jmapSettingsKey)
-      case jsString: JsString => JmapSettingsPatch.toUpsert(jmapSettingsKey, JmapSettingsValue(jsString.value))
+      case jsString: JsString => JmapSettingsValue.validate(jsString.value)
+        .fold(e => throw SettingsSetParseException(s"$key is not a valid partial update request: ${e.getMessage}"),
+          settingsValue => JmapSettingsPatch.toUpsert(jmapSettingsKey, settingsValue))
       case _ => throw SettingsSetParseException(s"$key is not a valid partial update request")
     }
   }
