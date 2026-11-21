@@ -36,6 +36,7 @@ import static org.eclipse.jetty.http.HttpStatus.BAD_REQUEST_400;
 import static org.eclipse.jetty.http.HttpStatus.NOT_FOUND_404;
 import static org.eclipse.jetty.http.HttpStatus.NO_CONTENT_204;
 import static org.eclipse.jetty.http.HttpStatus.OK_200;
+import static org.hamcrest.Matchers.is;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -200,6 +201,26 @@ public class RateLimitsUserRoutesTest {
                 .containsEntry("statusCode", BAD_REQUEST_400)
                 .containsEntry("type", "InvalidArgument")
                 .containsEntry("message", "Error while deserializing applyRateLimitsToUser request");
+        }
+
+        @Test
+        void deserializingErrorShouldNotExposeJavaClassNames() {
+            given()
+                .body("{\"badPayload\": \"bad\"}")
+                .put(String.format(PUT_RATE_LIMITS_TO_USER_PATH, BOB.asString()))
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .body("details", is("Unknown field 'badPayload'"));
+        }
+
+        @Test
+        void invalidLimitErrorShouldNameTheField() {
+            given()
+                .body("{\"mailsSentPerMinute\": -5}")
+                .put(String.format(PUT_RATE_LIMITS_TO_USER_PATH, BOB.asString()))
+            .then()
+                .statusCode(BAD_REQUEST_400)
+                .body("details", is("mailsSentPerMinute must be -1 (unlimited) or a positive or zero integer"));
         }
 
         @Test

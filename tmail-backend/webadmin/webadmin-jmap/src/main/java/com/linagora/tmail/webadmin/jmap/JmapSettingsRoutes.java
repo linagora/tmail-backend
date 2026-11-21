@@ -129,24 +129,24 @@ public class JmapSettingsRoutes implements Routes {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private JmapSettingsUpsertRequest toUpsertRequest(Map<String, String> settings) {
-        try {
-            scala.collection.immutable.Map scalaMap = scala.collection.immutable.Map$.MODULE$.empty();
-            for (Map.Entry<String, String> entry : settings.entrySet()) {
-                if (entry.getValue() == null) {
-                    throw badRequest(String.format("The value of setting '%s' must be a string, not null", entry.getKey()));
-                }
-                scalaMap = (scala.collection.immutable.Map) scalaMap.updated(
-                    JmapSettingsKey.liftOrThrow(entry.getKey()),
-                    toSettingsValue(entry.getKey(), entry.getValue()));
+        scala.collection.immutable.Map scalaMap = scala.collection.immutable.Map$.MODULE$.empty();
+        for (Map.Entry<String, String> entry : settings.entrySet()) {
+            if (entry.getValue() == null) {
+                throw badRequest(String.format("The value of setting '%s' must be a string, not null", entry.getKey()));
             }
-            return new JmapSettingsUpsertRequest(scalaMap);
-        } catch (IllegalArgumentException e) {
-            throw ErrorResponder.builder()
-                .statusCode(HttpStatus.BAD_REQUEST_400)
-                .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
-                .message(e.getMessage())
-                .haltError();
+            scalaMap = (scala.collection.immutable.Map) scalaMap.updated(
+                toSettingsKey(entry.getKey()),
+                toSettingsValue(entry.getKey(), entry.getValue()));
         }
+        return new JmapSettingsUpsertRequest(scalaMap);
+    }
+
+    private static JmapSettingsKey toSettingsKey(String key) {
+        scala.util.Either<IllegalArgumentException, JmapSettingsKey> result = JmapSettingsKey.validate(key);
+        if (result.isLeft()) {
+            throw badRequest(String.format("Invalid setting key '%s': it must be non-empty, at most 255 characters long and only contain [a-zA-Z0-9._#-]", key));
+        }
+        return result.toOption().get();
     }
 
     private static JmapSettingsValue toSettingsValue(String key, String value) {
