@@ -10,15 +10,109 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 #### Added
 
 - JAMES-4235 Lucene as a search implementation for the Postgres app (the distributed apps refuse it), the default of the Postgres single node sample. The index is stored under `var/store/lucene`, or in the folder set by the `james.lucene.index.folder` JVM property.
+- [ENHANCEMENT] IMAP `LIST` accepts several mailbox patterns (RFC 5258), `APPEND` and `REPLACE` accept the `UTF8` message data of RFC 6855 (Thunderbird with `UTF8=ACCEPT`), and `CONDSTORE` is advertised and enabled by default (it can still be listed in the disabled capabilities).
+
+#### Changes
+
+- [ENHANCEMENT] SMTP `AUTH`: `auth.requireSSL` now defaults to `true`, as for IMAP and POP3, so `PLAIN` and `LOGIN` are no longer accepted nor announced over a clear-text connection when it is unset, and `XOAUTH2` and `OAUTHBEARER` follow the same default. `AUTH` is refused (`538 5.7.11`) on connections where it is not announced; the sample submission ports (465, 587) now announce it to every client. Replies carry enhanced status codes. See the release instructions.
+- [ENHANCEMENT] SMTP, POP3 and ManageSieve close the connection after 3 authentication failures, as IMAP does.
+- [ENHANCEMENT] POP3 `UIDL` unique-ids include the mailbox `UIDVALIDITY`, so they are no longer reused once the INBOX is recreated: clients leaving mail on the server may download their messages once more.
+- [ENHANCEMENT] Sieve `vacation` only replies to messages whose headers name the user (`To`, `Cc`, `Bcc`, `Resent-*`, `:addresses` and the user's aliases) and sets the `From` header of the reply.
+- [ENHANCEMENT] Local delivery: when a Sieve `fileinto` targets a folder that can never be created, the mail is delivered to the INBOX instead of failing the delivery.
+- [ENHANCEMENT] IMAP: `PERMANENTFLAGS` lists only the flags the session may change, `BADCHARSET` lists each charset once by its canonical name, `SEARCH RETURN (SAVE)` alone returns no result, `MOVE` is refused in a mailbox selected read-only and sends `COPYUID` in an untagged `OK` before the `EXPUNGE` responses, and `HIGHESTMODSEQ` is never `0`.
+- [ENHANCEMENT] Mailbox names containing control characters are refused.
 
 #### Fixes
 
 - [FIX] JAMES-4240 Per-recipient headers are kept when recipients are rewritten.
 - [FIX] JMAP `Email/set` validates the fine-grained rights needed to update flags more strictly.
+- [FIX] JAMES-4236 JMAP `Mailbox/set` resolves creation references of updates and destroys with the creations of the same call and of earlier calls of the request, keeps per-item `invalidArguments` for unresolved ones, and creation references are only resolved where a method expects ids (a `createdIds` mapping no longer rewrites free text such as an email subject).
+- [FIX] JMAP `/downloadAll` and `/download` cacheable responses carry `Vary: Authorization`.
+- [FIX] STARTTLS: a refused `STARTTLS` no longer closes the connection on the next command (SMTP, POP3, ManageSieve, IMAP).
+- [FIX] ManageSieve follows RFC 5804: `PUTSCRIPT` and `CHECKSCRIPT` literals are read by octet count, `NO` texts are quoted on a single line, `LOGOUT` is terminated by a CRLF, invalid escapes in quoted strings are rejected.
+- [FIX] Sieve scripts: a refused `SETACTIVE` and a `PUTSCRIPT` over the active script keep it active.
+- [FIX] SMTP: a refused second `MAIL` no longer discards the open transaction, unknown, duplicated or invalid `MAIL` parameters are rejected, an unsupported `RCPT` parameter answers `555 5.5.4`, duplicated recipients are merged instead of sending the mail to the error processor, the `HELO`/`EHLO` greeting no longer ends with a stray `)`.
+- [FIX] `MailAddress` accepts the RFC 821 source route (`<@example.com:alice@domain>`) and ignores it.
+- [FIX] POP3 `CAPA` no longer advertises `STLS` once TLS is active.
+- [FIX] `AttachmentFileNameIs` and `PartHasContentType` match case-insensitively and walk `multipart/alternative`.
+- [FIX] IMAP: pipelined commands no longer overtake queued ones; a literal of a rejected command is no longer executed as commands; every synchronizing literal of a command gets its continuation request; an unterminated quoted string is `BAD`; the `BYE` of the third failed authentication is sent before closing.
+- [FIX] IMAP: `CLOSE` on a mailbox the user may not expunge answers `OK`, a refused `DELETE` of the selected mailbox keeps it selected, a client cancelling `AUTHENTICATE` is answered `BAD`, `MODIFIED` carries no number, `GETQUOTA` and `SETQUOTA` accept a quoted quota root.
+- [FIX] IMAP: `FETCH` rejects zero part numbers and empty header lists, `BODY[]` without the `s` right leaves `\Seen` unset instead of failing, `BODY[HEADER.FIELDS]` and `ENVELOPE` support raw UTF-8 headers and no longer keep the RFC 5322 quoting of display names.
+- [FIX] IMAP: `ID` fields without value, impossible `APPEND` date-times, flags that are not atoms, and an empty `STATUS` item list answer `BAD`.
+- [FIX] IMAP: `LIST` and `LSUB` match `INBOX` case-insensitively and qualify another user with the session domain; a name whose first level is `INBOX` in another case is a child of INBOX; `RENAME` refuses a mailbox into its own sub-tree (INBOX excepted); `GETMETADATA` takes its options before the mailbox.
+- [FIX] IMAP: `DELETE`, `GETMETADATA`, `SETMETADATA`, `COPY` and `MOVE` no longer reveal mailboxes the user has no `Lookup` right on; refusal texts of `GETACL`, `LISTRIGHTS` and `SETQUOTA` name the mailbox properly.
+- [FIX] IMAP selection: `QRESYNC` `SELECT` reports the flag changes since the known mod-sequence, `UIDNEXT` is above every announced UID, `RECENT` no longer exceeds `EXISTS` after an expunge, `COPYUID` lists the UIDs actually copied, and a selection stops tracking a mailbox once the user loses its `Read` right.
+- [FIX] Cassandra: the first UIDs allocated by `COPY` and `MOVE` in a new mailbox start at 1.
+- [FIX] OpenSearch: an IMAP `TEXT` search also matches the headers, or at least the addresses, subject and `Message-ID` when `opensearch.indexHeaders=false`.
 
 #### Security
 
 - [FIX] Mailbox rename: a caller who does not own a mailbox can no longer move it out of its owner's namespace (the `x` right allows renaming and deleting, not taking ownership). JMAP `Mailbox/set` refuses to move another user's shared mailbox under the caller's mailbox.
+- [FIX] Mailet errors: the stack trace is no longer copied into the error message of the mail, hence no longer disclosed to senders in bounces.
+- [FIX] ManageSieve responses no longer echo client input as quoted strings or literals.
+
+#### Upgrades
+
+- [UPGRADE] Postgres JDBC 42.7.14 (CVE-2026-54291), Pulsar client 4.0.14 with OpenTelemetry 1.68.0 (CVE-2026-118259, CVE-2026-45292), snappy 0.5 (CVE-2024-36124); the Spring JPA wiring uses commons-dbcp2.
+- [UPGRADE] OpenSearch client: opensearch-java 3.11.0 with Apache HttpClient 5. The connection pool defaults (10 per route, 30 in total) are kept when `opensearch.max.connections*` are not set.
+
+### TMail
+
+#### Added
+
+- AI: `list_mailboxes` tool for `GET`/`POST /ai/v1/tools`, listing the user's mailboxes sorted by name with their id, name, JMAP role and email counts, so an assistant can find the mailbox ids that `list_emails` and `search_emails` take. It only reads, so it needs no confirmation.
+- ISSUE-3047 `opensearch.mailbox.index.codec` (default `best_compression`) sets the codec of the mailbox index, whose stored fields hold the full text of every mail. It only applies to indices created afterwards.
+
+#### Changes
+
+- `RestrictiveCalDavCollect` with `alignmentMode` `none` or `sameDomain` only forwards a calendar `REQUEST` or `CANCEL`: esn-sabre 2.5.0.3 refuses it unless its `ORGANIZER` is its sender, and refuses an organizer takeover that the sender only claims.
+- [ENHANCEMENT] SMTP `AUTH`: TMail follows the James default, `auth.requireSSL` is `true` when unset, for `PLAIN`, `LOGIN`, `XOAUTH2` and `OAUTHBEARER`. Clients authenticating in clear text need `auth.requireSSL=false` or STARTTLS. See the release instructions.
+
+#### Fixes
+
+- [FIX] Team mailboxes: a custom folder can no longer be moved into a member's personal folders, which made that member its owner and let them revoke the other members.
+- [FIX] ISSUE-3018 Postgres app: Lucene search is refused at startup when a `rabbitmq.properties` is present (RabbitMQ or Redis event bus). The Lucene index is local to each node, so it is restricted to single-node deployments using the in-memory event bus. See the RabbitMQ configuration documentation.
+- [FIX] Calendar: an event held only by a subscribed calendar the user does not attend (such as the copy a colleague received from Webex) no longer makes accepting fail with "The attendee is not found in the event"; the event is imported.
+- ISSUE-3033 Without `twp.rabbitmq.management.uri`, the TWP dead letter health checks use the host of `twp.rabbitmq.uri` (user information dropped) instead of calling TMail's RabbitMQ management API with the TWP credentials.
+
+#### Security
+
+- ISSUE-2940 Calendar `REPLY` mails: the organizer and attendee names, summary and location of the invitation are HTML-escaped in `text/html` template parts, so an external organizer can no longer inject markup.
+- [FIX] `Email/send` and the calendar event reply send run the configured `send.validate.rcpt` and `send.extra.validations` before sending, as `EmailSubmission/set` does, including the pending domain sending block of SaaS. `Email/send` reports the rejection in `notCreated`.
+
+## [1.0.23.1] - 2026-11-18
+
+### James
+
+#### Added
+
+- JAMES-4235 Lucene as a search implementation for the Postgres app (the distributed apps refuse it), the default of the Postgres single node sample. The index is stored under `var/store/lucene`, or in the folder set by the `james.lucene.index.folder` JVM property.
+
+#### Fixes
+
+- [FIX] JAMES-4240 Per-recipient headers are kept when recipients are rewritten.
+- [FIX] JMAP `Email/set` validates the fine-grained rights needed to update flags more strictly.
+- [FIX] Recipient rewrite table: configuring it no longer discards the entity validator, so WebAdmin answers `409` instead of `204` for an alias or a group whose source is an existing user, which silently diverted that user's mail. Setting such an alias up is now refused.
+- [FIX] JMAP `Email/set` refuses an update leaving an email in no mailbox (`invalidProperties` on `mailboxIds`, RFC 8621): it used to destroy the message. Use destroy to delete an email.
+- [FIX] JMAP `Email/set` keyword updates no longer erase IMAP flags that are not keywords (`a+b`, `Foo.Bar`) nor copy `\Deleted` and `\Recent` to the other mailboxes of the message. Removing a keyword from four or more messages also removes its user-flag spelling (`$SEEN` for `$seen`), and a range move to the current mailbox leaves the messages untouched.
+- [FIX] JMAP `EmailSubmission/set` answers `invalidArguments` naming the address and the header for an unparsable address header, instead of `serverFail`.
+- [FIX] JMAP: attachment names no longer keep the U+061C bidi control, and `header:*:asDate` of an unparsable date with oversized numbers yields `null` instead of failing the whole `Email/get`.
+- [FIX] WebAdmin Sieve: a `PUT` script without body answers `400`. Sieve quota files are replaced atomically, so concurrent readers no longer see an empty quota.
+- [FIX] POP3 `TOP`: a header line starting with a bare CR is no longer taken for the blank line ending the headers.
+- [FIX] Search: the base subject no longer requires nor consumes a stray closing bracket (`[PATCH]] Re: fix`), and a `Date` header holding a line break no longer fails the indexing of a message nor the `SENTDATE` sort.
+- [FIX] MDN: extension fields with an empty value survive a format and parse round trip.
+- [FIX] `AddFooter` writes the multiparts holding the footer with a fresh boundary, so that a part is no longer cut in two.
+
+#### Security
+
+- [FIX] Mailbox rename: a caller who does not own a mailbox can no longer move it out of its owner's namespace (the `x` right allows renaming and deleting, not taking ownership). JMAP `Mailbox/set` refuses to move another user's shared mailbox under the caller's mailbox.
+- [FIX] Mailbox rights: updating or deleting annotations requires the `w` right, and moving messages requires the `t` right on the source mailbox (IMAP `MOVE`, JMAP range move).
+- [FIX] JMAP email changes are only propagated to the sharees having the read right, and the `Email/query` view requires it too: lookup-only sharees no longer learn message ids and activity.
+- [FIX] JMAP `Email/set` create rejects (`invalidArguments`) addresses holding control characters, `header:` names that are not RFC 5322 field names, header values and message id or URL headers whose line breaks are not folds: they could inject header fields or end the header block early.
+- [FIX] Sender header checks (`SenderHeaderVerificationHook`, `SenderHeaderEmailSubmissionSetValidation`) reject a header block holding a bare CR, looked for before the `Sender` field is read.
+- [FIX] ManageSieve script names resolving to `.quota` or `.active` once normalised are rejected: a user could overwrite or delete their own quota file and active marker.
+- [FIX] IMAP: the tail of a line rejected for its length is discarded whatever the segmentation, instead of being decoded as commands.
+- [FIX] Linear time on crafted input: `OnlyText`, `UnwrapText` and the `Date` header comment stripping of the search indexing.
 
 ### TMail
 
@@ -29,11 +123,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 #### Changes
 
 - `RestrictiveCalDavCollect` with `alignmentMode` `none` or `sameDomain` only forwards a calendar `REQUEST` or `CANCEL`: esn-sabre 2.5.0.3 refuses it unless its `ORGANIZER` is its sender, and refuses an organizer takeover that the sender only claims.
+- [ENHANCEMENT] #3017 The shipped IMAP configurations set `literalSizeLimit` to 20M, announced through `APPENDLIMIT` (RFC 7889): bigger literals are refused before the continuation request instead of being accepted up to 2 GB.
 
 #### Fixes
 
 - [FIX] Team mailboxes: a custom folder can no longer be moved into a member's personal folders, which made that member its owner and let them revoke the other members.
 - [FIX] ISSUE-3018 Postgres app: Lucene search is refused at startup when a `rabbitmq.properties` is present (RabbitMQ or Redis event bus). The Lucene index is local to each node, so it is restricted to single-node deployments using the in-memory event bus. See the RabbitMQ configuration documentation.
+- [FIX] #2948 IMAP: only names whose first segment is `#TeamMailbox` are mapped into the team namespace; `#TeamMailboxes` or `#TeamMailboxX.sales` are no longer resolved as team mailboxes.
+- [FIX] ISSUE-3019 Twake Space: the dead letter queue health check calls the management API of the `rabbitmq.uri` server and its vhost, and no longer sends its credentials to the one of `rabbitmq.properties`. `rabbitmq.management.uri` is added to `space.properties`; without it, the management URI of `rabbitmq.properties` is used on the host of `rabbitmq.uri`, without its user information.
+- [FIX] ISSUE-2759 WebAdmin `PUT .../extraAcl/{user}` answers `400` instead of `500` for a user outside the team mailbox domain (#2952).
 
 #### Security
 
