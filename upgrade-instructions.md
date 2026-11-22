@@ -162,6 +162,219 @@ Before enabling the new SaaS consumer or Calendar provisioning, configure **both
 JMAP returns `forbiddenToSend`; SMTP rejects with `550 5.7.1`. Unauthenticated incoming
 SMTP delivery is unaffected. Repository failures do not permit sending.
 
+### OpenSearch mailbox index codec
+
+Concerned products: Distributed TMail, Postgres TMail, with OpenSearch indexing
+
+The new property `opensearch.mailbox.index.codec` in `opensearch.properties` sets the codec used to compress the stored fields of the mailbox index (`mailbox_v1`, which keeps the full text of every mail in `_source`). It defaults to `best_compression`, where Lucene's default was LZ4.
+
+The codec is part of the index settings, so it applies to a mailbox index when it is created. I did not find a commit that changes the settings of an existing index. Reindex to get the new codec on an existing deployment.
+
+To keep the former behaviour, set the codec explicitly:
+
+```properties
+opensearch.mailbox.index.codec=default
+```
+
+To use `zstd`, as the QA environment does, your OpenSearch version must support that codec. Check this before setting it.
+
+### TWP RabbitMQ management URI default
+
+Concerned products: deployments using the TWP RabbitMQ consumers with `twp.rabbitmq.uri`, without `twp.rabbitmq.management.uri`
+
+When `twp.rabbitmq.management.uri` is not set, it now defaults to the common RabbitMQ management URI moved to the host of `twp.rabbitmq.uri`, with the user information dropped. Previously the TWP dead-letter health checks called TMail's own RabbitMQ management API with the `twp.rabbitmq.uri` credentials.
+
+If the TWP RabbitMQ uses a different management port or scheme than the common one, or its management API is not reachable at the default location, set it explicitly:
+
+```properties
+twp.rabbitmq.management.uri=http://twp-rabbitmq:15672
+```
+
+The same default applies to Twake Space, which reuses it.
+
+## 1.0.23.1
+
+Note: this section is in progress. It will be updated during all the development process until the release.
+
+### SMTP authentication requires TLS by default
+
+Concerned products: SMTP servers whose `smtpserver.xml` entries do not set `auth.requireSSL`
+
+Twake Mail now follows the James default: `auth.requireSSL` defaults to `true` for SMTP, as it already did for IMAP
+and POP3. Unless a server entry sets it, authentication is no longer announced on clear-text connections, and the
+`PLAIN`, `LOGIN`, `XOAUTH2` and `OAUTHBEARER` mechanisms are refused with
+`538 5.7.11 Encryption required for requested authentication mechanism` until `STARTTLS` succeeded. Implicit TLS
+entries (`socketTLS="true"`, typically port 465) are not impacted.
+
+Previously, Twake Mail kept accepting these mechanisms over clear text, exposing the password (or the OIDC access
+token) of the users to network observers.
+
+Deployments that intentionally allow clear-text SMTP authentication must add the following to each concerned
+`smtpserver.xml` entry:
+
+```xml
+<auth>
+    <requireSSL>false</requireSSL>
+</auth>
+```
+
+The same applies to the SMTP submission listeners of the migration proxy: `submission.auth.requireSSL` now defaults to
+`true`, so `submissionproxy.xml` listeners need `startTLS="true"` or `socketTLS="true"` for clients to authenticate.
+Deployments that intentionally allow clear-text authentication on the migration proxy must set
+`submission.auth.requireSSL=false` in `migrationproxy.properties`.
+
+### SMTP authentication is only accepted when announced
+
+Concerned products: SMTP servers with `smtpserver.xml` entries on which clients authenticate while authentication is
+not announced to them:
+
+- `auth.announce` set to `forUnauthorizedAddresses`, or, when `auth.announce` is absent, `authRequired` set to `true`,
+  with `authorizedAddresses` listing networks your clients authenticate from (the former sample configuration used
+  `127.0.0.0/8` on the submission ports)
+- `auth.announce` set to `never`, or, when `auth.announce` is absent, `authRequired` absent or set to `false`
+
+Twake Mail now refuses `AUTH` on connections it was not announced to: `502 5.5.1 Authentication not available` (or
+`538 5.7.11` before `STARTTLS` when `auth.requireSSL` is set). Clients that authenticated without the announcement before
+the upgrade are now refused.
+
+The sample configurations were updated, but this does not change already deployed configurations. On each concerned
+`smtpserver.xml` entry, announce authentication to every client. When the entry sets `auth.announce`, which takes
+precedence over `authRequired`:
+
+```xml
+<auth>
+    <announce>always</announce>
+</auth>
+```
+
+Otherwise:
+
+```xml
+<authRequired>announce</authRequired>
+```
+
+Relaying rules are unchanged.
+
+### Team mailbox events move to space.properties
+
+`com.linagora.tmail.team.events.TeamMailboxEventsListener` is now part of the Twake Space extension. Remove it from
+`listeners.xml` (the class no longer exists, and TMail fails to start while it is declared), and configure it in
+`space.properties` instead:
+
+```properties
+enabled=true
+# was amqpUri
+rabbitmq.uri=amqp://user:password@rabbitmq:5672/vhost
+teamMailboxEvents.enabled=true
+# were exchange, receivedRoutingKey and sentRoutingKey
+teamMailboxEvents.exchange=tmail
+teamMailboxEvents.receivedRoutingKey=team-mailbox.message.received
+teamMailboxEvents.sentRoutingKey=team-mailbox.message.sent
+```
+
+`enabled=true` also starts the space events consumer (queue `tmail-space`) and the activity publication: see
+`docs/modules/ROOT/pages/tmail-backend/configure/twake-space.adoc`.
+
+### Migrating from the Twake Mail side service
+
+The Twake Space extension replaces `twake-mail-side-service`. The team mailboxes the side service created carry no
+space annotations, so the extension does not know them: bind each one to its space, from the side service's database,
+before the next event of its space comes. Otherwise the space gets a second team mailbox, at a `-2` address.
+
+1. Stop the side service.
+2. Deploy TMail with `enabled=true` in `space.properties`, and the side service's `TEAM_MAILBOX_PREFIX` as
+`teamMailbox.prefix`.
+3. Right after, bind the team mailboxes, reading the side service's database. A deleted space is bound with its
+deletion date, so its team mailbox is purged when the side service would have purged it:
+
+```sh
+psql "$SIDE_SERVICE_DATABASE_URL" -At -F ' ' -c "
+  SELECT space_id, organization_id, address,
+         coalesce(to_char(deleted_at AT TIME ZONE 'UTC', 'YYYY-MM-DD\"T\"HH24:MI:SS\"Z\"'), '')
+  FROM spaces WHERE address IS NOT NULL" |
+while read -r space organization address deleted; do
+  body=$(jq -nc --arg o "$organization" --arg s "$space" --arg d "$deleted" \
+    '{organizationId: $o, spaceId: $s} + (if $d == "" then {} else {deletedAt: $d} end)')
+  curl -sS -o /dev/null -w "%{http_code} $address\n" -XPUT \
+    -H "Authorization: Bearer $WEBADMIN_TOKEN" -H "Content-Type: application/json" -d "$body" \
+    "$WEBADMIN_URL/domains/${address#*@}/team-mailboxes/${address%@*}/space"
+done
+```
+
+`204` binds the team mailbox, `404` means the side service never created it (a space still waiting for its mail DNS),
+`409` that it is bound to another space already, or that an event reached its space first and gave it a `-2` team
+mailbox: delete that one, then bind again. A live space is bound with a sync request, which sets its members
+and republishes its `provisioned` event.
+
+4. Request a sync of every space, for the events published while the side service was stopped:
+`curl -XPOST -H "Authorization: Bearer $WEBADMIN_TOKEN" "$WEBADMIN_URL/spaces?action=sync"`.
+5. Add the purge CronJob described in `docs/modules/ROOT/pages/tmail-backend/configure/twake-space.adoc`.
+6. Once the team mailboxes are bound, delete the side service, its database and its `twake-mail-side-service.v2`
+queues.
+
+### SaaS domain provisioning before mail DNS activation
+
+Before deploying, add the nullable DNS state column to the domain table:
+
+Postgres:
+```sql
+ALTER TABLE domains ADD COLUMN IF NOT EXISTS mail_dns_configuration_validated BOOLEAN;
+```
+
+Cassandra:
+```cql
+ALTER TABLE domains ADD mail_dns_configuration_validated boolean;
+```
+
+Existing domains retain their sending behavior when the column is null. SaaS DNS events
+persist their explicit status before activating the domain. Ownership-verified domains
+without a mail DNS status start with sending disabled; subscription-only events do not
+change DNS status.
+
+Before enabling the new SaaS consumer or Calendar provisioning, configure **both** guards:
+
+* In `jmap.properties`, append
+  `com.linagora.tmail.james.jmap.method.MailDnsConfigurationValidation` to
+  `send.extra.validations` (preserve any existing validators).
+* In the `smtpserver.xml` handler chain for every submission/relay listener, add
+  `<handler class="com.linagora.tmail.smtp.MailDnsConfigurationMailHook"/>`.
+
+JMAP returns `forbiddenToSend`; SMTP rejects with `550 5.7.1`. Unauthenticated incoming
+SMTP delivery is unaffected. Repository failures do not permit sending.
+
+### Aliases and groups can no longer shadow an existing user
+
+Concerned products: Distributed TMail, Postgres TMail, with aliases or groups created through WebAdmin or the recipient rewrite table
+
+The recipient rewrite table now checks the source of a new alias, and the validator injected into the table is no longer discarded when the table is configured:
+
+- An alias whose source address belongs to an existing user is rejected. For example, `alice@james.org` cannot be an alias of `alice-alias@james.org` while the user `alice@james.org` exists.
+- WebAdmin answers `409` for such an alias or group. It used to answer `204`.
+
+Entries that already exist are not removed. Mail for a user who is also the source of an alias or group keeps being diverted to the destination, and the user does not receive it.
+
+What to do:
+
+1. List the existing mappings with `GET /mappings` on WebAdmin.
+2. For each alias or group whose source is an existing user, decide which one to keep. To keep the user, remove the mapping:
+   - alias: `DELETE /address/aliases/{destination}/sources/{source}`
+   - group: `DELETE /address/groups/{group}/{member}`
+3. Update provisioning scripts and tools that create aliases so that the alias source is not a user address.
+
+### Twake Space: management API of the `rabbitmq.uri` server
+
+Concerned products: TMail with the Twake Space extension enabled (`enabled=true` in `space.properties`), where `rabbitmq.uri` and `rabbitmq.properties` do not point to the same RabbitMQ server or vhost
+
+The health check of the dead letter queue `tmail-space-dead-letter` now looks for the queue on the vhost and server of `rabbitmq.uri`. Before, it used the configuration of `rabbitmq.properties`, and it could send the credentials of `rabbitmq.uri` to the management API of another server.
+
+A new optional property of `space.properties` sets the management API of the server of `rabbitmq.uri`:
+
+```properties
+rabbitmq.management.uri=http://rabbitmq-space:15672
+```
+
+Without it, TMail uses the management URI of `rabbitmq.properties` on the host of `rabbitmq.uri`, without its user information. Set `rabbitmq.management.uri` explicitly when the management API of the Space RabbitMQ server is on another port, another scheme, or behind another address. Otherwise the `RabbitMQDeadLetterQueues` health check can report the Space queue as unreachable.
+
 ## 1.0.16
 
 ### Adding read_only field to labels table
