@@ -41,6 +41,7 @@ import org.apache.james.modules.queue.memory.MemoryMailQueueModule;
 import org.apache.james.modules.server.DNSServiceModule;
 import org.apache.james.modules.server.DataRoutesModules;
 import org.apache.james.modules.server.DefaultProcessorsConfigurationProviderModule;
+import org.apache.james.modules.server.MailRepositoriesRoutesModule;
 import org.apache.james.modules.server.NoJwtModule;
 import org.apache.james.modules.server.RawPostDequeueDecoratorModule;
 import org.apache.james.modules.server.TaskManagerModule;
@@ -152,6 +153,7 @@ public class MigrationProxyServer {
         new SMTPServerModule(),
         new WebAdminServerModule(),
         new DataRoutesModules(),
+        new MailRepositoriesRoutesModule(),
         new NoJwtModule(),
         new DefaultProcessorsConfigurationProviderModule(),
         new TaskManagerModule());
