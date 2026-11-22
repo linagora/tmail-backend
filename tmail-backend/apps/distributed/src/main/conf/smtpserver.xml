@@ -37,7 +37,8 @@
         <connectionLimitPerIP>0</connectionLimitPerIP>
         <authRequired>false</authRequired>
         <authorizedAddresses>127.0.0.0/8</authorizedAddresses>
-        <verifyIdentity>false</verifyIdentity>
+        <!-- Authenticated sessions are checked; unauthenticated local senders are only accepted from MX-looking HELO -->
+        <verifyIdentity>relaxed</verifyIdentity>
         <maxmessagesize>0</maxmessagesize>
         <addressBracketsEnforcement>true</addressBracketsEnforcement>
         <smtpGreeting>Apache JAMES awesome SMTP Server</smtpGreeting>
@@ -62,8 +63,8 @@
         <!-- AUTH is only accepted when announced: announce it to every client, authorizedAddresses included -->
         <authRequired>announce</authRequired>
         <authorizedAddresses>127.0.0.0/8</authorizedAddresses>
-        <!-- Trust authenticated users -->
-        <verifyIdentity>false</verifyIdentity>
+        <!-- Authenticated users can only send as themselves, their aliases or the users who delegated to them -->
+        <verifyIdentity>true</verifyIdentity>
         <maxmessagesize>0</maxmessagesize>
         <addressBracketsEnforcement>true</addressBracketsEnforcement>
         <smtpGreeting>Apache JAMES awesome SMTP Server</smtpGreeting>
@@ -88,8 +89,8 @@
         <!-- AUTH is only accepted when announced: announce it to every client, authorizedAddresses included -->
         <authRequired>announce</authRequired>
         <authorizedAddresses>127.0.0.0/8</authorizedAddresses>
-        <!-- Trust authenticated users -->
-        <verifyIdentity>false</verifyIdentity>
+        <!-- Authenticated users can only send as themselves, their aliases or the users who delegated to them -->
+        <verifyIdentity>true</verifyIdentity>
         <maxmessagesize>0</maxmessagesize>
         <addressBracketsEnforcement>true</addressBracketsEnforcement>
         <smtpGreeting>Apache JAMES awesome SMTP Server</smtpGreeting>

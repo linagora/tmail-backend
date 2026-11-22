@@ -77,6 +77,7 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/en/1.0.0/)
 
 #### Security
 
+- SMTP submission (ports 465 and 587): the shipped `smtpserver.xml` (memory, distributed, postgres sample, demo) sets `verifyIdentity` to `true`, so an authenticated user can no longer send with the `MAIL FROM` or `From:` of another local user; aliases and SMTP Auth Delegation still work. Port 25 uses `relaxed`, which checks authenticated sessions the same way. Deployments that copied the former `false` default should update their configuration.
 - ISSUE-2940 Calendar `REPLY` mails: the organizer and attendee names, summary and location of the invitation are HTML-escaped in `text/html` template parts, so an external organizer can no longer inject markup.
 - [FIX] `Email/send` and the calendar event reply send run the configured `send.validate.rcpt` and `send.extra.validations` before sending, as `EmailSubmission/set` does, including the pending domain sending block of SaaS. `Email/send` reports the rejection in `notCreated`.
 
