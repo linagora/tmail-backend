@@ -136,10 +136,11 @@ public class SabreContactsConsumer implements Closeable {
 
     private Mono<?> messageConsume(AcknowledgableDelivery ackDelivery, byte[] messagePayload, ContactHandler userHandler, DomainContactHandler domainHandler) {
         // Parsing a card is CPU bound: it runs off the delivery thread, on its own scheduler, so that a slow card holds
-        // back neither the other deliveries of the queue nor the shared schedulers; the handling goes on in parallel
+        // back neither the other deliveries of the queue nor the shared schedulers; the handling goes on in parallel.
+        // The timeout is subscribed on the parse scheduler: it bounds the parse, not the wait for a parse thread
         return Mono.fromCallable(() -> SabreContactMessage.parseAMQPMessage(messagePayload))
-            .subscribeOn(parseScheduler)
             .timeout(PARSE_TIMEOUT)
+            .subscribeOn(parseScheduler)
             .publishOn(Schedulers.parallel())
             .filter(Optional::isPresent)
             .map(Optional::get)
