@@ -27,10 +27,11 @@ import java.nio.file.{Files, Path}
 import java.time.{Instant, ZonedDateTime}
 
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed
+import net.fortuna.ical4j.data.ParserException
 import net.fortuna.ical4j.model.component.VEvent
 import net.fortuna.ical4j.model.property.Attach
 import net.fortuna.ical4j.model.{Calendar, Component, Property}
-import org.assertj.core.api.Assertions.assertThat
+import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
 import org.junit.jupiter.params.provider.{CsvSource, ValueSource}
@@ -90,6 +91,31 @@ class CalendarEventParsedTimeZoneTest {
   }
 
   @Test
+  def shouldRejectACalendarWithTooManyCustomTimezones(): Unit = {
+    // Without recurrence rules, the recurrence budget of the calendar does not stop the registrations
+    val timezones = (0 until 1600).map(i => fixedOffsetTimezone(s"X-$i")).mkString
+
+    assertThatThrownBy(() => parse(calendarWith(timezones, "X-0"))).isInstanceOf(classOf[ParserException])
+    assertThat(start(parse(ics.replace("{TZID}", "Custom Twake Time").replace("{DATE}", "20260715"))))
+      .isEqualTo(Instant.parse("2026-07-15T09:45:00Z"))
+  }
+
+  @Test
+  def shouldAcceptTheMaximumOfCustomTimezones(): Unit = {
+    val timezones = (0 until ICal4JTimeZoneRegistry.MAX_CUSTOM_TIMEZONES_PER_CALENDAR).map(i => timezone(s"X-$i")).mkString
+
+    assertThat(start(parse(calendarWith(timezones, "X-1")))).isEqualTo(Instant.parse("2026-07-15T09:45:00Z"))
+  }
+
+  @Test
+  def shouldRegisterARepeatedCustomTimezoneOnce(): Unit = {
+    val timezones = timezone("Custom Twake Time") * 1600
+    val calendars = (1 to 2).map(_ => parse(calendarWith(timezones, "Custom Twake Time")))
+
+    calendars.foreach(calendar => assertThat(start(calendar)).isEqualTo(Instant.parse("2026-07-15T09:45:00Z")))
+  }
+
+  @Test
   def parsingAndCopyingAnInlineAttachmentShouldLeaveNoTemporaryFile(): Unit = {
     val content = """BEGIN:VCALENDAR
                     |VERSION:2.0
@@ -122,6 +148,25 @@ class CalendarEventParsedTimeZoneTest {
     } finally {
       files.close()
     }
+  }
+
+  private def timezone(tzId: String): String =
+    ics.substring(ics.indexOf("BEGIN:VTIMEZONE"), ics.indexOf("BEGIN:VEVENT")).replace("{TZID}", tzId)
+
+  private def fixedOffsetTimezone(tzId: String): String =
+    s"""BEGIN:VTIMEZONE
+       |TZID:$tzId
+       |BEGIN:STANDARD
+       |DTSTART:19700101T000000
+       |TZOFFSETFROM:+0100
+       |TZOFFSETTO:+0100
+       |END:STANDARD
+       |END:VTIMEZONE
+       |""".stripMargin
+
+  private def calendarWith(timezones: String, usedTzId: String): String = {
+    val event = ics.substring(ics.indexOf("BEGIN:VEVENT")).replace("{TZID}", usedTzId).replace("{DATE}", "20260715")
+    ics.substring(0, ics.indexOf("BEGIN:VTIMEZONE")) + timezones + event
   }
 
   private def parse(content: String): Calendar =
