@@ -102,7 +102,7 @@ class CalendarEventParsedTimeZoneTest {
 
   @Test
   def shouldAcceptTheMaximumOfCustomTimezones(): Unit = {
-    val timezones = (0 until ICal4JTimeZoneRegistry.MAX_CUSTOM_TIMEZONES_PER_CALENDAR).map(i => timezone(s"X-$i")).mkString
+    val timezones = (0 until ICal4JTimeZoneRegistry.MAX_CUSTOM_TIMEZONES).map(i => timezone(s"X-$i")).mkString
 
     assertThat(start(parse(calendarWith(timezones, "X-1")))).isEqualTo(Instant.parse("2026-07-15T09:45:00Z"))
   }

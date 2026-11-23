@@ -4,7 +4,7 @@
  *  https://twake-mail.com/                                         *
  *  https://linagora.com                                            *
  *                                                                  *
- *  This file is subject to The Affero General Public License       *
+ *  This file is subject to The Affero Gnu Public License           *
  *  version 3.                                                      *
  *                                                                  *
  *  https://www.gnu.org/licenses/agpl-3.0.en.html                   *
@@ -14,15 +14,13 @@
  *  warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR         *
  *  PURPOSE. See the GNU Affero General Public License for          *
  *  more details.                                                   *
- *                                                                  *
- *  https://www.gnu.org/licenses/agpl-3.0.en.html                   *
- *                                                                  *
  ********************************************************************/
 
 package com.linagora.tmail.james.jmap.calendar
 
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
+import java.time.Instant
 import java.time.temporal.Temporal
 import java.util.stream.Stream
 
@@ -30,7 +28,7 @@ import com.linagora.tmail.james.jmap.model.CalendarEventParsed
 import net.fortuna.ical4j.model.component.VEvent
 import net.fortuna.ical4j.model.parameter.PartStat
 import net.fortuna.ical4j.model.property.RecurrenceId
-import net.fortuna.ical4j.model.{Component, Property}
+import net.fortuna.ical4j.model.{Component, Property, Recur}
 import org.assertj.core.api.Assertions.{assertThat, assertThatThrownBy}
 import org.assertj.core.api.ThrowableAssert
 import org.junit.jupiter.api.Assertions.assertTimeoutPreemptively
@@ -50,7 +48,19 @@ object RecurrenceExpansionGuardTest {
     Arguments.of("DTEND widening the walk", "DTSTART:20000101T000000Z\nRRULE:FREQ=SECONDLY\nDTEND:20260101T000000Z"),
     Arguments.of("BY* lists product", s"DTSTART:20260101T000000Z\nRRULE:FREQ=YEARLY;$FULL_LISTS"),
     Arguments.of("repeated BY* values", s"DTSTART:20260101T000000Z\nRRULE:FREQ=YEARLY;$REPEATED_LISTS"),
-    Arguments.of("BY* lists product of an EXRULE", s"DTSTART:20260101T000000Z\nRRULE:FREQ=DAILY\nEXRULE:FREQ=YEARLY;$FULL_LISTS"))
+    Arguments.of("BY* lists product of an EXRULE", s"DTSTART:20260101T000000Z\nRRULE:FREQ=DAILY\nEXRULE:FREQ=YEARLY;$FULL_LISTS"),
+    Arguments.of("BYDAY of a YEARLY rule", s"DTSTART:20260101T000000Z\nRRULE:FREQ=YEARLY;BYDAY=MO,TU,WE,TH,FR,SA,SU;BYHOUR=${range(0, 23)};BYMINUTE=${range(0, 59)};BYSECOND=${range(0, 59)}"),
+    Arguments.of("BYMONTHDAY of a YEARLY rule without BYMONTH", s"DTSTART:20260101T000000Z\nRRULE:FREQ=YEARLY;BYMONTHDAY=${range(1, 31)};BYHOUR=${range(0, 23)};BYMINUTE=${range(0, 59)};BYSECOND=${range(0, 19)}"))
+
+  def sparseCountedRules(): Stream[String] = Stream.of(
+    "FREQ=MINUTELY;COUNT=1000;BYHOUR=0;BYSECOND=0,1,2,3,4,5,6,7,8,9",
+    "FREQ=HOURLY;COUNT=10;BYDAY=MO;BYMINUTE=" + range(0, 29))
+
+  def realWorldRules(): Stream[String] = Stream.of(
+    "FREQ=WEEKLY;COUNT=81920;BYDAY=MO,TU,WE,TH,FR",
+    "FREQ=DAILY;COUNT=5000;BYDAY=MO,TU,WE,TH,FR",
+    "FREQ=YEARLY;BYMONTH=3;BYDAY=-1SU",
+    "FREQ=MONTHLY;BYMONTHDAY=15;COUNT=24")
 }
 
 class RecurrenceExpansionGuardTest {
@@ -90,4 +100,16 @@ class RecurrenceExpansionGuardTest {
       .findFirst().orElseThrow()
     assertThat(occurrence.getDateTimeStart.getValue).startsWith("20260408T100000")
   }
+
+  @ParameterizedTest
+  @MethodSource(Array("sparseCountedRules"))
+  def canExpandShouldNotBoundTheWalkByCountWhenPeriodsMayBeEmpty(rule: String): Unit =
+    assertThat(RecurrenceExpansionGuard.canExpand(new Recur[Temporal](rule), Instant.parse("2000-01-01T00:00:00Z"),
+      Instant.parse("2026-04-08T10:00:00Z"), Instant.parse("2026-04-08T10:00:00Z"))).isFalse
+
+  @ParameterizedTest
+  @MethodSource(Array("realWorldRules"))
+  def canExpandShouldAcceptRealWorldRules(rule: String): Unit =
+    assertThat(RecurrenceExpansionGuard.canExpand(new Recur[Temporal](rule), Instant.parse("2000-01-01T00:00:00Z"),
+      Instant.parse("2026-04-08T10:00:00Z"), Instant.parse("2026-04-08T10:00:00Z"))).isTrue
 }

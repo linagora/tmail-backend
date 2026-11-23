@@ -19,6 +19,7 @@
 
 package com.linagora.tmail.james.jmap.calendar;
 
+import java.time.DateTimeException;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDate;
@@ -27,9 +28,10 @@ import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.temporal.Temporal;
 import java.time.temporal.TemporalAmount;
-import java.util.List;
+import java.util.EnumSet;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import com.google.common.annotations.VisibleForTesting;
@@ -50,7 +52,8 @@ import net.fortuna.ical4j.transform.recurrence.Frequency;
  *     what this int holds, the multiplier overflows to 0 and the search never ends, nor can it be interrupted: whatever
  *     the interval, the last multiplier before the overflow goes at least 2^30 units of the frequency.</li>
  *     <li>With a COUNT, ical4j does not skip: it walks every period from DTSTART, keeping each candidate before the
- *     start of the walk.</li>
+ *     start of the walk. Periods without candidate do not count: COUNT bounds the walk only when every period holds
+ *     one.</li>
  *     <li>ical4j starts the walk at the looked up date minus the span of the event (DURATION, or DTEND minus DTSTART),
  *     and collects every occurrence of the walk in a list.</li>
  *     <li>In each walked period, ical4j builds the whole product of the BY* lists, repeated values included, before
@@ -63,6 +66,9 @@ public final class RecurrenceExpansionGuard {
     // Every real world rule stays far below it: a rule on the five working days with a COUNT of 100,000 builds 500,000 candidates
     @VisibleForTesting
     static final long MAX_EXPANDED_CANDIDATES = 1_000_000L;
+    private static final Set<Frequency> FINER_THAN_HOURLY = EnumSet.of(Frequency.SECONDLY, Frequency.MINUTELY);
+    private static final Set<Frequency> FINER_THAN_DAILY = EnumSet.of(Frequency.SECONDLY, Frequency.MINUTELY, Frequency.HOURLY);
+    private static final Set<Frequency> FINER_THAN_WEEKLY = EnumSet.of(Frequency.SECONDLY, Frequency.MINUTELY, Frequency.HOURLY, Frequency.DAILY);
     private static final Map<Frequency, Duration> SHORTEST_UNIT = Map.of(
         Frequency.SECONDLY, Duration.ofSeconds(1),
         Frequency.MINUTELY, Duration.ofMinutes(1),
@@ -73,9 +79,18 @@ public final class RecurrenceExpansionGuard {
         Frequency.YEARLY, Duration.ofDays(365));
 
     /**
-     * @throws IllegalArgumentException when a RRULE or EXRULE of the master is too costly to expand up to the date
+     * @throws IllegalArgumentException when a RRULE or EXRULE of the master is too costly to expand up to the date, or
+     * when the dates bounding the walk can not be computed
      */
     public static void checkOccurrenceCanBeLookedUp(VEvent master, Temporal recurrenceDate) {
+        try {
+            checkWalk(master, recurrenceDate);
+        } catch (DateTimeException | ArithmeticException e) {
+            throw new IllegalArgumentException("Cannot bound the expansion of the series up to " + recurrenceDate, e);
+        }
+    }
+
+    private static void checkWalk(VEvent master, Temporal recurrenceDate) {
         Optional<DtStart<Temporal>> dtStart = master.getProperty(Property.DTSTART);
         Optional<Instant> seed = dtStart.map(DtStart::getDate).map(RecurrenceExpansionGuard::instant);
         if (seed.isEmpty()) {
@@ -103,21 +118,59 @@ public final class RecurrenceExpansionGuard {
             from = seed.isAfter(walkStart) ? seed : walkStart;
         }
         long walkedPeriods = Math.max(0, units(recur, from, walkEnd) / Math.max(recur.getInterval(), 1)) + 1;
-        if (recur.getCount() > 0) {
+        if (recur.getCount() > 0 && !mayLeavePeriodsEmpty(recur)) {
             walkedPeriods = Math.min(walkedPeriods, recur.getCount());
         }
         return candidatesPerPeriod(recur) <= MAX_EXPANDED_CANDIDATES / walkedPeriods;
+    }
+
+    /**
+     * Whether a period of the rule may hold no occurrence: COUNT then no longer bounds the walked periods. A BY* part
+     * filters the candidates when it is as coarse as the frequency or coarser (eg BYMONTH of a DAILY rule), an ordinal
+     * BYDAY may not exist in a month, and BYMONTHDAY, BYYEARDAY, BYWEEKNO or BYSETPOS may not either.
+     */
+    @VisibleForTesting
+    static boolean mayLeavePeriodsEmpty(Recur<?> recur) {
+        Frequency frequency = recur.getFrequency();
+        return !recur.getSetPosList().isEmpty()
+            || !recur.getMonthDayList().isEmpty()
+            || !recur.getYearDayList().isEmpty()
+            || !recur.getWeekNoList().isEmpty()
+            || (!recur.getMonthList().isEmpty() && frequency != Frequency.YEARLY)
+            || (!recur.getDayList().isEmpty() && (FINER_THAN_WEEKLY.contains(frequency) || recur.getDayList().stream().anyMatch(day -> day.getOffset() != 0)))
+            || (!recur.getHourList().isEmpty() && FINER_THAN_DAILY.contains(frequency))
+            || (!recur.getMinuteList().isEmpty() && FINER_THAN_HOURLY.contains(frequency))
+            || (!recur.getSecondList().isEmpty() && frequency == Frequency.SECONDLY);
     }
 
     private static long units(Recur<?> recur, Instant from, Instant to) {
         return Duration.between(from, to).dividedBy(SHORTEST_UNIT.get(recur.getFrequency()));
     }
 
-    // A list that only filters the candidates (eg BYMONTH of a DAILY rule) is counted as well: this errs on the safe side
-    private static long candidatesPerPeriod(Recur<?> recur) {
-        return Stream.<List<?>>of(recur.getSecondList(), recur.getMinuteList(), recur.getHourList(), recur.getDayList(),
-                recur.getMonthDayList(), recur.getYearDayList(), recur.getWeekNoList(), recur.getMonthList())
-            .mapToLong(List::size)
+    /**
+     * Bounds the candidates ical4j builds in a period, repeated values included. BYDAY stands for every matching day of
+     * the period (53 weeks of a year, 5 of a month) and BYMONTHDAY of a YEARLY rule without BYMONTH for each month. A
+     * list that only filters the candidates (eg BYMONTH of a DAILY rule) is counted as well: this errs on the safe side.
+     */
+    @VisibleForTesting
+    static long candidatesPerPeriod(Recur<?> recur) {
+        boolean yearly = recur.getFrequency() == Frequency.YEARLY;
+        long dayWeight = switch (recur.getFrequency()) {
+            case YEARLY -> recur.getWeekNoList().isEmpty() && recur.getMonthList().isEmpty() ? 53 : 5;
+            case MONTHLY -> 5;
+            default -> 1;
+        };
+        long monthDayWeight = yearly && recur.getMonthList().isEmpty() ? 12 : 1;
+        return Stream.of(
+                (long) recur.getSecondList().size(),
+                (long) recur.getMinuteList().size(),
+                (long) recur.getHourList().size(),
+                recur.getDayList().size() * dayWeight,
+                recur.getMonthDayList().size() * monthDayWeight,
+                (long) recur.getYearDayList().size(),
+                recur.getWeekNoList().size() * 7L,
+                (long) recur.getMonthList().size())
+            .mapToLong(Long::longValue)
             .filter(size -> size > 0)
             .reduce(1L, (a, b) -> Math.min(a * b, MAX_EXPANDED_CANDIDATES + 1));
     }
@@ -133,14 +186,13 @@ public final class RecurrenceExpansionGuard {
             .orElse(Duration.ZERO);
     }
 
-    // A span too large to be subtracted throws a DateTimeException: the occurrence is not looked up
+    // The span may be negative (DTEND before DTSTART): the walk starts at the earlier of both. A span too large to be
+    // subtracted throws a DateTimeException: the occurrence is not looked up
     private static Instant minusAbsolute(Instant instant, TemporalAmount span) {
         ZonedDateTime dateTime = instant.atZone(ZoneOffset.UTC);
-        return switch (span) {
-            case Duration duration -> dateTime.minus(duration.abs()).toInstant();
-            case java.time.Period period -> dateTime.minus(period.isNegative() ? period.negated() : period).toInstant();
-            default -> instant;
-        };
+        Instant before = dateTime.minus(span).toInstant();
+        Instant after = dateTime.plus(span).toInstant();
+        return before.isBefore(after) ? before : after;
     }
 
     // Floating dates are read in UTC: this only bounds the walk
