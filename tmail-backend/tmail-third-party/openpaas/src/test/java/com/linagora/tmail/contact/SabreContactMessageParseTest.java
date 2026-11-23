@@ -19,12 +19,23 @@
 package com.linagora.tmail.contact;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThatCode;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
+
+import java.time.Duration;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
 
 import org.apache.james.core.MailAddress;
 import org.junit.jupiter.api.Test;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.common.base.Throwables;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
+
+import ezvcard.property.Address;
 
 public class SabreContactMessageParseTest {
 
@@ -241,5 +252,106 @@ public class SabreContactMessageParseTest {
             .satisfies(message -> assertThat(message.getContactFields())
                 .extracting(fields -> fields.address().asString())
                 .containsExactly("tung@example.com"));
+    }
+
+    private static String amqpMessage(String cardData, Optional<String> oldCardData) throws Exception {
+        Map<String, String> message = new HashMap<>();
+        message.put("path", "addressbooks/67e26ebbecd9f300255a9f80/contacts/3ffe56cc.vcf");
+        message.put("owner", "principals/users/67e26ebbecd9f300255a9f80");
+        message.put("carddata", cardData);
+        oldCardData.ifPresent(old -> message.put("oldcarddata", old));
+        return new ObjectMapper().writeValueAsString(message);
+    }
+
+    private static String card(String properties) {
+        return "BEGIN:VCARD\r\nVERSION:3.0\r\nUID:3ffe56cc\r\nFN:Tran Tung\r\nEMAIL:toto@tutu.com\r\n" + properties + "END:VCARD\r\n";
+    }
+
+    private static String labelBomb() {
+        return card("ADR:\r\n".repeat(20_000) + "LABEL;TYPE=x:\r\n".repeat(20_000));
+    }
+
+    @Test
+    void parsePayloadShouldRejectACardTooCostlyToMatchItsLabels() throws Exception {
+        String amqpMessage = amqpMessage(labelBomb(), Optional.empty());
+
+        assertTimeoutPreemptively(Duration.ofSeconds(5), () ->
+            assertThatThrownBy(() -> SabreContactMessage.parseAMQPMessage(amqpMessage))
+                .isInstanceOf(SabreContactMessage.SabreContactParseException.class));
+    }
+
+    @Test
+    void parsePayloadShouldRejectAnOversizedCard() throws Exception {
+        String amqpMessage = amqpMessage(card("NOTE:" + "a".repeat(SabreContactMessage.MAX_CARD_DATA_LENGTH) + "\r\n"), Optional.empty());
+
+        assertThatThrownBy(() -> SabreContactMessage.parseAMQPMessage(amqpMessage))
+            .isInstanceOf(SabreContactMessage.SabreContactParseException.class);
+    }
+
+    @Test
+    void parsePayloadShouldIgnoreAPreviousCardTooCostlyToParse() throws Exception {
+        String amqpMessage = amqpMessage(card(""), Optional.of(labelBomb()));
+
+        assertThat(assertTimeoutPreemptively(Duration.ofSeconds(5), () -> SabreContactMessage.parseAMQPMessage(amqpMessage)))
+            .isPresent()
+            .get()
+            .satisfies(message -> assertThat(message.getPreviousMailAddresses()).isEmpty());
+    }
+
+    @Test
+    void parsePayloadShouldStillMatchTheLabelsOfARegularCard() throws Exception {
+        String amqpMessage = amqpMessage(card("""
+            item1.ADR;TYPE=home:;;1 rue A;Paris;;75001;France\r
+            ADR;TYPE=work:;;2 rue B;Lyon;;69001;France\r
+            LABEL;TYPE=work:2 rue B\\nLyon\r
+            item1.LABEL;TYPE=home:1 rue A\\nParis\r
+            """), Optional.empty());
+
+        assertThat(SabreContactMessage.parseAMQPMessage(amqpMessage))
+            .isPresent()
+            .get()
+            .satisfies(message -> assertThat(message.vcard().getAddresses())
+                .extracting(Address::getLabel)
+                .containsExactly("1 rue A\nParis", "2 rue B\nLyon"));
+    }
+
+    @Test
+    void parseErrorsShouldNotHoldTheCardData() throws Exception {
+        String amqpMessage = amqpMessage("BEGIN:VCARD\r\nVERSION:3.0\r\nFN:Secret Person\r\nEMAIL:secret@tutu.com\r\nEND:VCARD\r\n", Optional.empty());
+
+        assertThatThrownBy(() -> SabreContactMessage.parseAMQPMessage(amqpMessage))
+            .isInstanceOf(SabreContactMessage.SabreContactParseException.class)
+            .satisfies(e -> assertThat(Throwables.getCausalChain(e))
+                .extracting(Throwable::getMessage)
+                .noneMatch(message -> message != null && message.contains("secret@tutu.com")));
+    }
+
+    @Test
+    void checkCanBeParsedShouldCountGroupedProperties() {
+        String grouped = card("item1.ADR:\r\n".repeat(200) + "item2.LABEL:\r\n".repeat(200));
+
+        assertThatThrownBy(() -> SabreContactMessage.checkCanBeParsed(grouped))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void parsePayloadShouldRejectALabelBombWithFoldedPropertyNames() throws Exception {
+        String folded = card("AD\r\n R:\r\n".repeat(20_000) + "LAB\r\n\tEL;TYPE=x:\r\n".repeat(20_000));
+        String amqpMessage = amqpMessage(folded, Optional.empty());
+
+        assertTimeoutPreemptively(Duration.ofSeconds(5), () ->
+            assertThatThrownBy(() -> SabreContactMessage.parseAMQPMessage(amqpMessage))
+                .isInstanceOf(SabreContactMessage.SabreContactParseException.class));
+    }
+
+    @Test
+    void jsonParseErrorsShouldNotQuoteThePayload() {
+        String truncated = "{\"owner\": \"principals/users/1\", \"carddata\": \"EMAIL:secret@tutu.com\" \"broken";
+
+        assertThatThrownBy(() -> SabreContactMessage.parseAMQPMessage(truncated))
+            .isInstanceOf(SabreContactMessage.SabreContactParseException.class)
+            .satisfies(e -> assertThat(Throwables.getCausalChain(e))
+                .extracting(Throwable::getMessage)
+                .noneMatch(message -> message != null && message.contains("secret@tutu.com")));
     }
 }
