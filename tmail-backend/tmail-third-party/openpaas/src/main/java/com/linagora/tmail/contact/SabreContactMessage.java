@@ -23,7 +23,9 @@ import static com.linagora.tmail.contact.SabreContactMessage.AMQPMessage.DESERIA
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.regex.Pattern;
 import java.util.stream.Stream;
 
 import org.apache.commons.lang3.StringUtils;
@@ -37,6 +39,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.guava.GuavaModule;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.github.fge.lambdas.Throwing;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 
@@ -53,6 +56,19 @@ public record SabreContactMessage(Owner owner,
                                   Optional<VCard> previousVcard) {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SabreContactMessage.class);
+    /**
+     * Cards are written by users through CardDAV and published as is by Sabre. Real cards, embedded photo included,
+     * stay below it.
+     */
+    @VisibleForTesting
+    static final int MAX_CARD_DATA_LENGTH = Integer.getInteger("tmail.sabre.contact.max.card.length", 1024 * 1024);
+    /**
+     * ez-vcard matches each LABEL against every ADR of the card, allocating at each step: a card of a few hundred KB
+     * holding tens of thousands of both takes billions of steps to parse. Real cards hold a handful of each.
+     */
+    @VisibleForTesting
+    static final long MAX_LABEL_ADDRESS_PAIRS = 10_000;
+    private static final Pattern NEWLINE = Pattern.compile("\\r\\n|\\r|\\n");
 
     public sealed interface Owner permits Owner.UserOwner, Owner.DomainOwner {
         String id();
@@ -137,16 +153,49 @@ public record SabreContactMessage(Owner owner,
                 }
                 Owner owner = maybeOwner.get();
                 Preconditions.checkArgument(StringUtils.isNotBlank(owner.id()), "Can not parse owner id from %s", ownerPath);
-                VCard vCard = Ezvcard.parse(contactMessage.cardData().get()).first();
-                Preconditions.checkArgument(vCard != null, "Can not parse vCard from %s", contactMessage.cardData().get());
-                Preconditions.checkArgument(vCard.getUid() != null, "Can not parse vCard uid from %s", contactMessage.cardData().get());
+                String cardData = contactMessage.cardData().get();
+                checkCanBeParsed(cardData);
+                VCard vCard = Ezvcard.parse(cardData).first();
+                Preconditions.checkArgument(vCard != null, "Can not parse the vCard of %s", contactMessage.path());
+                Preconditions.checkArgument(vCard.getUid() != null, "Can not parse the vCard uid of %s", contactMessage.path());
                 return Optional.of(new SabreContactMessage(owner, vCard, parsePreviousVCard(contactMessage.oldCardData())));
             }
             return Optional.empty();
         } catch (Exception e) {
+            // The payload holds the personal data of the card: it is not logged
             throw new SabreContactParseException(
-                "Failed to parse contact message: " + new String(messagePayload, StandardCharsets.UTF_8), e);
+                "Failed to parse contact message of " + messagePayload.length + " bytes", e);
         }
+    }
+
+    /**
+     * @throws IllegalArgumentException when ez-vcard could not parse the card in bounded time
+     */
+    @VisibleForTesting
+    static void checkCanBeParsed(String cardData) {
+        Preconditions.checkArgument(cardData.length() <= MAX_CARD_DATA_LENGTH,
+            "Card data of %s characters exceeds %s", cardData.length(), MAX_CARD_DATA_LENGTH);
+        long labels = 0;
+        long addresses = 0;
+        for (String line : NEWLINE.split(cardData)) {
+            switch (propertyName(line)) {
+                case "LABEL" -> labels++;
+                case "ADR" -> addresses++;
+                default -> { }
+            }
+        }
+        Preconditions.checkArgument(labels * addresses <= MAX_LABEL_ADDRESS_PAIRS,
+            "Card with %s LABEL and %s ADR properties: too costly to parse", labels, addresses);
+    }
+
+    // The name of the property a content line starts, without its group (eg item1.ADR), empty for a folded line
+    private static String propertyName(String line) {
+        if (line.isEmpty() || line.charAt(0) == ' ' || line.charAt(0) == '\t') {
+            return "";
+        }
+        int end = StringUtils.indexOfAny(line, ';', ':');
+        String name = end < 0 ? line : line.substring(0, end);
+        return StringUtils.substringAfterLast("." + name, ".").toUpperCase(Locale.ROOT);
     }
 
     private static Optional<VCard> parsePreviousVCard(Optional<String> oldCardData) {
@@ -154,6 +203,7 @@ public record SabreContactMessage(Owner owner,
             .filter(StringUtils::isNotBlank)
             .flatMap(cardData -> {
                 try {
+                    checkCanBeParsed(cardData);
                     return Optional.ofNullable(Ezvcard.parse(cardData).first());
                 } catch (Exception e) {
                     LOGGER.warn("Ignoring unreadable previous card data in contact message", e);

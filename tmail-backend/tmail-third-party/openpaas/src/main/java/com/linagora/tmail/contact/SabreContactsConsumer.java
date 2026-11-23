@@ -22,6 +22,7 @@ import static com.linagora.tmail.OpenPaasModule.OPENPAAS_INJECTION_KEY;
 import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
 import java.io.Closeable;
+import java.time.Duration;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -53,6 +54,7 @@ import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.AcknowledgableDelivery;
 import reactor.rabbitmq.ConsumeOptions;
 import reactor.rabbitmq.Receiver;
@@ -62,6 +64,7 @@ public class SabreContactsConsumer implements Closeable {
     private static final Logger LOGGER = LoggerFactory.getLogger(SabreContactsConsumer.class);
     private static final boolean REQUEUE_ON_NACK = true;
     private static final BinaryOperator<ContactFields> KEEP_FIRST = (first, second) -> first;
+    private static final Duration PARSE_TIMEOUT = Duration.ofSeconds(10);
     public static final String QUEUE_NAME_ADD = "sabre-contacts-queue-add";
     public static final String QUEUE_NAME_UPDATE = "sabre-contacts-queue-update";
     public static final String QUEUE_NAME_DELETE = "sabre-contacts-queue-delete";
@@ -123,7 +126,11 @@ public class SabreContactsConsumer implements Closeable {
     }
 
     private Mono<?> messageConsume(AcknowledgableDelivery ackDelivery, byte[] messagePayload, ContactHandler userHandler, DomainContactHandler domainHandler) {
+        // Parsing a card is CPU bound: it runs off the delivery thread, so that a slow card does not hold back the
+        // other deliveries of the queue
         return Mono.fromCallable(() -> SabreContactMessage.parseAMQPMessage(messagePayload))
+            .subscribeOn(Schedulers.boundedElastic())
+            .timeout(PARSE_TIMEOUT)
             .filter(Optional::isPresent)
             .map(Optional::get)
             .flatMap(contactMessage -> switch (contactMessage.owner()) {
