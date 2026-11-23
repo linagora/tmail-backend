@@ -71,12 +71,15 @@ public final class InMemoryAttach {
     }
 
     /**
-     * A calendar builder parsing ATTACH with {@link Factory} and custom timezones with {@link ICal4JTimeZoneRegistry}.
+     * A calendar builder parsing ATTACH with {@link Factory}, and timezones with {@link ICal4JTimeZoneRegistry}, which
+     * bounds the cost of their rules.
      */
     public static CalendarBuilder calendarBuilder(ContentHandlerContext context) {
+        ICal4JTimeZoneRegistry timeZoneRegistry = new ICal4JTimeZoneRegistry();
         return new CalendarBuilder(CalendarParserFactory.getInstance().get(),
-            context.withPropertyFactorySupplier(InMemoryAttach::propertyFactories),
-            new ICal4JTimeZoneRegistry());
+            context.withPropertyFactorySupplier(InMemoryAttach::propertyFactories)
+                .withComponentFactorySupplier(timeZoneRegistry::componentFactories),
+            timeZoneRegistry);
     }
 
     /**

@@ -117,7 +117,7 @@ public final class RecurrenceExpansionGuard {
             }
             from = seed.isAfter(walkStart) ? seed : walkStart;
         }
-        long walkedPeriods = Math.max(0, units(recur, from, walkEnd) / Math.max(recur.getInterval(), 1)) + 1;
+        long walkedPeriods = walkedPeriods(recur, from, walkEnd);
         if (recur.getCount() > 0 && !mayLeavePeriodsEmpty(recur)) {
             walkedPeriods = Math.min(walkedPeriods, recur.getCount());
         }
@@ -143,6 +143,22 @@ public final class RecurrenceExpansionGuard {
             || (!recur.getSecondList().isEmpty() && frequency == Frequency.SECONDLY);
     }
 
+    /**
+     * Bounds the candidates ical4j builds when walking every period of the rule from {@code from} to {@code to}.
+     */
+    static long expansionCost(Recur<?> recur, Instant from, Instant to) {
+        long walkedPeriods = walkedPeriods(recur, from, to);
+        long candidatesPerPeriod = candidatesPerPeriod(recur);
+        if (candidatesPerPeriod > Long.MAX_VALUE / walkedPeriods) {
+            return Long.MAX_VALUE;
+        }
+        return walkedPeriods * candidatesPerPeriod;
+    }
+
+    private static long walkedPeriods(Recur<?> recur, Instant from, Instant to) {
+        return Math.max(0, units(recur, from, to) / Math.max(recur.getInterval(), 1)) + 1;
+    }
+
     private static long units(Recur<?> recur, Instant from, Instant to) {
         return Duration.between(from, to).dividedBy(SHORTEST_UNIT.get(recur.getFrequency()));
     }
@@ -152,7 +168,6 @@ public final class RecurrenceExpansionGuard {
      * the period (53 weeks of a year, 5 of a month) and BYMONTHDAY of a YEARLY rule without BYMONTH for each month. A
      * list that only filters the candidates (eg BYMONTH of a DAILY rule) is counted as well: this errs on the safe side.
      */
-    @VisibleForTesting
     static long candidatesPerPeriod(Recur<?> recur) {
         boolean yearly = recur.getFrequency() == Frequency.YEARLY;
         long dayWeight = switch (recur.getFrequency()) {
