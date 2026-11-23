@@ -31,7 +31,7 @@ import net.fortuna.ical4j.data.DefaultComponentFactorySupplier
 import net.fortuna.ical4j.model.component.{CalendarComponent, VEvent}
 import net.fortuna.ical4j.model.parameter.PartStat
 import net.fortuna.ical4j.model.property.immutable.ImmutableMethod
-import net.fortuna.ical4j.model.property.{Attendee, DateProperty, DtEnd, DtStamp, DtStart, Location, RecurrenceId, Sequence, XProperty}
+import net.fortuna.ical4j.model.property.{Attach, Attendee, DateProperty, DtEnd, DtStamp, DtStart, Location, RecurrenceId, Sequence, XProperty}
 import net.fortuna.ical4j.model.{Calendar, Component, ComponentContainer, ComponentFactory, ComponentList, Parameter, Period, Property, PropertyList, RelationshipPropertyModifiers}
 import org.apache.james.core.{MailAddress, Username}
 
@@ -196,6 +196,7 @@ case class CalendarEventModifier(patches: Seq[CalendarEventUpdatePatch],
           .add(recurrenceId)
           .build()))
 
+        RecurrenceExpansionGuard.checkOccurrenceCanBeLookedUp(baseVEvent, recurrenceId.getDate)
         (for {
           period  <- baseVEvent.calculateRecurrenceSet[Temporal](new Period(recurrenceId.getDate, recurrenceId.getDate)).asScala.headOption
           alternativeZoneId  = VEventTemporalUtil.getAlternativeZoneId(baseVEvent)
@@ -292,6 +293,7 @@ object CalendarEventModifier {
       property match {
         case xProperty: XProperty => new XProperty(xProperty.getName, xProperty.getParameterList, xProperty.getValue)
         case dateProperty: DateProperty[_] => evaluate(dateProperty).copy()
+        case attach: Attach => InMemoryAttach.copy(attach)
         case other => other.copy()
       }
     }

@@ -28,7 +28,7 @@ import com.ibm.icu.util.{TimeZone => Icu4jTimeZone}
 import com.linagora.tmail.james.jmap.AttendanceStatus
 import com.linagora.tmail.james.jmap.CheckedRefined.given
 import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier.ImplicitCalendar
-import com.linagora.tmail.james.jmap.calendar.ICal4JTimeZoneRegistry
+import com.linagora.tmail.james.jmap.calendar.InMemoryAttach
 import com.linagora.tmail.james.jmap.model.CalendarEventParse.UnparsedBlobId
 import com.linagora.tmail.james.jmap.model.CalendarEventStatusField.EventStatus
 import com.linagora.tmail.james.jmap.model.CalendarFreeBusyStatusField.FreeBusyStatus
@@ -36,7 +36,7 @@ import com.linagora.tmail.james.jmap.model.CalendarPrivacyField.CalendarPrivacy
 import com.linagora.tmail.james.jmap.model.RecurrenceRulesField.parseRecurrenceRules
 import eu.timepit.refined.api.Refined
 import eu.timepit.refined.auto._
-import net.fortuna.ical4j.data.{CalendarBuilder, CalendarParserFactory, ContentHandlerContext}
+import net.fortuna.ical4j.data.ContentHandlerContext
 import net.fortuna.ical4j.model.Recur.Skip
 import net.fortuna.ical4j.model.WeekDay.Day
 import net.fortuna.ical4j.model._
@@ -595,9 +595,7 @@ object CalendarEventParsed {
   }
 
   def parseICal4jCalendar(calendarContent: InputStream): Calendar = {
-    new CalendarBuilder(CalendarParserFactory.getInstance.get,
-      new ContentHandlerContext().withSuppressInvalidProperties(true),
-      new ICal4JTimeZoneRegistry())
+    InMemoryAttach.calendarBuilder(new ContentHandlerContext().withSuppressInvalidProperties(true))
       .build(calendarContent)
   }
 
