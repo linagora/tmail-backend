@@ -333,4 +333,25 @@ public class SabreContactMessageParseTest {
         assertThatThrownBy(() -> SabreContactMessage.checkCanBeParsed(grouped))
             .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void parsePayloadShouldRejectALabelBombWithFoldedPropertyNames() throws Exception {
+        String folded = card("AD\r\n R:\r\n".repeat(20_000) + "LAB\r\n\tEL;TYPE=x:\r\n".repeat(20_000));
+        String amqpMessage = amqpMessage(folded, Optional.empty());
+
+        assertTimeoutPreemptively(Duration.ofSeconds(5), () ->
+            assertThatThrownBy(() -> SabreContactMessage.parseAMQPMessage(amqpMessage))
+                .isInstanceOf(SabreContactMessage.SabreContactParseException.class));
+    }
+
+    @Test
+    void jsonParseErrorsShouldNotQuoteThePayload() {
+        String truncated = "{\"owner\": \"principals/users/1\", \"carddata\": \"EMAIL:secret@tutu.com\" \"broken";
+
+        assertThatThrownBy(() -> SabreContactMessage.parseAMQPMessage(truncated))
+            .isInstanceOf(SabreContactMessage.SabreContactParseException.class)
+            .satisfies(e -> assertThat(Throwables.getCausalChain(e))
+                .extracting(Throwable::getMessage)
+                .noneMatch(message -> message != null && message.contains("secret@tutu.com")));
+    }
 }

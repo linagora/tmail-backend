@@ -34,6 +34,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
+import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.guava.GuavaModule;
@@ -69,6 +70,7 @@ public record SabreContactMessage(Owner owner,
     @VisibleForTesting
     static final long MAX_LABEL_ADDRESS_PAIRS = 10_000;
     private static final Pattern NEWLINE = Pattern.compile("\\r\\n|\\r|\\n");
+    private static final Pattern FOLDING = Pattern.compile("(\\r\\n|\\r|\\n)[ \\t]");
 
     public sealed interface Owner permits Owner.UserOwner, Owner.DomainOwner {
         String id();
@@ -113,6 +115,8 @@ public record SabreContactMessage(Owner owner,
                     .registerModule(new Jdk8Module())
                     .registerModule(new GuavaModule());
                 objectMapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
+                // Parse errors must not quote the payload, which holds the personal data of the card
+                objectMapper.configure(JsonParser.Feature.INCLUDE_SOURCE_IN_LOCATION, false);
             }
 
             public AMQPMessage deserialize(byte[] jsonBytes) throws IOException {
@@ -177,7 +181,9 @@ public record SabreContactMessage(Owner owner,
             "Card data of %s characters exceeds %s", cardData.length(), MAX_CARD_DATA_LENGTH);
         long labels = 0;
         long addresses = 0;
-        for (String line : NEWLINE.split(cardData)) {
+        // ez-vcard unfolds the lines before reading the property names: AD<CRLF><SPACE>R is an ADR
+        String unfolded = FOLDING.matcher(cardData).replaceAll("");
+        for (String line : NEWLINE.split(unfolded)) {
             switch (propertyName(line)) {
                 case "LABEL" -> labels++;
                 case "ADR" -> addresses++;

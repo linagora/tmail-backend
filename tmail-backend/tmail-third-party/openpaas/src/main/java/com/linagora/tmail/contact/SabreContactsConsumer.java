@@ -54,6 +54,7 @@ import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
+import reactor.core.scheduler.Scheduler;
 import reactor.core.scheduler.Schedulers;
 import reactor.rabbitmq.AcknowledgableDelivery;
 import reactor.rabbitmq.ConsumeOptions;
@@ -64,7 +65,14 @@ public class SabreContactsConsumer implements Closeable {
     private static final Logger LOGGER = LoggerFactory.getLogger(SabreContactsConsumer.class);
     private static final boolean REQUEUE_ON_NACK = true;
     private static final BinaryOperator<ContactFields> KEEP_FIRST = (first, second) -> first;
-    private static final Duration PARSE_TIMEOUT = Duration.ofSeconds(10);
+    /**
+     * Defence in depth: a card is bounded before ez-vcard parses it (see SabreContactMessage), which takes a few
+     * milliseconds. A parse that times out is nacked without requeue, the card is not indexed. ez-vcard does not stop
+     * on interruption: a timed out parse goes on, on the parse scheduler only.
+     */
+    private static final Duration PARSE_TIMEOUT = Duration.ofMillis(100);
+    private static final int PARSE_THREADS = 4;
+    private static final int PARSE_QUEUED_TASKS = 10_000;
     public static final String QUEUE_NAME_ADD = "sabre-contacts-queue-add";
     public static final String QUEUE_NAME_UPDATE = "sabre-contacts-queue-update";
     public static final String QUEUE_NAME_DELETE = "sabre-contacts-queue-delete";
@@ -72,6 +80,7 @@ public class SabreContactsConsumer implements Closeable {
     private final ReceiverProvider receiverProvider;
     private final EmailAddressContactSearchEngine contactSearchEngine;
     private final OpenPaasRestClient openPaasRestClient;
+    private final Scheduler parseScheduler = Schedulers.newBoundedElastic(PARSE_THREADS, PARSE_QUEUED_TASKS, "sabre-contact-parse");
     private Disposable consumeAddedContactsDisposable;
     private Disposable consumeUpdatedContactsDisposable;
     private Disposable consumeDeletedContactsDisposable;
@@ -126,11 +135,12 @@ public class SabreContactsConsumer implements Closeable {
     }
 
     private Mono<?> messageConsume(AcknowledgableDelivery ackDelivery, byte[] messagePayload, ContactHandler userHandler, DomainContactHandler domainHandler) {
-        // Parsing a card is CPU bound: it runs off the delivery thread, so that a slow card does not hold back the
-        // other deliveries of the queue
+        // Parsing a card is CPU bound: it runs off the delivery thread, on its own scheduler, so that a slow card holds
+        // back neither the other deliveries of the queue nor the shared schedulers; the handling goes on in parallel
         return Mono.fromCallable(() -> SabreContactMessage.parseAMQPMessage(messagePayload))
-            .subscribeOn(Schedulers.boundedElastic())
+            .subscribeOn(parseScheduler)
             .timeout(PARSE_TIMEOUT)
+            .publishOn(Schedulers.parallel())
             .filter(Optional::isPresent)
             .map(Optional::get)
             .flatMap(contactMessage -> switch (contactMessage.owner()) {
@@ -256,6 +266,7 @@ public class SabreContactsConsumer implements Closeable {
         Optional.ofNullable(consumeAddedContactsDisposable).ifPresent(Disposable::dispose);
         Optional.ofNullable(consumeUpdatedContactsDisposable).ifPresent(Disposable::dispose);
         Optional.ofNullable(consumeDeletedContactsDisposable).ifPresent(Disposable::dispose);
+        parseScheduler.dispose();
     }
 
     private Mono<AccountId> getAccountId(String openpaasUserId) {
