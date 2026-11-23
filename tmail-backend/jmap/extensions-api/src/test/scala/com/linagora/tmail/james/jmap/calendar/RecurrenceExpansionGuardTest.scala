@@ -44,6 +44,8 @@ object RecurrenceExpansionGuardTest {
 
   def rulesTooCostlyToExpand(): Stream[Arguments] = Stream.of(
     Arguments.of("COUNT walked from DTSTART", "DTSTART:19900101T000000Z\nRRULE:FREQ=SECONDLY;COUNT=2000000000"),
+    Arguments.of("int overflow of the fast-forward", "DTSTART:19000101T000000Z\nRRULE:FREQ=SECONDLY"),
+    Arguments.of("int overflow of the fast-forward with a power of two INTERVAL", "DTSTART:19000101T000000Z\nRRULE:FREQ=SECONDLY;INTERVAL=1024"),
     Arguments.of("DURATION widening the walk", "DTSTART:20000101T000000Z\nRRULE:FREQ=SECONDLY\nDURATION:P1400W"),
     Arguments.of("DTEND widening the walk", "DTSTART:20000101T000000Z\nRRULE:FREQ=SECONDLY\nDTEND:20260101T000000Z"),
     Arguments.of("BY* lists product", s"DTSTART:20260101T000000Z\nRRULE:FREQ=YEARLY;$FULL_LISTS"),
