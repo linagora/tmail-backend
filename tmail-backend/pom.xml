@@ -118,7 +118,7 @@
         <firebase-admin-sdk.version>9.3.0</firebase-admin-sdk.version>
         <bouncycastle.version>1.82</bouncycastle.version>
         <mongodb.version>5.5.1</mongodb.version>
-        <netty.tcnative.version>2.0.77.Final</netty.tcnative.version>
+        <netty.tcnative.version>2.0.84.Final</netty.tcnative.version>
         <scala.base>3.10</scala.base>
         <scala.binary>3</scala.binary>
         <scala.version>${scala.base}.0</scala.version>
@@ -571,6 +571,48 @@
                 <artifactId>james-server-mailets-integration-testing</artifactId>
                 <type>test-jar</type>
                 <version>${james.version}</version>
+            </dependency>
+            <!-- Override the tcnative versions pinned by the netty-bom imported through James:
+                 the native classifier jars, not only the umbrella jar, must carry the fix -->
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-tcnative-classes</artifactId>
+                <version>${netty.tcnative.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-tcnative-boringssl-static</artifactId>
+                <version>${netty.tcnative.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-tcnative-boringssl-static</artifactId>
+                <version>${netty.tcnative.version}</version>
+                <classifier>linux-x86_64</classifier>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-tcnative-boringssl-static</artifactId>
+                <version>${netty.tcnative.version}</version>
+                <classifier>linux-aarch_64</classifier>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-tcnative-boringssl-static</artifactId>
+                <version>${netty.tcnative.version}</version>
+                <classifier>osx-x86_64</classifier>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-tcnative-boringssl-static</artifactId>
+                <version>${netty.tcnative.version}</version>
+                <classifier>osx-aarch_64</classifier>
+            </dependency>
+            <dependency>
+                <groupId>io.netty</groupId>
+                <artifactId>netty-tcnative-boringssl-static</artifactId>
+                <version>${netty.tcnative.version}</version>
+                <classifier>windows-x86_64</classifier>
             </dependency>
             <dependency>
                 <groupId>${james.groupId}</groupId>
