@@ -196,6 +196,7 @@ case class CalendarEventModifier(patches: Seq[CalendarEventUpdatePatch],
           .add(recurrenceId)
           .build()))
 
+        RecurrenceExpansionGuard.checkOccurrenceCanBeLookedUp(baseVEvent, recurrenceId.getDate)
         (for {
           period  <- baseVEvent.calculateRecurrenceSet[Temporal](new Period(recurrenceId.getDate, recurrenceId.getDate)).asScala.headOption
           alternativeZoneId  = VEventTemporalUtil.getAlternativeZoneId(baseVEvent)
