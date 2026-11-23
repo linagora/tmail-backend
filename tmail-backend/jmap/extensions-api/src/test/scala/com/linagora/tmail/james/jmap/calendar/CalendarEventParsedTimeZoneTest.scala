@@ -23,11 +23,13 @@ package com.linagora.tmail.james.jmap.calendar
 
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
+import java.nio.file.{Files, Path}
 import java.time.{Instant, ZonedDateTime}
 
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed
 import net.fortuna.ical4j.model.component.VEvent
-import net.fortuna.ical4j.model.{Calendar, Component}
+import net.fortuna.ical4j.model.property.Attach
+import net.fortuna.ical4j.model.{Calendar, Component, Property}
 import org.assertj.core.api.Assertions.assertThat
 import org.junit.jupiter.api.Test
 import org.junit.jupiter.params.ParameterizedTest
@@ -85,6 +87,41 @@ class CalendarEventParsedTimeZoneTest {
     val calendar = parse(ics.replace("{TZID}", "Custom Twake Time").replace("{DATE}", "20260715"))
 
     assertThat(start(calendar)).isEqualTo(Instant.parse("2026-07-15T09:45:00Z"))
+  }
+
+  @Test
+  def parsingAndCopyingAnInlineAttachmentShouldLeaveNoTemporaryFile(): Unit = {
+    val content = """BEGIN:VCALENDAR
+                    |VERSION:2.0
+                    |PRODID:x
+                    |BEGIN:VEVENT
+                    |UID:a
+                    |DTSTAMP:20260401T100000Z
+                    |DTSTART:20260401T100000Z
+                    |ATTACH;ENCODING=BASE64;VALUE=BINARY;FMTTYPE=text/plain:aGVsbG8=
+                    |ATTACH:https://example.com/a.pdf
+                    |END:VEVENT
+                    |END:VCALENDAR
+                    |""".stripMargin
+    val before = ical4jAttachFiles()
+
+    val calendar = parse(content)
+    val copy = CalendarEventModifier.deepCopy(calendar)
+
+    assertThat(ical4jAttachFiles().asJava).isEqualTo(before.asJava)
+    val attachments = copy.getComponent[VEvent](Component.VEVENT).orElseThrow().getProperties[Attach](Property.ATTACH).asScala
+    assertThat(new String(attachments.head.getBinaryData, StandardCharsets.US_ASCII)).isEqualTo("hello")
+    assertThat(attachments(1).getUri.toString).isEqualTo("https://example.com/a.pdf")
+    assertThat(copy.toString).isEqualTo(calendar.toString)
+  }
+
+  private def ical4jAttachFiles(): List[Path] = {
+    val files = Files.list(Path.of(System.getProperty("java.io.tmpdir")))
+    try {
+      files.iterator().asScala.filter(_.getFileName.toString.startsWith("ical4j-attach")).toList.sortBy(_.toString)
+    } finally {
+      files.close()
+    }
   }
 
   private def parse(content: String): Calendar =

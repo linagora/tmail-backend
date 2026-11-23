@@ -53,9 +53,9 @@ import com.linagora.tmail.dav.DavClient;
 import com.linagora.tmail.dav.DavClientException;
 import com.linagora.tmail.dav.DavUser;
 import com.linagora.tmail.dav.DavUserProvider;
-import com.linagora.tmail.james.jmap.calendar.ICal4JTimeZoneRegistry;
+import com.linagora.tmail.james.jmap.calendar.InMemoryAttach;
 
-import net.fortuna.ical4j.data.CalendarBuilder;
+import net.fortuna.ical4j.data.ContentHandlerContext;
 import net.fortuna.ical4j.data.ParserException;
 import net.fortuna.ical4j.model.Calendar;
 import net.fortuna.ical4j.model.Component;
@@ -257,7 +257,7 @@ public class CalDavCollect extends GenericMailet {
 
     private Calendar parseICalString(String icsContent) throws Exception {
         StringReader reader = new StringReader(icsContent);
-        return new CalendarBuilder(new ICal4JTimeZoneRegistry()).build(reader);
+        return InMemoryAttach.calendarBuilder(new ContentHandlerContext()).build(reader);
     }
 
     private boolean shouldSendItip(MailAddress mailAddress, Calendar calendar) {
