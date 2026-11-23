@@ -67,10 +67,11 @@ public class SabreContactsConsumer implements Closeable {
     private static final BinaryOperator<ContactFields> KEEP_FIRST = (first, second) -> first;
     /**
      * Defence in depth: a card is bounded before ez-vcard parses it (see SabreContactMessage), which takes a few
-     * milliseconds. A parse that times out is nacked without requeue, the card is not indexed. ez-vcard does not stop
-     * on interruption: a timed out parse goes on, on the parse scheduler only.
+     * milliseconds. A parse that times out is nacked without requeue, the card is not indexed: the limit is far above
+     * the normal parse time so that a valid card still passes after a cold start, a GC pause or under CPU contention.
+     * ez-vcard does not stop on interruption: a timed out parse goes on, on the parse scheduler only.
      */
-    private static final Duration PARSE_TIMEOUT = Duration.ofMillis(100);
+    private static final Duration PARSE_TIMEOUT = Duration.ofSeconds(5);
     private static final int PARSE_THREADS = 4;
     private static final int PARSE_QUEUED_TASKS = 10_000;
     public static final String QUEUE_NAME_ADD = "sabre-contacts-queue-add";
