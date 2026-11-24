@@ -18,6 +18,7 @@
 package com.linagora.tmail.jmap.aibot.redationalHelper
 
 import com.linagora.tmail.james.jmap.CheckedRefined.given
+import com.linagora.tmail.james.jmap.event.ApplyWhenFilter
 import com.linagora.tmail.jmap.aibot.CapabilityIdentifier.LINAGORA_AIBOT
 import com.linagora.tmail.jmap.aibot.json.AiBotSerializer
 import com.linagora.tmail.redactionalhelper.AIRedactionalHelper
@@ -25,7 +26,7 @@ import eu.timepit.refined.auto._
 import jakarta.inject.Inject
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, JMAP_CORE}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
-import org.apache.james.jmap.core.{Invocation, SessionTranslator}
+import org.apache.james.jmap.core.{ErrorCode, Invocation, SessionTranslator}
 import org.apache.james.jmap.method.{InvocationWithContext, MethodRequiringAccountId, standardErrorMessage}
 import org.apache.james.jmap.routes.SessionSupplier
 import org.apache.james.mailbox.model.{FetchGroup, MessageId, MessageResult}
@@ -38,6 +39,7 @@ import org.apache.james.util.mime.MessageContentExtractor
 import org.reactivestreams.Publisher
 import play.api.libs.json._
 import reactor.core.publisher.Mono
+import reactor.core.scala.publisher.SMono
 
 import java.util.Optional
 
@@ -49,7 +51,8 @@ class AiSuggestionMethod @Inject()(val aiBotService: AIRedactionalHelper,
                                    val sessionSupplier: SessionSupplier,
                                    val sessionTranslator: SessionTranslator,
                                    val messageIdManager: MessageIdManager,
-                                   val messageIdFactory: MessageId.Factory)
+                                   val messageIdFactory: MessageId.Factory,
+                                   val applyWhenFilter: ApplyWhenFilter)
   extends MethodRequiringAccountId[AiBotSuggestReplyRequest] {
 
   override val methodName: Invocation.MethodName = MethodName("AiBot/Suggest")
@@ -62,30 +65,43 @@ class AiSuggestionMethod @Inject()(val aiBotService: AIRedactionalHelper,
 
 
   override def doProcess(capabilities: Set[CapabilityIdentifier], invocation: InvocationWithContext, mailboxSession: MailboxSession, request: AiBotSuggestReplyRequest): Publisher[InvocationWithContext] =
-    getEmail(mailboxSession, request)
+    SMono(applyWhenFilter.isEligible(mailboxSession.getUser))
+      .map(_.booleanValue())
+      .flatMap {
+        case true => suggest(invocation, mailboxSession, request)
+        case false => SMono.just(notEligible(invocation))
+      }
+
+  private def suggest(invocation: InvocationWithContext, mailboxSession: MailboxSession, request: AiBotSuggestReplyRequest): SMono[InvocationWithContext] =
+    SMono(getEmail(mailboxSession, request)
       .flatMap(mailContent => aiBotService.suggestContent(request.userInput, mailContent))
-      .map(res =>AiBotSuggestReplyResponse.from(request.accountId,res))
-      .map(response =>Invocation(
+      .map(res => AiBotSuggestReplyResponse.from(request.accountId, res))
+      .map(response => Invocation(
           methodName,
           Arguments(AiBotSerializer.serializeResponse(response).as[JsObject]),
           invocation.invocation.methodCallId))
-      .map(InvocationWithContext(_, invocation.processingContext))
+      .map(InvocationWithContext(_, invocation.processingContext)))
 
-private def getEmail(mailboxSession: MailboxSession, request: AiBotSuggestReplyRequest): Mono[Optional[String]] =
-  request.emailId match {
-    case Some(id) =>
-      val messageId: MessageId = messageIdFactory.fromString(id)
-      val messageIds = java.util.Collections.singletonList(messageId)
+  private def notEligible(invocation: InvocationWithContext): InvocationWithContext =
+    InvocationWithContext(
+      Invocation.error(ErrorCode.Forbidden, "User is not eligible for AI features", invocation.invocation.methodCallId),
+      invocation.processingContext)
 
-      Mono.from(messageIdManager.getMessagesReactive(
-          messageIds,
-          FetchGroup.FULL_CONTENT,
-          mailboxSession))
-        .switchIfEmpty(Mono.error(MessageNotFoundException(messageId)))
-        .flatMap(messageResult => extractEmailContent(messageResult))
-    case None =>
-      Mono.just(Optional.empty())
-  }
+  private def getEmail(mailboxSession: MailboxSession, request: AiBotSuggestReplyRequest): Mono[Optional[String]] =
+    request.emailId match {
+      case Some(id) =>
+        val messageId: MessageId = messageIdFactory.fromString(id)
+        val messageIds = java.util.Collections.singletonList(messageId)
+
+        Mono.from(messageIdManager.getMessagesReactive(
+            messageIds,
+            FetchGroup.FULL_CONTENT,
+            mailboxSession))
+          .switchIfEmpty(Mono.error(MessageNotFoundException(messageId)))
+          .flatMap(messageResult => extractEmailContent(messageResult))
+      case None =>
+        Mono.just(Optional.empty())
+    }
 
   private def extractEmailContent(messageResult: MessageResult): Mono[Optional[String]] =
     Mono.fromCallable(() => {

@@ -25,7 +25,10 @@ import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.
 import static org.apache.james.jmap.rfc8621.contract.Fixture.ACCEPT_RFC8621_VERSION_HEADER;
 import static org.apache.james.jmap.rfc8621.contract.Fixture.authScheme;
 import static org.apache.james.jmap.rfc8621.contract.Fixture.baseRequestSpecBuilder;
+import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasKey;
+
+import java.nio.charset.StandardCharsets;
 
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
@@ -37,12 +40,15 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
+import com.google.common.hash.Hashing;
 import com.google.inject.util.Modules;
 import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.jmap.event.ApplyWhenFilter;
 import com.linagora.tmail.common.AIBaseModule;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
+import com.linagora.tmail.redactionalhelper.AIRedactionalHelper;
+import com.linagora.tmail.redactionalhelper.AIRedactionalHelperForTest;
 import com.linagora.tmail.saas.api.SaaSAccountRepository;
 import com.linagora.tmail.saas.api.memory.MemorySaaSAccountRepository;
 import com.linagora.tmail.saas.filter.SaaSPayingUser;
@@ -73,6 +79,7 @@ class AiBotCapabilitySaaSFilterIntegrationTest {
                 .with(binder -> {
                     binder.bind(SaaSAccountRepository.class).toInstance(SAAS_REPOSITORY);
                     binder.bind(ApplyWhenFilter.class).toInstance(new SaaSPayingUser(SAAS_REPOSITORY));
+                    binder.bind(AIRedactionalHelper.class).to(AIRedactionalHelperForTest.class);
                 })))
         .build();
 
@@ -134,5 +141,70 @@ class AiBotCapabilitySaaSFilterIntegrationTest {
         .then()
             .statusCode(SC_OK)
             .body("capabilities.'com:linagora:params:jmap:aibot'", org.hamcrest.Matchers.nullValue());
+    }
+
+    @Test
+    void aiBotSuggestShouldSucceedForPayingUser(GuiceJamesServer jamesServer) {
+        given(jmapSpec(jamesServer, PAYING_USER))
+            .body(suggestRequest(PAYING_USER))
+        .when()
+            .post()
+        .then()
+            .statusCode(SC_OK)
+            .body("methodResponses[0][0]", equalTo("AiBot/Suggest"))
+            .body("methodResponses[0][1].suggestion", org.hamcrest.Matchers.notNullValue());
+    }
+
+    @Test
+    void aiBotSuggestShouldBeRejectedForNonPayingUser(GuiceJamesServer jamesServer) {
+        given(jmapSpec(jamesServer, NON_PAYING_USER))
+            .body(suggestRequest(NON_PAYING_USER))
+        .when()
+            .post()
+        .then()
+            .statusCode(SC_OK)
+            .body("methodResponses[0][0]", equalTo("error"))
+            .body("methodResponses[0][1].type", equalTo("forbidden"))
+            .body("methodResponses[0][1].description", equalTo("User is not eligible for AI features"));
+    }
+
+    @Test
+    void aiBotSuggestShouldBeRejectedForUserWithNoSaaSAccount(GuiceJamesServer jamesServer) throws Exception {
+        Username unknownUser = Username.fromLocalPartWithDomain("unknown", DOMAIN);
+        jamesServer.getProbe(DataProbeImpl.class).fluent()
+            .addUser(unknownUser.asString(), PASSWORD);
+
+        given(jmapSpec(jamesServer, unknownUser))
+            .body(suggestRequest(unknownUser))
+        .when()
+            .post()
+        .then()
+            .statusCode(SC_OK)
+            .body("methodResponses[0][0]", equalTo("error"))
+            .body("methodResponses[0][1].type", equalTo("forbidden"));
+    }
+
+    private static RequestSpecification jmapSpec(GuiceJamesServer jamesServer, Username username) {
+        return baseRequestSpecBuilder(jamesServer)
+            .setAuth(authScheme(new UserCredential(username, PASSWORD)))
+            .addHeader(ACCEPT.toString(), ACCEPT_RFC8621_VERSION_HEADER())
+            .build();
+    }
+
+    private static String suggestRequest(Username username) {
+        return String.format("""
+            {
+              "using": ["urn:ietf:params:jmap:core", "com:linagora:params:jmap:aibot"],
+              "methodCalls": [
+                ["AiBot/Suggest", {
+                  "accountId": "%s",
+                  "userInput": "explain to him how to cook an egg"
+                }, "0"]
+              ]
+            }""", accountId(username));
+    }
+
+    private static String accountId(Username username) {
+        return Hashing.sha256().hashString(username.asString(), StandardCharsets.UTF_8).toString();
     }
 }
