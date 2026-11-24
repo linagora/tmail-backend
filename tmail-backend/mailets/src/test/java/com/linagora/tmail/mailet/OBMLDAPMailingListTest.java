@@ -23,11 +23,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.util.Optional;
 
 import org.apache.james.core.MailAddress;
+import org.apache.james.core.MaybeSender;
+import org.apache.james.core.builder.MimeMessageBuilder;
+import org.apache.mailet.base.test.FakeMail;
 import org.apache.mailet.base.test.FakeMailContext;
 import org.apache.mailet.base.test.FakeMailetConfig;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import com.google.common.collect.ImmutableList;
 import com.linagora.tmail.mailet.OBMLDAPMailingList.GroupResolutionResult;
 import com.unboundid.ldap.sdk.Attribute;
 import com.unboundid.ldap.sdk.LDAPConnectionPool;
@@ -37,16 +41,62 @@ class OBMLDAPMailingListTest {
     private static final String LIST_DN = "cn=group-canut,ou=groups,dc=linagora.com,dc=lng";
 
     private OBMLDAPMailingList testee;
+    private FakeMailContext mailetContext;
 
     @BeforeEach
     void setUp() throws Exception {
+        mailetContext = FakeMailContext.defaultContext();
         testee = new OBMLDAPMailingList((LDAPConnectionPool) null, MailingListConfiguration.EMPTY);
         testee.init(FakeMailetConfig.builder()
             .mailetName("OBMLDAPMailingList")
             .setProperty("baseDN", "ou=groups,dc=linagora.com,dc=lng")
             .setProperty("rejectedSenderProcessor", "rejectedSender")
-            .mailetContext(FakeMailContext.defaultContext())
+            .mailetContext(mailetContext)
             .build());
+    }
+
+    private static FakeMail nullSenderMailTo(MailAddress recipient) throws Exception {
+        return FakeMail.builder()
+            .name("test-mail")
+            .state(FakeMail.DEFAULT)
+            .recipient(recipient)
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .setSubject("test")
+                .setText("content")
+                .build())
+            .build();
+    }
+
+    @Test
+    void shouldRejectNullSenderWhenPrivateList() throws Exception {
+        MailAddress listAddress = new MailAddress("group-canut@linagora.com");
+        GroupResolutionResult privateList = new GroupResolutionResult(listAddress, false,
+            ImmutableList.of(new MailAddress("member@linagora.com")));
+        FakeMail mail = nullSenderMailTo(listAddress);
+
+        testee.listToMailTransformation(MaybeSender.nullSender(), listAddress, privateList).transform(mail);
+
+        assertThat(mail.getRecipients()).isEmpty();
+        assertThat(mailetContext.getSentMails()).hasSize(1);
+        FakeMailContext.SentMail sentMail = mailetContext.getSentMails().get(0);
+        assertThat(sentMail.getState()).isEqualTo("rejectedSender");
+        assertThat(sentMail.getRecipients()).containsOnly(listAddress);
+    }
+
+    @Test
+    void shouldAcceptNullSenderWhenPublicList() throws Exception {
+        MailAddress listAddress = new MailAddress("group-canut@linagora.com");
+        MailAddress member = new MailAddress("member@linagora.com");
+        GroupResolutionResult publicList = new GroupResolutionResult(listAddress, true, ImmutableList.of(member));
+        FakeMail mail = nullSenderMailTo(listAddress);
+
+        testee.listToMailTransformation(MaybeSender.nullSender(), listAddress, publicList).transform(mail);
+
+        assertThat(mail.getRecipients()).isEmpty();
+        assertThat(mailetContext.getSentMails()).hasSize(1);
+        FakeMailContext.SentMail sentMail = mailetContext.getSentMails().get(0);
+        assertThat(sentMail.getState()).isNotEqualTo("rejectedSender");
+        assertThat(sentMail.getRecipients()).containsOnly(member);
     }
 
     private static SearchResultEntry entry(Attribute... attributes) {
