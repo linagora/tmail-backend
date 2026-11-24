@@ -139,6 +139,49 @@ trait KeystoreManagerContract {
       .containsExactly(keyId)
   }
 
+  @Test
+  def saveShouldRejectKeysBeyondTheLimit(): Unit = {
+    val storedKeyIds: Seq[KeyId] = saveDistinctKeys(KeystoreLimit.DEFAULT_MAX_KEYS_PER_USER)
+
+    assertSoftly(softly => {
+      softly.assertThatThrownBy(() => SMono.fromPublisher(keyStoreManager.save(BOB, CraftedKeyRings.withGeneratedRSAEncryptionSubkey())).block())
+        .isInstanceOf(classOf[KeystoreLimitExceededException])
+      softly.assertThat(SFlux.fromPublisher(keyStoreManager.listPublicKeys(BOB)).map(_.id).collectSeq().block().asJava)
+        .containsExactlyInAnyOrderElementsOf(storedKeyIds.asJava)
+    })
+  }
+
+  @Test
+  def saveShouldAcceptAnAlreadyStoredKeyWhenTheLimitIsReached(): Unit = {
+    val payload: Array[Byte] = ClassLoader.getSystemClassLoader.getResourceAsStream("gpg.pub").readAllBytes()
+    val keyId: KeyId = SMono.fromPublisher(keyStoreManager.save(BOB, payload)).block()
+    saveDistinctKeys(KeystoreLimit.DEFAULT_MAX_KEYS_PER_USER - 1)
+
+    assertThat(SMono.fromPublisher(keyStoreManager.save(BOB, payload)).block())
+      .isEqualTo(keyId)
+  }
+
+  @Test
+  def keyLimitShouldBeAppliedPerUser(): Unit = {
+    saveDistinctKeys(KeystoreLimit.DEFAULT_MAX_KEYS_PER_USER)
+    val payload: Array[Byte] = ClassLoader.getSystemClassLoader.getResourceAsStream("gpg.pub").readAllBytes()
+
+    assertThatCode(() => SMono.fromPublisher(keyStoreManager.save(ALICE, payload)).block())
+      .doesNotThrowAnyException()
+  }
+
+  @Test
+  def deleteShouldFreeRoomForANewKeyWhenTheLimitIsReached(): Unit = {
+    val storedKeyIds: Seq[KeyId] = saveDistinctKeys(KeystoreLimit.DEFAULT_MAX_KEYS_PER_USER)
+    SMono.fromPublisher(keyStoreManager.delete(BOB, storedKeyIds.head)).block()
+
+    assertThatCode(() => SMono.fromPublisher(keyStoreManager.save(BOB, CraftedKeyRings.withGeneratedRSAEncryptionSubkey())).block())
+      .doesNotThrowAnyException()
+  }
+
+  private def saveDistinctKeys(count: Int): Seq[KeyId] =
+    (1 to count).map(_ => SMono.fromPublisher(keyStoreManager.save(BOB, CraftedKeyRings.withGeneratedRSAEncryptionSubkey())).block())
+
   private def keyThatCannotEncrypt: Array[Byte] =
     CraftedKeyRings.withRSAEncryptionSubkey(BigInteger.ONE.shiftLeft(1023).add(BigInteger.valueOf(1999)), BigInteger.ONE)
 
