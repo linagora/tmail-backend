@@ -89,6 +89,10 @@ object TeamMailboxRepositoryImpl {
 
   val TEAM_MAILBOX_MEMBER_RIGHTS_DELETE: MailboxACL.Rfc4314Rights =
     TEAM_MAILBOX_MANAGER_RIGHTS.union(new MailboxACL.Rfc4314Rights(Right.DeleteMailbox))
+
+  // A bare name prefix also matches the folders of `teamX` when listing `team`
+  def belongsTo(path: MailboxPath, teamMailbox: TeamMailbox): Boolean =
+    path.getUser.equals(teamMailbox.owner) && TeamMailbox.from(path).contains(teamMailbox)
 }
 
 class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
@@ -189,12 +193,20 @@ class TeamMailboxRepositoryImpl @Inject()(mailboxManager: MailboxManager,
       .thenMany(SMono.empty)
   }
 
-  private def listMailboxPaths(teamMailbox: TeamMailbox): SFlux[MailboxPath] =
-     SFlux(mailboxManager.search(MailboxQuery.builder
-       .namespace(TEAM_MAILBOX_NAMESPACE)
-       .matchesAllMailboxNames
-       .build, mailboxManager.createSystemSession(teamMailbox.self)))
-       .map(metaData => metaData.getPath)
+  // The folders of a team are the folders of the team mailbox tree named after it. Listing what the team address can see
+  // would also return the folders of other teams shared with that address, and act on them.
+  private def listMailboxPaths(teamMailbox: TeamMailbox): SFlux[MailboxPath] = {
+    val session = createSession(teamMailbox)
+    SFlux(mailboxSessionMapperFactory.getMailboxMapper(session)
+      .findMailboxWithPathLike(MailboxQuery.builder
+        .namespace(TEAM_MAILBOX_NAMESPACE)
+        .user(teamMailbox.owner)
+        .expression(new PrefixedWildcard(teamMailbox.mailboxName.asString()))
+        .build
+        .asUserBound))
+      .map(_.generateAssociatedPath())
+      .filter(path => TeamMailboxRepositoryImpl.belongsTo(path, teamMailbox))
+  }
 
   private def addRightForMember(path: MailboxPath, user: Username, session: MailboxSession, teamMailboxRole: TeamMemberRole): SMono[Unit] =
     SMono(mailboxManager.applyRightsCommandReactive(path,

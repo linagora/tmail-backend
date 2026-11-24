@@ -61,6 +61,7 @@ import com.linagora.tmail.team.TeamMailboxNameConflictException;
 import com.linagora.tmail.team.TeamMailboxNameSpace;
 import com.linagora.tmail.team.TeamMailboxNotFoundException;
 import com.linagora.tmail.team.TeamMailboxRepository;
+import com.linagora.tmail.team.TeamMailboxRepositoryImpl;
 import com.linagora.tmail.team.TeamMemberRole;
 
 import reactor.core.publisher.Flux;
@@ -319,6 +320,7 @@ public class TeamMailboxManagementRoutes implements Routes {
                 .build();
 
             return mailboxManager.search(query, MailboxManager.MailboxSearchFetchType.Minimal, session)
+                .filter(metaData -> TeamMailboxRepositoryImpl.belongsTo(metaData.getPath(), teamMailbox))
                 .map(metaData -> {
                     String fullName = metaData.getPath().getName();
                     String mailboxName = fullName.startsWith(folderPrefix) ? fullName.substring(folderPrefix.length()) : fullName;
