@@ -25,10 +25,14 @@ import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.
 import static org.apache.james.jmap.rfc8621.contract.Fixture.ACCEPT_RFC8621_VERSION_HEADER;
 import static org.apache.james.jmap.rfc8621.contract.Fixture.authScheme;
 import static org.apache.james.jmap.rfc8621.contract.Fixture.baseRequestSpecBuilder;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.equalTo;
 import static org.hamcrest.Matchers.hasKey;
 
+import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.Optional;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
@@ -65,6 +69,30 @@ class AiBotCapabilitySaaSFilterIntegrationTest {
     private static final Username NON_PAYING_USER = Username.fromLocalPartWithDomain("nonpaying", DOMAIN);
 
     static final MemorySaaSAccountRepository SAAS_REPOSITORY = new MemorySaaSAccountRepository();
+    static final CountingAIRedactionalHelper AI_REDACTIONAL_HELPER = new CountingAIRedactionalHelper(new AIRedactionalHelperForTest());
+
+    static class CountingAIRedactionalHelper implements AIRedactionalHelper {
+        private final AIRedactionalHelper delegate;
+        private final AtomicInteger suggestContentCalls = new AtomicInteger();
+
+        CountingAIRedactionalHelper(AIRedactionalHelper delegate) {
+            this.delegate = delegate;
+        }
+
+        @Override
+        public Mono<String> suggestContent(String userInput, Optional<String> mailContent) throws IOException {
+            suggestContentCalls.incrementAndGet();
+            return delegate.suggestContent(userInput, mailContent);
+        }
+
+        int suggestContentCalls() {
+            return suggestContentCalls.get();
+        }
+
+        void reset() {
+            suggestContentCalls.set(0);
+        }
+    }
 
     @RegisterExtension
     static JamesServerExtension jamesServerExtension = new JamesServerBuilder<MemoryConfiguration>(tmpDir ->
@@ -79,12 +107,13 @@ class AiBotCapabilitySaaSFilterIntegrationTest {
                 .with(binder -> {
                     binder.bind(SaaSAccountRepository.class).toInstance(SAAS_REPOSITORY);
                     binder.bind(ApplyWhenFilter.class).toInstance(new SaaSPayingUser(SAAS_REPOSITORY));
-                    binder.bind(AIRedactionalHelper.class).to(AIRedactionalHelperForTest.class);
+                    binder.bind(AIRedactionalHelper.class).toInstance(AI_REDACTIONAL_HELPER);
                 })))
         .build();
 
     @BeforeEach
     void setUp(GuiceJamesServer jamesServer) throws Exception {
+        AI_REDACTIONAL_HELPER.reset();
         jamesServer.getProbe(DataProbeImpl.class).fluent()
             .addDomain(DOMAIN)
             .addUser(PAYING_USER.asString(), PASSWORD)
@@ -153,6 +182,8 @@ class AiBotCapabilitySaaSFilterIntegrationTest {
             .statusCode(SC_OK)
             .body("methodResponses[0][0]", equalTo("AiBot/Suggest"))
             .body("methodResponses[0][1].suggestion", org.hamcrest.Matchers.notNullValue());
+
+        assertThat(AI_REDACTIONAL_HELPER.suggestContentCalls()).isEqualTo(1);
     }
 
     @Test
@@ -166,6 +197,8 @@ class AiBotCapabilitySaaSFilterIntegrationTest {
             .body("methodResponses[0][0]", equalTo("error"))
             .body("methodResponses[0][1].type", equalTo("forbidden"))
             .body("methodResponses[0][1].description", equalTo("User is not eligible for AI features"));
+
+        assertThat(AI_REDACTIONAL_HELPER.suggestContentCalls()).isZero();
     }
 
     @Test
@@ -182,6 +215,8 @@ class AiBotCapabilitySaaSFilterIntegrationTest {
             .statusCode(SC_OK)
             .body("methodResponses[0][0]", equalTo("error"))
             .body("methodResponses[0][1].type", equalTo("forbidden"));
+
+        assertThat(AI_REDACTIONAL_HELPER.suggestContentCalls()).isZero();
     }
 
     private static RequestSpecification jmapSpec(GuiceJamesServer jamesServer, Username username) {
