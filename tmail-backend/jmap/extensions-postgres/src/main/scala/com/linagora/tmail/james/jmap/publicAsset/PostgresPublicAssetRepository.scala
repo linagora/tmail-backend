@@ -23,6 +23,7 @@ import java.net.URI
 
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
+import com.linagora.tmail.james.jmap.PublicAssetTotalSizeLimit
 import jakarta.inject.{Inject, Named}
 import org.apache.james.backends.postgres.PostgresDataDefinition
 import org.apache.james.backends.postgres.utils.PostgresExecutor
@@ -36,12 +37,19 @@ import reactor.core.scala.publisher.SMono
 class PostgresPublicAssetRepository @Inject()(val executorFactory: PostgresExecutor.Factory,
                                               val blobIdFactory: BlobId.Factory,
                                               val blobStore: BlobStore,
+                                              val publicAssetTotalSizeLimit: PublicAssetTotalSizeLimit,
                                               @Named("publicAssetUriPrefix") publicAssetUriPrefix: URI,
                                               @Named(PostgresExecutor.BY_PASS_RLS_INJECT) bypassRlsExecutor: PostgresExecutor) extends PublicAssetRepository {
   private val bucketName: BucketName = blobStore.getDefaultBucketName
   private val byPassRlsDao: PostgresPublicAssetDAO = new PostgresPublicAssetDAO(bypassRlsExecutor, blobIdFactory)
 
   override def create(username: Username, creationRequest: PublicAssetCreationRequest): Publisher[PublicAssetStorage] =
+    SMono(getTotalSize(username))
+      .filter(totalSize => (totalSize + creationRequest.size.value) <= publicAssetTotalSizeLimit.asLong())
+      .flatMap(_ => createAsset(username, creationRequest))
+      .switchIfEmpty(SMono.error(PublicAssetQuotaLimitExceededException(publicAssetTotalSizeLimit.asLong())))
+
+  private def createAsset(username: Username, creationRequest: PublicAssetCreationRequest): SMono[PublicAssetStorage] =
     SMono.fromCallable(() => creationRequest.content.apply().readAllBytes())
       .flatMap((dataAsByte: Array[Byte]) => SMono(blobStore.save(bucketName, dataAsByte, BlobStore.StoragePolicy.LOW_COST))
         .flatMap(blobId => {

@@ -22,6 +22,7 @@ import java.io.ByteArrayInputStream
 import java.net.URI
 import java.util.UUID
 
+import com.linagora.tmail.james.jmap.PublicAssetTotalSizeLimit
 import com.linagora.tmail.james.jmap.publicAsset.ImageContentType.ImageContentType
 import org.apache.james.blob.api.PlainBlobId
 import org.apache.james.core.Username
@@ -52,6 +53,7 @@ object PublicAssetRepositoryContract {
     identityIds = Seq.empty)
 
   val PUBLIC_ASSET_URI_PREFIX = new URI("http://localhost:8080")
+  val TOTAL_SIZE_LIMIT: PublicAssetTotalSizeLimit = PublicAssetTotalSizeLimit.DEFAULT
 }
 
 trait PublicAssetRepositoryContract {
@@ -280,5 +282,47 @@ trait PublicAssetRepositoryContract {
   def getTotalSizeShouldReturnZeroWhenNoAsset(): Unit = {
     val totalSize = SMono(teste.getTotalSize(USERNAME)).block()
     assertThat(totalSize).isEqualTo(0L)
+  }
+
+  @Test
+  def createShouldSucceedWhenTotalSizeReachesExactlyTheLimit(): Unit = {
+    val creationRequest = CREATION_REQUEST.copy(size = sanitizeSize(TOTAL_SIZE_LIMIT.asLong()))
+
+    assertThatCode(() => SMono(teste.create(USERNAME, creationRequest)).block())
+      .doesNotThrowAnyException()
+  }
+
+  @Test
+  def createShouldThrowWhenSizeExceedsTheLimit(): Unit = {
+    val creationRequest = CREATION_REQUEST.copy(size = sanitizeSize(TOTAL_SIZE_LIMIT.asLong() + 1))
+
+    assertThatThrownBy(() => SMono(teste.create(USERNAME, creationRequest)).block())
+      .isInstanceOf(classOf[PublicAssetQuotaLimitExceededException])
+  }
+
+  @Test
+  def createShouldThrowWhenTotalSizeExceedsTheLimit(): Unit = {
+    SMono(teste.create(USERNAME, CREATION_REQUEST.copy(size = sanitizeSize(TOTAL_SIZE_LIMIT.asLong())))).block()
+
+    assertThatThrownBy(() => SMono(teste.create(USERNAME, CREATION_REQUEST)).block())
+      .isInstanceOf(classOf[PublicAssetQuotaLimitExceededException])
+  }
+
+  @Test
+  def createShouldNotStoreAssetWhenTotalSizeExceedsTheLimit(): Unit = {
+    val creationRequest = CREATION_REQUEST.copy(size = sanitizeSize(TOTAL_SIZE_LIMIT.asLong() + 1))
+
+    assertThatThrownBy(() => SMono(teste.create(USERNAME, creationRequest)).block())
+      .isInstanceOf(classOf[PublicAssetQuotaLimitExceededException])
+
+    assertThat(SFlux(teste.list(USERNAME)).collectSeq().block().asJava).isEmpty()
+  }
+
+  @Test
+  def totalSizeLimitShouldBeAppliedPerUser(): Unit = {
+    SMono(teste.create(USERNAME, CREATION_REQUEST.copy(size = sanitizeSize(TOTAL_SIZE_LIMIT.asLong())))).block()
+
+    assertThatCode(() => SMono(teste.create(Username.of("username2@domain.com"), CREATION_REQUEST)).block())
+      .doesNotThrowAnyException()
   }
 }

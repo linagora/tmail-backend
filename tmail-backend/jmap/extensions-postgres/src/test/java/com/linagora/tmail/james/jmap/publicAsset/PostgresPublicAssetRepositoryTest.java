@@ -36,6 +36,7 @@ class PostgresPublicAssetRepositoryTest implements PublicAssetRepositoryContract
         publicAssetRepository = new PostgresPublicAssetRepository(postgresExtension.getExecutorFactory(),
             blobIdFactory(),
             new DeDuplicationBlobStore(new MemoryBlobStoreDAO(), BucketName.DEFAULT, blobIdFactory()),
+            PublicAssetRepositoryContract.TOTAL_SIZE_LIMIT(),
             PublicAssetRepositoryContract.PUBLIC_ASSET_URI_PREFIX(),
             postgresExtension.getByPassRLSPostgresExecutor());
     }
