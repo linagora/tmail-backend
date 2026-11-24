@@ -62,6 +62,7 @@ import org.slf4j.LoggerFactory;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.linagora.tmail.vault.blob.TmailBlobStoreVaultGarbageCollectionTask.TmailBlobStoreVaultGarbageCollectionContext;
+import com.linagora.tmail.vault.metadata.TmailDeletedMessageMetadataVault;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
@@ -261,7 +262,7 @@ public class TmailBlobStoreDeletedMessageVault implements DeletedMessageVault {
     }
 
     private Mono<Void> deleteUserExpiredMessages(ZonedDateTime beginningOfRetentionPeriod, TmailBlobStoreVaultGarbageCollectionContext context) {
-        return Flux.from(usersRepository.listReactive())
+        return vaultOwners()
             .flatMap(username -> Flux.from(messageMetadataVault.listMessages(DEFAULT_SINGLE_BUCKET_NAME, username))
                 .filter(deletedMessage -> isMessageFullyExpired(beginningOfRetentionPeriod, deletedMessage))
                 .flatMap(deletedMessage -> Mono.from(blobStoreDAO.delete(deletedMessage.getStorageInformation().getBucketName(), deletedMessage.getStorageInformation().getBlobId()))
@@ -269,6 +270,18 @@ public class TmailBlobStoreDeletedMessageVault implements DeletedMessageVault {
                     .then(Mono.from(messageMetadataVault.remove(DEFAULT_SINGLE_BUCKET_NAME, username, deletedMessage.getDeletedMessage().getMessageId())))
                     .doOnSuccess(any -> context.recordDeletedBlobSuccess())))
             .then();
+    }
+
+    /**
+     * Owners of the vault entries are not necessarily users: team mailboxes and deleted users own entries too.
+     * Enumerate the owners actually present in the vault whenever the metadata vault supports it, and only fall
+     * back to the users list otherwise.
+     */
+    private Flux<Username> vaultOwners() {
+        if (messageMetadataVault instanceof TmailDeletedMessageMetadataVault tmailMetadataVault) {
+            return Flux.from(tmailMetadataVault.listOwners(DEFAULT_SINGLE_BUCKET_NAME));
+        }
+        return Flux.from(usersRepository.listReactive());
     }
 
     private boolean isMessageFullyExpired(ZonedDateTime beginningOfRetentionPeriod, DeletedMessageWithStorageInformation deletedMessage) {

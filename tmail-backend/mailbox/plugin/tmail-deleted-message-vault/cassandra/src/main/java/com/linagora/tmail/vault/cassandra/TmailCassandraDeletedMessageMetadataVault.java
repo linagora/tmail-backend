@@ -32,12 +32,13 @@ import org.apache.james.blob.api.BucketName;
 import org.apache.james.core.Username;
 import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.vault.metadata.DeletedMessageIdentifier;
-import org.apache.james.vault.metadata.DeletedMessageMetadataVault;
 import org.apache.james.vault.metadata.DeletedMessageWithStorageInformation;
 import org.apache.james.vault.metadata.StorageInformation;
 import org.reactivestreams.Publisher;
 
-public class TmailCassandraDeletedMessageMetadataVault implements DeletedMessageMetadataVault {
+import com.linagora.tmail.vault.metadata.TmailDeletedMessageMetadataVault;
+
+public class TmailCassandraDeletedMessageMetadataVault implements TmailDeletedMessageMetadataVault {
     private final TmailMetadataDAO metadataDAO;
     private final TmailStorageInformationDAO storageInformationDAO;
     private final TmailUserPerBucketDAO userPerBucketDAO;
@@ -92,5 +93,10 @@ public class TmailCassandraDeletedMessageMetadataVault implements DeletedMessage
     @Override
     public Publisher<BucketName> listRelatedBuckets() {
         return userPerBucketDAO.retrieveBuckets();
+    }
+
+    @Override
+    public Publisher<Username> listOwners(BucketName bucketName) {
+        return userPerBucketDAO.retrieveUsers(bucketName);
     }
 }
