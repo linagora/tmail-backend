@@ -27,7 +27,9 @@ import com.linagora.tmail.james.common.LinagoraFilterSetMethodContract.firebaseP
 import com.linagora.tmail.james.jmap.firebase.{FirebasePushClient, FirebasePushRequest}
 import io.netty.handler.codec.http.HttpHeaderNames.ACCEPT
 import io.restassured.RestAssured.{`given`, requestSpecification}
+import io.restassured.builder.RequestSpecBuilder
 import io.restassured.http.ContentType.JSON
+import io.restassured.specification.RequestSpecification
 import net.javacrumbs.jsonunit.JsonMatchers
 import net.javacrumbs.jsonunit.JsonMatchers.jsonEquals
 import net.javacrumbs.jsonunit.assertj.JsonAssertions.assertThatJson
@@ -39,7 +41,8 @@ import org.apache.james.GuiceJamesServer
 import org.apache.james.core.Username
 import org.apache.james.jmap.core.ResponseObject.SESSION_STATE
 import org.apache.james.jmap.http.UserCredential
-import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.Fixture.{ACCEPT_RFC8621_VERSION_HEADER, ANDRE_PASSWORD, BOB_PASSWORD, DOMAIN, authScheme, baseRequestSpecBuilder}
+import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbe
 import org.apache.james.jmap.rfc8621.contract.tags.CategoryTags
 import org.apache.james.utils.DataProbeImpl
 import org.assertj.core.api.SoftAssertions
@@ -2760,4 +2763,129 @@ trait LinagoraFilterSetMethodContract {
       .contentType(JSON)
       .body("methodResponses[0][1].created", JsonMatchers.jsonNodePresent("4f29"))
 
+  private def rule(id: String, forwardTo: scala.Option[String]): String = {
+    val forward = forwardTo.map(address => s""","forwardTo": {"addresses": ["$address"], "keepACopy": false}""").getOrElse("")
+    s"""{"id": "$id", "name": "rule $id",
+       |  "condition": {"field": "subject", "comparator": "contains", "value": "question"},
+       |  "action": {"appendIn": {"mailboxIds": []}$forward}}""".stripMargin
+  }
+
+  private def filterSet(rules: Seq[String]): String =
+    s"""{
+       |	"using": ["com:linagora:params:jmap:filter"],
+       |	"methodCalls": [["Filter/set", {"accountId": "$bobAccountId", "update": {"singleton": [${rules.mkString(",")}]}}, "c1"]]
+       |}""".stripMargin
+
+  private def delegateOfBob(server: GuiceJamesServer): RequestSpecification = {
+    val andre = Username.fromLocalPartWithDomain(s"andre${UUID.randomUUID().toString.replace("-", "").take(8)}", DOMAIN)
+    server.getProbe(classOf[DataProbeImpl])
+      .addUser(andre.asString(), ANDRE_PASSWORD)
+    server.getProbe(classOf[DelegationProbe])
+      .addAuthorizedUser(bobUsername, andre)
+    baseRequestSpecBuilder(server)
+      .setAuth(authScheme(UserCredential(andre, ANDRE_PASSWORD)))
+      .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .build
+  }
+
+  private def post(spec: RequestSpecification, body: String): String =
+    `given`(spec)
+      .body(body)
+    .when()
+      .post()
+    .`then`
+      .log().ifValidationFails()
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+  private def bobRuleIds(): String =
+    `given`()
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .body(s"""{
+               |	"using": ["com:linagora:params:jmap:filter"],
+               |	"methodCalls": [["Filter/get", {"accountId": "$bobAccountId", "ids": ["singleton"]}, "c1"]]
+               |}""".stripMargin)
+    .when()
+      .post()
+    .`then`
+      .statusCode(SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+  private def bobOwnRequest: RequestSpecification =
+    new RequestSpecBuilder().addRequestSpecification(requestSpecification)
+      .addHeader(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .build
+
+  @Test
+  def setShouldRejectAForwardRuleCreatedByADelegate(server: GuiceJamesServer): Unit = {
+    val response = post(delegateOfBob(server), filterSet(Seq(rule("1", Some("attacker@external.org")))))
+
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].notUpdated.singleton.type")
+      .isEqualTo("forbidden")
+    assertThatJson(bobRuleIds())
+      .inPath("methodResponses[0][1].list[0].rules")
+      .isArray
+      .isEmpty()
+  }
+
+  @Test
+  def setShouldRejectAForwardRuleRemovedByADelegate(server: GuiceJamesServer): Unit = {
+    post(bobOwnRequest, filterSet(Seq(rule("1", Some("bob-other@external.org")))))
+
+    val response = post(delegateOfBob(server), filterSet(Seq()))
+
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].notUpdated.singleton.type")
+      .isEqualTo("forbidden")
+    assertThatJson(bobRuleIds())
+      .inPath("methodResponses[0][1].list[0].rules[*].id")
+      .isEqualTo("""["1"]""")
+  }
+
+  @Test
+  def setShouldRejectAForwardRuleChangedByADelegate(server: GuiceJamesServer): Unit = {
+    post(bobOwnRequest, filterSet(Seq(rule("1", Some("bob-other@external.org")))))
+
+    val response = post(delegateOfBob(server), filterSet(Seq(rule("1", Some("attacker@external.org")))))
+
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].notUpdated.singleton.type")
+      .isEqualTo("forbidden")
+    assertThatJson(bobRuleIds())
+      .inPath("methodResponses[0][1].list[0].rules[0].action.forwardTo.addresses")
+      .isEqualTo("""["bob-other@external.org"]""")
+  }
+
+  @Test
+  def setShouldAcceptRulesWithoutForwardFromADelegate(server: GuiceJamesServer): Unit = {
+    val response = post(delegateOfBob(server), filterSet(Seq(rule("1", None))))
+
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].updated.singleton")
+      .isEqualTo("{}")
+    assertThatJson(bobRuleIds())
+      .inPath("methodResponses[0][1].list[0].rules[*].id")
+      .isEqualTo("""["1"]""")
+  }
+
+  @Test
+  def setShouldAcceptADelegateKeepingTheForwardRulesUnchanged(server: GuiceJamesServer): Unit = {
+    post(bobOwnRequest, filterSet(Seq(rule("1", Some("bob-other@external.org")))))
+
+    val response = post(delegateOfBob(server), filterSet(Seq(rule("1", Some("bob-other@external.org")), rule("2", None))))
+
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].updated.singleton")
+      .isEqualTo("{}")
+    assertThatJson(bobRuleIds())
+      .inPath("methodResponses[0][1].list[0].rules[*].id")
+      .isEqualTo("""["1","2"]""")
+  }
 }

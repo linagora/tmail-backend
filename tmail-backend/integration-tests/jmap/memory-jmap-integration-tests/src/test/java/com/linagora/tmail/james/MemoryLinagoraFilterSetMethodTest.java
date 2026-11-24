@@ -22,6 +22,7 @@ import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.
 
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
+import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
 import org.apache.james.mailbox.inmemory.InMemoryId;
 import org.junit.jupiter.api.extension.RegisterExtension;
 
@@ -43,7 +44,8 @@ public class MemoryLinagoraFilterSetMethodTest implements LinagoraFilterSetMetho
             .build())
         .server(configuration -> MemoryServer.createServer(configuration)
             .overrideWith(binder -> binder.bind(FirebasePushClient.class).toInstance(LinagoraFilterSetMethodContract.firebasePushClient()))
-            .overrideWith(new LinagoraTestJMAPServerModule()))
+            .overrideWith(new LinagoraTestJMAPServerModule())
+            .overrideWith(new DelegationProbeModule()))
         .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 
