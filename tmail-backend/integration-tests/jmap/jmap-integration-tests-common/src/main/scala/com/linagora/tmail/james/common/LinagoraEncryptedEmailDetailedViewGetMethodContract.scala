@@ -540,13 +540,20 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
          |  ]
          |}""".stripMargin
 
-    `given`
+    val response: String = `given`
       .body(request)
     .when()
       .post()
     .`then`
       .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
 
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].updated")
+      .isEqualTo(s"""{"${messageId.serialize}": null}""")
     assertThat(server.getProbe(classOf[JmapGuiceEncryptedEmailContentStoreProbe]).hasEncryptedContent(messageId)).isTrue
   }
 

@@ -30,7 +30,8 @@ tmail.keystore.max.keys.per.user=10
 == Deleting the encrypted projection
 
 The encrypted projection of a message (encrypted preview, bodies and attachments) is deleted along with the
-message by a pre-deletion hook. It needs to be declared in `listeners.xml`:
+message by a pre-deletion hook, on a best-effort basis: a failure is logged but neither prevents the message
+deletion nor is retried, the projection is then left behind. The hook needs to be declared in `listeners.xml`:
 
 ....
 <listeners>

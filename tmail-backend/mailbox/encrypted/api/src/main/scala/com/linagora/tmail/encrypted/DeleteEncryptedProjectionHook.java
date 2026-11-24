@@ -80,7 +80,11 @@ public class DeleteEncryptedProjectionHook implements PreDeletionHook {
         Set<MailboxId> deletedMailboxSet = ImmutableSet.copyOf(deletedMailboxes);
         return mapperFactory.getMessageIdMapper(systemSession)
             .findMailboxesReactive(messageId)
-            .all(deletedMailboxSet::contains);
+            .all(deletedMailboxSet::contains)
+            .onErrorResume(e -> {
+                LOGGER.error("Failed to look up the mailboxes of message {}, keeping its encrypted projection", messageId.serialize(), e);
+                return Mono.just(false);
+            });
     }
 
     private Mono<Void> deleteProjection(MessageId messageId) {
