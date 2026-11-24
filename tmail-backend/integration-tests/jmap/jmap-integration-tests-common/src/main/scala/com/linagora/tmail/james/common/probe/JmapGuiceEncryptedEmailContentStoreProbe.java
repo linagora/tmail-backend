@@ -24,6 +24,7 @@ import org.apache.james.mailbox.model.MessageId;
 import org.apache.james.utils.GuiceProbe;
 
 import com.linagora.tmail.encrypted.EncryptedEmailContentStore;
+import com.linagora.tmail.encrypted.MessageNotFoundException;
 
 import reactor.core.publisher.Mono;
 
@@ -37,5 +38,12 @@ public class JmapGuiceEncryptedEmailContentStoreProbe implements GuiceProbe {
 
     public void delete(MessageId messageId) {
         Mono.from(encryptedEmailContentStore.delete(messageId)).block();
+    }
+
+    public boolean hasEncryptedContent(MessageId messageId) {
+        return Mono.from(encryptedEmailContentStore.retrieveDetailedView(messageId))
+            .map(detailedView -> true)
+            .onErrorResume(MessageNotFoundException.class, e -> Mono.just(false))
+            .block();
     }
 }

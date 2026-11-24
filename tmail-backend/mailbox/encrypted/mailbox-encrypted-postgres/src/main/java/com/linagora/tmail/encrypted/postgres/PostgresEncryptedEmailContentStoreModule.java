@@ -19,10 +19,13 @@
 package com.linagora.tmail.encrypted.postgres;
 
 import org.apache.james.backends.postgres.PostgresDataDefinition;
+import org.apache.james.blob.api.BlobReferenceSource;
+import org.apache.james.mailbox.extension.PreDeletionHook;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Scopes;
 import com.google.inject.multibindings.Multibinder;
+import com.linagora.tmail.encrypted.DeleteEncryptedProjectionHook;
 import com.linagora.tmail.encrypted.EncryptedEmailContentStore;
 
 public class PostgresEncryptedEmailContentStoreModule extends AbstractModule {
@@ -34,5 +37,15 @@ public class PostgresEncryptedEmailContentStoreModule extends AbstractModule {
 
         Multibinder<PostgresDataDefinition> postgresDataDefinitions = Multibinder.newSetBinder(binder(), PostgresDataDefinition.class);
         postgresDataDefinitions.addBinding().toInstance(com.linagora.tmail.encrypted.postgres.table.PostgresEncryptedEmailStoreModule.MODULE);
+
+        bind(DeleteEncryptedProjectionHook.class).in(Scopes.SINGLETON);
+        Multibinder.newSetBinder(binder(), PreDeletionHook.class)
+            .addBinding()
+            .to(DeleteEncryptedProjectionHook.class);
+
+        bind(PostgresEncryptedEmailBlobReferenceSource.class).in(Scopes.SINGLETON);
+        Multibinder.newSetBinder(binder(), BlobReferenceSource.class)
+            .addBinding()
+            .to(PostgresEncryptedEmailBlobReferenceSource.class);
     }
 }

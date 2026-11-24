@@ -22,11 +22,13 @@ import java.lang
 import java.nio.charset.StandardCharsets
 
 import com.google.common.base.Preconditions
-import com.google.inject.{AbstractModule, Provides, Singleton}
+import com.google.inject.multibindings.Multibinder
+import com.google.inject.{AbstractModule, Provides, Scopes, Singleton}
 import com.linagora.tmail.encrypted.EncryptedEmailContentStore.POSITION_NUMBER_START_AT
 import jakarta.inject.Inject
 import org.apache.james.blob.api.BlobStore.StoragePolicy
 import org.apache.james.blob.api.{BlobId, BlobStore}
+import org.apache.james.mailbox.extension.PreDeletionHook
 import org.apache.james.mailbox.model.MessageId
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
@@ -35,6 +37,11 @@ case class InMemoryEncryptedEmailContentStoreModule() extends AbstractModule {
 
   override def configure(): Unit = {
     bind(classOf[EncryptedEmailContentStore]).to(classOf[InMemoryEncryptedEmailContentStore])
+
+    bind(classOf[DeleteEncryptedProjectionHook]).in(Scopes.SINGLETON)
+    Multibinder.newSetBinder(binder, classOf[PreDeletionHook])
+      .addBinding()
+      .to(classOf[DeleteEncryptedProjectionHook])
   }
 
   @Provides

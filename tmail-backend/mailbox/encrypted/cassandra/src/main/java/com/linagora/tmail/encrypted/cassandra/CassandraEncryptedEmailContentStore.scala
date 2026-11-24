@@ -25,12 +25,13 @@ import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.encrypted.EncryptedEmailContentStore.POSITION_NUMBER_START_AT
 import com.linagora.tmail.encrypted.cassandra.CassandraEncryptedEmailContentStore.DEFAULT_STORAGE_POLICY
 import com.linagora.tmail.encrypted.cassandra.table.CassandraEncryptedEmailStoreModule
-import com.linagora.tmail.encrypted.{AttachmentNotFoundException, EncryptedEmailContent, EncryptedEmailContentStore, EncryptedEmailDetailedView, EncryptedEmailFastView, MessageNotFoundException}
+import com.linagora.tmail.encrypted.{AttachmentNotFoundException, DeleteEncryptedProjectionHook, EncryptedEmailContent, EncryptedEmailContentStore, EncryptedEmailDetailedView, EncryptedEmailFastView, MessageNotFoundException}
 import jakarta.inject.Inject
 import org.apache.james.backends.cassandra.components.CassandraDataDefinition
 import org.apache.james.blob.api.BlobStore.StoragePolicy
 import org.apache.james.blob.api.{BlobId, BlobStore, BucketName}
 import org.apache.james.mailbox.cassandra.ids.CassandraMessageId
+import org.apache.james.mailbox.extension.PreDeletionHook
 import org.apache.james.mailbox.model.MessageId
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
@@ -44,6 +45,11 @@ case class EncryptedEmailContentStoreCassandraModule() extends AbstractModule {
     Multibinder.newSetBinder(binder, classOf[CassandraDataDefinition])
       .addBinding()
       .toInstance(CassandraEncryptedEmailStoreModule.MODULE)
+
+    bind(classOf[DeleteEncryptedProjectionHook]).in(Scopes.SINGLETON)
+    Multibinder.newSetBinder(binder, classOf[PreDeletionHook])
+      .addBinding()
+      .to(classOf[DeleteEncryptedProjectionHook])
   }
 }
 
