@@ -44,18 +44,18 @@ import org.apache.james.blob.api.BucketName;
 import org.apache.james.blob.api.PlainBlobId;
 import org.apache.james.core.Username;
 import org.apache.james.mailbox.model.MessageId;
-import org.apache.james.vault.metadata.DeletedMessageMetadataVault;
 import org.apache.james.vault.metadata.DeletedMessageWithStorageInformation;
 import org.apache.james.vault.metadata.StorageInformation;
 import org.jooq.Record;
 import org.reactivestreams.Publisher;
 
+import com.linagora.tmail.vault.metadata.TmailDeletedMessageMetadataVault;
 import com.linagora.tmail.vault.metadata.TmailMetadataSerializer;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 
-public class TmailPostgresDeletedMessageMetadataVault implements DeletedMessageMetadataVault {
+public class TmailPostgresDeletedMessageMetadataVault implements TmailDeletedMessageMetadataVault {
     private final PostgresExecutor postgresExecutor;
     private final TmailMetadataSerializer metadataSerializer;
 
@@ -120,5 +120,13 @@ public class TmailPostgresDeletedMessageMetadataVault implements DeletedMessageM
         return postgresExecutor.executeRows(context -> Flux.from(context.selectDistinct(BUCKET_NAME)
             .from(TABLE_NAME)))
             .map(record -> BucketName.of(record.get(BUCKET_NAME)));
+    }
+
+    @Override
+    public Publisher<Username> listOwners(BucketName bucketName) {
+        return postgresExecutor.executeRows(context -> Flux.from(context.selectDistinct(OWNER)
+            .from(TABLE_NAME)
+            .where(BUCKET_NAME.eq(bucketName.asString()))))
+            .map(record -> Username.of(record.get(OWNER)));
     }
 }
