@@ -47,7 +47,7 @@ public class AIRedactionalHelperTest {
         llmConfig = new LlmConfig(
             "sk-fakefakefakefakefakefakefakefake",
             new LlmModel("lucie-7b-instruct-v1.1"),
-            Optional.of(URI.create("https://chat.lucie.ovh.linagora.com/v1/").toURL()),
+            URI.create("https://chat.lucie.ovh.linagora.com/v1/").toURL(),
             DEFAULT_TIMEOUT);
         StreamingChatLanguageModel chatLanguageModel = new StreamChatLanguageModelFactory().createChatLanguageModel(llmConfig);
 
