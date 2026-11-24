@@ -49,6 +49,10 @@ import org.apache.james.core.Username;
 import org.apache.james.dnsservice.api.DNSService;
 import org.apache.james.domainlist.lib.DomainListConfiguration;
 import org.apache.james.domainlist.memory.MemoryDomainList;
+import org.apache.james.jmap.api.identity.DefaultIdentitySupplier;
+import org.apache.james.jmap.api.identity.IdentityRepository;
+import org.apache.james.jmap.api.model.Identity;
+import org.apache.james.jmap.memory.identity.MemoryCustomIdentityDAO;
 import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.SubscriptionManager;
@@ -58,6 +62,7 @@ import org.apache.james.mailbox.model.MailboxACL;
 import org.apache.james.mailbox.store.StoreSubscriptionManager;
 import org.apache.james.rrt.api.MappingConflictException;
 import org.apache.james.rrt.api.RecipientRewriteTableConfiguration;
+import org.apache.james.rrt.lib.AliasReverseResolverImpl;
 import org.apache.james.rrt.lib.MappingSource;
 import org.apache.james.rrt.memory.MemoryRecipientRewriteTable;
 import org.apache.james.user.api.AlreadyExistInUsersRepositoryException;
@@ -77,7 +82,9 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 
 import com.linagora.tmail.james.jmap.contact.InMemoryEmailAddressContactSearchEngine;
+import com.linagora.tmail.james.jmap.event.IdentityCreationRequestBuilder;
 import com.linagora.tmail.james.jmap.team.mailboxes.TeamMailboxAutocompleteCallback;
+import com.linagora.tmail.team.TMailCanSendFrom;
 import com.linagora.tmail.team.TeamMailboxMember;
 import com.linagora.tmail.team.TeamMailboxRepositoryImpl;
 import com.linagora.tmail.team.TeamMailboxUserEntityValidator;
@@ -124,6 +131,7 @@ public class TeamMailboxManagementRoutesTest {
     private MemoryUsersRepository usersRepository;
     private MemoryRecipientRewriteTable recipientRewriteTable;
     private InMemoryEmailAddressContactSearchEngine emailAddressContactSearchEngine;
+    private IdentityRepository identityRepository;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -154,8 +162,12 @@ public class TeamMailboxManagementRoutesTest {
         recipientRewriteTable.setUserEntityValidator(validator);
         teamMailboxRepository.setValidator(validator);
 
+        identityRepository = new IdentityRepository(new MemoryCustomIdentityDAO(mailboxManager.getEventBus()),
+            new DefaultIdentitySupplier(new TMailCanSendFrom(new AliasReverseResolverImpl(recipientRewriteTable), teamMailboxRepository, mailboxManager),
+                usersRepository));
+
         TeamMailboxManagementRoutes teamMailboxManagementRoutes = new TeamMailboxManagementRoutes(teamMailboxRepository,
-            domainList, mailboxManager, new JsonTransformer());
+            domainList, mailboxManager, identityRepository, new JsonTransformer());
         webAdminServer = WebAdminUtils.createWebAdminServer(teamMailboxManagementRoutes).start();
 
         RestAssured.requestSpecification = WebAdminUtils.buildRequestSpecification(webAdminServer)
@@ -1995,6 +2007,103 @@ public class TeamMailboxManagementRoutesTest {
 
             given().delete("/extraAcl").then().statusCode(NO_CONTENT_204);
             given().delete("/extraAcl").then().statusCode(NO_CONTENT_204);
+        }
+    }
+
+    @Nested
+    class RepositionIdentitiesSortOrderTest {
+        private Identity createIdentity(Username user, int sortOrder) {
+            return Mono.from(identityRepository.save(user, IdentityCreationRequestBuilder.builder()
+                    .email(TEAM_MAILBOX.asMailAddress())
+                    .name("marketing")
+                    .sortOrder(sortOrder)
+                    .build()))
+                .block();
+        }
+
+        private int sortOrderOf(Username user, Identity identity) {
+            return Flux.from(identityRepository.list(user))
+                .filter(listed -> listed.id().equals(identity.id()))
+                .map(Identity::sortOrder)
+                .blockFirst();
+        }
+
+        private void reposition() {
+            given()
+                .basePath(TeamMailboxManagementRoutes.TEAM_MAILBOXES_BASE_PATH)
+                .queryParam("action", "repositionIdentitiesSortOrder")
+                .post()
+            .then()
+                .statusCode(NO_CONTENT_204);
+        }
+
+        @Test
+        void shouldReturn204WhenNoTeamMailboxes() {
+            reposition();
+        }
+
+        @ParameterizedTest
+        @ValueSource(ints = {0, 10})
+        void shouldRepositionLegacyTeamMailboxIdentitiesOfMembers(int legacySortOrder) {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, TeamMailboxMember.asMember(BOB))).block();
+            Identity identity = createIdentity(BOB, legacySortOrder);
+
+            reposition();
+
+            assertThat(sortOrderOf(BOB, identity)).isEqualTo(110);
+        }
+
+        @Test
+        void shouldRepositionLegacyTeamMailboxIdentitiesOfExtraSenders() throws Exception {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            mailboxManager.applyRightsCommand(TEAM_MAILBOX.mailboxPath(),
+                MailboxACL.command().forUser(BOB).rights(MailboxACL.Right.Post).asAddition(),
+                mailboxManager.createSystemSession(TEAM_MAILBOX.owner()));
+            Identity identity = createIdentity(BOB, 10);
+
+            reposition();
+
+            assertThat(sortOrderOf(BOB, identity)).isEqualTo(110);
+        }
+
+        @Test
+        void shouldNotChangeSortOrderChosenByTheUser() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, TeamMailboxMember.asMember(BOB))).block();
+            Identity identity = createIdentity(BOB, 42);
+
+            reposition();
+
+            assertThat(sortOrderOf(BOB, identity)).isEqualTo(42);
+        }
+
+        @Test
+        void shouldNotChangeOtherIdentities() throws Exception {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, TeamMailboxMember.asMember(BOB))).block();
+            Identity personal = Mono.from(identityRepository.save(BOB, IdentityCreationRequestBuilder.builder()
+                    .email(BOB.asMailAddress())
+                    .name("Bob")
+                    .sortOrder(0)
+                    .build()))
+                .block();
+
+            reposition();
+
+            assertThat(sortOrderOf(BOB, personal)).isEqualTo(0);
+        }
+
+        @Test
+        void shouldBeIdempotent() {
+            Mono.from(teamMailboxRepository.createTeamMailbox(TEAM_MAILBOX)).block();
+            Mono.from(teamMailboxRepository.addMember(TEAM_MAILBOX, TeamMailboxMember.asMember(BOB))).block();
+            Identity identity = createIdentity(BOB, 10);
+
+            reposition();
+            reposition();
+
+            assertThat(sortOrderOf(BOB, identity)).isEqualTo(110);
         }
     }
 

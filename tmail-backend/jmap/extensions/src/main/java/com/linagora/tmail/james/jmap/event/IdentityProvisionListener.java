@@ -79,7 +79,9 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
     private static final IdentityProvisionerListenerGroup GROUP = new IdentityProvisionerListenerGroup();
     private static final Logger LOGGER = LoggerFactory.getLogger(IdentityProvisionListener.class);
     private static final int DEFAULT_IDENTITY_SORT_ORDER = 0;
-    private static final int TEAM_MAILBOX_IDENTITY_SORT_ORDER = 10;
+    // Team mailbox identities must come after the identities of the user: server set ones and user created ones
+    // default to Identity.DEFAULT_SORTORDER (100).
+    public static final int TEAM_MAILBOX_IDENTITY_SORT_ORDER = 110;
     private static final String APPLY_WHEN_PATH = "defaultText.applyWhen";
     private static final String PROVIDER_PATH = "defaultText.provider";
     private static final String DOMAIN_BASED_PROVIDER = "DomainBasedSignatureTemplateEngine";
@@ -200,7 +202,7 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
         Username username = event.getUsername();
         return Mono.fromCallable(() -> searchLdap(username))
             .flatMap(ldapEntry -> asIdentityCreationRequest(username, ldapEntry))
-            .flatMap(identityCreationRequest -> hasNoDefaultIdentity(username)
+            .flatMap(identityCreationRequest -> hasNoIdentityFor(username, identityCreationRequest.email())
                 .flatMap(noDefaultIdentity -> Mono.from(identityRepository.save(username, identityCreationRequest))
                     .doOnSuccess(identity -> LOGGER.info("Created default identity for user {} with display name {}", username.asString(), identity.name()))))
             .then()
@@ -362,9 +364,12 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
         return firstname.orElseGet(() -> surname.orElse(fallbackEmailAddress));
     }
 
-    private Mono<Boolean> hasNoDefaultIdentity(Username username) {
+    // Only identities of the user's own address count: team mailbox identities could have been provisioned before
+    // the INBOX gets created, for instance when the user is added to a space before their first login.
+    private Mono<Boolean> hasNoIdentityFor(Username username, MailAddress mailAddress) {
         return Flux.from(identityRepository.list(username))
             .filter(Identity::mayDelete)
+            .filter(identity -> identity.email().equals(mailAddress))
             .hasElements()
             .filter(FunctionalUtils.identityPredicate().negate());
     }

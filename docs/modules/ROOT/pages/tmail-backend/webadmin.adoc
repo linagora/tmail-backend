@@ -377,6 +377,22 @@ Return codes:
 - `204` system rights have been repositioned successfully
 - `400` missing or invalid `action` query parameter
 
+=== Repositioning the sort order of Team Mailbox identities
+
+....
+curl -XPOST http://ip:port/team-mailboxes?action=repositionIdentitiesSortOrder
+....
+
+Moves the team mailbox identities provisioned to members and extra senders behind their personal identities, by
+setting their `sortOrder` to `110`. Only identities still carrying a sort order formerly assigned by the server (`0` or `10`)
+are updated: a sort order chosen by the user is kept. Intended for migration purposes. Processes all team mailboxes in a
+single synchronous call with no task manager wrapping. Idempotent.
+
+Return codes:
+
+- `204` identities have been repositioned successfully
+- `400` missing or invalid `action` query parameter
+
 === Getting the quota for a Team Mailbox
 
 ....
