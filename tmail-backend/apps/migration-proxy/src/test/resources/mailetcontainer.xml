@@ -48,6 +48,9 @@
                 <outgoing>outgoing-new</outgoing>
                 <gateway>${sys:migration.smtp.new.host:-new-backend}</gateway>
                 <gatewayPort>${sys:migration.smtp.new.port:-25}</gatewayPort>
+                <!-- A dotted HELO: the backends run verifyIdentity=relaxed on port 25 and require AUTH
+                     from a client that claims a local sender unless it looks like an MX. -->
+                <heloName>${sys:migration.smtp.heloName:-migration-proxy.localdomain}</heloName>
                 <delayTime>5000, 100000, 500000</delayTime>
                 <maxRetries>3</maxRetries>
                 <maxDnsProblemRetries>0</maxDnsProblemRetries>
@@ -61,6 +64,9 @@
                 <outgoing>outgoing-old</outgoing>
                 <gateway>${sys:migration.smtp.old.host:-old-backend}</gateway>
                 <gatewayPort>${sys:migration.smtp.old.port:-25}</gatewayPort>
+                <!-- A dotted HELO: the backends run verifyIdentity=relaxed on port 25 and require AUTH
+                     from a client that claims a local sender unless it looks like an MX. -->
+                <heloName>${sys:migration.smtp.heloName:-migration-proxy.localdomain}</heloName>
                 <delayTime>5000, 100000, 500000</delayTime>
                 <maxRetries>3</maxRetries>
                 <maxDnsProblemRetries>0</maxDnsProblemRetries>
