@@ -143,7 +143,7 @@ public class LinagoraLlmMailClassifierListenerTest implements LlmMailClassifierL
         LlmConfig llmConfig = new LlmConfig(
             Optional.ofNullable(System.getenv("LLM_API_KEY")).orElse("change-me"),
             new LlmModel("openai/gpt-oss-120b"),
-            Optional.of(URI.create("https://ai.linagora.com/api/v1/").toURL()),
+            URI.create("https://ai.linagora.com/api/v1/").toURL(),
             DEFAULT_TIMEOUT);
         StreamChatLanguageModelFactory streamChatLanguageModelFactory = new StreamChatLanguageModelFactory();
         chatLanguageModel = streamChatLanguageModelFactory.createChatLanguageModel(llmConfig);

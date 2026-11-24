@@ -21,7 +21,6 @@ package com.linagora.tmail.aibotreplier;
 import static com.linagora.tmail.common.chatlanguagemodel.LlmConfig.DEFAULT_TIMEOUT;
 
 import java.net.URI;
-import java.util.Optional;
 
 import com.linagora.tmail.common.chatlanguagemodel.LlmConfig;
 import com.linagora.tmail.common.chatlanguagemodel.LlmModel;
@@ -68,7 +67,7 @@ public class AIBotMailetTest {
         llmConfig = new LlmConfig(
             "sk-fakefakefakefakefakefakefakefake",
             new LlmModel("lucie-7b-instruct-v1.1"),
-            Optional.of(URI.create("https://chat.lucie.ovh.linagora.com/v1/").toURL()),
+            URI.create("https://chat.lucie.ovh.linagora.com/v1/").toURL(),
             DEFAULT_TIMEOUT);
         botAddress = new MailAddress("gpt@localhost");
         StreamChatLanguageModelFactory streamChatLanguageModelFactory = new StreamChatLanguageModelFactory();

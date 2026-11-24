@@ -22,13 +22,14 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 import java.net.URI;
 import java.time.Duration;
-import java.util.Optional;
 
 import com.linagora.tmail.common.chatlanguagemodel.LlmConfig;
 import com.linagora.tmail.common.chatlanguagemodel.LlmModel;
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import nl.jqno.equalsverifier.EqualsVerifier;
 
@@ -66,7 +67,7 @@ class LlmConfigTest {
         configuration.addProperty("timeout", "5s");
 
         //act
-        LlmConfig expected = new LlmConfig("sk-fakefakefakefakefakefakefakefake", new LlmModel("Lucie"), Optional.of(URI.create("https://chat.lucie.exemple.com").toURL()),
+        LlmConfig expected = new LlmConfig("sk-fakefakefakefakefakefakefakefake", new LlmModel("Lucie"), URI.create("https://chat.lucie.exemple.com").toURL(),
             Duration.ofSeconds(5));
         LlmConfig actual = LlmConfig.from(configuration);
 
@@ -75,17 +76,27 @@ class LlmConfigTest {
     }
 
     @Test
-    void shouldAcceptBlankBaseUrl() {
+    void shouldRejectMissingBaseUrl() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("apiKey", "sk-fakefakefakefakefakefakefakefake");
         configuration.addProperty("model", "Lucie");
-        configuration.addProperty("baseURL", "");
 
-        LlmConfig expected = new LlmConfig("sk-fakefakefakefakefakefakefakefake", new LlmModel("Lucie"), Optional.empty(),
-            Duration.ofSeconds(10));
-        LlmConfig actual = LlmConfig.from(configuration);
+        assertThatThrownBy(() -> LlmConfig.from(configuration))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("No value for baseURL parameter was provided.");
+    }
 
-        assertThat(actual).isEqualTo(expected);
+    @ParameterizedTest
+    @ValueSource(strings = {"", " ", "\t"})
+    void shouldRejectBlankBaseUrl(String blankBaseUrl) {
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("apiKey", "sk-fakefakefakefakefakefakefakefake");
+        configuration.addProperty("model", "Lucie");
+        configuration.addProperty("baseURL", blankBaseUrl);
+
+        assertThatThrownBy(() -> LlmConfig.from(configuration))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("No value for baseURL parameter was provided.");
     }
 
     @Test
@@ -96,7 +107,7 @@ class LlmConfigTest {
         configuration.addProperty("baseURL", "https://chat.lucie.exemple.com");
 
         LlmConfig expected = new LlmConfig("sk-fakefakefakefakefakefakefakefake", new LlmModel(""),
-            Optional.of(URI.create("https://chat.lucie.exemple.com").toURL()), Duration.ofSeconds(10));
+            URI.create("https://chat.lucie.exemple.com").toURL(), Duration.ofSeconds(10));
         LlmConfig actual = LlmConfig.from(configuration);
 
         assertThat(actual).isEqualTo(expected);

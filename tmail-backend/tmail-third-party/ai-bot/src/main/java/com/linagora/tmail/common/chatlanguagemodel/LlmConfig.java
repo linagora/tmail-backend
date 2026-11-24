@@ -30,7 +30,6 @@ import org.apache.commons.configuration2.Configuration;
 import org.apache.james.util.DurationParser;
 
 import com.google.common.base.Preconditions;
-import com.google.common.base.Strings;
 
 public class LlmConfig {
     public static String API_KEY_PARAMETER_NAME = "apiKey";
@@ -43,18 +42,18 @@ public class LlmConfig {
     public static final Duration DEFAULT_TIMEOUT = Duration.ofSeconds(10);
 
     private final String apiKey;
-    private final Optional<URL> baseURLOpt;
+    private final URL baseURL;
     private final LlmModel llmModel;
     private final Duration timeout;
 
-    public LlmConfig(String apiKey, LlmModel llmModel, Optional<URL> baseURLOpt, Duration timeout) {
+    public LlmConfig(String apiKey, LlmModel llmModel, URL baseURL, Duration timeout) {
         Preconditions.checkNotNull(apiKey);
         Preconditions.checkNotNull(llmModel);
-        Preconditions.checkNotNull(baseURLOpt);
+        Preconditions.checkNotNull(baseURL);
         Preconditions.checkNotNull(timeout);
 
         this.apiKey = apiKey;
-        this.baseURLOpt = baseURLOpt;
+        this.baseURL = baseURL;
         this.llmModel = llmModel;
         this.timeout = timeout;
     }
@@ -65,12 +64,11 @@ public class LlmConfig {
         LlmModel llmModelParam = Optional.ofNullable(configuration.getString(MODEL_PARAMETER_NAME))
             .map(LlmModel::new)
             .orElse(DEFAULT_LLM_MODEL);
-        String baseUrlParam = Optional.ofNullable(configuration.getString(BASE_URL_PARAMETER_NAME,null))
+        URL baseURL = Optional.ofNullable(configuration.getString(BASE_URL_PARAMETER_NAME, null))
+            .map(String::trim)
+            .filter(baseUrlString -> !baseUrlString.isEmpty())
+            .map(LlmConfig::baseURLStringToURL)
             .orElseThrow(() ->  new IllegalArgumentException("No value for " + BASE_URL_PARAMETER_NAME + " parameter was provided."));
-
-        Optional<URL> baseURLOpt = Optional.ofNullable(baseUrlParam)
-            .filter(baseUrlString -> !Strings.isNullOrEmpty(baseUrlString))
-            .flatMap(LlmConfig::baseURLStringToURL);
 
         Duration timeout = Optional.ofNullable(configuration.getString(TIMEOUT_PARAMETER_NAME, null))
             .map(value -> DurationParser.parse(value, ChronoUnit.SECONDS))
@@ -78,16 +76,16 @@ public class LlmConfig {
 
 
         try {
-            return new LlmConfig(apiKeyParam, llmModelParam, baseURLOpt, timeout);
+            return new LlmConfig(apiKeyParam, llmModelParam, baseURL, timeout);
         } catch (Exception e) {
             throw new RuntimeException(e);
         }
     }
 
-    private static Optional<URL> baseURLStringToURL(String baseUrlString) {
+    private static URL baseURLStringToURL(String baseUrlString) {
         try {
-            return Optional.of(URI.create(baseUrlString).toURL());
-        } catch (MalformedURLException e) {
+            return URI.create(baseUrlString).toURL();
+        } catch (MalformedURLException | IllegalArgumentException e) {
             throw new RuntimeException("Invalid LLM API base URL", e);
         }
     }
@@ -103,16 +101,17 @@ public class LlmConfig {
         LlmConfig that = (LlmConfig) o;
         return Objects.equals(apiKey, that.apiKey) &&
             Objects.equals(llmModel, that.llmModel) &&
-            Objects.equals(Optional.ofNullable(baseURLOpt).map(opt -> opt.map(URL::toString)),
-                Optional.ofNullable(that.baseURLOpt).map(opt -> opt.map(URL::toString))) &&
+            Objects.equals(baseURLAsString(), that.baseURLAsString()) &&
             Objects.equals(timeout, that.timeout);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(apiKey, llmModel,
-            Optional.ofNullable(baseURLOpt).map(opt -> opt.map(URL::toString)),
-            timeout);
+        return Objects.hash(apiKey, llmModel, baseURLAsString(), timeout);
+    }
+
+    private Optional<String> baseURLAsString() {
+        return Optional.ofNullable(baseURL).map(URL::toString);
     }
 
     public String getApiKey() {
@@ -123,8 +122,8 @@ public class LlmConfig {
         return llmModel;
     }
 
-    public Optional<URL> getBaseURL() {
-        return baseURLOpt;
+    public URL getBaseURL() {
+        return baseURL;
     }
 
     public Duration getTimeout() {

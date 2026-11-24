@@ -18,22 +18,14 @@
 
 package com.linagora.tmail.common.chatlanguagemodel;
 
-import java.net.URL;
 import java.time.Duration;
-import java.util.Optional;
 
 import dev.langchain4j.model.chat.StreamingChatLanguageModel;
 import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 
 public class StreamChatLanguageModelFactory {
-    private static final String USE_DEFAULT_BASE_URL = "http://langchain4j.dev/demo/openai/v1";
-
     public StreamingChatLanguageModel createChatLanguageModel(LlmConfig config) {
-        String apiKey = config.getApiKey();
-        LlmModel llmModel = config.getLlmModel();
-        Optional<URL> baseURLOpt = config.getBaseURL();
-
-        return createOpenAILanguageModel(apiKey, llmModel.modelName(), baseURLOpt.map(URL::toString).orElse(USE_DEFAULT_BASE_URL),
+        return createOpenAILanguageModel(config.getApiKey(), config.getLlmModel().modelName(), config.getBaseURL().toString(),
             config.getTimeout());
     }
 
