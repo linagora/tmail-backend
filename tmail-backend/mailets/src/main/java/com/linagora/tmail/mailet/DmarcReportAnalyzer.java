@@ -50,6 +50,10 @@ class DmarcReportAnalyzer {
 
     private static final long MAX_UNCOMPRESSED_BYTES = 50L * 1024 * 1024;
 
+    // DMARC policy_evaluated results are short tokens (pass, fail, none...): bound the accumulated text so that
+    // a result split into many text events (e.g. interleaved with comments) can not cause quadratic copies.
+    private static final int MAX_RESULT_LENGTH = 32;
+
     private static final XMLInputFactory XML_INPUT_FACTORY;
 
     static {
@@ -141,13 +145,15 @@ class DmarcReportAnalyzer {
 
     private static Optional<Boolean> parseZip(InputStream rawInputStream) throws IOException, XMLStreamException {
         try (ZipInputStream zipInputStream = new ZipInputStream(rawInputStream)) {
+            // A single budget shared by all entries: the uncompressed size limit applies to the whole archive.
+            InputStream budgetedEntries = limitedStream(zipInputStream, MAX_UNCOMPRESSED_BYTES);
             ZipEntry entry;
             boolean parsedXml = false;
             while ((entry = zipInputStream.getNextEntry()) != null) {
                 String entryName = entry.getName().toLowerCase(Locale.ROOT);
                 if (!entry.isDirectory() && entryName.endsWith(".xml")) {
                     parsedXml = true;
-                    if (parseXml(limitedStream(zipInputStream, MAX_UNCOMPRESSED_BYTES)).orElse(false)) {
+                    if (parseXml(budgetedEntries).orElse(false)) {
                         return Optional.of(true);
                     }
                 }
@@ -237,10 +243,20 @@ class DmarcReportAnalyzer {
                 return;
             }
             if ("dkim".equals(currentElement)) {
-                dkimResult = (dkimResult == null ? "" : dkimResult) + text;
+                dkimResult = appendBounded(dkimResult, text);
             } else if ("spf".equals(currentElement)) {
-                spfResult = (spfResult == null ? "" : spfResult) + text;
+                spfResult = appendBounded(spfResult, text);
             }
+        }
+
+        private static String appendBounded(String current, String text) {
+            String base = Optional.ofNullable(current).orElse("");
+            String addition = base.isEmpty() ? text.stripLeading() : text;
+            return truncate(base + truncate(addition));
+        }
+
+        private static String truncate(String value) {
+            return value.substring(0, Math.min(value.length(), MAX_RESULT_LENGTH));
         }
 
         boolean onEndElement(String name) {

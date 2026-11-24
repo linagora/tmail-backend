@@ -19,7 +19,9 @@
 package com.linagora.tmail.mailet;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
+import java.time.Duration;
 import java.util.Collection;
 
 import org.apache.james.core.MailAddress;
@@ -192,6 +194,26 @@ class IsDmarcReportWithIssuesTest extends DmarcReportMatcherTestBase {
             </feedback>
             """;
         Collection<MailAddress> result = matcher.match(mailWithZipAttachment(DMARC_SUBJECT, withDoctype));
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void shouldMatchWhenResultIsSurroundedByWhitespaces() throws Exception {
+        String report = REPORT_WITH_ISSUES
+            .replace("<dkim>fail</dkim>", "<dkim>\n" + " ".repeat(100) + "fail\n" + " ".repeat(100) + "</dkim>");
+        Collection<MailAddress> result = matcher.match(mailWithGzipAttachment(DMARC_SUBJECT, report));
+
+        assertThat(result).containsOnly(RECIPIENT);
+    }
+
+    @Test
+    void shouldCompleteQuicklyWhenResultIsSplitInManyTextEvents() {
+        String splitResult = "a<!---->".repeat(100_000);
+        String report = REPORT_WITH_ISSUES.replace("<dkim>fail</dkim>", "<dkim>" + splitResult + "</dkim>");
+
+        Collection<MailAddress> result = assertTimeoutPreemptively(Duration.ofSeconds(5),
+            () -> matcher.match(mailWithGzipAttachment(DMARC_SUBJECT, report)));
 
         assertThat(result).isEmpty();
     }
