@@ -20,9 +20,17 @@ package com.linagora.tmail.rag.utils;
 
 import org.apache.james.core.Username;
 
+import com.google.common.base.CharMatcher;
 import com.google.common.base.Preconditions;
 
 public record Partition(String partitionName) {
+    private static final CharMatcher FORBIDDEN_CHARACTERS = CharMatcher.anyOf("/\\?#%")
+        .or(CharMatcher.javaIsoControl());
+
+    public Partition {
+        Preconditions.checkArgument(FORBIDDEN_CHARACTERS.matchesNoneOf(partitionName),
+            "RAG partition name must not contain '/', '\\', '?', '#', '%' nor control characters: %s", partitionName);
+    }
 
     public static class Factory {
         private final String pattern;

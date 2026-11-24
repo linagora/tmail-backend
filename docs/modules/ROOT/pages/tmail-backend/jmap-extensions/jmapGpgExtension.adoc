@@ -91,6 +91,9 @@ This is a standard “/set” method as described in https://jmap.io/spec-core.h
 
 All fields being immutable, updates are rejected.
 
+A user can store a limited number of keys, 10 by default (see the `tmail.keystore.max.keys.per.user` system property).
+Creating a key beyond this limit is rejected with an `overQuota` error.
+
 === Examples
 
 Uploading a new public key:

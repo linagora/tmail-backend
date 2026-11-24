@@ -29,15 +29,16 @@ import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition
 import com.linagora.tmail.rate.limiter.api.model.RateLimitingDefinition.EMPTY_RATE_LIMIT
 import eu.timepit.refined.auto._
 import jakarta.inject.Inject
-import org.apache.james.core.Username
+import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.rate.limiter.api.Increment.Increment
 import org.apache.james.rate.limiter.api.Increment.given
 import org.apache.james.rate.limiter.api.{AcceptableRate, Increment, RateExceeded, RateLimiterFactory, RateLimitingResult}
 import org.apache.james.transport.mailets.ConfigurationOps.OptionOps
 import org.apache.james.transport.mailets.KeyPrefix
+import org.apache.james.user.api.UsersRepository
 import org.apache.james.util.DurationParser
-import org.apache.mailet.Mail
 import org.apache.mailet.base.GenericMailet
+import org.apache.mailet.{AttributeName, AttributeUtils, Mail}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.DurationConverters._
@@ -77,6 +78,9 @@ import scala.jdk.OptionConverters._
  * <li><b>recipientsPerDayDefault</b>: [Optional, long]. Default number of recipients a sender is allowed to address per day if no user-specific rate limit exists.
  * If omitted, the value is treated as unlimited. A configured value of <code>-1</code> also means unlimited.</li>
  * </ul>
+ *
+ * <p>The rate limited user is the SMTP authenticated user when available, otherwise the sender address stripped of
+ * its sub-address detail (<code>bob+detail@domain</code> is accounted as <code>bob@domain</code>).</p>
  *
  * <p>Recipients are the ones of the email when it reaches this mailet: place it after recipient rewriting and in the
  * relay processor in order to only account remote recipients. An email with more recipients than a recipient limit is
@@ -130,7 +134,18 @@ class SentRateLimiting @Inject()(rateLimitingRepository: RateLimitingRepository,
 
   override def service(mail: Mail): Unit =
     mail.getMaybeSender.asOptional()
-      .ifPresent(sender => applySenderRateLimit(Username.fromMailAddress(sender), mail))
+      .ifPresent(sender => applySenderRateLimit(rateLimitedUser(mail, sender), mail))
+
+  // Key the counters on the authenticated (SMTP or JMAP) user when known, otherwise on the sender stripped of its
+  // sub-address detail, so that `bob+anything@domain` or aliases do not get a fresh bucket each.
+  private def rateLimitedUser(mail: Mail, sender: MailAddress): Username =
+    authenticatedUser(mail, Mail.SMTP_AUTH_USER)
+      .orElse(authenticatedUser(mail, Mail.JMAP_AUTH_USER))
+      .getOrElse(Username.fromMailAddress(sender.stripDetails(UsersRepository.LOCALPART_DETAIL_DELIMITER)))
+
+  private def authenticatedUser(mail: Mail, attributeName: AttributeName): Option[Username] =
+    AttributeUtils.getValueAndCastFromMail(mail, attributeName, classOf[String]).toScala
+      .map(Username.of)
 
   private def applySenderRateLimit(sender: Username, mail: Mail): Unit = {
     val rateLimitingResult: RateLimitingResult = applySenderRateLimit(sender, mail.getRecipients.size()).block(rateLimiterTimeout.toScala)

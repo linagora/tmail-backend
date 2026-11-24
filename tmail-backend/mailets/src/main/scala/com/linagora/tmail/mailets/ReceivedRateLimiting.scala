@@ -32,6 +32,7 @@ import org.apache.james.lifecycle.api.LifecycleUtil
 import org.apache.james.rate.limiter.api.{AcceptableRate, RateExceeded, RateLimiterFactory, RateLimitingResult}
 import org.apache.james.transport.mailets.ConfigurationOps.OptionOps
 import org.apache.james.transport.mailets.KeyPrefix
+import org.apache.james.user.api.UsersRepository
 import org.apache.james.util.DurationParser
 import org.apache.mailet.Mail
 import org.apache.mailet.base.GenericMailet
@@ -69,6 +70,9 @@ import scala.util.Using
  * <li><b>mailsPerDayDefault</b>: [Optional, long]. Default number of emails a recipient is allowed to receive per day if no user-specific rate limit exists.
  * If omitted, the value is treated as unlimited. A configured value of <code>-1</code> also means unlimited.</li>
  * </ul>
+ *
+ * <p>Recipients are accounted stripped of their sub-address detail: <code>bob+detail@domain</code> is accounted as
+ * <code>bob@domain</code>.</p>
  *
  * <p>For instance:</p>
  *
@@ -116,7 +120,7 @@ class ReceivedRateLimiting @Inject()(val rateLimitingRepository: RateLimitingRep
 
   private def applyRateLimiterPerRecipient(mail: Mail): Unit = {
     val rateLimitResults: Seq[(MailAddress, RateLimitingResult)] = SFlux.fromIterable(mail.getRecipients.asScala)
-      .flatMap(recipient => applyRecipientRateLimit(Username.fromMailAddress(recipient))
+      .flatMap(recipient => applyRecipientRateLimit(rateLimitedUser(recipient))
         .map(rateLimitingResult => recipient -> rateLimitingResult))
       .collectSeq()
       .block(rateLimiterTimeout.toScala)
@@ -136,6 +140,10 @@ class ReceivedRateLimiting @Inject()(val rateLimitingRepository: RateLimitingRep
         })(using (duplicate: Mail) => LifecycleUtil.dispose(duplicate))
     }
   }
+
+  // Strip the sub-address detail so that `bob+anything@domain` shares the bucket of `bob@domain`
+  private def rateLimitedUser(recipient: MailAddress): Username =
+    Username.fromMailAddress(recipient.stripDetails(UsersRepository.LOCALPART_DETAIL_DELIMITER))
 
   private def applyRecipientRateLimit(recipient: Username): SMono[RateLimitingResult] =
     SMono.fromPublisher(rateLimitingRepository.getRateLimiting(recipient))
