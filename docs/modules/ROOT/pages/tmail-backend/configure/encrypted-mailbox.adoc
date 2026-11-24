@@ -26,3 +26,17 @@ system property overrides this limit, for instance in `jvm.properties`:
 ....
 tmail.keystore.max.keys.per.user=10
 ....
+
+== Deleting the encrypted projection
+
+The encrypted projection of a message (encrypted preview, bodies and attachments) is deleted along with the
+message by a pre-deletion hook. It needs to be declared in `listeners.xml`:
+
+....
+<listeners>
+    <preDeletionHook>
+        <class>com.linagora.tmail.encrypted.DeleteEncryptedProjectionHook</class>
+    </preDeletionHook>
+    <!-- ... -->
+</listeners>
+....

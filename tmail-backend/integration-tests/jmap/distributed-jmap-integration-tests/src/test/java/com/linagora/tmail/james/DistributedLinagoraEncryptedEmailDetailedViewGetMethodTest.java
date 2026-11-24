@@ -39,6 +39,7 @@ import com.linagora.tmail.james.app.DockerOpenSearchExtension;
 import com.linagora.tmail.james.app.EventBusKeysChoice;
 import com.linagora.tmail.james.app.RabbitMQExtension;
 import com.linagora.tmail.james.common.LinagoraEncryptedEmailDetailedViewGetMethodContract;
+import com.linagora.tmail.james.common.module.EncryptedProjectionPreDeletionHookModule;
 import com.linagora.tmail.james.common.probe.JmapGuiceEncryptedEmailContentStoreProbe;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
@@ -72,6 +73,7 @@ public class DistributedLinagoraEncryptedEmailDetailedViewGetMethodTest implemen
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new EncryptedEmailContentStoreCassandraModule())
             .overrideWith(new DistributedEncryptedMailboxModule())
+            .overrideWith(new EncryptedProjectionPreDeletionHookModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding()
                 .to(JmapGuiceEncryptedEmailContentStoreProbe.class)))
