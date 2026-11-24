@@ -19,8 +19,11 @@
 package com.linagora.tmail.mailet;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.junit.jupiter.api.Assertions.assertTimeoutPreemptively;
 
+import java.time.Duration;
 import java.util.Collection;
+import java.util.List;
 
 import org.apache.james.core.MailAddress;
 import org.apache.mailet.base.test.FakeMatcherConfig;
@@ -106,6 +109,8 @@ class IsDmarcReportWithIssuesTest extends DmarcReportMatcherTestBase {
           </record>
         </feedback>
         """;
+
+    private static final int ONE_MIB = 1024 * 1024;
 
     private IsDmarcReportWithIssues matcher;
 
@@ -194,5 +199,54 @@ class IsDmarcReportWithIssuesTest extends DmarcReportMatcherTestBase {
         Collection<MailAddress> result = matcher.match(mailWithZipAttachment(DMARC_SUBJECT, withDoctype));
 
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    void shouldMatchWhenResultIsSurroundedByWhitespaces() throws Exception {
+        String report = REPORT_WITH_ISSUES
+            .replace("<dkim>fail</dkim>", "<dkim>\n" + " ".repeat(100) + "fail\n" + " ".repeat(100) + "</dkim>");
+        Collection<MailAddress> result = matcher.match(mailWithGzipAttachment(DMARC_SUBJECT, report));
+
+        assertThat(result).containsOnly(RECIPIENT);
+    }
+
+    @Test
+    void shouldCompleteQuicklyWhenResultIsSplitInManyTextEvents() {
+        String splitResult = "a<!---->".repeat(100_000);
+        String report = REPORT_WITH_ISSUES.replace("<dkim>fail</dkim>", "<dkim>" + splitResult + "</dkim>");
+
+        Collection<MailAddress> result = assertTimeoutPreemptively(Duration.ofSeconds(5),
+            () -> matcher.match(mailWithGzipAttachment(DMARC_SUBJECT, report)));
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void shouldMatchWhenIssuesAreInSecondZipEntry() throws Exception {
+        Collection<MailAddress> result = matcher.match(mailWithMultiEntryZipAttachment(DMARC_SUBJECT,
+            List.of(REPORT_WITHOUT_ISSUES, REPORT_WITH_ISSUES)));
+
+        assertThat(result).containsOnly(RECIPIENT);
+    }
+
+    @Test
+    void shouldNotMatchWhenZipEntryExceedsUncompressedSizeLimit() throws Exception {
+        Collection<MailAddress> result = matcher.match(mailWithZipAttachment(DMARC_SUBJECT,
+            padded(REPORT_WITH_ISSUES, 51 * ONE_MIB)));
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void shouldNotMatchWhenZipEntriesCumulativelyExceedUncompressedSizeLimit() throws Exception {
+        // Each entry is below the limit on its own, but the limit applies to the whole archive.
+        Collection<MailAddress> result = matcher.match(mailWithMultiEntryZipAttachment(DMARC_SUBJECT,
+            List.of(padded(REPORT_WITHOUT_ISSUES, 30 * ONE_MIB), padded(REPORT_WITH_ISSUES, 30 * ONE_MIB))));
+
+        assertThat(result).isEmpty();
+    }
+
+    private static String padded(String report, int paddingBytes) {
+        return report.replace("<feedback>", "<feedback>" + " ".repeat(paddingBytes));
     }
 }

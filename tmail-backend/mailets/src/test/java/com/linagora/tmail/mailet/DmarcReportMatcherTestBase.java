@@ -22,6 +22,7 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.Properties;
 import java.util.zip.GZIPOutputStream;
 import java.util.zip.ZipEntry;
@@ -45,7 +46,11 @@ abstract class DmarcReportMatcherTestBase {
     record Attachment(byte[] bytes, String contentType, String filename) {}
 
     protected FakeMail mailWithZipAttachment(String subject, String xmlContent) throws Exception {
-        byte[] zipBytes = createZip("report.xml", xmlContent.getBytes(StandardCharsets.UTF_8));
+        return mailWithMultiEntryZipAttachment(subject, List.of(xmlContent));
+    }
+
+    protected FakeMail mailWithMultiEntryZipAttachment(String subject, List<String> xmlContents) throws Exception {
+        byte[] zipBytes = createZip(xmlContents);
         return mailWithAttachment(subject, new Attachment(zipBytes, "application/zip",
             "example.com!google.com!1749340800!1749427199.zip"));
     }
@@ -93,15 +98,20 @@ abstract class DmarcReportMatcherTestBase {
         return new MimeMessage(session, new ByteArrayInputStream(baos.toByteArray()));
     }
 
-    private static byte[] createZip(String entryName, byte[] content) throws IOException {
+    private static byte[] createZip(List<String> xmlContents) throws IOException {
         ByteArrayOutputStream baos = new ByteArrayOutputStream();
         try (ZipOutputStream zos = new ZipOutputStream(baos)) {
-            ZipEntry entry = new ZipEntry(entryName);
-            zos.putNextEntry(entry);
-            zos.write(content);
-            zos.closeEntry();
+            for (int i = 0; i < xmlContents.size(); i++) {
+                writeZipEntry(zos, "report-" + i + ".xml", xmlContents.get(i).getBytes(StandardCharsets.UTF_8));
+            }
         }
         return baos.toByteArray();
+    }
+
+    private static void writeZipEntry(ZipOutputStream zos, String entryName, byte[] content) throws IOException {
+        zos.putNextEntry(new ZipEntry(entryName));
+        zos.write(content);
+        zos.closeEntry();
     }
 
     private static byte[] createGzip(byte[] content) throws IOException {
