@@ -651,4 +651,37 @@ class ReceivedRateLimitingTest {
       softly.assertThat(sentMails.get(0).getRecipients).containsExactly(RCPT1.asMailAddress())
     })
   }
+
+  @Test
+  def shouldStripRecipientDetailsWhenRateLimiting(): Unit = {
+    receivedRateLimiting.init(FakeMailetConfig.builder()
+      .setProperty("precision", "1s")
+      .build())
+
+    SMono(rateLimitingRepository.setRateLimiting(BOB, new RateLimitingDefinition.Builder()
+      .mailsReceivedPerMinute(1)
+      .build())).block()
+
+    val mail1: Mail = FakeMail.builder()
+      .name("mail1")
+      .sender("sender@domain.tld")
+      .recipients("bob+1@domain.tld")
+      .state("transport")
+      .build()
+
+    val shouldExceedUserLimit: Mail = FakeMail.builder()
+      .name("mail2")
+      .sender("sender@domain.tld")
+      .recipients("bob+2@domain.tld")
+      .state("transport")
+      .build()
+
+    receivedRateLimiting.service(mail1)
+    receivedRateLimiting.service(shouldExceedUserLimit)
+
+    assertSoftly(softly => {
+      softly.assertThat(mail1.getState).isEqualTo("transport")
+      softly.assertThat(shouldExceedUserLimit.getState).isEqualTo("error")
+    })
+  }
 }
