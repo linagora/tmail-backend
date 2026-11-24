@@ -156,6 +156,10 @@ Two servers enforce the relay policy by port:
 * `:26` relay -- `authorizedAddresses` set to the old/new network (reachable only by them): relay
 allowed.
 
+The public port verifies sender identities in `relaxed` mode, as the standard Twake Mail port 25 does.
+The relay port does not (`verifyIdentity=false`): the backends already verified the identity of
+their authenticated users, so this port must stay closed to anything but the backends.
+
 Both use the standard `org.apache.james.smtpserver.CoreCmdHandlerLoader` handler chain.
 
 == Recipient routing -- `mailetcontainer.xml`
@@ -169,11 +173,17 @@ gateways are interpolated so they can be overridden at runtime:
     <outgoing>outgoing-new</outgoing>
     <gateway>${sys:migration.smtp.new.host:-new-backend}</gateway>
     <gatewayPort>${sys:migration.smtp.new.port:-25}</gatewayPort>
+    <heloName>${sys:migration.smtp.heloName:-migration-proxy.localdomain}</heloName>
     ...
 </mailet>
 <mailet match="HostIsLocal" class="RemoteDelivery">         <!-- -> old gateway -->
 <mailet match="SMTPIsAuthNetwork" class="RemoteDelivery">  <!-- -> external (real MX) -->
 ----
+
+The two gateway mailets announce a dotted `heloName` (set `migration.smtp.heloName`, or the value in
+the file, to the proxy's host name). The backends verify sender identities in `relaxed` mode on port
+25 and ask a client claiming a local sender to authenticate unless its HELO looks like an MX one:
+with an undotted name such as `localhost`, the mail the proxy hands back to them is refused.
 
 == Data and webadmin
 
@@ -232,7 +242,9 @@ backend:
 unauthenticated mail with a local recipient is delivered locally;
 * `smtpserver.xml` -- `ValidRcptHandler` is removed so the backend accepts managed-domain recipients
 that are not local users here (they live on the other backend) and lets the mailet container relay
-them.
+them. Sender identities are verified as in the standard configuration: `verifyIdentity=true` on the
+submission ports 587 and 465, so that an authenticated user sends only as themselves, one of their
+aliases or a delegator, and `relaxed` on port 25.
 
 == Running
 

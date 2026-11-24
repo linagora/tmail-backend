@@ -15,7 +15,7 @@
         <connectionLimit>0</connectionLimit>
         <connectionLimitPerIP>0</connectionLimitPerIP>
         <authRequired>false</authRequired>
-        <verifyIdentity>false</verifyIdentity>
+        <verifyIdentity>relaxed</verifyIdentity>
         <maxmessagesize>0</maxmessagesize>
         <addressBracketsEnforcement>true</addressBracketsEnforcement>
         <smtpGreeting>Twake Mail migration proxy</smtpGreeting>
@@ -34,6 +34,8 @@
         <authRequired>false</authRequired>
         <!-- Trust connections on this locally-exposed port (only old/new can reach it) -->
         <authorizedAddresses>0.0.0.0/0</authorizedAddresses>
+        <!-- Only the backends reach this port, and they already verified the sender identity of their
+             authenticated users (verifyIdentity on their submission ports). Keep it closed to anyone else. -->
         <verifyIdentity>false</verifyIdentity>
         <maxmessagesize>0</maxmessagesize>
         <addressBracketsEnforcement>true</addressBracketsEnforcement>

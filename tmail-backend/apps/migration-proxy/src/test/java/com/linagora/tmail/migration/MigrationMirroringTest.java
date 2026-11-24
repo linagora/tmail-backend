@@ -19,6 +19,7 @@
 package com.linagora.tmail.migration;
 
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.awaitility.Awaitility.await;
 
 import java.io.File;
@@ -33,6 +34,7 @@ import org.apache.james.server.core.configuration.Configuration;
 import org.apache.james.util.Port;
 import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.SMTPMessageSender;
+import org.apache.james.utils.SMTPSendingException;
 import org.apache.james.utils.TestIMAPClient;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -163,6 +165,17 @@ class MigrationMirroringTest {
             .authenticate(USER_B, PASSWORD)
             .sendMessage(USER_B, USER_A);
         awaitInbox(oldBackend, USER_A);
+    }
+
+    @Test
+    void backendSubmissionShouldRefuseSendingAsAnotherUser() throws Exception {
+        // A (on old) authenticates but claims to be B: the adapted backend verifies the identity.
+        SMTPMessageSender authenticated = messageSender.connect("127.0.0.1", Port.of(oldBackend.getMappedPort(587)))
+            .authenticate(USER_A, PASSWORD);
+
+        assertThatThrownBy(() -> authenticated.sendMessage(USER_B, USER_A))
+            .isInstanceOf(SMTPSendingException.class)
+            .hasMessageContaining("Incorrect Authentication for Specified Email Address");
     }
 
     private void awaitInbox(GenericContainer<?> backend, String user) throws Exception {
