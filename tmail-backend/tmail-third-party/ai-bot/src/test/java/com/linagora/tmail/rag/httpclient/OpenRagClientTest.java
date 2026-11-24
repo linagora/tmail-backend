@@ -19,6 +19,7 @@
 package com.linagora.tmail.rag.httpclient;
 
 import static com.github.tomakehurst.wiremock.client.WireMock.deleteRequestedFor;
+import static com.github.tomakehurst.wiremock.client.WireMock.urlEqualTo;
 import static com.github.tomakehurst.wiremock.client.WireMock.urlMatching;
 import static com.github.tomakehurst.wiremock.client.WireMock.verify;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
@@ -63,6 +64,18 @@ public class OpenRagClientTest {
         client.deleteDocument(partition, documentId).block();
 
         verify(1, deleteRequestedFor(urlMatching("/indexer/partition/.*/file/.*")));
+    }
+
+    @Test
+    void deleteDocumentShouldPercentEncodePathSegments() {
+        wireMockRagServerExtension.setRagIndexerDeleteResponse(204, "");
+
+        Partition partition = new Partition("bob x.twake.example.com");
+        DocumentId documentId = new DocumentId(TestMessageId.of(1));
+
+        client.deleteDocument(partition, documentId).block();
+
+        verify(1, deleteRequestedFor(urlEqualTo("/indexer/partition/bob%20x.twake.example.com/file/1")));
     }
 
     @Test
