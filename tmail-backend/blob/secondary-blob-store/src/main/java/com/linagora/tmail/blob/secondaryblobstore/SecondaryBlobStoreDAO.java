@@ -19,13 +19,11 @@
 package com.linagora.tmail.blob.secondaryblobstore;
 
 import java.io.IOException;
-import java.io.InputStream;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
-import org.apache.commons.io.IOUtils;
 import org.apache.james.blob.api.BlobId;
 import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.blob.api.BucketName;
@@ -39,46 +37,18 @@ import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.github.fge.lambdas.Throwing;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Function;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.io.ByteSource;
-import com.google.common.io.FileBackedOutputStream;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 public class SecondaryBlobStoreDAO implements BlobStoreDAO {
-
-    private static class FileBackedOutputStreamByteSource extends ByteSource {
-        private final FileBackedOutputStream stream;
-        private final long size;
-
-        private FileBackedOutputStreamByteSource(FileBackedOutputStream stream, long size) {
-            Preconditions.checkArgument(size >= 0, "'size' must be positive");
-            this.stream = stream;
-            this.size = size;
-        }
-
-        @Override
-        public InputStream openStream() throws IOException {
-            return stream.asByteSource().openStream();
-        }
-
-        @Override
-        public com.google.common.base.Optional<Long> sizeIfKnown() {
-            return com.google.common.base.Optional.of(size);
-        }
-
-        @Override
-        public long size() {
-            return size;
-        }
-    }
 
     record SavingStatus(Optional<Throwable> e, ObjectStorageIdentity objectStorageIdentity) {
         public static SavingStatus success(ObjectStorageIdentity objectStorageIdentity) {
@@ -96,7 +66,8 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(SecondaryBlobStoreDAO.class);
     private static final Set<RegistrationKey> NO_REGISTRATION_KEYS = ImmutableSet.of();
-    private static final int FILE_THRESHOLD = 100 * 1024 * 1024;
+    // Same threshold as the other blob store layers: bigger blobs are buffered in a temporary file, not in the heap
+    private static final int FILE_THRESHOLD = 100 * 1024;
 
     private final BlobStoreDAO primaryBlobStoreDAO;
     private final BlobStoreDAO secondaryBlobStoreDAO;
@@ -176,23 +147,17 @@ public class SecondaryBlobStoreDAO implements BlobStoreDAO {
 
     private Mono<Void> save(BucketName bucketName, BlobId blobId, InputStreamBlob inputStreamBlob) {
         return Mono.using(
-                () -> new FileBackedOutputStream(FILE_THRESHOLD),
-                fileBackedOutputStream -> Mono.fromCallable(() -> IOUtils.copy(inputStreamBlob.payload(), fileBackedOutputStream))
-                    .flatMap(size -> {
-                        ByteSourceBlob duplicatedBlob = ByteSourceBlob.of(
-                            new FileBackedOutputStreamByteSource(fileBackedOutputStream, size),
-                            inputStreamBlob.metadata());
-                        return Flux.merge(
-                                asSavingStatus(primaryBlobStoreDAO.save(bucketName, blobId, duplicatedBlob), ObjectStorageIdentity.PRIMARY),
-                                asSavingStatus(secondaryBlobStoreDAO.save(withSuffix(bucketName), blobId, duplicatedBlob), ObjectStorageIdentity.SECONDARY))
-                            .collectList()
-                            .flatMap(savingStatuses -> merge(blobId, savingStatuses,
-                                failedObjectStorage -> eventBus.dispatch(
-                                    new FailedBlobEvents.BlobAddition(Event.EventId.random(), bucketName, blobId, failedObjectStorage),
-                                    NO_REGISTRATION_KEYS)));
-                    }),
-                Throwing.consumer(FileBackedOutputStream::reset))
-            .subscribeOn(Schedulers.boundedElastic());
+            () -> new TemporaryBlobBuffer(FILE_THRESHOLD),
+            buffer -> Mono.fromCallable(() -> bufferPayload(inputStreamBlob, buffer))
+                .subscribeOn(Schedulers.boundedElastic())
+                .flatMap(byteSource -> save(bucketName, blobId, ByteSourceBlob.of(byteSource, inputStreamBlob.metadata()))),
+            TemporaryBlobBuffer::dispose);
+    }
+
+    private ByteSource bufferPayload(InputStreamBlob inputStreamBlob, TemporaryBlobBuffer buffer) throws IOException {
+        inputStreamBlob.payload().transferTo(buffer);
+        buffer.close();
+        return buffer.asByteSource();
     }
 
     private Mono<Void> save(BucketName bucketName, BlobId blobId, ByteSourceBlob byteSourceBlob) {
