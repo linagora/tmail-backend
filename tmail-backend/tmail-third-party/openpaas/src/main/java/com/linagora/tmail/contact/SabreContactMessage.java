@@ -187,6 +187,9 @@ public record SabreContactMessage(Owner owner,
             switch (propertyName(line)) {
                 case "LABEL" -> labels++;
                 case "ADR" -> addresses++;
+                // ez-vcard parses an AGENT value as a nested card, whose LABEL/ADR lines this count can not see.
+                // Twake Mail only reads UID, FN and EMAIL: such cards are not parsed at all.
+                case "AGENT" -> throw new IllegalArgumentException("Card with an AGENT property: not parsed");
                 default -> { }
             }
         }

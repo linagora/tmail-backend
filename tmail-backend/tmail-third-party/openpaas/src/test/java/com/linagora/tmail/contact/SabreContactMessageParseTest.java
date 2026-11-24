@@ -345,6 +345,32 @@ public class SabreContactMessageParseTest {
     }
 
     @Test
+    void parsePayloadShouldRejectALabelBombNestedInAnAgentCard() throws Exception {
+        String nested = "BEGIN:VCARD\\nVERSION:3.0\\n" + "ADR:\\n".repeat(20_000) + "LABEL;TYPE=x:\\n".repeat(20_000) + "END:VCARD";
+        String amqpMessage = amqpMessage(card("AGENT:" + nested + "\r\n"), Optional.empty());
+
+        assertTimeoutPreemptively(Duration.ofSeconds(5), () ->
+            assertThatThrownBy(() -> SabreContactMessage.parseAMQPMessage(amqpMessage))
+                .isInstanceOf(SabreContactMessage.SabreContactParseException.class));
+    }
+
+    @Test
+    void checkCanBeParsedShouldRejectAGroupedAgent() {
+        assertThatThrownBy(() -> SabreContactMessage.checkCanBeParsed(card("item1.agent:BEGIN:VCARD\\nEND:VCARD\r\n")))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void parsePayloadShouldIgnoreAPreviousCardWithAnAgent() throws Exception {
+        String amqpMessage = amqpMessage(card(""), Optional.of(card("AGENT:BEGIN:VCARD\\nVERSION:3.0\\nFN:x\\nEND:VCARD\r\n")));
+
+        assertThat(SabreContactMessage.parseAMQPMessage(amqpMessage))
+            .isPresent()
+            .get()
+            .satisfies(message -> assertThat(message.getPreviousMailAddresses()).isEmpty());
+    }
+
+    @Test
     void jsonParseErrorsShouldNotQuoteThePayload() {
         String truncated = "{\"owner\": \"principals/users/1\", \"carddata\": \"EMAIL:secret@tutu.com\" \"broken";
 
