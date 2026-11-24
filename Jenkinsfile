@@ -481,13 +481,13 @@ def checkedOutPullRequestHead() {
 }
 
 // The login of a linagora member who vouched for the given commit: an approving review of it, a review
-// 'Build this please' of it, or a comment 'Build this please <sha>' naming its full id. A prefix is not
+// 'Build this please' of it (submitted, not dismissed), or a comment 'Build this please <sha>' naming its full id. A prefix is not
 // accepted: the contributor writes the commits, and can craft one sharing a short prefix with the
 // reviewed one.
 def memberReviewerOf(String sha) {
   for (review in githubApiAllPages("pulls/${env.CHANGE_ID}/reviews")) {
     def approves = review.state == 'APPROVED' ||
-      (review.state != 'DISMISSED' && isBuildThisPlease(review.body, sha, false))
+      (review.state != 'DISMISSED' && review.state != 'PENDING' && isBuildThisPlease(review.body, sha, false))
     if (review.commit_id == sha && approves && isOrgMember(review.user.login)) {
       return review.user.login
     }
