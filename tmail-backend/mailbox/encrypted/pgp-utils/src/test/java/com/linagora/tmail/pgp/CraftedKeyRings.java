@@ -21,6 +21,7 @@ package com.linagora.tmail.pgp;
 import java.io.ByteArrayOutputStream;
 import java.math.BigInteger;
 import java.security.KeyPairGenerator;
+import java.security.interfaces.RSAPublicKey;
 import java.security.spec.ECGenParameterSpec;
 import java.util.Date;
 import java.util.List;
@@ -56,6 +57,13 @@ public class CraftedKeyRings {
 
     public static byte[] withRSAEncryptionSubkey(BigInteger modulus, BigInteger exponent) throws Exception {
         return withEncryptionSubkey(PublicKeyAlgorithmTags.RSA_GENERAL, new RSAPublicBCPGKey(modulus, exponent));
+    }
+
+    public static byte[] withGeneratedRSAEncryptionSubkey() throws Exception {
+        KeyPairGenerator generator = KeyPairGenerator.getInstance("RSA", BOUNCY_CASTLE_PROVIDER);
+        generator.initialize(2048);
+        RSAPublicKey rsaKey = (RSAPublicKey) generator.generateKeyPair().getPublic();
+        return withRSAEncryptionSubkey(rsaKey.getModulus(), rsaKey.getPublicExponent());
     }
 
     public static byte[] withElGamalEncryptionSubkey(BigInteger prime) throws Exception {

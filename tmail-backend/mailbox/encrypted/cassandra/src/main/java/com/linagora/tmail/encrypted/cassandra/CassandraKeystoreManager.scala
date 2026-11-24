@@ -22,7 +22,7 @@ import com.google.common.io.BaseEncoding
 import com.google.inject.multibindings.Multibinder
 import com.google.inject.{AbstractModule, Scopes}
 import com.linagora.tmail.encrypted.cassandra.table.CassandraKeystoreModule
-import com.linagora.tmail.encrypted.{KeyId, KeystoreManager, PGPKeysUserDeletionTaskStep, PGPKeysUsernameChangeTaskStep, PublicKey}
+import com.linagora.tmail.encrypted.{KeyId, KeystoreLimit, KeystoreManager, PGPKeysUserDeletionTaskStep, PGPKeysUsernameChangeTaskStep, PublicKey}
 import com.linagora.tmail.pgp.Encrypter
 import jakarta.inject.Inject
 import org.apache.james.backends.cassandra.components.CassandraDataDefinition
@@ -56,11 +56,14 @@ case class KeystoreCassandraModule() extends AbstractModule {
 }
 
 class CassandraKeystoreManager @Inject()(cassandraKeystoreDAO: CassandraKeystoreDAO) extends KeystoreManager {
+  private val maxKeysPerUser: Int = KeystoreLimit.maxKeysPerUser
+
   override def save(username: Username, payload: Array[Byte]): Publisher[KeyId] =
     SMono.fromCallable(() => computeKeyId(payload))
       .subscribeOn(Schedulers.boundedElastic())
       .flatMap(_.fold(e => SMono.error(new IllegalArgumentException(e)),
-        keyId => cassandraKeystoreDAO.insert(username, PublicKey(keyId, payload))
+        keyId => KeystoreLimit.ensureCanStore(this, username, keyId, maxKeysPerUser)
+          .`then`(cassandraKeystoreDAO.insert(username, PublicKey(keyId, payload)))
           .`then`(SMono.just(keyId))))
 
   override def listPublicKeys(username: Username): Publisher[PublicKey] =

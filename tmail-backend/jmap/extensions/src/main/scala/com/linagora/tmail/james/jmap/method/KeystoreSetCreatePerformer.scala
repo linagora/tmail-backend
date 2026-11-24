@@ -20,7 +20,7 @@ package com.linagora.tmail.james.jmap.method
 
 import java.nio.charset.StandardCharsets
 
-import com.linagora.tmail.encrypted.KeystoreManager
+import com.linagora.tmail.encrypted.{KeystoreLimitExceededException, KeystoreManager}
 import com.linagora.tmail.james.jmap.json.KeystoreSerializer
 import com.linagora.tmail.james.jmap.method.KeystoreSetCreatePerformer.{KeystoreCreationFailure, KeystoreCreationResult, KeystoreCreationResults, KeystoreCreationSuccess}
 import com.linagora.tmail.james.jmap.model.{KeystoreCreationId, KeystoreCreationRequest, KeystoreCreationResponse, KeystoreSetRequest}
@@ -40,6 +40,7 @@ object KeystoreSetCreatePerformer {
   case class KeystoreCreationFailure(keystoreCreationId: KeystoreCreationId, exception: Throwable) extends KeystoreCreationResult {
     def asKeystoreSetError: SetError = exception match {
       case e: KeystoreCreationParseException => e.setError
+      case e: KeystoreLimitExceededException => SetError.overQuota(SetErrorDescription(e.getMessage))
       case e: IllegalArgumentException => SetError.invalidArguments(SetErrorDescription(e.getMessage))
       case _ => SetError.serverFail(SetErrorDescription(exception.getMessage))
     }

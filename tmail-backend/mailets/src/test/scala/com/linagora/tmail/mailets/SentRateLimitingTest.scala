@@ -27,8 +27,8 @@ import org.apache.james.backends.redis.{DockerRedis, RedisClientFactory, RedisEx
 import org.apache.james.core.{Domain, Username}
 import org.apache.james.rate.limiter.redis.RedisRateLimiterFactory
 import org.apache.james.server.core.filesystem.FileSystemImpl
-import org.apache.mailet.Mail
 import org.apache.mailet.base.test.{FakeMail, FakeMailetConfig}
+import org.apache.mailet.{Attribute, AttributeValue, Mail}
 import org.assertj.core.api.Assertions.assertThat
 import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.junit.jupiter.api.extension.ExtendWith
@@ -769,5 +769,108 @@ class SentRateLimitingTest {
     sentRateLimiting.service(mail)
 
     assertThat(mail.getState).isEqualTo("transport")
+  }
+
+  @Test
+  def shouldStripSenderDetailsWhenRateLimiting(): Unit = {
+    sentRateLimiting.init(FakeMailetConfig.builder()
+      .setProperty("precision", "1s")
+      .build())
+
+    SMono(rateLimitingRepository.setRateLimiting(BOB, new RateLimitingDefinition.Builder()
+      .mailsSentPerMinute(1)
+      .build())).block()
+
+    val mail1: Mail = FakeMail.builder()
+      .name("mail1")
+      .sender("bob+1@domain.tld")
+      .recipients("rcpt1@linagora.com")
+      .state("transport")
+      .build()
+
+    val shouldExceedUserLimit: Mail = FakeMail.builder()
+      .name("mail2")
+      .sender("bob+2@domain.tld")
+      .recipients("rcpt2@linagora.com")
+      .state("transport")
+      .build()
+
+    sentRateLimiting.service(mail1)
+    sentRateLimiting.service(shouldExceedUserLimit)
+
+    assertSoftly(softly => {
+      softly.assertThat(mail1.getState).isEqualTo("transport")
+      softly.assertThat(shouldExceedUserLimit.getState).isEqualTo("error")
+    })
+  }
+
+  @Test
+  def shouldRateLimitAuthenticatedUserRegardlessOfSenderAddress(): Unit = {
+    sentRateLimiting.init(FakeMailetConfig.builder()
+      .setProperty("precision", "1s")
+      .build())
+
+    SMono(rateLimitingRepository.setRateLimiting(BOB, new RateLimitingDefinition.Builder()
+      .mailsSentPerMinute(1)
+      .build())).block()
+
+    val mail1: Mail = FakeMail.builder()
+      .name("mail1")
+      .sender(BOB.asString())
+      .recipients("rcpt1@linagora.com")
+      .attribute(new Attribute(Mail.SMTP_AUTH_USER, AttributeValue.of(BOB.asString())))
+      .state("transport")
+      .build()
+
+    val shouldExceedUserLimit: Mail = FakeMail.builder()
+      .name("mail2")
+      .sender("bob-alias@domain.tld")
+      .recipients("rcpt2@linagora.com")
+      .attribute(new Attribute(Mail.SMTP_AUTH_USER, AttributeValue.of(BOB.asString())))
+      .state("transport")
+      .build()
+
+    sentRateLimiting.service(mail1)
+    sentRateLimiting.service(shouldExceedUserLimit)
+
+    assertSoftly(softly => {
+      softly.assertThat(mail1.getState).isEqualTo("transport")
+      softly.assertThat(shouldExceedUserLimit.getState).isEqualTo("error")
+    })
+  }
+
+  @Test
+  def shouldRateLimitJmapAuthenticatedUserRegardlessOfSenderAddress(): Unit = {
+    sentRateLimiting.init(FakeMailetConfig.builder()
+      .setProperty("precision", "1s")
+      .build())
+
+    SMono(rateLimitingRepository.setRateLimiting(BOB, new RateLimitingDefinition.Builder()
+      .mailsSentPerMinute(1)
+      .build())).block()
+
+    val mail1: Mail = FakeMail.builder()
+      .name("mail1")
+      .sender(BOB.asString())
+      .recipients("rcpt1@linagora.com")
+      .attribute(new Attribute(Mail.JMAP_AUTH_USER, AttributeValue.of(BOB.asString())))
+      .state("transport")
+      .build()
+
+    val shouldExceedUserLimit: Mail = FakeMail.builder()
+      .name("mail2")
+      .sender("bob-alias@domain.tld")
+      .recipients("rcpt2@linagora.com")
+      .attribute(new Attribute(Mail.JMAP_AUTH_USER, AttributeValue.of(BOB.asString())))
+      .state("transport")
+      .build()
+
+    sentRateLimiting.service(mail1)
+    sentRateLimiting.service(shouldExceedUserLimit)
+
+    assertSoftly(softly => {
+      softly.assertThat(mail1.getState).isEqualTo("transport")
+      softly.assertThat(shouldExceedUserLimit.getState).isEqualTo("error")
+    })
   }
 }
