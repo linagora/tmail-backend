@@ -97,12 +97,12 @@ public class SpaceProvisioner {
                 + " named " + snapshot.name() + " in " + snapshot.domain().asString())));
     }
 
-    /** Empty when another space, a user, an alias, a group or a mailing list holds the address. */
+    /** Empty when another space, a user, an alias, a group or a mailing list holds the address, or when it is free but reserved. */
     private Mono<SpaceMailbox> take(SpaceSnapshot snapshot, TeamMailbox teamMailbox) {
         return readOptional(teamMailbox)
             .flatMap(existing -> existing
                 .map(spaceMailbox -> claim(snapshot, spaceMailbox))
-                .orElseGet(() -> claimFree(snapshot, teamMailbox)));
+                .orElseGet(() -> addresses.isReserved(teamMailbox) ? Mono.empty() : claimFree(snapshot, teamMailbox)));
     }
 
     /**

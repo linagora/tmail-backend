@@ -149,6 +149,24 @@ class SpaceConfigurationTest {
         assertThat(SpaceConfiguration.from(configuration).teamMailboxPrefix()).isEqualTo("abcdefghijklmnopqrstuvwxyz01234-");
     }
 
+    @Test
+    void reservedNamesShouldDefaultToTheRoleAddresses() {
+        assertThat(SpaceConfiguration.from(new BaseHierarchicalConfiguration()).reservedNames())
+            .contains("admin", "administrator", "webmaster", "hostmaster", "postmaster", "abuse", "security",
+                "mailer-daemon", "noreply", "no-reply", "root", "team-mailbox", "team-mailbox-admin")
+            .doesNotContain("sales", "support");
+    }
+
+    @Test
+    void fromShouldAddTheConfiguredReservedNamesToTheDefaultOnes() {
+        BaseHierarchicalConfiguration configuration = new BaseHierarchicalConfiguration();
+        configuration.addProperty("teamMailbox.reservedNames", "Billing, it,,");
+
+        assertThat(SpaceConfiguration.from(configuration).reservedNames())
+            .contains("billing", "it", "admin")
+            .doesNotContain("");
+    }
+
     @ParameterizedTest
     @ValueSource(strings = {"queue", "space.exchange", "activity.exchange", "dns.routingKey"})
     void fromShouldRejectBlankValues(String parameter) {
