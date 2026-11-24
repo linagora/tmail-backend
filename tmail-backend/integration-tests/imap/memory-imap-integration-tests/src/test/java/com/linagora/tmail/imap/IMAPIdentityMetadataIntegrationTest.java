@@ -20,9 +20,11 @@ package com.linagora.tmail.imap;
 
 import static org.apache.james.data.UsersRepositoryModuleChooser.Implementation.DEFAULT;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.nio.charset.StandardCharsets;
 
+import org.apache.commons.net.MalformedServerReplyException;
 import org.apache.james.GuiceJamesServer;
 import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
@@ -171,5 +173,32 @@ class IMAPIdentityMetadataIntegrationTest {
             .doesNotContain(prefix + "/displayname")
             .doesNotContain(prefix + "/html")
             .doesNotContain(prefix + "/id");
+    }
+
+    @Test
+    void setMetadataShouldBeRejectedOnIdentityAnnotationPrefix(GuiceJamesServer server) throws Exception {
+        Identity identity = server.getProbe(JmapGuiceIdentityProbe.class).addIdentity(ALICE, "Work identity");
+        String prefix = annotationPrefix(identity);
+
+        assertThatThrownBy(() -> imapClient.connect(IMAP_HOST, imapPort)
+            .login(ALICE, PASSWORD)
+            .sendCommand("SETMETADATA \"INBOX\" (" + prefix + "/html \"<a href=https://attacker.org>hacked</a>\")"))
+            .isInstanceOf(MalformedServerReplyException.class)
+            .hasMessageContaining("NO SETMETADATA annotation is read-only: /private/vendor/tmail/identities/");
+    }
+
+    @Test
+    void setMetadataShouldNotAllowRemovingIdentityAnnotations(GuiceJamesServer server) throws Exception {
+        Identity identity = server.getProbe(JmapGuiceIdentityProbe.class).addIdentity(ALICE, "Work identity");
+        String prefix = annotationPrefix(identity);
+
+        assertThatThrownBy(() -> imapClient.connect(IMAP_HOST, imapPort)
+            .login(ALICE, PASSWORD)
+            .sendCommand("SETMETADATA \"INBOX\" (" + prefix + "/maydelete NIL)"))
+            .isInstanceOf(MalformedServerReplyException.class)
+            .hasMessageContaining("NO SETMETADATA annotation is read-only: /private/vendor/tmail/identities/");
+
+        assertThat(imapClient.sendCommand("GETMETADATA \"INBOX\" (DEPTH infinity) /private/vendor/tmail/identities"))
+            .contains(prefix + "/maydelete");
     }
 }
