@@ -25,6 +25,7 @@ import org.reactivestreams.Publisher;
 
 import com.google.common.io.BaseEncoding;
 import com.linagora.tmail.encrypted.KeyId;
+import com.linagora.tmail.encrypted.KeystoreLimit;
 import com.linagora.tmail.encrypted.KeystoreManager;
 import com.linagora.tmail.encrypted.PublicKey;
 import com.linagora.tmail.pgp.Encrypter;
@@ -34,6 +35,7 @@ import reactor.core.scheduler.Schedulers;
 
 public class PostgresKeystoreManager implements KeystoreManager {
     private final PostgresKeystoreDAO.Factory keystoreDAOFactory;
+    private final int maxKeysPerUser = KeystoreLimit.maxKeysPerUser();
 
     @Inject
     public PostgresKeystoreManager(PostgresKeystoreDAO.Factory keystoreDAOFactory) {
@@ -49,8 +51,9 @@ public class PostgresKeystoreManager implements KeystoreManager {
                 throw new IllegalArgumentException(ex);
             }
         }).subscribeOn(Schedulers.boundedElastic())
-            .flatMap(keyId -> keystoreDAOFactory.create(username.getDomainPart()).insertKey(username, new PublicKey(keyId, payload))
-            .thenReturn(new KeyId(keyId)));
+            .flatMap(keyId -> Mono.from(KeystoreLimit.ensureCanStore(this, username, keyId, maxKeysPerUser))
+                .then(keystoreDAOFactory.create(username.getDomainPart()).insertKey(username, new PublicKey(keyId, payload)))
+                .thenReturn(new KeyId(keyId)));
     }
 
     @Override

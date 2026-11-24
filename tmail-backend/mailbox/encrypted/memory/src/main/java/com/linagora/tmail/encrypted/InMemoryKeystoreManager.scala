@@ -48,10 +48,16 @@ class InMemoryKeystoreManager (keystore: scala.collection.concurrent.Map[Usernam
 
   def this() = this(keystore = scala.collection.concurrent.TrieMap())
 
+  private val maxKeysPerUser: Int = KeystoreLimit.maxKeysPerUser
+
   override def save(username: Username, payload: Array[Byte]): Publisher[KeyId] =
-    SMono.defer(() => SMono.fromPublisher(computeKeyId(payload)
-      .fold(e => SMono.error(new IllegalArgumentException(e)), keyId => usernameExists(username)
-        .fold(_ => create(username, keyId, payload), _ => update(username, keyId, payload)))))
+    SMono.defer(() => computeKeyId(payload)
+      .fold(e => SMono.error(new IllegalArgumentException(e)), keyId => KeystoreLimit.ensureCanStore(this, username, keyId, maxKeysPerUser)
+        .`then`(SMono.defer(() => SMono.fromPublisher(store(username, keyId, payload))))))
+
+  private def store(username: Username, keyId: KeyId, payload: Array[Byte]): Publisher[KeyId] =
+    usernameExists(username)
+      .fold(_ => create(username, keyId, payload), _ => update(username, keyId, payload))
 
   override def listPublicKeys(username: Username): Publisher[PublicKey] =
     usernameExists(username)

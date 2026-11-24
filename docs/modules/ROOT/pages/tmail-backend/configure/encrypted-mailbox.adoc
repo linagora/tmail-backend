@@ -16,3 +16,13 @@ com.linagora.tmail.james.app.DistributedEncryptedMailboxModule
 com.linagora.tmail.james.app.PostgresEncryptedMailboxModule
 com.linagora.tmail.james.app.MemoryEncryptedMailboxModule
 ....
+
+== Number of PGP public keys per user
+
+Each message appended to an encrypted mailbox is encrypted for every public key of its owner. The number of
+public keys a user can store is thus bounded, by default to 10. The `tmail.keystore.max.keys.per.user` JVM
+system property overrides this limit, for instance in `jvm.properties`:
+
+....
+tmail.keystore.max.keys.per.user=10
+....
