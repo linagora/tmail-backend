@@ -35,6 +35,7 @@ import com.linagora.tmail.james.app.MemoryConfiguration;
 import com.linagora.tmail.james.app.MemoryEncryptedMailboxModule;
 import com.linagora.tmail.james.app.MemoryServer;
 import com.linagora.tmail.james.common.LinagoraEncryptedEmailDetailedViewGetMethodContract;
+import com.linagora.tmail.james.common.module.EncryptedProjectionPreDeletionHookModule;
 import com.linagora.tmail.james.common.probe.JmapGuiceEncryptedEmailContentStoreProbe;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
@@ -54,6 +55,7 @@ public class MemoryLinagoraEncryptedEmailDetailedViewGetMethodTest implements Li
             .overrideWith(new LinagoraTestJMAPServerModule())
             .overrideWith(new InMemoryEncryptedEmailContentStoreModule())
             .overrideWith(new MemoryEncryptedMailboxModule())
+            .overrideWith(new EncryptedProjectionPreDeletionHookModule())
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class)
                 .addBinding()
                 .to(JmapGuiceEncryptedEmailContentStoreProbe.class)))

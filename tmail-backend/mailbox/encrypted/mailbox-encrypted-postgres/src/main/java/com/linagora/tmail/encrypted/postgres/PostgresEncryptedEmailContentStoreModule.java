@@ -19,6 +19,7 @@
 package com.linagora.tmail.encrypted.postgres;
 
 import org.apache.james.backends.postgres.PostgresDataDefinition;
+import org.apache.james.blob.api.BlobReferenceSource;
 
 import com.google.inject.AbstractModule;
 import com.google.inject.Scopes;
@@ -34,5 +35,10 @@ public class PostgresEncryptedEmailContentStoreModule extends AbstractModule {
 
         Multibinder<PostgresDataDefinition> postgresDataDefinitions = Multibinder.newSetBinder(binder(), PostgresDataDefinition.class);
         postgresDataDefinitions.addBinding().toInstance(com.linagora.tmail.encrypted.postgres.table.PostgresEncryptedEmailStoreModule.MODULE);
+
+        bind(PostgresEncryptedEmailBlobReferenceSource.class).in(Scopes.SINGLETON);
+        Multibinder.newSetBinder(binder(), BlobReferenceSource.class)
+            .addBinding()
+            .to(PostgresEncryptedEmailBlobReferenceSource.class);
     }
 }

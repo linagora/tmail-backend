@@ -478,6 +478,86 @@ trait LinagoraEncryptedEmailDetailedViewGetMethodContract {
   }
 
   @Test
+  def encryptedContentShouldBeDeletedWhenEmailIsDestroyed(server: GuiceJamesServer): Unit = {
+    val messageId: MessageId = server.getProbe(classOf[MailboxProbeImpl])
+      .appendMessage(bobUsername.asString(),
+        BOB_INBOX_PATH,
+        AppendCommand.from(MESSAGE_HAS_ATTACHMENTS))
+      .getMessageId
+    val encryptedContentStoreProbe = server.getProbe(classOf[JmapGuiceEncryptedEmailContentStoreProbe])
+    assertThat(encryptedContentStoreProbe.hasEncryptedContent(messageId)).isTrue
+
+    val request: String =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail"],
+         |  "methodCalls": [
+         |    ["Email/set", {
+         |      "accountId": "$bobAccountId",
+         |      "destroy": ["${messageId.serialize}"]
+         |    }, "c1"]
+         |  ]
+         |}""".stripMargin
+
+    val response: String = `given`
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].destroyed")
+      .isEqualTo(s"""["${messageId.serialize}"]""")
+    assertThat(encryptedContentStoreProbe.hasEncryptedContent(messageId)).isFalse
+  }
+
+  @Test
+  def encryptedContentShouldBeKeptWhenEmailRemainsInAnotherMailbox(server: GuiceJamesServer): Unit = {
+    val mailboxProbe = server.getProbe(classOf[MailboxProbeImpl])
+    val otherMailboxId = mailboxProbe.createMailbox(MailboxPath.forUser(bobUsername, "other"))
+    val messageId: MessageId = mailboxProbe
+      .appendMessage(bobUsername.asString(),
+        BOB_INBOX_PATH,
+        AppendCommand.from(MESSAGE))
+      .getMessageId
+
+    val request: String =
+      s"""{
+         |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail"],
+         |  "methodCalls": [
+         |    ["Email/set", {
+         |      "accountId": "$bobAccountId",
+         |      "update": {
+         |        "${messageId.serialize}": {
+         |          "mailboxIds": { "${otherMailboxId.serialize}": true }
+         |        }
+         |      }
+         |    }, "c1"]
+         |  ]
+         |}""".stripMargin
+
+    val response: String = `given`
+      .body(request)
+    .when()
+      .post()
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .extract()
+      .body()
+      .asString()
+
+    assertThatJson(response)
+      .inPath("methodResponses[0][1].updated")
+      .isEqualTo(s"""{"${messageId.serialize}": null}""")
+    assertThat(server.getProbe(classOf[JmapGuiceEncryptedEmailContentStoreProbe]).hasEncryptedContent(messageId)).isTrue
+  }
+
+  @Test
   def methodShouldAcceptSeveralIds(server: GuiceJamesServer): Unit = {
     val messageId1: MessageId = server.getProbe(classOf[MailboxProbeImpl])
       .appendMessage(bobUsername.asString(),

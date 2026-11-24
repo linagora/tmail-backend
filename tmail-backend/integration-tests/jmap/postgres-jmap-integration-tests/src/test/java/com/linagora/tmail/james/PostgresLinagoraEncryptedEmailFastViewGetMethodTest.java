@@ -40,6 +40,7 @@ import com.linagora.tmail.james.app.PostgresEncryptedMailboxModule;
 import com.linagora.tmail.james.app.PostgresTmailConfiguration;
 import com.linagora.tmail.james.app.PostgresTmailServer;
 import com.linagora.tmail.james.common.LinagoraEncryptedEmailFastViewGetMethodContract;
+import com.linagora.tmail.james.common.module.EncryptedProjectionPreDeletionHookModule;
 import com.linagora.tmail.james.common.probe.JmapGuiceEncryptedEmailContentStoreProbe;
 import com.linagora.tmail.james.jmap.firebase.FirebaseModuleChooserConfiguration;
 import com.linagora.tmail.module.LinagoraTestJMAPServerModule;
@@ -68,7 +69,8 @@ public class PostgresLinagoraEncryptedEmailFastViewGetMethodTest implements Lina
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(TeamMailboxProbe.class))
             .overrideWith(binder -> Multibinder.newSetBinder(binder, GuiceProbe.class).addBinding().to(JmapGuiceEncryptedEmailContentStoreProbe.class))
             .overrideWith(new DelegationProbeModule())
-            .overrideWith(new PostgresEncryptedMailboxModule()))
+            .overrideWith(new PostgresEncryptedMailboxModule())
+            .overrideWith(new EncryptedProjectionPreDeletionHookModule()))
         .extension(PostgresExtension.empty())
         .extension(new ClockExtension())
         .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
