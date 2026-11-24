@@ -146,7 +146,7 @@ class KeywordEmailQueryViewListenerTest {
             MailboxSession shareeSession = mailboxManager.createSystemSession(SHAREE);
             resources.getStoreRightManager().applyRightsCommand(mailboxId,
                 MailboxACL.command().forUser(SHAREE)
-                    .rights(MailboxACL.Right.Read, MailboxACL.Right.Lookup, MailboxACL.Right.Insert)
+                    .rights(MailboxACL.Right.Read, MailboxACL.Right.Lookup, MailboxACL.Right.Insert, MailboxACL.Right.Write)
                     .asAddition(),
                 ownerSession);
 
@@ -222,10 +222,10 @@ class KeywordEmailQueryViewListenerTest {
             MailboxSession shareeSession = mailboxManager.createSystemSession(SHAREE);
             MailboxId shareePersonalMailboxId = Mono.from(mailboxManager.createMailboxReactive(MailboxPath.forUser(SHAREE, "private"), shareeSession)).block();
 
-            // Owner shares the target mailbox with the sharee and allows inserts.
+            // Owner shares the target mailbox with the sharee and allows inserts and setting flags.
             resources.getStoreRightManager().applyRightsCommand(mailboxId,
                 MailboxACL.command().forUser(SHAREE)
-                    .rights(MailboxACL.Right.Read, MailboxACL.Right.Lookup, MailboxACL.Right.Insert)
+                    .rights(MailboxACL.Right.Read, MailboxACL.Right.Lookup, MailboxACL.Right.Insert, MailboxACL.Right.Write)
                     .asAddition(),
                 ownerSession);
 
