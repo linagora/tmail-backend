@@ -94,6 +94,14 @@ public final class AmqpUri {
     }
 
     /**
+     * An `amqps://` URI must be connected with `useSsl`: otherwise the RabbitMQ client enables TLS on its own with a
+     * trust manager that accepts any certificate and no hostname verification.
+     */
+    public static boolean isAmqps(URI uri) {
+        return "amqps".equalsIgnoreCase(uri.getScheme());
+    }
+
+    /**
      * Returns an `Optional` containing the current `AmqpUri` object.
      *
      * @return an `Optional` containing the `AmqpUri` object
@@ -157,7 +165,7 @@ public final class AmqpUri {
             .managementUri(managementUri.orElseGet(() -> withHost(commonRabbitMQConfiguration.getManagementUri(), getHost())))
             .managementCredentials(userInfo.asManagementCredentials())
             .vhost(getVhost())
-            .useSsl(commonRabbitMQConfiguration.useSsl())
+            .useSsl(commonRabbitMQConfiguration.useSsl() || isAmqps(uri))
             .useSslManagement(commonRabbitMQConfiguration.useSslManagement())
             .sslConfiguration(commonRabbitMQConfiguration.getSslConfiguration())
             .useQuorumQueues(commonRabbitMQConfiguration.isQuorumQueuesUsed())
@@ -172,7 +180,8 @@ public final class AmqpUri {
             .amqpUri(uri)
             .managementUri(uri)
             .managementCredentials(userInfo.asManagementCredentials())
-            .vhost(getVhost());
+            .vhost(getVhost())
+            .useSsl(isAmqps(uri));
     }
 
     public URI getUri() {

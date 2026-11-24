@@ -50,6 +50,11 @@ In your `rabbitmq.properties` file in TMail, you need to add those extra fields:
 - `address.contact.password`: the password to access the RabbitMQ instance.
 - `address.contact.queue`: the queue name for contacts on RabbitMQ.
 
+The scheme of `address.contact.uri` alone decides whether this connection uses TLS. An `amqps://` value connects over TLS
+with the `ssl.*` settings of `rabbitmq.properties` (trust store, validation strategy, hostname verifier, key store), the
+certificate of the broker being verified by default, even when `ssl.enabled` is `false` for the main RabbitMQ. An
+`amqp://` value stays in clear text, even when the main RabbitMQ uses TLS.
+
 TMail will create an exchange for the contact queue depending on the name of the latest, following this pattern:
 `TmailExchange-{address.contact.queue}`.
 
