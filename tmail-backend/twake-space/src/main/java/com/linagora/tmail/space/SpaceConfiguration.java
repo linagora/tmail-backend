@@ -21,7 +21,11 @@ package com.linagora.tmail.space;
 import java.net.URI;
 import java.time.Duration;
 import java.time.temporal.ChronoUnit;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import org.apache.commons.configuration2.Configuration;
@@ -29,6 +33,7 @@ import org.apache.james.backends.rabbitmq.RabbitMQConfiguration;
 import org.apache.james.util.DurationParser;
 
 import com.google.common.base.Preconditions;
+import com.google.common.collect.ImmutableSet;
 import com.linagora.tmail.AmqpUri;
 
 /**
@@ -44,10 +49,23 @@ public record SpaceConfiguration(Optional<AmqpUri> rabbitMQUri,
                                  String dnsRoutingKey,
                                  String activityExchange,
                                  String teamMailboxPrefix,
-                                 Duration retention) {
+                                 Duration retention,
+                                 Set<String> reservedNames) {
     private static final Pattern PREFIX_PATTERN = Pattern.compile("([a-z0-9_]+-)?");
     // As the Twake Mail side service: leaves room in the 64 characters of a team mailbox name
     private static final int PREFIX_MAX_LENGTH = 32;
+
+    /**
+     * The team mailbox names a space never takes, whatever {@code teamMailbox.prefix}: the role addresses of RFC 2142
+     * (but its business ones, info, marketing, sales and support, that a team legitimately takes), the addresses a
+     * certificate authority sends its domain validation mail to (CA/Browser Forum BR 3.2.2.4.4), the system senders
+     * and the team mailbox principals.
+     */
+    public static final Set<String> DEFAULT_RESERVED_NAMES = ImmutableSet.of(
+        "abuse", "noc", "security", "postmaster", "hostmaster", "usenet", "news", "webmaster", "www", "uucp", "ftp",
+        "admin", "administrator",
+        "mailer-daemon", "noreply", "no-reply", "root",
+        "team-mailbox", "team-mailbox-admin");
 
     public static final SpaceConfiguration DEFAULT = new SpaceConfiguration(Optional.empty(), Optional.empty(),
         "tmail-space", "tmail-space-dead-letter", "space", "admin-panel", "dns.validated", "activity", "",
@@ -64,10 +82,31 @@ public record SpaceConfiguration(Optional<AmqpUri> rabbitMQUri,
             optional(configuration, "dns.routingKey").orElse(DEFAULT.dnsRoutingKey()),
             optional(configuration, "activity.exchange").orElse(DEFAULT.activityExchange()),
             Optional.ofNullable(configuration.getString("teamMailbox.prefix", null)).orElse(DEFAULT.teamMailboxPrefix()),
-            optional(configuration, "retention").map(value -> DurationParser.parse(value, ChronoUnit.DAYS)).orElse(DEFAULT.retention()));
+            optional(configuration, "retention").map(value -> DurationParser.parse(value, ChronoUnit.DAYS)).orElse(DEFAULT.retention()),
+            reservedNames(configuration));
+    }
+
+    private static Set<String> reservedNames(Configuration configuration) {
+        return ImmutableSet.<String>builder()
+            .addAll(DEFAULT_RESERVED_NAMES)
+            .addAll(configuration.getList(String.class, "teamMailbox.reservedNames", List.of()).stream()
+                .flatMap(value -> Arrays.stream(value.split(",")))
+                .map(name -> name.trim().toLowerCase(Locale.ROOT))
+                .filter(name -> !name.isEmpty())
+                .iterator())
+            .build();
+    }
+
+    /** With the {@link #DEFAULT_RESERVED_NAMES} only. */
+    public SpaceConfiguration(Optional<AmqpUri> rabbitMQUri, Optional<URI> rabbitMQManagementUri, String queue,
+                              String deadLetterQueue, String spaceExchange, String dnsExchange, String dnsRoutingKey,
+                              String activityExchange, String teamMailboxPrefix, Duration retention) {
+        this(rabbitMQUri, rabbitMQManagementUri, queue, deadLetterQueue, spaceExchange, dnsExchange, dnsRoutingKey,
+            activityExchange, teamMailboxPrefix, retention, DEFAULT_RESERVED_NAMES);
     }
 
     public SpaceConfiguration {
+        reservedNames = ImmutableSet.copyOf(reservedNames);
         Preconditions.checkArgument(PREFIX_PATTERN.matcher(teamMailboxPrefix).matches(),
             "'teamMailbox.prefix' must be lowercase letters, digits or '_', ending with a dash");
         Preconditions.checkArgument(teamMailboxPrefix.length() <= PREFIX_MAX_LENGTH,

@@ -74,6 +74,15 @@ health check calls it with the credentials of `rabbitmq.uri`.
 address of a person, a list or a role. Lowercase letters, digits or `_`, ending with a dash, at most 32 characters.
 Applies to new spaces only.
 
+| `teamMailbox.reservedNames`
+| empty
+| Comma separated team mailbox names that a space never takes, on top of the built-in ones: `abuse`, `noc`,
+`security`, `postmaster`, `hostmaster`, `usenet`, `news`, `webmaster`, `www`, `uucp`, `ftp` (RFC 2142), `admin`,
+`administrator` (the addresses certificate authorities validate a domain with), `mailer-daemon`, `noreply`,
+`no-reply`, `root`, `team-mailbox` and `team-mailbox-admin`. A space whose name gives a reserved name gets the next
+free suffix instead, like `admin-2@acme.com` for a space named `Admin`. The name is compared prefix included, so with
+`teamMailbox.prefix=space-` no space name is reserved by default. Applies to new spaces only.
+
 | `retention`
 | `30d`
 | How long the team mailbox of a deleted space is kept before the xref:#_purge[purge] deletes it. Days unless a unit is
