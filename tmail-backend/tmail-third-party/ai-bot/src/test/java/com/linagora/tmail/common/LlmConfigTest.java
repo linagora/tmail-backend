@@ -28,8 +28,6 @@ import com.linagora.tmail.common.chatlanguagemodel.LlmModel;
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.ValueSource;
 
 import nl.jqno.equalsverifier.EqualsVerifier;
 
@@ -76,27 +74,72 @@ class LlmConfigTest {
     }
 
     @Test
-    void shouldRejectMissingBaseUrl() {
+    void shouldRejectBlankBaseUrl() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("apiKey", "sk-fakefakefakefakefakefakefakefake");
         configuration.addProperty("model", "Lucie");
+        configuration.addProperty("baseURL", "");
 
         assertThatThrownBy(() -> LlmConfig.from(configuration))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("No value for baseURL parameter was provided.");
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"", " ", "\t"})
-    void shouldRejectBlankBaseUrl(String blankBaseUrl) {
+    @Test
+    void shouldRejectWhitespaceBaseUrl() {
         PropertiesConfiguration configuration = new PropertiesConfiguration();
         configuration.addProperty("apiKey", "sk-fakefakefakefakefakefakefakefake");
-        configuration.addProperty("model", "Lucie");
-        configuration.addProperty("baseURL", blankBaseUrl);
+        configuration.addProperty("baseURL", "   ");
 
         assertThatThrownBy(() -> LlmConfig.from(configuration))
             .isInstanceOf(IllegalArgumentException.class)
             .hasMessageContaining("No value for baseURL parameter was provided.");
+    }
+
+    @Test
+    void shouldRejectMissingBaseUrl() {
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("apiKey", "sk-fakefakefakefakefakefakefakefake");
+
+        assertThatThrownBy(() -> LlmConfig.from(configuration))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("No value for baseURL parameter was provided.");
+    }
+
+    @Test
+    void shouldRejectHttpBaseUrlByDefault() {
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("apiKey", "sk-fakefakefakefakefakefakefakefake");
+        configuration.addProperty("baseURL", "http://chat.lucie.exemple.com");
+
+        assertThatThrownBy(() -> LlmConfig.from(configuration))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("baseURL.allowHttp");
+    }
+
+    @Test
+    void shouldAcceptHttpBaseUrlWhenExplicitlyAllowed() throws Exception {
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("apiKey", "sk-fakefakefakefakefakefakefakefake");
+        configuration.addProperty("model", "Lucie");
+        configuration.addProperty("baseURL", "http://localhost:11434/v1");
+        configuration.addProperty("baseURL.allowHttp", "true");
+
+        assertThat(LlmConfig.from(configuration))
+            .isEqualTo(new LlmConfig("sk-fakefakefakefakefakefakefakefake", new LlmModel("Lucie"),
+                URI.create("http://localhost:11434/v1").toURL(), Duration.ofSeconds(10)));
+    }
+
+    @Test
+    void shouldRejectNonHttpSchemes() {
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty("apiKey", "sk-fakefakefakefakefakefakefakefake");
+        configuration.addProperty("baseURL", "ftp://chat.lucie.exemple.com");
+        configuration.addProperty("baseURL.allowHttp", "true");
+
+        assertThatThrownBy(() -> LlmConfig.from(configuration))
+            .isInstanceOf(IllegalArgumentException.class)
+            .hasMessageContaining("Invalid LLM API base URL");
     }
 
     @Test

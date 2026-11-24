@@ -30,6 +30,17 @@ for them: such an identity would be taken for the owner or the administrator of 
 Before upgrading, look for such accounts (users, aliases, groups, and in your LDAP or OIDC provider) and remove or
 rename them, and prevent your identity providers from creating them.
 
+### AI features: `baseURL` is required and must be `https`
+
+Concerned products: deployments with an `ai.properties` file (AI bot, AI labelling, `AiBot/Suggest`)
+
+A blank `baseURL` in `ai.properties` used to send the mail of the AI enabled users, and the API key, over HTTP to the
+langchain4j demo server (`http://langchain4j.dev/demo/openai/v1`), despite the documentation saying it defaulted to
+OpenAI. Twake Mail now fails to start when `baseURL` is blank, and when it is an `http` URL.
+
+Set `baseURL` to the URL of your LLM API, for OpenAI `https://api.openai.com/v1`. To keep an `http` URL, for instance
+a local LLM server on a trusted network, add `baseURL.allowHttp=true` to `ai.properties`.
+
 ### SMTP authentication requires TLS by default
 
 Concerned products: SMTP servers whose `smtpserver.xml` entries do not set `auth.requireSSL`

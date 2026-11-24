@@ -25,8 +25,10 @@ import dev.langchain4j.model.openai.OpenAiStreamingChatModel;
 
 public class StreamChatLanguageModelFactory {
     public StreamingChatLanguageModel createChatLanguageModel(LlmConfig config) {
-        return createOpenAILanguageModel(config.getApiKey(), config.getLlmModel().modelName(), config.getBaseURL().toString(),
-            config.getTimeout());
+        String apiKey = config.getApiKey();
+        LlmModel llmModel = config.getLlmModel();
+
+        return createOpenAILanguageModel(apiKey, llmModel.modelName(), config.getBaseURL().toString(), config.getTimeout());
     }
 
     private StreamingChatLanguageModel createOpenAILanguageModel(String apiKey, String modelName, String baseUrl, Duration timeout) {
