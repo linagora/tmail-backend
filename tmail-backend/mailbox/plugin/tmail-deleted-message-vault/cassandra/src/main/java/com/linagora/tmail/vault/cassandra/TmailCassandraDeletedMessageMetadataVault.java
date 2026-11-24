@@ -58,8 +58,8 @@ public class TmailCassandraDeletedMessageMetadataVault implements TmailDeletedMe
         Username owner = deletedMessage.getDeletedMessage().getOwner();
         MessageId messageId = deletedMessage.getDeletedMessage().getMessageId();
         return storageInformationDAO.referenceStorageInformation(owner, messageId, deletedMessage.getStorageInformation())
-            .then(metadataDAO.store(deletedMessage))
-            .then(userPerBucketDAO.addUser(bucketName, owner));
+            .then(userPerBucketDAO.addUser(bucketName, owner))
+            .then(metadataDAO.store(deletedMessage));
     }
 
     @Override
