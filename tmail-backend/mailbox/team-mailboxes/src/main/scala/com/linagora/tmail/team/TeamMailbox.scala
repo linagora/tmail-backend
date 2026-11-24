@@ -50,10 +50,16 @@ object TeamMailboxName {
 
   case class TeamMailboxNameConstraint()
 
+  // The owner and the administrator of every team mailbox of a domain
+  def isReserved(localPart: String): Boolean =
+    localPart.equalsIgnoreCase(TEAM_MAILBOX_LOCAL_PART) || localPart.equalsIgnoreCase(TEAM_MAILBOX_ADMIN_LOCAL_PART)
+
   implicit val validateTeamMailboxName: Validate.Plain[String, TeamMailboxNameConstraint] =
-    Validate.fromPredicate(s => s.nonEmpty && s.length < 256 && charMatcher.matchesAllOf(s) && !s.startsWith("#"),
+    Validate.fromPredicate(s => s.nonEmpty && s.length < 256 && charMatcher.matchesAllOf(s) && !s.startsWith("#") && !isReserved(s),
       s => if (s.startsWith("#")) {
         s"'$s' should not start with '#', which is the mailbox namespace prefix"
+      } else if (isReserved(s)) {
+        s"'$s' is reserved for the team mailbox system accounts"
       } else {
         s"'$s' contains some invalid characters. Should be [#a-zA-Z0-9-_] and no longer than 255 chars"
       },

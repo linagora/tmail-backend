@@ -75,6 +75,18 @@ class TeamMailboxTest {
   }
 
   @Test
+  def teamMailboxNameShouldRejectTheSystemAccountNames(): Unit = {
+    assertThat(TeamMailboxName.fromString("team-mailbox").isLeft).isTrue
+    assertThat(TeamMailboxName.fromString("team-mailbox-admin").isLeft).isTrue
+    assertThat(TeamMailboxName.fromString("Team-Mailbox-Admin").isLeft).isTrue
+  }
+
+  @Test
+  def teamMailboxNameShouldAcceptANameStartingLikeASystemAccount(): Unit = {
+    assertThat(TeamMailboxName.fromString("team-mailbox-sales").isRight).isTrue
+  }
+
+  @Test
   def teamMailboxNameShouldRejectALeadingHash(): Unit = {
     assertThat(TeamMailboxName.fromString("#hash").isLeft).isTrue
   }
