@@ -23,10 +23,8 @@ import static com.linagora.tmail.dav.CalDavClient.CALENDAR_PATH;
 import java.io.StringReader;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
-import java.util.List;
 import java.util.Map;
 import java.util.Optional;
-import java.util.function.Predicate;
 
 import jakarta.inject.Inject;
 import jakarta.mail.MessagingException;
@@ -160,7 +158,7 @@ public class RestrictiveCalDavCollect extends GenericMailet {
         }
         try {
             MailAddress senderAddress = new MailAddress(senderAsString);
-            if (passesAlignmentCheck(senderAddress, calendar)) {
+            if (ITIPSenderAlignment.isSatisfied(alignmentMode, senderAddress, calendar)) {
                 return true;
             }
             LOGGER.warn("Skipping ITIP for mail {}: sender {} does not match ITIP payload constraints (alignmentMode={})", mailName, senderAsString, alignmentMode);
@@ -169,48 +167,6 @@ public class RestrictiveCalDavCollect extends GenericMailet {
             LOGGER.warn("Skipping ITIP for mail {}: invalid sender address {}", mailName, senderAsString);
             return false;
         }
-    }
-
-    private boolean passesAlignmentCheck(MailAddress sender, Calendar calendar) {
-        if (isReply(calendar)) {
-            return isSenderAlignedWithAnyAttendee(sender, calendar);
-        }
-        return isSenderAlignedWithOrganizer(sender, calendar);
-    }
-
-    private boolean isSenderAlignedWithOrganizer(MailAddress sender, Calendar calendar) {
-        return everyVEventMatches(calendar, event -> Optional.ofNullable(event.getOrganizer())
-            .stream()
-            .flatMap(organizer -> CalendarUserAddresses.actingAddresses(organizer, organizer.getCalAddress()))
-            .anyMatch(organizerAddress -> isSenderAlignedWith(sender, organizerAddress)));
-    }
-
-    private boolean isSenderAlignedWithAnyAttendee(MailAddress sender, Calendar calendar) {
-        return everyVEventMatches(calendar, event -> event.getProperties(Property.ATTENDEE).stream()
-            .map(attendee -> (Attendee) attendee)
-            .flatMap(attendee -> CalendarUserAddresses.actingAddresses(attendee, attendee.getCalAddress()))
-            .anyMatch(attendeeAddress -> isSenderAlignedWith(sender, attendeeAddress)));
-    }
-
-    /**
-     * The alignment applies to the whole ITIP payload: every VEVENT must satisfy it, otherwise a sender could
-     * smuggle VEVENTs it is not entitled to send alongside a single aligned one. A payload without VEVENT is
-     * rejected.
-     */
-    private static boolean everyVEventMatches(Calendar calendar, Predicate<VEvent> alignment) {
-        List<VEvent> events = calendar.getComponents(Component.VEVENT).stream()
-            .filter(VEvent.class::isInstance)
-            .map(VEvent.class::cast)
-            .toList();
-        return !events.isEmpty() && events.stream().allMatch(alignment);
-    }
-
-    private boolean isSenderAlignedWith(MailAddress sender, MailAddress address) {
-        return switch (alignmentMode) {
-            case STRICT -> sender.equals(address);
-            case SAME_DOMAIN -> sender.getDomain().equals(address.getDomain());
-            case NONE -> true;
-        };
     }
 
     private void synchronizeIfEligible(MailAddress mailAddress, Calendar calendar, byte[] json, String sender, Mail mail) {
