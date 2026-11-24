@@ -2,8 +2,12 @@
 
 <!-- Minimal IMAP proxy stack. The custom processor only answers CAPABILITY/STARTTLS and, on LOGIN,   -->
 <!-- relays the connection raw to the resolved backend. See                                           -->
-<!-- https://james.apache.org/server/config-imap4.html for the full element reference. To enable       -->
-<!-- implicit TLS (port 993) or STARTTLS, set <tls socketTLS="true"|startTLS="true"> with a keystore. -->
+<!-- https://james.apache.org/server/config-imap4.html for the full element reference.                -->
+<!-- LOGIN and AUTHENTICATE PLAIN carry the user password: unless plainAuthDisallowed (or              -->
+<!-- auth.requireSSL) is false, they are refused and LOGINDISABLED is announced until the connection   -->
+<!-- is encrypted. Hence STARTTLS is enabled below: provide the keystore at conf/keystore, or use      -->
+<!-- socketTLS="true" for implicit TLS (993) instead. Set plainAuthDisallowed to false only when TLS   -->
+<!-- ends before the proxy, for instance on a load balancer that forwards over a trusted network.     -->
 
 <imapservers>
     <imapserver enabled="true">
@@ -12,14 +16,14 @@
         <connectionBacklog>200</connectionBacklog>
         <!-- Set to true to accept the HAProxy PROXY protocol from an upstream load balancer -->
         <proxyRequired>false</proxyRequired>
-        <tls socketTLS="false" startTLS="false">
+        <tls socketTLS="false" startTLS="true">
             <keystore>file://conf/keystore</keystore>
             <secret>migrationproxy</secret>
             <provider>org.bouncycastle.jce.provider.BouncyCastleProvider</provider>
         </tls>
         <connectionLimit>0</connectionLimit>
         <connectionLimitPerIP>0</connectionLimitPerIP>
-        <plainAuthDisallowed>false</plainAuthDisallowed>
+        <plainAuthDisallowed>true</plainAuthDisallowed>
         <enableIdle>false</enableIdle>
     </imapserver>
 </imapservers>

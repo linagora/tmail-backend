@@ -26,8 +26,15 @@ import java.io.InputStreamReader;
 import java.io.OutputStream;
 import java.net.Socket;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
+import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.List;
+
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.SSLSocket;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.X509TrustManager;
 
 /**
  * A raw IMAP client for the proxy tests: the proxy speaks a hand written subset of IMAP, so a line
@@ -36,14 +43,32 @@ import java.util.List;
 public class ProxyImapClient implements AutoCloseable {
     private static final int READ_TIMEOUT_MS = 60_000;
 
-    private final Socket socket;
-    private final BufferedReader reader;
+    private static final String HOST = "127.0.0.1";
+
+    private Socket socket;
+    private BufferedReader reader;
 
     public ProxyImapClient(int port) throws IOException {
-        this.socket = new Socket("127.0.0.1", port);
+        use(new Socket(HOST, port));
+        assertThat(readLine()).startsWith("* OK");
+    }
+
+    /**
+     * Negotiates STARTTLS, trusting the self-signed test certificate of the proxy.
+     */
+    public void startTls(String tag) throws Exception {
+        send(tag + " STARTTLS");
+        assertThat(tagged(tag)).startsWith(tag + " OK");
+        SSLSocket tlsSocket = (SSLSocket) trustAll().getSocketFactory()
+            .createSocket(socket, HOST, socket.getPort(), true);
+        tlsSocket.startHandshake();
+        use(tlsSocket);
+    }
+
+    private void use(Socket newSocket) throws IOException {
+        this.socket = newSocket;
         this.socket.setSoTimeout(READ_TIMEOUT_MS);
         this.reader = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.UTF_8));
-        assertThat(readLine()).startsWith("* OK");
     }
 
     public void send(String line) throws IOException {
@@ -81,5 +106,25 @@ public class ProxyImapClient implements AutoCloseable {
     @Override
     public void close() throws IOException {
         socket.close();
+    }
+
+    private static SSLContext trustAll() throws Exception {
+        TrustManager trustAll = new X509TrustManager() {
+            @Override
+            public void checkClientTrusted(X509Certificate[] chain, String authType) {
+            }
+
+            @Override
+            public void checkServerTrusted(X509Certificate[] chain, String authType) {
+            }
+
+            @Override
+            public X509Certificate[] getAcceptedIssuers() {
+                return new X509Certificate[0];
+            }
+        };
+        SSLContext context = SSLContext.getInstance("TLS");
+        context.init(null, new TrustManager[] {trustAll}, new SecureRandom());
+        return context;
     }
 }

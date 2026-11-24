@@ -45,7 +45,6 @@ import org.apache.james.protocols.api.sasl.SaslCodec;
 import org.apache.james.protocols.api.sasl.SaslExchange;
 import org.apache.james.protocols.api.sasl.SaslMechanism;
 import org.apache.james.protocols.api.sasl.SaslStep;
-import org.apache.james.protocols.sasl.plain.PlainSaslMechanism;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -73,7 +72,9 @@ import reactor.core.scheduler.Schedulers;
  * <p>Two authentication modes, mutually exclusive:
  * <ul>
  *   <li>without Kerberos, {@code LOGIN} and {@code AUTHENTICATE PLAIN} both capture the user password
- *   and replay it against the resolved backend, which is the only authority on it;</li>
+ *   and replay it against the resolved backend, which is the only authority on it. Unless the listener
+ *   allows clear-text authentication, both are refused (and {@code LOGINDISABLED} announced) until the
+ *   connection is encrypted;</li>
  *   <li>with Kerberos, both are disabled and {@code AUTHENTICATE GSSAPI} is the only way in. The proxy
  *   then never sees a user password and opens the backend session by delegation, as the configured
  *   backend administrator.</li>
@@ -81,10 +82,6 @@ import reactor.core.scheduler.Schedulers;
  */
 public class ProxyImapProcessor implements ImapProcessor {
     private static final Logger LOGGER = LoggerFactory.getLogger(ProxyImapProcessor.class);
-    // The proxy relays LOGIN in clear text whenever the client sends it, so requiring TLS for PLAIN - which
-    // carries the very same credentials - would only push clients back onto the weaker command.
-    private static final boolean REQUIRES_SSL = false;
-    private static final SaslMechanism PLAIN = new PlainSaslMechanism(PlainSaslMechanism.ENABLED, REQUIRES_SSL);
 
     static void pushContinuationHandler(ImapSession session, SaslExchange exchange, ImapLineHandler lineHandler) {
         try {
@@ -103,10 +100,15 @@ public class ProxyImapProcessor implements ImapProcessor {
     private final Optional<SaslMechanism> gssapi;
     private final SaslMechanism saslMechanism;
 
+    /**
+     * @param plain the {@code PLAIN} mechanism of the listener, built from its {@code imapserver.xml} entry:
+     *              its transport policy ({@code auth.requireSSL}, else {@code plainAuthDisallowed}) governs
+     *              {@code LOGIN} too, as both carry the very same password.
+     */
     public ProxyImapProcessor(BackendResolver backendResolver, BackendRelay backendRelay,
                               BackendSslContextFactory sslContextFactory,
                               ProxyConnectionRegistry connectionRegistry, Duration handshakeTimeout,
-                              Optional<SaslMechanism> gssapi) {
+                              Optional<SaslMechanism> gssapi, SaslMechanism plain) {
         this.backendResolver = backendResolver;
         this.backendRelay = backendRelay;
         this.sslContextFactory = sslContextFactory;
@@ -114,7 +116,7 @@ public class ProxyImapProcessor implements ImapProcessor {
         this.handshakeTimeout = handshakeTimeout;
         this.gssapi = gssapi;
         // Kerberos is exclusive: it is offered precisely because the password must not transit any more.
-        this.saslMechanism = gssapi.orElse(PLAIN);
+        this.saslMechanism = gssapi.orElse(plain);
     }
 
     /**
@@ -157,7 +159,7 @@ public class ProxyImapProcessor implements ImapProcessor {
 
     private void dispatch(ImapMessage message, ImapSession session, Channel clientChannel, String tag) {
         if (message instanceof LoginRequest login) {
-            proxyLogin(clientChannel, tag, login);
+            proxyLogin(session, clientChannel, tag, login);
         } else if (message instanceof AuthenticateRequest authenticate) {
             proxyAuthenticate(session, clientChannel, tag, authenticate);
         } else if (message instanceof CapabilityRequest) {
@@ -175,9 +177,17 @@ public class ProxyImapProcessor implements ImapProcessor {
         }
     }
 
-    private void proxyLogin(Channel clientChannel, String tag, LoginRequest login) {
+    private void proxyLogin(ImapSession session, Channel clientChannel, String tag, LoginRequest login) {
         if (gssapi.isPresent()) {
             writeLine(clientChannel, tag + " NO LOGIN is disabled, use AUTHENTICATE GSSAPI.");
+            return;
+        }
+        if (plainDisabledOnAnyTransport()) {
+            writeLine(clientChannel, tag + " NO LOGIN is disabled.");
+            return;
+        }
+        if (loginDisabled(session)) {
+            writeLine(clientChannel, tag + " NO [PRIVACYREQUIRED] LOGIN requires an encrypted transport.");
             return;
         }
         Username username = login.getUserid();
@@ -190,8 +200,12 @@ public class ProxyImapProcessor implements ImapProcessor {
             writeLine(clientChannel, tag + " NO Unsupported authentication mechanism.");
             return;
         }
+        if (plainDisabledOnAnyTransport()) {
+            writeLine(clientChannel, tag + " NO " + saslMechanism.name() + " authentication is disabled.");
+            return;
+        }
         if (!saslMechanism.isAvailableOnTransport(session.isTLSActive())) {
-            writeLine(clientChannel, tag + " NO " + saslMechanism.name()
+            writeLine(clientChannel, tag + " NO [PRIVACYREQUIRED] " + saslMechanism.name()
                 + " authentication requires an encrypted transport.");
             return;
         }
@@ -360,8 +374,7 @@ public class ProxyImapProcessor implements ImapProcessor {
         if (session.supportStartTLS()) {
             capabilities.append(" STARTTLS");
         }
-        if (gssapi.isPresent()) {
-            // Kerberos is exclusive: the proxy has no way to check a password on its own any more.
+        if (loginDisabled(session)) {
             capabilities.append(" LOGINDISABLED");
         }
         if (saslMechanism.isAvailableOnTransport(session.isTLSActive())) {
@@ -369,6 +382,19 @@ public class ProxyImapProcessor implements ImapProcessor {
         }
         writeLine(clientChannel, capabilities.toString());
         writeLine(clientChannel, tag + " OK CAPABILITY completed.");
+    }
+
+    /**
+     * Kerberos is exclusive: the proxy then has no way to check a password on its own any more. Otherwise
+     * {@code LOGIN} follows the transport policy of {@code PLAIN}.
+     */
+    private boolean loginDisabled(ImapSession session) {
+        return gssapi.isPresent() || !saslMechanism.isAvailableOnTransport(session.isTLSActive());
+    }
+
+    // PLAIN switched off by the configuration: an encrypted transport would not help, PRIVACYREQUIRED would mislead the client
+    private boolean plainDisabledOnAnyTransport() {
+        return !saslMechanism.isAvailableOnTransport(true);
     }
 
     private void startTls(ImapSession session, Channel clientChannel, String tag) {
