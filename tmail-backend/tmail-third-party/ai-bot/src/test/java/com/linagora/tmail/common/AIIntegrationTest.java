@@ -125,7 +125,8 @@ class AIIntegrationTest {
         Path resourcesFolder = Paths.get(temporaryFolder.getAbsolutePath(), "conf");
         Path resolvedResource = resourcesFolder.resolve(resourceName);
         String content = "apiKey=demo\n"
-                       + "baseURL=\n"
+                       + "baseURL=http://langchain4j.dev/demo/openai/v1\n"
+                       + "baseURL.allowHttp=true\n"
                        + "model=" + DEMO_MODEL + "\n";
         Files.createDirectories(resourcesFolder);
         Files.writeString(resolvedResource, content);

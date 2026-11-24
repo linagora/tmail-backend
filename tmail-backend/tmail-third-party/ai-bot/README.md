@@ -44,12 +44,13 @@ ai.jmap.capability.applyWhen=com.linagora.tmail.saas.filter.SaaSPayingUser
 **Parameter explanation:**
 
 * `apiKey`: The API key for accessing the LLM API service.
-* `baseURL`: The URL of an LLM API compatible with OpenAI, e.g. https://ai.linagora.com/api or https://api.openai.com/v1. Mandatory: startup fails if it is missing or blank.
+* `baseURL`: Required. The URL of an LLM API compatible with OpenAI, e.g. https://ai.linagora.com/api (for OpenAI itself, https://api.openai.com/v1). The mail of the users and the API key are sent to it, so it must be an `https` URL: a blank value or an `http` URL fails the startup.
+* `baseURL.allowHttp`: Optional, defaults to `false`. Set it to `true` to accept an `http` `baseURL`, for instance a local LLM server on a trusted network.
 * `model`: The identifier of the LLM that generates the replies. Defaults to `gpt-4o-mini`.
 * `timeout`: Optional, duration, defaults to 10 seconds. Timeout for LLM requests.
 * `ai.jmap.capability.applyWhen`: Optional, fully qualified class name of an `ApplyWhenFilter` implementation that determines which users are eligible for the AI bot JMAP capability and ChatCompletion route. If not set, defaults to `com.linagora.tmail.james.jmap.event.ApplyWhenFilter$Always` (all authenticated users are eligible). For SaaS deployments, use `com.linagora.tmail.saas.filter.SaaSPayingUser` to restrict access to paying users only. Custom implementations must implement the `com.linagora.tmail.james.jmap.event.ApplyWhenFilter` interface.
 
-You can use the langchain4j demo API at http://langchain4j.dev/demo/openai/v1 with the `gpt-4o-mini` model and `demo` API key for testing purposes. Never use it in production: it is a third-party server reached over plain HTTP, so mail content would leave your organization in cleartext.
+For testing purposes only, you can use the langchain4j demo API with `baseURL=http://langchain4j.dev/demo/openai/v1`, `baseURL.allowHttp=true`, the `gpt-4o-mini` model and the `demo` API key. Never point real mail to it: it is a third party server, reached in clear text.
 
 #### Sanity check
 
