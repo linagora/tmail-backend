@@ -65,6 +65,7 @@ import org.apache.james.jmap.InjectionKeys;
 import org.apache.james.jmap.change.Factory;
 import org.apache.james.jmap.change.JmapEventSerializer;
 import org.apache.james.jmap.pushsubscription.PushListener;
+import org.apache.james.mailbox.ReadOnlyAnnotationPredicate;
 import org.apache.james.mailbox.events.MailboxIdRegistrationKey;
 import org.apache.james.util.ReactorUtils;
 import org.apache.james.utils.InitializationOperation;
@@ -98,6 +99,10 @@ public class RabbitMQAndRedisEventBusModule extends AbstractModule {
 
     @Override
     protected void configure() {
+        Multibinder.newSetBinder(binder(), ReadOnlyAnnotationPredicate.class)
+            .addBinding()
+            .toInstance(IdentityMetadataListener.READ_ONLY());
+
         bind(NamingStrategy.class).toInstance(MAILBOX_EVENT_NAMING_STRATEGY);
 
         Multibinder.newSetBinder(binder(), RegistrationKey.Factory.class)
