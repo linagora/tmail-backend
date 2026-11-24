@@ -29,6 +29,8 @@ import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
+import com.google.common.escape.Escaper;
+import com.google.common.net.UrlEscapers;
 import com.linagora.tmail.common.httpclient.AiHttpClientConfiguration;
 import com.linagora.tmail.common.httpclient.AiHttpClientFactory;
 import com.linagora.tmail.rag.configuration.RagConfig;
@@ -47,6 +49,7 @@ public class OpenRagClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(OpenRagClient.class);
     private static final String CONTENT_TYPE_HEADER = "Content-Type";
     private static final String RAG_DOCUMENT_ENDPOINT = "/indexer/partition/%s/file/%s";
+    private static final Escaper PATH_SEGMENT_ESCAPER = UrlEscapers.urlPathSegmentEscaper();
 
     private final HttpClient httpClient;
     private final ObjectMapper objectMapper;
@@ -58,7 +61,7 @@ public class OpenRagClient {
     }
 
     public Mono<String> addDocument(Partition partition, DocumentId documentId, String textualContent, Map<String, Object> metadata) {
-        String url = String.format(RAG_DOCUMENT_ENDPOINT, partition.partitionName(), documentId.asString());
+        String url = documentUrl(partition, documentId);
         return Mono.fromCallable(() -> objectMapper.writeValueAsString(metadata))
             .flatMap(metadataJson ->
                 sendFormRequest(HttpMethod.POST, url, documentId, textualContent, metadataJson)
@@ -71,7 +74,7 @@ public class OpenRagClient {
     public Mono<Void> deleteDocument(Partition partition, DocumentId documentId) {
         return httpClient
             .delete()
-            .uri(String.format(RAG_DOCUMENT_ENDPOINT, partition.partitionName(), documentId.asString()))
+            .uri(documentUrl(partition, documentId))
             .responseSingle((response, content) -> {
                 int statusCode = response.status().code();
 
@@ -90,6 +93,12 @@ public class OpenRagClient {
                     .flatMap(body -> Mono.error(() -> new OpenRagUnexpectedException(
                         String.format("Failed to DELETE document %s: status %d and body %s", documentId.asString(), statusCode, body))));
             });
+    }
+
+    private static String documentUrl(Partition partition, DocumentId documentId) {
+        return String.format(RAG_DOCUMENT_ENDPOINT,
+            PATH_SEGMENT_ESCAPER.escape(partition.partitionName()),
+            PATH_SEGMENT_ESCAPER.escape(documentId.asString()));
     }
 
     private Mono<String> sendFormRequest(HttpMethod method, String url, DocumentId documentId, String textualContent, String metadataJson) {
