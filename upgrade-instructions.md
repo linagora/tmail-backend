@@ -63,14 +63,7 @@ mailbox identity by default for users without an LDAP provisioned identity.
 
 The personal identity is now also provisioned for users added to a team mailbox before their first login.
 
-Existing identities are not changed by the upgrade. Reposition them once after the upgrade:
-
-```bash
-curl -XPOST http://ip:port/team-mailboxes?action=repositionIdentitiesSortOrder
-```
-
-Users added to a team mailbox before their first login and who logged in before the upgrade have no LDAP provisioned
-identity: they keep the server set one.
+Existing identities are not changed by the upgrade: only newly provisioned ones get the new sort order.
 
 ### SMTP authentication requires TLS by default
 

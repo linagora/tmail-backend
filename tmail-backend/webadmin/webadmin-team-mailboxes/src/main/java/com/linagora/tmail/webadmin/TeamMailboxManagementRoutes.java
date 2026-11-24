@@ -30,10 +30,6 @@ import jakarta.mail.internet.AddressException;
 import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.apache.james.domainlist.api.DomainList;
-import org.apache.james.jmap.api.identity.IdentityRepository;
-import org.apache.james.jmap.api.identity.IdentitySortOrderUpdate;
-import org.apache.james.jmap.api.identity.IdentityUpdateRequest;
-import org.apache.james.jmap.api.model.Identity;
 import org.apache.james.mailbox.MailboxManager;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.exception.DifferentDomainException;
@@ -58,8 +54,6 @@ import org.eclipse.jetty.http.HttpStatus;
 
 import com.google.common.base.Preconditions;
 import com.google.common.base.Throwables;
-import com.google.common.collect.ImmutableSet;
-import com.linagora.tmail.james.jmap.event.IdentityProvisionListener;
 import com.linagora.tmail.team.TeamMailbox;
 import com.linagora.tmail.team.TeamMailboxMember;
 import com.linagora.tmail.team.TeamMailboxName;
@@ -72,7 +66,6 @@ import com.linagora.tmail.team.TeamMemberRole;
 
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
-import scala.Option;
 import scala.jdk.javaapi.OptionConverters;
 import spark.HaltException;
 import spark.Request;
@@ -136,13 +129,6 @@ public class TeamMailboxManagementRoutes implements Routes {
     private static final String EXTRA_SENDER_USERNAME_PARAM = ":senderUsername";
     private static final String ROLE_PARAM = "role";
     public static final String TEAM_MAILBOXES_BASE_PATH = "/team-mailboxes";
-    private static final String REPOSITION_SYSTEM_RIGHTS = "repositionSystemRights";
-    private static final String REPOSITION_IDENTITIES_SORT_ORDER = "repositionIdentitiesSortOrder";
-    // Sort orders previously given by the server to provisioned team mailbox identities. Other values were chosen by the user.
-    private static final ImmutableSet<Integer> LEGACY_TEAM_MAILBOX_IDENTITY_SORT_ORDERS = ImmutableSet.of(0, 10);
-    private static final IdentityUpdateRequest REPOSITION_SORT_ORDER_UPDATE = new IdentityUpdateRequest(Option.empty(), Option.empty(),
-        Option.apply(new IdentitySortOrderUpdate(IdentityProvisionListener.TEAM_MAILBOX_IDENTITY_SORT_ORDER)),
-        Option.empty(), Option.empty(), Option.empty());
     public static final String BASE_PATH = Constants.SEPARATOR + "domains" + Constants.SEPARATOR + TEAM_MAILBOX_DOMAIN_PARAM + Constants.SEPARATOR + "team-mailboxes";
     public static final String MEMBER_BASE_PATH = BASE_PATH + Constants.SEPARATOR + TEAM_MAILBOX_NAME_PARAM + Constants.SEPARATOR + "members";
     public static final String MAILBOX_BASE_PATH = BASE_PATH + Constants.SEPARATOR + TEAM_MAILBOX_NAME_PARAM + Constants.SEPARATOR + "mailboxes";
@@ -154,17 +140,14 @@ public class TeamMailboxManagementRoutes implements Routes {
     private final TeamMailboxRepository teamMailboxRepository;
     private final DomainList domainList;
     private final MailboxManager mailboxManager;
-    private final IdentityRepository identityRepository;
     private final JsonTransformer jsonTransformer;
 
     @Inject
     public TeamMailboxManagementRoutes(TeamMailboxRepository teamMailboxRepository,
                                        DomainList domainList,
                                        MailboxManager mailboxManager,
-                                       IdentityRepository identityRepository,
                                        JsonTransformer jsonTransformer) {
         this.teamMailboxRepository = teamMailboxRepository;
-        this.identityRepository = identityRepository;
         this.domainList = domainList;
         this.mailboxManager = mailboxManager;
         this.jsonTransformer = jsonTransformer;
@@ -177,7 +160,7 @@ public class TeamMailboxManagementRoutes implements Routes {
 
     @Override
     public void define(Service service) {
-        service.post(TEAM_MAILBOXES_BASE_PATH, teamMailboxesAction(), jsonTransformer);
+        service.post(TEAM_MAILBOXES_BASE_PATH, repositionSystemRights(), jsonTransformer);
 
         service.get(BASE_PATH, getTeamMailboxesByDomain(), jsonTransformer);
         service.delete(BASE_PATH + Constants.SEPARATOR + TEAM_MAILBOX_NAME_PARAM, deleteTeamMailbox(), jsonTransformer);
@@ -240,67 +223,33 @@ public class TeamMailboxManagementRoutes implements Routes {
             .haltError();
     }
 
-    public Route teamMailboxesAction() {
+    public Route repositionSystemRights() {
         return (request, response) -> {
             String action = request.queryParams("action");
-            if (REPOSITION_SYSTEM_RIGHTS.equals(action)) {
-                repositionSystemRights();
-            } else if (REPOSITION_IDENTITIES_SORT_ORDER.equals(action)) {
-                repositionIdentitiesSortOrder();
-            } else {
+            if (!"repositionSystemRights".equals(action)) {
                 throw ErrorResponder.builder()
                     .statusCode(HttpStatus.BAD_REQUEST_400)
                     .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
-                    .message("Invalid action supplied: " + action + ". Supported actions: [" + REPOSITION_SYSTEM_RIGHTS + ", " + REPOSITION_IDENTITIES_SORT_ORDER + "]")
+                    .message("Invalid action supplied: " + action + ". Supported actions: [repositionSystemRights]")
                     .haltError();
             }
+            MailboxSession session = mailboxManager.createSystemSession(Username.of("repositionSystemRights"));
+
+            Flux.fromIterable(mailboxManager.list(session))
+                .filter(mailboxPath -> mailboxPath.getNamespace().equals("#TeamMailbox"))
+
+                .flatMap(mailboxPath -> {
+                    TeamMailbox teamMailbox = TeamMailbox.from(mailboxPath).get();
+                    MailboxSession ownerSession = mailboxManager.createSystemSession(teamMailbox.owner());
+
+                    return Mono.from(mailboxManager.applyRightsCommandReactive(mailboxPath, MailboxACL.command().forUser(teamMailbox.admin()).rights(MailboxACL.FULL_RIGHTS).asReplacement(), ownerSession))
+                        .then(Mono.from(mailboxManager.applyRightsCommandReactive(mailboxPath, MailboxACL.command().forUser(teamMailbox.self()).rights(MailboxACL.FULL_RIGHTS).asReplacement(), ownerSession)));
+                })
+                .then()
+                .block();
+
             return Responses.returnNoContent(response);
         };
-    }
-
-    private void repositionSystemRights() throws MailboxException {
-        MailboxSession session = mailboxManager.createSystemSession(Username.of(REPOSITION_SYSTEM_RIGHTS));
-
-        Flux.fromIterable(mailboxManager.list(session))
-            .filter(mailboxPath -> mailboxPath.getNamespace().equals("#TeamMailbox"))
-            .flatMap(mailboxPath -> {
-                TeamMailbox teamMailbox = TeamMailbox.from(mailboxPath).get();
-                MailboxSession ownerSession = mailboxManager.createSystemSession(teamMailbox.owner());
-
-                return Mono.from(mailboxManager.applyRightsCommandReactive(mailboxPath, MailboxACL.command().forUser(teamMailbox.admin()).rights(MailboxACL.FULL_RIGHTS).asReplacement(), ownerSession))
-                    .then(Mono.from(mailboxManager.applyRightsCommandReactive(mailboxPath, MailboxACL.command().forUser(teamMailbox.self()).rights(MailboxACL.FULL_RIGHTS).asReplacement(), ownerSession)));
-            })
-            .then()
-            .block();
-    }
-
-    private void repositionIdentitiesSortOrder() {
-        Flux.from(teamMailboxRepository.listTeamMailboxes())
-            .flatMap(teamMailbox -> usersAllowedToSendAs(teamMailbox)
-                .flatMap(user -> repositionIdentitiesSortOrder(user, teamMailbox)))
-            .then()
-            .block();
-    }
-
-    // Members and extra senders: the users the team mailbox identity got provisioned for
-    private Flux<Username> usersAllowedToSendAs(TeamMailbox teamMailbox) {
-        MailboxSession ownerSession = mailboxManager.createSystemSession(teamMailbox.owner());
-        return Mono.from(mailboxManager.listRightsReactive(teamMailbox.mailboxPath(), ownerSession))
-            .flatMapIterable(acl -> acl.getEntries().entrySet())
-            .filter(entry -> !entry.getKey().isNegative())
-            .filter(entry -> MailboxACL.NameType.user.equals(entry.getKey().getNameType()))
-            .filter(entry -> entry.getValue().contains(MailboxACL.Right.Post))
-            .map(entry -> Username.of(entry.getKey().getName()))
-            .filter(user -> !user.equals(teamMailbox.owner()) && !user.equals(teamMailbox.admin()) && !user.equals(teamMailbox.self()));
-    }
-
-    private Mono<Void> repositionIdentitiesSortOrder(Username user, TeamMailbox teamMailbox) {
-        return Flux.from(identityRepository.list(user))
-            .filter(Identity::mayDelete)
-            .filter(identity -> identity.email().equals(teamMailbox.asMailAddress()))
-            .filter(identity -> LEGACY_TEAM_MAILBOX_IDENTITY_SORT_ORDERS.contains(identity.sortOrder()))
-            .flatMap(identity -> Mono.from(identityRepository.update(user, identity.id(), REPOSITION_SORT_ORDER_UPDATE)))
-            .then();
     }
 
     public Route getTeamMailboxesByDomain() {

@@ -81,7 +81,7 @@ public class IdentityProvisionListener implements EventListener.ReactiveGroupEve
     private static final int DEFAULT_IDENTITY_SORT_ORDER = 0;
     // Team mailbox identities must come after the identities of the user: server set ones and user created ones
     // default to Identity.DEFAULT_SORTORDER (100).
-    public static final int TEAM_MAILBOX_IDENTITY_SORT_ORDER = 110;
+    private static final int TEAM_MAILBOX_IDENTITY_SORT_ORDER = 110;
     private static final String APPLY_WHEN_PATH = "defaultText.applyWhen";
     private static final String PROVIDER_PATH = "defaultText.provider";
     private static final String DOMAIN_BASED_PROVIDER = "DomainBasedSignatureTemplateEngine";
