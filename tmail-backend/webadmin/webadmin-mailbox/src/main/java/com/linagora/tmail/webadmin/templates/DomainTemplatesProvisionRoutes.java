@@ -71,6 +71,7 @@ public class DomainTemplatesProvisionRoutes implements Routes {
         Domain domain = extractDomain(request);
         assertDomainExists(domain);
         Username sourceUser = TemplatesProvisionRequest.parseSourceUser(request);
+        TemplatesProvisionRequest.assertSourceInDomain(sourceUser, domain);
         String folderName = TemplatesProvisionRequest.parseFolderName(request);
         ProvisionOptions options = TemplatesProvisionRequest.parseOptions(request);
         int usersPerSecond = TemplatesProvisionRequest.parseUsersPerSecond(request);

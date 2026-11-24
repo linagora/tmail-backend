@@ -2085,10 +2085,12 @@ after editing the reference templates is safe.
 
 Common query parameters:
 
-- `from` (required): the source account whose templates folder is the reference.
+- `from` (required): the source account whose templates folder is the reference. It must belong to
+  the domain of the target users: a source account of another domain is refused.
 - `folderName` (optional, default: `Templates`): the mailbox name to copy from the source account
   and into the target accounts. Lets an admin manage several categories of templates
-  (e.g. `Templates.Marketing`).
+  (e.g. `Templates.Marketing`). It must be `Templates` or one of its sub-folders: any other mailbox
+  (`INBOX`, `Sent`...) is refused.
 - `overwriteExisting` (optional, default: `false`): when `true`, a target template sharing its
   `Message-Id` with a reference template is replaced; otherwise it is left untouched (skipped).
 - `prune` (optional, default: `false`): when `true`, target templates whose `Message-Id` is no
@@ -2115,7 +2117,7 @@ Return codes:
 - `201` Task created — response body contains `{"taskId": "<id>"}`.
   The task's `additionalInformation` exposes `processedUsers`, `appliedTemplates`, `skippedTemplates`,
   `removedTemplates` and `failedUsers`.
-- `400` Unknown `action`, missing `from`, invalid domain or invalid `usersPerSecond`
+- `400` Unknown `action`, missing `from`, `from` not in the domain, `folderName` not a templates folder, invalid domain or invalid `usersPerSecond`
 - `404` Domain does not exist, or the source folder does not exist
 
 === Provisioning templates to a single user
@@ -2131,7 +2133,7 @@ Return codes:
 - `201` Task created — response body contains `{"taskId": "<id>"}`.
   The task's `additionalInformation` exposes `processedUsers`, `appliedTemplates`, `skippedTemplates`,
   `removedTemplates` and `failedUsers`.
-- `400` Unknown `action`, missing `from`, or invalid username
+- `400` Unknown `action`, missing `from`, `from` not in the target user's domain, `folderName` not a templates folder, or invalid username
 - `404` The source folder does not exist
 
 == Mailing lists
