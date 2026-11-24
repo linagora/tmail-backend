@@ -16,6 +16,17 @@ You can also find more detailed instructions for releases under the respective s
 
 Note: this section is in progress. It will be updated during all the development process until the release.
 
+### Contact autocomplete: the scheme of `address.contact.uri` alone decides TLS
+
+Concerned products: distributed deployments with contact autocomplete over RabbitMQ (`address.contact.*` in
+`rabbitmq.properties`)
+
+The contact connection used to take `ssl.enabled` from the main RabbitMQ, and an `amqps://` contact URI trusted any
+certificate. Now an `amqps://` `address.contact.uri` connects over TLS with the `ssl.*` settings of
+`rabbitmq.properties`, the certificate being verified by default, and an `amqp://` one stays in clear text, even when
+the main RabbitMQ uses TLS. A deployment relying on `ssl.enabled=true` with an `amqp://` contact URI must switch that
+URI to `amqps://` (and its TLS port), or the contact connection goes in clear text or fails.
+
 ### Team mailboxes: `team-mailbox` and `team-mailbox-admin` are reserved
 
 Concerned products: deployments with team mailboxes
