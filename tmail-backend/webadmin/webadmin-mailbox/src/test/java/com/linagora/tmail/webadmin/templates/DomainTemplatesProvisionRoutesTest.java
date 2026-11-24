@@ -19,6 +19,7 @@
 package com.linagora.tmail.webadmin.templates;
 
 import static io.restassured.RestAssured.given;
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.notNullValue;
 import static org.mockito.Mockito.mock;
 
@@ -147,6 +148,49 @@ class DomainTemplatesProvisionRoutesTest {
             .post("/domains/example.com/templates")
         .then()
             .statusCode(HttpStatus.BAD_REQUEST_400);
+    }
+
+    @Test
+    void postShouldReturn400WhenSourceUserIsInAnotherDomain() {
+        given()
+            .queryParam("action", "provision")
+            .queryParam("from", "ceo@other.com")
+        .when()
+            .post("/domains/example.com/templates")
+        .then()
+            .statusCode(HttpStatus.BAD_REQUEST_400)
+            .body("type", Matchers.is("InvalidArgument"));
+
+        assertThat(taskManager.list()).isEmpty();
+    }
+
+    @Test
+    void postShouldReturn400WhenFolderIsNotATemplatesFolder() {
+        given()
+            .queryParam("action", "provision")
+            .queryParam("from", "templates@example.com")
+            .queryParam("folderName", "INBOX")
+        .when()
+            .post("/domains/example.com/templates")
+        .then()
+            .statusCode(HttpStatus.BAD_REQUEST_400)
+            .body("type", Matchers.is("InvalidArgument"));
+
+        assertThat(taskManager.list()).isEmpty();
+    }
+
+    @Test
+    void postShouldReturn400WhenFolderOnlyStartsLikeTemplates() {
+        given()
+            .queryParam("action", "provision")
+            .queryParam("from", "templates@example.com")
+            .queryParam("folderName", "TemplatesAndMore")
+        .when()
+            .post("/domains/example.com/templates")
+        .then()
+            .statusCode(HttpStatus.BAD_REQUEST_400);
+
+        assertThat(taskManager.list()).isEmpty();
     }
 
     @Test
