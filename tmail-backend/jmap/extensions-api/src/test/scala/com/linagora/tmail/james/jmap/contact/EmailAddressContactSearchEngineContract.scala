@@ -453,6 +453,76 @@ trait EmailAddressContactSearchEngineContract {
   }
 
   @Test
+  def deleteShouldDeletePersonalContactWithALongAddress(): Unit = {
+    // Longer than the n-grams (29 characters) the email field is indexed with
+    val longAddress = new MailAddress("firstname.lastname@company-domain.com")
+    SMono(testee().index(accountId, ContactFields(longAddress, "Firstname", "Lastname"))).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    SMono(testee().delete(accountId, longAddress)).block()
+
+    awaitDocumentsIndexed(MatchAllQuery(), 0)
+    assertThat(SFlux.fromPublisher(testee().list(accountId)).asJava().collectList().block()).isEmpty()
+  }
+
+  @Test
+  def deleteShouldDeletePersonalContactWithAMixedCaseAddress(): Unit = {
+    val mixedCaseAddress = new MailAddress("John.Doe@linagora.com")
+    SMono(testee().index(accountId, ContactFields(mixedCaseAddress, "John", "Doe"))).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    SMono(testee().delete(accountId, mixedCaseAddress)).block()
+
+    awaitDocumentsIndexed(MatchAllQuery(), 0)
+    assertThat(SFlux.fromPublisher(testee().list(accountId)).asJava().collectList().block()).isEmpty()
+  }
+
+  @Test
+  def deleteShouldNotDeleteALongAddressSharingTheSamePrefix(): Unit = {
+    val longAddress = new MailAddress("firstname.lastname@company-domain.com")
+    val samePrefixAddress = new MailAddress("firstname.lastname@company-domain.org")
+    SMono(testee().index(accountId, ContactFields(longAddress, "Firstname", "Lastname"))).block()
+    SMono(testee().index(accountId, ContactFields(samePrefixAddress, "Other", "Lastname"))).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 2)
+
+    SMono(testee().delete(accountId, longAddress)).block()
+
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+    assertThat(SFlux.fromPublisher(testee().list(accountId)).asJava().map(_.fields.address).collectList().block())
+      .containsExactly(samePrefixAddress)
+  }
+
+  @Test
+  def deleteShouldNotDeleteALongAddressContainingTheDeletedOne(): Unit = {
+    val longAddress = new MailAddress("firstname.lastname@company-domain.com")
+    // Holds every n-gram of the deleted address: only the comparison with the stored address keeps it
+    val containingAddress = new MailAddress("xfirstname.lastname@company-domain.com")
+    SMono(testee().index(accountId, ContactFields(longAddress, "Firstname", "Lastname"))).block()
+    SMono(testee().index(accountId, ContactFields(containingAddress, "Other", "Lastname"))).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 2)
+
+    SMono(testee().delete(accountId, longAddress)).block()
+
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+    assertThat(SFlux.fromPublisher(testee().list(accountId)).asJava().map(_.fields.address).collectList().block())
+      .containsExactly(containingAddress)
+  }
+
+  @Test
+  def deleteShouldNotDeleteTheContactOfAnotherAccountWithALongAddress(): Unit = {
+    val longAddress = new MailAddress("firstname.lastname@company-domain.com")
+    SMono(testee().index(accountId, ContactFields(longAddress, "Firstname", "Lastname"))).block()
+    SMono(testee().index(accountIdB, ContactFields(longAddress, "Firstname", "Lastname"))).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 2)
+
+    SMono(testee().delete(accountId, longAddress)).block()
+
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+    assertThat(SFlux.fromPublisher(testee().list(accountIdB)).asJava().map(_.fields.address).collectList().block())
+      .containsExactly(longAddress)
+  }
+
+  @Test
   def deletePersonalContactShouldBeIdempotent(): Unit = {
     assertThatCode(() => SMono(testee().delete(accountId, otherMailAddress)).block())
       .doesNotThrowAnyException()
@@ -842,6 +912,42 @@ trait EmailAddressContactSearchEngineContract {
       assertThat(SFlux(testee().autoComplete(accountId, "multi")).asJavaList).isEmpty()
       // should not delete other contact
       assertThat(SFlux(testee().autoComplete(accountId, "other")).asJavaList).hasSize(1)
+    }
+
+    @Test
+    def deleteWithoutAddressBookIdShouldDeleteVariantsOfALongAddress(): Unit = {
+      val longAddress = new MailAddress("firstname.lastname@company-domain.com")
+      SMono(testee().index(accountId, ContactFields(longAddress, firstname = "Firstname", surname = "One"))).block()
+      SMono(testee().index(accountId, ContactFields(longAddress, firstname = "Firstname", surname = "Two"), UUID.randomUUID().toString)).block()
+      awaitDocumentsIndexed(MatchAllQuery(), 2)
+
+      SMono(testee().delete(accountId, longAddress)).block()
+
+      awaitDocumentsIndexed(MatchAllQuery(), 0)
+    }
+
+    @Test
+    def deleteWithoutAddressBookIdShouldDeleteVariantsOfAMixedCaseAddress(): Unit = {
+      val mixedCaseAddress = new MailAddress("John.Doe@linagora.com")
+      SMono(testee().index(accountId, ContactFields(mixedCaseAddress, firstname = "John", surname = "One"))).block()
+      SMono(testee().index(accountId, ContactFields(mixedCaseAddress, firstname = "John", surname = "Two"), UUID.randomUUID().toString)).block()
+      awaitDocumentsIndexed(MatchAllQuery(), 2)
+
+      SMono(testee().delete(accountId, mixedCaseAddress)).block()
+
+      awaitDocumentsIndexed(MatchAllQuery(), 0)
+    }
+
+    @Test
+    def deleteWithAddressBookIdShouldRemoveContactWithALongMixedCaseAddress(): Unit = {
+      val addressBookId = UUID.randomUUID().toString
+      val address = new MailAddress("Firstname.Lastname@Company-Domain.com")
+      SMono(testee().index(accountId, ContactFields(address, firstname = "Firstname", surname = "Lastname"), addressBookId)).block()
+      awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+      SMono(testee().delete(accountId, address, addressBookId)).block()
+
+      awaitDocumentsIndexed(MatchAllQuery(), 0)
     }
 
     @Test
