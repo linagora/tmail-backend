@@ -36,7 +36,10 @@ object TeamMailboxUserEntityValidator {
 
 class TeamMailboxUserEntityValidator @Inject()(teamMailboxRepository: TeamMailboxRepository) extends UserEntityValidator {
   override def canCreate(username: Username, ignoredTypes: util.Set[EntityType]): Optional[UserEntityValidator.ValidationFailure] =
-    if (ignoredTypes.contains(TEAM_MAILBOX)) {
+    if (TeamMailboxName.isReserved(username.getLocalPart)) {
+      // A real account with one of these names would own or administer every team mailbox of the domain
+      Optional.of(new ValidationFailure(s"'${username.asString}' is reserved for the team mailbox system accounts"))
+    } else if (ignoredTypes.contains(TEAM_MAILBOX)) {
       Optional.empty
     } else {
       check(username)

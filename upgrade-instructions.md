@@ -16,6 +16,20 @@ You can also find more detailed instructions for releases under the respective s
 
 Note: this section is in progress. It will be updated during all the development process until the release.
 
+### Team mailboxes: `team-mailbox` and `team-mailbox-admin` are reserved
+
+Concerned products: deployments with team mailboxes
+
+These are the local parts of the system accounts that own and administer every team mailbox of a domain. Users, aliases,
+groups and team mailboxes can no longer be created with them. A team mailbox created with one of these names before the
+upgrade is no longer listed nor reachable: its address is the one of the system account. Before upgrading, look for such
+team mailboxes (`GET /domains/{domain}/team-mailboxes`) and move their content to a team mailbox with another name.
+
+Existing users, aliases and groups with these names are not removed, and logins through LDAP or OIDC are not refused
+for them: such an identity would be taken for the owner or the administrator of the team mailboxes of its domain.
+Before upgrading, look for such accounts (users, aliases, groups, and in your LDAP or OIDC provider) and remove or
+rename them, and prevent your identity providers from creating them.
+
 ### SMTP authentication requires TLS by default
 
 Concerned products: SMTP servers whose `smtpserver.xml` entries do not set `auth.requireSSL`

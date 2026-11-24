@@ -345,6 +345,23 @@ public class TeamMailboxManagementRoutesTest {
 
     @Nested
     class TeamMailboxUserEntityValidatorTest {
+        @ParameterizedTest
+        @ValueSource(strings = {"team-mailbox@linagora.com", "team-mailbox-admin@linagora.com", "Team-Mailbox-Admin@linagora.com"})
+        void createUserShouldBeRejectedForTheTeamMailboxSystemAccounts(String username) {
+            assertThatThrownBy(() -> usersRepository.addUser(Username.of(username), "whatever"))
+                .isInstanceOf(AlreadyExistInUsersRepositoryException.class)
+                .hasMessageContaining("is reserved for the team mailbox system accounts");
+        }
+
+        @ParameterizedTest
+        @ValueSource(strings = {"team-mailbox", "team-mailbox-admin", "TEAM-MAILBOX"})
+        void createTeamMailboxShouldBeRejectedForTheTeamMailboxSystemAccounts(String name) {
+            when()
+                .put("/" + name)
+            .then()
+                .statusCode(BAD_REQUEST_400);
+        }
+
         @Test
         void createTeamMailboxShouldNotConflictWithUser() throws UsersRepositoryException {
             usersRepository.addUser(BOB, "whatever");
