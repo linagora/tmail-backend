@@ -22,7 +22,10 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
@@ -35,15 +38,24 @@ import java.time.ZonedDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Random;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
+import org.apache.commons.configuration2.PropertiesConfiguration;
+import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
 import org.apache.james.jmap.mail.BlobId;
 import org.apache.james.jmap.mail.PartId;
+import org.apache.james.mailbox.MailboxManager;
+import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.mailbox.MessageManager;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
+import org.apache.james.mailbox.model.MailboxPath;
+import org.apache.james.mime4j.dom.Message;
 import org.assertj.core.api.SoftAssertions;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionFactory;
@@ -59,8 +71,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linagora.tmail.api.OpenPaasRestClient;
 import com.linagora.tmail.configuration.DavConfiguration;
 import com.linagora.tmail.dav.CalDavEventRepository;
+import com.linagora.tmail.dav.CalendarEventImportRefusedException;
 import com.linagora.tmail.dav.DavCalendarObject;
+import com.linagora.tmail.dav.CalDavClient;
 import com.linagora.tmail.dav.DavClient;
+import com.linagora.tmail.dav.DavClientException;
 import com.linagora.tmail.dav.DavUser;
 import com.linagora.tmail.dav.DavUid;
 import com.linagora.tmail.dav.OpenPaasDavUserProvider;
@@ -77,6 +92,7 @@ import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults;
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
 import com.linagora.tmail.james.jmap.model.CalendarUidField;
 import com.linagora.tmail.james.jmap.model.EventAttendanceStatusEntry;
+import com.linagora.tmail.mailet.AlignmentMode;
 import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
@@ -87,6 +103,7 @@ import io.netty.handler.codec.http.HttpHeaderNames;
 import io.netty.handler.codec.http.HttpMethod;
 import net.fortuna.ical4j.model.Calendar;
 import net.fortuna.ical4j.model.parameter.PartStat;
+import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scala.publisher.SMono;
 import reactor.netty.ByteBufFlux;
@@ -98,6 +115,8 @@ class CalDavEventRepositoryTest {
 
     @RegisterExtension
     static DockerOpenPaasExtension dockerOpenPaasExtension = new DockerOpenPaasExtension(DockerOpenPaasSetup.SINGLETON);
+
+    private static final String ORGANIZER = "user_8f960db2-199e-42d2-97ac-65ddc344b96e@open-paas.org";
 
     private static OpenPaasUser openPaasUser;
     private static OpenPaasUser aliceOpenPaasUser;
@@ -116,6 +135,7 @@ class CalDavEventRepositoryTest {
     private final List<AutoCloseable> closeables = new ArrayList<>();
     private Username testUser;
     private CalendarResolver calendarResolver;
+    private Map<Username, List<MailAddress>> aliases;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -125,10 +145,14 @@ class CalDavEventRepositoryTest {
         resources = InMemoryIntegrationResources.defaultResources();
         calendarResolver = mock(CalendarResolver.class);
         when(calendarResolver.resolveRequestCalendar(any(), any(), any())).thenReturn(SMono.empty());
+        aliases = new ConcurrentHashMap<>();
         testee = new CalDavEventRepository(davClient,
             resources.getMailboxManager().getSessionProvider(),
             new OpenPaasDavUserProvider(openPaasRestClient, davClient),
-            calendarResolver);
+            calendarResolver,
+            resources.getMessageIdManager(),
+            resources.getMessageIdFactory(),
+            user -> Flux.fromIterable(aliases.getOrDefault(user, List.of())));
 
         setupNewTestUser();
     }
@@ -160,7 +184,7 @@ class CalDavEventRepositoryTest {
             "UID:" + eventUid + "\n" +
             "DTSTART;TZID=Europe/Paris:20250409T110000\n" +
             "DTEND;TZID=Europe/Paris:20250409T120000\n" +
-            "ORGANIZER;CN=John1 Doe1:user_8f960db2-199e-42d2-97ac-65ddc344b96e@open-paas.org\n" +
+            "ORGANIZER;CN=John1 Doe1:" + ORGANIZER + "\n" +
             "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email().asString() +"\n" +
             "DTSTAMP:20250331T083652Z\n" + recurrenceIdField.map(rci -> rci + "\n").orElse("") +
             "SEQUENCE:1\n" +
@@ -172,7 +196,27 @@ class CalDavEventRepositoryTest {
         when(calendarResolver.resolveRequestCalendar(any(), any(), any()))
             .thenReturn(SMono.just(calendar));
 
-        return BlobId.of(new Random().nextInt(1_000_000) + "").get();
+        return mailHoldingTheEvent(ORGANIZER);
+    }
+
+    // The mail the event was sent in, whose From is the sender of the event
+    private BlobId mailHoldingTheEvent(String from) {
+        try {
+            MailboxManager mailboxManager = resources.getMailboxManager();
+            MailboxSession session = mailboxManager.createSystemSession(testUser);
+            MailboxPath inbox = MailboxPath.inbox(testUser);
+            if (!Mono.from(mailboxManager.mailboxExists(inbox, session)).block()) {
+                mailboxManager.createMailbox(inbox, session);
+            }
+            MessageManager.AppendResult appendResult = mailboxManager.getMailbox(inbox, session)
+                .appendMessage(MessageManager.AppendCommand.from(Message.Builder.of()
+                    .setFrom(from)
+                    .setSubject("Invitation")
+                    .setBody("An invitation", StandardCharsets.UTF_8)), session);
+            return BlobId.of(BlobId.of(appendResult.getId().getMessageId()).get(), PartId.parse("2").get()).get();
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
     }
 
     static Stream<PartStat> providePartStat() {
@@ -894,7 +938,7 @@ class CalDavEventRepositoryTest {
             "UID:" + eventUidA + "\n" +
             "DTSTART;TZID=Europe/Paris:20250409T110000\n" +
             "DTEND;TZID=Europe/Paris:20250409T120000\n" +
-            "ORGANIZER;CN=John1 Doe1:user_8f960db2-199e-42d2-97ac-65ddc344b96e@open-paas.org\n" +
+            "ORGANIZER;CN=John1 Doe1:" + ORGANIZER + "\n" +
             "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL;CN=John2 Doe2;SCHEDULE-STATUS=1.2:mailto:" + openPaasUser.email().asString() +"\n" +
             "DTSTAMP:20250331T083652Z\n" +
             "RECURRENCE-ID;TZID=Europe/Paris:20250409T090000\n" +
@@ -1002,6 +1046,216 @@ class CalDavEventRepositoryTest {
         });
     }
 
+    @Test
+    void setAttendanceStatusShouldNotImportWhenTheCalendarsCanNotBeQueried() throws Exception {
+        // The lookup of the update ignores the calendars it fails to query: it then finds no copy, while one may exist
+        DavClient failingReportDavClient = spy(davClient);
+        doAnswer(invocation -> {
+            CalDavClient calDavClient = spy((CalDavClient) invocation.callRealMethod());
+            doReturn(Flux.empty()).when(calDavClient).getCalendarObjects(any(), any());
+            doReturn(Flux.error(new DavClientException("REPORT failed"))).when(calDavClient).getCalendarObjectsOrFail(any(), any());
+            return calDavClient;
+        }).when(failingReportDavClient).caldav(any());
+        CalDavEventRepository failingReportTestee = new CalDavEventRepository(failingReportDavClient,
+            resources.getMailboxManager().getSessionProvider(),
+            new OpenPaasDavUserProvider(new OpenPaasRestClient(dockerOpenPaasExtension.dockerOpenPaasSetup().openPaasConfiguration()), davClient),
+            calendarResolver,
+            resources.getMessageIdManager(),
+            resources.getMessageIdFactory(),
+            user -> Flux.fromIterable(aliases.getOrDefault(user, List.of())));
+        String eventUid = UUID.randomUUID().toString();
+        BlobId blobId = setupCalendarResolver(eventUid);
+
+        assertThatThrownBy(() -> failingReportTestee.setAttendanceStatus(testUser, AttendanceStatus.Accepted, blobId).block())
+            .isInstanceOf(DavClientException.class);
+
+        assertThat(davClient.caldav(openPaasUser.email())
+            .getCalendarObjects(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(eventUid)).collectList().block())
+            .isEmpty();
+    }
+
+    @Test
+    void setAttendanceStatusShouldNotImportWhenTheSenderOfTheMailIsNotTheOrganizer() {
+        String eventUid = UUID.randomUUID().toString();
+        setupCalendarResolver(eventUid);
+        BlobId blobId = mailHoldingTheEvent("attacker@evil.org");
+
+        assertThatThrownBy(() -> testee.setAttendanceStatus(testUser, AttendanceStatus.Accepted, blobId).block())
+            .isInstanceOf(CalendarEventImportRefusedException.class);
+
+        assertThat(davClient.caldav(openPaasUser.email())
+            .getCalendarObjects(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(eventUid)).collectList().block())
+            .isEmpty();
+    }
+
+    @Test
+    void setAttendanceStatusShouldImportWhenTheSenderSharesTheDomainOfTheOrganizerInSameDomainMode() throws Exception {
+        CalDavEventRepository sameDomainTestee = new CalDavEventRepository(davClient,
+            resources.getMailboxManager().getSessionProvider(),
+            new OpenPaasDavUserProvider(new OpenPaasRestClient(dockerOpenPaasExtension.dockerOpenPaasSetup().openPaasConfiguration()), davClient),
+            calendarResolver,
+            resources.getMessageIdManager(),
+            resources.getMessageIdFactory(),
+            user -> Flux.fromIterable(aliases.getOrDefault(user, List.of())),
+            AlignmentMode.SAME_DOMAIN);
+        String eventUid = UUID.randomUUID().toString();
+        setupCalendarResolver(eventUid);
+        BlobId blobId = mailHoldingTheEvent("calendar@open-paas.org");
+
+        assertThatCode(() -> sameDomainTestee.setAttendanceStatus(testUser, AttendanceStatus.Accepted, blobId).block())
+            .doesNotThrowAnyException();
+
+        assertThat(davClient.caldav(openPaasUser.email())
+            .getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(eventUid)).block()
+            .calendarData().toString())
+            .contains("PARTSTAT=ACCEPTED");
+    }
+
+    @Test
+    void setAttendanceStatusShouldNotImportWhenTheSenderSharesTheDomainOfTheOrganizerInStrictMode() {
+        String eventUid = UUID.randomUUID().toString();
+        setupCalendarResolver(eventUid);
+        BlobId blobId = mailHoldingTheEvent("calendar@open-paas.org");
+
+        assertThatThrownBy(() -> testee.setAttendanceStatus(testUser, AttendanceStatus.Accepted, blobId).block())
+            .isInstanceOf(CalendarEventImportRefusedException.class);
+    }
+
+    @Test
+    void importAlignmentModeShouldDefaultToStrict() {
+        assertThat(CalDavEventRepository.importAlignmentMode(new PropertiesConfiguration()))
+            .isEqualTo(AlignmentMode.STRICT);
+    }
+
+    @Test
+    void importAlignmentModeShouldBeReadFromTheConfiguration() {
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty(CalDavEventRepository.ITIP_IMPORT_ALIGNMENT_MODE_PROPERTY, "sameDomain");
+
+        assertThat(CalDavEventRepository.importAlignmentMode(configuration))
+            .isEqualTo(AlignmentMode.SAME_DOMAIN);
+    }
+
+    @Test
+    void importAlignmentModeShouldRejectAnUnknownValue() {
+        PropertiesConfiguration configuration = new PropertiesConfiguration();
+        configuration.addProperty(CalDavEventRepository.ITIP_IMPORT_ALIGNMENT_MODE_PROPERTY, "lenient");
+
+        assertThatThrownBy(() -> CalDavEventRepository.importAlignmentMode(configuration))
+            .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void setAttendanceStatusShouldNotImportWhenTheBlobIsNotPartOfAMail() {
+        String eventUid = UUID.randomUUID().toString();
+        setupCalendarResolver(eventUid);
+        BlobId uploadedBlobId = BlobId.of("uploaded-" + UUID.randomUUID()).get();
+
+        assertThatThrownBy(() -> testee.setAttendanceStatus(testUser, AttendanceStatus.Accepted, uploadedBlobId).block())
+            .isInstanceOf(CalendarEventImportRefusedException.class);
+
+        assertThat(davClient.caldav(openPaasUser.email())
+            .getCalendarObjects(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(eventUid)).collectList().block())
+            .isEmpty();
+    }
+
+    private String storedEventListing(String eventUid, String organizer, String attendee) {
+        return "BEGIN:VCALENDAR\n" +
+            "VERSION:2.0\n" +
+            "PRODID:-//Sabre//Sabre VObject 4.5.7//EN\n" +
+            "BEGIN:VEVENT\n" +
+            "UID:" + eventUid + "\n" +
+            "DTSTART;TZID=Europe/Paris:20250409T110000\n" +
+            "DTEND;TZID=Europe/Paris:20250409T120000\n" +
+            "LOCATION:Meeting room\n" +
+            "ORGANIZER;CN=Organizer:mailto:" + organizer + "\n" +
+            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:" + attendee + "\n" +
+            "DTSTAMP:20250331T083652Z\n" +
+            "SEQUENCE:1\n" +
+            "END:VEVENT\n" +
+            "END:VCALENDAR\n";
+    }
+
+    // A forged update of the stored event: same UID and ORGANIZER, another time and location
+    private BlobId forgedRequest(String eventUid, String organizer) {
+        String forged = "BEGIN:VCALENDAR\n" +
+            "VERSION:2.0\n" +
+            "PRODID:-//Sabre//Sabre VObject 4.5.7//EN\n" +
+            "METHOD:REQUEST\n" +
+            "BEGIN:VEVENT\n" +
+            "UID:" + eventUid + "\n" +
+            "DTSTART;TZID=Europe/Paris:20250410T150000\n" +
+            "DTEND;TZID=Europe/Paris:20250410T160000\n" +
+            "LOCATION:Forged location\n" +
+            "ORGANIZER;CN=Organizer:mailto:" + organizer + "\n" +
+            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:" + openPaasUser.email().asString() + "\n" +
+            "DTSTAMP:20250401T083652Z\n" +
+            "SEQUENCE:5\n" +
+            "END:VEVENT\n" +
+            "END:VCALENDAR\n";
+        when(calendarResolver.resolveRequestCalendar(any(), any(), any()))
+            .thenReturn(SMono.just(stringAsCalendar(forged)));
+        // The From of a mail is chosen by its sender
+        return mailHoldingTheEvent(organizer);
+    }
+
+    private String storedEvent(String eventUid) {
+        return davClient.caldav(openPaasUser.email())
+            .getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(eventUid)).block()
+            .calendarData().toString();
+    }
+
+    @Test
+    void setAttendanceStatusShouldUpdateTheCopyListingTheUserUnderAnAlias() throws Exception {
+        String eventUid = UUID.randomUUID().toString();
+        String alias = "alias-" + UUID.randomUUID() + "@open-paas.org";
+        aliases.put(testUser, List.of(new MailAddress(alias)));
+        pushRawCalendarToDav(eventUid, storedEventListing(eventUid, "organizer@external.org", alias));
+        BlobId blobId = forgedRequest(eventUid, "organizer@external.org");
+
+        assertThatCode(() -> testee.setAttendanceStatus(testUser, AttendanceStatus.Accepted, blobId).block())
+            .doesNotThrowAnyException();
+
+        assertThat(storedEvent(eventUid).replace("\r\n ", ""))
+            .containsPattern("PARTSTAT=ACCEPTED[^\r\n]*:mailto:" + alias)
+            .contains("DTSTART;TZID=Europe/Paris:20250409T110000")
+            .contains("LOCATION:Meeting room")
+            .doesNotContain("Forged location");
+    }
+
+    @Test
+    void setAttendanceStatusShouldNotImportOverACopyOfTheUserThatDoesNotListIt() {
+        // eg the user got invited through a list, or an alias the server does not know
+        String eventUid = UUID.randomUUID().toString();
+        pushRawCalendarToDav(eventUid, storedEventListing(eventUid, "organizer@external.org", "list@open-paas.org"));
+        BlobId blobId = forgedRequest(eventUid, "organizer@external.org");
+
+        assertThatThrownBy(() -> testee.setAttendanceStatus(testUser, AttendanceStatus.Accepted, blobId).block())
+            .isInstanceOf(CalendarEventModifier.AttendeeNotFoundException.class);
+
+        assertThat(storedEvent(eventUid))
+            .contains("DTSTART;TZID=Europe/Paris:20250409T110000")
+            .contains("LOCATION:Meeting room")
+            .doesNotContain("Forged location")
+            .doesNotContain("PARTSTAT=ACCEPTED");
+    }
+
+    @Test
+    void setAttendanceStatusShouldNotImportOverAnEventTheUserOrganizes() {
+        String eventUid = UUID.randomUUID().toString();
+        pushRawCalendarToDav(eventUid, storedEventListing(eventUid, openPaasUser.email().asString(), "attendee@external.org"));
+        BlobId blobId = forgedRequest(eventUid, openPaasUser.email().asString());
+
+        assertThatThrownBy(() -> testee.setAttendanceStatus(testUser, AttendanceStatus.Accepted, blobId).block())
+            .isInstanceOf(CalendarEventModifier.AttendeeNotFoundException.class);
+
+        assertThat(storedEvent(eventUid))
+            .contains("DTSTART;TZID=Europe/Paris:20250409T110000")
+            .contains("LOCATION:Meeting room")
+            .contains("attendee@external.org")
+            .doesNotContain("Forged location");
+    }
+
     // The owner publishes its default calendar, which the subscriber then subscribes to, as Twake Calendar does
     private void subscribeToDefaultCalendar(OpenPaasUser subscriber, OpenPaasUser owner) {
         String ownerCalendar = "/calendars/" + owner.id().value() + "/" + owner.id().value() + ".json";
@@ -1061,7 +1315,7 @@ class CalDavEventRepositoryTest {
             "END:VCALENDAR\n";
         when(calendarResolver.resolveRequestCalendar(any(), any(), any()))
             .thenReturn(SMono.just(stringAsCalendar(requestCalendar)));
-        BlobId blobId = BlobId.of(new Random().nextInt(1_000_000) + "").get();
+        BlobId blobId = mailHoldingTheEvent("organizer@open-paas.org");
 
         // First reply imports the event via ITIP: CalDAV then stores the lone override, without master event
         assertThatCode(() -> testee.setAttendanceStatus(testUser, AttendanceStatus.Accepted, blobId).block())

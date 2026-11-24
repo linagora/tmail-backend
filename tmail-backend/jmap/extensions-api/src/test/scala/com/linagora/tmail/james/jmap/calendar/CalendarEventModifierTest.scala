@@ -26,7 +26,7 @@ import java.time.{DateTimeException, ZoneId, ZonedDateTime}
 import java.util
 import java.util.UUID
 
-import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier.{ImplicitCalendar, ImplicitVEvent, NoUpdateRequiredException}
+import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier.{AttendeeNotFoundException, ImplicitCalendar, ImplicitVEvent, NoUpdateRequiredException}
 import com.linagora.tmail.james.jmap.calendar.{CalendarEventModifier => testee}
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed
 import net.fortuna.ical4j.model.component.{Observance, VEvent, VTimeZone}
@@ -817,6 +817,30 @@ class CalendarEventModifierTest {
 
       assertThatThrownBy(() =>  testee.of(AttendeePartStatusUpdatePatch(attendee1, PartStat.ACCEPTED)).apply(updated1))
         .isInstanceOf(classOf[NoUpdateRequiredException])
+    }
+
+    @Test
+    def shouldUpdateTheAttendeeListedUnderAnotherAddress(): Unit = {
+      val updatedCalendar = testee.of(AttendeePartStatusUpdatePatch("john@example.com", PartStat.ACCEPTED, Seq("johndoe@example.com"))).apply(SAMPLE_CALENDAR)
+
+      assertThat(updatedCalendar.toString)
+        .contains("ATTENDEE;CN=John Doe;RSVP=TRUE;PARTSTAT=ACCEPTED:mailto:johndoe@example.com")
+        .doesNotContain("PARTSTAT=ACCEPTED:mailto:janesmith@example.com")
+    }
+
+    @Test
+    def shouldPreferTheFirstAddressWhenTheEventListsSeveral(): Unit = {
+      val updatedCalendar = testee.of(AttendeePartStatusUpdatePatch("janesmith@example.com", PartStat.ACCEPTED, Seq("johndoe@example.com"))).apply(SAMPLE_CALENDAR)
+
+      assertThat(updatedCalendar.toString)
+        .contains("PARTSTAT=ACCEPTED:mailto:janesmith@example.com")
+        .doesNotContain("PARTSTAT=ACCEPTED:mailto:johndoe@example.com")
+    }
+
+    @Test
+    def shouldThrowIfNoAddressOfTheAttendeeIsFound(): Unit = {
+      assertThatThrownBy(() => testee.of(AttendeePartStatusUpdatePatch("john@example.com", PartStat.ACCEPTED, Seq("doe@example.com"))).apply(SAMPLE_CALENDAR))
+        .isInstanceOf(classOf[AttendeeNotFoundException])
     }
 
     @Test

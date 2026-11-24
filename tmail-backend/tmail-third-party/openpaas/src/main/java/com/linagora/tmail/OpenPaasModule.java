@@ -28,7 +28,10 @@ import jakarta.inject.Singleton;
 
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.james.mailbox.MessageIdManager;
 import org.apache.james.mailbox.SessionProvider;
+import org.apache.james.mailbox.model.MessageId;
+import org.apache.james.rrt.api.AliasReverseResolver;
 import org.apache.james.utils.PropertiesProvider;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -112,8 +115,14 @@ public class OpenPaasModule extends AbstractModule {
         public CalendarEventRepository provideCalDavEventRepository(DavClient davClient,
                                                                     SessionProvider sessionProvider,
                                                                     DavUserProvider davUserProvider,
-                                                                    CalendarResolver calendarResolver) {
-            return new CalDavEventRepository(davClient, sessionProvider, davUserProvider, calendarResolver);
+                                                                    CalendarResolver calendarResolver,
+                                                                    MessageIdManager messageIdManager,
+                                                                    MessageId.Factory messageIdFactory,
+                                                                    AliasReverseResolver aliasReverseResolver,
+                                                                    @Named(OPENPAAS_CONFIGURATION_NAME) Configuration configuration) {
+            return new CalDavEventRepository(davClient, sessionProvider, davUserProvider, calendarResolver,
+                messageIdManager, messageIdFactory, aliasReverseResolver,
+                CalDavEventRepository.importAlignmentMode(configuration));
         }
 
         @Provides

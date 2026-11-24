@@ -31,6 +31,8 @@ For more information about the OpenPaas integration, see xref:tmail-backend/feat
 | Whether the DAV Rest client should trust all SSL certificates. Optional, boolean. Default to false.
 | dav.rest.client.response.timeout
 | Timeout for DAV Rest client. Optional. Duration (support multiple time units cf `DurationParser`, default unit is milliseconds), defaults to 30 seconds.
+| dav.itip.import.alignmentMode
+| Optional. When a user answers an invitation that is missing from their calendar, Twake Mail imports it first. This sets how the `From` of the mail carrying the invitation is checked against its ORGANIZER before the import, with the values of the `alignmentMode` of `CalDavCollect`: `strict`, `sameDomain` or `none`. Use the same value as the `CalDavCollect` mailets. Default: `strict`. An invitation that does not come from a mail, eg an uploaded file, is never imported.
 |===
 
 == CardDavCollectedContact

@@ -47,4 +47,42 @@ class DavResponseTest {
         assertThat(multistatus.getResponses().getFirst().getProp().flatMap(DavProp::getETag))
             .contains("\"2\"");
     }
+
+    private static DavResponse calendarResponse(String resourceTypes) {
+        return XMLUtil.parse(
+            "<d:multistatus xmlns:d=\"DAV:\" xmlns:cal=\"urn:ietf:params:xml:ns:caldav\" xmlns:cs=\"http://calendarserver.org/ns/\">"
+                + "<d:response><d:href>/calendars/u/c/</d:href><d:propstat><d:prop><d:resourcetype>" + resourceTypes + "</d:resourcetype></d:prop>"
+                + "<d:status>HTTP/1.1 200 OK</d:status></d:propstat></d:response></d:multistatus>",
+            DavMultistatus.class).getResponses().getFirst();
+    }
+
+    @Test
+    void ownedCalendarShouldBeRecognized() {
+        DavResponse response = calendarResponse("<d:collection/><cal:calendar/>");
+
+        assertThat(response.isOwnedCalendarCollectionResponse()).isTrue();
+    }
+
+    @Test
+    void calendarSharedByItsOwnerShouldBeOwned() {
+        DavResponse response = calendarResponse("<d:collection/><cal:calendar/><cs:shared-owner/>");
+
+        assertThat(response.isOwnedCalendarCollectionResponse()).isTrue();
+    }
+
+    @Test
+    void subscribedCalendarShouldNotBeOwned() {
+        DavResponse response = calendarResponse("<d:collection/><cal:calendar/><cs:subscribed/>");
+
+        assertThat(response.isCalendarCollectionResponse()).isTrue();
+        assertThat(response.isOwnedCalendarCollectionResponse()).isFalse();
+    }
+
+    @Test
+    void calendarSharedWithTheUserShouldNotBeOwned() {
+        DavResponse response = calendarResponse("<d:collection/><cal:calendar/><cs:shared/>");
+
+        assertThat(response.isCalendarCollectionResponse()).isTrue();
+        assertThat(response.isOwnedCalendarCollectionResponse()).isFalse();
+    }
 }

@@ -16,6 +16,21 @@ You can also find more detailed instructions for releases under the respective s
 
 Note: this section is in progress. It will be updated during all the development process until the release.
 
+### Calendar: answering an invitation missing from the calendar checks the sender of its mail
+
+Concerned products: deployments with the OpenPaaS / esn-sabre calendar integration (`openpaas.properties` with `dav.*`)
+
+When a user answers (`CalendarEvent/accept`, `maybe`, `reject`) an invitation that is not yet in their calendar, Twake
+Mail first imports it into esn-sabre. The import used to name the ORGANIZER of the invitation, chosen by whoever wrote it,
+as the trusted sender. It now uses the `From` of the mail carrying the invitation and checks it against the ORGANIZER,
+as the `CalDavCollect` mailets do. The check is set by the new `dav.itip.import.alignmentMode` property of
+`openpaas.properties` (`strict`, `sameDomain` or `none`, default `strict`): set it to the `alignmentMode` of your
+`CalDavCollect` mailets if they do not use `strict`.
+
+An invitation that does not come from a mail, for instance an uploaded `.ics` file, is no longer imported: answering it
+fails with `CalendarEventImportRefusedException` until the event is in the user calendar. An invitation already held by
+a calendar of the user is never overwritten by an import.
+
 ### SMTP authentication requires TLS by default
 
 Concerned products: SMTP servers whose `smtpserver.xml` entries do not set `auth.requireSSL`
