@@ -495,7 +495,7 @@ trait FolderFilteringActionSetMethodContract {
 
     // Given: Andre shares rights for Bob to access the share mailbox
     server.getProbe(classOf[ACLProbeImpl])
-      .replaceRights(inbox(andreUsername), bobUsername.asString, new MailboxACL.Rfc4314Rights(Right.Lookup, Right.Read, Right.DeleteMessages))
+      .replaceRights(inbox(andreUsername), bobUsername.asString, new MailboxACL.Rfc4314Rights(Right.Lookup, Right.Read, Right.DeleteMessages, Right.PerformExpunge))
 
     // Assume Bob set rules via Filter/set
     server.getProbe(classOf[JmapGuiceCustomProbe])
