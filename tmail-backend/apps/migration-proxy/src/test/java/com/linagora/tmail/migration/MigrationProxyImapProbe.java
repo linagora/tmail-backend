@@ -40,11 +40,31 @@ class MigrationProxyImapProbe implements GuiceProbe {
         this.imapServerFactory = imapServerFactory;
     }
 
+    /**
+     * The first listener of imapserver.xml: clear text, which allows clear-text authentication.
+     */
     int getImapPort() {
+        return listenerPort(0);
+    }
+
+    /**
+     * The second listener of imapserver.xml: STARTTLS, with the default policy that requires it before
+     * any password is sent.
+     */
+    int getStartTlsImapPort() {
+        return listenerPort(1);
+    }
+
+    int getPlainDisabledImapPort() {
+        return listenerPort(2);
+    }
+
+    private int listenerPort(int index) {
         return imapServerFactory.getServers().stream()
+            .skip(index)
             .flatMap(server -> server.getListenAddresses().stream())
             .findFirst()
             .map(InetSocketAddress::getPort)
-            .orElseThrow(() -> new IllegalStateException("IMAP server not defined"));
+            .orElseThrow(() -> new IllegalStateException("IMAP server " + index + " not defined"));
     }
 }

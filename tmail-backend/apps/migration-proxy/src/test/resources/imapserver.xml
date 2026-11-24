@@ -19,7 +19,42 @@
         </tls>
         <connectionLimit>0</connectionLimit>
         <connectionLimitPerIP>0</connectionLimitPerIP>
+        <!-- Clear-text authentication, for the tests that do not negotiate TLS -->
         <plainAuthDisallowed>false</plainAuthDisallowed>
+        <enableIdle>false</enableIdle>
+    </imapserver>
+    <!-- STARTTLS with the default policy (neither plainAuthDisallowed nor auth.requireSSL set): LOGIN -->
+    <!-- and AUTHENTICATE PLAIN are refused until the connection is encrypted.                         -->
+    <imapserver enabled="true">
+        <jmxName>migration-proxy-imap-starttls</jmxName>
+        <bind>127.0.0.1:0</bind>
+        <connectionBacklog>200</connectionBacklog>
+        <proxyRequired>false</proxyRequired>
+        <tls socketTLS="false" startTLS="true">
+            <keystore>classpath://keystore</keystore>
+            <secret>james72laBalle</secret>
+            <provider>org.bouncycastle.jce.provider.BouncyCastleProvider</provider>
+        </tls>
+        <connectionLimit>0</connectionLimit>
+        <connectionLimitPerIP>0</connectionLimitPerIP>
+        <enableIdle>false</enableIdle>
+    </imapserver>
+    <!-- STARTTLS with PLAIN switched off: LOGIN and AUTHENTICATE PLAIN are refused even once encrypted. -->
+    <imapserver enabled="true">
+        <jmxName>migration-proxy-imap-plain-disabled</jmxName>
+        <bind>127.0.0.1:0</bind>
+        <connectionBacklog>200</connectionBacklog>
+        <proxyRequired>false</proxyRequired>
+        <tls socketTLS="false" startTLS="true">
+            <keystore>classpath://keystore</keystore>
+            <secret>james72laBalle</secret>
+            <provider>org.bouncycastle.jce.provider.BouncyCastleProvider</provider>
+        </tls>
+        <auth>
+            <plainAuthEnabled>false</plainAuthEnabled>
+        </auth>
+        <connectionLimit>0</connectionLimit>
+        <connectionLimitPerIP>0</connectionLimitPerIP>
         <enableIdle>false</enableIdle>
     </imapserver>
 </imapservers>

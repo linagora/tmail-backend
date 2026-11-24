@@ -99,6 +99,14 @@ replay them as a `LOGIN` against the resolved backend: the proxy has no user dat
 is the only authority on the password* -- it rejecting the credentials is what the client reads as a
 `NO`. SASL delegation (an authorization identity distinct from the authenticated one) is refused.
 
+Both carry the user password, so both follow the transport policy of the listener: `auth.requireSSL`,
+else `plainAuthDisallowed`, defaulting to `true` as in James. Until the connection is encrypted
+(`STARTTLS`, or implicit TLS with `socketTLS="true"`), the proxy then answers `LOGIN` and
+`AUTHENTICATE PLAIN` with `NO [PRIVACYREQUIRED]`, announces `LOGINDISABLED` and does not announce
+`AUTH=PLAIN`. The sample `imapserver.xml` enables `STARTTLS`, which needs a keystore at
+`conf/keystore`. Set `plainAuthDisallowed` to `false` only when TLS ends before the proxy, for instance
+on a load balancer that reaches it over a trusted network.
+
 With Kerberos enabled both are disabled in favour of `AUTHENTICATE GSSAPI` -- see the Kerberos section
 above.
 
