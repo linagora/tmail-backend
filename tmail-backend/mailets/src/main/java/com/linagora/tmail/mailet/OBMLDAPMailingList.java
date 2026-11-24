@@ -264,13 +264,13 @@ public class OBMLDAPMailingList extends GenericMailet {
             .orElseGet(() -> Filter.createANDFilter(objectClassFilter, specificUserFilter));
     }
 
-    private MailTransformation listToMailTransformation(MaybeSender maybeSender, MailAddress recipient, GroupResolutionResult list) {
+    @VisibleForTesting
+    MailTransformation listToMailTransformation(MaybeSender maybeSender, MailAddress recipient, GroupResolutionResult list) {
         MailAddress listAddress = list.listAddress();
         Optional<String> detail = recipient.getLocalPartDetails(UsersRepository.LOCALPART_DETAIL_DELIMITER);
 
         boolean authorized = list.isPublic()
-            || maybeSender.isNullSender()
-            || list.members().contains(maybeSender.get());
+            || (!maybeSender.isNullSender() && list.members().contains(maybeSender.get()));
 
         if (!authorized) {
             return toRejectedProcessor(listAddress)
