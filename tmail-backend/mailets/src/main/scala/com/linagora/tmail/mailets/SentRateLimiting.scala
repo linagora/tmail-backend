@@ -38,7 +38,7 @@ import org.apache.james.transport.mailets.KeyPrefix
 import org.apache.james.user.api.UsersRepository
 import org.apache.james.util.DurationParser
 import org.apache.mailet.base.GenericMailet
-import org.apache.mailet.{AttributeUtils, Mail}
+import org.apache.mailet.{AttributeName, AttributeUtils, Mail}
 import reactor.core.scala.publisher.{SFlux, SMono}
 
 import scala.jdk.DurationConverters._
@@ -136,12 +136,16 @@ class SentRateLimiting @Inject()(rateLimitingRepository: RateLimitingRepository,
     mail.getMaybeSender.asOptional()
       .ifPresent(sender => applySenderRateLimit(rateLimitedUser(mail, sender), mail))
 
-  // Key the counters on the authenticated user when known, otherwise on the sender stripped of its
+  // Key the counters on the authenticated (SMTP or JMAP) user when known, otherwise on the sender stripped of its
   // sub-address detail, so that `bob+anything@domain` or aliases do not get a fresh bucket each.
   private def rateLimitedUser(mail: Mail, sender: MailAddress): Username =
-    AttributeUtils.getValueAndCastFromMail(mail, Mail.SMTP_AUTH_USER, classOf[String]).toScala
-      .map(Username.of)
+    authenticatedUser(mail, Mail.SMTP_AUTH_USER)
+      .orElse(authenticatedUser(mail, Mail.JMAP_AUTH_USER))
       .getOrElse(Username.fromMailAddress(sender.stripDetails(UsersRepository.LOCALPART_DETAIL_DELIMITER)))
+
+  private def authenticatedUser(mail: Mail, attributeName: AttributeName): Option[Username] =
+    AttributeUtils.getValueAndCastFromMail(mail, attributeName, classOf[String]).toScala
+      .map(Username.of)
 
   private def applySenderRateLimit(sender: Username, mail: Mail): Unit = {
     val rateLimitingResult: RateLimitingResult = applySenderRateLimit(sender, mail.getRecipients.size()).block(rateLimiterTimeout.toScala)

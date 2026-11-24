@@ -838,4 +838,39 @@ class SentRateLimitingTest {
       softly.assertThat(shouldExceedUserLimit.getState).isEqualTo("error")
     })
   }
+
+  @Test
+  def shouldRateLimitJmapAuthenticatedUserRegardlessOfSenderAddress(): Unit = {
+    sentRateLimiting.init(FakeMailetConfig.builder()
+      .setProperty("precision", "1s")
+      .build())
+
+    SMono(rateLimitingRepository.setRateLimiting(BOB, new RateLimitingDefinition.Builder()
+      .mailsSentPerMinute(1)
+      .build())).block()
+
+    val mail1: Mail = FakeMail.builder()
+      .name("mail1")
+      .sender(BOB.asString())
+      .recipients("rcpt1@linagora.com")
+      .attribute(new Attribute(Mail.JMAP_AUTH_USER, AttributeValue.of(BOB.asString())))
+      .state("transport")
+      .build()
+
+    val shouldExceedUserLimit: Mail = FakeMail.builder()
+      .name("mail2")
+      .sender("bob-alias@domain.tld")
+      .recipients("rcpt2@linagora.com")
+      .attribute(new Attribute(Mail.JMAP_AUTH_USER, AttributeValue.of(BOB.asString())))
+      .state("transport")
+      .build()
+
+    sentRateLimiting.service(mail1)
+    sentRateLimiting.service(shouldExceedUserLimit)
+
+    assertSoftly(softly => {
+      softly.assertThat(mail1.getState).isEqualTo("transport")
+      softly.assertThat(shouldExceedUserLimit.getState).isEqualTo("error")
+    })
+  }
 }
