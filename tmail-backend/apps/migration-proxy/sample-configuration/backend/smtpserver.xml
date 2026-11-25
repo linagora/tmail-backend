@@ -16,7 +16,8 @@
         <tls socketTLS="false" startTLS="false"/>
         <authRequired>false</authRequired>
         <verifyIdentity>relaxed</verifyIdentity>
-        <maxmessagesize>0</maxmessagesize>
+        <!-- Maximum message size, announced through SIZE (RFC 1870). Bigger messages are refused at MAIL FROM SIZE= or during DATA. -->
+        <maxmessagesize>20M</maxmessagesize>
         <addressBracketsEnforcement>true</addressBracketsEnforcement>
         <handlerchain>
             <handler class="org.apache.james.smtpserver.CoreCmdHandlerLoader"/>
@@ -29,7 +30,8 @@
         <tls socketTLS="false" startTLS="false"/>
         <authRequired>true</authRequired>
         <verifyIdentity>true</verifyIdentity>
-        <maxmessagesize>0</maxmessagesize>
+        <!-- Maximum message size, announced through SIZE (RFC 1870). Bigger messages are refused at MAIL FROM SIZE= or during DATA. -->
+        <maxmessagesize>20M</maxmessagesize>
         <addressBracketsEnforcement>true</addressBracketsEnforcement>
         <handlerchain>
             <handler class="org.apache.james.smtpserver.CoreCmdHandlerLoader"/>
@@ -49,7 +51,8 @@
         </tls>
         <authRequired>announce</authRequired>
         <verifyIdentity>true</verifyIdentity>
-        <maxmessagesize>0</maxmessagesize>
+        <!-- Maximum message size, announced through SIZE (RFC 1870). Bigger messages are refused at MAIL FROM SIZE= or during DATA. -->
+        <maxmessagesize>20M</maxmessagesize>
         <addressBracketsEnforcement>true</addressBracketsEnforcement>
         <handlerchain>
             <handler class="org.apache.james.smtpserver.CoreCmdHandlerLoader"/>

@@ -16,7 +16,8 @@
         <connectionLimitPerIP>0</connectionLimitPerIP>
         <authRequired>false</authRequired>
         <verifyIdentity>relaxed</verifyIdentity>
-        <maxmessagesize>0</maxmessagesize>
+        <!-- Maximum message size, announced through SIZE (RFC 1870). Bigger messages are refused at MAIL FROM SIZE= or during DATA. -->
+        <maxmessagesize>20M</maxmessagesize>
         <addressBracketsEnforcement>true</addressBracketsEnforcement>
         <smtpGreeting>Twake Mail migration proxy</smtpGreeting>
         <handlerchain>
@@ -37,7 +38,8 @@
         <!-- Only the backends reach this port, and they already verified the sender identity of their
              authenticated users (verifyIdentity on their submission ports). Keep it closed to anyone else. -->
         <verifyIdentity>false</verifyIdentity>
-        <maxmessagesize>0</maxmessagesize>
+        <!-- Maximum message size, announced through SIZE (RFC 1870). Bigger messages are refused at MAIL FROM SIZE= or during DATA. -->
+        <maxmessagesize>20M</maxmessagesize>
         <addressBracketsEnforcement>true</addressBracketsEnforcement>
         <smtpGreeting>Twake Mail migration proxy relay</smtpGreeting>
         <handlerchain>
