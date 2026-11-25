@@ -21,6 +21,7 @@ package com.linagora.tmail.redactionalhelper;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import jakarta.inject.Inject;
@@ -105,7 +106,17 @@ public class LangchainAIRedactionalHelper implements AIRedactionalHelper {
             "My instructions for the reply:\n" + userInput;
     }
 
+    /**
+     * Defuses the email tags the email may contain by turning their angle brackets into square brackets.
+     * Unlike removing them, this can not rebuild a tag out of a nested one (such as {@code </em</email>ail>}):
+     * the replacement contains neither {@code <} nor {@code >} and splits the text it sits in.
+     */
     private static String neutralizeEmailTags(String email) {
-        return EMAIL_TAG_PATTERN.matcher(email).replaceAll("");
+        return EMAIL_TAG_PATTERN.matcher(email)
+            .replaceAll(tag -> Matcher.quoteReplacement(defuseAngleBrackets(tag.group())));
+    }
+
+    private static String defuseAngleBrackets(String tag) {
+        return tag.replace('<', '[').replace('>', ']');
     }
 }
