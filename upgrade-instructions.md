@@ -52,6 +52,19 @@ OpenAI. Twake Mail now fails to start when `baseURL` is blank, and when it is an
 Set `baseURL` to the URL of your LLM API, for OpenAI `https://api.openai.com/v1`. To keep an `http` URL, for instance
 a local LLM server on a trusted network, add `baseURL.allowHttp=true` to `ai.properties`.
 
+### Team mailbox identities come after personal identities
+
+Concerned products: deployments using the `IdentityProvisionListener` with team mailboxes or Twake Spaces
+
+The identities provisioned for team mailbox (and space) members and extra senders now get a `sortOrder` of `110`, which
+places them after the personal identities of the user (`0` for the one provisioned from LDAP, `100` for the server set ones and
+the ones created without a sort order). They used to get `10` (`0` before 1.0.16.1), which made clients select the team
+mailbox identity by default for users without an LDAP provisioned identity.
+
+The personal identity is now also provisioned for users added to a team mailbox before their first login.
+
+Existing identities are not changed by the upgrade: only newly provisioned ones get the new sort order.
+
 ### SMTP authentication requires TLS by default
 
 Concerned products: SMTP servers whose `smtpserver.xml` entries do not set `auth.requireSSL`
