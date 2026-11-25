@@ -20,13 +20,13 @@ docker network create --driver bridge emaily
 You can then start in that newly created network all the other softwares the distributed James is relying on:
 
 ....
-docker run -d --network emaily --name=cassandra cassandra:3.11.3
+docker run -d --network emaily --name=cassandra cassandra:5.0.9
 
-docker run -d --network emaily --name=rabbitmq rabbitmq:3.8.3-management
+docker run -d --network emaily --name=rabbitmq rabbitmq:4.2.9-management
 
 docker run -d --network emaily --env 'REMOTE_MANAGEMENT_DISABLE=1' --env 'SCALITY_ACCESS_KEY_ID=accessKey1' --env 'SCALITY_SECRET_ACCESS_KEY=secretKey1' --name=s3.docker.test zenko/cloudserver:8.2.6
 
-docker run -d --network emaily --name=elasticsearch --env 'discovery.type=single-node' docker.elastic.co/elasticsearch/elasticsearch:7.10.2
+docker run -d --network emaily --name=opensearch --env 'discovery.type=single-node' --env 'DISABLE_INSTALL_DEMO_CONFIG=true' --env 'DISABLE_SECURITY_PLUGIN=true' opensearchproject/opensearch:3.10.0
 
 docker run -d --network emaily --name=tika apache/tika:1.24 #Optional
 ....

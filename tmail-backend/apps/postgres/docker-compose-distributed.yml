@@ -51,7 +51,7 @@ services:
       - tmail
 
   opensearch:
-    image: opensearchproject/opensearch:2.19.2
+    image: opensearchproject/opensearch:3.10.0
     container_name: opensearch
     healthcheck:
       test: ["CMD", "curl", "-s", "http://opensearch:9200"]
@@ -87,7 +87,7 @@ services:
       - tmail
 
   rabbitmq:
-    image: rabbitmq:4.0.9-management
+    image: rabbitmq:4.2.9-management
     ports:
       - "5672:5672"
       - "15672:15672"

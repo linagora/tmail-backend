@@ -3,7 +3,7 @@
 # another node's master), announced by host name so that a restart keeps the topology. Either one exits: the node exits.
 # A stop (SIGTERM) is passed to both, which shut down cleanly (AOF flushed).
 node() {
-  exec redis-server --port "$1" --cluster-enabled yes --cluster-config-file "/data/nodes-$1.conf" --cluster-node-timeout 5000 \
+  exec redis-server --port "$1" --cluster-enabled yes --cluster-config-file "/data/nodes-$1.conf" --cluster-node-timeout 5000 --cluster-bus-port-protected-mode no \
     --cluster-announce-hostname "$(hostname)" --cluster-preferred-endpoint-type hostname \
     --appendonly yes --appenddirname "aof-$1" --maxmemory 96mb --maxmemory-policy noeviction --save ""
 }

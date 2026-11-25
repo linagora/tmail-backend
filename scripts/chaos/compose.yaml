@@ -4,7 +4,7 @@
 # Published on 127.0.0.1 only: what the control scripts reach (JMAP, WebAdmin, SMTP, IMAP, the SSO portal).
 
 x-cassandra: &cassandra
-  image: cassandra:4.1.9
+  image: cassandra:5.0.9
   mem_limit: 1536m
   environment: &cassandra-env
     CASSANDRA_CLUSTER_NAME: chaos
@@ -22,7 +22,7 @@ x-cassandra: &cassandra
     start_period: 30s
 
 x-opensearch: &opensearch
-  image: opensearchproject/opensearch:2.19.2
+  image: opensearchproject/opensearch:3.10.0
   mem_limit: 1280m
   ulimits:
     nofile: {soft: 65536, hard: 65536}
@@ -35,7 +35,7 @@ x-opensearch: &opensearch
     OPENSEARCH_JAVA_OPTS: -Xms640m -Xmx640m
 
 x-rabbitmq: &rabbitmq
-  image: rabbitmq:4.0.9-management
+  image: rabbitmq:4.2.9-management
   mem_limit: 512m
   environment:
     RABBITMQ_SERVER_ADDITIONAL_ERL_ARGS: -setcookie twake-chaos-cookie
@@ -49,7 +49,7 @@ x-rabbitmq: &rabbitmq
     retries: 60
 
 x-redis: &redis
-  image: redis:8.0.2
+  image: redis:8.12.0
   mem_limit: 256m
   entrypoint: ["/node.sh"]
   volumes:
@@ -172,7 +172,7 @@ services:
 
   # Rspamd's own Redis (Bayes): standalone, not part of tmail's cluster
   rspamd-redis:
-    image: redis:8.0.2
+    image: redis:8.12.0
     mem_limit: 128m
 
   ldap:
