@@ -89,7 +89,7 @@ public class ThirdPartyContainers {
 
     @SuppressWarnings("resource")
     public static GenericContainer<?> createRedis(Network network) {
-        return new GenericContainer<>(DockerImageName.parse("redis").withTag("8.0.2"))
+        return new GenericContainer<>(DockerImageName.parse("redis").withTag("8.12.0"))
             .withExposedPorts(6379)
             .withCreateContainerCmdModifier(createContainerCmd -> createContainerCmd.withName("twake-mail-redis-testing" + UUID.randomUUID()))
             .withCommand("--loglevel", "debug")

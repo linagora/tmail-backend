@@ -55,7 +55,7 @@ docker run -d --network emaily --name=rabbitmq rabbitmq:4.2.9-management
 
 docker run -d --network emaily --env 'REMOTE_MANAGEMENT_DISABLE=1' --env 'SCALITY_ACCESS_KEY_ID=accessKey1' --env 'SCALITY_SECRET_ACCESS_KEY=secretKey1' --name=s3.docker.test ghcr.io/scality/cloudserver:c1ba296859690c1cbbec609aaae430f6b04b4745
 
-docker run -d --network emaily --name=opensearch --env 'discovery.type=single-node' opensearchproject/opensearch:3.10.0
+docker run -d --network emaily --name=opensearch --env 'discovery.type=single-node' --env 'DISABLE_INSTALL_DEMO_CONFIG=true' --env 'DISABLE_SECURITY_PLUGIN=true' opensearchproject/opensearch:3.10.0
 
 docker run -d --network emaily --name=tika apache/tika:3.2.0.0 #Optional
 ```
