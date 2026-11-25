@@ -21,7 +21,9 @@ package com.linagora.tmail.dav;
 import static com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults.AttendanceResult;
 import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
+import java.io.ByteArrayInputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
@@ -279,17 +281,36 @@ public class CalDavEventRepository implements CalendarEventRepository {
         return senderOfTheMailHolding(blobId, session)
             .switchIfEmpty(Mono.error(() -> new CalendarEventImportRefusedException("Can not import the event of blob '%s': it is not part of a mail with a known sender"
                 .formatted(blobId.value()))))
-            .flatMap(sender -> {
-                // esn-sabre trusts the ITIP sender: the organizer of the payload, chosen by whoever wrote the mail, must not be taken for it
-                if (!ITIPSenderAlignment.isSatisfied(importAlignmentMode, sender, calendar)) {
-                    LOGGER.warn("Not importing the event of blob '{}' for {}: the sender {} of its mail is not its organizer",
-                        blobId.value(), username.asString(), sender.asString());
-                    return Mono.error(new CalendarEventImportRefusedException("Can not import the event of blob '%s': the sender of its mail is not its organizer"
-                        .formatted(blobId.value())));
-                }
-                return davUserProvider.provide(username)
-                    .flatMap(davUser -> sendITIPRequest(username, davUser, calendar, sender));
-            });
+            .flatMap(sender -> davUserProvider.provide(username)
+                .flatMap(davUser -> {
+                    if (ITIPSenderAlignment.isSatisfied(importAlignmentMode, sender, calendar)) {
+                        return sendITIPRequest(username, davUser, calendar, sender);
+                    }
+                    return importUnalignedEvent(username, davUser, blobId, calendar, sender);
+                }));
+    }
+
+    /**
+     * The user asked for an event whose mail does not come from its organizer, after being warned by the
+     * X-TWP-Message the CalDavCollect mailets added (see ITIPSenderMismatchWarning): it is imported, the sender of the mail being recorded
+     * as the SENT-BY of its organizer so that the calendar does not present it as coming from the organizer alone.
+     *
+     * esn-sabre only creates the event from a payload sent by its organizer. It can not overwrite a copy of the user:
+     * the import only happens once no calendar the user owns holds the event, see {@link #mayImport}.
+     */
+    private Mono<Void> importUnalignedEvent(Username username, DavUser davUser, BlobId blobId, Calendar calendar, MailAddress sender) {
+        return ITIPSenderAlignment.singleOrganizer(calendar)
+            .map(organizer -> {
+                LOGGER.info("Importing the event of blob '{}' for {}: its mail comes from {}, not from its organizer {}",
+                    blobId.value(), username.asString(), sender.asString(), organizer.asString());
+                return sendITIPRequest(username, davUser, ITIPSenderAlignment.withOrganizerSentBy(copyOf(calendar), sender), organizer);
+            })
+            .orElseGet(() -> Mono.error(new CalendarEventImportRefusedException("Can not import the event of blob '%s': it does not name a single organizer"
+                .formatted(blobId.value()))));
+    }
+
+    private static Calendar copyOf(Calendar calendar) {
+        return CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(calendar.toString().getBytes(StandardCharsets.UTF_8)));
     }
 
     private Mono<Void> sendITIPRequest(Username username, DavUser davUser, Calendar calendar, MailAddress sender) {

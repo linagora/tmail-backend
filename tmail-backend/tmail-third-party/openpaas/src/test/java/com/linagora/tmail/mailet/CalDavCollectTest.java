@@ -32,6 +32,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import java.nio.charset.StandardCharsets;
 import java.util.List;
 
+import org.apache.james.core.builder.MimeMessageBuilder;
 import org.apache.mailet.Attribute;
 import org.apache.mailet.AttributeName;
 import org.apache.mailet.AttributeValue;
@@ -487,5 +488,20 @@ class CalDavCollectTest {
                 AttributeName.of(CalDavCollect.DEFAULT_SOURCE_ATTRIBUTE_NAME),
                 AttributeValue.of(ImmutableMap.<String, AttributeValue<?>>of("ics1", AttributeValue.of(jsonBytes)))))
             .build();
+    }
+
+    @Test
+    void serviceShouldWarnTheRecipientsWhenTheSenderIsNotTheOrganizer() throws Exception {
+        Mail mail = mailWithCalendar(ICS, EXTERNAL_DELEGATE);
+        mail.setMessage(MimeMessageBuilder.mimeMessageBuilder().setText("An invitation").build());
+
+        mailet.service(mail);
+
+        assertThat(mail.getMessage().getHeader(ITIPSenderMismatchWarning.TWP_MESSAGE_HEADER))
+            .singleElement()
+            .asString()
+            .startsWith("level:warn code:calendar-sender-mismatch ");
+        assertThat(mail.getMessage().getHeader(ITIPSenderMismatchWarning.MISMATCH_HEADER))
+            .containsExactly("organizer=<" + ORGANIZER + ">; sender=<" + EXTERNAL_DELEGATE + ">");
     }
 }

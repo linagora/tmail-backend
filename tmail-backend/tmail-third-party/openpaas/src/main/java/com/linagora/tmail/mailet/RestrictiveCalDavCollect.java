@@ -113,6 +113,8 @@ public class RestrictiveCalDavCollect extends GenericMailet {
 
     @Override
     public void service(Mail mail) throws MessagingException {
+        // The invitation is not handed to esn-sabre when not aligned, yet the user may add it from the mail: warn them
+        ITIPSenderMismatchWarning.apply(mail, sourceAttributeName, alignmentMode, getMailetContext());
         try {
             AttributeUtils.getValueAndCastFromMail(mail, sourceAttributeName, MAP_STRING_JSON_BYTES_CLASS)
                 .ifPresent(jsons -> jsons.values()

@@ -27,9 +27,14 @@ as the `CalDavCollect` mailets do. The check is set by the new `dav.itip.import.
 `openpaas.properties` (`strict`, `sameDomain` or `none`, default `strict`): set it to the `alignmentMode` of your
 `CalDavCollect` mailets if they do not use `strict`.
 
-An invitation that does not come from a mail, for instance an uploaded `.ics` file, is no longer imported: answering it
-fails with `CalendarEventImportRefusedException` until the event is in the user calendar. An invitation already held by
-a calendar of the user is never overwritten by an import.
+An invitation whose `From` is not aligned with its ORGANIZER is still imported when the user answers it, the `From`
+being recorded as the `SENT-BY` of the ORGANIZER. The users are warned beforehand: the `CalDavCollect` mailets now add
+an `X-TWP-Message` warning (code `calendar-sender-mismatch`) to the mails carrying such an invitation from a remote
+sender. No configuration change is needed.
+
+An invitation already held by a calendar of the user is never overwritten by an import. An invitation that does not come
+from a mail, for instance an uploaded `.ics` file, is no longer imported: answering it fails with
+`CalendarEventImportRefusedException` until the event is in the user calendar.
 
 ### SMTP authentication requires TLS by default
 

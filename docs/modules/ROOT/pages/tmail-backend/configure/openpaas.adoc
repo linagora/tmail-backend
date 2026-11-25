@@ -32,7 +32,7 @@ For more information about the OpenPaas integration, see xref:tmail-backend/feat
 | dav.rest.client.response.timeout
 | Timeout for DAV Rest client. Optional. Duration (support multiple time units cf `DurationParser`, default unit is milliseconds), defaults to 30 seconds.
 | dav.itip.import.alignmentMode
-| Optional. When a user answers an invitation that is missing from their calendar, Twake Mail imports it first. This sets how the `From` of the mail carrying the invitation is checked against its ORGANIZER before the import, with the values of the `alignmentMode` of `CalDavCollect`: `strict`, `sameDomain` or `none`. Use the same value as the `CalDavCollect` mailets. Default: `strict`. An invitation that does not come from a mail, eg an uploaded file, is never imported.
+| Optional. When a user answers an invitation that is missing from their calendar, Twake Mail imports it first. This sets how the `From` of the mail carrying the invitation is checked against its ORGANIZER, with the values of the `alignmentMode` of `CalDavCollect`: `strict`, `sameDomain` or `none`. Use the same value as the `CalDavCollect` mailets. Default: `strict`. An invitation whose `From` is not aligned is still imported, the `From` being recorded as the `SENT-BY` of its ORGANIZER: the user was warned by the `X-TWP-Message` header the `CalDavCollect` mailets added to the mail. An invitation already held by a calendar of the user is never overwritten by an import, and an invitation that does not come from a mail, eg an uploaded file, is never imported.
 |===
 
 == CardDavCollectedContact
@@ -78,6 +78,17 @@ that is not aligned with the `From` address (including a `VEVENT` without `ORGAN
 is rejected as a whole. An `ORGANIZER`/`ATTENDEE` is also considered aligned when its `SENT-BY` delegate matches the `From` address.
 +
 When the alignment check fails the ITIP is silently dropped and a warning is logged.
++
+The user may still add such an invitation to their calendar from the mail. When its sender (the `From`, as computed by
+`ICALToJsonAttribute`) is a remote address, the mail is thus marked so that the clients display a warning banner:
++
+* `X-TWP-Message: level:warn code:calendar-sender-mismatch <fallback text>`;
+* `X-Twake-Calendar-Sender-Mismatch: organizer=<address>; sender=<address>`.
++
+Local senders are not flagged: their identity is verified on submission, a mismatch then is an assistant sending for
+the organizer. `REPLY` messages are not flagged either. The `X-Twake-Calendar-Sender-Mismatch` headers and the
+`X-TWP-Message` ones of the `calendar-sender-mismatch` code a mail holds on arrival are removed first, so that these
+warnings only come from the server.
 
 === Example
 This configuration contains all mailets necessary to read ics attachments in mail and send them to dav server.
@@ -130,6 +141,8 @@ For `REPLY`: behaves identically to `CalDavCollect` — the organizer's calendar
 For `REQUEST`: the alignment check is applied *before* the event-existence check. A misaligned `REQUEST` is dropped even if the event already exists.
 +
 `CANCEL` and `REPLY` follow the same validation rules as `CalDavCollect`.
++
+A misaligned invitation gets the same warning headers as with `CalDavCollect`.
 
 === Example
 

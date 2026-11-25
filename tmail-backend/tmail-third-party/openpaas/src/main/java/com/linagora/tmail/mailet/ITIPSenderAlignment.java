@@ -18,6 +18,7 @@
 
 package com.linagora.tmail.mailet;
 
+import java.net.URI;
 import java.util.List;
 import java.util.Optional;
 import java.util.function.Predicate;
@@ -28,7 +29,9 @@ import net.fortuna.ical4j.model.Calendar;
 import net.fortuna.ical4j.model.Component;
 import net.fortuna.ical4j.model.Property;
 import net.fortuna.ical4j.model.component.VEvent;
+import net.fortuna.ical4j.model.parameter.SentBy;
 import net.fortuna.ical4j.model.property.Attendee;
+import net.fortuna.ical4j.model.property.Organizer;
 
 /**
  * Whether the sender of the mail carrying an ITIP message may send it: esn-sabre trusts the sender it is given, so
@@ -58,15 +61,45 @@ public final class ITIPSenderAlignment {
     }
 
     /**
+     * The organizer of every VEVENT of the payload, when they all name the same one.
+     */
+    public static Optional<MailAddress> singleOrganizer(Calendar calendar) {
+        List<Optional<MailAddress>> organizers = vEvents(calendar).stream()
+            .map(event -> Optional.ofNullable(event.getOrganizer())
+                .flatMap(organizer -> CalendarUserAddresses.toMailAddress(organizer.getCalAddress())))
+            .distinct()
+            .toList();
+        if (organizers.size() != 1) {
+            return Optional.empty();
+        }
+        return organizers.getFirst();
+    }
+
+    /**
+     * Records on the ORGANIZER of every VEVENT the address that actually sent the payload (RFC 5545 section 3.2.18),
+     * replacing any SENT-BY the payload claimed. The given calendar is modified.
+     */
+    public static Calendar withOrganizerSentBy(Calendar calendar, MailAddress sender) {
+        SentBy sentBy = new SentBy(URI.create("mailto:" + sender.asString()));
+        vEvents(calendar).forEach(event -> Optional.ofNullable(event.getOrganizer())
+            .ifPresent(organizer -> event.replace((Organizer) organizer.replace(sentBy))));
+        return calendar;
+    }
+
+    private static List<VEvent> vEvents(Calendar calendar) {
+        return calendar.getComponents(Component.VEVENT).stream()
+            .filter(VEvent.class::isInstance)
+            .map(VEvent.class::cast)
+            .toList();
+    }
+
+    /**
      * The alignment applies to the whole ITIP payload: every VEVENT must satisfy it, otherwise a sender could
      * smuggle VEVENTs it is not entitled to send alongside a single aligned one. A payload without VEVENT is
      * rejected.
      */
     private static boolean everyVEventMatches(Calendar calendar, Predicate<VEvent> alignment) {
-        List<VEvent> events = calendar.getComponents(Component.VEVENT).stream()
-            .filter(VEvent.class::isInstance)
-            .map(VEvent.class::cast)
-            .toList();
+        List<VEvent> events = vEvents(calendar);
         return !events.isEmpty() && events.stream().allMatch(alignment);
     }
 

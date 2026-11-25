@@ -1075,17 +1075,38 @@ class CalDavEventRepositoryTest {
     }
 
     @Test
-    void setAttendanceStatusShouldNotImportWhenTheSenderOfTheMailIsNotTheOrganizer() {
+    void setAttendanceStatusShouldImportRecordingTheSenderWhenItIsNotTheOrganizer() {
+        // The user was warned by the X-TWP-Message of the mail, and still accepts
         String eventUid = UUID.randomUUID().toString();
         setupCalendarResolver(eventUid);
         BlobId blobId = mailHoldingTheEvent("attacker@evil.org");
 
-        assertThatThrownBy(() -> testee.setAttendanceStatus(testUser, AttendanceStatus.Accepted, blobId).block())
-            .isInstanceOf(CalendarEventImportRefusedException.class);
+        assertThatCode(() -> testee.setAttendanceStatus(testUser, AttendanceStatus.Accepted, blobId).block())
+            .doesNotThrowAnyException();
 
-        assertThat(davClient.caldav(openPaasUser.email())
-            .getCalendarObjects(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(eventUid)).collectList().block())
-            .isEmpty();
+        assertThat(unfolded(storedEvent(eventUid)))
+            .contains("PARTSTAT=ACCEPTED")
+            .containsPattern("ORGANIZER;[^\\r\\n]*SENT-BY=\"mailto:attacker@evil.org\"[^\\r\\n]*:(?i:mailto:)?" + ORGANIZER);
+    }
+
+    @Test
+    void setAttendanceStatusShouldNotImportOverACopyOfTheUserWhenTheSenderIsNotTheOrganizer() {
+        String eventUid = UUID.randomUUID().toString();
+        pushRawCalendarToDav(eventUid, storedEventListing(eventUid, "organizer@external.org", "list@open-paas.org"));
+        forgedRequest(eventUid, "organizer@external.org");
+        BlobId blobId = mailHoldingTheEvent("attacker@evil.org");
+
+        assertThatThrownBy(() -> testee.setAttendanceStatus(testUser, AttendanceStatus.Accepted, blobId).block())
+            .isInstanceOf(CalendarEventModifier.AttendeeNotFoundException.class);
+
+        assertThat(storedEvent(eventUid))
+            .contains("LOCATION:Meeting room")
+            .doesNotContain("Forged location")
+            .doesNotContain("attacker@evil.org");
+    }
+
+    private static String unfolded(String ics) {
+        return ics.replace("\r\n ", "").replace("\n ", "");
     }
 
     @Test
@@ -1105,20 +1126,22 @@ class CalDavEventRepositoryTest {
         assertThatCode(() -> sameDomainTestee.setAttendanceStatus(testUser, AttendanceStatus.Accepted, blobId).block())
             .doesNotThrowAnyException();
 
-        assertThat(davClient.caldav(openPaasUser.email())
-            .getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(eventUid)).block()
-            .calendarData().toString())
-            .contains("PARTSTAT=ACCEPTED");
+        assertThat(storedEvent(eventUid))
+            .contains("PARTSTAT=ACCEPTED")
+            .doesNotContain("SENT-BY");
     }
 
     @Test
-    void setAttendanceStatusShouldNotImportWhenTheSenderSharesTheDomainOfTheOrganizerInStrictMode() {
+    void setAttendanceStatusShouldRecordTheSenderSharingTheDomainOfTheOrganizerInStrictMode() {
         String eventUid = UUID.randomUUID().toString();
         setupCalendarResolver(eventUid);
         BlobId blobId = mailHoldingTheEvent("calendar@open-paas.org");
 
-        assertThatThrownBy(() -> testee.setAttendanceStatus(testUser, AttendanceStatus.Accepted, blobId).block())
-            .isInstanceOf(CalendarEventImportRefusedException.class);
+        assertThatCode(() -> testee.setAttendanceStatus(testUser, AttendanceStatus.Accepted, blobId).block())
+            .doesNotThrowAnyException();
+
+        assertThat(unfolded(storedEvent(eventUid)))
+            .contains("SENT-BY=\"mailto:calendar@open-paas.org\"");
     }
 
     @Test
