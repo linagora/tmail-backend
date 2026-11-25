@@ -16,6 +16,16 @@ You can also find more detailed instructions for releases under the respective s
 
 Note: this section is in progress. It will be updated during all the development process until the release.
 
+### SMTP: the shipped configurations limit messages to 20M
+
+Concerned products: deployments using the `smtpserver.xml` shipped in the images or the sample configurations
+
+The shipped `smtpserver.xml` used `<maxmessagesize>0</maxmessagesize>`, accepting messages of any size, including
+from unauthenticated senders on port 25. All their listeners now set `<maxmessagesize>20M</maxmessagesize>`, the limit
+already applied to IMAP APPEND (`literalSizeLimit`) and by the helm chart. The limit is announced through `SIZE`
+(RFC 1870), and bigger messages are refused at `MAIL FROM ... SIZE=` or during `DATA`. Deployments that need bigger
+messages must set `maxmessagesize` accordingly in their own `smtpserver.xml`.
+
 ### Contact autocomplete: the scheme of `address.contact.uri` alone decides TLS
 
 Concerned products: distributed deployments with contact autocomplete over RabbitMQ (`address.contact.*` in
