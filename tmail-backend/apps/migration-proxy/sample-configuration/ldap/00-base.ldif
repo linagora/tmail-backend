@@ -1,0 +1,12 @@
+# The base of the shared directory and the branch usersrepository.xml searches (userBase).
+# Add the test accounts here, or in another .ldif of this folder: inetOrgPerson entries under
+# ou=people with a mail (the login, e.g. bob@managed.tld) and a userPassword.
+dn: dc=james,dc=org
+objectClass: dcObject
+objectClass: organization
+dc: james
+o: james.org
+
+dn: ou=people,dc=james,dc=org
+objectClass: organizationalUnit
+ou: people

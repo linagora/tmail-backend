@@ -13,7 +13,7 @@ export CHAOS_SSO_PORT="${CHAOS_SSO_PORT:-19705}"
 export CHAOS_RUN="${CHAOS_RUN:-${XDG_CACHE_HOME:-$HOME/.cache}/twake-chaos/$CHAOS_PROJECT}"
 BUILT_IMAGE="$CHAOS_PROJECT-tmail:latest"
 export TMAIL_IMAGE="${TMAIL_IMAGE:-$BUILT_IMAGE}"
-# the accounts (LDAP seed, conf/ldap/10-seed.ldif): password "secret"
+# the accounts (LDAP seed, conf/ldap/ldifs/10-seed.ldif): password "secret"
 export CHAOS_DOMAIN=tmail.com
 export CHAOS_USER=alice@tmail.com CHAOS_USER2=bob@tmail.com CHAOS_PASSWORD=secret
 # the SSO: LemonLDAP's OIDC client "james" (password grant allowed for the control scripts)

@@ -1,3 +1,3 @@
-FROM osixia/openldap:1.5.0
+FROM bitnamilegacy/openldap:2.6.10
 
-COPY populate.ldif /container/service/slapd/assets/config/bootstrap/ldif/data.ldif
+COPY populate.ldif /ldifs/populate.ldif

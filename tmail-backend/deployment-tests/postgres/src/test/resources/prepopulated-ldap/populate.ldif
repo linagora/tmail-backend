@@ -1,3 +1,9 @@
+dn: dc=james,dc=org
+objectClass: dcObject
+objectClass: organization
+dc: james
+o: james.org
+
 dn: ou=people, dc=james,dc=org
 ou: people
 objectClass: organizationalUnit

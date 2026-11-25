@@ -176,20 +176,24 @@ services:
     mem_limit: 128m
 
   ldap:
-    image: osixia/openldap:1.5.0
+    image: bitnamilegacy/openldap:2.6.10
     hostname: ldap
     mem_limit: 256m
-    # --copy-service: the bootstrap LDIFs are copied before osixia rewrites them in place
-    command: --copy-service
     environment:
-      LDAP_ORGANISATION: Twake Mail chaos
-      LDAP_DOMAIN: tmail.com
+      LDAP_ROOT: dc=tmail,dc=com
+      LDAP_ADMIN_USERNAME: admin
       LDAP_ADMIN_PASSWORD: admin
-      LDAP_CONFIG_PASSWORD: admin
-      LDAP_RFC2307BIS_SCHEMA: "true"
-      LDAP_TLS: "false"
+      LDAP_PORT_NUMBER: "389"
+      LDAP_ALLOW_ANON_BINDING: "yes"
+      # pwdReset, which the Directory Manager sets to force a new password at next login and
+      # LemonLDAP reads, is an operational attribute the ppolicy overlay registers
+      LDAP_CONFIGURE_PPOLICY: "yes"
+    # on the first start: the Twake schemas (schemas/), the base and the seed (ldifs/), then the
+    # overlays and indexes osixia/openldap used to set up (init/)
     volumes:
-      - ./conf/ldap:/container/service/slapd/assets/config/bootstrap/ldif/custom:ro
+      - ./conf/ldap/schemas:/schemas:ro
+      - ./conf/ldap/ldifs:/ldifs:ro
+      - ./conf/ldap/init:/docker-entrypoint-initdb.d:ro
 
   sso:
     image: yadd/lemonldap-ng-full
