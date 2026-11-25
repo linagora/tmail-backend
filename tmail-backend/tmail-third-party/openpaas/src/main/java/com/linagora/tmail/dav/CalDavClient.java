@@ -23,6 +23,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Predicate;
 import java.util.function.UnaryOperator;
 
 import org.apache.james.core.Username;
@@ -238,6 +239,40 @@ public class CalDavClient {
                 }));
     }
 
+    /**
+     * Whether the calendar may hold the event, failing when it can not be queried. An object answered for the UID that can
+     * not be parsed counts as holding it: an unknown copy is not taken for no copy.
+     */
+    public Mono<Boolean> mayHoldEventOrFail(URI calendarURI, DavUid eventUid) {
+        return client.headers(headers -> headers.add(HttpHeaderNames.ACCEPT, ACCEPT_XML)
+                .add("Depth", "1"))
+            .request(HttpMethod.valueOf("REPORT"))
+            .uri(calendarURI.getPath())
+            .send(Mono.just(new GetCalendarByEventIdRequestBody(eventUid).asByteBuf()))
+            .responseSingle((response, responseContent) -> {
+                if (response.status() == HttpResponseStatus.MULTI_STATUS) {
+                    return responseContent.asString(StandardCharsets.UTF_8)
+                        .map(content -> XMLUtil.parse(content, DavMultistatus.class))
+                        .map(multistatus -> multistatus.getResponses().stream().anyMatch(davResponse -> mayHold(davResponse, eventUid)))
+                        .defaultIfEmpty(false);
+                }
+                return Mono.error(new DavClientException(
+                    String.format("Unexpected status code: %d when looking for event %s in calendar %s", response.status().code(), eventUid.value(), calendarURI)));
+            });
+    }
+
+    private static boolean mayHold(DavResponse response, DavUid eventUid) {
+        try {
+            return DavCalendarObject.fromDavResponse(response)
+                .map(calendarObject -> calendarObject.hasVEventWithUid(eventUid))
+                .orElse(false);
+        } catch (Exception e) {
+            // the ical4j parser, called from Scala, can throw checked exceptions (ParserException) undeclared
+            LOGGER.warn("Unparsable calendar object {} while looking for VEvent '{}': taken for a copy of it", response.getHrefValue().orElse(""), eventUid.value(), e);
+            return true;
+        }
+    }
+
     private Mono<DavCalendarObject> getCalendarObjectContainingVEventFromSpecificCalendar(URI calendarURI, DavUid eventUid) {
         return client.headers(headers -> headers.add(HttpHeaderNames.ACCEPT, ACCEPT_XML)
                 .add("Depth", "1"))
@@ -282,6 +317,17 @@ public class CalDavClient {
     }
 
     public Flux<URI> findUserCalendars(DavUser user) {
+        return findUserCalendars(user, DavResponse::isCalendarCollectionResponse);
+    }
+
+    /**
+     * The calendars of the user, without the ones it subscribed to or that other users share with it.
+     */
+    public Flux<URI> findUserOwnedCalendars(DavUser user) {
+        return findUserCalendars(user, DavResponse::isOwnedCalendarCollectionResponse);
+    }
+
+    private Flux<URI> findUserCalendars(DavUser user, Predicate<DavResponse> calendarFilter) {
         return client.headers(headers -> headers.add(HttpHeaderNames.ACCEPT, ACCEPT_XML))
             .request(HttpMethod.valueOf("PROPFIND"))
             .uri(CALENDAR_PATH + user.userId().value())
@@ -289,7 +335,7 @@ public class CalDavClient {
                 if (response.status() == HttpResponseStatus.MULTI_STATUS) {
                     return byteBufMono.asString(StandardCharsets.UTF_8)
                         .map(multiStatusResponse -> XMLUtil.parse(multiStatusResponse, DavMultistatus.class))
-                        .map(multistatus -> extractCalendarURIsFromResponse(multistatus, user.userId().value()));
+                        .map(multistatus -> extractCalendarURIsFromResponse(multistatus, user.userId().value(), calendarFilter));
                 } else {
                     return Mono.error(new DavClientException(
                         String.format("Unexpected status code: %d when finding user calendars for user: %s",
@@ -299,9 +345,9 @@ public class CalDavClient {
             .flatMapMany(Flux::fromIterable);
     }
 
-    private List<URI> extractCalendarURIsFromResponse(DavMultistatus multistatus, String userId) {
+    private List<URI> extractCalendarURIsFromResponse(DavMultistatus multistatus, String userId, Predicate<DavResponse> calendarFilter) {
         return multistatus.getResponses().stream()
-            .filter(DavResponse::isCalendarCollectionResponse)
+            .filter(calendarFilter)
             .flatMap(response -> response.getHrefValue()
                 .filter(href -> href.startsWith(CALENDAR_PATH + userId + "/"))
                 .filter(href -> !(href.endsWith("inbox/") || href.endsWith("outbox/")))

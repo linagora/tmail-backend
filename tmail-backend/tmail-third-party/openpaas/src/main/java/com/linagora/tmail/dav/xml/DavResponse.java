@@ -68,6 +68,13 @@ public class DavResponse {
             .orElse(false);
     }
 
+    public boolean isOwnedCalendarCollectionResponse() {
+        return getProp()
+            .flatMap(DavProp::getResourceType)
+            .map(DavResourceType::isOwnedCalendarCollection)
+            .orElse(false);
+    }
+
     @Override
     public String toString() {
         return MoreObjects.toStringHelper(this)

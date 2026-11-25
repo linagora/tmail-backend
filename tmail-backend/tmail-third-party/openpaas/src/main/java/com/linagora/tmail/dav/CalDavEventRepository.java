@@ -21,30 +21,46 @@ package com.linagora.tmail.dav;
 import static com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults.AttendanceResult;
 import static org.apache.james.util.ReactorUtils.DEFAULT_CONCURRENCY;
 
+import java.io.ByteArrayInputStream;
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Optional;
 import java.util.function.Function;
 import java.util.function.UnaryOperator;
 
-import jakarta.inject.Inject;
+import jakarta.mail.internet.AddressException;
+import jakarta.mail.internet.InternetAddress;
+import jakarta.mail.internet.MimeUtility;
 
+import org.apache.james.core.MailAddress;
+import org.apache.james.core.MaybeSender;
 import org.apache.james.core.Username;
 import org.apache.james.jmap.mail.BlobId;
 import org.apache.james.mailbox.MailboxSession;
+import org.apache.james.mailbox.MessageIdManager;
 import org.apache.james.mailbox.SessionProvider;
+import org.apache.james.mailbox.exception.MailboxException;
+import org.apache.james.mailbox.model.FetchGroup;
+import org.apache.james.mailbox.model.MessageId;
+import org.apache.james.mailbox.model.MessageResult;
+import org.apache.james.rrt.api.AliasReverseResolver;
 import org.reactivestreams.Publisher;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.google.common.collect.Streams;
 import com.linagora.tmail.dav.cal.FreeBusyRequest;
 import com.linagora.tmail.dav.cal.FreeBusyResponse;
 import com.linagora.tmail.james.jmap.AttendanceStatus;
 import com.linagora.tmail.james.jmap.CalendarEventCancelledException;
 import com.linagora.tmail.james.jmap.CalendarEventNotFoundException;
 import com.linagora.tmail.james.jmap.CalendarEventRepository;
+import com.linagora.tmail.james.jmap.MessagePartBlobId;
 import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier;
 import com.linagora.tmail.james.jmap.calendar.CalendarEventModifier.AttendeeNotFoundException;
 import com.linagora.tmail.james.jmap.calendar.CalendarResolver;
@@ -53,12 +69,13 @@ import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
 import com.linagora.tmail.james.jmap.model.CalendarUidField;
 import com.linagora.tmail.james.jmap.model.EventAttendanceStatusEntry;
 import com.linagora.tmail.james.jmap.model.RecurrenceIdField;
+import com.linagora.tmail.mailet.AlignmentMode;
+import com.linagora.tmail.mailet.ITIPSenderAlignment;
 
 import net.fortuna.ical4j.model.Calendar;
 import net.fortuna.ical4j.model.Component;
 import net.fortuna.ical4j.model.Property;
 import net.fortuna.ical4j.model.component.VEvent;
-import net.fortuna.ical4j.model.property.Organizer;
 import net.fortuna.ical4j.model.property.Status;
 import net.fortuna.ical4j.model.property.immutable.ImmutableMethod;
 import reactor.core.publisher.Flux;
@@ -110,16 +127,24 @@ public class CalDavEventRepository implements CalendarEventRepository {
     private final SessionProvider sessionProvider;
     private final DavUserProvider davUserProvider;
     private final CalendarResolver calendarResolver;
+    private final MessageIdManager messageIdManager;
+    private final MessageId.Factory messageIdFactory;
+    private final AliasReverseResolver aliasReverseResolver;
 
-    @Inject
     public CalDavEventRepository(DavClient davClient,
                                  SessionProvider sessionProvider,
                                  DavUserProvider davUserProvider,
-                                 CalendarResolver calendarResolver) {
+                                 CalendarResolver calendarResolver,
+                                 MessageIdManager messageIdManager,
+                                 MessageId.Factory messageIdFactory,
+                                 AliasReverseResolver aliasReverseResolver) {
         this.davClient = davClient;
         this.sessionProvider = sessionProvider;
         this.davUserProvider = davUserProvider;
         this.calendarResolver = calendarResolver;
+        this.messageIdManager = messageIdManager;
+        this.messageIdFactory = messageIdFactory;
+        this.aliasReverseResolver = aliasReverseResolver;
     }
 
     @Override
@@ -132,10 +157,13 @@ public class CalDavEventRepository implements CalendarEventRepository {
 
     private Mono<CalendarEventAttendanceResults> getAttendanceStatus(DavUser davUser, BlobId blobId) {
         return fetchCalendarObject(davUser, blobId)
-            .flatMap(calendarEventParsed ->
-                Mono.justOrEmpty(OptionConverters.toJava(calendarEventParsed.getAttendanceStatus(davUser.username().asString())))
-                    .flatMap(attendanceStatus -> freeBusyQuery(davUser, calendarEventParsed)
-                        .map(freeBusyStatus -> EventAttendanceStatusEntry.of(blobId, attendanceStatus, FreeBusyStatus.FREE.equals(freeBusyStatus)))))
+            .flatMap(calendarEventParsed -> addressesOf(davUser.username())
+                // As for the update: the user may be listed under one of its aliases, its username wins
+                .flatMap(addresses -> Mono.justOrEmpty(addresses.stream()
+                    .flatMap(address -> OptionConverters.toJava(calendarEventParsed.getAttendanceStatus(address)).stream())
+                    .findFirst()))
+                .flatMap(attendanceStatus -> freeBusyQuery(davUser, calendarEventParsed)
+                    .map(freeBusyStatus -> EventAttendanceStatusEntry.of(blobId, attendanceStatus, FreeBusyStatus.FREE.equals(freeBusyStatus)))))
             .map(AttendanceResult()::done)
             .switchIfEmpty(Mono.just(AttendanceResult().notFound(blobId)))
             .onErrorResume(error -> Mono.just(AttendanceResult().notDone(blobId, error)));
@@ -175,47 +203,132 @@ public class CalDavEventRepository implements CalendarEventRepository {
 
     private Mono<Void> setAttendanceStatus(Username username, BlobId blobId, AttendanceStatus attendanceStatus, MailboxSession session) {
         return calendarResolver.resolveRequestCalendar(blobId, session, OptionConverters.toScala(Optional.of(ImmutableMethod.REQUEST))).asJava()
-            .flatMap(calendar -> {
-                CalendarUidField eventUid = CalendarUidField.getEventUidFromCalendar(calendar);
-                CalendarEventModifier eventModifier = CalendarEventModifier.withPartStat(username.asString(), attendanceStatus.toPartStat(), calendar);
-                // The event may only be held by calendars the user does not attend, eg the one of a colleague the user subscribed to:
-                // the event is then imported in the user calendar, as when it is missing
-                return updateEvent(username, eventUid, eventModifier)
-                    .onErrorResume(error -> error instanceof CalendarEventNotFoundException || error instanceof AttendeeNotFoundException,
-                        notInUserCalendar -> importEventViaITIP(username, calendar)
-                            .then(updateEvent(username, eventUid, eventModifier)));
-            });
+            .flatMap(calendar -> addressesOf(username)
+                .flatMap(addresses -> {
+                    CalendarUidField eventUid = CalendarUidField.getEventUidFromCalendar(calendar);
+                    // The user may be invited through one of its aliases: its copy of the event then lists it under that alias
+                    CalendarEventModifier eventModifier = CalendarEventModifier.withPartStatOfAnyOf(addresses, attendanceStatus.toPartStat(), calendar);
+                    return updateEvent(username, eventUid, eventModifier)
+                        .onErrorResume(error -> error instanceof CalendarEventNotFoundException || error instanceof AttendeeNotFoundException,
+                            error -> mayImport(username, eventUid)
+                                .flatMap(mayImport -> {
+                                    if (mayImport) {
+                                        return importEventViaITIP(username, blobId, calendar, session)
+                                            .then(updateEvent(username, eventUid, eventModifier));
+                                    }
+                                    return Mono.error(error);
+                                }));
+                }));
     }
 
-    private Mono<Void> importEventViaITIP(Username username, Calendar calendar) {
+    private Mono<List<String>> addressesOf(Username username) {
+        return Flux.concat(Mono.just(username.asString()),
+                Flux.from(aliasReverseResolver.listAddresses(username)).map(MailAddress::asString))
+            .distinct(address -> address.toLowerCase(Locale.US))
+            .collectList();
+    }
+
+    /**
+     * The event is imported in the user calendar when missing from it. It may also be held only by calendars the user does not
+     * own, eg the one of a colleague the user subscribed to, that do not list the user: the event is then imported as well.
+     *
+     * A copy held by a calendar of the user is never overwritten by an import: esn-sabre would merge the ITIP payload, coming
+     * from a mail, into it.
+     *
+     * The lookup is done again even when the update found no copy: that lookup ignores the calendars it can not query. Only
+     * the calendars the user owns are looked up, and a failed lookup of one of them must not pass for the absence of a copy:
+     * a calendar the user subscribed to that can no longer be queried does not prevent the import.
+     */
+    private Mono<Boolean> mayImport(Username username, CalendarUidField eventUid) {
+        DavUid davUid = DavUid.fromCalendarUidField(eventUid);
         return davUserProvider.provide(username)
-            .flatMap(davUser -> {
+            .flatMap(davUser -> davClient.caldav(username).findUserOwnedCalendars(davUser)
+                .concatMap(ownedCalendar -> davClient.caldav(username).mayHoldEventOrFail(ownedCalendar, davUid))
+                .any(held -> held)
+                .map(heldByAnOwnedCalendar -> !heldByAnOwnedCalendar));
+    }
+
+    private Mono<Void> importEventViaITIP(Username username, BlobId blobId, Calendar calendar, MailboxSession session) {
+        return senderOfTheMailHolding(blobId, session)
+            .switchIfEmpty(Mono.error(() -> new CalendarEventImportRefusedException("Can not import the event of blob '%s': it is not part of a mail with a known sender"
+                .formatted(blobId.value()))))
+            .flatMap(sender -> davUserProvider.provide(username)
+                .flatMap(davUser -> importEvent(username, davUser, blobId, calendar, sender)));
+    }
+
+    /**
+     * The event is handed to esn-sabre as sent by its organizer, as only then it creates it, or by the user when it names
+     * none. This can not overwrite a copy of the user: the import only happens once no calendar the user owns holds the
+     * event, see {@link #mayImport}.
+     *
+     * When the mail does not come from the organizer, nor from the delegate its SENT-BY names, the user was warned by the
+     * X-TWP-Message the CalDavCollect mailets added (see ITIPSenderMismatchWarning) and still asked for the event: the
+     * sender of the mail is recorded as the SENT-BY of the organizer, so that the calendar does not present the event as
+     * coming from the organizer alone.
+     */
+    private Mono<Void> importEvent(Username username, DavUser davUser, BlobId blobId, Calendar calendar, MailAddress sender) {
+        Optional<MailAddress> organizer = ITIPSenderAlignment.firstOrganizer(calendar);
+        return Mono.fromCallable(() -> organizer.isPresent() ? organizer.get() : username.asMailAddress())
+            .flatMap(itipSender -> sendITIPRequest(username, davUser, recordingTheSender(username, blobId, calendar, sender, organizer), itipSender));
+    }
+
+    private static Calendar recordingTheSender(Username username, BlobId blobId, Calendar calendar, MailAddress sender, Optional<MailAddress> organizer) {
+        if (organizer.isEmpty() || ITIPSenderAlignment.isSatisfied(AlignmentMode.STRICT, sender, calendar)) {
+            return calendar;
+        }
+        LOGGER.info("Importing the event of blob '{}' for {}: its mail comes from {}, not from its organizer {}",
+            blobId.value(), username.asString(), sender.asString(), organizer.get().asString());
+        return ITIPSenderAlignment.withOrganizerSentBy(copyOf(calendar), sender);
+    }
+
+    private static Calendar copyOf(Calendar calendar) {
+        return CalendarEventParsed.parseICal4jCalendar(new ByteArrayInputStream(calendar.toString().getBytes(StandardCharsets.UTF_8)));
+    }
+
+    private Mono<Void> sendITIPRequest(Username username, DavUser davUser, Calendar calendar, MailAddress sender) {
+        try {
+            VEvent vevent = (VEvent) calendar.getComponent(Component.VEVENT)
+                .orElseThrow(() -> new RuntimeException("No VEVENT found in calendar"));
+
+            ObjectMapper mapper = new ObjectMapper();
+            ObjectNode node = mapper.createObjectNode();
+            node.put("ical", calendar.toString());
+            node.put("sender", sender.asString());
+            node.put("recipient", username.asString());
+            node.put("replyTo", sender.asString());
+            vevent.getUid().ifPresent(uid -> node.put("uid", uid.getValue()));
+            vevent.getDateStamp().ifPresent(ds -> node.put("dtstamp", ds.getValue()));
+            calendar.getProperty(Property.METHOD).ifPresent(m -> node.put("method", m.getValue()));
+            Optional.ofNullable(vevent.getSequence()).ifPresent(seq -> node.put("sequence", seq.getValue()));
+            Optional.ofNullable(vevent.getRecurrenceId()).ifPresent(rid -> node.put("recurrence-id", rid.getValue()));
+
+            return davClient.caldav(username).sendITIPRequest(
+                URI.create(CalDavClient.CALENDAR_PATH + davUser.userId().value()),
+                mapper.writeValueAsBytes(node));
+        } catch (Exception e) {
+            return Mono.error(e);
+        }
+    }
+
+    // The From of the mail, as the mailets feeding esn-sabre with the ITIP messages of incoming mails use it
+    private Mono<MailAddress> senderOfTheMailHolding(BlobId blobId, MailboxSession session) {
+        return Mono.justOrEmpty(OptionConverters.toJava(MessagePartBlobId.tryParse(messageIdFactory, blobId.value().toString()).toOption())
+                .map(MessagePartBlobId::getMessageId))
+            .flatMap(messageId -> Flux.from(messageIdManager.getMessagesReactive(List.of(messageId), FetchGroup.HEADERS, session)).next())
+            .flatMap(message -> Mono.fromCallable(() -> fromAddress(message)).flatMap(Mono::justOrEmpty));
+    }
+
+    private static Optional<MailAddress> fromAddress(MessageResult message) throws MailboxException {
+        return Streams.stream(message.getHeaders().headers())
+            .filter(header -> header.getName().equalsIgnoreCase("From"))
+            .findFirst()
+            .flatMap(header -> {
                 try {
-                    VEvent vevent = (VEvent) calendar.getComponent(Component.VEVENT)
-                        .orElseThrow(() -> new RuntimeException("No VEVENT found in calendar"));
-
-                    String organizerEmail = Optional.ofNullable(vevent.getOrganizer())
-                        .map(Organizer::getCalAddress)
-                        .map(uri -> uri.getSchemeSpecificPart().isEmpty() ? uri.toString() : uri.getSchemeSpecificPart())
-                        .orElse(username.asString());
-
-                    ObjectMapper mapper = new ObjectMapper();
-                    ObjectNode node = mapper.createObjectNode();
-                    node.put("ical", calendar.toString());
-                    node.put("sender", organizerEmail);
-                    node.put("recipient", username.asString());
-                    node.put("replyTo", organizerEmail);
-                    vevent.getUid().ifPresent(uid -> node.put("uid", uid.getValue()));
-                    vevent.getDateStamp().ifPresent(ds -> node.put("dtstamp", ds.getValue()));
-                    calendar.getProperty(Property.METHOD).ifPresent(m -> node.put("method", m.getValue()));
-                    Optional.ofNullable(vevent.getSequence()).ifPresent(seq -> node.put("sequence", seq.getValue()));
-                    Optional.ofNullable(vevent.getRecurrenceId()).ifPresent(rid -> node.put("recurrence-id", rid.getValue()));
-
-                    return davClient.caldav(username).sendITIPRequest(
-                        URI.create(CalDavClient.CALENDAR_PATH + davUser.userId().value()),
-                        mapper.writeValueAsBytes(node));
-                } catch (Exception e) {
-                    return Mono.error(e);
+                    return Arrays.stream(InternetAddress.parseHeader(MimeUtility.unfold(header.getValue()), false))
+                        .findFirst()
+                        .flatMap(address -> MaybeSender.getMailSender(address.getAddress()).asOptional());
+                } catch (AddressException e) {
+                    return Optional.empty();
                 }
             });
     }

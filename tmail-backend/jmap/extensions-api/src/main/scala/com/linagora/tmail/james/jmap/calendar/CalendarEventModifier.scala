@@ -109,10 +109,15 @@ case class AttendeeUpdatePatch(attendeeList: Seq[Attendee]) extends CalendarEven
   }
 }
 
-case class AttendeePartStatusUpdatePatch(targetAttendeeEmail: String, status: PartStat) extends CalendarEventUpdatePatch {
+/**
+ * @param otherAttendeeEmails the other addresses of the attendee, eg its aliases: an event the user got invited to through
+ *                            one of them lists the user under that address. The first address listed wins.
+ */
+case class AttendeePartStatusUpdatePatch(targetAttendeeEmail: String, status: PartStat, otherAttendeeEmails: Seq[String] = Seq()) extends CalendarEventUpdatePatch {
   override def apply(vEvent: VEvent): Boolean =
-    vEvent.getAttendees.asScala
-      .find(_.getCalAddress.toASCIIString.equalsIgnoreCase(s"mailto:$targetAttendeeEmail"))
+    (targetAttendeeEmail +: otherAttendeeEmails).view
+      .flatMap(email => vEvent.getAttendees.asScala.find(_.getCalAddress.toASCIIString.equalsIgnoreCase(s"mailto:$email")))
+      .headOption
       .map { attendee =>
         attendee.getParameter[PartStat](Parameter.PARTSTAT).toScala match {
           case Some(currentPartStat) if currentPartStat.getValue.equals(status.getValue) => false
@@ -363,9 +368,23 @@ object CalendarEventModifier {
       status = status,
       recurrenceId = Option(requestCalendar.getMasterOrFirstVEvent.getRecurrenceId[Temporal]))
 
+  /**
+   * @param attendeeEmails the addresses of the attendee, its username first then eg its aliases
+   */
+  def withPartStatOfAnyOf(attendeeEmails: java.util.List[String],
+                          status: PartStat,
+                          requestCalendar: Calendar): CalendarEventModifier = {
+    require(!attendeeEmails.isEmpty, "At least one attendee address is required".asInstanceOf[Object])
+    withPartStat(targetAttendeeEmail = attendeeEmails.get(0),
+      status = status,
+      recurrenceId = Option(requestCalendar.getMasterOrFirstVEvent.getRecurrenceId[Temporal]),
+      otherAttendeeEmails = attendeeEmails.asScala.toSeq.drop(1))
+  }
+
   def withPartStat(targetAttendeeEmail: String,
                    status: PartStat,
-                   recurrenceId: Option[RecurrenceId[Temporal]]): CalendarEventModifier = {
+                   recurrenceId: Option[RecurrenceId[Temporal]],
+                   otherAttendeeEmails: Seq[String] = Seq()): CalendarEventModifier = {
     val evaluableRecurrenceId = recurrenceId.map(requireEvaluable)
 
     val validator: Consumer[Calendar] = calendar =>
@@ -375,7 +394,7 @@ object CalendarEventModifier {
           .getOrElse(throw new IllegalArgumentException(s"Cannot find VEVENT with recurrenceId $rid"))
       }
 
-    CalendarEventModifier(Seq(AttendeePartStatusUpdatePatch(targetAttendeeEmail, status)), evaluableRecurrenceId, validator)
+    CalendarEventModifier(Seq(AttendeePartStatusUpdatePatch(targetAttendeeEmail, status, otherAttendeeEmails)), evaluableRecurrenceId, validator)
   }
 
   case class NoUpdateRequiredException() extends RuntimeException

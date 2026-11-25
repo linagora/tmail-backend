@@ -16,6 +16,20 @@ You can also find more detailed instructions for releases under the respective s
 
 Note: this section is in progress. It will be updated during all the development process until the release.
 
+### Calendar: invitations not sent by their organizer
+
+Concerned products: deployments with the OpenPaaS / esn-sabre calendar integration (`openpaas.properties` with `dav.*`)
+
+The `CalDavCollect` mailets now add an `X-TWP-Message` warning (code `calendar-sender-mismatch`) to the mails carrying
+an invitation whose remote sender is not its ORGANIZER, displayed as a banner by the clients. No configuration change
+is needed.
+
+When a user answers (`CalendarEvent/accept`, `maybe`, `reject`) an invitation that is not yet in their calendar, Twake
+Mail imports it into esn-sabre. When the `From` of its mail is not its ORGANIZER, that `From` is now recorded as the
+`SENT-BY` of the ORGANIZER. An invitation already held by a calendar of the user is never overwritten by an import. An
+invitation that does not come from a mail, for instance an uploaded `.ics` file, is no longer imported: answering it
+fails with `CalendarEventImportRefusedException` until the event is in the user calendar.
+
 ### Contact autocomplete: the scheme of `address.contact.uri` alone decides TLS
 
 Concerned products: distributed deployments with contact autocomplete over RabbitMQ (`address.contact.*` in
