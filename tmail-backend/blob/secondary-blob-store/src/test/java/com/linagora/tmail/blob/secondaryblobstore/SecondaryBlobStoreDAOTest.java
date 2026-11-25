@@ -25,10 +25,19 @@ import static org.apache.james.blob.objectstorage.aws.S3BlobStoreConfiguration.U
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.SequenceInputStream;
+import java.io.UncheckedIOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.time.Duration;
 import java.util.Optional;
+import java.util.Random;
+import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.stream.Stream;
 
 import org.apache.james.blob.api.BlobStoreDAO;
 import org.apache.james.blob.api.BlobStoreDAOContract;
@@ -48,6 +57,7 @@ import org.apache.james.events.RetryBackoffConfiguration;
 import org.apache.james.events.delivery.InVmEventDelivery;
 import org.apache.james.metrics.api.NoopGaugeRegistry;
 import org.apache.james.metrics.tests.RecordingMetricFactory;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
@@ -55,8 +65,11 @@ import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.Test;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
+import com.google.common.collect.Sets;
 import com.google.common.io.ByteSource;
 
+import reactor.core.Disposable;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.util.retry.Retry;
@@ -408,6 +421,74 @@ public class SecondaryBlobStoreDAOTest implements BlobStoreDAOContract {
             }
         }))).block())
             .isInstanceOf(ObjectStoreException.class);
+    }
+
+    @Test
+    public void saveInputStreamAboveTheFileThresholdShouldSaveIdenticalContentToBothBlobStores() {
+        byte[] bigContent = bigContent();
+        Set<Path> temporaryFilesBefore = temporaryBlobFiles();
+
+        Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, BlobStoreDAO.InputStreamBlob.of(new ByteArrayInputStream(bigContent)))).block();
+
+        assertThat(Mono.from(primaryBlobStoreDAO.readBytes(TEST_BUCKET_NAME, TEST_BLOB_ID)).block().payload())
+            .isEqualTo(bigContent);
+        assertThat(Mono.from(secondaryBlobStoreDAO.readBytes(TEST_SECONDARY_BUCKET_NAME, TEST_BLOB_ID)).block().payload())
+            .isEqualTo(bigContent);
+        assertThat(temporaryBlobFiles()).isEqualTo(temporaryFilesBefore);
+    }
+
+    @Test
+    public void saveInputStreamFailingAboveTheFileThresholdShouldNotLeaveATemporaryFile() {
+        Set<Path> temporaryFilesBefore = temporaryBlobFiles();
+        InputStream failingStream = new SequenceInputStream(new ByteArrayInputStream(bigContent()), getThrowingInputStream());
+
+        assertThatThrownBy(() -> Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, BlobStoreDAO.InputStreamBlob.of(failingStream))).block())
+            .hasCauseInstanceOf(IOException.class);
+
+        assertThat(temporaryBlobFiles()).isEqualTo(temporaryFilesBefore);
+    }
+
+    @Test
+    public void cancelledSaveOfAnInputStreamShouldNotLeaveATemporaryFile() {
+        Set<Path> temporaryFilesBefore = temporaryBlobFiles();
+        CountDownLatch release = new CountDownLatch(1);
+        InputStream blockingStream = new SequenceInputStream(new ByteArrayInputStream(bigContent()), new InputStream() {
+            @Override
+            public int read() throws IOException {
+                try {
+                    release.await();
+                } catch (InterruptedException e) {
+                    Thread.currentThread().interrupt();
+                }
+                return -1;
+            }
+        });
+
+        Disposable save = Mono.from(testee.save(TEST_BUCKET_NAME, TEST_BLOB_ID, BlobStoreDAO.InputStreamBlob.of(blockingStream))).subscribe();
+        Awaitility.await().atMost(Duration.ofSeconds(10))
+            .until(() -> !Sets.difference(temporaryBlobFiles(), temporaryFilesBefore).isEmpty());
+
+        save.dispose();
+        release.countDown();
+
+        Awaitility.await().atMost(Duration.ofSeconds(10))
+            .untilAsserted(() -> assertThat(temporaryBlobFiles()).isEqualTo(temporaryFilesBefore));
+    }
+
+    private static byte[] bigContent() {
+        byte[] content = new byte[1024 * 1024];
+        new Random(42).nextBytes(content);
+        return content;
+    }
+
+    private static Set<Path> temporaryBlobFiles() {
+        try (Stream<Path> files = Files.list(Path.of(System.getProperty("java.io.tmpdir")))) {
+            return files
+                .filter(path -> path.getFileName().toString().startsWith(TemporaryBlobBuffer.TEMPORARY_FILE_PREFIX))
+                .collect(ImmutableSet.toImmutableSet());
+        } catch (IOException e) {
+            throw new UncheckedIOException(e);
+        }
     }
 
     private void unpauseS3AfterAwhile(DockerAwsS3Container s3) {

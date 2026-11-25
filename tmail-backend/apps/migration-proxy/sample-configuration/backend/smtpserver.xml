@@ -2,7 +2,11 @@
 
 <!-- Adapted backend SMTP config for the migration: ValidRcptHandler is removed so the backend accepts
      recipients of the managed domain that are not local users here (they live on the other backend)
-     and lets the mailet container relay them to the migration proxy. -->
+     and lets the mailet container relay them to the migration proxy.
+     Sender identity is verified as in the standard configuration: `true` on the submission ports, so an
+     authenticated user can only send as themselves (or an alias / delegator), and `relaxed` on port 25,
+     which asks a client claiming a local sender to authenticate unless it looks like an MX (its HELO
+     is a dotted name: the migration proxy announces one, see heloName in its mailetcontainer.xml). -->
 
 <smtpservers>
     <smtpserver enabled="true">
@@ -11,7 +15,7 @@
         <connectionBacklog>200</connectionBacklog>
         <tls socketTLS="false" startTLS="false"/>
         <authRequired>false</authRequired>
-        <verifyIdentity>false</verifyIdentity>
+        <verifyIdentity>relaxed</verifyIdentity>
         <maxmessagesize>0</maxmessagesize>
         <addressBracketsEnforcement>true</addressBracketsEnforcement>
         <handlerchain>
@@ -24,7 +28,7 @@
         <connectionBacklog>200</connectionBacklog>
         <tls socketTLS="false" startTLS="false"/>
         <authRequired>true</authRequired>
-        <verifyIdentity>false</verifyIdentity>
+        <verifyIdentity>true</verifyIdentity>
         <maxmessagesize>0</maxmessagesize>
         <addressBracketsEnforcement>true</addressBracketsEnforcement>
         <handlerchain>
@@ -44,7 +48,7 @@
             <algorithm>SunX509</algorithm>
         </tls>
         <authRequired>announce</authRequired>
-        <verifyIdentity>false</verifyIdentity>
+        <verifyIdentity>true</verifyIdentity>
         <maxmessagesize>0</maxmessagesize>
         <addressBracketsEnforcement>true</addressBracketsEnforcement>
         <handlerchain>

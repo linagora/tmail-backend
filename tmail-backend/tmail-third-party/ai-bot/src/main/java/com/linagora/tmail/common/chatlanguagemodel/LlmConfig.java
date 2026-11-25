@@ -36,6 +36,7 @@ public class LlmConfig {
     public static String MODEL_PARAMETER_NAME = "model";
     public static String BASE_URL_PARAMETER_NAME = "baseURL";
     public static String TIMEOUT_PARAMETER_NAME = "timeout";
+    public static String ALLOW_HTTP_BASE_URL_PARAMETER_NAME = "baseURL.allowHttp";
 
     public static final LlmModel DEFAULT_LLM_MODEL =
         new LlmModel("gpt-4o-mini");
@@ -64,11 +65,15 @@ public class LlmConfig {
         LlmModel llmModelParam = Optional.ofNullable(configuration.getString(MODEL_PARAMETER_NAME))
             .map(LlmModel::new)
             .orElse(DEFAULT_LLM_MODEL);
-        URL baseURL = Optional.ofNullable(configuration.getString(BASE_URL_PARAMETER_NAME, null))
-            .map(String::trim)
-            .filter(baseUrlString -> !baseUrlString.isEmpty())
-            .map(LlmConfig::baseURLStringToURL)
+        // No default: a blank value used to send the mail of the users to a third party demo server, over HTTP
+        String baseUrlParam = Optional.ofNullable(configuration.getString(BASE_URL_PARAMETER_NAME, null))
+            .filter(baseUrlString -> !baseUrlString.isBlank())
             .orElseThrow(() ->  new IllegalArgumentException("No value for " + BASE_URL_PARAMETER_NAME + " parameter was provided."));
+        URL baseURL = baseURLStringToURL(baseUrlParam.trim());
+        boolean allowHttp = configuration.getBoolean(ALLOW_HTTP_BASE_URL_PARAMETER_NAME, false);
+        Preconditions.checkArgument(baseURL.getProtocol().equals("https") || allowHttp,
+            "%s must be an https URL: the mail of the users and the API key go to it. Set %s=true to accept http.",
+            BASE_URL_PARAMETER_NAME, ALLOW_HTTP_BASE_URL_PARAMETER_NAME);
 
         Duration timeout = Optional.ofNullable(configuration.getString(TIMEOUT_PARAMETER_NAME, null))
             .map(value -> DurationParser.parse(value, ChronoUnit.SECONDS))
@@ -84,9 +89,12 @@ public class LlmConfig {
 
     private static URL baseURLStringToURL(String baseUrlString) {
         try {
-            return URI.create(baseUrlString).toURL();
+            URL url = URI.create(baseUrlString).toURL();
+            Preconditions.checkArgument(url.getProtocol().equals("https") || url.getProtocol().equals("http"),
+                "Invalid LLM API base URL: http or https expected");
+            return url;
         } catch (MalformedURLException | IllegalArgumentException e) {
-            throw new RuntimeException("Invalid LLM API base URL", e);
+            throw new IllegalArgumentException("Invalid LLM API base URL", e);
         }
     }
 
@@ -101,17 +109,16 @@ public class LlmConfig {
         LlmConfig that = (LlmConfig) o;
         return Objects.equals(apiKey, that.apiKey) &&
             Objects.equals(llmModel, that.llmModel) &&
-            Objects.equals(baseURLAsString(), that.baseURLAsString()) &&
+            Objects.equals(Optional.ofNullable(baseURL).map(URL::toString),
+                Optional.ofNullable(that.baseURL).map(URL::toString)) &&
             Objects.equals(timeout, that.timeout);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(apiKey, llmModel, baseURLAsString(), timeout);
-    }
-
-    private Optional<String> baseURLAsString() {
-        return Optional.ofNullable(baseURL).map(URL::toString);
+        return Objects.hash(apiKey, llmModel,
+            Optional.ofNullable(baseURL).map(URL::toString),
+            timeout);
     }
 
     public String getApiKey() {

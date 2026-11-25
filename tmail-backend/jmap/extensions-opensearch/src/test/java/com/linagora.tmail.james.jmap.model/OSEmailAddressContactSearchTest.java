@@ -26,6 +26,7 @@ import static org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS;
 import java.util.Optional;
 import java.util.UUID;
 
+import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.apache.james.backends.opensearch.DockerOpenSearchExtension;
 import org.apache.james.backends.opensearch.IndexCreationFactory;
 import org.apache.james.backends.opensearch.OpenSearchConfiguration;
@@ -46,6 +47,7 @@ import org.opensearch.client.opensearch.core.SearchRequest;
 
 import com.linagora.tmail.james.jmap.ContactMappingFactory;
 import com.linagora.tmail.james.jmap.OSEmailAddressContactSearchEngine;
+import com.linagora.tmail.james.jmap.OpenSearchContactConfiguration;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngineContract;
@@ -114,6 +116,26 @@ public class OSEmailAddressContactSearchTest implements EmailAddressContactSearc
             .then()
             .block())
             .doesNotThrowAnyException();
+
+        awaitDocumentsIndexed(new MatchAllQuery(), 0);
+    }
+
+    @Test
+    void deleteShouldRemoveTheAddressBookCopiesOfALongAddressWhenTheNgramSettingsChangedSinceTheIndexCreation() throws Exception {
+        PropertiesConfiguration properties = new PropertiesConfiguration();
+        properties.addProperty("opensearch.index.contact.max.ngram.diff", 40);
+        OSEmailAddressContactSearchEngine reconfiguredSearchEngine = new OSEmailAddressContactSearchEngine(client,
+            OpenSearchContactConfiguration.fromProperties(properties));
+
+        MailAddress mailAddress = new MailAddress("averyveryverylongaddress123@example.com");
+        ContactFields fields = ContactFields.of(mailAddress, "Long", "Address");
+        Flux.range(0, ADDRESS_BOOK_COUNT)
+            .flatMap(any -> searchEngine.index(ACCOUNT_ID, fields, UUID.randomUUID().toString()))
+            .then()
+            .block();
+        awaitDocumentsIndexed(new MatchAllQuery(), ADDRESS_BOOK_COUNT);
+
+        Mono.from(reconfiguredSearchEngine.delete(ACCOUNT_ID, mailAddress)).block();
 
         awaitDocumentsIndexed(new MatchAllQuery(), 0);
     }

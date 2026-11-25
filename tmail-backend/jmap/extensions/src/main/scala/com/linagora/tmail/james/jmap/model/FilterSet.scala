@@ -25,7 +25,7 @@ import org.apache.james.core.MailAddress
 import org.apache.james.jmap.api.filtering.Rule
 import org.apache.james.jmap.core.AccountId
 import org.apache.james.jmap.core.Id.Id
-import org.apache.james.jmap.core.SetError.{SetErrorDescription, SetErrorType, invalidArgumentValue, serverFailValue, stateMismatchValue}
+import org.apache.james.jmap.core.SetError.{SetErrorDescription, SetErrorType, forbiddenValue, invalidArgumentValue, serverFailValue, stateMismatchValue}
 import org.apache.james.jmap.mail.Name
 import org.apache.james.jmap.method.WithAccountId
 import play.api.libs.json.{JsArray, JsObject}
@@ -68,6 +68,7 @@ object FilterSetError {
   def invalidArgument(description: Option[SetErrorDescription]): FilterSetError = FilterSetError(invalidArgumentValue, description)
   def serverFail(description: Option[SetErrorDescription]): FilterSetError = FilterSetError(serverFailValue, description)
   def stateMismatch(description: Option[SetErrorDescription]): FilterSetError = FilterSetError(stateMismatchValue, description)
+  def forbidden(description: Option[SetErrorDescription]): FilterSetError = FilterSetError(forbiddenValue, description)
 }
 
 object RuleWithId {

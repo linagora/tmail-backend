@@ -92,12 +92,15 @@ case class FilterSetUpdateFailure(id: String, exception: Throwable) extends Filt
   override def notUpdated: Map[String, FilterSetError] = Map(id -> asSetError(exception))
 
   def asSetError(exception: Throwable): FilterSetError = exception match {
+    case e: ForwardRuleChangeForbiddenException => FilterSetError.forbidden(Some(SetErrorDescription(e.getMessage)))
     case e: IllegalArgumentException => FilterSetError.invalidArgument(Some(SetErrorDescription(e.getMessage)))
     case e: StateMismatchException => FilterSetError.stateMismatch(Some(SetErrorDescription(e.getMessage)))
     case e: Throwable => FilterSetError.serverFail(Some(SetErrorDescription(e.getMessage)))
   }
 }
 
+
+class ForwardRuleChangeForbiddenException extends RuntimeException("A delegate can not create, change nor remove a forward rule")
 
 class FilterSetMethod @Inject()(@Named(InjectionKeys.JMAP) eventBus: EventBus,
                                 val metricFactory: MetricFactory,
@@ -166,14 +169,40 @@ class FilterSetMethod @Inject()(@Named(InjectionKeys.JMAP) eventBus: EventBus,
       .flatMap[FilterSetUpdateResult](tuple =>
         tuple._2.flatMap(validateRules(_, mailboxSession))
           .map(update => SMono.fromCallable(() => RuleWithId.toJava(update.rules)))
-          .fold(SMono.error, rules => rules.flatMap(rule => updateRules(mailboxSession.getUser, rule, filterSetRequest.ifInState)))
+          .fold(SMono.error, rules => rules.flatMap(rule => updateRules(mailboxSession, rule, filterSetRequest.ifInState)))
           .onErrorResume(e => SMono.just(FilterSetUpdateFailure(tuple._1, e))))
       .map(updateResult => updateResult.asFilterSetUpdateResults)
       .foldWith[FilterSetUpdateResults](FilterSetUpdateResults.empty())(FilterSetUpdateResults.merge)
 
-  def updateRules(username: Username, validatedRules: List[Rule], ifInState: Option[FilterState]): SMono[FilterSetUpdateResult] =
-      SMono(filteringManagement.defineRulesForUser(username, validatedRules.asJava, convertToOptionalVersion(ifInState)))
-        .`then`(SMono.just(FilterSetUpdateSuccess))
+  def updateRules(mailboxSession: MailboxSession, validatedRules: List[Rule], ifInState: Option[FilterState]): SMono[FilterSetUpdateResult] =
+    if (isDelegated(mailboxSession)) {
+      updateRulesAsDelegate(mailboxSession.getUser, validatedRules, ifInState)
+    } else {
+      defineRules(mailboxSession.getUser, validatedRules, convertToOptionalVersion(ifInState))
+    }
+
+  // A forward rule can send every incoming mail of the owner away and outlives the delegation, out of the forwarding
+  // settings that Forward/set keeps to the owner: a delegate can not create, change nor remove one.
+  private def updateRulesAsDelegate(username: Username, validatedRules: List[Rule], ifInState: Option[FilterState]): SMono[FilterSetUpdateResult] =
+    SMono(filteringManagement.listRulesForUser(username))
+      .flatMap(current => {
+        if (forwardRules(current.getRules.asScala.toList) != forwardRules(validatedRules)) {
+          SMono.error(new ForwardRuleChangeForbiddenException())
+        } else {
+          // Against the rules just compared, so that a concurrent change of the forward rules is not overwritten
+          defineRules(username, validatedRules, convertToOptionalVersion(ifInState).or(() => Optional.of(current.getVersion)))
+        }
+      })
+
+  private def forwardRules(rules: List[Rule]): Set[Rule] =
+    rules.filter(_.getAction.getForward.isPresent).toSet
+
+  private def defineRules(username: Username, validatedRules: List[Rule], ifInState: Optional[Version]): SMono[FilterSetUpdateResult] =
+    SMono(filteringManagement.defineRulesForUser(username, validatedRules.asJava, ifInState))
+      .`then`(SMono.just(FilterSetUpdateSuccess))
+
+  private def isDelegated(mailboxSession: MailboxSession): Boolean =
+    !mailboxSession.getLoggedInUser.toScala.contains(mailboxSession.getUser)
 
   def validateNoCreate(filterSetRequest: FilterSetRequest): Option[Map[String, FilterSetError]] =
     filterSetRequest.create.map(aMap => aMap

@@ -238,6 +238,29 @@ class SpaceEventsConsumerTest {
     }
 
     @Test
+    void aSpaceNamedAfterARoleAddressShouldNotTakeIt() {
+        handle("twake.space.created", created(SPACE, "Admin", member(ALICE, "admin")));
+
+        assertThat(spaceMailboxes.read(teamMailbox("admin")).blockOptional()).isEmpty();
+        assertThat(Flux.from(teamMailboxRepository.listTeamMailboxes(DOMAIN)).collectList().block())
+            .containsExactly(teamMailbox("admin-2"));
+    }
+
+    @Test
+    void aSpaceShouldNotTakeANameReservedByTheOperator() {
+        configuration = new SpaceConfiguration(Optional.empty(), Optional.empty(), configuration.queue(), configuration.deadLetterQueue(),
+            configuration.spaceExchange(), configuration.dnsExchange(), configuration.dnsRoutingKey(), configuration.activityExchange(),
+            "", configuration.retention(), Set.of("billing"));
+        reconciler = reconciler(SpaceAddresses.MailingLists.NONE);
+        testee = new SpaceEventsConsumer(reconciler, publisher, configuration, RetryBackoffConfiguration.FAST);
+
+        handle("twake.space.created", created(SPACE, "Billing"));
+
+        assertThat(Flux.from(teamMailboxRepository.listTeamMailboxes(DOMAIN)).collectList().block())
+            .containsExactly(teamMailbox("billing-2"));
+    }
+
+    @Test
     void anotherSpaceWithTheSameNameShouldGetASuffix() {
         handle("twake.space.created", created(SPACE, "Sales"));
         handle("twake.space.created", created(OTHER_SPACE, "Sales"));
@@ -788,6 +811,19 @@ class SpaceEventsConsumerTest {
 
             assertThat(index.get(DOMAIN, SPACE).block()).isEqualTo(sales);
             assertThat(members(sales)).containsExactly(TeamMailboxMember.asManager(ALICE));
+        }
+
+        @Test
+        void aSpaceBoundToAReservedAddressBeforeTheIndexShouldKeepIt() {
+            TeamMailbox admin = teamMailbox("admin");
+            Mono.from(teamMailboxRepository.createTeamMailbox(admin)).block();
+            spaceMailboxes.bind(spaceMailbox(admin), new SpaceRef(ORGANIZATION, SPACE)).block();
+
+            handle("twake.space.synced", created(SPACE, "Admin", member(ALICE, "admin")));
+
+            assertThat(index.get(DOMAIN, SPACE).block()).isEqualTo(admin);
+            assertThat(Flux.from(teamMailboxRepository.listTeamMailboxes(DOMAIN)).collectList().block())
+                .containsExactly(admin);
         }
 
         @Test

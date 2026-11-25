@@ -22,6 +22,7 @@ import org.apache.james.JamesServerBuilder;
 import org.apache.james.JamesServerExtension;
 import org.apache.james.SearchConfiguration;
 import org.apache.james.backends.redis.RedisExtension;
+import org.apache.james.jmap.rfc8621.contract.probe.DelegationProbeModule;
 import org.apache.james.mailbox.cassandra.ids.CassandraId;
 import org.apache.james.modules.AwsS3BlobStoreExtension;
 import org.junit.jupiter.api.extension.RegisterExtension;
@@ -62,7 +63,8 @@ public class DistributedLinagoraFilterSetMethodTest implements LinagoraFilterSet
         .extension(new AwsS3BlobStoreExtension())
         .server(configuration -> DistributedServer.createServer(configuration)
             .overrideWith(binder -> binder.bind(FirebasePushClient.class).toInstance(LinagoraFilterSetMethodContract.firebasePushClient()))
-            .overrideWith(new LinagoraTestJMAPServerModule()))
+            .overrideWith(new LinagoraTestJMAPServerModule())
+            .overrideWith(new DelegationProbeModule()))
         .lifeCycle(JamesServerExtension.Lifecycle.PER_CLASS)
         .build();
 

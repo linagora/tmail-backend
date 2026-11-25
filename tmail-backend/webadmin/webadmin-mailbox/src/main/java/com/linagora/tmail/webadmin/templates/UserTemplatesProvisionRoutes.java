@@ -66,10 +66,23 @@ public class UserTemplatesProvisionRoutes implements Routes {
         Username targetUser = TemplatesProvisionRequest.parseUsername(request.params(USERNAME_PARAM));
         assertTargetUserExists(targetUser);
         Username sourceUser = TemplatesProvisionRequest.parseSourceUser(request);
+        targetUser.getDomainPart()
+            .ifPresentOrElse(targetDomain -> TemplatesProvisionRequest.assertSourceInDomain(sourceUser, targetDomain),
+                () -> assertSameUserWithoutDomain(sourceUser));
         String folderName = TemplatesProvisionRequest.parseFolderName(request);
         ProvisionOptions options = TemplatesProvisionRequest.parseOptions(request);
         assertSourceFolderExists(new TemplatingSource(sourceUser, folderName));
         return new UserTemplatesProvisionTask(provisionService, sourceUser, targetUser, folderName, options);
+    }
+
+    private void assertSameUserWithoutDomain(Username sourceUser) {
+        if (sourceUser.hasDomainPart()) {
+            throw ErrorResponder.builder()
+                .statusCode(HttpStatus.BAD_REQUEST_400)
+                .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+                .message("'from' query parameter must be an account of the target user's domain")
+                .haltError();
+        }
     }
 
     private void assertTargetUserExists(Username targetUser) {

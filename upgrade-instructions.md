@@ -35,6 +35,54 @@ sender. No configuration change is needed.
 An invitation already held by a calendar of the user is never overwritten by an import. An invitation that does not come
 from a mail, for instance an uploaded `.ics` file, is no longer imported: answering it fails with
 `CalendarEventImportRefusedException` until the event is in the user calendar.
+### Contact autocomplete: the scheme of `address.contact.uri` alone decides TLS
+
+Concerned products: distributed deployments with contact autocomplete over RabbitMQ (`address.contact.*` in
+`rabbitmq.properties`)
+
+The contact connection used to take `ssl.enabled` from the main RabbitMQ, and an `amqps://` contact URI trusted any
+certificate. Now an `amqps://` `address.contact.uri` connects over TLS with the `ssl.*` settings of
+`rabbitmq.properties`, the certificate being verified by default, and an `amqp://` one stays in clear text, even when
+the main RabbitMQ uses TLS. A deployment relying on `ssl.enabled=true` with an `amqp://` contact URI must switch that
+URI to `amqps://` (and its TLS port), or the contact connection goes in clear text or fails.
+
+### Team mailboxes: `team-mailbox` and `team-mailbox-admin` are reserved
+
+Concerned products: deployments with team mailboxes
+
+These are the local parts of the system accounts that own and administer every team mailbox of a domain. Users, aliases,
+groups and team mailboxes can no longer be created with them. A team mailbox created with one of these names before the
+upgrade is no longer listed nor reachable: its address is the one of the system account. Before upgrading, look for such
+team mailboxes (`GET /domains/{domain}/team-mailboxes`) and move their content to a team mailbox with another name.
+
+Existing users, aliases and groups with these names are not removed, and logins through LDAP or OIDC are not refused
+for them: such an identity would be taken for the owner or the administrator of the team mailboxes of its domain.
+Before upgrading, look for such accounts (users, aliases, groups, and in your LDAP or OIDC provider) and remove or
+rename them, and prevent your identity providers from creating them.
+
+### AI features: `baseURL` is required and must be `https`
+
+Concerned products: deployments with an `ai.properties` file (AI bot, AI labelling, `AiBot/Suggest`)
+
+A blank `baseURL` in `ai.properties` used to send the mail of the AI enabled users, and the API key, over HTTP to the
+langchain4j demo server (`http://langchain4j.dev/demo/openai/v1`), despite the documentation saying it defaulted to
+OpenAI. Twake Mail now fails to start when `baseURL` is blank, and when it is an `http` URL.
+
+Set `baseURL` to the URL of your LLM API, for OpenAI `https://api.openai.com/v1`. To keep an `http` URL, for instance
+a local LLM server on a trusted network, add `baseURL.allowHttp=true` to `ai.properties`.
+
+### Team mailbox identities come after personal identities
+
+Concerned products: deployments using the `IdentityProvisionListener` with team mailboxes or Twake Spaces
+
+The identities provisioned for team mailbox (and space) members and extra senders now get a `sortOrder` of `110`, which
+places them after the personal identities of the user (`0` for the one provisioned from LDAP, `100` for the server set ones and
+the ones created without a sort order). They used to get `10` (`0` before 1.0.16.1), which made clients select the team
+mailbox identity by default for users without an LDAP provisioned identity.
+
+The personal identity is now also provisioned for users added to a team mailbox before their first login.
+
+Existing identities are not changed by the upgrade: only newly provisioned ones get the new sort order.
 
 ### SMTP authentication requires TLS by default
 

@@ -157,4 +157,31 @@ class AmqpUriTest {
 
         assertThat(rabbitMQConfiguration.getManagementUri()).isEqualTo(URI.create("http://other-management:8080"));
     }
+
+    @Test
+    void toRabbitMqConfigurationShouldUseSslForAnAmqpsUri() {
+        RabbitMQConfiguration rabbitMQConfiguration = AmqpUri.from("amqps://other:secret@other-rabbitmq:5671/vhost")
+            .toRabbitMqConfiguration(COMMON_RABBITMQ)
+            .build();
+
+        assertThat(rabbitMQConfiguration.useSsl()).isTrue();
+    }
+
+    @Test
+    void toRabbitMqConfigurationWithoutCommonConfigurationShouldUseSslForAnAmqpsUri() {
+        RabbitMQConfiguration rabbitMQConfiguration = AmqpUri.from("amqps://other:secret@other-rabbitmq:5671/vhost")
+            .toRabbitMqConfiguration()
+            .build();
+
+        assertThat(rabbitMQConfiguration.useSsl()).isTrue();
+    }
+
+    @Test
+    void toRabbitMqConfigurationWithoutCommonConfigurationShouldNotUseSslForAnAmqpUri() {
+        RabbitMQConfiguration rabbitMQConfiguration = AmqpUri.from("amqp://other:secret@other-rabbitmq:5672/vhost")
+            .toRabbitMqConfiguration()
+            .build();
+
+        assertThat(rabbitMQConfiguration.useSsl()).isFalse();
+    }
 }

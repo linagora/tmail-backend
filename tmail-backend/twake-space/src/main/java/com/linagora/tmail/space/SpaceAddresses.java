@@ -32,7 +32,10 @@ import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 import scala.jdk.javaapi.OptionConverters;
 
-/** The addresses a new space may take, from its name: see {@link SpaceNames}. */
+/**
+ * The addresses a new space may take, from its name: see {@link SpaceNames}. A reserved name is never offered: a space
+ * named {@code Admin} gets {@code admin-2}, not the {@code admin} role address of the domain.
+ */
 public class SpaceAddresses {
     @FunctionalInterface
     public interface MailingLists {
@@ -50,11 +53,17 @@ public class SpaceAddresses {
         this.mailingLists = mailingLists;
     }
 
+    /** Reserved names included: one may already be bound to the space, see {@link #isReserved(TeamMailbox)}. */
     public List<TeamMailbox> candidates(Domain domain, String spaceName) {
         return SpaceNames.candidates(SpaceNames.mailboxName(spaceName, configuration.teamMailboxPrefix()))
             .stream()
             .flatMap(name -> teamMailbox(domain, name).stream())
             .toList();
+    }
+
+    /** A free address with a reserved name is never claimed by a space. */
+    public boolean isReserved(TeamMailbox teamMailbox) {
+        return configuration.reservedNames().contains(teamMailbox.mailboxName().asString());
     }
 
     /** TMail creates a team mailbox over an LDAP mailing list's address, which then gets its mail: skip those. */

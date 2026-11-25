@@ -25,6 +25,7 @@ import java.util.Set;
 import org.apache.james.events.EventBus;
 import org.apache.james.events.EventListener;
 import org.apache.james.lifecycle.api.Startable;
+import org.apache.james.mailbox.ReadOnlyAnnotationPredicate;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
 
@@ -43,6 +44,10 @@ import com.linagora.tmail.james.jmap.label.LabelMetadataListener;
 public class MemoryTmailEventBusModule extends AbstractModule {
     @Override
     protected void configure() {
+        Multibinder.newSetBinder(binder(), ReadOnlyAnnotationPredicate.class)
+            .addBinding()
+            .toInstance(IdentityMetadataListener.READ_ONLY());
+
         Multibinder<EventListener.ReactiveGroupEventListener> tmailListenerBinder =
             Multibinder.newSetBinder(binder(), EventListener.ReactiveGroupEventListener.class, Names.named(TMAIL_EVENT_BUS_INJECT_NAME));
         tmailListenerBinder.addBinding().to(EmailAddressContactListener.class);

@@ -20,8 +20,10 @@ package com.linagora.tmail.webadmin.templates;
 
 import java.util.Optional;
 
+import org.apache.james.core.Domain;
 import org.apache.james.core.Username;
 import org.apache.james.mailbox.DefaultMailboxes;
+import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.webadmin.utils.ErrorResponder;
 import org.eclipse.jetty.http.HttpStatus;
 
@@ -74,9 +76,37 @@ public class TemplatesProvisionRequest {
     }
 
     public static String parseFolderName(Request request) {
-        return Optional.ofNullable(request.queryParams(FOLDER_NAME_PARAM))
-            .filter(folderName -> !folderName.isBlank())
+        String folderName = Optional.ofNullable(request.queryParams(FOLDER_NAME_PARAM))
+            .filter(name -> !name.isBlank())
             .orElse(DefaultMailboxes.TEMPLATES);
+        if (!isTemplatesFolder(folderName)) {
+            throw ErrorResponder.builder()
+                .statusCode(HttpStatus.BAD_REQUEST_400)
+                .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+                .message("Invalid '%s' value '%s'. Expected '%s' or one of its sub-folders.", FOLDER_NAME_PARAM, folderName, DefaultMailboxes.TEMPLATES)
+                .haltError();
+        }
+        return folderName;
+    }
+
+    // The source folder is read in full and the target folder can be pruned: never let it be another mailbox (INBOX, Sent...)
+    static boolean isTemplatesFolder(String folderName) {
+        String subFolderPrefix = DefaultMailboxes.TEMPLATES + MailboxConstants.FOLDER_DELIMITER;
+        return folderName.equals(DefaultMailboxes.TEMPLATES)
+            || (folderName.startsWith(subFolderPrefix) && folderName.length() > subFolderPrefix.length());
+    }
+
+    public static void assertSourceInDomain(Username sourceUser, Domain domain) {
+        boolean sameDomain = sourceUser.getDomainPart()
+            .map(domain::equals)
+            .orElse(false);
+        if (!sameDomain) {
+            throw ErrorResponder.builder()
+                .statusCode(HttpStatus.BAD_REQUEST_400)
+                .type(ErrorResponder.ErrorType.INVALID_ARGUMENT)
+                .message("'%s' query parameter must be an account of the domain '%s'", FROM_PARAM, domain.asString())
+                .haltError();
+        }
     }
 
     public static ProvisionOptions parseOptions(Request request) {

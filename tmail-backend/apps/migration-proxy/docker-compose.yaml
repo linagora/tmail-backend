@@ -6,6 +6,12 @@
 # The proxy is a mailbox-less MTA: SMTP routes mail per recipient (migrated -> new, other managed
 # domain -> old, else external) while IMAP byte-proxies each authenticated connection to old/new.
 #
+# The IMAP proxy only accepts LOGIN / AUTHENTICATE PLAIN over TLS (sample-configuration/imapserver.xml),
+# and its STARTTLS needs a keystore. Generate one before building the image, which bakes
+# sample-configuration into /root/conf:
+#   keytool -genkeypair -alias migrationproxy -keyalg RSA -dname CN=localhost -validity 365 \
+#     -storepass migrationproxy -keystore tmail-backend/apps/migration-proxy/sample-configuration/keystore
+#
 # Build the proxy image first (jib produces a tar):
 #   mvn -pl tmail-backend/apps/migration-proxy package -DskipTests
 #   docker load < tmail-backend/apps/migration-proxy/target/jib-image.tar

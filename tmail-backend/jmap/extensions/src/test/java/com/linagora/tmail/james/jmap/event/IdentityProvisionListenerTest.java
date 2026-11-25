@@ -155,6 +155,52 @@ public class IdentityProvisionListenerTest {
     }
 
     @Test
+    void shouldProvisionDefaultIdentityWhenTeamMailboxIdentityProvisionedBeforeInboxCreation() throws AddressException {
+        TeamMailbox teamMailbox = TeamMailbox.asTeamMailbox(new MailAddress("marketing@james.org")).get();
+        Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox)).block();
+        Mono.from(teamMailboxRepository.addMember(teamMailbox, TeamMailboxMember.asMember(USER1)))
+            .subscribeOn(Schedulers.boundedElastic())
+            .block();
+
+        Mono.from(mailboxManager.createMailboxReactive(MailboxPath.inbox(USER1), mailboxManager.createSystemSession(USER1)))
+            .subscribeOn(Schedulers.boundedElastic())
+            .block();
+
+        MailAddress user1Address = USER1.asMailAddress();
+        List<Identity> defaultIdentities = Flux.from(identityRepository.list(USER1))
+            .filter(Identity::mayDelete)
+            .filter(identity -> identity.email().equals(user1Address))
+            .collectList()
+            .block();
+
+        SoftAssertions.assertSoftly(softly -> {
+            softly.assertThat(defaultIdentities).hasSize(1);
+            softly.assertThat(defaultIdentities.getFirst().name()).isEqualTo("firstname1 surname1");
+            softly.assertThat(defaultIdentities.getFirst().sortOrder()).isEqualTo(0);
+        });
+    }
+
+    @Test
+    void teamMailboxIdentityShouldComeAfterServerSetIdentity() throws AddressException {
+        TeamMailbox teamMailbox = TeamMailbox.asTeamMailbox(new MailAddress("marketing@james.org")).get();
+        Mono.from(teamMailboxRepository.createTeamMailbox(teamMailbox)).block();
+        Mono.from(teamMailboxRepository.addMember(teamMailbox, TeamMailboxMember.asMember(USER1)))
+            .subscribeOn(Schedulers.boundedElastic())
+            .block();
+
+        MailAddress user1Address = USER1.asMailAddress();
+        Identity serverSetIdentity = Flux.from(identityRepository.list(USER1))
+            .filter(identity -> !identity.mayDelete())
+            .filter(identity -> identity.email().equals(user1Address))
+            .blockFirst();
+        Identity teamMailboxIdentity = Flux.from(identityRepository.list(USER1))
+            .filter(identity -> identity.email().equals(teamMailbox.asMailAddress()))
+            .blockFirst();
+
+        assertThat(teamMailboxIdentity.sortOrder()).isGreaterThan(serverSetIdentity.sortOrder());
+    }
+
+    @Test
     void shouldNotProvisionDefaultIdentityWhenOtherMailboxThanInboxCreated() {
         Mono.from(mailboxManager.createMailboxReactive(MailboxPath.forUser(USER1, "Trash"), mailboxManager.createSystemSession(USER1)))
             .subscribeOn(Schedulers.boundedElastic())
@@ -328,7 +374,7 @@ public class IdentityProvisionListenerTest {
             softly.assertThat(identities).hasSize(1);
             softly.assertThat(identities.getFirst().name()).isEqualTo("marketing");
             softly.assertThat(identities.getFirst().email()).isEqualTo(teamMailbox.asMailAddress());
-            softly.assertThat(identities.getFirst().sortOrder()).isEqualTo(10);
+            softly.assertThat(identities.getFirst().sortOrder()).isEqualTo(110);
             softly.assertThat(identities.getFirst().mayDelete()).isEqualTo(true);
         });
     }
@@ -354,7 +400,7 @@ public class IdentityProvisionListenerTest {
             softly.assertThat(identities).hasSize(1);
             softly.assertThat(identities.getFirst().name()).isEqualTo("marketing");
             softly.assertThat(identities.getFirst().email()).isEqualTo(teamMailbox.asMailAddress());
-            softly.assertThat(identities.getFirst().sortOrder()).isEqualTo(10);
+            softly.assertThat(identities.getFirst().sortOrder()).isEqualTo(110);
             softly.assertThat(identities.getFirst().mayDelete()).isEqualTo(true);
         });
     }

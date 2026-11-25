@@ -25,7 +25,7 @@ Specified to TMail backend, we can configure the following configurations in the
 | Name of the alias to use for user contact writes. It will be created if missing. Optional. Defaults to `domain_contact_write_alias`.
 
 | opensearch.index.contact.min.ngram
-| Supported minimum length of input characters to auto complete. Optional. Defaults to `2`.
+| Supported minimum length of input characters to auto complete. Optional. Defaults to `2`. It is fixed in the contact indices when they are created: changing it requires rebuilding them, otherwise deleting a contact can leave its address book copies behind.
 
 | opensearch.index.contact.max.ngram.diff
 | The maximum allowed difference between min_gram and max_gram for NGramTokenizer and NGramTokenFilter. Optional. Defaults to `27`.

@@ -26,11 +26,13 @@ import static com.linagora.tmail.james.jmap.ContactMappingFactory.EMAIL;
 import static com.linagora.tmail.james.jmap.ContactMappingFactory.FIRSTNAME;
 import static com.linagora.tmail.james.jmap.ContactMappingFactory.SURNAME;
 
-import java.time.Duration;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 import java.util.UUID;
+import java.util.stream.IntStream;
 
 import jakarta.inject.Inject;
 import jakarta.mail.internet.AddressException;
@@ -56,16 +58,18 @@ import org.opensearch.client.opensearch.core.GetRequest;
 import org.opensearch.client.opensearch.core.GetResponse;
 import org.opensearch.client.opensearch.core.SearchRequest;
 import org.opensearch.client.opensearch.core.search.Hit;
-import org.opensearch.client.transport.httpclient5.ResponseException;
 import org.reactivestreams.Publisher;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.datatype.guava.GuavaModule;
 import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
 import com.github.fge.lambdas.Throwing;
+import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Preconditions;
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableSet;
 import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.contact.ContactNotFoundException;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContact;
@@ -74,15 +78,10 @@ import com.linagora.tmail.james.jmap.dto.DomainContactDocument;
 import com.linagora.tmail.james.jmap.dto.UserContactDocument;
 
 import reactor.core.publisher.Mono;
-import reactor.util.retry.Retry;
 
 public class OSEmailAddressContactSearchEngine implements EmailAddressContactSearchEngine {
     private static final String DELIMITER = ":";
     private static final Time TIMEOUT = new Time.Builder().time("1m").build();
-    private static final int HTTP_CONFLICT = 409;
-    private static final int DELETE_BY_QUERY_MAX_RETRIES = 3;
-    // Fixed delay (no jitter) above the default 1s refresh interval so each retry searches a refreshed view of the index
-    private static final Duration DELETE_BY_QUERY_RETRY_DELAY = Duration.ofMillis(1500);
 
     private static final List<String> ALL_SEARCH_FIELDS = List.of(EMAIL, FIRSTNAME, SURNAME);
     private final OpenSearchIndexer userContactIndexer;
@@ -162,29 +161,71 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
         return index(domain, updatedFields);
     }
 
+    /**
+     * `email` is an n-gram analysed field with no keyword sub-field: a term query on the whole address only matches
+     * an address of at most `maxGram` lowercase characters. The candidates are therefore searched on the account and
+     * on the n-grams of the address, compared with the stored address in the code, then deleted by id.
+     *
+     * The n-grams searched are all the `minGram` long ones of the address, all required: the analyzer of the index
+     * emits them whatever `maxGram` it was created with, even when `max.ngram.diff` changed since, and together they
+     * select few candidates. This requires `min.ngram` to be the one the index was created with: once changed, raised
+     * or lowered, the index must be rebuilt, else the document without address book is still deleted by its id but
+     * the address book copies are not found.
+     */
     @Override
     public Publisher<Void> delete(AccountId accountId, MailAddress address) {
-        Query combinedQuery = BoolQuery.of(b -> b
-            .must(TermQuery.of(t -> t
-                .field(EMAIL)
-                .value(new FieldValue.Builder().stringValue(address.asString()).build())).toQuery())
-            .must(TermQuery.of(t -> t
-                .field(ACCOUNT_ID)
-                .value(new FieldValue.Builder().stringValue(accountId.getIdentifier()).build())).toQuery())).toQuery();
+        String lowerCaseAddress = address.asString().toLowerCase(Locale.US);
 
-        // defer: the underlying request is sent eagerly, each retry must issue a fresh one
-        return Mono.defer(() -> userContactIndexer.deleteAllMatchingQuery(combinedQuery,
-                RoutingKey.fromString(address.asString())))
-            .retryWhen(Retry.fixedDelay(DELETE_BY_QUERY_MAX_RETRIES, DELETE_BY_QUERY_RETRY_DELAY)
-                .filter(OSEmailAddressContactSearchEngine::isVersionConflict))
+        Query candidatesQuery = BoolQuery.of(b -> {
+            addressGrams(lowerCaseAddress, configuration.getMinNgram())
+                .forEach(gram -> b.filter(TermQuery.of(t -> t
+                    .field(EMAIL)
+                    .value(new FieldValue.Builder().stringValue(gram).build())).toQuery()));
+            return b.filter(TermQuery.of(t -> t
+                .field(ACCOUNT_ID)
+                .value(new FieldValue.Builder().stringValue(accountId.getIdentifier()).build())).toQuery());
+        }).toQuery();
+
+        SearchRequest request = new SearchRequest.Builder()
+            .index(configuration.getUserContactReadAliasName().getValue())
+            .scroll(TIMEOUT)
+            .query(candidatesQuery)
+            .build();
+
+        // The document without address book is always deleted by its id: it may not be searchable yet
+        Mono<Map.Entry<String, DocumentId>> documentWithoutAddressBook = Mono.just(
+            Map.entry(address.asString(), computeUserContactDocumentId(accountId, address)));
+
+        return new ScrolledSearch(client, request)
+            .searchHits()
+            .filter(hit -> storedAddress(hit).filter(lowerCaseAddress::equalsIgnoreCase).isPresent())
+            .map(hit -> Map.entry(Optional.ofNullable(hit.routing()).orElseGet(() -> storedAddress(hit).orElseThrow()),
+                DocumentId.fromString(hit.id())))
+            .concatWith(documentWithoutAddressBook)
+            .collectMultimap(Map.Entry::getKey, Map.Entry::getValue)
+            .flatMapIterable(Map::entrySet)
+            .concatMap(idsByRouting -> userContactIndexer.delete(
+                idsByRouting.getValue().stream().distinct().collect(ImmutableList.toImmutableList()),
+                RoutingKey.fromString(idsByRouting.getKey())))
             .then();
     }
 
-    // A concurrent delete removed documents between the delete-by-query search and delete phases:
-    // replaying the query then sees a refreshed snapshot and completes.
-    private static boolean isVersionConflict(Throwable throwable) {
-        return throwable instanceof ResponseException responseException
-            && responseException.status() == HTTP_CONFLICT;
+    // The distinct n-grams of `gramLength` characters of the address; an address shorter than that is one gram on its own
+    @VisibleForTesting
+    static Set<String> addressGrams(String address, int gramLength) {
+        if (address.length() <= gramLength) {
+            return ImmutableSet.of(address);
+        }
+        return IntStream.rangeClosed(0, address.length() - gramLength)
+            .mapToObj(start -> address.substring(start, start + gramLength))
+            .collect(ImmutableSet.toImmutableSet());
+    }
+
+    private static Optional<String> storedAddress(Hit<ObjectNode> hit) {
+        return Optional.ofNullable(hit.source())
+            .map(source -> source.get(EMAIL))
+            .filter(email -> !email.isNull())
+            .map(JsonNode::asText);
     }
 
     @Override

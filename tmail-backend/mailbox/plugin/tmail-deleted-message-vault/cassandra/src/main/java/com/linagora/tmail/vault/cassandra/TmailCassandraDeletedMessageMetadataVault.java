@@ -57,8 +57,9 @@ public class TmailCassandraDeletedMessageMetadataVault implements TmailDeletedMe
         BucketName bucketName = deletedMessage.getStorageInformation().getBucketName();
         Username owner = deletedMessage.getDeletedMessage().getOwner();
         MessageId messageId = deletedMessage.getDeletedMessage().getMessageId();
-        return storageInformationDAO.referenceStorageInformation(owner, messageId, deletedMessage.getStorageInformation())
-            .then(userPerBucketDAO.addUser(bucketName, owner))
+        // The owner first: the expiry walks the owners of the bucket, an entry whose owner is not listed would never expire
+        return userPerBucketDAO.addUser(bucketName, owner)
+            .then(storageInformationDAO.referenceStorageInformation(owner, messageId, deletedMessage.getStorageInformation()))
             .then(metadataDAO.store(deletedMessage));
     }
 

@@ -34,10 +34,12 @@ import org.apache.james.utils.InitilizationOperationBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import com.google.common.annotations.VisibleForTesting;
 import com.google.inject.AbstractModule;
 import com.google.inject.Provides;
 import com.google.inject.Singleton;
 import com.google.inject.multibindings.ProvidesIntoSet;
+import com.linagora.tmail.AmqpUri;
 import com.linagora.tmail.james.jmap.EmailAddressContactInjectKeys;
 import com.linagora.tmail.james.jmap.RabbitMQEmailAddressContactConfiguration;
 import com.linagora.tmail.james.jmap.RabbitMQEmailAddressContactSubscriber;
@@ -59,12 +61,34 @@ public class RabbitMQEmailAddressContactModule extends AbstractModule {
     @Named(EmailAddressContactInjectKeys.AUTOCOMPLETE)
     @Provides
     @Singleton
-    public RabbitMQConfiguration getMailQueueConfiguration(RabbitMQEmailAddressContactConfiguration rabbitMQEmailAddressContactConfiguration) {
-        return RabbitMQConfiguration.builder()
-            .amqpUri(rabbitMQEmailAddressContactConfiguration.amqpUri())
-            .managementUri(rabbitMQEmailAddressContactConfiguration.amqpUri())
-            .managementCredentials(rabbitMQEmailAddressContactConfiguration.managementCredentials())
-            .vhost(rabbitMQEmailAddressContactConfiguration.vhost())
+    public RabbitMQConfiguration getMailQueueConfiguration(RabbitMQEmailAddressContactConfiguration rabbitMQEmailAddressContactConfiguration,
+                                                           RabbitMQConfiguration commonRabbitMQConfiguration) {
+        return contactConfiguration(rabbitMQEmailAddressContactConfiguration, commonRabbitMQConfiguration);
+    }
+
+    /**
+     * The contact broker is a separate one: its URI scheme alone decides TLS. An `amqps://` URI goes through the
+     * verifying SSLContext of James, with the `ssl.*` settings of `rabbitmq.properties`: left to the RabbitMQ client,
+     * it would trust any certificate. An `amqp://` URI stays plain, whatever the main broker uses.
+     */
+    @VisibleForTesting
+    static RabbitMQConfiguration contactConfiguration(RabbitMQEmailAddressContactConfiguration contactConfiguration,
+                                                      RabbitMQConfiguration commonRabbitMQConfiguration) {
+        RabbitMQConfiguration.Builder builder = RabbitMQConfiguration.builder()
+            .amqpUri(contactConfiguration.amqpUri())
+            .managementUri(contactConfiguration.amqpUri())
+            .managementCredentials(contactConfiguration.managementCredentials())
+            .vhost(contactConfiguration.vhost());
+        if (AmqpUri.isAmqps(contactConfiguration.amqpUri())) {
+            return builder
+                .useSsl(true)
+                .useSslManagement(true)
+                .sslConfiguration(commonRabbitMQConfiguration.getSslConfiguration())
+                .build();
+        }
+        return builder
+            .useSsl(false)
+            .useSslManagement(false)
             .build();
     }
 

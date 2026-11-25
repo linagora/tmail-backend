@@ -809,6 +809,65 @@ trait TeamMailboxRepositoryContract {
     assertThat(SFlux.fromPublisher(testee.listMembers(TEAM_MAILBOX_MARKETING)).collectSeq().block().asJava)
       .doesNotContain(TeamMailboxMember.asMember(BOB))
   }
+
+  private def shareMarketingInboxWithSalesAddress(): MailboxACL = {
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_SALES)).block()
+    val ownerSession = mailboxManager.createSystemSession(TEAM_MAILBOX_MARKETING.owner)
+    mailboxManager.applyRightsCommand(TEAM_MAILBOX_MARKETING.inboxPath, MailboxACL.command
+      .key(EntryKey.createUserEntryKey(TEAM_MAILBOX_SALES.self))
+      .rights(MailboxACL.Right.Lookup, MailboxACL.Right.Read)
+      .asAddition(),
+      ownerSession)
+    mailboxManager.listRights(TEAM_MAILBOX_MARKETING.inboxPath, ownerSession)
+  }
+
+  private def marketingInboxAcl(): MailboxACL =
+    mailboxManager.listRights(TEAM_MAILBOX_MARKETING.inboxPath, mailboxManager.createSystemSession(TEAM_MAILBOX_MARKETING.owner))
+
+  @Test
+  def deleteTeamMailboxShouldNotDeleteAFolderOfAnotherTeamSharedWithItsAddress(): Unit = {
+    shareMarketingInboxWithSalesAddress()
+
+    SMono.fromPublisher(testee.deleteTeamMailbox(TEAM_MAILBOX_SALES)).block()
+
+    assertThat(SMono.fromPublisher(mailboxManager.mailboxExists(TEAM_MAILBOX_MARKETING.inboxPath,
+      mailboxManager.createSystemSession(TEAM_MAILBOX_MARKETING.owner))).block())
+      .isTrue
+  }
+
+  @Test
+  def addMemberShouldNotChangeTheRightsOnAFolderOfAnotherTeamSharedWithItsAddress(): Unit = {
+    val aclBefore = shareMarketingInboxWithSalesAddress()
+
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_SALES, TeamMailboxMember.asManager(BOB))).block()
+
+    assertThat(marketingInboxAcl()).isEqualTo(aclBefore)
+  }
+
+  @Test
+  def removeMemberShouldNotChangeTheRightsOnAFolderOfAnotherTeamSharedWithItsAddress(): Unit = {
+    shareMarketingInboxWithSalesAddress()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_SALES, TeamMailboxMember.asMember(BOB))).block()
+    val aclBefore = marketingInboxAcl()
+
+    SMono.fromPublisher(testee.removeMember(TEAM_MAILBOX_SALES, BOB)).block()
+
+    assertThat(marketingInboxAcl()).isEqualTo(aclBefore)
+  }
+
+  @Test
+  def addMemberShouldNotGrantRightsOnTheFoldersOfATeamWhoseNameHasItAsPrefix(): Unit = {
+    SMono.fromPublisher(testee.createTeamMailbox(TEAM_MAILBOX_MARKETING)).block()
+    val marketing2 = TeamMailbox(DOMAIN_1, TeamMailboxName("marketing2"))
+    SMono.fromPublisher(testee.createTeamMailbox(marketing2)).block()
+
+    SMono.fromPublisher(testee.addMember(TEAM_MAILBOX_MARKETING, TeamMailboxMember.asMember(BOB))).block()
+
+    assertThat(SFlux.fromPublisher(testee.listMembers(marketing2)).collectSeq().block().asJava)
+      .isEmpty()
+  }
 }
 
 object TeamMailboxCallbackNoop {

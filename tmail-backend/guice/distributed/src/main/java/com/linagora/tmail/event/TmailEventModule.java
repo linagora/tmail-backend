@@ -35,6 +35,7 @@ import org.apache.james.events.RabbitMQEventBus;
 import org.apache.james.events.RetryBackoffConfiguration;
 import org.apache.james.events.RoutingKeyConverter;
 import org.apache.james.jmap.change.Factory;
+import org.apache.james.mailbox.ReadOnlyAnnotationPredicate;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
 
@@ -59,6 +60,10 @@ public class TmailEventModule extends AbstractModule {
 
     @Override
     protected void configure() {
+        Multibinder.newSetBinder(binder(), ReadOnlyAnnotationPredicate.class)
+            .addBinding()
+            .toInstance(IdentityMetadataListener.READ_ONLY());
+
         bind(TmailEventSerializer.class).in(Scopes.SINGLETON);
         bind(EventBusId.class).annotatedWith(Names.named(TMAIL_EVENT_BUS_INJECT_NAME)).toInstance(EventBusId.random());
 

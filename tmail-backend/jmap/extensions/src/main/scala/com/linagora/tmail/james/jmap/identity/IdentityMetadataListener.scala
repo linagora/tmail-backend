@@ -32,7 +32,7 @@ import org.apache.james.mailbox.MailboxManager.CreateOption
 import org.apache.james.mailbox.exception.{MailboxExistsException, MailboxNotFoundException}
 import org.apache.james.mailbox.model.{MailboxAnnotation, MailboxAnnotationKey, MailboxId, MailboxPath}
 import org.apache.james.mailbox.store.MailboxSessionMapperFactory
-import org.apache.james.mailbox.{DefaultMailboxes, MailboxManager, MailboxSession}
+import org.apache.james.mailbox.{DefaultMailboxes, MailboxManager, MailboxSession, ReadOnlyAnnotationPredicate}
 import org.reactivestreams.Publisher
 import reactor.core.scala.publisher.{SFlux, SMono}
 
@@ -42,6 +42,10 @@ class IdentityMetadataListenerGroup extends Group {}
 
 object IdentityMetadataListener {
   val IDENTITIES_ANNOTATION_PREFIX: String = "/private/vendor/tmail/identities"
+
+  // Clients apply these annotations as the account's identities (signature, Reply-To, Bcc): only this listener writes them,
+  // never a user holding write rights on the INBOX
+  val READ_ONLY: ReadOnlyAnnotationPredicate = key => key.asString().startsWith(IDENTITIES_ANNOTATION_PREFIX)
 }
 
 class IdentityMetadataListener @Inject()(mailboxManager: MailboxManager,

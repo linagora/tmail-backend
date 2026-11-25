@@ -20,9 +20,14 @@ package com.linagora.tmail.migration.modules;
 
 import java.util.Optional;
 
+import org.apache.commons.configuration2.HierarchicalConfiguration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
+import org.apache.commons.configuration2.tree.ImmutableNode;
 import org.apache.james.filesystem.api.FileSystem;
+import org.apache.james.imap.ImapSuite;
 import org.apache.james.imap.api.ConnectionCheckFactory;
+import org.apache.james.imap.decode.ImapDecoder;
+import org.apache.james.imap.encode.ImapEncoder;
 import org.apache.james.imap.encode.main.DefaultImapEncoderFactory;
 import org.apache.james.imap.main.DefaultImapDecoderFactory;
 import org.apache.james.imapserver.netty.IMAPServerFactory;
@@ -30,6 +35,7 @@ import org.apache.james.metrics.api.GaugeRegistry;
 import org.apache.james.metrics.api.MetricFactory;
 import org.apache.james.protocols.api.sasl.SaslMechanism;
 import org.apache.james.protocols.netty.Encryption;
+import org.apache.james.protocols.sasl.PlainSaslMechanismFactory;
 import org.apache.james.server.core.configuration.ConfigurationProvider;
 import org.apache.james.utils.InitializationOperation;
 import org.apache.james.utils.InitilizationOperationBuilder;
@@ -61,14 +67,25 @@ public class MigrationProxyImapModule extends AbstractModule {
         return MigrationProxyConfiguration.from(propertiesProvider.getConfiguration("migrationproxy"));
     }
 
+    /**
+     * Builds the processor of one {@code imapserver.xml} listener. Each listener gets its own, as its
+     * {@code PLAIN} transport policy is its own: {@code auth.requireSSL}, else {@code plainAuthDisallowed},
+     * defaulting to requiring an encrypted connection, as James does.
+     */
+    public interface ProxyImapProcessorFactory {
+        ProxyImapProcessor forListener(HierarchicalConfiguration<ImmutableNode> listenerConfiguration);
+    }
+
     @Provides
     @Singleton
-    ProxyImapProcessor provideProxyImapProcessor(BackendResolver backendResolver, BackendRelay backendRelay,
-                                                 BackendSslContextFactory sslContextFactory,
-                                                 ProxyConnectionRegistry connectionRegistry,
-                                                 MigrationProxyConfiguration configuration) throws ConfigurationException {
-        return new ProxyImapProcessor(backendResolver, backendRelay, sslContextFactory,
-            connectionRegistry, configuration.handshakeTimeout(), gssapiMechanism(configuration));
+    ProxyImapProcessorFactory provideProxyImapProcessorFactory(BackendResolver backendResolver, BackendRelay backendRelay,
+                                                               BackendSslContextFactory sslContextFactory,
+                                                               ProxyConnectionRegistry connectionRegistry,
+                                                               MigrationProxyConfiguration configuration) throws ConfigurationException {
+        Optional<SaslMechanism> gssapi = gssapiMechanism(configuration);
+        PlainSaslMechanismFactory plainFactory = new PlainSaslMechanismFactory();
+        return listenerConfiguration -> new ProxyImapProcessor(backendResolver, backendRelay, sslContextFactory,
+            connectionRegistry, configuration.handshakeTimeout(), gssapi, plainFactory.create(listenerConfiguration));
     }
 
     /**
@@ -85,12 +102,13 @@ public class MigrationProxyImapModule extends AbstractModule {
     @Provides
     @Singleton
     IMAPServerFactory provideImapServerFactory(FileSystem fileSystem, MetricFactory metricFactory,
-                                               GaugeRegistry gaugeRegistry, ProxyImapProcessor processor) {
+                                               GaugeRegistry gaugeRegistry, ProxyImapProcessorFactory processorFactory) {
         ConnectionCheckFactory connectionCheckFactory = config -> ImmutableSet.of();
+        ImapDecoder decoder = new DefaultImapDecoderFactory().buildImapDecoder();
+        ImapEncoder encoder = new DefaultImapEncoderFactory().buildImapEncoder();
         return new IMAPServerFactory(fileSystem,
-            new DefaultImapDecoderFactory().buildImapDecoder(),
-            new DefaultImapEncoderFactory().buildImapEncoder(),
-            processor, metricFactory, gaugeRegistry, connectionCheckFactory);
+            listenerConfiguration -> new ImapSuite(decoder, encoder, processorFactory.forListener(listenerConfiguration)),
+            metricFactory, gaugeRegistry, connectionCheckFactory);
     }
 
     @ProvidesIntoSet
