@@ -118,11 +118,9 @@ public class OpenPaasModule extends AbstractModule {
                                                                     CalendarResolver calendarResolver,
                                                                     MessageIdManager messageIdManager,
                                                                     MessageId.Factory messageIdFactory,
-                                                                    AliasReverseResolver aliasReverseResolver,
-                                                                    @Named(OPENPAAS_CONFIGURATION_NAME) Configuration configuration) {
+                                                                    AliasReverseResolver aliasReverseResolver) {
             return new CalDavEventRepository(davClient, sessionProvider, davUserProvider, calendarResolver,
-                messageIdManager, messageIdFactory, aliasReverseResolver,
-                CalDavEventRepository.importAlignmentMode(configuration));
+                messageIdManager, messageIdFactory, aliasReverseResolver);
         }
 
         @Provides

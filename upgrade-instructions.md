@@ -16,25 +16,20 @@ You can also find more detailed instructions for releases under the respective s
 
 Note: this section is in progress. It will be updated during all the development process until the release.
 
-### Calendar: answering an invitation missing from the calendar checks the sender of its mail
+### Calendar: invitations not sent by their organizer
 
 Concerned products: deployments with the OpenPaaS / esn-sabre calendar integration (`openpaas.properties` with `dav.*`)
 
+The `CalDavCollect` mailets now add an `X-TWP-Message` warning (code `calendar-sender-mismatch`) to the mails carrying
+an invitation whose remote sender is not its ORGANIZER, displayed as a banner by the clients. No configuration change
+is needed.
+
 When a user answers (`CalendarEvent/accept`, `maybe`, `reject`) an invitation that is not yet in their calendar, Twake
-Mail first imports it into esn-sabre. The import used to name the ORGANIZER of the invitation, chosen by whoever wrote it,
-as the trusted sender. It now uses the `From` of the mail carrying the invitation and checks it against the ORGANIZER,
-as the `CalDavCollect` mailets do. The check is set by the new `dav.itip.import.alignmentMode` property of
-`openpaas.properties` (`strict`, `sameDomain` or `none`, default `strict`): set it to the `alignmentMode` of your
-`CalDavCollect` mailets if they do not use `strict`.
+Mail imports it into esn-sabre. When the `From` of its mail is not its ORGANIZER, that `From` is now recorded as the
+`SENT-BY` of the ORGANIZER. An invitation already held by a calendar of the user is never overwritten by an import. An
+invitation that does not come from a mail, for instance an uploaded `.ics` file, is no longer imported: answering it
+fails with `CalendarEventImportRefusedException` until the event is in the user calendar.
 
-An invitation whose `From` is not aligned with its ORGANIZER is still imported when the user answers it, the `From`
-being recorded as the `SENT-BY` of the ORGANIZER. The users are warned beforehand: the `CalDavCollect` mailets now add
-an `X-TWP-Message` warning (code `calendar-sender-mismatch`) to the mails carrying such an invitation from a remote
-sender. No configuration change is needed.
-
-An invitation already held by a calendar of the user is never overwritten by an import. An invitation that does not come
-from a mail, for instance an uploaded `.ics` file, is no longer imported: answering it fails with
-`CalendarEventImportRefusedException` until the event is in the user calendar.
 ### Contact autocomplete: the scheme of `address.contact.uri` alone decides TLS
 
 Concerned products: distributed deployments with contact autocomplete over RabbitMQ (`address.contact.*` in

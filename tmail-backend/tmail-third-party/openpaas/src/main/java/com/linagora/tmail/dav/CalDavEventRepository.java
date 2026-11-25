@@ -35,7 +35,6 @@ import jakarta.mail.internet.AddressException;
 import jakarta.mail.internet.InternetAddress;
 import jakarta.mail.internet.MimeUtility;
 
-import org.apache.commons.configuration2.Configuration;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.MaybeSender;
 import org.apache.james.core.Username;
@@ -86,7 +85,6 @@ import scala.jdk.javaapi.OptionConverters;
 public class CalDavEventRepository implements CalendarEventRepository {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(CalDavEventRepository.class);
-    public static final String ITIP_IMPORT_ALIGNMENT_MODE_PROPERTY = "dav.itip.import.alignmentMode";
 
     public enum FreeBusyStatus {
         BUSY,
@@ -132,15 +130,6 @@ public class CalDavEventRepository implements CalendarEventRepository {
     private final MessageIdManager messageIdManager;
     private final MessageId.Factory messageIdFactory;
     private final AliasReverseResolver aliasReverseResolver;
-    private final AlignmentMode importAlignmentMode;
-
-    public static AlignmentMode importAlignmentMode(Configuration configuration) {
-        return Optional.ofNullable(configuration.getString(ITIP_IMPORT_ALIGNMENT_MODE_PROPERTY, null))
-            .filter(value -> !value.isBlank())
-            .map(String::trim)
-            .map(AlignmentMode::fromString)
-            .orElse(AlignmentMode.STRICT);
-    }
 
     public CalDavEventRepository(DavClient davClient,
                                  SessionProvider sessionProvider,
@@ -149,19 +138,6 @@ public class CalDavEventRepository implements CalendarEventRepository {
                                  MessageIdManager messageIdManager,
                                  MessageId.Factory messageIdFactory,
                                  AliasReverseResolver aliasReverseResolver) {
-        this(davClient, sessionProvider, davUserProvider, calendarResolver, messageIdManager, messageIdFactory,
-            aliasReverseResolver, AlignmentMode.STRICT);
-    }
-
-    public CalDavEventRepository(DavClient davClient,
-                                 SessionProvider sessionProvider,
-                                 DavUserProvider davUserProvider,
-                                 CalendarResolver calendarResolver,
-                                 MessageIdManager messageIdManager,
-                                 MessageId.Factory messageIdFactory,
-                                 AliasReverseResolver aliasReverseResolver,
-                                 AlignmentMode importAlignmentMode) {
-        this.importAlignmentMode = importAlignmentMode;
         this.davClient = davClient;
         this.sessionProvider = sessionProvider;
         this.davUserProvider = davUserProvider;
@@ -282,31 +258,32 @@ public class CalDavEventRepository implements CalendarEventRepository {
             .switchIfEmpty(Mono.error(() -> new CalendarEventImportRefusedException("Can not import the event of blob '%s': it is not part of a mail with a known sender"
                 .formatted(blobId.value()))))
             .flatMap(sender -> davUserProvider.provide(username)
-                .flatMap(davUser -> {
-                    if (ITIPSenderAlignment.isSatisfied(importAlignmentMode, sender, calendar)) {
-                        return sendITIPRequest(username, davUser, calendar, sender);
-                    }
-                    return importUnalignedEvent(username, davUser, blobId, calendar, sender);
-                }));
+                .flatMap(davUser -> importEvent(username, davUser, blobId, calendar, sender)));
     }
 
     /**
-     * The user asked for an event whose mail does not come from its organizer, after being warned by the
-     * X-TWP-Message the CalDavCollect mailets added (see ITIPSenderMismatchWarning): it is imported, the sender of the mail being recorded
-     * as the SENT-BY of its organizer so that the calendar does not present it as coming from the organizer alone.
+     * The event is handed to esn-sabre as sent by its organizer, as only then it creates it. This can not overwrite a copy of
+     * the user: the import only happens once no calendar the user owns holds the event, see {@link #mayImport}.
      *
-     * esn-sabre only creates the event from a payload sent by its organizer. It can not overwrite a copy of the user:
-     * the import only happens once no calendar the user owns holds the event, see {@link #mayImport}.
+     * When the mail does not come from the organizer, nor from the delegate its SENT-BY names, the user was warned by the
+     * X-TWP-Message the CalDavCollect mailets added (see ITIPSenderMismatchWarning) and still asked for the event: the
+     * sender of the mail is recorded as the SENT-BY of the organizer, so that the calendar does not present the event as
+     * coming from the organizer alone.
      */
-    private Mono<Void> importUnalignedEvent(Username username, DavUser davUser, BlobId blobId, Calendar calendar, MailAddress sender) {
+    private Mono<Void> importEvent(Username username, DavUser davUser, BlobId blobId, Calendar calendar, MailAddress sender) {
         return ITIPSenderAlignment.singleOrganizer(calendar)
-            .map(organizer -> {
-                LOGGER.info("Importing the event of blob '{}' for {}: its mail comes from {}, not from its organizer {}",
-                    blobId.value(), username.asString(), sender.asString(), organizer.asString());
-                return sendITIPRequest(username, davUser, ITIPSenderAlignment.withOrganizerSentBy(copyOf(calendar), sender), organizer);
-            })
+            .map(organizer -> sendITIPRequest(username, davUser, recordingTheSender(username, blobId, calendar, sender, organizer), organizer))
             .orElseGet(() -> Mono.error(new CalendarEventImportRefusedException("Can not import the event of blob '%s': it does not name a single organizer"
                 .formatted(blobId.value()))));
+    }
+
+    private static Calendar recordingTheSender(Username username, BlobId blobId, Calendar calendar, MailAddress sender, MailAddress organizer) {
+        if (ITIPSenderAlignment.isSatisfied(AlignmentMode.STRICT, sender, calendar)) {
+            return calendar;
+        }
+        LOGGER.info("Importing the event of blob '{}' for {}: its mail comes from {}, not from its organizer {}",
+            blobId.value(), username.asString(), sender.asString(), organizer.asString());
+        return ITIPSenderAlignment.withOrganizerSentBy(copyOf(calendar), sender);
     }
 
     private static Calendar copyOf(Calendar calendar) {

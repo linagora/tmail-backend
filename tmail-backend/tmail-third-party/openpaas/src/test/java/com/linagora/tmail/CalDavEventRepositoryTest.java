@@ -45,7 +45,6 @@ import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Stream;
 
-import org.apache.commons.configuration2.PropertiesConfiguration;
 import org.apache.james.core.MailAddress;
 import org.apache.james.core.Username;
 import org.apache.james.jmap.mail.BlobId;
@@ -92,7 +91,6 @@ import com.linagora.tmail.james.jmap.model.CalendarEventAttendanceResults;
 import com.linagora.tmail.james.jmap.model.CalendarEventParsed;
 import com.linagora.tmail.james.jmap.model.CalendarUidField;
 import com.linagora.tmail.james.jmap.model.EventAttendanceStatusEntry;
-import com.linagora.tmail.mailet.AlignmentMode;
 import com.rabbitmq.client.BuiltinExchangeType;
 import com.rabbitmq.client.Channel;
 import com.rabbitmq.client.Connection;
@@ -994,7 +992,10 @@ class CalDavEventRepositoryTest {
             .getCalendarObject(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(eventUid)).block();
 
         assertThat(davCalendarObject).isNotNull();
-        assertThat(davCalendarObject.calendarData().toString()).contains("PARTSTAT=ACCEPTED");
+        assertThat(davCalendarObject.calendarData().toString())
+            .contains("PARTSTAT=ACCEPTED")
+            .as("the mail comes from the organizer")
+            .doesNotContain("SENT-BY");
     }
 
     @Test
@@ -1110,29 +1111,7 @@ class CalDavEventRepositoryTest {
     }
 
     @Test
-    void setAttendanceStatusShouldImportWhenTheSenderSharesTheDomainOfTheOrganizerInSameDomainMode() throws Exception {
-        CalDavEventRepository sameDomainTestee = new CalDavEventRepository(davClient,
-            resources.getMailboxManager().getSessionProvider(),
-            new OpenPaasDavUserProvider(new OpenPaasRestClient(dockerOpenPaasExtension.dockerOpenPaasSetup().openPaasConfiguration()), davClient),
-            calendarResolver,
-            resources.getMessageIdManager(),
-            resources.getMessageIdFactory(),
-            user -> Flux.fromIterable(aliases.getOrDefault(user, List.of())),
-            AlignmentMode.SAME_DOMAIN);
-        String eventUid = UUID.randomUUID().toString();
-        setupCalendarResolver(eventUid);
-        BlobId blobId = mailHoldingTheEvent("calendar@open-paas.org");
-
-        assertThatCode(() -> sameDomainTestee.setAttendanceStatus(testUser, AttendanceStatus.Accepted, blobId).block())
-            .doesNotThrowAnyException();
-
-        assertThat(storedEvent(eventUid))
-            .contains("PARTSTAT=ACCEPTED")
-            .doesNotContain("SENT-BY");
-    }
-
-    @Test
-    void setAttendanceStatusShouldRecordTheSenderSharingTheDomainOfTheOrganizerInStrictMode() {
+    void setAttendanceStatusShouldRecordASenderSharingTheDomainOfTheOrganizer() {
         String eventUid = UUID.randomUUID().toString();
         setupCalendarResolver(eventUid);
         BlobId blobId = mailHoldingTheEvent("calendar@open-paas.org");
@@ -1142,30 +1121,6 @@ class CalDavEventRepositoryTest {
 
         assertThat(unfolded(storedEvent(eventUid)))
             .contains("SENT-BY=\"mailto:calendar@open-paas.org\"");
-    }
-
-    @Test
-    void importAlignmentModeShouldDefaultToStrict() {
-        assertThat(CalDavEventRepository.importAlignmentMode(new PropertiesConfiguration()))
-            .isEqualTo(AlignmentMode.STRICT);
-    }
-
-    @Test
-    void importAlignmentModeShouldBeReadFromTheConfiguration() {
-        PropertiesConfiguration configuration = new PropertiesConfiguration();
-        configuration.addProperty(CalDavEventRepository.ITIP_IMPORT_ALIGNMENT_MODE_PROPERTY, "sameDomain");
-
-        assertThat(CalDavEventRepository.importAlignmentMode(configuration))
-            .isEqualTo(AlignmentMode.SAME_DOMAIN);
-    }
-
-    @Test
-    void importAlignmentModeShouldRejectAnUnknownValue() {
-        PropertiesConfiguration configuration = new PropertiesConfiguration();
-        configuration.addProperty(CalDavEventRepository.ITIP_IMPORT_ALIGNMENT_MODE_PROPERTY, "lenient");
-
-        assertThatThrownBy(() -> CalDavEventRepository.importAlignmentMode(configuration))
-            .isInstanceOf(IllegalArgumentException.class);
     }
 
     @Test
