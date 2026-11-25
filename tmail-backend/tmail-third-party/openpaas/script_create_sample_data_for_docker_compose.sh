@@ -12,11 +12,22 @@ done
 # Loop through users from user1 to user9
 for i in $(seq 1 9); do
   USER="user$i@open-paas.org"
-  curl -X PUT "$SERVER_URL/users/$USER" \
+  if ! curl -sS -f -X PUT "$SERVER_URL/users/$USER" \
     -H "Content-Type: application/json" \
-    -d "{\"password\":\"$PASSWORD\"}"
+    -d "{\"password\":\"$PASSWORD\"}"; then
+    echo "Failed to create $USER in tmail-backend" >&2
+    exit 1
+  fi
   # The Twake Calendar side service does not provision users on its own, unlike ESN
-  curl -X POST "$SIDE_SERVICE_WEBADMIN_URL/registeredUsers" \
+  # 409 means the user is already registered (provisioning re-run): keep it
+  STATUS=$(curl -sS -o /dev/null -w "%{http_code}" -X POST "$SIDE_SERVICE_WEBADMIN_URL/registeredUsers" \
     -H "Content-Type: application/json" \
-    -d "{\"email\":\"$USER\",\"firstname\":\"User$i\",\"lastname\":\"Sample\"}"
+    -d "{\"email\":\"$USER\",\"firstname\":\"User$i\",\"lastname\":\"Sample\"}")
+  case "$STATUS" in
+    201|409) ;;
+    *)
+      echo "Failed to register $USER in the Twake Calendar side service (HTTP $STATUS)" >&2
+      exit 1
+      ;;
+  esac
 done
