@@ -62,7 +62,7 @@ import net.fortuna.ical4j.model.Property;
  * </ul>
  *
  * Local senders are trusted: their identity is verified on submission, a mismatch then is an assistant sending for the
- * organizer. REPLY messages are left alone: no invitation is to be added from them.
+ * organizer. A remote sender claiming a local From is expected to be rejected upstream, by DMARC. REPLY messages are left alone: no invitation is to be added from them.
  *
  * So that these warnings only come from the server, the {@value #MISMATCH_HEADER} headers and the
  * {@value #TWP_MESSAGE_HEADER} ones of {@value #WARNING_CODE} a mail holds on arrival are first removed. The

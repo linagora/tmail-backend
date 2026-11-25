@@ -239,12 +239,38 @@ public class CalDavClient {
                 }));
     }
 
-    /** As {@link #getCalendarObjects(DavUser, DavUid)}, but fails when a calendar can not be queried. */
-    public Flux<DavCalendarObject> getCalendarObjectsOrFail(DavUser user, DavUid eventUid) {
-        com.google.common.base.Preconditions.checkNotNull(user, "Dav user should not be null");
+    /**
+     * Whether the calendar may hold the event, failing when it can not be queried. An object answered for the UID that can
+     * not be parsed counts as holding it: an unknown copy is not taken for no copy.
+     */
+    public Mono<Boolean> mayHoldEventOrFail(URI calendarURI, DavUid eventUid) {
+        return client.headers(headers -> headers.add(HttpHeaderNames.ACCEPT, ACCEPT_XML)
+                .add("Depth", "1"))
+            .request(HttpMethod.valueOf("REPORT"))
+            .uri(calendarURI.getPath())
+            .send(Mono.just(new GetCalendarByEventIdRequestBody(eventUid).asByteBuf()))
+            .responseSingle((response, responseContent) -> {
+                if (response.status() == HttpResponseStatus.MULTI_STATUS) {
+                    return responseContent.asString(StandardCharsets.UTF_8)
+                        .map(content -> XMLUtil.parse(content, DavMultistatus.class))
+                        .map(multistatus -> multistatus.getResponses().stream().anyMatch(davResponse -> mayHold(davResponse, eventUid)))
+                        .defaultIfEmpty(false);
+                }
+                return Mono.error(new DavClientException(
+                    String.format("Unexpected status code: %d when looking for event %s in calendar %s", response.status().code(), eventUid.value(), calendarURI)));
+            });
+    }
 
-        return findUserCalendars(user)
-            .flatMap(calendarURI -> getCalendarObjectContainingVEventFromSpecificCalendar(calendarURI, eventUid));
+    private static boolean mayHold(DavResponse response, DavUid eventUid) {
+        try {
+            return DavCalendarObject.fromDavResponse(response)
+                .map(calendarObject -> calendarObject.hasVEventWithUid(eventUid))
+                .orElse(false);
+        } catch (Exception e) {
+            // the ical4j parser, called from Scala, can throw checked exceptions (ParserException) undeclared
+            LOGGER.warn("Unparsable calendar object {} while looking for VEvent '{}': taken for a copy of it", response.getHrefValue().orElse(""), eventUid.value(), e);
+            return true;
+        }
     }
 
     private Mono<DavCalendarObject> getCalendarObjectContainingVEventFromSpecificCalendar(URI calendarURI, DavUid eventUid) {

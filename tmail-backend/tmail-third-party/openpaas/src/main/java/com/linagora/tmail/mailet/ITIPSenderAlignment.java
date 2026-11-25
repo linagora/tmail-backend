@@ -76,6 +76,17 @@ public final class ITIPSenderAlignment {
     }
 
     /**
+     * The organizer of the first VEVENT naming one.
+     */
+    public static Optional<MailAddress> firstOrganizer(Calendar calendar) {
+        return vEvents(calendar).stream()
+            .flatMap(event -> Optional.ofNullable(event.getOrganizer())
+                .flatMap(organizer -> CalendarUserAddresses.toMailAddress(organizer.getCalAddress()))
+                .stream())
+            .findFirst();
+    }
+
+    /**
      * Records on the ORGANIZER of every VEVENT the address that actually sent the payload (RFC 5545 section 3.2.18),
      * replacing any SENT-BY the payload claimed. The given calendar is modified.
      */

@@ -235,22 +235,17 @@ public class CalDavEventRepository implements CalendarEventRepository {
      * A copy held by a calendar of the user is never overwritten by an import: esn-sabre would merge the ITIP payload, coming
      * from a mail, into it.
      *
-     * The lookup is done again even when the update found no copy: that lookup ignores the calendars it can not query.
+     * The lookup is done again even when the update found no copy: that lookup ignores the calendars it can not query. Only
+     * the calendars the user owns are looked up, and a failed lookup of one of them must not pass for the absence of a copy:
+     * a calendar the user subscribed to that can no longer be queried does not prevent the import.
      */
     private Mono<Boolean> mayImport(Username username, CalendarUidField eventUid) {
+        DavUid davUid = DavUid.fromCalendarUidField(eventUid);
         return davUserProvider.provide(username)
             .flatMap(davUser -> davClient.caldav(username).findUserOwnedCalendars(davUser)
-                .map(URI::getPath)
-                .collectList()
-                // A failed lookup must not pass for the absence of a copy
-                .flatMap(ownedCalendars -> davClient.caldav(username).getCalendarObjectsOrFail(davUser, DavUid.fromCalendarUidField(eventUid))
-                    .any(calendarObject -> isHeldByOneOf(ownedCalendars, calendarObject))
-                    .map(heldByAnOwnedCalendar -> !heldByAnOwnedCalendar)));
-    }
-
-    private static boolean isHeldByOneOf(List<String> calendarPaths, DavCalendarObject calendarObject) {
-        String path = calendarObject.uri().getPath();
-        return path != null && calendarPaths.stream().anyMatch(path::startsWith);
+                .concatMap(ownedCalendar -> davClient.caldav(username).mayHoldEventOrFail(ownedCalendar, davUid))
+                .any(held -> held)
+                .map(heldByAnOwnedCalendar -> !heldByAnOwnedCalendar));
     }
 
     private Mono<Void> importEventViaITIP(Username username, BlobId blobId, Calendar calendar, MailboxSession session) {
@@ -262,8 +257,9 @@ public class CalDavEventRepository implements CalendarEventRepository {
     }
 
     /**
-     * The event is handed to esn-sabre as sent by its organizer, as only then it creates it. This can not overwrite a copy of
-     * the user: the import only happens once no calendar the user owns holds the event, see {@link #mayImport}.
+     * The event is handed to esn-sabre as sent by its organizer, as only then it creates it, or by the user when it names
+     * none. This can not overwrite a copy of the user: the import only happens once no calendar the user owns holds the
+     * event, see {@link #mayImport}.
      *
      * When the mail does not come from the organizer, nor from the delegate its SENT-BY names, the user was warned by the
      * X-TWP-Message the CalDavCollect mailets added (see ITIPSenderMismatchWarning) and still asked for the event: the
@@ -271,18 +267,17 @@ public class CalDavEventRepository implements CalendarEventRepository {
      * coming from the organizer alone.
      */
     private Mono<Void> importEvent(Username username, DavUser davUser, BlobId blobId, Calendar calendar, MailAddress sender) {
-        return ITIPSenderAlignment.singleOrganizer(calendar)
-            .map(organizer -> sendITIPRequest(username, davUser, recordingTheSender(username, blobId, calendar, sender, organizer), organizer))
-            .orElseGet(() -> Mono.error(new CalendarEventImportRefusedException("Can not import the event of blob '%s': it does not name a single organizer"
-                .formatted(blobId.value()))));
+        Optional<MailAddress> organizer = ITIPSenderAlignment.firstOrganizer(calendar);
+        return Mono.fromCallable(() -> organizer.isPresent() ? organizer.get() : username.asMailAddress())
+            .flatMap(itipSender -> sendITIPRequest(username, davUser, recordingTheSender(username, blobId, calendar, sender, organizer), itipSender));
     }
 
-    private static Calendar recordingTheSender(Username username, BlobId blobId, Calendar calendar, MailAddress sender, MailAddress organizer) {
-        if (ITIPSenderAlignment.isSatisfied(AlignmentMode.STRICT, sender, calendar)) {
+    private static Calendar recordingTheSender(Username username, BlobId blobId, Calendar calendar, MailAddress sender, Optional<MailAddress> organizer) {
+        if (organizer.isEmpty() || ITIPSenderAlignment.isSatisfied(AlignmentMode.STRICT, sender, calendar)) {
             return calendar;
         }
         LOGGER.info("Importing the event of blob '{}' for {}: its mail comes from {}, not from its organizer {}",
-            blobId.value(), username.asString(), sender.asString(), organizer.asString());
+            blobId.value(), username.asString(), sender.asString(), organizer.get().asString());
         return ITIPSenderAlignment.withOrganizerSentBy(copyOf(calendar), sender);
     }
 

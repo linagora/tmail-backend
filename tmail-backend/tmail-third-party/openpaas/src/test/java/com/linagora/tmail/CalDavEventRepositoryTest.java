@@ -1054,7 +1054,7 @@ class CalDavEventRepositoryTest {
         doAnswer(invocation -> {
             CalDavClient calDavClient = spy((CalDavClient) invocation.callRealMethod());
             doReturn(Flux.empty()).when(calDavClient).getCalendarObjects(any(), any());
-            doReturn(Flux.error(new DavClientException("REPORT failed"))).when(calDavClient).getCalendarObjectsOrFail(any(), any());
+            doReturn(Mono.error(new DavClientException("REPORT failed"))).when(calDavClient).mayHoldEventOrFail(any(), any());
             return calDavClient;
         }).when(failingReportDavClient).caldav(any());
         CalDavEventRepository failingReportTestee = new CalDavEventRepository(failingReportDavClient,
@@ -1073,6 +1073,59 @@ class CalDavEventRepositoryTest {
         assertThat(davClient.caldav(openPaasUser.email())
             .getCalendarObjects(new DavUser(openPaasUser.id(), openPaasUser.email()), new DavUid(eventUid)).collectList().block())
             .isEmpty();
+    }
+
+    @Test
+    void setAttendanceStatusShouldImportWhenASubscribedCalendarCanNotBeQueried() throws Exception {
+        // eg a subscription to a calendar since deleted or no longer shared
+        DavClient brokenSubscriptionDavClient = spy(davClient);
+        doAnswer(invocation -> {
+            CalDavClient calDavClient = spy((CalDavClient) invocation.callRealMethod());
+            doAnswer(findCalendars -> ((Flux<URI>) findCalendars.callRealMethod())
+                .concatWith(Flux.just(URI.create("/calendars/" + aliceOpenPaasUser.id().value() + "/deleted-" + UUID.randomUUID() + "/"))))
+                .when(calDavClient).findUserCalendars(any(DavUser.class));
+            return calDavClient;
+        }).when(brokenSubscriptionDavClient).caldav(any());
+        CalDavEventRepository brokenSubscriptionTestee = new CalDavEventRepository(brokenSubscriptionDavClient,
+            resources.getMailboxManager().getSessionProvider(),
+            new OpenPaasDavUserProvider(new OpenPaasRestClient(dockerOpenPaasExtension.dockerOpenPaasSetup().openPaasConfiguration()), davClient),
+            calendarResolver,
+            resources.getMessageIdManager(),
+            resources.getMessageIdFactory(),
+            user -> Flux.fromIterable(aliases.getOrDefault(user, List.of())));
+        String eventUid = UUID.randomUUID().toString();
+        BlobId blobId = setupCalendarResolver(eventUid);
+
+        assertThatCode(() -> brokenSubscriptionTestee.setAttendanceStatus(testUser, AttendanceStatus.Accepted, blobId).block())
+            .doesNotThrowAnyException();
+
+        assertThat(storedEvent(eventUid)).contains("PARTSTAT=ACCEPTED");
+    }
+
+    @Test
+    void setAttendanceStatusShouldImportAnEventWithoutOrganizer() {
+        String eventUid = UUID.randomUUID().toString();
+        String withoutOrganizer = "BEGIN:VCALENDAR\n" +
+            "VERSION:2.0\n" +
+            "PRODID:-//Sabre//Sabre VObject 4.5.7//EN\n" +
+            "METHOD:REQUEST\n" +
+            "BEGIN:VEVENT\n" +
+            "UID:" + eventUid + "\n" +
+            "DTSTART;TZID=Europe/Paris:20250409T110000\n" +
+            "DTEND;TZID=Europe/Paris:20250409T120000\n" +
+            "ATTENDEE;PARTSTAT=NEEDS-ACTION;RSVP=TRUE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:" + openPaasUser.email().asString() + "\n" +
+            "DTSTAMP:20250331T083652Z\n" +
+            "SEQUENCE:1\n" +
+            "END:VEVENT\n" +
+            "END:VCALENDAR\n";
+        when(calendarResolver.resolveRequestCalendar(any(), any(), any()))
+            .thenReturn(SMono.just(stringAsCalendar(withoutOrganizer)));
+        BlobId blobId = mailHoldingTheEvent(ORGANIZER);
+
+        assertThatCode(() -> testee.setAttendanceStatus(testUser, AttendanceStatus.Accepted, blobId).block())
+            .doesNotThrowAnyException();
+
+        assertThat(storedEvent(eventUid)).contains("PARTSTAT=ACCEPTED");
     }
 
     @Test
