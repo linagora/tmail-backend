@@ -58,7 +58,6 @@ public class DockerOpenPaasSetup {
         RABBITMQ_ADMIN("rabbitmq", 15672),
         SABRE_DAV("sabre_dav", 80),
         MONGO("mongo", 27017),
-        ELASTICSEARCH("elasticsearch", 9200),
         REDIS("redis", 6379);
 
         private final String serviceName;
@@ -97,9 +96,8 @@ public class DockerOpenPaasSetup {
             .withExposedService(DockerService.RABBITMQ_ADMIN.serviceName(), DockerService.RABBITMQ_ADMIN.port())
             .withExposedService(DockerService.SABRE_DAV.serviceName(), DockerService.SABRE_DAV.port())
             .withExposedService(DockerService.MONGO.serviceName(), DockerService.MONGO.port())
-            .withExposedService(DockerService.ELASTICSEARCH.serviceName(), DockerService.ELASTICSEARCH.port())
             .withExposedService(DockerService.REDIS.serviceName(), DockerService.REDIS.port())
-            .waitingFor("openpaas", Wait.forLogMessage(".*Users currently connected.*", 1)
+            .waitingFor("openpaas", Wait.forLogMessage(".*Twake Calendar side server started.*", 1)
                 .withStartupTimeout(Duration.ofMinutes(3)));
     }
 
@@ -189,10 +187,6 @@ public class DockerOpenPaasSetup {
             .build()).get();
     }
 
-    public ContainerState getElasticsearchContainer() {
-        return environment.getContainerByServiceName(DockerService.ELASTICSEARCH.serviceName()).orElseThrow();
-    }
-
     public ContainerState getRedisContainer() {
         return environment.getContainerByServiceName(DockerService.REDIS.serviceName()).orElseThrow();
     }
@@ -202,7 +196,6 @@ public class DockerOpenPaasSetup {
             getRabbitMqContainer(),
             getSabreDavContainer(),
             getMongoDBContainer(),
-            getElasticsearchContainer(),
             getRedisContainer());
     }
 
