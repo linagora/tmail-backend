@@ -5,15 +5,6 @@
 # Only plain accounts are seeded: aliases, quotas and mailing lists reach Twake Mail when
 # they are set through ldap-rest, so create them from the Directory Manager.
 
-# ----------------------------------------------------------------------------------------- base
-# The image creates no tree when it is given seed LDIFs: the base entry comes first
-dn: dc=tmail,dc=com
-objectClass: top
-objectClass: dcObject
-objectClass: organization
-dc: tmail
-o: Twake Mail
-
 # ------------------------------------------------------------------------------------- branches
 dn: ou=users,dc=tmail,dc=com
 objectClass: organizationalUnit

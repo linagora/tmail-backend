@@ -100,18 +100,16 @@ services:
       - "5432:5432"
 
   # Shared directory used by old-backend, new-backend and the proxy (see usersrepository.xml).
-  # The bind account is cn=admin,dc=james,dc=org (password LDAP_ADMIN_PASSWORD); the LDIFs of
-  # sample-configuration/ldap, loaded on the first start, create the base and ou=people.
+  # LDAP_DOMAIN=james.org creates the base dc=james,dc=org and the cn=admin,dc=james,dc=org bind
+  # account (password LDAP_ADMIN_PASSWORD); the mounted populate.ldif adds ou=people + test users.
   ldap:
-    image: bitnamilegacy/openldap:2.6.10
+    image: osixia/openldap:1.5.0
     container_name: migration-proxy-ldap
+    command: "--copy-service --loglevel info"
     environment:
-      LDAP_ROOT: dc=james,dc=org
-      LDAP_ADMIN_USERNAME: admin
+      LDAP_DOMAIN: james.org
       LDAP_ADMIN_PASSWORD: secret
-      LDAP_PORT_NUMBER: "389"
-      LDAP_ALLOW_ANON_BINDING: "yes"
     volumes:
-      - ./sample-configuration/ldap:/ldifs:ro
+      - ./sample-configuration/ldap/populate.ldif:/container/service/slapd/assets/config/bootstrap/ldif/custom/populate.ldif:ro
     ports:
       - "389:389"

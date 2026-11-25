@@ -44,8 +44,8 @@ User can logout from within TMail or visit `http://sso.example.com`, then click 
 The Twake Directory Manager is at http://directory.example.com:8081/static/console/. Sign in
 through LemonLDAP as `admin` / `secret`, administrator of the whole directory.
 
-OpenLDAP is seeded on its first start from `ldap/`: the Twake schemas (`schemas/`), the
-nomenclatures the console expects (`ldifs/`) and the accounts `admin`, `james-user`, `james-user2`,
+OpenLDAP is seeded on its first start from `ldap/bootstrap`: the Twake schemas, the
+nomenclatures the console expects and the accounts `admin`, `james-user`, `james-user2`,
 `alice`, `bob`, `gpt` (the AI bot) and `support`, all `@tmail.com` with the password `secret`.
 
 What the console changes, Tmail sees:
