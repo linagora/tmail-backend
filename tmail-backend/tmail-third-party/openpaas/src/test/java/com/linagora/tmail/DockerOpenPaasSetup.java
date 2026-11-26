@@ -41,6 +41,7 @@ import org.junit.platform.commons.util.Preconditions;
 import org.testcontainers.containers.ComposeContainer;
 import org.testcontainers.containers.ContainerState;
 import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.containers.wait.strategy.WaitStrategy;
 import org.testcontainers.utility.MountableFile;
 
 import com.github.fge.lambdas.Throwing;
@@ -49,6 +50,9 @@ import com.linagora.tmail.configuration.DavConfiguration;
 import com.linagora.tmail.configuration.OpenPaasConfiguration;
 
 public class DockerOpenPaasSetup {
+
+    // Declared before SINGLETON: static fields are initialized in declaration order
+    private static final Duration SLOW_STARTING_SERVICE_TIMEOUT = Duration.ofMinutes(3);
 
     public static final DockerOpenPaasSetup SINGLETON = new DockerOpenPaasSetup();
 
@@ -91,14 +95,21 @@ public class DockerOpenPaasSetup {
     {
         MountableFile mountableFile = MountableFile.forClasspathResource("docker-openpaas-setup.yml");
         environment = new ComposeContainer(new File(mountableFile.getFilesystemPath()))
-            .withExposedService(DockerService.OPENPAAS.serviceName(), DockerService.OPENPAAS.port())
+            .withExposedService(DockerService.OPENPAAS.serviceName(), DockerService.OPENPAAS.port(), slowStartingPortWaitStrategy())
             .withExposedService(DockerService.RABBITMQ.serviceName(), DockerService.RABBITMQ.port())
             .withExposedService(DockerService.RABBITMQ_ADMIN.serviceName(), DockerService.RABBITMQ_ADMIN.port())
-            .withExposedService(DockerService.SABRE_DAV.serviceName(), DockerService.SABRE_DAV.port())
+            .withExposedService(DockerService.SABRE_DAV.serviceName(), DockerService.SABRE_DAV.port(), slowStartingPortWaitStrategy())
             .withExposedService(DockerService.MONGO.serviceName(), DockerService.MONGO.port())
             .withExposedService(DockerService.REDIS.serviceName(), DockerService.REDIS.port())
             .waitingFor("openpaas", Wait.forLogMessage(".*Twake Calendar side server started.*", 1)
-                .withStartupTimeout(Duration.ofMinutes(3)));
+                .withStartupTimeout(SLOW_STARTING_SERVICE_TIMEOUT));
+    }
+
+    // The Twake Calendar side service (a JVM) and Sabre only start once MongoDB and RabbitMQ are healthy:
+    // on a loaded CI agent they can take longer than the 60 seconds of the default listening port wait strategy.
+    private static WaitStrategy slowStartingPortWaitStrategy() {
+        return Wait.forListeningPort()
+            .withStartupTimeout(SLOW_STARTING_SERVICE_TIMEOUT);
     }
 
     public synchronized void start() {
