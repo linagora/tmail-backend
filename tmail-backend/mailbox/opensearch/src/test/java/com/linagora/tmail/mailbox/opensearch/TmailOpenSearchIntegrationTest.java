@@ -77,7 +77,6 @@ import org.apache.james.mailbox.opensearch.MailboxIndexCreationUtil;
 import org.apache.james.mailbox.opensearch.OpenSearchMailboxConfiguration;
 import org.apache.james.mailbox.opensearch.events.OpenSearchListeningMessageSearchIndex;
 import org.apache.james.mailbox.opensearch.json.JsonMessageConstants;
-import org.apache.james.mailbox.opensearch.json.MessageToOpenSearchJson;
 import org.apache.james.mailbox.opensearch.query.QueryConverter;
 import org.apache.james.mailbox.opensearch.search.OpenSearchSearcher;
 import org.apache.james.mailbox.store.search.AbstractMessageSearchIndexTest;
@@ -125,6 +124,8 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
         .and().pollDelay(ONE_HUNDRED_MILLISECONDS)
         .await();
     static final int SEARCH_SIZE = 1;
+    private static final String COMPOSED_ZOE = "Zo\u00E9";
+    private static final String DECOMPOSED_ZOE = "Zoe\u0301";
     private final QueryConverter queryConverter = new QueryConverter(new TmailCriterionConverter(openSearchMailboxConfiguration(), tmailOpenSearchMailboxConfiguration()));
 
     @RegisterExtension
@@ -204,7 +205,7 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
                     writeAliasName),
                 new OpenSearchSearcher(client, queryConverter, SEARCH_SIZE,
                     readAliasName, routingKeyFactory),
-                new MessageToOpenSearchJson(textExtractor, ZoneId.of("Europe/Paris"), IndexAttachments.YES, IndexHeaders.YES),
+                new TmailMessageToOpenSearchJson(textExtractor, ZoneId.of("Europe/Paris"), IndexAttachments.YES, IndexHeaders.YES),
                 preInstanciationStage.getSessionProvider(), routingKeyFactory, messageIdFactory,
                 openSearchMailboxConfiguration(), new RecordingMetricFactory(),
                 ImmutableSet.of()))
@@ -980,6 +981,68 @@ public class TmailOpenSearchIntegrationTest extends AbstractMessageSearchIndexTe
 
         assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.attachmentFileName(searchInput)), session)).toStream())
             .contains(messageId.getUid());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        COMPOSED_ZOE,
+        DECOMPOSED_ZOE
+    })
+    void decomposedSubjectShouldBeSearchableWhateverTheUnicodeFormOfTheSearch(String searchInput) throws Exception {
+        MailboxPath mailboxPath = MailboxPath.forUser(USERNAME, INBOX);
+        MailboxSession session = MailboxSessionUtil.create(USERNAME);
+        MessageManager messageManager = storeMailboxManager.getMailbox(mailboxPath, session);
+
+        ComposedMessageId messageId = messageManager.appendMessage(messageWithSubject("Lunch with " + DECOMPOSED_ZOE + " Martin"), session).getId();
+
+        awaitForOpenSearch(QueryBuilders.matchAll().build().toQuery(), 14);
+        Thread.sleep(500);
+
+        assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.subject(searchInput)), session)).toStream())
+            .containsOnly(messageId.getUid());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        COMPOSED_ZOE,
+        DECOMPOSED_ZOE
+    })
+    void composedSubjectShouldBeSearchableWhateverTheUnicodeFormOfTheSearch(String searchInput) throws Exception {
+        MailboxPath mailboxPath = MailboxPath.forUser(USERNAME, INBOX);
+        MailboxSession session = MailboxSessionUtil.create(USERNAME);
+        MessageManager messageManager = storeMailboxManager.getMailbox(mailboxPath, session);
+
+        ComposedMessageId messageId = messageManager.appendMessage(messageWithSubject("Lunch with " + COMPOSED_ZOE + " Martin"), session).getId();
+
+        awaitForOpenSearch(QueryBuilders.matchAll().build().toQuery(), 14);
+        Thread.sleep(500);
+
+        assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.subject(searchInput)), session)).toStream())
+            .containsOnly(messageId.getUid());
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+        COMPOSED_ZOE,
+        DECOMPOSED_ZOE
+    })
+    void decomposedTextShouldBeSearchableWhateverTheUnicodeFormOfTheSearch(String searchInput) throws Exception {
+        MailboxPath mailboxPath = MailboxPath.forUser(USERNAME, INBOX);
+        MailboxSession session = MailboxSessionUtil.create(USERNAME);
+        MessageManager messageManager = storeMailboxManager.getMailbox(mailboxPath, session);
+
+        ComposedMessageId messageId = messageManager.appendMessage(MessageManager.AppendCommand.builder().build(
+                Message.Builder
+                    .of()
+                    .setBody(DECOMPOSED_ZOE + " Martin says hello.", StandardCharsets.UTF_8)
+                    .addField(new RawField("Subject", "Lunch with " + DECOMPOSED_ZOE + " Martin"))),
+            session).getId();
+
+        awaitForOpenSearch(QueryBuilders.matchAll().build().toQuery(), 14);
+        Thread.sleep(500);
+
+        assertThat(Flux.from(messageManager.search(SearchQuery.of(SearchQuery.mailContains(searchInput)), session)).toStream())
+            .containsOnly(messageId.getUid());
     }
 
     private static MessageManager.AppendCommand messageWithSubject(String subject) throws IOException {

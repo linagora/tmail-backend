@@ -69,7 +69,7 @@ public class TmailCriterionConverter extends DefaultCriterionConverter {
 
     @Override
     public Query convertCriterion(SearchQuery.Criterion criterion) {
-        return criterionConverterMap.get(criterion.getClass()).apply(criterion);
+        return criterionConverterMap.get(criterion.getClass()).apply(UnicodeNormalization.nfc(criterion));
     }
 
     @Override

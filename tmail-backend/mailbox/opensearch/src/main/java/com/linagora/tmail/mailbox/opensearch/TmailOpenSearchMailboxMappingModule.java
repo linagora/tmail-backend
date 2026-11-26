@@ -31,6 +31,7 @@ import java.io.FileNotFoundException;
 import org.apache.commons.configuration2.Configuration;
 import org.apache.commons.configuration2.ex.ConfigurationException;
 import org.apache.james.mailbox.opensearch.MailboxMappingFactory;
+import org.apache.james.mailbox.opensearch.json.MessageToOpenSearchJson;
 import org.apache.james.mailbox.opensearch.query.CriterionConverter;
 import org.apache.james.mailbox.opensearch.query.QueryConverter;
 import org.apache.james.utils.PropertiesProvider;
@@ -56,6 +57,9 @@ public class TmailOpenSearchMailboxMappingModule extends AbstractModule {
 
         bind(TmailQueryConverter.class).in(Scopes.SINGLETON);
         bind(QueryConverter.class).to(TmailQueryConverter.class);
+
+        bind(TmailMessageToOpenSearchJson.class).in(Scopes.SINGLETON);
+        bind(MessageToOpenSearchJson.class).to(TmailMessageToOpenSearchJson.class);
     }
 
     @Provides
