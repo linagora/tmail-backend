@@ -27,9 +27,9 @@
         <relativePath>../pom.xml</relativePath>
     </parent>
 
-    <artifactId>twake-space</artifactId>
-    <name>Twake Mail :: Twake Space</name>
-    <description>Gives each TwakeSpace space a team mailbox, and reports its mail to the space feed</description>
+    <artifactId>twake-extension</artifactId>
+    <name>Twake Mail :: Twake Extension</name>
+    <description>Twake Workplace connectors over AMQP: TwakeSpace team mailboxes, and account activity</description>
 
     <dependencies>
         <dependency>
