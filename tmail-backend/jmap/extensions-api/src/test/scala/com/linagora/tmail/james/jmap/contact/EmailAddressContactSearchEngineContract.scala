@@ -245,6 +245,68 @@ trait EmailAddressContactSearchEngineContract {
       .containsExactly(new MailAddress("hl42@linagora.com"))
   }
 
+  private def unaccentedHelene(): ContactFields = ContactFields(new MailAddress("hl42@linagora.com"), "Helene", "Lefevre")
+
+  @ParameterizedTest
+  @ValueSource(strings = Array("h\u00E9l", "h\u00E9l\u00E8ne", "H\u00C9L\u00C8NE", "lef\u00E8", "lef\u00E8vre", "he\u0301le\u0300ne"))
+  def accentedAutoCompleteShouldMatchUnaccentedUserContact(part: String): Unit = {
+    SMono(testee().index(accountId, unaccentedHelene())).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    assertThat(autoCompletedAddresses(part))
+      .containsExactly(new MailAddress("hl42@linagora.com"))
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = Array("h\u00E9l", "h\u00E9l\u00E8ne", "H\u00C9L\u00C8NE", "lef\u00E8", "lef\u00E8vre", "he\u0301le\u0300ne"))
+  def accentedAutoCompleteShouldMatchUnaccentedDomainContact(part: String): Unit = {
+    SMono(testee().index(domain, unaccentedHelene())).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    assertThat(autoCompletedAddresses(part))
+      .containsExactly(new MailAddress("hl42@linagora.com"))
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = Array("hel", "helene", "HELENE", "lef", "lefevre"))
+  def unaccentedAutoCompleteShouldMatchAccentedUserContact(part: String): Unit = {
+    SMono(testee().index(accountId, composedHelene())).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    assertThat(autoCompletedAddresses(part))
+      .containsExactly(new MailAddress("hl42@linagora.com"))
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = Array("hel", "helene", "HELENE", "lef", "lefevre"))
+  def unaccentedAutoCompleteShouldMatchAccentedDomainContact(part: String): Unit = {
+    SMono(testee().index(domain, composedHelene())).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    assertThat(autoCompletedAddresses(part))
+      .containsExactly(new MailAddress("hl42@linagora.com"))
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = Array("\u0395\u03BB\u03AD", "\u03B5\u03BB\u03AD\u03BD\u03B7", "\u0419\u043E\u0440", "\u0439\u043E\u0440\u0434\u0430\u043D\u043E\u0432\u0430"))
+  def nonLatinAccentedAutoCompleteShouldMatchTheSameAccentedName(part: String): Unit = {
+    // "Ελένη Йорданова": accents that ascii folding keeps
+    SMono(testee().index(accountId, ContactFields(new MailAddress("hl42@linagora.com"), "\u0395\u03BB\u03AD\u03BD\u03B7", "\u0419\u043E\u0440\u0434\u0430\u043D\u043E\u0432\u0430"))).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    assertThat(autoCompletedAddresses(part))
+      .containsExactly(new MailAddress("hl42@linagora.com"))
+  }
+
+  @Test
+  def accentedAutoCompleteShouldNotMatchOtherNames(): Unit = {
+    SMono(testee().index(accountId, unaccentedHelene())).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    assertThat(autoCompletedAddresses("h\u00E9r"))
+      .isEmpty()
+  }
+
   @Test
   def autoCompleteShouldReturnDecomposedContactsComposed(): Unit = {
     SMono(testee().index(accountId, decomposedHelene())).block()

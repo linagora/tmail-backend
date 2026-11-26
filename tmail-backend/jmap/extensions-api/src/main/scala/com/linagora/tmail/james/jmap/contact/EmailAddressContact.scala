@@ -251,15 +251,22 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
 
   override def autoComplete(accountId: AccountId, part: String, limit: Int): Publisher[EmailAddressContact] = {
     val maybeDomain: Option[Domain] = Username.of(accountId.getIdentifier).getDomainPart.toScala
+    val searchedPart: String = searchable(part)
     SFlux.concat(
         maybeDomain.map(domainContacts).getOrElse(SFlux.empty),
         userContacts(accountId))
-      .filter(lowerCaseContact(_).fields.contains(UnicodeNormalization.nfc(part).toLowerCase))
+      .filter(contact => searchable(contact.fields.address.asString()).contains(searchedPart)
+        || searchable(contact.fields.firstname).contains(searchedPart)
+        || searchable(contact.fields.surname).contains(searchedPart))
       .sort(Ordering.by[EmailAddressContact, String](contact => contact.fields.address.asString))
       .distinct(_.id)
       .take(limit)
       .map(lowerCaseEmailAddress)
   }
+
+  // Case and accent insensitive, as the OpenSearch implementation
+  private def searchable(value: String): String =
+    StringUtils.stripAccents(UnicodeNormalization.nfc(value).toLowerCase)
 
   private def lowerCaseContact(contact: EmailAddressContact): EmailAddressContact =
     EmailAddressContact(contact.id, ContactFields(address = new MailAddress(contact.fields.address.asString().toLowerCase),

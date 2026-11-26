@@ -85,6 +85,7 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
     private static final Time TIMEOUT = new Time.Builder().time("1m").build();
 
     private static final List<String> ALL_SEARCH_FIELDS = List.of(EMAIL, FIRSTNAME, SURNAME);
+    private static final List<String> NAME_SEARCH_FIELDS = List.of(FIRSTNAME, SURNAME);
     private final OpenSearchIndexer userContactIndexer;
     private final OpenSearchIndexer domainContactIndexer;
     private final ReactorOpenSearchClient client;
@@ -272,8 +273,7 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
                 .field((EMAIL))
                 .query(new FieldValue.Builder().stringValue(part).build())
                 .build().toQuery())
-            .orElse(QueryBuilders.multiMatch().fields(ALL_SEARCH_FIELDS)
-                .query(part).build().toQuery());
+            .orElseGet(() -> buildNameOrEmailQuery(part));
 
         return QueryBuilders.bool()
             .must(partQuery)
@@ -285,6 +285,26 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
                     .map(Domain::asString)
                     .orElse("")).build())
                 .build().toQuery())
+            .minimumShouldMatch("1")
+            .build().toQuery();
+    }
+
+    /**
+     * The names are indexed with their accents folded (and preserved): the query is also searched with its accents
+     * folded so that "hél" matches "Helene". The original query is still searched, on the email too, as some letters
+     * are not folded the same way by both sides (eg the Cyrillic "й").
+     */
+    private Query buildNameOrEmailQuery(String part) {
+        Query originalQuery = QueryBuilders.multiMatch().fields(ALL_SEARCH_FIELDS)
+            .query(part).build().toQuery();
+        String foldedPart = StringUtils.stripAccents(part);
+        if (foldedPart.equals(part)) {
+            return originalQuery;
+        }
+        return QueryBuilders.bool()
+            .should(originalQuery)
+            .should(QueryBuilders.multiMatch().fields(NAME_SEARCH_FIELDS)
+                .query(foldedPart).build().toQuery())
             .minimumShouldMatch("1")
             .build().toQuery();
     }

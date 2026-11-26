@@ -21,9 +21,7 @@ package com.linagora.tmail.james.jmap.contact
 import org.apache.james.core.{MailAddress, Username}
 import org.apache.james.jmap.api.model.AccountId
 import org.assertj.core.api.Assertions.assertThatCode
-import org.junit.jupiter.api.{BeforeEach, Disabled, Test}
-import org.junit.jupiter.params.ParameterizedTest
-import org.junit.jupiter.params.provider.ValueSource
+import org.junit.jupiter.api.{BeforeEach, Test}
 import reactor.core.scala.publisher.{SFlux, SMono}
 import reactor.core.scheduler.Schedulers
 
@@ -40,23 +38,6 @@ class MemoryEmailAddressContactSearchEngineTest extends EmailAddressContactSearc
   }
 
   override def awaitDocumentsIndexed(query: QueryType, documentCount: Long): Unit = {
-  }
-
-  @Test
-  @Disabled("Memory does not need to support language special characters normalization")
-  override def searchASCIICharactersShouldReturnMatchedFrenchName(): Unit = {
-  }
-
-  @ParameterizedTest
-  @ValueSource(strings = Array("hel"))
-  @Disabled("Memory does not need to support language special characters normalization")
-  override def unaccentedAutoCompleteShouldMatchDecomposedUserContact(part: String): Unit = {
-  }
-
-  @ParameterizedTest
-  @ValueSource(strings = Array("hel"))
-  @Disabled("Memory does not need to support language special characters normalization")
-  override def unaccentedAutoCompleteShouldMatchDecomposedDomainContact(part: String): Unit = {
   }
 
   @Test
