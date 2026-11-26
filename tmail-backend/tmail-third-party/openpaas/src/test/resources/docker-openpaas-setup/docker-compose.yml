@@ -8,10 +8,14 @@ services:
   openpaas:
     # Twake Calendar side service, which serves the OpenPaaS REST API ESN used to serve
     hostname: esn
-    image: linagora/twake-calendar-side-service:2.5.0.9
-    volumes:
-      # SIDE_SERVICE_CONF is set by DockerOpenPaasSetup: this file may be extracted alone from the test-jar
-      - ${SIDE_SERVICE_CONF:-./side-service-conf}:/root/conf
+    # The configuration is built into the image rather than bind mounted: when run from the test-jar, this directory is
+    # extracted under the temporary directory of the test JVM, that the Docker daemon of the CI cannot see. The build
+    # context is uploaded through the Docker API instead.
+    build:
+      context: ./side-service-conf
+      dockerfile_inline: |
+        FROM linagora/twake-calendar-side-service:2.5.0.9
+        COPY . /root/conf
     depends_on:
       mongo:
         condition: service_healthy
@@ -64,7 +68,12 @@ services:
 
   sabre_dav:
     hostname: esn_sabre
-    image: linagora/esn-sabre:2.5.0.9
+    # Built with the public key rather than bind mounted, see the openpaas service
+    build:
+      context: ./side-service-conf
+      dockerfile_inline: |
+        FROM linagora/esn-sabre:2.5.0.9
+        COPY jwt_publickey /var/www/config/esn.key.pub
     environment:
       - SABRE_ENV=dev
       - SABRE_MONGO_HOST=mongo
@@ -83,8 +92,6 @@ services:
       - SABRE_ADMIN_PASSWORD=secret123
       - OPENPASS_BASIC_AUTH=YWRtaW5Ab3Blbi1wYWFzLm9yZzpzZWNyZXQ=
       - SABRE_IMPERSONATION_ENABLED=true
-    volumes:
-      - ${SIDE_SERVICE_CONF:-./side-service-conf}/jwt_publickey:/var/www/config/esn.key.pub
     depends_on:
       mongo:
         condition: service_healthy

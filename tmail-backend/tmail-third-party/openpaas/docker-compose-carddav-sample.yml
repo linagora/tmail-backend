@@ -13,7 +13,7 @@ services:
     ports:
       - "8080:8080"
     volumes:
-      - ./src/test/resources/side-service-conf:/root/conf
+      - ./src/test/resources/docker-openpaas-setup/side-service-conf:/root/conf
     depends_on:
       - mongo
       - redis
@@ -71,7 +71,7 @@ services:
       - OPENPASS_BASIC_AUTH=YWRtaW5Ab3Blbi1wYWFzLm9yZzpzZWNyZXQ=
       - SABRE_IMPERSONATION_ENABLED=true
     volumes:
-      - ./src/test/resources/side-service-conf/jwt_publickey:/var/www/config/esn.key.pub
+      - ./src/test/resources/docker-openpaas-setup/side-service-conf/jwt_publickey:/var/www/config/esn.key.pub
     networks:
       - emaily
 

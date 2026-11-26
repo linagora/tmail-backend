@@ -53,6 +53,8 @@ public class DockerOpenPaasSetup {
 
     // Declared before SINGLETON: static fields are initialized in declaration order
     private static final Duration SLOW_STARTING_SERVICE_TIMEOUT = Duration.ofMinutes(3);
+    private static final String COMPOSE_DIRECTORY = "docker-openpaas-setup";
+    private static final String COMPOSE_FILE = "docker-compose.yml";
 
     public static final DockerOpenPaasSetup SINGLETON = new DockerOpenPaasSetup();
 
@@ -93,9 +95,9 @@ public class DockerOpenPaasSetup {
     private boolean shutdownHookRegistered;
 
     {
-        MountableFile mountableFile = MountableFile.forClasspathResource("docker-openpaas-setup.yml");
-        environment = new ComposeContainer(new File(mountableFile.getFilesystemPath()))
-            .withEnv("SIDE_SERVICE_CONF", sideServiceConfigurationDirectory())
+        environment = new ComposeContainer(composeFile())
+            // The services carrying configuration are built from the compose directory: drop these images on stop
+            .withRemoveImages(ComposeContainer.RemoveImages.LOCAL)
             .withExposedService(DockerService.OPENPAAS.serviceName(), DockerService.OPENPAAS.port(), slowStartingPortWaitStrategy())
             .withExposedService(DockerService.RABBITMQ.serviceName(), DockerService.RABBITMQ.port())
             .withExposedService(DockerService.RABBITMQ_ADMIN.serviceName(), DockerService.RABBITMQ_ADMIN.port())
@@ -106,10 +108,11 @@ public class DockerOpenPaasSetup {
                 .withStartupTimeout(SLOW_STARTING_SERVICE_TIMEOUT));
     }
 
-    // When loaded from the test-jar (integration tests), the compose file is extracted alone to a temporary location:
-    // its sibling configuration directory needs to be extracted on its own and referenced by an absolute path.
-    private static String sideServiceConfigurationDirectory() {
-        return MountableFile.forClasspathResource("side-service-conf").getFilesystemPath();
+    // The compose file is extracted along with its sibling configuration directory, used as build context: when loaded
+    // from the test-jar (integration tests), the classpath directory is extracted as a whole to a temporary location.
+    private static File composeFile() {
+        File composeDirectory = new File(MountableFile.forClasspathResource(COMPOSE_DIRECTORY).getFilesystemPath());
+        return new File(composeDirectory, COMPOSE_FILE);
     }
 
     // The Twake Calendar side service (a JVM) and Sabre only start once MongoDB and RabbitMQ are healthy:
