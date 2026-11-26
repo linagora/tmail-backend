@@ -261,3 +261,53 @@ Each label supports the following fields:
 
 The team mailbox events listener moved to the Twake Space extension, and is configured in `space.properties`. See
 xref:tmail-backend/configure/twake-space.adoc#_team_mailbox_events[Twake Space].
+
+== Account Activity Listener
+
+This listener publishes the mail activity of an account on a RabbitMQ topic exchange, for the Twake Workplace
+components tracking user activity. It is triggered by mail deliveries, not by the INBOX creation.
+
+It requires TMail to run with RabbitMQ: it publishes on the RabbitMQ server of `rabbitmq.properties`.
+
+Each message delivered into a personal mailbox is published as a `com.twake.mail.emailReceived.v1`
+https://cloudevents.io[CloudEvent], with the routing key `mail.emailReceived`, in the format of the calendar and
+contacts activity. Team mailboxes are not reported.
+
+[source,json]
+----
+{
+  "specversion": "1.0",
+  "id": "5b1f0c2e-8d3a-3c4e-9a51-2f6e7d8c9b10",
+  "source": "twake://mail",
+  "type": "com.twake.mail.emailReceived.v1",
+  "time": "2026-10-06T12:00:00Z",
+  "subject": "mailboxes/<mailboxId>/<messageId>",
+  "twakeactor": "btellier@linagora.com",
+  "twakeresourceowner": "btellier@linagora.com",
+  "twakedomain": "linagora.com",
+  "data": {
+    "mailboxPath": "INBOX",
+    "mailboxId": "<mailboxId>",
+    "messageId": "<messageId>"
+  }
+}
+----
+
+The `id`, also the AMQP `message-id`, is a name based UUID of the mailbox, the message and the activity type: an event
+replayed from the event dead letters keeps it, so consumers can deduplicate.
+
+Configuration keys:
+
+- `exchange`: Optional. The topic exchange to publish on, declared durable if missing. Defaults to `activity`.
+
+[source,xml]
+----
+<listeners>
+  <listener>
+    <class>com.linagora.tmail.activity.AccountActivityListener</class>
+    <configuration>
+      <exchange>activity</exchange>
+    </configuration>
+  </listener>
+</listeners>
+----
