@@ -45,6 +45,7 @@ import org.apache.james.events.delivery.InVmEventDelivery;
 import org.apache.james.mailbox.DefaultMailboxes;
 import org.apache.james.mailbox.MailboxSession;
 import org.apache.james.mailbox.MessageManager;
+import org.apache.james.mailbox.events.GenericGroup;
 import org.apache.james.mailbox.inmemory.InMemoryMailboxManager;
 import org.apache.james.mailbox.inmemory.manager.InMemoryIntegrationResources;
 import org.apache.james.mailbox.model.MailboxACL;
@@ -61,6 +62,7 @@ import org.junit.jupiter.api.extension.RegisterExtension;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.linagora.tmail.team.TeamMailbox;
 import com.linagora.tmail.team.TeamMailboxRepositoryImpl;
+import com.rabbitmq.client.AMQP;
 import com.rabbitmq.client.BuiltinExchangeType;
 
 import reactor.core.Disposable;
@@ -68,6 +70,7 @@ import reactor.core.publisher.Mono;
 import reactor.rabbitmq.BindingSpecification;
 import reactor.rabbitmq.ExchangeSpecification;
 import reactor.rabbitmq.QueueSpecification;
+import reactor.rabbitmq.Sender;
 import scala.jdk.javaapi.OptionConverters;
 
 class AccountActivityListenerTest {
@@ -154,19 +157,20 @@ class AccountActivityListenerTest {
 
     @Test
     void deliveryIntoInboxShouldPublishEmailReceived() throws Exception {
-        MessageId messageId = append(bobSession, MailboxPath.inbox(BOB), IS_DELIVERY);
+        MessageManager.AppendResult appendResult = appendResult(bobSession, MailboxPath.inbox(BOB), IS_DELIVERY);
+        MessageId messageId = appendResult.getId().getMessageId();
         MailboxId inboxId = mailboxId(bobSession, MailboxPath.inbox(BOB));
         String id = AccountActivityListener.id(inboxId, messageId, AccountActivityListener.ActivityType.EMAIL_RECEIVED);
 
         await().atMost(Duration.ofSeconds(10)).untilAsserted(() -> assertThat(published).hasSize(1));
         Published event = published.peek();
-        assertThat(event).isEqualTo(new Published("mail.emailReceived", id, "application/json", 2, event.body()));
+        assertThat(event).isEqualTo(new Published("com.twake.mail.email.received.v1", id, "application/cloudevents+json", 2, event.body()));
         assertThatJson(event.body()).isEqualTo("""
             {
               "specversion": "1.0",
               "id": "%1$s",
               "source": "twake://mail",
-              "type": "com.twake.mail.emailReceived.v1",
+              "type": "com.twake.mail.email.received.v1",
               "time": "2026-10-06T12:00:00Z",
               "subject": "mailboxes/%2$s/%3$s",
               "twakeactor": "bob@linagora.com",
@@ -175,9 +179,10 @@ class AccountActivityListenerTest {
               "data": {
                 "mailboxPath": "INBOX",
                 "mailboxId": "%2$s",
-                "messageId": "%3$s"
+                "messageId": "%3$s",
+                "threadId": "%4$s"
               }
-            }""".formatted(id, inboxId.serialize(), messageId.serialize()));
+            }""".formatted(id, inboxId.serialize(), messageId.serialize(), appendResult.getThreadId().serialize()));
     }
 
     @Test
@@ -241,6 +246,30 @@ class AccountActivityListenerTest {
     }
 
     @Test
+    void publicationNotConfirmedInTimeShouldGoToEventDeadLetters() throws Exception {
+        Sender stalledSender = new Sender() {
+            @Override
+            public Mono<AMQP.Exchange.DeclareOk> declareExchange(ExchangeSpecification specification) {
+                return Mono.never();
+            }
+        };
+        try {
+            AccountActivityListener stalled = new AccountActivityListener(stalledSender, CLOCK,
+                AccountActivityListener.Configuration.DEFAULT, Duration.ofMillis(200));
+            GenericGroup stalledGroup = new GenericGroup("stalled");
+            resources.getEventBus().register(stalled, stalledGroup);
+
+            append(bobSession, MailboxPath.inbox(BOB), IS_DELIVERY);
+
+            await().atMost(Duration.ofSeconds(30))
+                .untilAsserted(() -> assertThat(eventDeadLetters.groupsWithFailedEvents().collectList().block())
+                    .containsExactly(stalledGroup));
+        } finally {
+            stalledSender.close();
+        }
+    }
+
+    @Test
     void configurationShouldDefaultToActivityExchange() {
         assertThat(AccountActivityListener.Configuration.from(new BaseHierarchicalConfiguration()))
             .isEqualTo(new AccountActivityListener.Configuration("activity"));
@@ -281,11 +310,13 @@ class AccountActivityListenerTest {
     }
 
     private MessageId append(MailboxSession session, MailboxPath path, boolean isDelivery) throws Exception {
+        return appendResult(session, path, isDelivery).getId().getMessageId();
+    }
+
+    private MessageManager.AppendResult appendResult(MailboxSession session, MailboxPath path, boolean isDelivery) throws Exception {
         return mailboxManager.getMailbox(path, session)
             .appendMessage(MessageManager.AppendCommand.builder()
                 .isDelivery(isDelivery)
-                .build(MESSAGE), session)
-            .getId()
-            .getMessageId();
+                .build(MESSAGE), session);
     }
 }

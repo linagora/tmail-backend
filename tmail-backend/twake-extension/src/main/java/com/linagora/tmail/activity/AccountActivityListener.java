@@ -23,6 +23,7 @@ import static com.rabbitmq.client.MessageProperties.PERSISTENT_TEXT_PLAIN;
 import static java.nio.charset.StandardCharsets.UTF_8;
 
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
@@ -70,8 +71,8 @@ import reactor.rabbitmq.Sender;
  * </listener>
  * }</pre>
  *
- * Each message delivered into a personal mailbox is reported as a {@code com.twake.mail.emailReceived.v1} CloudEvent, routed
- * by {@code mail.emailReceived}, in the format of the calendar and contacts activity: {@code twakeactor} is the user whose
+ * Each message delivered into a personal mailbox is reported as a {@code com.twake.mail.email.received.v1} CloudEvent, routed
+ * by its type, in the format of the calendar and contacts activity: {@code twakeactor} is the user whose
  * session added the message, {@code twakeresourceowner} the owner of the mailbox.
  */
 public class AccountActivityListener implements EventListener.ReactiveGroupEventListener {
@@ -95,49 +96,56 @@ public class AccountActivityListener implements EventListener.ReactiveGroupEvent
     }
 
     public enum ActivityType {
-        EMAIL_RECEIVED("emailReceived");
+        EMAIL_RECEIVED("email", "received");
 
-        private final String value;
+        private final String object;
+        private final String action;
 
-        ActivityType(String value) {
-            this.value = value;
+        ActivityType(String object, String action) {
+            this.object = object;
+            this.action = action;
         }
 
         public String asString() {
-            return value;
+            return object + "." + action;
         }
 
-        public String routingKey() {
-            return APPLICATION + "." + value;
-        }
-
+        /** {@code com.twake.<app>.<object>.<action>.v1}, also the routing key, as ADR-067 defines it. */
         public String eventType() {
-            return "com.twake." + APPLICATION + "." + value + ".v1";
+            return "com.twake." + APPLICATION + "." + asString() + ".v1";
         }
     }
 
     /** The activity of one message added by {@code addedEvent}, observed at {@code time}. */
-    private record MessageActivity(MailboxEvents.Added addedEvent, MessageId messageId, ActivityType type, Instant time) {
+    private record MessageActivity(MailboxEvents.Added addedEvent, MessageMetaData message, ActivityType type, Instant time) {
+        MessageId messageId() {
+            return message.getMessageId();
+        }
+
         String id() {
-            return AccountActivityListener.id(addedEvent.getMailboxId(), messageId, type);
+            return AccountActivityListener.id(addedEvent.getMailboxId(), messageId(), type);
         }
 
         String subject() {
-            return "mailboxes/" + addedEvent.getMailboxId().serialize() + "/" + messageId.serialize();
+            return "mailboxes/" + addedEvent.getMailboxId().serialize() + "/" + messageId().serialize();
         }
     }
 
     public static final String APPLICATION = "mail";
     private static final Group GROUP = new AccountActivityListenerGroup();
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
-    private static final String CONTENT_TYPE = "application/json";
+    private static final String CONTENT_TYPE = "application/cloudevents+json";
     private static final String SPEC_VERSION = "1.0";
     private static final String SOURCE = "twake://" + APPLICATION;
+    // RabbitMQ confirms within milliseconds: a broker withholding its confirms fails the publication, as a NACK does,
+    // so that the event bus retries it and then keeps it in the event dead letters.
+    static final Duration PUBLICATION_TIMEOUT = Duration.ofSeconds(30);
 
     private final Sender sender;
     private final Clock clock;
     private final Configuration configuration;
     private final Mono<AMQP.Exchange.DeclareOk> exchangeDeclaration;
+    private final Duration publicationTimeout;
 
     @Inject
     public AccountActivityListener(Sender sender, Clock clock, HierarchicalConfiguration<ImmutableNode> configuration) {
@@ -145,9 +153,14 @@ public class AccountActivityListener implements EventListener.ReactiveGroupEvent
     }
 
     public AccountActivityListener(Sender sender, Clock clock, Configuration configuration) {
+        this(sender, clock, configuration, PUBLICATION_TIMEOUT);
+    }
+
+    AccountActivityListener(Sender sender, Clock clock, Configuration configuration, Duration publicationTimeout) {
         this.sender = sender;
         this.clock = clock;
         this.configuration = configuration;
+        this.publicationTimeout = publicationTimeout;
         this.exchangeDeclaration = sender.declareExchange(ExchangeSpecification.exchange(configuration.exchange())
                 .type(BuiltinExchangeType.TOPIC.getType())
                 .durable(true))
@@ -171,9 +184,8 @@ public class AccountActivityListener implements EventListener.ReactiveGroupEvent
         if (event instanceof MailboxEvents.Added addedEvent && !addedEvent.getAdded().isEmpty()) {
             Instant time = clock.instant();
             Flux<OutboundMessage> messages = Flux.fromIterable(addedEvent.getAdded().values())
-                .map(MessageMetaData::getMessageId)
-                .distinct()
-                .concatMap(messageId -> Mono.fromCallable(() -> toMessage(new MessageActivity(addedEvent, messageId, ActivityType.EMAIL_RECEIVED, time))));
+                .distinct(MessageMetaData::getMessageId)
+                .concatMap(message -> Mono.fromCallable(() -> toMessage(new MessageActivity(addedEvent, message, ActivityType.EMAIL_RECEIVED, time))));
             return exchangeDeclaration
                 .thenMany(sender.sendWithPublishConfirms(messages))
                 .handle((result, sink) -> {
@@ -182,8 +194,10 @@ public class AccountActivityListener implements EventListener.ReactiveGroupEvent
                             + " was not acked by RabbitMQ"));
                     }
                 })
-                .subscribeOn(Schedulers.boundedElastic())
-                .then();
+                .then()
+                .timeout(publicationTimeout, Mono.error(() -> new RuntimeException("Account activity of " + addedEvent.getMailboxId().serialize()
+                    + " was not confirmed by RabbitMQ within " + publicationTimeout)))
+                .subscribeOn(Schedulers.boundedElastic());
         }
         return Mono.empty();
     }
@@ -194,7 +208,7 @@ public class AccountActivityListener implements EventListener.ReactiveGroupEvent
             .contentType(CONTENT_TYPE)
             .deliveryMode(PERSISTENT_TEXT_PLAIN.getDeliveryMode())
             .build();
-        return new OutboundMessage(configuration.exchange(), activity.type().routingKey(), properties,
+        return new OutboundMessage(configuration.exchange(), activity.type().eventType(), properties,
             OBJECT_MAPPER.writeValueAsBytes(toJson(activity)));
     }
 
@@ -220,7 +234,8 @@ public class AccountActivityListener implements EventListener.ReactiveGroupEvent
         json.putObject("data")
             .put("mailboxPath", addedEvent.getMailboxPath().getName())
             .put("mailboxId", addedEvent.getMailboxId().serialize())
-            .put("messageId", activity.messageId().serialize());
+            .put("messageId", activity.messageId().serialize())
+            .put("threadId", activity.message().getThreadId().serialize());
         return json;
     }
 }

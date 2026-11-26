@@ -269,9 +269,8 @@ components tracking user activity. It is triggered by mail deliveries, not by th
 
 It requires TMail to run with RabbitMQ: it publishes on the RabbitMQ server of `rabbitmq.properties`.
 
-Each message delivered into a personal mailbox is published as a `com.twake.mail.emailReceived.v1`
-https://cloudevents.io[CloudEvent], with the routing key `mail.emailReceived`, in the format of the calendar and
-contacts activity. Team mailboxes are not reported.
+Each message delivered into a personal mailbox is published as a `com.twake.mail.email.received.v1`
+https://cloudevents.io[CloudEvent], with its type as routing key, as Twake ADR-067 defines it. Team mailboxes are not reported.
 
 [source,json]
 ----
@@ -279,7 +278,7 @@ contacts activity. Team mailboxes are not reported.
   "specversion": "1.0",
   "id": "5b1f0c2e-8d3a-3c4e-9a51-2f6e7d8c9b10",
   "source": "twake://mail",
-  "type": "com.twake.mail.emailReceived.v1",
+  "type": "com.twake.mail.email.received.v1",
   "time": "2026-10-06T12:00:00Z",
   "subject": "mailboxes/<mailboxId>/<messageId>",
   "twakeactor": "btellier@linagora.com",
@@ -288,13 +287,18 @@ contacts activity. Team mailboxes are not reported.
   "data": {
     "mailboxPath": "INBOX",
     "mailboxId": "<mailboxId>",
-    "messageId": "<messageId>"
+    "messageId": "<messageId>",
+    "threadId": "<threadId>"
   }
 }
 ----
 
 The `id`, also the AMQP `message-id`, is a name based UUID of the mailbox, the message and the activity type: an event
 replayed from the event dead letters keeps it, so consumers can deduplicate.
+
+The message is persistent and its AMQP `content-type` is `application/cloudevents+json`. A publication RabbitMQ does
+not confirm within 30 seconds fails like a refused one: the event bus retries it, then keeps it in the event dead
+letters.
 
 Configuration keys:
 
