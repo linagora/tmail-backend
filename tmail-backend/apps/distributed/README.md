@@ -2,11 +2,11 @@
 
 This server is the distributed version of James relying on:
 
-* Cassandra version 4.1.3
-* S3 API-like object storage. Using here Zenko Cloudserver version 8.7.25
-* OpenSearch version 2.1.0
-* RabbitMQ version 3.12.1
-* Tika version 2.8 (optional)
+* Cassandra version 5.0.9
+* S3 API-like object storage. Using here Scality Cloudserver, pinned by commit SHA
+* OpenSearch version 3.10.0
+* RabbitMQ version 4.2.9
+* Tika version 3.2 (optional)
 
 ## Build
 
@@ -49,13 +49,13 @@ docker network create --driver bridge emaily
 You can then start in that newly created network all the other softwares the distributed James is relying on:
 
 ```
-docker run -d --network emaily --name=cassandra cassandra:4.1.9
+docker run -d --network emaily --name=cassandra cassandra:5.0.9
 
-docker run -d --network emaily --name=rabbitmq rabbitmq:4.0.9-management
+docker run -d --network emaily --name=rabbitmq rabbitmq:4.2.9-management
 
 docker run -d --network emaily --env 'REMOTE_MANAGEMENT_DISABLE=1' --env 'SCALITY_ACCESS_KEY_ID=accessKey1' --env 'SCALITY_SECRET_ACCESS_KEY=secretKey1' --name=s3.docker.test ghcr.io/scality/cloudserver:c1ba296859690c1cbbec609aaae430f6b04b4745
 
-docker run -d --network emaily --name=opensearch --env 'discovery.type=single-node' opensearchproject/opensearch:2.19.2
+docker run -d --network emaily --name=opensearch --env 'discovery.type=single-node' --env 'DISABLE_INSTALL_DEMO_CONFIG=true' --env 'DISABLE_SECURITY_PLUGIN=true' opensearchproject/opensearch:3.10.0
 
 docker run -d --network emaily --name=tika apache/tika:3.2.0.0 #Optional
 ```

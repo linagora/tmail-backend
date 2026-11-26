@@ -59,7 +59,7 @@ services:
     entrypoint: [ "sh", "/monitor_health.sh", "tmail-backend"]
 
   opensearch:
-    image: opensearchproject/opensearch:2.19.2
+    image: opensearchproject/opensearch:3.10.0
     environment:
       - discovery.type=single-node
       - DISABLE_INSTALL_DEMO_CONFIG=true
@@ -68,7 +68,7 @@ services:
       - emaily
 
   cassandra:
-    image: cassandra:4.1.9
+    image: cassandra:5.0.9
     ports:
       - "9042:9042"
     healthcheck:
@@ -87,7 +87,7 @@ services:
       - emaily
 
   rabbitmq:
-    image: rabbitmq:4.0.9-management
+    image: rabbitmq:4.2.9-management
     ports:
       - "5672:5672"
       - "15672:15672"
@@ -107,7 +107,7 @@ services:
       - emaily
 
   redis:
-    image: redis:8.0.2
+    image: redis:8.12.0
     networks:
       - emaily
 

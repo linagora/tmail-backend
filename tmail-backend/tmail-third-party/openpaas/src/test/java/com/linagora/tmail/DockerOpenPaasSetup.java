@@ -38,9 +38,13 @@ import java.util.Optional;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.utils.URIBuilder;
 import org.junit.platform.commons.util.Preconditions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.ComposeContainer;
 import org.testcontainers.containers.ContainerState;
+import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.wait.strategy.Wait;
+import org.testcontainers.containers.wait.strategy.WaitStrategy;
 import org.testcontainers.utility.MountableFile;
 
 import com.github.fge.lambdas.Throwing;
@@ -50,6 +54,13 @@ import com.linagora.tmail.configuration.OpenPaasConfiguration;
 
 public class DockerOpenPaasSetup {
 
+    // Declared before SINGLETON: static fields are initialized in declaration order
+    private static final Logger LOGGER = LoggerFactory.getLogger(DockerOpenPaasSetup.class);
+    // The first start of a test JVM is cold (image build, JIT): on a loaded CI agent it exceeded 3 minutes
+    private static final Duration SLOW_STARTING_SERVICE_TIMEOUT = Duration.ofMinutes(5);
+    private static final String COMPOSE_DIRECTORY = "docker-openpaas-setup";
+    private static final String COMPOSE_FILE = "docker-compose.yml";
+
     public static final DockerOpenPaasSetup SINGLETON = new DockerOpenPaasSetup();
 
     enum DockerService {
@@ -58,7 +69,6 @@ public class DockerOpenPaasSetup {
         RABBITMQ_ADMIN("rabbitmq", 15672),
         SABRE_DAV("sabre_dav", 80),
         MONGO("mongo", 27017),
-        ELASTICSEARCH("elasticsearch", 9200),
         REDIS("redis", 6379);
 
         private final String serviceName;
@@ -90,17 +100,33 @@ public class DockerOpenPaasSetup {
     private boolean shutdownHookRegistered;
 
     {
-        MountableFile mountableFile = MountableFile.forClasspathResource("docker-openpaas-setup.yml");
-        environment = new ComposeContainer(new File(mountableFile.getFilesystemPath()))
-            .withExposedService(DockerService.OPENPAAS.serviceName(), DockerService.OPENPAAS.port())
+        environment = new ComposeContainer(composeFile())
+            // The services carrying configuration are built from the compose directory: drop these images on stop
+            .withRemoveImages(ComposeContainer.RemoveImages.LOCAL)
+            .withExposedService(DockerService.OPENPAAS.serviceName(), DockerService.OPENPAAS.port(), slowStartingPortWaitStrategy())
             .withExposedService(DockerService.RABBITMQ.serviceName(), DockerService.RABBITMQ.port())
             .withExposedService(DockerService.RABBITMQ_ADMIN.serviceName(), DockerService.RABBITMQ_ADMIN.port())
-            .withExposedService(DockerService.SABRE_DAV.serviceName(), DockerService.SABRE_DAV.port())
+            .withExposedService(DockerService.SABRE_DAV.serviceName(), DockerService.SABRE_DAV.port(), slowStartingPortWaitStrategy())
             .withExposedService(DockerService.MONGO.serviceName(), DockerService.MONGO.port())
-            .withExposedService(DockerService.ELASTICSEARCH.serviceName(), DockerService.ELASTICSEARCH.port())
             .withExposedService(DockerService.REDIS.serviceName(), DockerService.REDIS.port())
-            .waitingFor("openpaas", Wait.forLogMessage(".*Users currently connected.*", 1)
-                .withStartupTimeout(Duration.ofMinutes(3)));
+            .waitingFor("openpaas", Wait.forLogMessage(".*Twake Calendar side server started.*", 1)
+                .withStartupTimeout(SLOW_STARTING_SERVICE_TIMEOUT))
+            // Surface the side service output in the test logs: a startup timeout is otherwise impossible to diagnose
+            .withLogConsumer(DockerService.OPENPAAS.serviceName(), new Slf4jLogConsumer(LOGGER).withPrefix(DockerService.OPENPAAS.serviceName()));
+    }
+
+    // The compose file is extracted along with its sibling configuration directory, used as build context: when loaded
+    // from the test-jar (integration tests), the classpath directory is extracted as a whole to a temporary location.
+    private static File composeFile() {
+        File composeDirectory = new File(MountableFile.forClasspathResource(COMPOSE_DIRECTORY).getFilesystemPath());
+        return new File(composeDirectory, COMPOSE_FILE);
+    }
+
+    // The Twake Calendar side service (a JVM) and Sabre only start once MongoDB and RabbitMQ are healthy:
+    // on a loaded CI agent they can take longer than the 60 seconds of the default listening port wait strategy.
+    private static WaitStrategy slowStartingPortWaitStrategy() {
+        return Wait.forListeningPort()
+            .withStartupTimeout(SLOW_STARTING_SERVICE_TIMEOUT);
     }
 
     public synchronized void start() {
@@ -189,10 +215,6 @@ public class DockerOpenPaasSetup {
             .build()).get();
     }
 
-    public ContainerState getElasticsearchContainer() {
-        return environment.getContainerByServiceName(DockerService.ELASTICSEARCH.serviceName()).orElseThrow();
-    }
-
     public ContainerState getRedisContainer() {
         return environment.getContainerByServiceName(DockerService.REDIS.serviceName()).orElseThrow();
     }
@@ -202,7 +224,6 @@ public class DockerOpenPaasSetup {
             getRabbitMqContainer(),
             getSabreDavContainer(),
             getMongoDBContainer(),
-            getElasticsearchContainer(),
             getRedisContainer());
     }
 
