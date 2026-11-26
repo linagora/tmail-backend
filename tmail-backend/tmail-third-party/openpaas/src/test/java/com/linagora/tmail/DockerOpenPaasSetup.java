@@ -95,6 +95,7 @@ public class DockerOpenPaasSetup {
     {
         MountableFile mountableFile = MountableFile.forClasspathResource("docker-openpaas-setup.yml");
         environment = new ComposeContainer(new File(mountableFile.getFilesystemPath()))
+            .withEnv("SIDE_SERVICE_CONF", sideServiceConfigurationDirectory())
             .withExposedService(DockerService.OPENPAAS.serviceName(), DockerService.OPENPAAS.port(), slowStartingPortWaitStrategy())
             .withExposedService(DockerService.RABBITMQ.serviceName(), DockerService.RABBITMQ.port())
             .withExposedService(DockerService.RABBITMQ_ADMIN.serviceName(), DockerService.RABBITMQ_ADMIN.port())
@@ -103,6 +104,12 @@ public class DockerOpenPaasSetup {
             .withExposedService(DockerService.REDIS.serviceName(), DockerService.REDIS.port())
             .waitingFor("openpaas", Wait.forLogMessage(".*Twake Calendar side server started.*", 1)
                 .withStartupTimeout(SLOW_STARTING_SERVICE_TIMEOUT));
+    }
+
+    // When loaded from the test-jar (integration tests), the compose file is extracted alone to a temporary location:
+    // its sibling configuration directory needs to be extracted on its own and referenced by an absolute path.
+    private static String sideServiceConfigurationDirectory() {
+        return MountableFile.forClasspathResource("side-service-conf").getFilesystemPath();
     }
 
     // The Twake Calendar side service (a JVM) and Sabre only start once MongoDB and RabbitMQ are healthy:

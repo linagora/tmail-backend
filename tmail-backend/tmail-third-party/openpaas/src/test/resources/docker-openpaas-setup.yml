@@ -10,7 +10,8 @@ services:
     hostname: esn
     image: linagora/twake-calendar-side-service:2.5.0.9
     volumes:
-      - ./side-service-conf:/root/conf
+      # SIDE_SERVICE_CONF is set by DockerOpenPaasSetup: this file may be extracted alone from the test-jar
+      - ${SIDE_SERVICE_CONF:-./side-service-conf}:/root/conf
     depends_on:
       mongo:
         condition: service_healthy
@@ -83,7 +84,7 @@ services:
       - OPENPASS_BASIC_AUTH=YWRtaW5Ab3Blbi1wYWFzLm9yZzpzZWNyZXQ=
       - SABRE_IMPERSONATION_ENABLED=true
     volumes:
-      - ./side-service-conf/jwt_publickey:/var/www/config/esn.key.pub
+      - ${SIDE_SERVICE_CONF:-./side-service-conf}/jwt_publickey:/var/www/config/esn.key.pub
     depends_on:
       mongo:
         condition: service_healthy
