@@ -194,6 +194,7 @@ public class IdentityProvisionListenerTest {
             .filter(identity -> identity.email().equals(user1Address))
             .blockFirst();
         Identity teamMailboxIdentity = Flux.from(identityRepository.list(USER1))
+            .filter(Identity::mayDelete)
             .filter(identity -> identity.email().equals(teamMailbox.asMailAddress()))
             .blockFirst();
 
