@@ -38,8 +38,11 @@ import java.util.Optional;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.utils.URIBuilder;
 import org.junit.platform.commons.util.Preconditions;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.testcontainers.containers.ComposeContainer;
 import org.testcontainers.containers.ContainerState;
+import org.testcontainers.containers.output.Slf4jLogConsumer;
 import org.testcontainers.containers.wait.strategy.Wait;
 import org.testcontainers.containers.wait.strategy.WaitStrategy;
 import org.testcontainers.utility.MountableFile;
@@ -52,7 +55,9 @@ import com.linagora.tmail.configuration.OpenPaasConfiguration;
 public class DockerOpenPaasSetup {
 
     // Declared before SINGLETON: static fields are initialized in declaration order
-    private static final Duration SLOW_STARTING_SERVICE_TIMEOUT = Duration.ofMinutes(3);
+    private static final Logger LOGGER = LoggerFactory.getLogger(DockerOpenPaasSetup.class);
+    // The first start of a test JVM is cold (image build, JIT): on a loaded CI agent it exceeded 3 minutes
+    private static final Duration SLOW_STARTING_SERVICE_TIMEOUT = Duration.ofMinutes(5);
     private static final String COMPOSE_DIRECTORY = "docker-openpaas-setup";
     private static final String COMPOSE_FILE = "docker-compose.yml";
 
@@ -105,7 +110,9 @@ public class DockerOpenPaasSetup {
             .withExposedService(DockerService.MONGO.serviceName(), DockerService.MONGO.port())
             .withExposedService(DockerService.REDIS.serviceName(), DockerService.REDIS.port())
             .waitingFor("openpaas", Wait.forLogMessage(".*Twake Calendar side server started.*", 1)
-                .withStartupTimeout(SLOW_STARTING_SERVICE_TIMEOUT));
+                .withStartupTimeout(SLOW_STARTING_SERVICE_TIMEOUT))
+            // Surface the side service output in the test logs: a startup timeout is otherwise impossible to diagnose
+            .withLogConsumer(DockerService.OPENPAAS.serviceName(), new Slf4jLogConsumer(LOGGER).withPrefix(DockerService.OPENPAAS.serviceName()));
     }
 
     // The compose file is extracted along with its sibling configuration directory, used as build context: when loaded
