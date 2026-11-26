@@ -4,10 +4,16 @@ SERVER_URL="http://tmail-backend.local:8000"
 SIDE_SERVICE_WEBADMIN_URL="http://esn:8000"
 PASSWORD="secret"
 
-until curl -s -f -o /dev/null "$SIDE_SERVICE_WEBADMIN_URL/healthcheck"; do
-  echo "Waiting for the Twake Calendar side service..."
-  sleep 2
-done
+wait_for() {
+  until curl -s -f -o /dev/null "$1"; do
+    echo "Waiting for $2..."
+    sleep 2
+  done
+}
+
+# depends_on only orders container starts: wait for both WebAdmin APIs to be ready
+wait_for "$SERVER_URL/healthcheck" "tmail-backend"
+wait_for "$SIDE_SERVICE_WEBADMIN_URL/healthcheck" "the Twake Calendar side service"
 
 # Loop through users from user1 to user9
 for i in $(seq 1 9); do

@@ -3,11 +3,11 @@
 
 This server is the distributed version of TMail relying on:
 
-* Cassandra version 3.11.10 for metadata storage
-* S3 API-like object storage for storing email content. Using here Zenko Cloudserver version 8.2.6
-* ElasticSearch version 7.10.2 for looking up your emails.
-* RabbitMQ version 3.8.3 for messaging between the TMail nodes.
-* Tika version 1.24 (optional) allows to extract attachment content upon indexing.
+* Cassandra version 5.0.9 for metadata storage
+* S3 API-like object storage for storing email content. Using here Scality Cloudserver, pinned by commit SHA
+* OpenSearch version 3.10.0 for looking up your emails.
+* RabbitMQ version 4.2.9 for messaging between the TMail nodes.
+* Tika version 3.2 (optional) allows to extract attachment content upon indexing.
 
 == Run manually
 
@@ -24,11 +24,11 @@ docker run -d --network emaily --name=cassandra cassandra:5.0.9
 
 docker run -d --network emaily --name=rabbitmq rabbitmq:4.2.9-management
 
-docker run -d --network emaily --env 'REMOTE_MANAGEMENT_DISABLE=1' --env 'SCALITY_ACCESS_KEY_ID=accessKey1' --env 'SCALITY_SECRET_ACCESS_KEY=secretKey1' --name=s3.docker.test zenko/cloudserver:8.2.6
+docker run -d --network emaily --env 'REMOTE_MANAGEMENT_DISABLE=1' --env 'SCALITY_ACCESS_KEY_ID=accessKey1' --env 'SCALITY_SECRET_ACCESS_KEY=secretKey1' --name=s3.docker.test ghcr.io/scality/cloudserver:c1ba296859690c1cbbec609aaae430f6b04b4745
 
 docker run -d --network emaily --name=opensearch --env 'discovery.type=single-node' --env 'DISABLE_INSTALL_DEMO_CONFIG=true' --env 'DISABLE_SECURITY_PLUGIN=true' opensearchproject/opensearch:3.10.0
 
-docker run -d --network emaily --name=tika apache/tika:1.24 #Optional
+docker run -d --network emaily --name=tika apache/tika:3.2.0.0 #Optional
 ....
 
 To be able to run Tmail distributed server, you need to generate a RSA key pair first.

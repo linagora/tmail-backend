@@ -3,7 +3,7 @@
 This server is the distributed version of James relying on:
 
 * Cassandra version 5.0.9
-* S3 API-like object storage. Using here Zenko Cloudserver version 8.7.25
+* S3 API-like object storage. Using here Scality Cloudserver, pinned by commit SHA
 * OpenSearch version 3.10.0
 * RabbitMQ version 4.2.9
 * Tika version 3.2 (optional)
