@@ -520,12 +520,12 @@ def memberReviewerOf(String sha) {
   for (review in githubApiAllPages("pulls/${env.CHANGE_ID}/reviews")) {
     def approves = review.state == 'APPROVED' ||
       (review.state != 'DISMISSED' && review.state != 'PENDING' && isBuildThisPlease(review.body, sha, false))
-    if (review.commit_id == sha && approves && isHumanOrgMember(review.user)) {
+    if (review.commit_id == sha && approves && isNonBotOrgMember(review.user)) {
       return review.user.login
     }
   }
   for (comment in githubApiAllPages("issues/${env.CHANGE_ID}/comments")) {
-    if (isBuildThisPlease(comment.body, sha, true) && isHumanOrgMember(comment.user)) {
+    if (isBuildThisPlease(comment.body, sha, true) && isNonBotOrgMember(comment.user)) {
       return comment.user.login
     }
   }
@@ -539,9 +539,10 @@ def isBuildThisPlease(Object text, String sha, boolean shaRequired) {
   return normalized == "build this please ${sha}".toString() || (!shaRequired && normalized == 'build this please')
 }
 
-// A bot is never an organization member: CodeScene or CodeRabbit approve pull requests on their own,
-// and their login, such as 'codescene-delta-analysis[bot]', is no valid organization member to look up.
-def isHumanOrgMember(Object user) {
+// A GitHub App ('Bot' typed account, such as 'codescene-delta-analysis[bot]') is never an organization
+// member, and CodeScene or CodeRabbit approve pull requests on their own: they are skipped without a
+// lookup. A machine user is a regular account: it counts when it is a member, like anyone who can push.
+def isNonBotOrgMember(Object user) {
   return user.type != 'Bot' && isOrgMember(user.login)
 }
 
