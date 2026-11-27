@@ -1933,13 +1933,21 @@ trait LinagoraEmailSendMethodContract {
        |  }
        |}""".stripMargin
 
-  private def creationWithTextBodyBlob(server: GuiceJamesServer, blobId: String): String =
+  private def attachments(blobIds: Seq[String]): String =
+    if (blobIds.isEmpty) {
+      ""
+    } else {
+      s""",
+         |    "attachments": [${blobIds.map(blobId => s"""{"blobId": "$blobId", "type": "text/plain", "disposition": "attachment"}""").mkString(",")}]""".stripMargin
+    }
+
+  private def creationWithTextBodyBlob(server: GuiceJamesServer, blobId: String, attachmentBlobIds: Seq[String] = Seq()): String =
     s"""{
        |  "email/create": {
        |    "from": [{"email": "${bobUsername.asString}"}],
        |    "mailboxIds": {"${getBobInboxId(server).serialize}": true},
        |    "subject": "Blob based text body",
-       |    "textBody": [{"blobId": "$blobId", "type": "text/plain"}]
+       |    "textBody": [{"blobId": "$blobId", "type": "text/plain"}]${attachments(attachmentBlobIds)}
        |  },
        |  "emailSubmission/set": {
        |    "envelope": {
@@ -2016,11 +2024,13 @@ trait LinagoraEmailSendMethodContract {
   }
 
   @Test
-  def emailSendShouldRejectABlobBasedTextBodyOverTheSizeLimit(server: GuiceJamesServer): Unit = {
-    val blobId = uploadBlob(Array.fill[Byte](20_000_001)('a'.toByte))
+  def emailSendShouldCountABlobBasedTextBodyInTheSizeLimit(server: GuiceJamesServer): Unit = {
+    // The attachments alone are exactly at the limit: the one byte body exceeds it
+    val attachmentBlobId = uploadBlob(Array.fill[Byte](1_000_000)('a'.toByte))
+    val bodyBlobId = uploadBlob("a".getBytes(StandardCharsets.UTF_8))
 
     `given`
-      .body(emailSendThenCount(server, Map("K87" -> creationWithTextBodyBlob(server, blobId))))
+      .body(emailSendThenCount(server, Map("K87" -> creationWithTextBodyBlob(server, bodyBlobId, Seq.fill(20)(attachmentBlobId)))))
     .when
       .post
     .`then`
