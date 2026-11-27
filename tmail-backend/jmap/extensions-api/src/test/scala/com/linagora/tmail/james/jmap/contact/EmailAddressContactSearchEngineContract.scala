@@ -178,6 +178,155 @@ trait EmailAddressContactSearchEngineContract {
       .containsExactlyInAnyOrder(contactFieldsFrench)
   }
 
+  // "Hélène Lefèvre" written composed (NFC) and decomposed (NFD)
+  private def composedHelene(): ContactFields = ContactFields(new MailAddress("hl42@linagora.com"), "H\u00E9l\u00E8ne", "Lef\u00E8vre")
+  private def decomposedHelene(): ContactFields = ContactFields(new MailAddress("hl42@linagora.com"), "He\u0301le\u0300ne", "Lefe\u0300vre")
+
+  private def autoCompletedAddresses(part: String): java.util.List[MailAddress] =
+    SFlux.fromPublisher(testee().autoComplete(accountId, part)).asJava().map(_.fields.address).collectList().block()
+
+  @ParameterizedTest
+  @ValueSource(strings = Array("H\u00E9l", "h\u00E9l\u00E8ne", "lef\u00E8", "He\u0301l", "he\u0301le\u0300ne", "lefe\u0300"))
+  def autoCompleteShouldMatchDecomposedUserContactWhateverTheFormOfTheQuery(part: String): Unit = {
+    SMono(testee().index(accountId, decomposedHelene())).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    assertThat(autoCompletedAddresses(part))
+      .containsExactly(new MailAddress("hl42@linagora.com"))
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = Array("H\u00E9l", "h\u00E9l\u00E8ne", "lef\u00E8", "He\u0301l", "he\u0301le\u0300ne", "lefe\u0300"))
+  def autoCompleteShouldMatchComposedUserContactWhateverTheFormOfTheQuery(part: String): Unit = {
+    SMono(testee().index(accountId, composedHelene())).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    assertThat(autoCompletedAddresses(part))
+      .containsExactly(new MailAddress("hl42@linagora.com"))
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = Array("H\u00E9l", "h\u00E9l\u00E8ne", "lef\u00E8", "He\u0301l", "he\u0301le\u0300ne", "lefe\u0300"))
+  def autoCompleteShouldMatchDecomposedDomainContactWhateverTheFormOfTheQuery(part: String): Unit = {
+    SMono(testee().index(domain, decomposedHelene())).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    assertThat(autoCompletedAddresses(part))
+      .containsExactly(new MailAddress("hl42@linagora.com"))
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = Array("H\u00E9l", "h\u00E9l\u00E8ne", "lef\u00E8", "He\u0301l", "he\u0301le\u0300ne", "lefe\u0300"))
+  def autoCompleteShouldMatchComposedDomainContactWhateverTheFormOfTheQuery(part: String): Unit = {
+    SMono(testee().index(domain, composedHelene())).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    assertThat(autoCompletedAddresses(part))
+      .containsExactly(new MailAddress("hl42@linagora.com"))
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = Array("hel", "helene", "lef", "lefevre"))
+  def unaccentedAutoCompleteShouldMatchDecomposedUserContact(part: String): Unit = {
+    SMono(testee().index(accountId, decomposedHelene())).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    assertThat(autoCompletedAddresses(part))
+      .containsExactly(new MailAddress("hl42@linagora.com"))
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = Array("hel", "helene", "lef", "lefevre"))
+  def unaccentedAutoCompleteShouldMatchDecomposedDomainContact(part: String): Unit = {
+    SMono(testee().index(domain, decomposedHelene())).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    assertThat(autoCompletedAddresses(part))
+      .containsExactly(new MailAddress("hl42@linagora.com"))
+  }
+
+  private def unaccentedHelene(): ContactFields = ContactFields(new MailAddress("hl42@linagora.com"), "Helene", "Lefevre")
+
+  @ParameterizedTest
+  @ValueSource(strings = Array("h\u00E9l", "h\u00E9l\u00E8ne", "H\u00C9L\u00C8NE", "lef\u00E8", "lef\u00E8vre", "he\u0301le\u0300ne"))
+  def accentedAutoCompleteShouldMatchUnaccentedUserContact(part: String): Unit = {
+    SMono(testee().index(accountId, unaccentedHelene())).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    assertThat(autoCompletedAddresses(part))
+      .containsExactly(new MailAddress("hl42@linagora.com"))
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = Array("h\u00E9l", "h\u00E9l\u00E8ne", "H\u00C9L\u00C8NE", "lef\u00E8", "lef\u00E8vre", "he\u0301le\u0300ne"))
+  def accentedAutoCompleteShouldMatchUnaccentedDomainContact(part: String): Unit = {
+    SMono(testee().index(domain, unaccentedHelene())).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    assertThat(autoCompletedAddresses(part))
+      .containsExactly(new MailAddress("hl42@linagora.com"))
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = Array("hel", "helene", "HELENE", "lef", "lefevre"))
+  def unaccentedAutoCompleteShouldMatchAccentedUserContact(part: String): Unit = {
+    SMono(testee().index(accountId, composedHelene())).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    assertThat(autoCompletedAddresses(part))
+      .containsExactly(new MailAddress("hl42@linagora.com"))
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = Array("hel", "helene", "HELENE", "lef", "lefevre"))
+  def unaccentedAutoCompleteShouldMatchAccentedDomainContact(part: String): Unit = {
+    SMono(testee().index(domain, composedHelene())).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    assertThat(autoCompletedAddresses(part))
+      .containsExactly(new MailAddress("hl42@linagora.com"))
+  }
+
+  @ParameterizedTest
+  @ValueSource(strings = Array("\u0395\u03BB\u03AD", "\u03B5\u03BB\u03AD\u03BD\u03B7", "\u0419\u043E\u0440", "\u0439\u043E\u0440\u0434\u0430\u043D\u043E\u0432\u0430"))
+  def nonLatinAccentedAutoCompleteShouldMatchTheSameAccentedName(part: String): Unit = {
+    // "Ελένη Йорданова": accents that ascii folding keeps
+    SMono(testee().index(accountId, ContactFields(new MailAddress("hl42@linagora.com"), "\u0395\u03BB\u03AD\u03BD\u03B7", "\u0419\u043E\u0440\u0434\u0430\u043D\u043E\u0432\u0430"))).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    assertThat(autoCompletedAddresses(part))
+      .containsExactly(new MailAddress("hl42@linagora.com"))
+  }
+
+  @Test
+  def accentedAutoCompleteShouldNotMatchOtherNames(): Unit = {
+    SMono(testee().index(accountId, unaccentedHelene())).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    assertThat(autoCompletedAddresses("h\u00E9r"))
+      .isEmpty()
+  }
+
+  @Test
+  def autoCompleteShouldReturnDecomposedContactsComposed(): Unit = {
+    SMono(testee().index(accountId, decomposedHelene())).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+
+    assertThat(SFlux.fromPublisher(testee().autoComplete(accountId, "hl42")).asJava().map(_.fields).collectList().block())
+      .containsExactly(composedHelene())
+  }
+
+  @Test
+  def updateShouldNormalizeTheContactToItsComposedForm(): Unit = {
+    SMono(testee().index(accountId, ContactFields(new MailAddress("hl42@linagora.com"), "Helen", "Lefevre"))).block()
+    awaitDocumentsIndexed(MatchAllQuery(), 1)
+    SMono(testee().update(accountId, decomposedHelene())).block()
+    awaitDocumentsIndexed(MatchQuery("firstname", "h\u00E9l\u00E8ne"), 1)
+
+    assertThat(autoCompletedAddresses("h\u00E9l\u00E8ne"))
+      .containsExactly(new MailAddress("hl42@linagora.com"))
+  }
+
   @Test
   def indexShouldReturnMatched(): Unit = {
     SMono(testee().index(accountId, contactEmptyNameFieldsA)).block()

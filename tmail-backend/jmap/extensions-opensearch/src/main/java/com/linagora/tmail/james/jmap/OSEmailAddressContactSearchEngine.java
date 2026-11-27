@@ -74,6 +74,7 @@ import com.linagora.tmail.james.jmap.contact.ContactFields;
 import com.linagora.tmail.james.jmap.contact.ContactNotFoundException;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContact;
 import com.linagora.tmail.james.jmap.contact.EmailAddressContactSearchEngine;
+import com.linagora.tmail.james.jmap.contact.UnicodeNormalization;
 import com.linagora.tmail.james.jmap.dto.DomainContactDocument;
 import com.linagora.tmail.james.jmap.dto.UserContactDocument;
 
@@ -84,6 +85,7 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
     private static final Time TIMEOUT = new Time.Builder().time("1m").build();
 
     private static final List<String> ALL_SEARCH_FIELDS = List.of(EMAIL, FIRSTNAME, SURNAME);
+    private static final List<String> NAME_SEARCH_FIELDS = List.of(FIRSTNAME, SURNAME);
     private final OpenSearchIndexer userContactIndexer;
     private final OpenSearchIndexer domainContactIndexer;
     private final ReactorOpenSearchClient client;
@@ -110,7 +112,8 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
         return index(accountId, fields, Optional.of(addressBookId));
     }
 
-    public Mono<EmailAddressContact> index(AccountId accountId, ContactFields fields, Optional<String> addressBookId) {
+    public Mono<EmailAddressContact> index(AccountId accountId, ContactFields rawFields, Optional<String> addressBookId) {
+        ContactFields fields = rawFields.nfc();
         EmailAddressContact emailAddressContact = addressBookId.map(addressBookIdValue -> EmailAddressContact.of(fields, addressBookIdValue))
             .orElseGet(() -> EmailAddressContact.of(fields));
         DocumentId documentId = addressBookId.map(addressBookIdValue -> computeUserContactDocumentId(accountId, fields.address(), addressBookIdValue))
@@ -138,7 +141,8 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
     }
 
     @Override
-    public Publisher<EmailAddressContact> index(Domain domain, ContactFields fields) {
+    public Publisher<EmailAddressContact> index(Domain domain, ContactFields rawFields) {
+        ContactFields fields = rawFields.nfc();
         EmailAddressContact emailAddressContact = EmailAddressContact.of(fields);
         return Mono.fromCallable(() -> mapper.writeValueAsString(new DomainContactDocument(domain, emailAddressContact)))
             .flatMap(content -> domainContactIndexer.index(computeDomainContactDocumentId(domain, fields.address()), content,
@@ -173,7 +177,8 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
      * the address book copies are not found.
      */
     @Override
-    public Publisher<Void> delete(AccountId accountId, MailAddress address) {
+    public Publisher<Void> delete(AccountId accountId, MailAddress rawAddress) {
+        MailAddress address = UnicodeNormalization.nfc(rawAddress);
         String lowerCaseAddress = address.asString().toLowerCase(Locale.US);
 
         Query candidatesQuery = BoolQuery.of(b -> {
@@ -229,7 +234,8 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
     }
 
     @Override
-    public Publisher<Void> delete(AccountId accountId, MailAddress address, String addressBookId) {
+    public Publisher<Void> delete(AccountId accountId, MailAddress rawAddress, String addressBookId) {
+        MailAddress address = UnicodeNormalization.nfc(rawAddress);
         return userContactIndexer.delete(
                 List.of(computeUserContactDocumentId(accountId, address, addressBookId)),
                 RoutingKey.fromString(address.asString()))
@@ -237,7 +243,8 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
     }
 
     @Override
-    public Publisher<Void> delete(Domain domain, MailAddress address) {
+    public Publisher<Void> delete(Domain domain, MailAddress rawAddress) {
+        MailAddress address = UnicodeNormalization.nfc(rawAddress);
         return domainContactIndexer.delete(
                 List.of(computeDomainContactDocumentId(domain, address)),
                 RoutingKey.fromString(address.asString()))
@@ -249,7 +256,7 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
         SearchRequest request = new SearchRequest.Builder()
             .index(configuration.getUserContactReadAliasName().getValue(), configuration.getDomainContactReadAliasName().getValue())
             .size(limit)
-            .query(buildAutoCompleteQuery(accountId, part))
+            .query(buildAutoCompleteQuery(accountId, UnicodeNormalization.nfc(part)))
             .build();
 
         return Throwing.supplier(() -> client.search(request)).sneakyThrow()
@@ -266,8 +273,7 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
                 .field((EMAIL))
                 .query(new FieldValue.Builder().stringValue(part).build())
                 .build().toQuery())
-            .orElse(QueryBuilders.multiMatch().fields(ALL_SEARCH_FIELDS)
-                .query(part).build().toQuery());
+            .orElseGet(() -> buildNameOrEmailQuery(part));
 
         return QueryBuilders.bool()
             .must(partQuery)
@@ -279,6 +285,26 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
                     .map(Domain::asString)
                     .orElse("")).build())
                 .build().toQuery())
+            .minimumShouldMatch("1")
+            .build().toQuery();
+    }
+
+    /**
+     * The names are indexed with their accents folded (and preserved): the query is also searched with its accents
+     * folded so that "hél" matches "Helene". The original query is still searched, on the email too, as some letters
+     * are not folded the same way by both sides (eg the Cyrillic "й").
+     */
+    private Query buildNameOrEmailQuery(String part) {
+        Query originalQuery = QueryBuilders.multiMatch().fields(ALL_SEARCH_FIELDS)
+            .query(part).build().toQuery();
+        String foldedPart = StringUtils.stripAccents(part);
+        if (foldedPart.equals(part)) {
+            return originalQuery;
+        }
+        return QueryBuilders.bool()
+            .should(originalQuery)
+            .should(QueryBuilders.multiMatch().fields(NAME_SEARCH_FIELDS)
+                .query(foldedPart).build().toQuery())
             .minimumShouldMatch("1")
             .build().toQuery();
     }
@@ -352,7 +378,8 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
     }
 
     @Override
-    public Publisher<EmailAddressContact> get(AccountId accountId, MailAddress mailAddress) {
+    public Publisher<EmailAddressContact> get(AccountId accountId, MailAddress rawMailAddress) {
+        MailAddress mailAddress = UnicodeNormalization.nfc(rawMailAddress);
         return Throwing.supplier(() -> client.get(new GetRequest.Builder()
                 .index(configuration.getUserContactReadAliasName().getValue())
                 .id(computeUserContactDocumentId(accountId, mailAddress).asString())
@@ -366,7 +393,8 @@ public class OSEmailAddressContactSearchEngine implements EmailAddressContactSea
     }
 
     @Override
-    public Publisher<EmailAddressContact> get(Domain domain, MailAddress mailAddress) {
+    public Publisher<EmailAddressContact> get(Domain domain, MailAddress rawMailAddress) {
+        MailAddress mailAddress = UnicodeNormalization.nfc(rawMailAddress);
         return Throwing.supplier(() -> client.get(new GetRequest.Builder()
                 .index(configuration.getDomainContactReadAliasName().getValue())
                 .id(computeDomainContactDocumentId(domain, mailAddress).asString())

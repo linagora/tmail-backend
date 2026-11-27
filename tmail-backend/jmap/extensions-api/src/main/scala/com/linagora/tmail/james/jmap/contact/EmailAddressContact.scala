@@ -19,6 +19,7 @@
 package com.linagora.tmail.james.jmap.contact
 
 import java.nio.charset.StandardCharsets
+import java.text.Normalizer
 import java.util.UUID
 
 import com.google.common.collect.{HashBasedTable, ImmutableList, Table, Tables}
@@ -73,6 +74,23 @@ object EmailAddressContact {
 
 case class EmailAddressContact(id: UUID, fields: ContactFields)
 
+/**
+ * Text can be written composed (NFC: "é" as U+00E9) or decomposed (NFD: "e" followed by U+0301).
+ * Both read the same, yet they do not compare equal nor produce the same search tokens.
+ *
+ * Contacts are indexed and searched in their composed form so that they match whatever the form they were written in.
+ */
+object UnicodeNormalization {
+  def nfc(value: String): String = Normalizer.normalize(value, Normalizer.Form.NFC)
+
+  def nfc(address: MailAddress): MailAddress =
+    if (Normalizer.isNormalized(address.asString(), Normalizer.Form.NFC)) {
+      address
+    } else {
+      new MailAddress(nfc(address.asString()))
+    }
+}
+
 object ContactFields {
   def of(mailAddress: MailAddress, displayName: String): ContactFields = ContactFields(mailAddress, firstname = Option(displayName).getOrElse(""), surname = "")
 
@@ -88,6 +106,8 @@ object ContactFields {
 }
 
 case class ContactFields(address: MailAddress, firstname: String = "", surname: String = "") {
+  def nfc(): ContactFields = ContactFields(UnicodeNormalization.nfc(address), UnicodeNormalization.nfc(firstname), UnicodeNormalization.nfc(surname))
+
   def contains(part: String): Boolean =
     address.asString().contains(part) || firstname.contains(part) || surname.contains(part)
 
@@ -178,10 +198,10 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
     })
 
   override def index(accountId: AccountId, fields: ContactFields): Publisher[EmailAddressContact] =
-    index(accountId, EmailAddressContact.of(fields), None)
+    index(accountId, EmailAddressContact.of(fields.nfc()), None)
 
   override def index(accountId: AccountId, fields: ContactFields, addressBookId: String): Publisher[EmailAddressContact] =
-    index(accountId, EmailAddressContact.of(fields, addressBookId), Some(addressBookId))
+    index(accountId, EmailAddressContact.of(fields.nfc(), addressBookId), Some(addressBookId))
 
   private def index(accountId: AccountId, addressContact: EmailAddressContact, addressBookId: Option[String]): SMono[EmailAddressContact] =
     domainContacts()
@@ -192,48 +212,61 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
       .`then`(SMono.just(addressContact))
 
   override def index(domain: Domain, fields: ContactFields): Publisher[EmailAddressContact] =
-    index(domain, EmailAddressContact.of(fields))
+    index(domain, EmailAddressContact.of(fields.nfc()))
 
   private def index(domain: Domain, addressContact: EmailAddressContact): Publisher[EmailAddressContact] =
     SMono.fromCallable(() => domainContactList.put(domain, addressContact.fields.address, addressContact))
       .`then`(SMono.just(addressContact))
 
-  override def update(accountId: AccountId, updatedFields: ContactFields): Publisher[EmailAddressContact] =
-    SMono.fromCallable(() => userContactList.put(accountId, Pair.of(updatedFields.address, None), EmailAddressContact.of(updatedFields)))
+  override def update(accountId: AccountId, updatedFields: ContactFields): Publisher[EmailAddressContact] = {
+    val nfcFields = updatedFields.nfc()
+    SMono.fromCallable(() => userContactList.put(accountId, Pair.of(nfcFields.address, None), EmailAddressContact.of(nfcFields)))
+  }
 
-  override def update(accountId: AccountId, updatedFields: ContactFields, addressBookId: String): Publisher[EmailAddressContact] =
-    SMono.fromCallable(() => userContactList.put(accountId, Pair.of(updatedFields.address, Some(addressBookId)), EmailAddressContact.of(updatedFields, addressBookId)))
+  override def update(accountId: AccountId, updatedFields: ContactFields, addressBookId: String): Publisher[EmailAddressContact] = {
+    val nfcFields = updatedFields.nfc()
+    SMono.fromCallable(() => userContactList.put(accountId, Pair.of(nfcFields.address, Some(addressBookId)), EmailAddressContact.of(nfcFields, addressBookId)))
+  }
 
-  override def update(domain: Domain, updatedFields: ContactFields): Publisher[EmailAddressContact] =
-    SMono.fromCallable(() => domainContactList.put(domain, updatedFields.address, EmailAddressContact.of(updatedFields)))
+  override def update(domain: Domain, updatedFields: ContactFields): Publisher[EmailAddressContact] = {
+    val nfcFields = updatedFields.nfc()
+    SMono.fromCallable(() => domainContactList.put(domain, nfcFields.address, EmailAddressContact.of(nfcFields)))
+  }
 
   override def delete(accountId: AccountId, mailAddress: MailAddress): Publisher[Void] =
     userContactEntries(accountId)
-      .filter { case (_, contact) => contact.fields.address == mailAddress }
+      .filter { case (_, contact) => contact.fields.address == UnicodeNormalization.nfc(mailAddress) }
       .doOnNext { case (key, _) => userContactList.remove(accountId, key) }
       .thenMany(SMono.empty)
 
   override def delete(accountId: AccountId, mailAddress: MailAddress, addressBookId: String): Publisher[Void] =
     userContactEntries(accountId)
-      .filter { case (pair, contact) => contact.fields.address == mailAddress && pair.getValue.contains(addressBookId) }
+      .filter { case (pair, contact) => contact.fields.address == UnicodeNormalization.nfc(mailAddress) && pair.getValue.contains(addressBookId) }
       .doOnNext { case (key, _) => userContactList.remove(accountId, key) }
       .thenMany(SMono.empty)
 
   override def delete(domain: Domain, mailAddress: MailAddress): Publisher[Void] =
-    SMono.fromCallable(() => domainContactList.remove(domain, mailAddress))
+    SMono.fromCallable(() => domainContactList.remove(domain, UnicodeNormalization.nfc(mailAddress)))
       .`then`(SMono.empty)
 
   override def autoComplete(accountId: AccountId, part: String, limit: Int): Publisher[EmailAddressContact] = {
     val maybeDomain: Option[Domain] = Username.of(accountId.getIdentifier).getDomainPart.toScala
+    val searchedPart: String = searchable(part)
     SFlux.concat(
         maybeDomain.map(domainContacts).getOrElse(SFlux.empty),
         userContacts(accountId))
-      .filter(lowerCaseContact(_).fields.contains(part.toLowerCase))
+      .filter(contact => searchable(contact.fields.address.asString()).contains(searchedPart)
+        || searchable(contact.fields.firstname).contains(searchedPart)
+        || searchable(contact.fields.surname).contains(searchedPart))
       .sort(Ordering.by[EmailAddressContact, String](contact => contact.fields.address.asString))
       .distinct(_.id)
       .take(limit)
       .map(lowerCaseEmailAddress)
   }
+
+  // Case and accent insensitive, as the OpenSearch implementation
+  private def searchable(value: String): String =
+    StringUtils.stripAccents(UnicodeNormalization.nfc(value).toLowerCase)
 
   private def lowerCaseContact(contact: EmailAddressContact): EmailAddressContact =
     EmailAddressContact(contact.id, ContactFields(address = new MailAddress(contact.fields.address.asString().toLowerCase),
@@ -254,12 +287,12 @@ class InMemoryEmailAddressContactSearchEngine extends EmailAddressContactSearchE
 
   override def get(accountId: AccountId, mailAddress: MailAddress): Publisher[EmailAddressContact] =
     userContacts(accountId)
-      .filter(lowerCaseContact(_).fields.address.equals(mailAddress))
+      .filter(lowerCaseContact(_).fields.address.equals(UnicodeNormalization.nfc(mailAddress)))
       .switchIfEmpty(SMono.error(ContactNotFoundException(mailAddress)))
 
   override def get(domain: Domain, mailAddress: MailAddress): Publisher[EmailAddressContact] =
     domainContacts(domain)
-      .filter(lowerCaseContact(_).fields.address.equals(mailAddress))
+      .filter(lowerCaseContact(_).fields.address.equals(UnicodeNormalization.nfc(mailAddress)))
       .singleOrEmpty()
       .switchIfEmpty(SMono.error(ContactNotFoundException(mailAddress)))
 
