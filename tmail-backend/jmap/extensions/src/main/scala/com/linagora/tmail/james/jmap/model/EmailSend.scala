@@ -22,7 +22,7 @@ import java.io.{ByteArrayInputStream, InputStream}
 
 import cats.implicits.toTraverseOps
 import com.linagora.tmail.james.jmap.json.EmailSendSerializer
-import com.linagora.tmail.james.jmap.method.{AttachmentsTooLargeException, TooManyAttachmentsException, standardError}
+import com.linagora.tmail.james.jmap.method.standardError
 import com.linagora.tmail.james.jmap.model.EmailSendCreationRequestRaw.{emailCreateAssignableProperties, emailSubmissionAssignableProperties}
 import eu.timepit.refined.auto._
 import eu.timepit.refined.refineV
@@ -32,7 +32,7 @@ import org.apache.james.jmap.core.Properties.toProperties
 import org.apache.james.jmap.core.SetError.SetErrorDescription
 import org.apache.james.jmap.core.{AccountId, Id, Properties, SetError, UuidState}
 import org.apache.james.jmap.json.EmailSetSerializer
-import org.apache.james.jmap.mail.{BlobId, DestroyIds, EmailCreationRequest, EmailCreationResponse, EmailSet, EmailSetRequest, EmailSubmissionId, Envelope, ThreadId, UnparsedMessageId}
+import org.apache.james.jmap.mail.{AttachmentsTooLargeException, BlobId, DestroyIds, EmailCreationRequest, EmailCreationResponse, EmailSet, EmailSetRequest, EmailSubmissionId, Envelope, ThreadId, TooManyAttachmentsException, UnparsedMessageId}
 import org.apache.james.jmap.method.{EmailSubmissionException, EmailSubmissionSetValidationException, SizeExceededException, WithAccountId}
 import org.apache.james.mailbox.model.MessageId
 import org.apache.james.server.core.MimeMessageSource
