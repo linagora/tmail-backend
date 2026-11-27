@@ -1146,6 +1146,21 @@ trait LinagoraEmailSendMethodContract {
       "sender" -> Json.arr(Json.obj("email" -> s"${bobUsername.asString}>"))),
       Some(validSenderEnvelope), "forbiddenFrom", Seq("sender"))
 
+  @Test
+  def emailSendShouldRejectAFromFieldNameHoldingAComment(server: GuiceJamesServer): Unit =
+    // mime4j reads "From(x):" as a From field while jakarta.mail does not
+    assertSendRejected(server, Json.obj(
+      "header:From(x):asRaw" -> s" ${andreUsername.asString}",
+      "header:From:asAddresses" -> Json.arr(Json.obj("email" -> bobUsername.asString))),
+      Some(validSenderEnvelope), "invalidArguments", Seq("header:From(x):asRaw", "header:From:asAddresses"))
+
+  @Test
+  def emailSendShouldRejectASenderFieldNameHoldingAComment(server: GuiceJamesServer): Unit =
+    assertSendRejected(server, Json.obj(
+      "from" -> Json.arr(Json.obj("email" -> bobUsername.asString)),
+      "header:Sender(x):asRaw" -> s" ${andreUsername.asString}"),
+      Some(validSenderEnvelope), "invalidArguments", Seq("header:Sender(x):asRaw"))
+
   private def assertMissingFromRejected(server: GuiceJamesServer, headers: JsObject, envelope: scala.Option[JsObject]): Unit = {
     assertSendRejected(server, headers, envelope, "invalidEmail", Seq("from"))
 
