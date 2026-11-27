@@ -1933,6 +1933,22 @@ trait LinagoraEmailSendMethodContract {
        |  }
        |}""".stripMargin
 
+  private def creationWithTextBodyBlob(server: GuiceJamesServer, blobId: String): String =
+    s"""{
+       |  "email/create": {
+       |    "from": [{"email": "${bobUsername.asString}"}],
+       |    "mailboxIds": {"${getBobInboxId(server).serialize}": true},
+       |    "subject": "Blob based text body",
+       |    "textBody": [{"blobId": "$blobId", "type": "text/plain"}]
+       |  },
+       |  "emailSubmission/set": {
+       |    "envelope": {
+       |      "mailFrom": {"email": "${bobUsername.asString}"},
+       |      "rcptTo": [{"email": "${andreUsername.asString}"}]
+       |    }
+       |  }
+       |}""".stripMargin
+
   private def emailSendThenCount(server: GuiceJamesServer, creations: Map[String, String]): String =
     s"""{
        |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:ietf:params:jmap:submission", "com:linagora:params:jmap:pgp"],
@@ -1981,6 +1997,40 @@ trait LinagoraEmailSendMethodContract {
       .body("methodResponses[0][1].created.K87.emailSubmissionId", notNullValue())
       .body("methodResponses[0][1].notCreated", nullValue())
       .body("methodResponses[1][1].list[0].totalEmails", equalTo(1))
+  }
+
+  @Test
+  def emailSendShouldAcceptABlobBasedTextBodyUnderTheSizeLimit(server: GuiceJamesServer): Unit = {
+    val blobId = uploadBlob("Hello from a blob".getBytes(StandardCharsets.UTF_8))
+
+    `given`
+      .body(emailSendThenCount(server, Map("K87" -> creationWithTextBodyBlob(server, blobId))))
+    .when
+      .post
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0][1].created.K87.emailSubmissionId", notNullValue())
+      .body("methodResponses[0][1].notCreated", nullValue())
+      .body("methodResponses[1][1].list[0].totalEmails", equalTo(1))
+  }
+
+  @Test
+  def emailSendShouldRejectABlobBasedTextBodyOverTheSizeLimit(server: GuiceJamesServer): Unit = {
+    val blobId = uploadBlob(Array.fill[Byte](20_000_001)('a'.toByte))
+
+    `given`
+      .body(emailSendThenCount(server, Map("K87" -> creationWithTextBodyBlob(server, blobId))))
+    .when
+      .post
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0][1].notCreated.K87.type", equalTo("tooLarge"))
+      .body("methodResponses[0][1].notCreated.K87.description",
+        equalTo("Attachments of this email exceed the maximum allowed total size of 20000000 bytes (maxSizeAttachmentsPerEmail)"))
+      .body("methodResponses[0][1].created", nullValue())
+      .body("methodResponses[1][1].list[0].totalEmails", equalTo(0))
   }
 
   @Test

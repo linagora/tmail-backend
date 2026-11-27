@@ -23,7 +23,7 @@ import java.util.concurrent.atomic.AtomicLong
 
 import org.apache.james.jmap.api.model.Size.Size
 import org.apache.james.jmap.mail.BlobId
-import org.apache.james.jmap.routes.{Blob, BlobResolver, BlobResolvers}
+import org.apache.james.jmap.routes.{Blob, BlobResolver, BlobResolvers, UploadedBlob}
 import org.apache.james.mailbox.MailboxSession
 import org.apache.james.mailbox.model.ContentType
 import reactor.core.scala.publisher.SMono
@@ -46,13 +46,20 @@ object AttachmentsSizeBudget {
  *
  * The size advertised by a blob is checked before its content is opened, and the content is then read bounded
  * by the remaining budget, so that a wrong advertised size does not make us read more than the limit.
+ *
+ * An uploaded blob is still resolved as an [[UploadedBlob]], with a budgeted content: James reads the blob based
+ * bodies only from that type.
  */
 class AttachmentsSizeBudget(delegate: BlobResolvers, maximumSize: Long) extends BlobResolvers(Set.empty[BlobResolver]) {
   private val consumed: AtomicLong = new AtomicLong(0L)
 
   override def resolve(blobId: BlobId, mailboxSession: MailboxSession): SMono[Blob] =
     delegate.resolve(blobId, mailboxSession)
-      .map(blob => new BudgetedBlob(blob))
+      .map {
+        case uploadedBlob: UploadedBlob =>
+          uploadedBlob.copy(upload = uploadedBlob.upload.copy(content = () => budgetedContent(uploadedBlob)))
+        case blob => new BudgetedBlob(blob)
+      }
 
   override def validateAccess(blobId: BlobId, mailboxSession: MailboxSession): SMono[java.lang.Boolean] =
     delegate.validateAccess(blobId, mailboxSession)
@@ -62,6 +69,11 @@ class AttachmentsSizeBudget(delegate: BlobResolvers, maximumSize: Long) extends 
       throw AttachmentsTooLargeException(maximumSize)
     }
 
+  private def budgetedContent(blob: Blob): InputStream = {
+    blob.size.toOption.foreach(size => ensureFits(consumed.get() + size.value))
+    new BudgetedInputStream(blob.content)
+  }
+
   private class BudgetedBlob(blob: Blob) extends Blob {
     override def blobId: BlobId = blob.blobId
 
@@ -69,10 +81,7 @@ class AttachmentsSizeBudget(delegate: BlobResolvers, maximumSize: Long) extends 
 
     override def size: Try[Size] = blob.size
 
-    override def content: InputStream = {
-      blob.size.toOption.foreach(size => ensureFits(consumed.get() + size.value))
-      new BudgetedInputStream(blob.content)
-    }
+    override def content: InputStream = budgetedContent(blob)
   }
 
   private class BudgetedInputStream(in: InputStream) extends FilterInputStream(in) {
