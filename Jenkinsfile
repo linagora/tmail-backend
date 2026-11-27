@@ -520,12 +520,12 @@ def memberReviewerOf(String sha) {
   for (review in githubApiAllPages("pulls/${env.CHANGE_ID}/reviews")) {
     def approves = review.state == 'APPROVED' ||
       (review.state != 'DISMISSED' && review.state != 'PENDING' && isBuildThisPlease(review.body, sha, false))
-    if (review.commit_id == sha && approves && isOrgMember(review.user.login)) {
+    if (review.commit_id == sha && approves && isHumanOrgMember(review.user)) {
       return review.user.login
     }
   }
   for (comment in githubApiAllPages("issues/${env.CHANGE_ID}/comments")) {
-    if (isBuildThisPlease(comment.body, sha, true) && isOrgMember(comment.user.login)) {
+    if (isBuildThisPlease(comment.body, sha, true) && isHumanOrgMember(comment.user)) {
       return comment.user.login
     }
   }
@@ -539,11 +539,18 @@ def isBuildThisPlease(Object text, String sha, boolean shaRequired) {
   return normalized == "build this please ${sha}".toString() || (!shaRequired && normalized == 'build this please')
 }
 
+// A bot is never an organization member: CodeScene or CodeRabbit approve pull requests on their own,
+// and their login, such as 'codescene-delta-analysis[bot]', is no valid organization member to look up.
+def isHumanOrgMember(Object user) {
+  return user.type != 'Bot' && isOrgMember(user.login)
+}
+
 def isOrgMember(String login) {
   def status
   withEnv(["GITHUB_LOGIN=${login}"]) {
     status = sh(
-      script: 'curl -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GITHUB_CREDENTIAL_PSW" ' +
+      // -g: no URL globbing, '[' and '{' in the path are taken literally
+      script: 'curl -g -s -o /dev/null -w "%{http_code}" -H "Authorization: token $GITHUB_CREDENTIAL_PSW" ' +
         '"https://api.github.com/orgs/linagora/members/$GITHUB_LOGIN"',
       returnStdout: true
     ).trim()
@@ -562,7 +569,7 @@ def githubApi(String path) {
   def json
   withEnv(["GITHUB_API_PATH=${path}", "GITHUB_API_REPOSITORY=${githubRepository()}"]) {
     json = sh(
-      script: 'curl -sf -H "Authorization: token $GITHUB_CREDENTIAL_PSW" ' +
+      script: 'curl -g -sf -H "Authorization: token $GITHUB_CREDENTIAL_PSW" ' +
         '"https://api.github.com/repos/$GITHUB_API_REPOSITORY/$GITHUB_API_PATH"',
       returnStdout: true
     )
