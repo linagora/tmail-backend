@@ -39,7 +39,7 @@ import org.apache.james.jmap.api.model.Size
 import org.apache.james.jmap.core.CapabilityIdentifier.{CapabilityIdentifier, EMAIL_SUBMISSION, JMAP_CORE, JMAP_MAIL}
 import org.apache.james.jmap.core.Invocation.{Arguments, MethodName}
 import org.apache.james.jmap.core.SetError.SetErrorDescription
-import org.apache.james.jmap.core.{Invocation, Properties, SessionTranslator, SetError, UTCDate, UuidState}
+import org.apache.james.jmap.core.{Invocation, JmapRfc8621Configuration, Properties, SessionTranslator, SetError, UTCDate, UuidState}
 import org.apache.james.jmap.json.EmailSetSerializer
 import org.apache.james.jmap.mail.{BlobId, EmailCreationRequest, EmailCreationResponse, EmailSubmissionId, Envelope, ThreadId}
 import org.apache.james.jmap.method.EmailSubmissionSetMethod.{LOGGER, validateFromHeader}
@@ -97,6 +97,7 @@ class EmailSendMethod @Inject()(emailSetSerializer: EmailSetSerializer,
                                 mailboxManager: MailboxManager,
                                 emailSetMethod: EmailSetMethod,
                                 configuration: JMAPConfiguration,
+                                jmapRfc8621Configuration: JmapRfc8621Configuration,
                                 submissionValidations: SubmissionValidations,
                                 val metricFactory: MetricFactory,
                                 val sessionTranslator: SessionTranslator,
@@ -200,10 +201,14 @@ class EmailSendMethod @Inject()(emailSetSerializer: EmailSetSerializer,
                   mailboxSession: MailboxSession,
                   request: EmailCreationRequest): SMono[EmailSetCreationResult] = {
     val mailboxIds: List[MailboxId] = request.mailboxIds.value
+    val attachmentCount: Int = request.attachments.map(_.size).getOrElse(0)
     if (mailboxIds.size != 1) {
       SMono.just(EmailSetCreationFailure(clientId, new IllegalArgumentException("mailboxIds need to have size 1")))
+    } else if (attachmentCount > AttachmentsSizeBudget.MAX_ATTACHMENTS_PER_MAIL) {
+      SMono.just(EmailSetCreationFailure(clientId, TooManyAttachmentsException(attachmentCount, AttachmentsSizeBudget.MAX_ATTACHMENTS_PER_MAIL)))
     } else {
-      request.toMime4JMessage(blobResolvers, htmlTextExtractor, mailboxSession)
+      val sizeBudget: AttachmentsSizeBudget = new AttachmentsSizeBudget(blobResolvers, jmapRfc8621Configuration.maxSizeAttachmentsPerEmail.asLong())
+      request.toMime4JMessage(sizeBudget, htmlTextExtractor, mailboxSession)
         .flatMap(message => append(clientId, request, message, mailboxSession, mailboxIds))
         .onErrorResume(e => SMono.just[EmailSetCreationResult](EmailSetCreationFailure(clientId, e)))
     }

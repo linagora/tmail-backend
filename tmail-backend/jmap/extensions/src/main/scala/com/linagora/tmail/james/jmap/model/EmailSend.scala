@@ -22,7 +22,7 @@ import java.io.{ByteArrayInputStream, InputStream}
 
 import cats.implicits.toTraverseOps
 import com.linagora.tmail.james.jmap.json.EmailSendSerializer
-import com.linagora.tmail.james.jmap.method.standardError
+import com.linagora.tmail.james.jmap.method.{AttachmentsTooLargeException, TooManyAttachmentsException, standardError}
 import com.linagora.tmail.james.jmap.model.EmailSendCreationRequestRaw.{emailCreateAssignableProperties, emailSubmissionAssignableProperties}
 import eu.timepit.refined.auto._
 import eu.timepit.refined.refineV
@@ -221,6 +221,8 @@ object EmailSendResults {
     val setError: SetError = throwable match {
       case invalidException: EmailSendCreationRequestInvalidException => invalidException.error
       case exceededException: SizeExceededException => SetError.tooLarge(SetErrorDescription(exceededException.getMessage))
+      case tooLargeException: AttachmentsTooLargeException => SetError.tooLarge(SetErrorDescription(tooLargeException.getMessage))
+      case tooManyException: TooManyAttachmentsException => SetError.tooLarge(SetErrorDescription(tooManyException.getMessage))
       case submissionException: EmailSubmissionException => submissionException.asSetError
       case validationException: EmailSubmissionSetValidationException => validationException.setError
       case error: Throwable => SetError.serverFail(SetErrorDescription(error.getMessage))

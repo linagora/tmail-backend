@@ -52,6 +52,7 @@ import org.assertj.core.api.SoftAssertions.assertSoftly
 import org.awaitility.Awaitility
 import org.awaitility.Durations.ONE_HUNDRED_MILLISECONDS
 import org.awaitility.core.ConditionFactory
+import org.hamcrest.Matchers.{equalTo, notNullValue, nullValue}
 import org.junit.jupiter.api.{BeforeEach, Tag, Test}
 import play.api.libs.json.{JsObject, JsString, JsValue, Json}
 
@@ -1897,6 +1898,160 @@ trait LinagoraEmailSendMethodContract {
       .asString()
     description.endsWith("but maximum allowed is 10000000")
     description.startsWith("Request size is exceeded.")
+  }
+
+  private def uploadBlob(payload: Array[Byte]): String = {
+    val uploadResponse: String = `given`
+      .basePath("")
+      .header(ACCEPT.toString, ACCEPT_RFC8621_VERSION_HEADER)
+      .contentType("text/plain")
+      .body(payload)
+    .when
+      .post(s"/upload/$bobAccountId")
+    .`then`
+      .statusCode(SC_CREATED)
+      .extract
+      .body
+      .asString
+
+    Json.parse(uploadResponse).\("blobId").get.asInstanceOf[JsString].value
+  }
+
+  private def creationWithAttachments(server: GuiceJamesServer, blobIds: Seq[String]): String =
+    s"""{
+       |  "email/create": {
+       |    "from": [{"email": "${bobUsername.asString}"}],
+       |    "mailboxIds": {"${getBobInboxId(server).serialize}": true},
+       |    "subject": "Attachments",
+       |    "attachments": [${blobIds.map(blobId => s"""{"blobId": "$blobId", "type": "text/plain", "disposition": "attachment"}""").mkString(",")}]
+       |  },
+       |  "emailSubmission/set": {
+       |    "envelope": {
+       |      "mailFrom": {"email": "${bobUsername.asString}"},
+       |      "rcptTo": [{"email": "${andreUsername.asString}"}]
+       |    }
+       |  }
+       |}""".stripMargin
+
+  private def emailSendThenCount(server: GuiceJamesServer, creations: Map[String, String]): String =
+    s"""{
+       |  "using": ["urn:ietf:params:jmap:core", "urn:ietf:params:jmap:mail", "urn:ietf:params:jmap:submission", "com:linagora:params:jmap:pgp"],
+       |  "methodCalls": [
+       |    ["Email/send", {
+       |      "accountId": "$bobAccountId",
+       |      "create": {${creations.map { case (creationId, creation) => s""""$creationId": $creation""" }.mkString(",")}}
+       |    }, "c1"],
+       |    ["Mailbox/get", {
+       |      "accountId": "$bobAccountId",
+       |      "ids": ["${getBobInboxId(server).serialize}"],
+       |      "properties": ["totalEmails"]
+       |    }, "c2"]
+       |  ]
+       |}""".stripMargin
+
+  @Test
+  def emailSendShouldRejectASmallBlobReferencedUntilTheAttachmentSizeLimitIsExceeded(server: GuiceJamesServer): Unit = {
+    val blobId = uploadBlob(Array.fill[Byte](1_000_000)('a'.toByte))
+
+    `given`
+      .body(emailSendThenCount(server, Map("K87" -> creationWithAttachments(server, Seq.fill(21)(blobId)))))
+    .when
+      .post
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0][1].notCreated.K87.type", equalTo("tooLarge"))
+      .body("methodResponses[0][1].notCreated.K87.description",
+        equalTo("Attachments of this email exceed the maximum allowed total size of 20000000 bytes (maxSizeAttachmentsPerEmail)"))
+      .body("methodResponses[0][1].created", nullValue())
+      .body("methodResponses[1][1].list[0].totalEmails", equalTo(0))
+  }
+
+  @Test
+  def emailSendShouldAcceptAttachmentsUnderTheSizeLimit(server: GuiceJamesServer): Unit = {
+    val blobId = uploadBlob(Array.fill[Byte](1_000_000)('a'.toByte))
+
+    `given`
+      .body(emailSendThenCount(server, Map("K87" -> creationWithAttachments(server, Seq.fill(5)(blobId)))))
+    .when
+      .post
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0][1].created.K87.emailSubmissionId", notNullValue())
+      .body("methodResponses[0][1].notCreated", nullValue())
+      .body("methodResponses[1][1].list[0].totalEmails", equalTo(1))
+  }
+
+  @Test
+  def emailSendShouldRejectASingleAttachmentOverTheSizeLimit(server: GuiceJamesServer): Unit = {
+    val blobId = uploadBlob(Array.fill[Byte](20_000_001)('a'.toByte))
+
+    `given`
+      .body(emailSendThenCount(server, Map("K87" -> creationWithAttachments(server, Seq(blobId)))))
+    .when
+      .post
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0][1].notCreated.K87.type", equalTo("tooLarge"))
+      .body("methodResponses[0][1].notCreated.K87.description",
+        equalTo("Attachments of this email exceed the maximum allowed total size of 20000000 bytes (maxSizeAttachmentsPerEmail)"))
+      .body("methodResponses[1][1].list[0].totalEmails", equalTo(0))
+  }
+
+  @Test
+  def emailSendShouldProcessOtherCreationsWhenOneExceedsTheAttachmentSizeLimit(server: GuiceJamesServer): Unit = {
+    val blobId = uploadBlob(Array.fill[Byte](1_000_000)('a'.toByte))
+
+    `given`
+      .body(emailSendThenCount(server, Map(
+        "K87" -> creationWithAttachments(server, Seq(blobId)),
+        "K88" -> creationWithAttachments(server, Seq.fill(21)(blobId)))))
+    .when
+      .post
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0][1].created.K87.emailSubmissionId", notNullValue())
+      .body("methodResponses[0][1].notCreated.K88.type", equalTo("tooLarge"))
+      .body("methodResponses[0][1].notCreated.K88.description",
+        equalTo("Attachments of this email exceed the maximum allowed total size of 20000000 bytes (maxSizeAttachmentsPerEmail)"))
+      .body("methodResponses[1][1].list[0].totalEmails", equalTo(1))
+  }
+
+  @Test
+  def emailSendShouldAcceptTheMaximumAttachmentCount(server: GuiceJamesServer): Unit = {
+    val blobId = uploadBlob("a".getBytes(StandardCharsets.UTF_8))
+
+    `given`
+      .body(emailSendThenCount(server, Map("K87" -> creationWithAttachments(server, Seq.fill(256)(blobId)))))
+    .when
+      .post
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0][1].created.K87.emailSubmissionId", notNullValue())
+      .body("methodResponses[1][1].list[0].totalEmails", equalTo(1))
+  }
+
+  @Test
+  def emailSendShouldRejectMoreAttachmentsThanTheMaximumCount(server: GuiceJamesServer): Unit = {
+    val blobId = uploadBlob("a".getBytes(StandardCharsets.UTF_8))
+
+    `given`
+      .body(emailSendThenCount(server, Map(
+        "K87" -> creationWithAttachments(server, Seq.fill(257)(blobId)),
+        "K88" -> creationWithAttachments(server, Seq(blobId)))))
+    .when
+      .post
+    .`then`
+      .statusCode(HttpStatus.SC_OK)
+      .contentType(JSON)
+      .body("methodResponses[0][1].notCreated.K87.type", equalTo("tooLarge"))
+      .body("methodResponses[0][1].notCreated.K87.description", equalTo("This email has 257 attachments while the maximum allowed is 256"))
+      .body("methodResponses[0][1].created.K88.emailSubmissionId", notNullValue())
+      .body("methodResponses[1][1].list[0].totalEmails", equalTo(1))
   }
 
   //endregion
