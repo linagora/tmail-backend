@@ -680,12 +680,6 @@
                 <artifactId>wiremock-standalone</artifactId>
                 <version>3.13.1</version>
             </dependency>
-            <dependency>
-                <groupId>org.mongodb</groupId>
-                <artifactId>mongodb-driver-reactivestreams</artifactId>
-                <scope>test</scope>
-                <version>${mongodb.version}</version>
-            </dependency>
         </dependencies>
     </dependencyManagement>
 
