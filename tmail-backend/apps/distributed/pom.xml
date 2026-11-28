@@ -175,7 +175,7 @@
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
-            <artifactId>twake-space</artifactId>
+            <artifactId>twake-extension</artifactId>
         </dependency>
         <dependency>
             <groupId>${project.groupId}</groupId>
