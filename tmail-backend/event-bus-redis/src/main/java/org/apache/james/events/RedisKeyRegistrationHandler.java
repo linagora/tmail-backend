@@ -22,6 +22,7 @@ import static org.apache.james.events.TMailEventDispatcher.REDIS_ERROR_PREDICATE
 
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
 
@@ -137,36 +138,64 @@ public class RedisKeyRegistrationHandler {
         // Redis impl: there is no routing key concept in Redis Pub/Sub (and Redis Streams).
         // Solution: store binding registration key - target channel mapping in Redis under key-value. Upon dispatching event, check the mapping to know the target publish channel.
 
-        LocalListenerRegistry.LocalRegistration registration = localListenerRegistry.addListener(key, listener);
-
-        return registerIfNeeded(key, registration)
-            .thenReturn(new KeyRegistration(() -> {
-                if (registration.unregister().lastListenerRemoved()) {
-                    return Mono.from(metricFactory.decoratePublisherWithTimerMetric("redis-unregister", registrationBinder.unbind(key)
-                        .doOnError(any -> !isStopping, throwable -> LOGGER.error("Error while unbinding key", throwable))
-                        .timeout(redisEventBusConfiguration.durationTimeout())
-                        .retryWhen(retryBackoff.asReactorRetry().scheduler(Schedulers.boundedElastic()))
-                        .onErrorResume(error -> (REDIS_ERROR_PREDICATE.test(error.getCause()) && redisEventBusConfiguration.failureIgnore()), error -> {
-                            LOGGER.warn("Error while unbinding key", error);
-                            return Mono.empty();
-                        })));
+        return Mono.defer(() -> {
+            LocalListenerRegistry.LocalRegistration registration = localListenerRegistry.addListener(key, listener);
+            KeyRegistration keyRegistration = new KeyRegistration(() -> unregister(key, registration));
+            // Either the caller gets the registration, or the listener is removed (cancel or bind failure): nobody else could remove it
+            AtomicBoolean settled = new AtomicBoolean(false);
+            Runnable unregisterIfNotHandedOut = () -> {
+                if (settled.compareAndSet(false, true)) {
+                    keyRegistration.unregister().subscribe();
                 }
-                return Mono.empty();
-            }));
+            };
+
+            return registerIfNeeded(key, registration)
+                .thenReturn((Registration) keyRegistration)
+                .filter(any -> settled.compareAndSet(false, true))
+                .doOnCancel(unregisterIfNotHandedOut)
+                .doOnError(e -> unregisterIfNotHandedOut.run());
+        });
+    }
+
+    private Mono<Void> unregister(RegistrationKey key, LocalListenerRegistry.LocalRegistration registration) {
+        if (registration.unregister().lastListenerRemoved()) {
+            return Mono.from(metricFactory.decoratePublisherWithTimerMetric("redis-unregister", registrationBinder.unbind(key)
+                .doOnError(any -> !isStopping, throwable -> LOGGER.error("Error while unbinding key", throwable))
+                .timeout(redisEventBusConfiguration.durationTimeout())
+                .retryWhen(retryBackoff.asReactorRetry().scheduler(Schedulers.boundedElastic()))
+                .onErrorResume(error -> (REDIS_ERROR_PREDICATE.test(error.getCause()) && redisEventBusConfiguration.failureIgnore()), error -> {
+                    LOGGER.warn("Error while unbinding key", error);
+                    return Mono.empty();
+                })))
+                // A listener registered meanwhile may have been bound before Redis got this unbind
+                .then(Mono.defer(() -> rebindIfListened(key)));
+        }
+        return Mono.empty();
+    }
+
+    private Mono<Void> rebindIfListened(RegistrationKey key) {
+        if (localListenerRegistry.getLocalListeners(key).isEmpty()) {
+            return Mono.empty();
+        }
+        return bind(key);
     }
 
     private Mono<Void> registerIfNeeded(RegistrationKey key, LocalListenerRegistry.LocalRegistration registration) {
         if (registration.isFirstListener()) {
-            return registrationBinder.bind(key)
-                .doOnError(any -> !isStopping, throwable -> LOGGER.error("Error while binding key", throwable))
-                .timeout(redisEventBusConfiguration.durationTimeout())
-                .retryWhen(retryBackoff.asReactorRetry().scheduler(Schedulers.boundedElastic()))
-                .onErrorResume(error -> (REDIS_ERROR_PREDICATE.test(error.getCause()) && redisEventBusConfiguration.failureIgnore()), error -> {
-                    LOGGER.warn("Error while binding key", error);
-                    return Mono.empty();
-                });
+            return bind(key);
         }
         return Mono.empty();
+    }
+
+    private Mono<Void> bind(RegistrationKey key) {
+        return registrationBinder.bind(key)
+            .doOnError(any -> !isStopping, throwable -> LOGGER.error("Error while binding key", throwable))
+            .timeout(redisEventBusConfiguration.durationTimeout())
+            .retryWhen(retryBackoff.asReactorRetry().scheduler(Schedulers.boundedElastic()))
+            .onErrorResume(error -> (REDIS_ERROR_PREDICATE.test(error.getCause()) && redisEventBusConfiguration.failureIgnore()), error -> {
+                LOGGER.warn("Error while binding key", error);
+                return Mono.empty();
+            });
     }
 
     private Mono<Void> handleChannelMessage(ChannelMessage<String, String> channelMessage) {
