@@ -166,23 +166,36 @@ public class RedisKeyRegistrationHandler {
                 .onErrorResume(error -> (REDIS_ERROR_PREDICATE.test(error.getCause()) && redisEventBusConfiguration.failureIgnore()), error -> {
                     LOGGER.warn("Error while unbinding key", error);
                     return Mono.empty();
-                })));
+                })))
+                // A listener registered meanwhile may have been bound before Redis got this unbind
+                .then(Mono.defer(() -> rebindIfListened(key)));
         }
         return Mono.empty();
     }
 
+    private Mono<Void> rebindIfListened(RegistrationKey key) {
+        if (localListenerRegistry.getLocalListeners(key).isEmpty()) {
+            return Mono.empty();
+        }
+        return bind(key);
+    }
+
     private Mono<Void> registerIfNeeded(RegistrationKey key, LocalListenerRegistry.LocalRegistration registration) {
         if (registration.isFirstListener()) {
-            return registrationBinder.bind(key)
-                .doOnError(any -> !isStopping, throwable -> LOGGER.error("Error while binding key", throwable))
-                .timeout(redisEventBusConfiguration.durationTimeout())
-                .retryWhen(retryBackoff.asReactorRetry().scheduler(Schedulers.boundedElastic()))
-                .onErrorResume(error -> (REDIS_ERROR_PREDICATE.test(error.getCause()) && redisEventBusConfiguration.failureIgnore()), error -> {
-                    LOGGER.warn("Error while binding key", error);
-                    return Mono.empty();
-                });
+            return bind(key);
         }
         return Mono.empty();
+    }
+
+    private Mono<Void> bind(RegistrationKey key) {
+        return registrationBinder.bind(key)
+            .doOnError(any -> !isStopping, throwable -> LOGGER.error("Error while binding key", throwable))
+            .timeout(redisEventBusConfiguration.durationTimeout())
+            .retryWhen(retryBackoff.asReactorRetry().scheduler(Schedulers.boundedElastic()))
+            .onErrorResume(error -> (REDIS_ERROR_PREDICATE.test(error.getCause()) && redisEventBusConfiguration.failureIgnore()), error -> {
+                LOGGER.warn("Error while binding key", error);
+                return Mono.empty();
+            });
     }
 
     private Mono<Void> handleChannelMessage(ChannelMessage<String, String> channelMessage) {

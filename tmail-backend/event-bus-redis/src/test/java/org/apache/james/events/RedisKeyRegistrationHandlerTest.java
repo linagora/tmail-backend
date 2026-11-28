@@ -25,6 +25,9 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import java.time.Duration;
+import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CopyOnWriteArrayList;
 
 import org.apache.james.metrics.tests.RecordingMetricFactory;
 import org.junit.jupiter.api.BeforeEach;
@@ -33,6 +36,7 @@ import org.junit.jupiter.api.Test;
 import io.lettuce.core.api.reactive.RedisSetReactiveCommands;
 import reactor.core.Disposable;
 import reactor.core.publisher.Mono;
+import reactor.core.publisher.Sinks;
 
 class RedisKeyRegistrationHandlerTest {
     private static final RegistrationKey KEY = new EventBusTestFixture.TestRegistrationKey("a");
@@ -77,5 +81,29 @@ class RedisKeyRegistrationHandlerTest {
             .isInstanceOf(RuntimeException.class);
 
         assertThat(localListenerRegistry.getLocalListeners(KEY)).isEmpty();
+    }
+
+    @Test
+    void unbindReachingRedisAfterTheBindOfANewFirstListenerShouldBindTheKeyAgain() {
+        List<String> redisOperations = new CopyOnWriteArrayList<>();
+        when(redisSetCommands.sadd(anyString(), anyString())).thenAnswer(invocation -> Mono.fromCallable(() -> {
+            redisOperations.add("sadd");
+            return 1L;
+        }));
+        Registration registrationA = testee.register(LISTENER, KEY).block();
+
+        Sinks.Empty<Void> unbindAcknowledged = Sinks.empty();
+        when(redisSetCommands.srem(anyString(), anyString())).thenReturn(unbindAcknowledged.asMono()
+            .doOnSuccess(any -> redisOperations.add("srem"))
+            .thenReturn(1L));
+        CompletableFuture<Void> unregisterA = Mono.from(registrationA.unregister()).toFuture();
+
+        EventListener.ReactiveEventListener listenerB = EventListener.wrapReactive(event -> { });
+        testee.register(listenerB, KEY).block();
+        unbindAcknowledged.tryEmitEmpty();
+        unregisterA.join();
+
+        assertThat(localListenerRegistry.getLocalListeners(KEY)).containsOnly(listenerB);
+        assertThat(redisOperations).last().isEqualTo("sadd");
     }
 }
